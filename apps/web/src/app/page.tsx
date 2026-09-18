@@ -94,6 +94,13 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="max-w-6xl mx-auto mt-32 border-t border-white/[0.05] pt-8 flex items-center justify-center">
+          <p className="text-xs text-zinc-500 flex items-center gap-1.5 font-medium">
+            made with <span className="text-rose-500 animate-pulse">❤️</span> by Aditya Bhatt
+          </p>
+        </div>
       </main>
     </div>
   );
