@@ -1,0 +1,115 @@
+'use client';
+import { Topbar } from '@/components/layout/Topbar';
+import { HelpCircle, Clock, PlayCircle, Trophy, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useState } from 'react';
+
+const MOCK_QUIZZES = [
+  { id: '1', title: 'Calculus Midterm Review', subject: 'Mathematics', duration: 45, questions: 20, completed: false },
+  { id: '2', title: 'Quantum Mechanics Basics', subject: 'Physics', duration: 30, questions: 15, completed: true, score: 92 },
+  { id: '3', title: 'Data Structures - Trees & Graphs', subject: 'Computer Science', duration: 60, questions: 25, completed: false },
+  { id: '4', title: 'World History: WW2', subject: 'History', duration: 45, questions: 30, completed: true, score: 85 },
+];
+
+export default function QuizzesPage() {
+  const [quizzes, setQuizzes] = useState(MOCK_QUIZZES);
+
+  const startQuiz = (id: string) => {
+    toast.success('Quiz started! Good luck.');
+    // In a real app, this would route to a quiz taking interface.
+    // For now, let's just mark it as completed after 2 seconds to simulate taking it.
+    setTimeout(() => {
+      setQuizzes(quizzes.map(q => q.id === id ? { ...q, completed: true, score: Math.floor(Math.random() * 20) + 80 } : q));
+      toast.info('Quiz completed!');
+    }, 2000);
+  };
+
+  return (
+    <>
+      <Topbar title="Quizzes & Assessments" subtitle="Test your knowledge and track your progress" />
+      <div className="flex-1 p-8 overflow-y-auto">
+        <div className="max-w-6xl mx-auto space-y-8">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 rounded-2xl p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-1">Pending Quizzes</h3>
+                <p className="text-indigo-200 text-sm">You have {quizzes.filter(q => !q.completed).length} quizzes to complete.</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-indigo-500/30 flex items-center justify-center text-indigo-300">
+                <HelpCircle className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-2xl p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-1">Average Score</h3>
+                <p className="text-emerald-200 text-sm">Keep up the great work!</p>
+              </div>
+              <div className="flex items-baseline gap-1 text-emerald-300">
+                <span className="text-3xl font-bold">88</span>
+                <span className="text-lg">%</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Available Quizzes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {quizzes.filter(q => !q.completed).map((quiz) => (
+                <div key={quiz.id} className="card p-6 flex flex-col hover:border-indigo-500/50 transition-colors group">
+                  <div className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 w-max mb-4">
+                    {quiz.subject}
+                  </div>
+                  <h4 className="text-lg font-bold text-white mb-2">{quiz.title}</h4>
+                  <div className="flex flex-wrap gap-4 text-sm text-zinc-400 mb-6">
+                    <span className="flex items-center gap-1.5"><Clock className="w-4 h-4"/> {quiz.duration} mins</span>
+                    <span className="flex items-center gap-1.5"><HelpCircle className="w-4 h-4"/> {quiz.questions} Questions</span>
+                  </div>
+                  <button 
+                    onClick={() => startQuiz(quiz.id)}
+                    className="mt-auto w-full py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg flex items-center justify-center gap-2 transition-colors border border-white/10 group-hover:bg-indigo-600 group-hover:border-indigo-500 font-medium"
+                  >
+                    <PlayCircle className="w-4 h-4" /> Start Quiz
+                  </button>
+                </div>
+              ))}
+              {quizzes.filter(q => !q.completed).length === 0 && (
+                <div className="col-span-full py-8 text-center text-zinc-500 card">
+                  No pending quizzes right now.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-zinc-800">
+            <h3 className="text-lg font-semibold text-white mb-4">Completed Quizzes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {quizzes.filter(q => q.completed).map((quiz) => (
+                <div key={quiz.id} className="card p-5 flex items-center justify-between">
+                  <div>
+                    <div className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-400 mb-2">
+                      {quiz.subject}
+                    </div>
+                    <h4 className="text-md font-bold text-white flex items-center gap-2">
+                      {quiz.title}
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-sm text-zinc-500">Score</div>
+                      <div className={`text-xl font-bold ${quiz.score && quiz.score >= 90 ? 'text-emerald-400' : 'text-blue-400'}`}>
+                        {quiz.score}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </>
+  );
+}

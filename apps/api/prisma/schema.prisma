@@ -1,0 +1,380 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ─────────────────────────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum GradeStatus {
+  PENDING
+  GRADED
+}
+
+enum QuizStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum AnnouncementTarget {
+  ALL
+  STUDENTS
+  TEACHERS
+  COURSE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  TUITION
+  EXAM_FEE
+  LIBRARY_FEE
+  ACTIVITY_FEE
+  ORGANIZATION
+  OTHER
+}
+
+enum FileType {
+  PDF
+  DOCX
+  VIDEO
+  IMAGE
+  OTHER
+}
+
+// ─── MODELS ────────────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  password     String?
+  role         Role       @default(STUDENT)
+  status       UserStatus @default(PENDING)
+  avatar       String?
+  googleId     String?    @unique
+  phone        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  emailNotifications Boolean  @default(true)
+
+  // Student profile
+  studentProfile   StudentProfile?
+  // Teacher profile
+  teacherProfile   TeacherProfile?
+  // Relations
+  enrollments      Enrollment[]
+  attendance       Attendance[]
+  submissions      QuizSubmission[]
+  sentMessages     Message[]        @relation("MessageSender")
+  receivedMessages Message[]        @relation("MessageReceiver")
+  notifications    Notification[]
+  payments         Payment[]
+  refreshTokens    RefreshToken[]
+  uploadedFiles    File[]
+  grades           Grade[]
+  taughtCourses    Course[]
+  materials        Material[]
+  announcements    Announcement[]
+  knowledgeHubResources KnowledgeHubResource[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId    String   @unique @default(cuid())
+  department   String?
+  year         Int      @default(1)
+  gpa          Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+model TeacherProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeId   String   @unique @default(cuid())
+  department   String?
+  designation  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("teacher_profiles")
+}
+
+model Course {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  name         String
+  description  String?
+  credits      Int          @default(3)
+  department   String?
+  status       CourseStatus @default(DRAFT)
+  teacherId    String
+  teacher      User         @relation(fields: [teacherId], references: [id])
+  color        String?
+  emoji        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  enrollments  Enrollment[]
+  attendance   Attendance[]
+  grades       Grade[]
+  quizzes      Quiz[]
+  materials    Material[]
+  announcements Announcement[]
+  knowledgeHubResources KnowledgeHubResource[]
+
+  @@map("courses")
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+
+  @@unique([studentId, courseId])
+  @@map("enrollments")
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  studentId String
+  student   User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  date      DateTime         @db.Date
+  status    AttendanceStatus @default(PRESENT)
+  note      String?
+  createdAt DateTime         @default(now())
+
+  @@unique([studentId, courseId, date])
+  @@map("attendance")
+}
+
+model Grade {
+  id              String      @id @default(cuid())
+  studentId       String
+  student         User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId        String
+  course          Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignmentName  String
+  score           Float
+  maxScore        Float       @default(100)
+  weight          Float       @default(1)
+  status          GradeStatus @default(GRADED)
+  feedback        String?
+  gradedAt        DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("grades")
+}
+
+model Quiz {
+  id          String       @id @default(cuid())
+  courseId    String
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  dueDate     DateTime?
+  timeLimit   Int?         // minutes
+  status      QuizStatus   @default(DRAFT)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  questions   QuizQuestion[]
+  submissions QuizSubmission[]
+
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id            String   @id @default(cuid())
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  question      String
+  options       Json     // string[]
+  correctAnswer String
+  points        Float    @default(1)
+  order         Int      @default(0)
+
+  @@map("quiz_questions")
+}
+
+model QuizSubmission {
+  id          String   @id @default(cuid())
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers     Json     // { questionId: answer }
+  score       Float?
+  maxScore    Float?
+  submittedAt DateTime @default(now())
+
+  @@unique([quizId, studentId])
+  @@map("quiz_submissions")
+}
+
+model Material {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title     String
+  type      FileType @default(OTHER)
+  fileUrl   String
+  size      String?
+  uploadedById String
+  uploader  User     @relation(fields: [uploadedById], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("materials")
+}
+
+model KnowledgeHubResource {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String?
+  url         String?
+  courseId    String?
+  course      Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("knowledge_hub_resources")
+}
+
+model File {
+  id           String   @id @default(cuid())
+  key          String   @unique // S3 key
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  uploadedById String
+  uploader     User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@map("files")
+}
+
+model Announcement {
+  id        String             @id @default(cuid())
+  title     String
+  body      String
+  target    AnnouncementTarget @default(ALL)
+  courseId  String?
+  course    Course?            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User               @relation(fields: [authorId], references: [id])
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@map("announcements")
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  subject    String
+  body       String
+  senderId   String
+  sender     User     @relation("MessageSender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User     @relation("MessageReceiver", fields: [receiverId], references: [id])
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@map("messages")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  type      String   @default("info")
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  amount          Float
+  currency        String        @default("USD")
+  type            PaymentType   @default(OTHER)
+  description     String
+  status          PaymentStatus @default(PENDING)
+  stripePaymentId String?       @unique
+  stripeSessionId String?       @unique
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}

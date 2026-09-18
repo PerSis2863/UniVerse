@@ -1,0 +1,90 @@
+<svg
+  viewBox="0 0 100 100"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <linearGradient id="universe-u-grad" x1="15%" y1="10%" x2="60%" y2="80%">
+      <stop offset="0%" stopColor="#38bdf8" />
+      <stop offset="50%" stopColor="#6366f1" />
+      <stop offset="100%" stopColor="#a855f7" />
+    </linearGradient>
+
+    <linearGradient id="universe-n-grad" x1="40%" y1="30%" x2="90%" y2="80%">
+      <stop offset="0%" stopColor="#6366f1" />
+      <stop offset="45%" stopColor="#ec4899" />
+      <stop offset="100%" stopColor="#f97316" />
+    </linearGradient>
+  </defs>
+
+  <rect width="100" height="100" fill="#09090b" rx="20"/>
+
+  <path
+    d="M 28 12 C 12 28 12 56 28 72 C 40 84 55 78 55 50"
+    stroke="rgba(255, 255, 255, 0.08)"
+    strokeWidth="6"
+    strokeLinecap="round"
+  />
+
+  <path
+    d="M 28 12 C 12 28 12 56 28 72 C 40 84 55 78 55 50"
+    stroke="url(#universe-u-grad)"
+    strokeWidth="5"
+    strokeLinecap="round"
+  />
+
+  <path
+    d="M 42 34 L 86 33 L 50 80"
+    stroke="rgba(255, 255, 255, 0.08)"
+    strokeWidth="5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
+
+  <path
+    d="M 42 34 L 86 33 L 50 80"
+    stroke="url(#universe-n-grad)"
+    strokeWidth="4.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
+
+  <g>
+    <circle
+      cx="42"
+      cy="34"
+      r="4"
+      fill="#0d1424"
+      stroke="#38bdf8"
+      strokeWidth="2"
+    />
+    <circle
+      cx="42"
+      cy="34"
+      r="1.8"
+      fill="#38bdf8"
+    />
+  </g>
+
+  <rect
+    x="82.5"
+    y="29.5"
+    width="7"
+    height="7"
+    rx="1.5"
+    fill="#0d1424"
+    stroke="#fb923c"
+    strokeWidth="2"
+  />
+
+  <rect
+    x="46.5"
+    y="76.5"
+    width="7"
+    height="7"
+    rx="1.5"
+    fill="#f97316"
+    stroke="#fed7aa"
+    strokeWidth="1.5"
+  />
+</svg>
