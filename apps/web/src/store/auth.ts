@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User } from '@/types';
+import { User, Role } from '@/types';
 import { api } from '@/lib/api';
 
 interface AuthStore {
@@ -31,13 +31,13 @@ export const useAuthStore = create<AuthStore>()(
           set({ user: data.user, accessToken: data.accessToken, refreshToken: data.refreshToken });
         } catch {
           // Fallback to mock login when backend is not available
-          let role = 'STUDENT';
+          let role: Role = 'STUDENT';
           if (email.toLowerCase().includes('teacher')) role = 'TEACHER';
           if (email.toLowerCase().includes('admin')) role = 'ADMIN';
           const mockUser: User = {
             id: 'mock-1', email,
             name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-            role: role as any,
+            role,
             status: 'ACTIVE',
             createdAt: new Date().toISOString(),
           };
