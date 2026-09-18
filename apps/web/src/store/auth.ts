@@ -37,7 +37,9 @@ export const useAuthStore = create<AuthStore>()(
           const mockUser: User = {
             id: 'mock-1', email,
             name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-            role,
+            role: role as any,
+            status: 'ACTIVE',
+            createdAt: new Date().toISOString(),
           };
           localStorage.setItem('accessToken', 'mock-token');
           set({ user: mockUser, accessToken: 'mock-token', refreshToken: 'mock-refresh' });
