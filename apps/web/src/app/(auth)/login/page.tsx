@@ -16,15 +16,13 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    try {
-      await login(email, password);
-      const user = useAuthStore.getState().user;
-      if (user) {
-        const path = user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin';
-        router.push(path);
-      }
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Login failed. Please try again.');
+    await login(email, password);
+    const user = useAuthStore.getState().user;
+    if (user) {
+      const path = user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin';
+      router.push(path);
+    } else {
+      setError('Login failed. Please try again.');
     }
   };
 
