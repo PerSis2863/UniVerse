@@ -38,7 +38,7 @@ export default function HomePage() {
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.06] backdrop-blur-xl bg-[#09090b]/80">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <UniverseLogo size="sm" showText={true} animated={true} />
+          <UniverseLogo size="md" showText={true} animated={true} />
           <div className="flex items-center gap-3">
             <Link href="/login" className="btn-ghost text-sm">Sign in</Link>
             <Link href="/register" className="btn-primary text-sm">Get started</Link>

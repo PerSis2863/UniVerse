@@ -227,14 +227,14 @@ export function UniverseLogo({
       {showText && (
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
-            <span className="font-black tracking-tight text-white text-base">
+            <span className="font-black tracking-tight text-white text-lg">
               Uni<span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">Verse</span>
             </span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30 mt-0.5">
               IMPACT
             </span>
           </div>
-          <span className="text-[10px] text-zinc-400 tracking-wider">
+          <span className="text-[11px] text-zinc-400 tracking-wider">
             {subtitle || 'Global Universities & NGO Network'}
           </span>
         </div>
