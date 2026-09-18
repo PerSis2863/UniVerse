@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   keywords: ['university', 'education', 'management', 'students', 'teachers'],
 };
 
+import { Analytics } from "@vercel/analytics/react";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -23,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-[#09090b] text-white antialiased">
         {children}
+        <Analytics />
       </body>
     </html>
   );
