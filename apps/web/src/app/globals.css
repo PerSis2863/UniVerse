@@ -17,12 +17,22 @@
     --foreground: #09090b;
     --surface: #f4f4f5;
     --surface-2: #e4e4e7;
+    --card-bg: rgba(255, 255, 255, 0.8);
+    --card-border: rgba(0, 0, 0, 0.08);
+    --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    --card-hover-bg: rgba(255, 255, 255, 1);
+    --card-hover-border: rgba(0, 0, 0, 0.12);
   }
   .dark {
     --background: #0d1424;
     --foreground: #fafafa;
     --surface: #141723;
     --surface-2: #1e2235;
+    --card-bg: rgba(255, 255, 255, 0.03);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --card-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    --card-hover-bg: rgba(255, 255, 255, 0.05);
+    --card-hover-border: rgba(255, 255, 255, 0.12);
   }
 
   body {
@@ -55,32 +65,32 @@
 
 @layer utilities {
   .glass {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--card-bg);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--card-border);
   }
 
   .card {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--card-bg);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--card-border);
     border-radius: 1rem;
     padding: 1.5rem;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    box-shadow: var(--card-shadow);
   }
 
   .card-hover {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--card-bg);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--card-border);
     border-radius: 1rem;
     padding: 1.5rem;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    box-shadow: var(--card-shadow);
     transition: all 0.3s ease;
   }
   .card-hover:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
+    background-color: var(--card-hover-bg);
+    border-color: var(--card-hover-border);
     transform: translateY(-2px);
     box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.1);
   }
@@ -221,15 +231,15 @@
   }
 
   .kpi-card {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--card-bg);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--card-border);
     border-radius: 1rem;
     padding: 1.5rem;
     position: relative;
     overflow: hidden;
     transition: all 0.3s ease;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    box-shadow: var(--card-shadow);
   }
   .kpi-card::before {
     content: '';
@@ -241,8 +251,8 @@
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
   }
   .kpi-card:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
+    background-color: var(--card-hover-bg);
+    border-color: var(--card-hover-border);
     transform: translateY(-2px);
   }
 

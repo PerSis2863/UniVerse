@@ -12,11 +12,11 @@ interface KpiCardProps {
 }
 
 const colors = {
-  indigo: 'text-indigo-400 bg-indigo-600/15',
-  cyan: 'text-cyan-400 bg-cyan-600/15',
-  green: 'text-green-400 bg-green-900/30',
-  amber: 'text-amber-400 bg-amber-900/30',
-  rose: 'text-rose-400 bg-rose-900/30',
+  indigo: 'text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-600/15',
+  cyan: 'text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-600/15',
+  green: 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30',
+  amber: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30',
+  rose: 'text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/30',
 };
 
 export function KpiCard({ title, value, icon: Icon, change, color = 'indigo' }: KpiCardProps) {

@@ -87,7 +87,7 @@ export default function StudentDashboard() {
               {upcomingClasses.map((cls, i) => (
                 <motion.div 
                   whileHover={{ scale: 1.02, x: 5 }}
-                  key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-white/[0.06]">
+                  key={i} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-zinc-200 dark:hover:bg-white/[0.06] transition-colors border border-zinc-200 dark:border-white/[0.06]">
                   <div className="w-1 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">{cls.name}</div>
@@ -135,7 +135,7 @@ export default function StudentDashboard() {
                       <span className="text-zinc-600 dark:text-zinc-400">{item.label}</span>
                       <span className="text-zinc-900 dark:text-white font-medium">{item.pct}%</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.06] overflow-hidden">
                       <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500"
                         style={{ width: `${item.pct}%` }} />
                     </div>
@@ -151,12 +151,12 @@ export default function StudentDashboard() {
             <div className="space-y-3">
               {recentActivity.map((item, i) => (
                 <motion.div 
-                  whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                  whileHover={{ scale: 1.02, backgroundColor: 'var(--card-hover-bg)' }}
                   key={i} className="flex items-start gap-3 py-2 rounded-xl px-2 transition-colors">
-                  <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-sm flex-shrink-0">{item.icon}</div>
+                  <div className="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-white/[0.04] flex items-center justify-center text-sm flex-shrink-0">{item.icon}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-zinc-300 leading-snug">{item.text}</p>
-                    <p className="text-xs text-zinc-600 mt-0.5">{item.time}</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{item.text}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-600 mt-0.5">{item.time}</p>
                   </div>
                 </motion.div>
               ))}
