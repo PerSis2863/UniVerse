@@ -112,21 +112,86 @@ export default function ShowcasePage() {
           ))}
         </motion.div>
 
-        {/* Visual Showcase (Abstract) */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 }}
-          className="w-full max-w-5xl aspect-video rounded-3xl overflow-hidden relative border border-zinc-200 dark:border-white/10 shadow-2xl bg-zinc-100 dark:bg-zinc-900/50 flex flex-col items-center justify-center p-8 text-center"
-        >
-          <Globe2 className="w-24 h-24 text-zinc-300 dark:text-zinc-700 mb-6 animate-pulse" />
-          <h3 className="text-2xl font-bold mb-2">Join a Global Network</h3>
-          <p className="text-zinc-500 dark:text-zinc-400 max-w-md">Discover projects, connect with mentors, and track your social impact through our unified portal.</p>
-          
-          <Link href="/login" className="mt-8 px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold transition-colors flex items-center gap-2">
-            Explore the Portal <ArrowRight className="w-4 h-4" />
-          </Link>
-        </motion.div>
+        {/* Interactive Showcase Section */}
+        <div className="w-full max-w-6xl mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+          {/* Active Projects Column */}
+          <div className="lg:col-span-2 space-y-4">
+            <h3 className="text-xl font-bold px-2 flex items-center gap-2">
+              <Sprout className="w-5 h-5 text-emerald-500" /> Featured Projects
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { title: 'Clean Water Initiative', org: 'WaterAid Kenya', tags: ['Environment', 'Health'], color: 'from-cyan-500 to-blue-500' },
+                { title: 'Digital Literacy for All', org: 'Tech4Good', tags: ['Education', 'Tech'], color: 'from-purple-500 to-indigo-500' },
+                { title: 'Urban Reforestation', org: 'Green Earth', tags: ['Climate', 'Community'], color: 'from-emerald-500 to-teal-500' },
+                { title: 'Youth Mentorship', org: 'Global Scholars', tags: ['Education', 'Mentorship'], color: 'from-amber-500 to-orange-500' },
+              ].map((proj, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 + (i * 0.1) }}
+                  className="p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] hover:bg-white dark:hover:bg-white/[0.05] transition-colors cursor-pointer group"
+                >
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${proj.color} mb-4 opacity-80 group-hover:opacity-100 transition-opacity`} />
+                  <h4 className="font-bold text-lg mb-1">{proj.title}</h4>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">{proj.org}</p>
+                  <div className="flex gap-2">
+                    {proj.tags.map(t => (
+                      <span key={t} className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Live Activity Feed Column */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold px-2 flex items-center gap-2">
+              <Globe2 className="w-5 h-5 text-indigo-500" /> Live Impact
+            </h3>
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+              className="p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] flex flex-col gap-4 h-[350px] overflow-hidden relative"
+            >
+              {/* Fade out masks for scrolling effect */}
+              <div className="absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-zinc-50 dark:from-zinc-950 to-transparent z-10" />
+              <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-zinc-50 dark:from-zinc-950 to-transparent z-10 flex items-end justify-center pb-4">
+                <Link href="/login" className="px-4 py-2 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-xs hover:scale-105 transition-transform shadow-lg shadow-zinc-900/20 dark:shadow-white/10 z-20">
+                  Join the Network
+                </Link>
+              </div>
+
+              {/* Ticker Items */}
+              <div className="space-y-4 animate-marquee-y hover:[animation-play-state:paused]">
+                {[
+                  'Sarah completed 5hrs of tutoring',
+                  'Green Earth reached 10k trees',
+                  'MIT joined the global network',
+                  'New hackathon announced in London',
+                  'Tech4Good raised $5k for laptops',
+                  'Alex unlocked the "Mentor" badge',
+                  'Sarah completed 5hrs of tutoring',
+                  'Green Earth reached 10k trees',
+                  'MIT joined the global network',
+                  'New hackathon announced in London',
+                  'Tech4Good raised $5k for laptops',
+                  'Alex unlocked the "Mentor" badge',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-white dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-100 dark:border-white/[0.05]">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                    <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </div>
 
       </main>
     </div>
