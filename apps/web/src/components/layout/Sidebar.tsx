@@ -7,7 +7,7 @@ import {
   MessageSquare, Bell, Settings, LogOut,
   GraduationCap, Brain,
   Info, AlertTriangle, Globe, Folder, Search, Link as LinkIcon, ChevronDown, ChevronRight,
-  Coffee, Shield, Map, Globe2
+  Coffee, Shield, Map, Globe2, Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -31,6 +31,7 @@ const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/student/courses', label: 'Courses' },
         { href: '/student/groups', label: 'Groups' },
+        { href: '/student/blackboard', label: 'Blackboard' },
         { href: '/student/internships', label: 'Internships' },
         { href: '/student/choices', label: 'My choices' },
         { href: '/student/attendance', label: 'Attendance' },
@@ -105,6 +106,7 @@ const navByRole: Record<string, NavItem[]> = {
       label: 'Schooling', icon: GraduationCap,
       subItems: [
         { href: '/teacher/courses', label: 'My Courses' },
+        { href: '/teacher/blackboard', label: 'Blackboard' },
         { href: '/teacher/students', label: 'Students' },
         { href: '/teacher/attendance', label: 'Attendance' },
         { href: '/teacher/grades', label: 'Grades' },
