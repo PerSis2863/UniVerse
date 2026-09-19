@@ -21,21 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       appearance={{
         variables: {
           colorPrimary: '#6366f1',
-          colorBackground: '#0d1424',
           borderRadius: '0.75rem',
-        },
-        elements: {
-          card: 'bg-transparent shadow-none',
-          headerTitle: 'font-black font-display text-2xl',
-          headerSubtitle: 'text-zinc-400',
-          socialButtonsBlockButton: 'border border-white/10 bg-white/5 hover:bg-white/10 text-white',
-          formButtonPrimary: 'bg-indigo-600 hover:bg-indigo-500 text-white font-semibold',
-          formFieldInput: 'bg-white/5 border border-white/10 text-white placeholder-zinc-500 focus:border-indigo-500/50',
-          formFieldLabel: 'text-zinc-400 text-sm',
-          footerActionLink: 'text-indigo-400 hover:text-indigo-300',
-          identityPreviewEditButton: 'text-indigo-400',
-          dividerLine: 'bg-white/10',
-          dividerText: 'text-zinc-500',
         },
       }}
     >

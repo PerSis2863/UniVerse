@@ -19,45 +19,47 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Clerk SignIn — styled for light mode */}
+      {/* Clerk SignIn — forced light mode via colorBackground */}
       <SignIn
         routing="hash"
         signUpUrl="/register"
         appearance={{
+          variables: {
+            colorPrimary: '#4f46e5',
+            colorBackground: '#ffffff',
+            borderRadius: '0.75rem',
+          },
           elements: {
             rootBox: 'w-full',
             card: 'bg-transparent shadow-none border-0 p-0',
             headerBox: 'hidden',
             // Social buttons
             socialButtonsBlockButton:
-              'w-full border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 rounded-xl transition-colors h-11 shadow-sm',
-            socialButtonsBlockButtonText: 'font-semibold text-sm text-zinc-700',
-            socialButtonsProviderIcon: 'w-5 h-5',
+              'w-full !border !border-zinc-200 !bg-white hover:!bg-zinc-50 !text-zinc-700 !rounded-xl transition-colors !h-11 !shadow-sm',
+            socialButtonsBlockButtonText: '!font-semibold !text-sm !text-zinc-700',
             // Divider
             dividerRow: 'my-5',
-            dividerLine: 'bg-zinc-200',
-            dividerText: 'text-zinc-400 text-xs',
+            dividerLine: '!bg-zinc-200',
+            dividerText: '!text-zinc-400 !text-xs',
             // Form fields
-            formFieldLabel: 'text-zinc-600 text-sm font-medium mb-1',
+            formFieldLabel: '!text-zinc-600 !text-sm !font-medium',
             formFieldInput:
-              'w-full bg-white border border-zinc-200 text-zinc-900 placeholder-zinc-400 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-sm',
+              '!bg-white !border !border-zinc-200 !text-zinc-900 placeholder:!text-zinc-400 !rounded-xl !text-sm focus:!border-indigo-500 !shadow-sm',
             // Primary button
             formButtonPrimary:
-              'w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-3 text-sm transition-colors mt-2 shadow-md shadow-indigo-500/20',
+              '!bg-indigo-600 hover:!bg-indigo-700 !text-white !font-semibold !rounded-xl !text-sm !shadow-md',
             // Footer
-            footerAction: 'mt-6',
-            footerActionText: 'text-zinc-500 text-sm',
-            footerActionLink: 'text-indigo-600 hover:text-indigo-700 font-semibold',
-            // Identity preview (shown after email step)
-            identityPreviewText: 'text-zinc-700',
-            identityPreviewEditButton: 'text-indigo-600 hover:text-indigo-700',
-            // Alerts & errors
-            alertText: 'text-red-600 text-sm',
-            formFieldErrorText: 'text-red-500 text-xs mt-1',
-            // OTP input boxes
+            footerActionText: '!text-zinc-500 !text-sm',
+            footerActionLink: '!text-indigo-600 hover:!text-indigo-700 !font-semibold',
+            // Identity preview
+            identityPreviewText: '!text-zinc-700',
+            identityPreviewEditButton: '!text-indigo-600 hover:!text-indigo-700',
+            // Alerts
+            alertText: '!text-red-600 !text-sm',
+            formFieldErrorText: '!text-red-500 !text-xs',
+            // OTP
             otpCodeFieldInput:
-              'bg-white border border-zinc-200 text-zinc-900 rounded-xl text-center text-lg font-bold focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 shadow-sm',
-            phoneNumberFlagButton: 'text-zinc-500',
+              '!bg-white !border !border-zinc-200 !text-zinc-900 !rounded-xl !text-center !text-lg !font-bold focus:!border-indigo-500',
           },
         }}
       />

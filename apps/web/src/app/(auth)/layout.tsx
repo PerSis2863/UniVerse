@@ -51,7 +51,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 <div
                   key={s.l}
                   className="rounded-2xl p-4 border border-white/[0.07] hover:border-indigo-500/40 transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(12px)' }}
+                  style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(12px)' }}
                 >
                   <div className="text-2xl font-black bg-gradient-to-r from-indigo-300 via-white to-amber-300 bg-clip-text text-transparent leading-none mb-1">
                     {s.n}
@@ -70,8 +70,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
 
-      {/* ── Right Panel — clean white ─────────────────── */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white dark:bg-zinc-950">
+      {/*
+        ── Right Panel ───────────────────────────────────
+        We force the `light` class here so Clerk always
+        renders with light-mode styles regardless of the
+        system / app dark mode preference.
+      */}
+      <div className="light flex-1 flex items-center justify-center p-6 lg:p-12"
+        style={{ background: '#ffffff', color: '#09090b' }}>
         {/* Mobile logo */}
         <div className="absolute top-6 left-6 flex lg:hidden">
           <UniverseLogo size="md" showText={true} animated={true} />
