@@ -1,141 +1,182 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Clock, MapPin, Users, Video, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight, Video, Users } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
-const schedule = [
-  { id: 1, time: '09:00 AM', duration: 90, title: 'Computer Networks', type: 'Lecture', location: 'Room 304, Tech Bldg', prof: 'Vint Cerf', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
-  { id: 2, time: '11:00 AM', duration: 60, title: 'Data Structures Lab', type: 'Lab', location: 'Lab 2, CS Dept', prof: 'Dr. Sarah Chen', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-  { id: 3, time: '02:00 PM', duration: 120, title: 'Operating Systems', type: 'Lecture', location: 'Virtual', prof: 'Prof. Alan Turing', color: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20' },
-  { id: 4, time: '04:30 PM', duration: 60, title: 'Study Group: DB', type: 'Peer Session', location: 'Library 2nd Floor', prof: 'Peers', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+const MOCK_SCHEDULE = [
+  { id: '1', day: 'Monday', time: '09:00', duration: 2, subject: 'Computer Science 101', location: 'Room 302', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+  { id: '2', day: 'Monday', time: '13:30', duration: 1.5, subject: 'Advanced Calculus', location: 'Room 105', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  { id: '10', day: 'Monday', time: '17:00', duration: 2, subject: 'Machine Learning', location: 'Room 305', type: 'Lecture', color: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
+  { id: '3', day: 'Tuesday', time: '10:00', duration: 2, subject: 'Physics Lab', location: 'Lab 4B', type: 'Lab', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  { id: '11', day: 'Tuesday', time: '15:00', duration: 2, subject: 'Artificial Intelligence', location: 'Auditorium B', type: 'Lecture', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  { id: '4', day: 'Wednesday', time: '09:00', duration: 2, subject: 'Computer Science 101', location: 'Room 302', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+  { id: '5', day: 'Wednesday', time: '14:00', duration: 1.5, subject: 'World History', location: 'Auditorium A', type: 'Lecture', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  { id: '12', day: 'Wednesday', time: '18:00', duration: 2, subject: 'Study Group', location: 'Library', type: 'Meeting', color: 'bg-zinc-500/20 text-zinc-600 dark:text-zinc-400 border-zinc-500/30' },
+  { id: '6', day: 'Thursday', time: '11:00', duration: 1.5, subject: 'Advanced Calculus', location: 'Room 105', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  { id: '7', day: 'Thursday', time: '16:00', duration: 2, subject: 'Data Structures', location: 'Room 401', type: 'Lecture', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  { id: '8', day: 'Friday', time: '10:00', duration: 3, subject: 'Software Engineering', location: 'Innovation Hub', type: 'Workshop', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+  { id: '9', day: 'Friday', time: '15:00', duration: 2, subject: 'Web Development', location: 'Lab 2A', type: 'Lab', color: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
 ];
 
+const SPECIAL_EVENTS = [
+  { id: 's1', day: 'Friday', time: '08:00', duration: 12, subject: 'Annual Sports Day', location: 'Main Stadium', type: 'Event', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', isSpecial: true },
+  { id: 's2', day: 'Monday', time: '08:00', duration: 12, subject: 'Public Holiday', location: 'Campus Closed', type: 'Holiday', color: 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-300 border-zinc-600', isSpecial: true },
+  { id: 's3', day: 'Wednesday', time: '08:00', duration: 12, subject: 'Tech Festival', location: 'Campus Wide', type: 'Festival', color: 'bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/30', isSpecial: true },
+];
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+
+const formatTimeRange = (startTime: string, durationHours: number) => {
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const totalMinutes = hours * 60 + minutes + durationHours * 60;
+  const endHours = Math.floor(totalMinutes / 60);
+  const endMinutes = Math.round(totalMinutes % 60);
+  
+  const format12H = (h: number, m: number) => {
+    const period = h >= 12 ? 'PM' : 'AM';
+    const displayH = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    return `${displayH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${period}`;
+  };
+
+  return `${format12H(hours, minutes)} - ${format12H(endHours, endMinutes)}`;
+};
+
 export default function CalendarPage() {
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+  const [view, setView] = useState('Week');
+
+  const getWeekString = (offset: number) => {
+    // Base date is Monday, Sep 18, 2026
+    const baseDate = new Date(2026, 8, 18);
+    // Add offset weeks (7 days * offset)
+    const startDate = new Date(baseDate.getTime() + offset * 7 * 24 * 60 * 60 * 1000);
+    // End date is Friday, which is 4 days after Monday
+    const endDate = new Date(startDate.getTime() + 4 * 24 * 60 * 60 * 1000);
+    
+    const formatOpts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    const formatOptsShort: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    
+    if (startDate.getFullYear() === endDate.getFullYear()) {
+      return `${startDate.toLocaleDateString('en-US', formatOptsShort)} - ${endDate.toLocaleDateString('en-US', formatOpts)}`;
+    }
+    
+    return `${startDate.toLocaleDateString('en-US', formatOpts)} - ${endDate.toLocaleDateString('en-US', formatOpts)}`;
+  };
+
+  const getActiveSchedule = () => {
+    let schedule = [...MOCK_SCHEDULE];
+    
+    // Inject special events based on current week offset to create variety
+    if (Math.abs(currentWeekOffset) % 3 === 1) {
+      schedule = schedule.filter(s => s.day !== 'Friday');
+      schedule.push(SPECIAL_EVENTS[0]); // Sports Day
+    } else if (Math.abs(currentWeekOffset) % 4 === 2) {
+      schedule = schedule.filter(s => s.day !== 'Monday');
+      schedule.push(SPECIAL_EVENTS[1]); // Public Holiday
+    } else if (Math.abs(currentWeekOffset) % 5 === 3) {
+      schedule = schedule.filter(s => s.day !== 'Wednesday');
+      schedule.push(SPECIAL_EVENTS[2]); // Tech Festival
+    }
+
+    if (currentWeekOffset === 0 && view === 'Week') return schedule;
+    
+    // Create some variation based on the offset and view
+    const shift = Math.abs(currentWeekOffset) + (view === 'Month' ? 2 : 0) + (view === 'Day' ? 1 : 0);
+    
+    return schedule.filter((s, idx) => {
+      if ((s as any).isSpecial) return true; // Keep special events
+      // Drop some classes to make the week look different
+      return (idx + shift) % 4 !== 0; 
+    }).map((s, idx) => {
+      // Shift times slightly for regular classes
+      if (shift > 0 && !(s as any).isSpecial) {
+        const oldHour = parseInt(s.time.split(':')[0]);
+        let newHour = oldHour + (shift % 4) - 1;
+        if (newHour > 18) newHour -= 8;
+        if (newHour < 8) newHour += 4;
+        return { ...s, time: `${newHour < 10 ? '0' : ''}${newHour}:00` };
+      }
+      return s;
+    });
+  };
+
+  const activeSchedule = getActiveSchedule();
+  const currentWeekString = view === 'Month' ? 'September 2026' : (view === 'Day' ? getWeekString(currentWeekOffset).split(' - ')[0] : getWeekString(currentWeekOffset));
+
   return (
     <>
-      <Topbar 
-        title="Timetable & Calendar" 
-        subtitle="Manage your academic schedule and upcoming events."
-        action={{ label: 'Add Event', onClick: () => console.log('add') }}
-      />
+      <Topbar title="My Timetable" subtitle={`View your ${view.toLowerCase()}ly class schedule`} />
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="flex flex-col xl:flex-row gap-8">
+        <div className="max-w-7xl mx-auto space-y-6">
           
-          {/* Main Calendar Area */}
-          <div className="flex-1 space-y-6">
-            
-            {/* Calendar Header Controls */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <h2 className="text-2xl font-black text-zinc-900 dark:text-white">Today</h2>
-                <span className="text-zinc-500 dark:text-zinc-400 font-medium">Monday, Sept 20, 2026</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="p-2 rounded-xl border border-zinc-200 dark:border-white/[0.06] hover:bg-zinc-100 dark:hover:bg-white/[0.03] text-zinc-600 dark:text-zinc-300 transition-colors">
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button className="p-2 rounded-xl border border-zinc-200 dark:border-white/[0.06] hover:bg-zinc-100 dark:hover:bg-white/[0.03] text-zinc-600 dark:text-zinc-300 transition-colors">
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-                <div className="w-px h-6 bg-zinc-200 dark:bg-white/[0.06] mx-2" />
-                <div className="flex bg-zinc-100 dark:bg-white/[0.03] p-1 rounded-xl border border-zinc-200 dark:border-white/[0.06]">
-                  <button className="px-4 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm font-bold shadow-sm">Day</button>
-                  <button className="px-4 py-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 text-sm font-medium hover:text-zinc-900 dark:hover:text-white transition-colors">Week</button>
-                  <button className="px-4 py-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 text-sm font-medium hover:text-zinc-900 dark:hover:text-white transition-colors">Month</button>
-                </div>
-              </div>
+          {/* Header Controls */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setCurrentWeekOffset(prev => prev - 1)} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white min-w-[200px] text-center">{currentWeekString}</h2>
+              <button onClick={() => setCurrentWeekOffset(prev => prev + 1)} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
-
-            {/* Daily Timeline */}
-            <div className="relative mt-8">
-              {/* Timeline Grid */}
-              <div className="absolute top-0 bottom-0 left-[4.5rem] w-px bg-zinc-200 dark:bg-white/[0.06]" />
-              
-              <div className="space-y-8 relative">
-                {schedule.map((event, i) => (
-                  <motion.div 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    key={event.id} 
-                    className="flex gap-6 relative group"
-                  >
-                    {/* Time Label */}
-                    <div className="w-16 pt-3 text-right">
-                      <span className="text-sm font-bold text-zinc-900 dark:text-white block">{event.time.split(' ')[0]}</span>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">{event.time.split(' ')[1]}</span>
-                    </div>
-
-                    {/* Timeline Node */}
-                    <div className="absolute left-[4.5rem] top-4 w-3 h-3 rounded-full bg-indigo-500 border-4 border-zinc-50 dark:border-[#0d1117] -translate-x-1.5" />
-
-                    {/* Event Card */}
-                    <div className={`flex-1 p-5 rounded-2xl border ${event.color} transition-transform hover:-translate-y-1`}>
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="text-xs font-bold uppercase tracking-wider mb-1 opacity-80">{event.type}</div>
-                          <h3 className="text-lg font-bold">{event.title}</h3>
-                        </div>
-                        <span className="text-xs font-semibold px-2 py-1 rounded-md bg-white/20 dark:bg-black/20">
-                          {event.duration} min
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-sm mt-4 opacity-90">
-                        <div className="flex items-center gap-1.5">
-                          <Users className="w-4 h-4" /> {event.prof}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {event.location === 'Virtual' ? <Video className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
-                          {event.location}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={() => setView('Day')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Day' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Day</button>
+              <button onClick={() => setView('Week')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Week' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Week</button>
+              <button onClick={() => setView('Month')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Month' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Month</button>
             </div>
-
           </div>
 
-          {/* Right Sidebar */}
-          <div className="w-full xl:w-80 space-y-6">
-            <div className="card">
-              <h3 className="font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-indigo-500" /> Mini Calendar
-              </h3>
-              <div className="w-full aspect-square rounded-xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-100 dark:border-white/[0.04] flex items-center justify-center text-sm text-zinc-500">
-                [Calendar Widget Placeholder]
-              </div>
-            </div>
-
-            <div className="card space-y-4">
-              <h3 className="font-bold text-zinc-900 dark:text-white flex items-center justify-between">
-                Upcoming Deadlines
-                <span className="text-xs font-medium px-2 py-1 rounded-full bg-rose-500/10 text-rose-500">3 Due</span>
-              </h3>
-              
-              <div className="space-y-3">
-                {[
-                  { title: 'OS Midterm Prep', time: 'Tomorrow, 11:59 PM', color: 'bg-rose-500' },
-                  { title: 'Networking Lab Report', time: 'Wed, 5:00 PM', color: 'bg-amber-500' },
-                  { title: 'DB Group Project', time: 'Friday, 10:00 AM', color: 'bg-emerald-500' },
-                ].map((task, i) => (
-                  <div key={i} className="flex gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-white/[0.04] cursor-pointer">
-                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${task.color}`} />
-                    <div>
-                      <div className="text-sm font-bold text-zinc-900 dark:text-white">{task.title}</div>
-                      <div className="text-xs text-zinc-500 flex items-center gap-1 mt-1">
-                        <Clock className="w-3 h-3" /> {task.time}
-                      </div>
-                    </div>
+          {/* Grid View */}
+          <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
+                {/* Header Row */}
+                <div className="grid grid-cols-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80">
+                  <div className="p-4 border-r border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-zinc-500 dark:text-zinc-500" />
                   </div>
-                ))}
+                  {DAYS.map(day => (
+                    <div key={day} className="p-4 text-center border-r border-zinc-200 dark:border-zinc-800 last:border-r-0">
+                      <h3 className="font-semibold text-zinc-300">{day}</h3>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Time Rows */}
+                <div className="relative">
+                  {HOURS.map(hour => (
+                    <div key={hour} className="grid grid-cols-6 border-b border-zinc-200 dark:border-zinc-800/50 last:border-b-0 h-24">
+                      <div className="p-2 border-r border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-500 dark:text-zinc-500 text-center relative">
+                        <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-50 dark:bg-zinc-950 px-2">{hour}</span>
+                      </div>
+                      {DAYS.map(day => (
+                        <div key={day} className="border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0 relative hover:bg-white/[0.01] transition-colors">
+                          {/* Render blocks here if they match hour & day */}
+                          {activeSchedule.filter(s => s.day === day && s.time === hour).map(cls => (
+                            <div 
+                              key={cls.id} 
+                              className={`absolute top-1 left-1 right-1 p-3 rounded-xl border z-10 hover:z-20 transition-all cursor-pointer hover:shadow-lg ${cls.color}`}
+                              style={{ height: `calc(${cls.duration * 6}rem - 0.5rem)` }}
+                              onClick={() => toast.success(`Viewing details for ${cls.subject}`)}
+                            >
+                              <div className="font-bold text-sm leading-tight mb-1">{cls.subject}</div>
+                              <div className="text-xs opacity-80 flex items-center gap-1 mb-1 font-medium">
+                                <Clock className="w-3 h-3" /> {formatTimeRange(cls.time, cls.duration)}
+                              </div>
+                              <div className="text-xs opacity-80 flex items-center gap-1">
+                                <MapPin className="w-3 h-3" /> {cls.location}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               </div>
-              
-              <button className="w-full btn-secondary text-xs mt-2 py-2 flex items-center justify-center gap-2">
-                <Plus className="w-4 h-4" /> Add Task
-              </button>
             </div>
           </div>
 
