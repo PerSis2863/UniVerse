@@ -34,6 +34,7 @@ const navByRole: Record<string, NavItem[]> = {
         { href: '/student/choices', label: 'My choices' },
         { href: '/student/attendance', label: 'Attendance' },
         { href: '/student/grades', label: 'Grades' },
+        { href: '/student/quizzes', label: 'Quizzes' },
         { href: '/student/calendar', label: 'Timetable' },
         { href: '/student/skills', label: 'Skills' },
       ]
@@ -81,6 +82,7 @@ const navByRole: Record<string, NavItem[]> = {
         { href: '/student/links', label: 'Apps & Links' },
       ]
     },
+    { href: '/student/knowledge-hub', label: 'Knowledge Hub', icon: Brain },
     { href: '/student/inbox', label: 'Messages', icon: MessageSquare },
     { href: '/student/community', label: 'Community', icon: Users },
     { href: '/student/support', label: 'Support', icon: Settings },
