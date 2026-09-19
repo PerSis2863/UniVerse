@@ -23,7 +23,10 @@ const myCourses = [
   { name: 'Database Management', code: 'CS401', students: 52, completion: 80, color: '#10b981' },
 ];
 
+import { useRouter } from 'next/navigation';
+
 export default function TeacherDashboard() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -66,9 +69,9 @@ export default function TeacherDashboard() {
                       style={{ width: `${c.completion}%`, background: `linear-gradient(90deg, ${c.color}, ${c.color}aa)` }} />
                   </div>
                   <div className="flex gap-3 mt-3">
-                    <button className="btn-ghost text-xs py-1">Manage</button>
-                    <button className="btn-ghost text-xs py-1">Attendance</button>
-                    <button className="btn-ghost text-xs py-1">Grades</button>
+                    <button onClick={() => router.push('/teacher/students')} className="btn-ghost text-xs py-1">Manage</button>
+                    <button onClick={() => router.push('/teacher/attendance')} className="btn-ghost text-xs py-1">Attendance</button>
+                    <button onClick={() => router.push('/teacher/grades')} className="btn-ghost text-xs py-1">Grades</button>
                   </div>
                 </div>
               ))}
@@ -105,12 +108,12 @@ export default function TeacherDashboard() {
           <h2 className="font-bold text-white mb-5">Quick Actions</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { icon: CheckCircle2, label: 'Mark Attendance', color: 'green' },
-              { icon: FileText, label: 'Upload Material', color: 'indigo' },
-              { icon: TrendingUp, label: 'Post Grades', color: 'cyan' },
-              { icon: Clock, label: 'Create Quiz', color: 'amber' },
+              { icon: CheckCircle2, label: 'Mark Attendance', color: 'green', href: '/teacher/attendance' },
+              { icon: FileText, label: 'Upload Material', color: 'indigo', href: '/teacher/courses' },
+              { icon: TrendingUp, label: 'Post Grades', color: 'cyan', href: '/teacher/grades' },
+              { icon: Clock, label: 'Create Quiz', color: 'amber', href: '/teacher/quizzes' },
             ].map(a => (
-              <button key={a.label} className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group">
+              <button key={a.label} onClick={() => router.push(a.href)} className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center
                   ${a.color === 'green' ? 'bg-green-900/30 text-green-400' :
                     a.color === 'indigo' ? 'bg-indigo-600/20 text-indigo-400' :
