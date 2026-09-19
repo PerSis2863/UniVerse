@@ -2,8 +2,9 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useAuthStore } from '@/store/auth';
-import { Users, BookOpen, FileText, BarChart3, X, Plus, ChevronRight } from 'lucide-react';
+import { Users, BookOpen, FileText, BarChart3, X, Plus, ChevronRight, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -18,6 +19,21 @@ const myCourses = [
   { name: 'Data Structures', code: 'CS301', students: 45, completion: 68, color: '#6366f1' },
   { name: 'Algorithms', code: 'CS302', students: 38, completion: 52, color: '#06b6d4' },
   { name: 'Database Management', code: 'CS401', students: 52, completion: 80, color: '#10b981' },
+];
+
+const gradeDistributionData = [
+  { grade: 'A', count: 24 },
+  { grade: 'B', count: 45 },
+  { grade: 'C', count: 32 },
+  { grade: 'D', count: 12 },
+  { grade: 'F', count: 3 },
+];
+
+const performanceTrendData = [
+  { month: 'Sep', avgScore: 76 },
+  { month: 'Oct', avgScore: 78 },
+  { month: 'Nov', avgScore: 82 },
+  { month: 'Dec', avgScore: 84 },
 ];
 
 export default function TeacherDashboard() {
@@ -58,6 +74,47 @@ export default function TeacherDashboard() {
           <KpiCard title="Active Courses" value="3" icon={BookOpen} change={0} color="cyan" />
           <KpiCard title="Pending Grades" value="12" icon={FileText} change={-25} color="amber" />
           <KpiCard title="Avg. Class Score" value="84.2%" icon={BarChart3} change={3} color="green" />
+        </div>
+
+        {/* Analytics Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="card">
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-indigo-500" /> Grade Distribution
+            </h2>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={gradeDistributionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10 dark:opacity-20 text-zinc-300 dark:text-zinc-700" />
+                  <XAxis dataKey="grade" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                    cursor={{ fill: 'var(--tw-colors-zinc-100)', opacity: 0.5 }}
+                  />
+                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="card">
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-500" /> Performance Trend
+            </h2>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={performanceTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10 dark:opacity-20 text-zinc-300 dark:text-zinc-700" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
+                  <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+                  />
+                  <Line type="monotone" dataKey="avgScore" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

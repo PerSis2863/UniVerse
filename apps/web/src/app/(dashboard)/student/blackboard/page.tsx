@@ -1,11 +1,10 @@
 'use client';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
-import {
   BookOpen, FileText, Search, MessageSquare, Bell, Calendar,
   Download, ExternalLink, Pin, Star, Clock, Users, ChevronRight,
   Upload, Video, Activity, Briefcase, Target, Plus, X, Send,
-  CheckCircle2, AlertCircle, BarChart3, Layers, Award, Bookmark
+  CheckCircle2, AlertCircle, BarChart3, Layers, Award, Bookmark, UploadCloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -103,6 +102,9 @@ export default function BlackboardPage() {
   const [messageText, setMessageText] = useState('');
   const [newDiscTitle, setNewDiscTitle] = useState('');
   const [showNewDisc, setShowNewDisc] = useState(false);
+  const [submissionModal, setSubmissionModal] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [renderTrigger, setRenderTrigger] = useState(0);
 
   const data = BLACKBOARD_DATA[selectedCourse.code];
 
@@ -291,8 +293,13 @@ export default function BlackboardPage() {
                           <Clock className="w-3.5 h-3.5" /> Due: {a.due}
                         </div>
                         {a.status === 'pending' && (
-                          <button className="btn-primary text-xs py-1.5 px-4" onClick={() => toast.success('Opening submission portal...')}>
+                          <button className="btn-primary text-xs py-1.5 px-4" onClick={() => setSubmissionModal(a)}>
                             Submit
+                          </button>
+                        )}
+                        {a.status === 'submitted' && (
+                          <button className="btn-secondary text-xs py-1.5 px-4 opacity-50 cursor-not-allowed">
+                            Submitted
                           </button>
                         )}
                         {a.status === 'graded' && (
@@ -416,36 +423,45 @@ export default function BlackboardPage() {
 
               {/* ── MESSAGES ──────────────────── */}
               {activeTab === 'messages' && (
-                <div className="max-w-2xl mx-auto">
+                <div className="max-w-2xl mx-auto h-[500px] flex flex-col">
                   <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4"><Send className="w-4 h-4 text-indigo-500" /> Message Instructor</h3>
-                  <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex items-center justify-center text-sm font-bold text-indigo-500">
+                  <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50">
+                      <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-sm font-bold text-indigo-500">
                         {selectedCourse.instructor.split(' ').map((w: string) => w[0]).join('')}
                       </div>
                       <div>
-                        <p className="font-semibold text-zinc-900 dark:text-white text-sm">{selectedCourse.instructor}</p>
+                        <p className="font-bold text-zinc-900 dark:text-white text-sm">{selectedCourse.instructor}</p>
                         <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Online</p>
                       </div>
                     </div>
-                    <div className="p-4 space-y-3 min-h-[250px]">
+                    <div className="flex-1 p-4 overflow-y-auto space-y-4">
                       {[
-                        { from: 'instructor', text: 'Hello! Feel free to ask me any questions about the course material.', time: '2 days ago' },
-                        { from: 'me', text: 'Thank you Professor! I had a question about the midterm scope.', time: '2 days ago' },
-                        { from: 'instructor', text: 'Sure! The midterm covers chapters 1–8. Focus on time complexity and graph traversal.', time: '2 days ago' },
+                        { from: 'instructor', text: 'Hello! Feel free to ask me any questions about the course material.', time: '2 days ago', read: true },
+                        { from: 'me', text: 'Thank you Professor! I had a question about the midterm scope.', time: '2 days ago', read: true },
+                        { from: 'instructor', text: 'Sure! The midterm covers chapters 1–8. Focus on time complexity and graph traversal.', time: '2 days ago', read: true },
+                        { from: 'me', text: 'Professor, can you clarify the midterm scope for dynamic programming?', time: '15m ago', read: false }
                       ].map((m, i) => (
                         <div key={i} className={cn('flex', m.from === 'me' ? 'justify-end' : 'justify-start')}>
-                          <div className={cn('max-w-xs px-4 py-2.5 rounded-2xl text-sm', m.from === 'me' ? 'bg-indigo-500 text-white rounded-br-sm' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-sm')}>
+                          <div className={cn('max-w-[70%] px-4 py-2.5 rounded-2xl text-sm', m.from === 'me' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-sm')}>
                             <p>{m.text}</p>
-                            <p className={cn('text-[10px] mt-1', m.from === 'me' ? 'text-white/60' : 'text-zinc-400')}>{m.time}</p>
+                            <div className={cn('text-[10px] mt-1.5 flex items-center gap-1 justify-end', m.from === 'me' ? 'text-white/70' : 'text-zinc-400')}>
+                              <span>{m.time}</span>
+                              {m.from === 'me' && (
+                                <div className="flex">
+                                  <CheckCircle2 className="w-3 h-3 text-white/50" />
+                                  {m.read && <CheckCircle2 className="w-3 h-3 text-white -ml-1.5" />}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex gap-2">
+                    <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex gap-2">
                       <input value={messageText} onChange={e => setMessageText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
                         placeholder={`Message ${selectedCourse.instructor}...`}
-                        className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
+                        className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
                       <button onClick={handleSendMessage} className="btn-primary p-2.5 aspect-square flex items-center justify-center">
                         <Send className="w-4 h-4" />
                       </button>
@@ -535,6 +551,85 @@ export default function BlackboardPage() {
           </AnimatePresence>
         </div>
       </div>
+      {/* Submission Modal */}
+      <AnimatePresence>
+        {submissionModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm"
+              onClick={() => !isSubmitting && setSubmissionModal(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col"
+            >
+              <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-zinc-900 dark:text-white">Submit Assignment</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">{submissionModal.title}</p>
+                </div>
+                <button onClick={() => !isSubmitting && setSubmissionModal(null)} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-zinc-50 dark:bg-zinc-900/50 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group">
+                  <div className="w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <UploadCloud className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-white mb-1">Click to upload or drag and drop</p>
+                  <p className="text-xs text-zinc-500">PDF, DOCX, ZIP up to 50MB</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Additional Comments (Optional)</label>
+                  <textarea 
+                    rows={3} 
+                    placeholder="Any notes for the instructor..."
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-500 resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-end gap-3">
+                <button 
+                  onClick={() => setSubmissionModal(null)} 
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsSubmitting(true);
+                    setTimeout(() => {
+                      const course = BLACKBOARD_DATA[selectedCourse.code];
+                      const asmt = course.assignments.find(a => a.id === submissionModal.id);
+                      if (asmt) {
+                        asmt.status = 'submitted';
+                      }
+                      setRenderTrigger(r => r + 1);
+                      setIsSubmitting(false);
+                      setSubmissionModal(null);
+                      toast.success('Assignment submitted successfully!');
+                    }, 1500);
+                  }} 
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <><span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Submitting...</>
+                  ) : (
+                    <><CheckCircle2 className="w-4 h-4" /> Submit Assignment</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Menu } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import { PageTransition } from './PageTransition';
+import { AIStudyAssistant } from '@/components/ui/AIStudyAssistant';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -24,10 +26,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </button>
         </header>
 
-        <main className="flex-1 flex flex-col">
-          {children}
+        <main className="flex-1 flex flex-col min-w-0">
+          <PageTransition>{children}</PageTransition>
         </main>
       </div>
+      <AIStudyAssistant />
     </div>
   );
 }

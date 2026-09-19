@@ -2,7 +2,7 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useAuthStore } from '@/store/auth';
-import { BookOpen, ClipboardList, BarChart3, Trophy, TrendingUp, Clock, CheckCircle2, FileText, Globe2, ArrowUpRight, Sparkles, HeartHandshake } from 'lucide-react';
+import { BookOpen, ClipboardList, BarChart3, Trophy, TrendingUp, Clock, CheckCircle2, FileText, Globe2, ArrowUpRight, Sparkles, HeartHandshake, AlertCircle, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
@@ -19,6 +19,19 @@ const upcomingClasses = [
   { name: 'Data Structures & Algorithms', time: '9:00 AM', room: 'CS-201', color: '#6366f1' },
   { name: 'Operating Systems', time: '11:00 AM', room: 'CS-105', color: '#06b6d4' },
   { name: 'Database Management', time: '2:00 PM', room: 'CS-302', color: '#10b981' },
+];
+
+const deadlines = [
+  { title: 'Project Phase 1', course: 'Software Eng', due: 'Tomorrow, 11:59 PM', urgent: true },
+  { title: 'Midterm Essay', course: 'Ethics', due: 'Friday, 5:00 PM', urgent: false },
+  { title: 'Lab 4 Report', course: 'Physics', due: 'Next Mon, 8:00 AM', urgent: false },
+];
+
+const courseProgress = [
+  { name: 'Data Structures', grade: '94%', progress: 85, color: 'from-indigo-500 to-indigo-400' },
+  { name: 'Operating Systems', grade: '88%', progress: 65, color: 'from-cyan-500 to-cyan-400' },
+  { name: 'Database Management', grade: '92%', progress: 75, color: 'from-emerald-500 to-emerald-400' },
+  { name: 'Software Engineering', grade: 'A', progress: 40, color: 'from-amber-500 to-amber-400' },
 ];
 
 export default function StudentDashboard() {
@@ -159,6 +172,61 @@ export default function StudentDashboard() {
                     <p className="text-xs text-zinc-500 dark:text-zinc-600 mt-0.5">{item.time}</p>
                   </div>
                 </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Phase 2: Course Progress & Deadlines */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Course Progress */}
+          <div className="xl:col-span-2 card">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-bold text-zinc-900 dark:text-white">Course Progress</h2>
+              <Link href="/student/courses" className="text-xs font-semibold text-indigo-500 hover:text-indigo-600">View All</Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {courseProgress.map((course, i) => (
+                <div key={i} className="p-4 rounded-xl border border-zinc-200 dark:border-white/[0.06] bg-zinc-50 dark:bg-white/[0.02]">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="font-semibold text-sm text-zinc-900 dark:text-white">{course.name}</h3>
+                    <span className="text-xs font-bold bg-white dark:bg-zinc-800 px-2 py-1 rounded border border-zinc-200 dark:border-white/[0.06] text-zinc-900 dark:text-white">{course.grade}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-zinc-500 mb-1.5">
+                    <span>Course Completion</span>
+                    <span>{course.progress}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${course.progress}%` }}
+                      transition={{ duration: 1, ease: 'easeOut' }}
+                      className={cn("h-full rounded-full bg-gradient-to-r", course.color)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Deadlines & Reminders */}
+          <div className="xl:col-span-1 card flex flex-col">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-bold text-zinc-900 dark:text-white">Deadlines & Reminders</h2>
+              <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-white"><Calendar className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-3 flex-1">
+              {deadlines.map((item, i) => (
+                <div key={i} className="flex gap-3 p-3 rounded-xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 hover:border-indigo-500/30 transition-colors group cursor-pointer">
+                  <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0", item.urgent ? "bg-rose-500/10 text-rose-500" : "bg-indigo-500/10 text-indigo-500")}>
+                    {item.urgent ? <AlertCircle className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-semibold text-zinc-900 dark:text-white truncate group-hover:text-indigo-500 transition-colors">{item.title}</h4>
+                    <p className="text-[11px] text-zinc-500 truncate">{item.course}</p>
+                    <p className={cn("text-[10px] mt-1 font-medium", item.urgent ? "text-rose-500" : "text-zinc-400")}>{item.due}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>

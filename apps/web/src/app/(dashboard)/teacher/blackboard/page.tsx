@@ -22,7 +22,7 @@ const TEACHER_TABS = [
   { id: 'resources', label: 'Resources', icon: FileText },
   { id: 'research', label: 'Research', icon: BookOpen },
   { id: 'assignments', label: 'Assignments', icon: CheckCircle2 },
-  { id: 'quizresults', label: 'Quiz Results', icon: Star },
+  { id: 'gradebook', label: 'Gradebook', icon: Star },
   { id: 'discussion', label: 'Discussion', icon: MessageSquare },
   { id: 'activity', label: 'Activity', icon: Activity },
   { id: 'messages', label: 'Messages', icon: Send },
@@ -37,16 +37,32 @@ const MOCK_RESOURCES = [
 ];
 
 const STUDENT_MSGS = [
-  { id: 1, name: 'Aditya Bhatt', avatar: 'AB', text: 'Professor, can you clarify the midterm scope for dynamic programming?', time: '15m ago', unread: true },
-  { id: 2, name: 'Priya Sharma', avatar: 'PS', text: 'Thank you for the notes! Very helpful.', time: '2h ago', unread: false },
-  { id: 3, name: 'Rahul Kumar', avatar: 'RK', text: 'I had a question about the complexity of Dijkstra...', time: '4h ago', unread: true },
+  { 
+    id: 1, name: 'Aditya Bhatt', avatar: 'AB', unread: true, 
+    thread: [
+      { id: 101, from: 'student', text: 'Professor, can you clarify the midterm scope for dynamic programming?', time: '15m ago', read: false }
+    ]
+  },
+  { 
+    id: 2, name: 'Priya Sharma', avatar: 'PS', unread: false, 
+    thread: [
+      { id: 201, from: 'teacher', text: 'Hi Priya, I have uploaded the notes for Week 3.', time: '1d ago', read: true },
+      { id: 202, from: 'student', text: 'Thank you for the notes! Very helpful.', time: '2h ago', read: true }
+    ]
+  },
+  { 
+    id: 3, name: 'Rahul Kumar', avatar: 'RK', unread: true, 
+    thread: [
+      { id: 301, from: 'student', text: 'I had a question about the complexity of Dijkstra...', time: '4h ago', read: false }
+    ]
+  },
 ];
 
-const QUIZ_RESULTS = [
-  { name: 'Aditya Bhatt', score: 92, quiz: 'Graph Algorithms Quiz', date: 'Sept 15' },
-  { name: 'Priya Sharma', score: 88, quiz: 'Graph Algorithms Quiz', date: 'Sept 15' },
-  { name: 'Rahul Kumar', score: 76, quiz: 'Graph Algorithms Quiz', date: 'Sept 15' },
-  { name: 'Sneha Patel', score: 95, quiz: 'Graph Algorithms Quiz', date: 'Sept 15' },
+const GRADEBOOK_DATA = [
+  { name: 'Aditya Bhatt', avatar: 'AB', assignments: { a1: 92, a2: 88, a3: 95 }, midterm: 89, total: 91 },
+  { name: 'Priya Sharma', avatar: 'PS', assignments: { a1: 85, a2: 90, a3: 88 }, midterm: 92, total: 89 },
+  { name: 'Rahul Kumar', avatar: 'RK', assignments: { a1: 76, a2: 72, a3: 80 }, midterm: 78, total: 77 },
+  { name: 'Sneha Patel', avatar: 'SP', assignments: { a1: 98, a2: 95, a3: 100 }, midterm: 96, total: 97 },
 ];
 
 export default function TeacherBlackboardPage() {
@@ -67,6 +83,26 @@ export default function TeacherBlackboardPage() {
     { id: 1, pinned: true, title: 'Midterm Exam Details', body: 'The midterm will cover chapters 1–8. Open book, 90 minutes. Room: Main Hall A.', time: '2 hours ago', priority: 'high' },
     { id: 2, pinned: false, title: 'Office Hours This Week', body: 'Office hours moved to Wednesday 3–5 PM due to faculty meeting.', time: '1 day ago', priority: 'normal' },
   ]);
+
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [eventType, setEventType] = useState('office');
+  const [events, setEvents] = useState([
+    { id: 1, date: 'Oct 5', title: 'Assignment 3 Due', type: 'assignment', color: 'bg-amber-500' },
+    { id: 2, date: 'Oct 10', title: 'Midterm Exam', type: 'exam', color: 'bg-rose-500' },
+    { id: 3, date: 'Oct 15', title: 'Office Hours', type: 'office', color: 'bg-indigo-500' },
+    { id: 4, date: 'Oct 22', title: 'Pop Quiz', type: 'quiz', color: 'bg-purple-500' },
+  ]);
+
+  const handleAddEvent = () => {
+    if (!eventTitle || !eventDate) return toast.error('Please fill in title and date.');
+    const color = eventType === 'exam' ? 'bg-rose-500' : eventType === 'assignment' ? 'bg-amber-500' : eventType === 'quiz' ? 'bg-purple-500' : 'bg-indigo-500';
+    setEvents(prev => [...prev, { id: Date.now(), date: eventDate, title: eventTitle, type: eventType, color }]);
+    setShowEventModal(false);
+    setEventTitle(''); setEventDate('');
+    toast.success('Event added to calendar!');
+  };
 
   const handlePostAnnouncement = () => {
     if (!annTitle) return toast.error('Please add a title');
@@ -209,37 +245,69 @@ export default function TeacherBlackboardPage() {
                 </div>
               )}
 
-              {/* QUIZ RESULTS */}
-              {activeTab === 'quizresults' && (
-                <div className="max-w-3xl mx-auto space-y-4">
-                  <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Star className="w-4 h-4 text-indigo-500" /> Quiz Results Published to Students</h3>
-                  <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                      <h4 className="font-bold text-zinc-900 dark:text-white">Graph Algorithms Quiz — Sept 15, 2026</h4>
-                      <span className="text-xs bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">Published</span>
+              {/* ADVANCED GRADEBOOK */}
+              {activeTab === 'gradebook' && (
+                <div className="max-w-4xl mx-auto space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Star className="w-4 h-4 text-indigo-500" /> Advanced Gradebook</h3>
+                    <div className="flex gap-2">
+                      <button className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export CSV</button>
                     </div>
-                    {QUIZ_RESULTS.map((r, i) => (
-                      <div key={i} className="flex items-center gap-4 p-4 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0">
-                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs font-bold text-indigo-500">
-                          {r.name.split(' ').map(n => n[0]).join('')}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-zinc-900 dark:text-white">{r.name}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="h-1.5 w-24 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${r.score}%` }} />
-                          </div>
-                          <span className={cn('text-sm font-bold', r.score >= 90 ? 'text-emerald-500' : r.score >= 75 ? 'text-blue-500' : 'text-amber-500')}>{r.score}%</span>
-                        </div>
-                      </div>
-                    ))}
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    {[{ label: 'Average', value: '87.75%', color: 'text-indigo-500' }, { label: 'Highest', value: '95%', color: 'text-emerald-500' }, { label: 'Lowest', value: '76%', color: 'text-amber-500' }].map((s, i) => (
-                      <div key={i} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center">
+                  
+                  <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden overflow-x-auto shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider font-semibold">
+                          <th className="p-4">Student</th>
+                          <th className="p-4 text-center">A1 (10%)</th>
+                          <th className="p-4 text-center">A2 (10%)</th>
+                          <th className="p-4 text-center">A3 (10%)</th>
+                          <th className="p-4 text-center">Midterm (30%)</th>
+                          <th className="p-4 text-center border-l border-zinc-200 dark:border-zinc-800">Total Score</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                        {GRADEBOOK_DATA.map((r, i) => (
+                          <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors group">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs font-bold text-indigo-500 shrink-0">
+                                  {r.avatar}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-zinc-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{r.name}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300 font-medium">
+                              <input type="number" defaultValue={r.assignments.a1} className="w-12 text-center bg-transparent border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 focus:border-indigo-500 rounded p-1 outline-none transition-all" />
+                            </td>
+                            <td className="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300 font-medium">
+                              <input type="number" defaultValue={r.assignments.a2} className="w-12 text-center bg-transparent border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 focus:border-indigo-500 rounded p-1 outline-none transition-all" />
+                            </td>
+                            <td className="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300 font-medium">
+                              <input type="number" defaultValue={r.assignments.a3} className="w-12 text-center bg-transparent border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 focus:border-indigo-500 rounded p-1 outline-none transition-all" />
+                            </td>
+                            <td className="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300 font-medium">
+                              <input type="number" defaultValue={r.midterm} className="w-12 text-center bg-transparent border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 focus:border-indigo-500 rounded p-1 outline-none transition-all" />
+                            </td>
+                            <td className="p-4 text-center border-l border-zinc-200 dark:border-zinc-800">
+                              <span className={cn('text-sm font-bold px-2 py-1 rounded-md', r.total >= 90 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : r.total >= 75 ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400')}>
+                                {r.total}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[{ label: 'Class Average', value: '88.5%', color: 'text-indigo-500', bg: 'bg-indigo-500/5' }, { label: 'Highest Score', value: '97%', color: 'text-emerald-500', bg: 'bg-emerald-500/5' }, { label: 'Needs Attention', value: '1 Student', color: 'text-amber-500', bg: 'bg-amber-500/5' }].map((s, i) => (
+                      <div key={i} className={`border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center ${s.bg}`}>
                         <div className={cn('text-2xl font-black', s.color)}>{s.value}</div>
-                        <div className="text-xs text-zinc-500 mt-1">{s.label}</div>
+                        <div className="text-xs text-zinc-500 mt-1 font-medium">{s.label}</div>
                       </div>
                     ))}
                   </div>
@@ -248,33 +316,70 @@ export default function TeacherBlackboardPage() {
 
               {/* MESSAGES */}
               {activeTab === 'messages' && (
-                <div className="max-w-2xl mx-auto">
-                  <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4"><Send className="w-4 h-4 text-indigo-500" /> Student Messages</h3>
-                  <div className="space-y-3">
-                    {STUDENT_MSGS.map((m, i) => (
-                      <div key={m.id} className={cn('bg-white dark:bg-zinc-900 border rounded-2xl p-4 cursor-pointer hover:border-indigo-500/30 transition-all', m.unread ? 'border-indigo-500/30' : 'border-zinc-200 dark:border-zinc-800')} onClick={() => setReplyTo(m)}>
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs font-bold text-indigo-500 flex-shrink-0">{m.avatar}</div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className={cn('text-sm font-semibold text-zinc-900 dark:text-white', m.unread && 'text-indigo-600 dark:text-indigo-400')}>{m.name}</span>
-                              <span className="text-xs text-zinc-400">{m.time}</span>
+                <div className="max-w-4xl mx-auto flex gap-4 h-[600px]">
+                  {/* Sidebar list */}
+                  <div className="w-1/3 border-r border-zinc-200 dark:border-zinc-800 pr-4 flex flex-col space-y-2 overflow-y-auto scrollbar-none">
+                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-2"><Send className="w-4 h-4 text-indigo-500" /> Inbox</h3>
+                    {STUDENT_MSGS.map((m) => {
+                      const lastMsg = m.thread[m.thread.length - 1];
+                      return (
+                        <div key={m.id} className={cn('bg-white dark:bg-zinc-900 border rounded-2xl p-3 cursor-pointer hover:border-indigo-500/50 transition-all', replyTo?.id === m.id ? 'border-indigo-500' : m.unread ? 'border-indigo-500/30' : 'border-zinc-200 dark:border-zinc-800')} onClick={() => setReplyTo(m)}>
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-sm font-bold text-indigo-500 flex-shrink-0">{m.avatar}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className={cn('text-sm font-semibold truncate', m.unread ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-900 dark:text-white')}>{m.name}</span>
+                                <span className="text-[10px] text-zinc-400 whitespace-nowrap">{lastMsg.time}</span>
+                              </div>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">{lastMsg.text}</p>
                             </div>
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-0.5 truncate">{m.text}</p>
+                            {m.unread && <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />}
                           </div>
-                          {m.unread && <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />}
                         </div>
-                        {replyTo?.id === m.id && (
-                          <div className="mt-3 flex gap-2">
-                            <input value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={`Reply to ${m.name}...`}
-                              className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 text-zinc-900 dark:text-white placeholder:text-zinc-400" />
-                            <button onClick={(e) => { e.stopPropagation(); toast.success(`Reply sent to ${m.name}!`); setReplyTo(null); setReplyText(''); }} className="btn-primary px-3 py-2 text-sm flex items-center gap-1.5">
-                              <Send className="w-3.5 h-3.5" />
-                            </button>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Conversation view */}
+                  <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                    {replyTo ? (
+                      <>
+                        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50">
+                          <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-sm font-bold text-indigo-500">{replyTo.avatar}</div>
+                          <div>
+                            <h4 className="font-bold text-zinc-900 dark:text-white">{replyTo.name}</h4>
+                            <p className="text-xs text-zinc-500">Student • Online</p>
                           </div>
-                        )}
+                        </div>
+                        <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                          {replyTo.thread.map((msg: any) => (
+                            <div key={msg.id} className={cn('flex', msg.from === 'teacher' ? 'justify-end' : 'justify-start')}>
+                              <div className={cn('max-w-[70%] px-4 py-2.5 rounded-2xl text-sm', msg.from === 'teacher' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-sm')}>
+                                <p>{msg.text}</p>
+                                <div className={cn('text-[10px] mt-1.5 flex items-center gap-1 justify-end', msg.from === 'teacher' ? 'text-white/70' : 'text-zinc-400')}>
+                                  <span>{msg.time}</span>
+                                  {msg.from === 'teacher' && (
+                                    <div className="flex">
+                                      <CheckCircle2 className="w-3 h-3 text-white/50" />
+                                      {msg.read && <CheckCircle2 className="w-3 h-3 text-white -ml-1.5" />}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex gap-2">
+                          <input value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === 'Enter' && (toast.success(`Reply sent to ${replyTo.name}`), setReplyText(''))} placeholder="Type a message..." className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
+                          <button onClick={() => { toast.success(`Reply sent to ${replyTo.name}`); setReplyText(''); }} className="btn-primary p-2.5 aspect-square flex items-center justify-center"><Send className="w-4 h-4" /></button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-zinc-400">
+                        <MessageSquare className="w-12 h-12 opacity-20 mb-3" />
+                        <p className="text-sm">Select a student to view thread</p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
@@ -305,21 +410,20 @@ export default function TeacherBlackboardPage() {
               {/* CALENDAR */}
               {activeTab === 'calendar' && (
                 <div className="max-w-3xl mx-auto space-y-4">
-                  <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Calendar className="w-4 h-4 text-indigo-500" /> Course Calendar</h3>
-                  {[
-                    { date: 'Oct 5', title: 'Assignment 3 Due', type: 'assignment', color: 'bg-amber-500' },
-                    { date: 'Oct 10', title: 'Midterm Exam', type: 'exam', color: 'bg-rose-500' },
-                    { date: 'Oct 15', title: 'Office Hours', type: 'office', color: 'bg-indigo-500' },
-                    { date: 'Oct 22', title: 'Pop Quiz', type: 'quiz', color: 'bg-purple-500' },
-                  ].map((e, i) => (
-                    <div key={i} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex items-center gap-4 hover:border-indigo-500/30 transition-all">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Calendar className="w-4 h-4 text-indigo-500" /> Course Calendar</h3>
+                    <button onClick={() => setShowEventModal(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> New Event</button>
+                  </div>
+                  {events.map((e) => (
+                    <div key={e.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex items-center gap-4 hover:border-indigo-500/30 transition-all group">
                       <div className={`w-10 h-10 rounded-xl ${e.color} flex items-center justify-center flex-shrink-0`}><Calendar className="w-5 h-5 text-white" /></div>
                       <div className="flex-1">
-                        <p className="font-bold text-zinc-900 dark:text-white text-sm">{e.title}</p>
+                        <p className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{e.title}</p>
                         <p className="text-xs text-zinc-400">{e.date}</p>
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 capitalize">{e.type}</span>
-                      <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-rose-500 transition-colors" onClick={() => toast.info('Edit event...')}><Edit3 className="w-3.5 h-3.5" /></button>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 capitalize hidden sm:block">{e.type}</span>
+                      <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100" onClick={() => toast.info('Edit event...')}><Edit3 className="w-3.5 h-3.5" /></button>
+                      <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100" onClick={() => { setEvents(prev => prev.filter(x => x.id !== e.id)); toast.info('Event removed.'); }}><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   ))}
                 </div>
@@ -445,6 +549,45 @@ export default function TeacherBlackboardPage() {
               <div className="flex gap-2 mt-5">
                 <button onClick={() => setShowAnnouncementModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
                 <button onClick={handlePostAnnouncement} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2"><Bell className="w-4 h-4" /> Post to All Students</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Calendar Event Modal */}
+      <AnimatePresence>
+        {showEventModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && setShowEventModal(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-bold text-zinc-900 dark:text-white text-lg flex items-center gap-2"><Calendar className="w-5 h-5 text-indigo-500" /> Add Event</h3>
+                <button onClick={() => setShowEventModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Event Title</label>
+                  <input value={eventTitle} onChange={e => setEventTitle(e.target.value)} placeholder="e.g. Final Project Presentations" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Date (e.g. Oct 25)</label>
+                    <input value={eventDate} onChange={e => setEventDate(e.target.value)} placeholder="Oct 25" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Type</label>
+                    <select value={eventType} onChange={e => setEventType(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
+                      <option value="office">Office Hours</option>
+                      <option value="assignment">Assignment Due</option>
+                      <option value="exam">Exam</option>
+                      <option value="quiz">Quiz</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setShowEventModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
+                <button onClick={handleAddEvent} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2"><Plus className="w-4 h-4" /> Add Event</button>
               </div>
             </motion.div>
           </motion.div>
