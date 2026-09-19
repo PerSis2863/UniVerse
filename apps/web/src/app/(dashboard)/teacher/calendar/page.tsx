@@ -24,6 +24,12 @@ const SPECIAL_EVENTS = [
   { day: 'Friday', time: '08:00', duration: '720', course: { name: 'Annual Sports Day', code: 'EVENT', color: '#f97316' }, isSpecial: true },
   { day: 'Monday', time: '08:00', duration: '720', course: { name: 'Public Holiday', code: 'HOLIDAY', color: '#3f3f46' }, isSpecial: true },
   { day: 'Wednesday', time: '08:00', duration: '720', course: { name: 'Tech Festival', code: 'FEST', color: '#d946ef' }, isSpecial: true },
+  { day: 'Thursday', time: '08:00', duration: '720', course: { name: 'Thanksgiving Break', code: 'HOLIDAY', color: '#3f3f46' }, isSpecial: true },
+  { day: 'Friday', time: '08:00', duration: '720', course: { name: 'Thanksgiving Break', code: 'HOLIDAY', color: '#3f3f46' }, isSpecial: true },
+  { day: 'Tuesday', time: '09:00', duration: '180', course: { name: 'Midterm Proct: Adv Calculus', code: 'EXAM', color: '#ef4444' }, isSpecial: true },
+  { day: 'Thursday', time: '14:00', duration: '180', course: { name: 'Midterm Proct: Machine Learning', code: 'EXAM', color: '#ef4444' }, isSpecial: true },
+  { day: 'Monday', time: '09:00', duration: '180', course: { name: 'Final Proct: CS 101', code: 'EXAM', color: '#ef4444' }, isSpecial: true },
+  { day: 'Wednesday', time: '13:00', duration: '180', course: { name: 'Final Proct: Physics', code: 'EXAM', color: '#ef4444' }, isSpecial: true },
 ];
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
@@ -37,7 +43,7 @@ export default function TeacherCalendarPage() {
   const baseDate = new Date(2026, 8, 14);
 
   const generatedDates = useMemo(() => {
-    let daysToGenerate = 40; // Semester (8 weeks)
+    let daysToGenerate = 70; // Semester (8 weeks)
     if (view === 'Day') daysToGenerate = 1;
     if (view === 'Week') daysToGenerate = 5;
     if (view === 'Month') daysToGenerate = 20;
@@ -75,7 +81,23 @@ export default function TeacherCalendarPage() {
     
     let schedule = [...MOCK_SCHEDULE].filter(s => s.day === dayName);
     
-    if (Math.abs(weekOffset) % 3 === 1 && dayName === 'Friday') {
+    if (weekOffset === 10 && dayName === 'Thursday') {
+      schedule = [];
+      schedule.push(SPECIAL_EVENTS[3]);
+    } else if (weekOffset === 10 && dayName === 'Friday') {
+      schedule = [];
+      schedule.push(SPECIAL_EVENTS[4]);
+    } else if (weekOffset === 6 && dayName === 'Tuesday') {
+      schedule = schedule.filter(s => s.course.name !== 'Physics Lab');
+      schedule.push(SPECIAL_EVENTS[5]);
+    } else if (weekOffset === 6 && dayName === 'Thursday') {
+      schedule = schedule.filter(s => s.course.name !== 'Data Structures');
+      schedule.push(SPECIAL_EVENTS[6]);
+    } else if (weekOffset >= 13) {
+      schedule = []; // exam week
+      if (weekOffset === 13 && dayName === 'Monday') schedule.push(SPECIAL_EVENTS[7]);
+      if (weekOffset === 13 && dayName === 'Wednesday') schedule.push(SPECIAL_EVENTS[8]);
+    } else if (Math.abs(weekOffset) % 3 === 1 && dayName === 'Friday') {
       schedule = [];
       schedule.push(SPECIAL_EVENTS[0]);
     } else if (Math.abs(weekOffset) % 4 === 2 && dayName === 'Monday') {
