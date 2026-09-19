@@ -27,6 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <html lang="en" suppressHydrationWarning>
         <head>
+          {/* Blocking script: applies .dark class before paint to prevent theme flash */}
+          <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link
@@ -35,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         </head>
         <body className="min-h-screen bg-background text-foreground antialiased transition-colors duration-300">
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
             {children}
             <Toaster 
               position="bottom-right"
