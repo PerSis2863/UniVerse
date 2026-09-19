@@ -26,6 +26,8 @@ const config: Config = {
         'fade-in': 'fadeIn 0.5s ease-out',
         'slide-up': 'slideUp 0.4s ease-out',
         'marquee-y': 'marqueeY 15s linear infinite',
+        'marquee-x': 'marqueeX 30s linear infinite',
+        'spin-slow': 'spin 20s linear infinite',
       },
       keyframes: {
         shimmer: {
@@ -43,6 +45,10 @@ const config: Config = {
         marqueeY: {
           from: { transform: 'translateY(0)' },
           to: { transform: 'translateY(-50%)' },
+        },
+        marqueeX: {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(-50%)' },
         },
       },
     },

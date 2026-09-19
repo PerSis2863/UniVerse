@@ -323,34 +323,35 @@ export default function ShowcasePage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.6 }}
-          className="w-full mb-32"
+          className="w-full mt-32 mb-32"
         >
-          <div className="text-center mb-16">
+          <div className="text-center mb-20">
             <h2 className="text-3xl md:text-4xl font-black mb-4 tracking-tight">How UniVerse Works</h2>
             <p className="text-zinc-400 max-w-2xl mx-auto text-lg">
               A streamlined journey from campus enrollment to global impact.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-            {/* Connecting Line */}
-            <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-indigo-500/0 via-indigo-500/30 to-indigo-500/0 -translate-y-1/2 -z-10" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-8 relative">
+            {/* Connecting Line - positioned to align with badges */}
+            <div className="hidden md:block absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0" />
 
             {[
-              { step: '01', title: 'Enroll & Setup', desc: 'Join through your university portal. We instantly sync your timetable, courses, and accounting data.' },
-              { step: '02', title: 'Learn & Grow', desc: 'Track grades, join study groups, and complete assignments within a unified academic ecosystem.' },
-              { step: '03', title: 'Discover Projects', desc: 'Browse our Global Impact board for volunteering, internships, and NGO partnerships.' },
-              { step: '04', title: 'Make an Impact', desc: 'Apply your skills, earn verifiable impact credits, and build a resume of real-world change.' },
+              { step: '01', title: 'Enroll & Setup', desc: 'Join through your university portal. We instantly sync your timetable, courses, and accounting data.', color: 'from-blue-600 to-indigo-600' },
+              { step: '02', title: 'Learn & Grow', desc: 'Track grades, join study groups, and complete assignments within a unified academic ecosystem.', color: 'from-indigo-600 to-purple-600' },
+              { step: '03', title: 'Discover Projects', desc: 'Browse our Global Impact board for volunteering, internships, and NGO partnerships.', color: 'from-purple-600 to-fuchsia-600' },
+              { step: '04', title: 'Make an Impact', desc: 'Apply your skills, earn verifiable impact credits, and build a resume of real-world change.', color: 'from-fuchsia-600 to-pink-600' },
             ].map((item, idx) => (
               <motion.div
                 key={idx}
-                whileHover={{ y: -10 }}
-                className="relative bg-[#0d1117] p-8 rounded-3xl border border-white/[0.08] shadow-2xl flex flex-col items-center text-center group z-10"
+                whileHover={{ y: -6 }}
+                transition={{ type: 'spring', stiffness: 300 }}
+                className="relative bg-white/[0.03] p-8 pt-12 rounded-3xl border border-white/[0.08] shadow-2xl flex flex-col items-center text-center z-10 hover:border-indigo-500/30 transition-colors"
               >
-                <div className="absolute -top-6 w-12 h-12 rounded-full bg-indigo-600 border-4 border-[#0d1117] flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/40">
+                <div className={`absolute -top-5 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-gradient-to-br ${item.color} flex items-center justify-center text-white font-black text-sm shadow-lg`}>
                   {item.step}
                 </div>
-                <h3 className="text-xl font-bold mt-4 mb-3 text-white group-hover:text-indigo-400 transition-colors">{item.title}</h3>
+                <h3 className="text-lg font-bold mb-3 text-white">{item.title}</h3>
                 <p className="text-zinc-400 text-sm leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
@@ -362,32 +363,40 @@ export default function ShowcasePage() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="w-full mb-32 relative overflow-hidden py-10"
+          className="w-full mb-32 relative py-10 overflow-hidden"
         >
-          <div className="absolute inset-0 bg-indigo-500/5 blur-3xl rounded-full" />
+          <div className="absolute inset-0 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
           <div className="text-center mb-12 relative z-10">
             <h2 className="text-3xl font-black tracking-tight mb-4">Loved by Students Globally</h2>
+            <p className="text-zinc-400">Real stories from students making real change.</p>
           </div>
           
-          <div className="flex gap-6 animate-marquee-x w-max relative z-10 hover:[animation-play-state:paused]">
-            {[
-              { quote: "UniVerse completely transformed how I handle my coursework. The impact dashboard is just the cherry on top!", author: "Elena M.", role: "Computer Science, MIT" },
-              { quote: "I found my summer internship at UNICEF directly through the Global Impact portal. Incredible platform.", author: "James T.", role: "Public Policy, Oxford" },
-              { quote: "Finally, a portal that doesn't look like it was built in 2005. The glassmorphism UI makes studying almost enjoyable.", author: "Sarah K.", role: "Design, ETH Zürich" },
-              { quote: "The integration between my tuition payments, classes, and study groups is flawless.", author: "Ahmed R.", role: "Engineering, NUS" },
-              { quote: "Tracking my volunteer hours automatically synced with my transcript is a game-changer.", author: "Chloe S.", role: "Bioethics, Stanford" },
-            ].map((t, i) => (
-              <div key={i} className="w-80 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between shrink-0">
-                <div className="text-indigo-400 mb-4">
-                  {[...Array(5)].map((_, i) => <span key={i}>★</span>)}
+          {/* Overflow wrapper to hide overflow */}
+          <div className="overflow-hidden w-full">
+            <div className="flex gap-6 animate-marquee-x w-max hover:[animation-play-state:paused]">
+              {[
+                { quote: "UniVerse completely transformed how I handle my coursework. The impact dashboard is just the cherry on top!", author: "Elena M.", role: "Computer Science, MIT" },
+                { quote: "I found my summer internship at UNICEF directly through the Global Impact portal. Incredible platform.", author: "James T.", role: "Public Policy, Oxford" },
+                { quote: "Finally, a portal that doesn't look like it was built in 2005. The glassmorphism UI makes studying almost enjoyable.", author: "Sarah K.", role: "Design, ETH Zürich" },
+                { quote: "The integration between my tuition payments, classes, and study groups is flawless.", author: "Ahmed R.", role: "Engineering, NUS" },
+                { quote: "Tracking my volunteer hours automatically synced with my transcript is a game-changer.", author: "Chloe S.", role: "Bioethics, Stanford" },
+                // Duplicated for seamless loop
+                { quote: "UniVerse completely transformed how I handle my coursework. The impact dashboard is just the cherry on top!", author: "Elena M.", role: "Computer Science, MIT" },
+                { quote: "I found my summer internship at UNICEF directly through the Global Impact portal. Incredible platform.", author: "James T.", role: "Public Policy, Oxford" },
+                { quote: "Finally, a portal that doesn't look like it was built in 2005. The glassmorphism UI makes studying almost enjoyable.", author: "Sarah K.", role: "Design, ETH Zürich" },
+                { quote: "The integration between my tuition payments, classes, and study groups is flawless.", author: "Ahmed R.", role: "Engineering, NUS" },
+                { quote: "Tracking my volunteer hours automatically synced with my transcript is a game-changer.", author: "Chloe S.", role: "Bioethics, Stanford" },
+              ].map((t, i) => (
+                <div key={i} className="w-80 shrink-0 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between">
+                  <div className="text-yellow-400 mb-4 text-base">★★★★★</div>
+                  <p className="text-zinc-300 text-sm italic mb-6 leading-relaxed">"{t.quote}"</p>
+                  <div>
+                    <div className="font-bold text-white text-sm">{t.author}</div>
+                    <div className="text-xs text-zinc-500">{t.role}</div>
+                  </div>
                 </div>
-                <p className="text-zinc-300 text-sm italic mb-6 leading-relaxed">"{t.quote}"</p>
-                <div>
-                  <div className="font-bold text-white text-sm">{t.author}</div>
-                  <div className="text-xs text-zinc-500">{t.role}</div>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </motion.div>
 
