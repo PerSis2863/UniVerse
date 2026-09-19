@@ -1,7 +1,7 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 

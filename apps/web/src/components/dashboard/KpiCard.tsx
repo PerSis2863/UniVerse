@@ -8,7 +8,7 @@ interface KpiCardProps {
   value: string | number;
   icon: LucideIcon;
   change?: number;
-  color?: 'indigo' | 'cyan' | 'green' | 'amber' | 'rose';
+  color?: 'indigo' | 'cyan' | 'green' | 'amber' | 'rose' | 'emerald' | 'fuchsia';
 }
 
 const colors = {
@@ -17,6 +17,8 @@ const colors = {
   green: 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30',
   amber: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30',
   rose: 'text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/30',
+  emerald: 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30',
+  fuchsia: 'text-fuchsia-600 dark:text-fuchsia-400 bg-fuchsia-100 dark:bg-fuchsia-900/30',
 };
 
 export function KpiCard({ title, value, icon: Icon, change, color = 'indigo' }: KpiCardProps) {
