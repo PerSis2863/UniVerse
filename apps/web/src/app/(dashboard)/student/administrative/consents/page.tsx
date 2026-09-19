@@ -42,7 +42,7 @@ export default function StudentConsents() {
             
             <div className="divide-y divide-zinc-800">
               
-              <div className="p-6 flex items-center justify-between gap-6 hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors">
+              <div className="p-6 flex items-center justify-between gap-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                 <div>
                   <div className="font-medium text-zinc-900 dark:text-white mb-1">Marketing & Communications</div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">Receive promotional emails about university events, merchandise, and third-party offers.</div>
@@ -52,7 +52,7 @@ export default function StudentConsents() {
                 </button>
               </div>
 
-              <div className="p-6 flex items-center justify-between gap-6 hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors">
+              <div className="p-6 flex items-center justify-between gap-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                 <div>
                   <div className="font-medium text-zinc-900 dark:text-white mb-1">Alumni Network Directory</div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">Allow your name, major, and graduation year to be visible in the alumni network directory after graduation.</div>
@@ -62,7 +62,7 @@ export default function StudentConsents() {
                 </button>
               </div>
 
-              <div className="p-6 flex items-center justify-between gap-6 hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors">
+              <div className="p-6 flex items-center justify-between gap-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                 <div>
                   <div className="font-medium text-zinc-900 dark:text-white mb-1">Photo & Media Release</div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">Consent to the university using photographs or video footage containing your likeness for promotional materials and websites.</div>
@@ -72,7 +72,7 @@ export default function StudentConsents() {
                 </button>
               </div>
 
-              <div className="p-6 flex items-center justify-between gap-6 hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors">
+              <div className="p-6 flex items-center justify-between gap-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                 <div>
                   <div className="font-medium text-zinc-900 dark:text-white mb-1">Academic Research Data</div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">Allow anonymized academic performance data to be used by university researchers for educational studies.</div>

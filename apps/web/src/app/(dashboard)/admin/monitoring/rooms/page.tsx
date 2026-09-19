@@ -109,7 +109,7 @@ export default function AdminRoomMonitoringPage() {
                 </div>
               ) : (
                 filteredBookings.map((booking) => (
-                  <div key={booking.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors gap-4">
+                  <div key={booking.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors gap-4">
                     <div className="flex items-start gap-4">
                       <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
                         <Building className="w-5 h-5 text-indigo-400" />

@@ -239,7 +239,7 @@ export default function AdminTimetablePage() {
                 </thead>
                 <tbody className="divide-y divide-zinc-800/50">
                   {filteredSchedule.map((item) => (
-                    <tr key={item.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors">
+                    <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                       <td className="p-4">
                         <div className="flex flex-col">
                           <span className="font-semibold text-zinc-900 dark:text-white">{item.course}</span>

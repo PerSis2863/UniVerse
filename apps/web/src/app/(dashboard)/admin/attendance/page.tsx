@@ -293,7 +293,7 @@ export default function AdminAttendance() {
                         const status = currentAttendance[student.id] || 'present';
                         
                         return (
-                          <tr key={student.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors group">
+                          <tr key={student.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
                             <td className="p-4 pl-6">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold shadow-inner">

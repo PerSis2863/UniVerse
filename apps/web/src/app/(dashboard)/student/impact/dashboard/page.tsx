@@ -156,7 +156,7 @@ export default function MySocialImpactPage() {
 
             <div className="divide-y divide-zinc-800/60">
               {impactActivities.map((act, i) => (
-                <div key={i} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors">
+                <div key={i} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
                       <FileCheck className="w-4 h-4" />

@@ -154,7 +154,7 @@ export default function AdminKnowledgeHubPage() {
                     </div>
                   ) : (
                     filteredResources.map((resource) => (
-                      <div key={resource.id} className="p-4 flex items-center justify-between hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors group">
+                      <div key={resource.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-colors shrink-0">
                             <FileText className="w-5 h-5" />

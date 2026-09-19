@@ -97,7 +97,7 @@ export default function TeacherGradesPage() {
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
                 {filteredGrades.map((grade) => (
-                  <tr key={grade.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors group">
+                  <tr key={grade.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-zinc-900 dark:text-white text-sm font-medium shadow-sm">

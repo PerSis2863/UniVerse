@@ -259,7 +259,7 @@ export default function AdminFinances() {
                 </thead>
                 <tbody className="divide-y divide-zinc-800/30">
                   {transactions.map((trx, i) => (
-                    <tr key={i} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors group">
+                    <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
                       <td className="p-4 font-mono text-xs font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-300">{trx.id}</td>
                       <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400">{trx.date}</td>
                       <td className="p-4 text-sm font-medium text-zinc-900 dark:text-white">{trx.type}</td>

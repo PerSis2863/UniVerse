@@ -52,7 +52,7 @@ export default function InternshipHistory() {
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
                 {INTERNSHIP_HISTORY.map((internship) => (
-                  <tr key={internship.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors group">
+                  <tr key={internship.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-400 flex-shrink-0">

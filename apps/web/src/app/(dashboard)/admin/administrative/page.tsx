@@ -293,7 +293,7 @@ export default function AdminAdministrativePage() {
                 <tbody className="divide-y divide-zinc-800/50">
                   
                   {activeTab === 'documents' && docs.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors">
+                    <tr key={doc.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                       <td className="p-4 font-medium text-zinc-900 dark:text-white">{doc.title}</td>
                       <td className="p-4 text-zinc-300">{doc.category}</td>
                       <td className="p-4 text-zinc-300">{doc.date}</td>
@@ -312,7 +312,7 @@ export default function AdminAdministrativePage() {
                   ))}
 
                   {activeTab === 'billing' && bills.map((bill) => (
-                    <tr key={bill.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors">
+                    <tr key={bill.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                       <td className="p-4">
                         <div className="font-medium text-zinc-900 dark:text-white">{bill.student}</div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-500">{bill.studentId}</div>
@@ -337,7 +337,7 @@ export default function AdminAdministrativePage() {
                   ))}
 
                   {activeTab === 'scholarships' && scholarships.map((scholarship) => (
-                    <tr key={scholarship.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors">
+                    <tr key={scholarship.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                       <td className="p-4 font-medium text-zinc-900 dark:text-white">{scholarship.name}</td>
                       <td className="p-4 font-semibold text-indigo-400">${scholarship.amount.toLocaleString()}</td>
                       <td className="p-4 text-zinc-300">{scholarship.deadline}</td>

@@ -130,7 +130,7 @@ export default function AdminUsers() {
                 </thead>
                 <tbody className="divide-y divide-zinc-800/50">
                   {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors group">
+                    <tr key={user.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
                       <td className="p-4">
                         <button onClick={() => setSelectedUser(user)} className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-zinc-900 dark:text-white font-medium shadow-lg flex-shrink-0">

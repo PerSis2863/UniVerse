@@ -134,7 +134,7 @@ export default function TeacherCollaborationsPage() {
 
             <div className="divide-y divide-zinc-800/60">
               {proposals.map(prop => (
-                <div key={prop.id} className="p-6 hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors space-y-4">
+                <div key={prop.id} className="p-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors space-y-4">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                     <div>
                       <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 inline-block mb-1.5">
@@ -191,7 +191,7 @@ export default function TeacherCollaborationsPage() {
                       <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{squadModal.title}</h2>
                       <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{squadModal.partner} · {squadModal.ngo}</p>
                     </div>
-                    <button onClick={() => setSquadModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors"><X className="w-5 h-5" /></button>
+                    <button onClick={() => setSquadModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"><X className="w-5 h-5" /></button>
                   </div>
 
                   <div className="p-6 space-y-6">

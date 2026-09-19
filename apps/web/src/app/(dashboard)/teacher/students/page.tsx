@@ -111,7 +111,7 @@ export default function TeacherStudents() {
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
                 {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors group">
+                  <tr key={student.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-zinc-900 dark:text-white font-medium shadow-lg">
