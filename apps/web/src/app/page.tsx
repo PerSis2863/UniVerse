@@ -402,23 +402,144 @@ export default function ShowcasePage() {
 
         {/* ── CTA Section ───────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="w-full mb-10 p-12 md:p-16 rounded-[3rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-center relative overflow-hidden shadow-2xl shadow-indigo-500/20"
+          transition={{ duration: 0.7 }}
+          className="w-full mb-10 relative overflow-hidden rounded-[3rem] border border-white/[0.08]"
+          style={{ background: 'linear-gradient(135deg, #0f0c29 0%, #1a1040 40%, #0f0c29 100%)' }}
         >
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
-          <div className="relative z-10 flex flex-col items-center">
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">Ready to join the movement?</h2>
-            <p className="text-indigo-100 max-w-2xl text-lg mb-10">
-              Experience the future of academic portals. Sign in now to explore your personalized dashboard and start making an impact.
-            </p>
-            <Link
-              href="/login"
-              className="px-10 py-4 rounded-full bg-white text-indigo-600 font-black text-lg hover:scale-105 transition-transform shadow-xl"
+          {/* Animated Gradient Orbs */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <motion.div
+              animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] rounded-full blur-[120px]"
+              style={{ background: 'rgba(99,102,241,0.35)' }}
+            />
+            <motion.div
+              animate={{ x: [0, -25, 0], y: [0, 20, 0] }}
+              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+              className="absolute bottom-[-30%] right-[5%] w-[400px] h-[400px] rounded-full blur-[100px]"
+              style={{ background: 'rgba(168,85,247,0.3)' }}
+            />
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+              className="absolute top-[20%] right-[25%] w-[200px] h-[200px] rounded-full blur-[80px]"
+              style={{ background: 'rgba(236,72,153,0.2)' }}
+            />
+          </div>
+
+          {/* Grid pattern overlay */}
+          <div
+            className="absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }}
+          />
+
+          {/* Content */}
+          <div className="relative z-10 p-12 md:p-20 flex flex-col lg:flex-row items-center justify-between gap-12">
+
+            {/* Left: Text */}
+            <div className="flex-1 text-left">
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold mb-6"
+              >
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                Now Accepting Applications
+              </motion.div>
+
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tight"
+              >
+                Join the future of{' '}
+                <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  education.
+                </span>
+              </motion.h2>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="text-zinc-400 text-lg leading-relaxed max-w-lg mb-8"
+              >
+                A unified platform for academics, social impact, and global collaboration. Your journey starts with one click.
+              </motion.p>
+
+              {/* CTA Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="flex flex-wrap gap-4"
+              >
+                <Link
+                  href="/login"
+                  className="group inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-zinc-900 font-black text-base hover:bg-indigo-50 transition-all shadow-xl shadow-white/10 hover:scale-105 active:scale-95"
+                >
+                  Access Student Portal
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <a
+                  href="#about"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl border border-white/10 text-white font-semibold text-base hover:bg-white/5 transition-all"
+                >
+                  Learn More
+                </a>
+              </motion.div>
+            </div>
+
+            {/* Right: Stats panel */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="w-full lg:w-72 shrink-0 space-y-4"
             >
-              Access Student Portal
-            </Link>
+              {[
+                { label: 'Students onboarded', value: '12,000+', color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: '🎓' },
+                { label: 'NGO Partnerships', value: '50+ Orgs', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: '🌍' },
+                { label: 'Volunteer Hours Logged', value: '2M+ Hrs', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', icon: '⏱️' },
+                { label: 'Active Projects', value: '85 Now', color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20', icon: '🚀' },
+              ].map((stat, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  whileHover={{ x: 4 }}
+                  transition={{ delay: 0.5 + i * 0.1 }}
+                  className={`flex items-center gap-4 p-4 rounded-2xl border ${stat.bg} ${stat.border} backdrop-blur-sm cursor-default`}
+                >
+                  <span className="text-2xl">{stat.icon}</span>
+                  <div>
+                    <div className={`text-xl font-black ${stat.color}`}>{stat.value}</div>
+                    <div className="text-xs text-zinc-400 font-medium">{stat.label}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
+          </div>
+
+          {/* Bottom strip */}
+          <div className="relative z-10 px-12 md:px-20 py-5 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-4 text-xs text-zinc-500">
+            <span>Trusted by 50+ universities across 25 countries</span>
+            <div className="flex items-center gap-6">
+              {['MIT', 'Oxford', 'ETH Zürich', 'NUS', 'Sorbonne'].map((uni) => (
+                <span key={uni} className="font-semibold text-zinc-400">{uni}</span>
+              ))}
+            </div>
           </div>
         </motion.div>
       </main>
