@@ -46,7 +46,7 @@ export default function LoginPage() {
           elements: {
             rootBox: 'w-full',
             card: 'bg-transparent shadow-none border-0 p-0',
-            headerBox: 'hidden',
+            header: 'hidden',
             // Social buttons
             socialButtonsBlockButton:
               'w-full border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-zinc-50 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 rounded-xl transition-colors h-11 shadow-sm',
