@@ -27,8 +27,8 @@ export default function StudentCourses() {
         ) : enrollments.length === 0 ? (
           <div className="card text-center py-12">
             <BookOpen className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">No courses yet</h2>
-            <p className="text-zinc-400">You haven't been enrolled in any courses.</p>
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">No courses yet</h2>
+            <p className="text-zinc-600 dark:text-zinc-400">You haven't been enrolled in any courses.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -41,35 +41,35 @@ export default function StudentCourses() {
                       <div className="absolute top-4 right-4 text-4xl opacity-50 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-300">
                         {course.emoji || '📚'}
                       </div>
-                      <div className="bg-black/40 backdrop-blur-sm inline-block px-3 py-1 rounded-full text-xs font-medium text-white w-max mb-2">
+                      <div className="bg-black/40 backdrop-blur-sm inline-block px-3 py-1 rounded-full text-xs font-medium text-zinc-900 dark:text-white w-max mb-2">
                         {course.code}
                       </div>
-                      <h2 className="text-xl font-bold text-white drop-shadow-md truncate">{course.name}</h2>
+                      <h2 className="text-xl font-bold text-zinc-900 dark:text-white drop-shadow-md truncate">{course.name}</h2>
                     </div>
                     <div className="p-5 flex-1 flex flex-col">
-                      <p className="text-sm text-zinc-400 line-clamp-2 mb-4 flex-1">
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 mb-4 flex-1">
                         {course.description || 'No description provided.'}
                       </p>
                       
                       <div className="flex items-center justify-between mt-auto">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                          <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-white/10 flex items-center justify-center overflow-hidden">
                             {course.teacher?.avatar ? (
                               <img src={course.teacher.avatar} alt="Teacher" className="w-full h-full object-cover" />
                             ) : (
-                              <span className="text-xs font-medium text-white">{course.teacher?.name?.charAt(0)}</span>
+                              <span className="text-xs font-medium text-zinc-900 dark:text-white">{course.teacher?.name?.charAt(0)}</span>
                             )}
                           </div>
                           <div className="text-xs">
-                            <p className="text-white font-medium">{course.teacher?.name}</p>
-                            <p className="text-zinc-500">Instructor</p>
+                            <p className="text-zinc-900 dark:text-white font-medium">{course.teacher?.name}</p>
+                            <p className="text-zinc-500 dark:text-zinc-500">Instructor</p>
                           </div>
                         </div>
                       </div>
                     </div>
                     
                     <div className="px-5 py-3 border-t border-white/[0.05] bg-white/[0.02] flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-xs text-zinc-400">
+                      <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-400">
                         <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/> {course._count?.materials || 0} Materials</span>
                         <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5"/> {course._count?.quizzes || 0} Quizzes</span>
                       </div>

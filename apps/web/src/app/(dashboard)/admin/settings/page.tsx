@@ -21,13 +21,13 @@ export default function AdminSettings() {
         <div className="max-w-4xl mx-auto space-y-8">
           
           {/* Tabs */}
-          <div className="flex space-x-1 border-b border-zinc-800">
+          <div className="flex space-x-1 border-b border-zinc-200 dark:border-zinc-800">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
-                  activeTab === tab.id ? 'text-indigo-400' : 'text-zinc-400 hover:text-white'
+                  activeTab === tab.id ? 'text-indigo-400' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -40,33 +40,33 @@ export default function AdminSettings() {
           </div>
 
           {/* Form Content */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8">
+          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8">
             
             {activeTab === 'general' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-medium text-white mb-4">Organization Profile</h3>
+                <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-4">Organization Profile</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-400">Organization Name</label>
-                    <input type="text" defaultValue="UniVerse Global" className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 transition-colors" />
+                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Organization Name</label>
+                    <input type="text" defaultValue="UniVerse Global" className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-400">Support Email</label>
-                    <input type="email" defaultValue="support@universe.edu" className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 transition-colors" />
+                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Support Email</label>
+                    <input type="email" defaultValue="support@universe.edu" className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-zinc-400">Website URL</label>
-                    <input type="url" defaultValue="https://universe.edu" className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 transition-colors" />
+                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Website URL</label>
+                    <input type="url" defaultValue="https://universe.edu" className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-zinc-400">Organization Address</label>
-                    <textarea rows={3} defaultValue="123 Education Lane, Tech City, TC 90210" className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 transition-colors"></textarea>
+                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Organization Address</label>
+                    <textarea rows={3} defaultValue="123 Education Lane, Tech City, TC 90210" className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"></textarea>
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-zinc-800 flex justify-end">
-                  <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+                  <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-6 py-2 rounded-lg font-medium transition-colors">
                     <Save className="w-4 h-4" /> Save Changes
                   </button>
                 </div>
@@ -75,13 +75,13 @@ export default function AdminSettings() {
 
             {activeTab === 'security' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-medium text-white mb-4">Security Policies</h3>
+                <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-4">Security Policies</h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
+                  <div className="flex items-center justify-between p-4 bg-zinc-100 dark:bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
                     <div>
-                      <div className="font-medium text-white">Require Two-Factor Authentication</div>
-                      <div className="text-sm text-zinc-500">Enforce 2FA for all administrator accounts</div>
+                      <div className="font-medium text-zinc-900 dark:text-white">Require Two-Factor Authentication</div>
+                      <div className="text-sm text-zinc-500 dark:text-zinc-500">Enforce 2FA for all administrator accounts</div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -89,10 +89,10 @@ export default function AdminSettings() {
                     </label>
                   </div>
                   
-                  <div className="flex items-center justify-between p-4 bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
+                  <div className="flex items-center justify-between p-4 bg-zinc-100 dark:bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
                     <div>
-                      <div className="font-medium text-white">Password Expiry</div>
-                      <div className="text-sm text-zinc-500">Require users to change passwords every 90 days</div>
+                      <div className="font-medium text-zinc-900 dark:text-white">Password Expiry</div>
+                      <div className="text-sm text-zinc-500 dark:text-zinc-500">Require users to change passwords every 90 days</div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only peer" />
@@ -101,8 +101,8 @@ export default function AdminSettings() {
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-zinc-800 flex justify-end">
-                  <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+                  <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-6 py-2 rounded-lg font-medium transition-colors">
                     <Save className="w-4 h-4" /> Save Security Policies
                   </button>
                 </div>
@@ -111,13 +111,13 @@ export default function AdminSettings() {
 
             {activeTab === 'notifications' && (
               <div className="space-y-6">
-                <h3 className="text-lg font-medium text-white mb-4">System Notifications</h3>
+                <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-4">System Notifications</h3>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
+                  <div className="flex items-center justify-between p-4 bg-zinc-100 dark:bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
                     <div>
-                      <div className="font-medium text-white">New User Registrations</div>
-                      <div className="text-sm text-zinc-500">Receive an email when a new teacher or admin signs up</div>
+                      <div className="font-medium text-zinc-900 dark:text-white">New User Registrations</div>
+                      <div className="text-sm text-zinc-500 dark:text-zinc-500">Receive an email when a new teacher or admin signs up</div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -125,10 +125,10 @@ export default function AdminSettings() {
                     </label>
                   </div>
                   
-                  <div className="flex items-center justify-between p-4 bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
+                  <div className="flex items-center justify-between p-4 bg-zinc-100 dark:bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
                     <div>
-                      <div className="font-medium text-white">Weekly System Report</div>
-                      <div className="text-sm text-zinc-500">Send a weekly summary of platform activity</div>
+                      <div className="font-medium text-zinc-900 dark:text-white">Weekly System Report</div>
+                      <div className="text-sm text-zinc-500 dark:text-zinc-500">Send a weekly summary of platform activity</div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -137,8 +137,8 @@ export default function AdminSettings() {
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-zinc-800 flex justify-end">
-                  <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+                  <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-6 py-2 rounded-lg font-medium transition-colors">
                     <Save className="w-4 h-4" /> Save Preferences
                   </button>
                 </div>

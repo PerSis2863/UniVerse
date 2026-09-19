@@ -101,19 +101,19 @@ export default function AdminQuizzesPage() {
           {/* Header Actions */}
           <div className="flex flex-col sm:flex-row justify-between gap-4 items-center">
             <div className="relative w-full sm:w-96">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-500" />
               <input
                 type="text"
                 placeholder="Search quizzes by title or subject..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
               />
             </div>
             
             <button
               onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-colors w-full sm:w-auto justify-center"
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white rounded-xl font-medium transition-colors w-full sm:w-auto justify-center"
             >
               <Plus className="w-4 h-4" />
               Create New Quiz
@@ -127,13 +127,13 @@ export default function AdminQuizzesPage() {
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                   <button 
                     onClick={() => handleOpenModal(quiz)}
-                    className="p-1.5 bg-zinc-800 hover:bg-indigo-500/20 text-zinc-400 hover:text-indigo-400 rounded-lg transition-colors"
+                    className="p-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-indigo-500/20 text-zinc-600 dark:text-zinc-400 hover:text-indigo-400 rounded-lg transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => handleDelete(quiz.id)}
-                    className="p-1.5 bg-zinc-800 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 rounded-lg transition-colors"
+                    className="p-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-rose-500/20 text-zinc-600 dark:text-zinc-400 hover:text-rose-400 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -142,8 +142,8 @@ export default function AdminQuizzesPage() {
                 <div className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 w-max mb-4">
                   {quiz.subject}
                 </div>
-                <h4 className="text-lg font-bold text-white mb-2 pr-16">{quiz.title}</h4>
-                <div className="flex flex-wrap gap-4 text-sm text-zinc-400 mt-auto">
+                <h4 className="text-lg font-bold text-zinc-900 dark:text-white mb-2 pr-16">{quiz.title}</h4>
+                <div className="flex flex-wrap gap-4 text-sm text-zinc-600 dark:text-zinc-400 mt-auto">
                   <span className="flex items-center gap-1.5"><Clock className="w-4 h-4"/> {quiz.duration} mins</span>
                   <span className="flex items-center gap-1.5"><HelpCircle className="w-4 h-4"/> {quiz.questions} Questions</span>
                 </div>
@@ -151,8 +151,8 @@ export default function AdminQuizzesPage() {
             ))}
             
             {filteredQuizzes.length === 0 && (
-              <div className="col-span-full py-12 text-center border border-dashed border-zinc-800 rounded-2xl">
-                <p className="text-zinc-500">No quizzes found matching your criteria.</p>
+              <div className="col-span-full py-12 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                <p className="text-zinc-500 dark:text-zinc-500">No quizzes found matching your criteria.</p>
               </div>
             )}
           </div>
@@ -164,12 +164,12 @@ export default function AdminQuizzesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-[#0f111a] border border-white/[0.05] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-white/[0.05] flex items-center justify-between bg-white/[0.02]">
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
                 {editingQuiz ? 'Edit Quiz' : 'Create New Quiz'}
               </h2>
               <button 
                 onClick={handleCloseModal}
-                className="text-zinc-400 hover:text-white transition-colors p-1"
+                className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -182,7 +182,7 @@ export default function AdminQuizzesPage() {
                   type="text"
                   value={formData.title}
                   onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
                   placeholder="e.g. Calculus Midterm Review"
                 />
               </div>
@@ -193,7 +193,7 @@ export default function AdminQuizzesPage() {
                   type="text"
                   value={formData.subject}
                   onChange={e => setFormData({...formData, subject: e.target.value})}
-                  className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
                   placeholder="e.g. Mathematics"
                 />
               </div>
@@ -205,7 +205,7 @@ export default function AdminQuizzesPage() {
                     type="number"
                     value={formData.duration}
                     onChange={e => setFormData({...formData, duration: parseInt(e.target.value) || 0})}
-                    className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
+                    className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
                     min="1"
                   />
                 </div>
@@ -215,7 +215,7 @@ export default function AdminQuizzesPage() {
                     type="number"
                     value={formData.questions}
                     onChange={e => setFormData({...formData, questions: parseInt(e.target.value) || 0})}
-                    className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
+                    className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
                     min="1"
                   />
                 </div>
@@ -225,13 +225,13 @@ export default function AdminQuizzesPage() {
             <div className="px-6 py-4 border-t border-white/[0.05] bg-white/[0.02] flex justify-end gap-3">
               <button 
                 onClick={handleCloseModal}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-900 dark:text-white hover:bg-white/[0.05] transition-colors"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleSave}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex items-center gap-2"
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white transition-colors flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />
                 {editingQuiz ? 'Save Changes' : 'Create Quiz'}

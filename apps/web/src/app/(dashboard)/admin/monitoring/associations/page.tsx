@@ -12,8 +12,8 @@ export default function AdminAssociationsMonitoringPage() {
         <div className="max-w-7xl mx-auto space-y-6">
           
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-white">Registered Associations</h2>
-            <button className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Registered Associations</h2>
+            <button className="bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
               Approve New Association
             </button>
           </div>
@@ -26,26 +26,26 @@ export default function AdminAssociationsMonitoringPage() {
               { name: 'Green Earth Initiative', members: 200, status: 'Active', budget: '$800' },
               { name: 'Astronomy Club', members: 0, status: 'Pending Approval', budget: '$0' },
             ].map((assoc, i) => (
-              <div key={i} className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-xl relative overflow-hidden group hover:border-zinc-700 transition-colors">
+              <div key={i} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl relative overflow-hidden group hover:border-zinc-700 transition-colors">
                 {assoc.status === 'Pending Approval' && (
                   <div className="absolute top-0 right-0 p-2 text-amber-500">
                     <AlertCircle className="w-5 h-5" />
                   </div>
                 )}
                 
-                <h3 className="font-semibold text-white mb-4 pr-6">{assoc.name}</h3>
+                <h3 className="font-semibold text-zinc-900 dark:text-white mb-4 pr-6">{assoc.name}</h3>
                 
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Members</span>
+                    <span className="text-zinc-500 dark:text-zinc-500">Members</span>
                     <span className="text-zinc-300">{assoc.members}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Allocated Budget</span>
+                    <span className="text-zinc-500 dark:text-zinc-500">Allocated Budget</span>
                     <span className="text-zinc-300">{assoc.budget}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500">Status</span>
+                    <span className="text-zinc-500 dark:text-zinc-500">Status</span>
                     <span className={assoc.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'}>
                       {assoc.status}
                     </span>
@@ -62,7 +62,7 @@ export default function AdminAssociationsMonitoringPage() {
                     </button>
                   </div>
                 ) : (
-                  <button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2 rounded-lg text-sm font-medium transition-colors">
+                  <button className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white py-2 rounded-lg text-sm font-medium transition-colors">
                     Manage Association
                   </button>
                 )}

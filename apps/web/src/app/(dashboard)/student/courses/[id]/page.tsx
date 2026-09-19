@@ -45,8 +45,8 @@ export default function CourseDetail() {
         title={course.name} 
         subtitle={course.code} 
         leftNode={
-          <button onClick={() => router.push('/student/courses')} className="mr-4 p-2 hover:bg-white/10 rounded-full transition-colors">
-            <ArrowLeft className="w-5 h-5 text-zinc-400" />
+          <button onClick={() => router.push('/student/courses')} className="mr-4 p-2 hover:bg-zinc-200 dark:bg-white/10 rounded-full transition-colors">
+            <ArrowLeft className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
           </button>
         }
       />
@@ -59,10 +59,10 @@ export default function CourseDetail() {
               {course.emoji || '📚'}
             </div>
             <div className="p-10 relative z-10 bg-gradient-to-t from-black/60 to-transparent">
-              <div className="bg-white/20 backdrop-blur-md inline-block px-4 py-1.5 rounded-full text-sm font-semibold text-white mb-4">
+              <div className="bg-white/20 backdrop-blur-md inline-block px-4 py-1.5 rounded-full text-sm font-semibold text-zinc-900 dark:text-white mb-4">
                 {course.code}
               </div>
-              <h1 className="text-4xl font-bold text-white mb-4">{course.name}</h1>
+              <h1 className="text-4xl font-bold text-zinc-900 dark:text-white mb-4">{course.name}</h1>
               <p className="text-zinc-200 max-w-2xl text-lg">{course.description || 'Welcome to this course. Access materials, quizzes, and track your progress here.'}</p>
             </div>
           </div>
@@ -70,29 +70,29 @@ export default function CourseDetail() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2 space-y-6">
               
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-indigo-400" /> Recent Materials
                 </h3>
-                <div className="text-center py-10 bg-zinc-800/30 rounded-lg border border-dashed border-zinc-700">
-                  <p className="text-zinc-500">No materials have been uploaded yet.</p>
+                <div className="text-center py-10 bg-zinc-100 dark:bg-zinc-800/30 rounded-lg border border-dashed border-zinc-700">
+                  <p className="text-zinc-500 dark:text-zinc-500">No materials have been uploaded yet.</p>
                 </div>
               </div>
 
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-indigo-400" /> Upcoming Quizzes
                 </h3>
-                <div className="text-center py-10 bg-zinc-800/30 rounded-lg border border-dashed border-zinc-700">
-                  <p className="text-zinc-500">No upcoming quizzes scheduled.</p>
+                <div className="text-center py-10 bg-zinc-100 dark:bg-zinc-800/30 rounded-lg border border-dashed border-zinc-700">
+                  <p className="text-zinc-500 dark:text-zinc-500">No upcoming quizzes scheduled.</p>
                 </div>
               </div>
 
             </div>
             
             <div className="space-y-6">
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <h3 className="font-semibold text-white mb-4">Instructor</h3>
+              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+                <h3 className="font-semibold text-zinc-900 dark:text-white mb-4">Instructor</h3>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center overflow-hidden">
                     {course.teacher?.avatar ? (
@@ -102,24 +102,24 @@ export default function CourseDetail() {
                     )}
                   </div>
                   <div>
-                    <div className="font-medium text-white">{course.teacher?.name}</div>
-                    <div className="text-sm text-zinc-400">Course Instructor</div>
+                    <div className="font-medium text-zinc-900 dark:text-white">{course.teacher?.name}</div>
+                    <div className="text-sm text-zinc-600 dark:text-zinc-400">Course Instructor</div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <h3 className="font-semibold text-white mb-4">Course Info</h3>
+              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+                <h3 className="font-semibold text-zinc-900 dark:text-white mb-4">Course Info</h3>
                 <div className="space-y-4">
                   <div>
-                    <div className="text-sm text-zinc-500 mb-1">Status</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-500 mb-1">Status</div>
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-xs font-medium">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                       Active
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-zinc-500 mb-1">Credits</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-500 mb-1">Credits</div>
                     <div className="text-zinc-300">3 Credits</div>
                   </div>
                 </div>

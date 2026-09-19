@@ -40,15 +40,15 @@ export default function ServicesPage() {
         <div className="max-w-4xl mx-auto">
           
           <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-8 mb-8 text-center">
-            <h2 className="text-xl font-bold text-white mb-2">Need immediate technical assistance?</h2>
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Need immediate technical assistance?</h2>
             <p className="text-indigo-200/80 mb-6 max-w-lg mx-auto">
               Our IT support team is available 24/7 to help you resolve any issues with your university account or devices.
             </p>
             <div className="flex justify-center gap-4">
-              <button onClick={() => toast.success('Calling IT Support...')} className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+              <button onClick={() => toast.success('Calling IT Support...')} className="bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Call IT Support
               </button>
-              <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+              <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Live Chat
               </button>
             </div>
@@ -56,12 +56,12 @@ export default function ServicesPage() {
 
           <div className="grid sm:grid-cols-2 gap-6">
             {services.map((service, i) => (
-              <div key={i} onClick={() => toast.success(`${service.title} clicked`)} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 group cursor-pointer hover:border-zinc-600 transition-colors">
-                <div className="w-12 h-12 bg-zinc-800 rounded-lg flex items-center justify-center mb-4 text-zinc-400 group-hover:text-indigo-400 transition-colors">
+              <div key={i} onClick={() => toast.success(`${service.title} clicked`)} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 group cursor-pointer hover:border-zinc-600 transition-colors">
+                <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center mb-4 text-zinc-600 dark:text-zinc-400 group-hover:text-indigo-400 transition-colors">
                   <service.icon className="w-6 h-6" />
                 </div>
-                <h3 className="font-semibold text-white mb-2">{service.title}</h3>
-                <p className="text-sm text-zinc-400 mb-6">{service.desc}</p>
+                <h3 className="font-semibold text-zinc-900 dark:text-white mb-2">{service.title}</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">{service.desc}</p>
                 <div className="flex items-center text-sm font-medium text-indigo-400 group-hover:text-indigo-300">
                   {service.action} <ChevronRight className="w-4 h-4 ml-1" />
                 </div>

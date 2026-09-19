@@ -32,7 +32,7 @@ export default function StudentDashboard() {
       <div className="flex-1 p-8 space-y-8">
 
         {/* Global Impact Banner */}
-        <div className="relative rounded-2xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-amber-950/30 border border-white/10 p-6 overflow-hidden shadow-xl">
+        <div className="relative rounded-2xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-amber-950/30 border border-zinc-200 dark:border-white/10 p-6 overflow-hidden shadow-xl">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
             <div className="flex items-start gap-4">
               <UniverseLogo size="lg" animated={true} withGlow={true} />
@@ -41,10 +41,10 @@ export default function StudentDashboard() {
                   <Sparkles className="w-3 h-3 text-amber-400" />
                   Inter-University & NGO Social Impact Network
                 </div>
-                <h2 className="text-xl font-black text-white leading-tight">
+                <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-tight">
                   You are collaborating with <span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">UNICEF & MIT</span>
                 </h2>
-                <p className="text-zinc-400 text-xs mt-1 max-w-xl">
+                <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-1 max-w-xl">
                   142 verified impact hours completed. Apply for cross-campus micro-grants and discover new humanitarian research projects.
                 </p>
               </div>
@@ -53,13 +53,13 @@ export default function StudentDashboard() {
             <div className="flex items-center gap-3 w-full md:w-auto">
               <Link
                 href="/student/impact/projects"
-                className="w-full md:w-auto px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-1.5 transition-all"
+                className="w-full md:w-auto px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-1.5 transition-all"
               >
                 Browse Projects <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
               <Link
                 href="/student/impact/dashboard"
-                className="w-full md:w-auto px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center justify-center gap-1.5 transition-all"
+                className="w-full md:w-auto px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center justify-center gap-1.5 transition-all"
               >
                 My Impact Ledger
               </Link>
@@ -80,8 +80,8 @@ export default function StudentDashboard() {
           {/* Today's Schedule */}
           <div className="xl:col-span-1 card">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-white">Today&apos;s Schedule</h2>
-              <span className="text-xs text-zinc-500">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+              <h2 className="font-bold text-zinc-900 dark:text-white">Today&apos;s Schedule</h2>
+              <span className="text-xs text-zinc-500 dark:text-zinc-500">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
             </div>
             <div className="space-y-3">
               {upcomingClasses.map((cls, i) => (
@@ -90,10 +90,10 @@ export default function StudentDashboard() {
                   key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-white/[0.06]">
                   <div className="w-1 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{cls.name}</div>
-                    <div className="text-xs text-zinc-500">{cls.room}</div>
+                    <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">{cls.name}</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-500">{cls.room}</div>
                   </div>
-                  <div className="text-xs text-zinc-400 flex items-center gap-1">
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {cls.time}
                   </div>
@@ -104,7 +104,7 @@ export default function StudentDashboard() {
 
           {/* GPA Progress */}
           <div className="xl:col-span-1 card">
-            <h2 className="font-bold text-white mb-5">Academic Progress</h2>
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Academic Progress</h2>
             <div className="flex flex-col items-center py-4">
               <div className="relative w-36 h-36">
                 <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
@@ -121,7 +121,7 @@ export default function StudentDashboard() {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <div className="text-3xl font-black gradient-text">3.74</div>
-                  <div className="text-xs text-zinc-400">GPA</div>
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400">GPA</div>
                 </div>
               </div>
               <div className="mt-6 w-full space-y-2">
@@ -132,8 +132,8 @@ export default function StudentDashboard() {
                 ].map(item => (
                   <div key={item.label}>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-zinc-400">{item.label}</span>
-                      <span className="text-white font-medium">{item.pct}%</span>
+                      <span className="text-zinc-600 dark:text-zinc-400">{item.label}</span>
+                      <span className="text-zinc-900 dark:text-white font-medium">{item.pct}%</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                       <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500"
@@ -147,7 +147,7 @@ export default function StudentDashboard() {
 
           {/* Recent Activity */}
           <div className="xl:col-span-1 card">
-            <h2 className="font-bold text-white mb-5">Recent Activity</h2>
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Recent Activity</h2>
             <div className="space-y-3">
               {recentActivity.map((item, i) => (
                 <motion.div 
@@ -166,7 +166,7 @@ export default function StudentDashboard() {
 
         {/* Quick Actions */}
         <div className="card">
-          <h2 className="font-bold text-white mb-5">Quick Actions</h2>
+          <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Quick Actions</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { icon: FileText, label: 'View Assignments', color: 'indigo', href: '/student/courses' },
@@ -186,7 +186,7 @@ export default function StudentDashboard() {
                   )}>
                     <a.icon className="w-5 h-5" />
                   </div>
-                  <span className="text-xs text-zinc-400 group-hover:text-white text-center">{a.label}</span>
+                  <span className="text-xs text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white text-center">{a.label}</span>
                 </motion.a>
               </Link>
             ))}

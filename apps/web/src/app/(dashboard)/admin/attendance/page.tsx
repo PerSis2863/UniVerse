@@ -133,31 +133,31 @@ export default function AdminAttendance() {
         <div className="max-w-7xl mx-auto space-y-8">
           
           {/* Tabs */}
-          <div className="flex border-b border-zinc-800">
+          <div className="flex border-b border-zinc-200 dark:border-zinc-800">
             <button 
               onClick={() => setActiveTab('roster')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'roster' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'roster' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-300'}`}
             >
               Class Roster
             </button>
             <button 
               onClick={() => setActiveTab('justifications')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'justifications' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'justifications' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-300'}`}
             >
               Pending Justifications 
-              {pendingCount > 0 && <span className="bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">{pendingCount}</span>}
+              {pendingCount > 0 && <span className="bg-indigo-500 text-zinc-900 dark:text-white text-xs px-2 py-0.5 rounded-full">{pendingCount}</span>}
             </button>
           </div>
 
           {activeTab === 'roster' && (
             <>
               {/* Filters & Actions Header */}
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-zinc-900 via-zinc-900/80 to-zinc-900 border border-zinc-800/50 p-5 rounded-2xl backdrop-blur-xl">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-zinc-900 via-zinc-900/80 to-zinc-900 border border-zinc-200 dark:border-zinc-800/50 p-5 rounded-2xl backdrop-blur-xl">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="relative">
-                    <label className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1 block">Date</label>
-                    <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden focus-within:border-indigo-500 transition-colors">
-                      <div className="pl-3 text-zinc-400"><Calendar className="w-4 h-4" /></div>
+                    <label className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider font-semibold mb-1 block">Date</label>
+                    <div className="flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden focus-within:border-indigo-500 transition-colors">
+                      <div className="pl-3 text-zinc-600 dark:text-zinc-400"><Calendar className="w-4 h-4" /></div>
                       <input 
                         type="date" 
                         value={selectedDate}
@@ -165,36 +165,36 @@ export default function AdminAttendance() {
                           setSelectedDate(e.target.value);
                           setLocalEdits({});
                         }}
-                        className="bg-transparent border-none text-sm text-white px-3 py-2 outline-none w-40 cursor-pointer"
+                        className="bg-transparent border-none text-sm text-zinc-900 dark:text-white px-3 py-2 outline-none w-40 cursor-pointer"
                       />
                     </div>
                   </div>
                   
                   <div className="relative">
-                    <label className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1 block">Course</label>
-                    <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden focus-within:border-indigo-500 transition-colors">
-                      <div className="pl-3 text-zinc-400"><Filter className="w-4 h-4" /></div>
+                    <label className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider font-semibold mb-1 block">Course</label>
+                    <div className="flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden focus-within:border-indigo-500 transition-colors">
+                      <div className="pl-3 text-zinc-600 dark:text-zinc-400"><Filter className="w-4 h-4" /></div>
                       <select 
                         value={selectedCourse}
                         onChange={(e) => {
                           setSelectedCourse(e.target.value);
                           setLocalEdits({});
                         }}
-                        className="bg-transparent border-none text-sm text-white px-3 py-2 outline-none w-56 appearance-none cursor-pointer"
+                        className="bg-transparent border-none text-sm text-zinc-900 dark:text-white px-3 py-2 outline-none w-56 appearance-none cursor-pointer"
                       >
                         {COURSES.map(course => (
                           <option key={course.id} value={course.id}>{course.code} - {course.name}</option>
                         ))}
                       </select>
-                      <div className="pr-3 text-zinc-500 pointer-events-none"><ChevronDown className="w-4 h-4" /></div>
+                      <div className="pr-3 text-zinc-500 dark:text-zinc-500 pointer-events-none"><ChevronDown className="w-4 h-4" /></div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t border-zinc-800/50 md:border-none">
+                <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t border-zinc-200 dark:border-zinc-800/50 md:border-none">
                   <button 
                     onClick={() => toast.info('Exporting attendance report...')}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 rounded-xl text-sm font-medium transition-colors border border-zinc-700/50"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:text-white hover:bg-zinc-700 rounded-xl text-sm font-medium transition-colors border border-zinc-700/50"
                   >
                     <Download className="w-4 h-4" /> Export CSV
                   </button>
@@ -204,12 +204,12 @@ export default function AdminAttendance() {
                     disabled={!hasUnsavedChanges || isSaving}
                     className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                       hasUnsavedChanges 
-                        ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]' 
-                        : 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700/50'
+                        ? 'bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]' 
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-500 cursor-not-allowed border border-zinc-700/50'
                     }`}
                   >
                     {isSaving ? (
-                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-zinc-300 dark:border-white/20 border-t-white rounded-full animate-spin" />
                     ) : (
                       <Save className="w-4 h-4" />
                     )}
@@ -220,72 +220,72 @@ export default function AdminAttendance() {
 
               {/* Stats Overview */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/50 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
+                <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-colors duration-500"></div>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-indigo-500/10 rounded-lg"><Users className="w-4 h-4 text-indigo-400" /></div>
-                    <span className="text-zinc-400 text-sm font-medium">Total Students</span>
+                    <span className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Total Students</span>
                   </div>
-                  <span className="text-3xl font-bold text-white mt-1">{stats.total}</span>
+                  <span className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">{stats.total}</span>
                 </div>
                 
-                <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/50 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
+                <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-colors duration-500"></div>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-emerald-500/10 rounded-lg"><UserCheck className="w-4 h-4 text-emerald-400" /></div>
-                    <span className="text-zinc-400 text-sm font-medium">Present</span>
+                    <span className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Present</span>
                   </div>
-                  <span className="text-3xl font-bold text-white mt-1">{stats.present}</span>
+                  <span className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">{stats.present}</span>
                 </div>
                 
-                <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/50 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
+                <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-colors duration-500"></div>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-red-500/10 rounded-lg"><UserX className="w-4 h-4 text-red-400" /></div>
-                    <span className="text-zinc-400 text-sm font-medium">Absent</span>
+                    <span className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Absent</span>
                   </div>
-                  <span className="text-3xl font-bold text-white mt-1">{stats.absent}</span>
+                  <span className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">{stats.absent}</span>
                 </div>
                 
-                <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/50 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
+                <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-5 flex flex-col relative overflow-hidden group">
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-colors duration-500"></div>
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-amber-500/10 rounded-lg"><Clock className="w-4 h-4 text-amber-400" /></div>
-                    <span className="text-zinc-400 text-sm font-medium">Attendance Rate</span>
+                    <span className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Attendance Rate</span>
                   </div>
                   <div className="flex items-end gap-2 mt-1">
-                    <span className="text-3xl font-bold text-white">{stats.rate}%</span>
+                    <span className="text-3xl font-bold text-zinc-900 dark:text-white">{stats.rate}%</span>
                     <span className="text-sm font-medium text-emerald-400 mb-1">+2.4%</span>
                   </div>
                 </div>
               </div>
 
               {/* Main Roster Table */}
-              <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/50 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-zinc-800/50 flex justify-between items-center bg-zinc-900/30">
+              <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="p-6 border-b border-zinc-200 dark:border-zinc-800/50 flex justify-between items-center bg-white dark:bg-zinc-900/30">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
                       <CheckCircle2 className="w-4 h-4 text-indigo-400" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-semibold text-white">Class Roster</h2>
-                      <p className="text-xs text-zinc-400 mt-0.5">Mark attendance for {COURSES.find(c => c.id === selectedCourse)?.code}</p>
+                      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Class Roster</h2>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">Mark attendance for {COURSES.find(c => c.id === selectedCourse)?.code}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-xs font-medium">
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> <span className="text-zinc-400">Present</span></div>
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> <span className="text-zinc-400">Absent</span></div>
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div> <span className="text-zinc-400">Late</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> <span className="text-zinc-600 dark:text-zinc-400">Present</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> <span className="text-zinc-600 dark:text-zinc-400">Absent</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div> <span className="text-zinc-600 dark:text-zinc-400">Late</span></div>
                   </div>
                 </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-zinc-950/80">
-                        <th className="p-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50 pl-6">Student Info</th>
-                        <th className="p-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50">Major</th>
-                        <th className="p-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50 text-right pr-6">Status</th>
+                      <tr className="bg-zinc-50 dark:bg-zinc-950/80">
+                        <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50 pl-6">Student Info</th>
+                        <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50">Major</th>
+                        <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50 text-right pr-6">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/30">
@@ -293,33 +293,33 @@ export default function AdminAttendance() {
                         const status = currentAttendance[student.id] || 'present';
                         
                         return (
-                          <tr key={student.id} className="hover:bg-zinc-800/20 transition-colors group">
+                          <tr key={student.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors group">
                             <td className="p-4 pl-6">
                               <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold shadow-inner">
                                   {student.name.charAt(0)}
                                 </div>
                                 <div>
-                                  <div className="text-sm font-medium text-white">{student.name}</div>
-                                  <div className="text-xs text-zinc-500 font-mono mt-0.5">{student.id} • {student.email}</div>
+                                  <div className="text-sm font-medium text-zinc-900 dark:text-white">{student.name}</div>
+                                  <div className="text-xs text-zinc-500 dark:text-zinc-500 font-mono mt-0.5">{student.id} • {student.email}</div>
                                 </div>
                               </div>
                             </td>
                             
                             <td className="p-4">
-                              <span className="inline-flex px-2.5 py-1 rounded-md bg-zinc-800/50 text-zinc-300 text-xs font-medium border border-zinc-700/30">
+                              <span className="inline-flex px-2.5 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800/50 text-zinc-300 text-xs font-medium border border-zinc-700/30">
                                 {student.major}
                               </span>
                             </td>
                             
                             <td className="p-4 pr-6 text-right">
-                              <div className="inline-flex rounded-xl bg-zinc-950 p-1 border border-zinc-800 shadow-inner">
+                              <div className="inline-flex rounded-xl bg-zinc-50 dark:bg-zinc-950 p-1 border border-zinc-200 dark:border-zinc-800 shadow-inner">
                                 <button
                                   onClick={() => handleStatusChange(student.id, 'present')}
                                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                                     status === 'present' 
                                       ? 'bg-emerald-500/15 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)] border border-emerald-500/20' 
-                                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+                                      : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white dark:bg-zinc-900'
                                   }`}
                                 >
                                   Present
@@ -329,7 +329,7 @@ export default function AdminAttendance() {
                                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                                     status === 'absent' 
                                       ? 'bg-red-500/15 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)] border border-red-500/20' 
-                                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+                                      : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white dark:bg-zinc-900'
                                   }`}
                                 >
                                   Absent
@@ -339,7 +339,7 @@ export default function AdminAttendance() {
                                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                                     status === 'late' 
                                       ? 'bg-amber-500/15 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.1)] border border-amber-500/20' 
-                                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+                                      : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white dark:bg-zinc-900'
                                   }`}
                                 >
                                   Late
@@ -349,7 +349,7 @@ export default function AdminAttendance() {
                                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                                     status === 'excused' 
                                       ? 'bg-blue-500/15 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.1)] border border-blue-500/20' 
-                                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+                                      : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white dark:bg-zinc-900'
                                   }`}
                                 >
                                   Excused
@@ -368,7 +368,7 @@ export default function AdminAttendance() {
                     <span className="text-sm font-medium text-indigo-400">You have unsaved attendance changes.</span>
                     <button 
                       onClick={handleSave}
-                      className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
+                      className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
                     >
                       Save Now
                     </button>
@@ -379,27 +379,27 @@ export default function AdminAttendance() {
           )}
 
           {activeTab === 'justifications' && (
-            <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/50 rounded-2xl overflow-hidden shadow-2xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-6">Pending Student Justifications</h2>
+            <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-2xl p-6">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">Pending Student Justifications</h2>
               
               {justifications.length === 0 ? (
                 <div className="text-center py-12">
                   <CheckCircle2 className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-                  <h3 className="text-white font-medium">All caught up!</h3>
-                  <p className="text-zinc-400 text-sm">There are no pending absent justifications to review.</p>
+                  <h3 className="text-zinc-900 dark:text-white font-medium">All caught up!</h3>
+                  <p className="text-zinc-600 dark:text-zinc-400 text-sm">There are no pending absent justifications to review.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {justifications.map((justification) => (
-                    <div key={justification.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div key={justification.id} className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-3">
-                          <span className="font-semibold text-white">{justification.studentName}</span>
-                          <span className="text-xs text-zinc-500 font-mono">{justification.studentId}</span>
-                          <span className="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded-md">{justification.course}</span>
-                          <span className="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded-md">{justification.date}</span>
+                          <span className="font-semibold text-zinc-900 dark:text-white">{justification.studentName}</span>
+                          <span className="text-xs text-zinc-500 dark:text-zinc-500 font-mono">{justification.studentId}</span>
+                          <span className="text-xs px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 rounded-md">{justification.course}</span>
+                          <span className="text-xs px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 rounded-md">{justification.date}</span>
                         </div>
-                        <p className="text-sm text-zinc-400">"{justification.reason}"</p>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">"{justification.reason}"</p>
                         <button 
                           onClick={() => setSelectedJustificationPhoto(justification.id)}
                           className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 transition-colors"
@@ -435,28 +435,28 @@ export default function AdminAttendance() {
       {/* Document Viewer Modal */}
       {selectedJustificationPhoto && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-white">Attached Document</h3>
+          <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Attached Document</h3>
               <button 
                 onClick={() => setSelectedJustificationPhoto(null)}
-                className="text-zinc-500 hover:text-white transition-colors"
+                className="text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 flex flex-col items-center justify-center bg-zinc-900/50 min-h-[400px]">
+            <div className="p-6 flex flex-col items-center justify-center bg-white dark:bg-zinc-900/50 min-h-[400px]">
               {/* Dummy Image placeholder */}
-              <div className="w-full h-64 bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center flex-col text-zinc-500">
+              <div className="w-full h-64 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center flex-col text-zinc-500 dark:text-zinc-500">
                 <FileText className="w-12 h-12 mb-3 opacity-50" />
                 <p>Medical_Certificate.pdf</p>
                 <span className="text-xs mt-2 text-zinc-600">Document viewer simulated</span>
               </div>
             </div>
-            <div className="p-4 border-t border-zinc-800 bg-zinc-900/30 flex justify-end">
+            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/30 flex justify-end">
               <button 
                 onClick={() => setSelectedJustificationPhoto(null)}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors"
+                className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white text-sm font-medium rounded-lg transition-colors"
               >
                 Close Viewer
               </button>

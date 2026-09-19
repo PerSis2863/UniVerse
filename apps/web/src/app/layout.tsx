@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from 'sonner';
+import { ThemeProvider } from '@/components/ThemeProvider';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,21 +25,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-[#09090b] text-white antialiased">
-        {children}
-        <Toaster 
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: 'rgba(9, 9, 11, 0.8)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#fff',
-            }
-          }}
-        />
-        <Analytics />
+      <body className="min-h-screen bg-background text-foreground antialiased transition-colors duration-300">
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          {children}
+          <Toaster 
+            position="bottom-right"
+            toastOptions={{
+              className: 'dark:bg-zinc-950 dark:border-white/10 dark:text-white bg-white border-zinc-200 text-zinc-900',
+            }}
+          />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );

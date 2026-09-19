@@ -65,9 +65,9 @@ export default function TeacherAttendance() {
           {/* Course Selector & Stats */}
           <div className="flex flex-col md:flex-row gap-6">
             <div className="card flex-1">
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Select Course</label>
+              <label className="block text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-2">Select Course</label>
               <select 
-                className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-white/[0.05] border border-zinc-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
               >
@@ -76,7 +76,7 @@ export default function TeacherAttendance() {
                 ))}
               </select>
               
-              <div className="mt-6 flex items-center justify-between text-sm text-zinc-400">
+              <div className="mt-6 flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
                 <div className="flex items-center gap-2"><Calendar className="w-4 h-4"/> Today: {new Date().toLocaleDateString()}</div>
                 <div className="flex items-center gap-2"><Users className="w-4 h-4"/> {totalStudents} Students</div>
               </div>
@@ -85,15 +85,15 @@ export default function TeacherAttendance() {
             <div className="card flex-1 flex items-center justify-around text-center">
               <div>
                 <div className="text-3xl font-bold text-emerald-400 mb-1">{presentCount}</div>
-                <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Present</div>
+                <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Present</div>
               </div>
               <div>
                 <div className="text-3xl font-bold text-amber-400 mb-1">{lateCount}</div>
-                <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Late</div>
+                <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Late</div>
               </div>
               <div>
                 <div className="text-3xl font-bold text-red-400 mb-1">{absentCount}</div>
-                <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Absent</div>
+                <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Absent</div>
               </div>
             </div>
           </div>
@@ -103,9 +103,9 @@ export default function TeacherAttendance() {
             <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="border-b border-white/[0.05] bg-white/[0.02]">
-                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-400 uppercase">Student Name</th>
-                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-400 uppercase">Email</th>
-                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-400 uppercase text-right">Mark Status</th>
+                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase">Student Name</th>
+                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase">Email</th>
+                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase text-right">Mark Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.05]">
@@ -114,10 +114,10 @@ export default function TeacherAttendance() {
                   
                   return (
                     <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="p-4 text-white text-sm font-medium">
+                      <td className="p-4 text-zinc-900 dark:text-white text-sm font-medium">
                         {student.name}
                       </td>
-                      <td className="p-4 text-zinc-400 text-sm">
+                      <td className="p-4 text-zinc-600 dark:text-zinc-400 text-sm">
                         {student.email}
                       </td>
                       <td className="p-4 text-right">
@@ -127,7 +127,7 @@ export default function TeacherAttendance() {
                             className={`p-2 rounded-md border transition-all ${
                               status === 'PRESENT' 
                                 ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
-                                : 'border-white/10 text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/10'
+                                : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/10'
                             }`}
                             title="Mark Present"
                           >
@@ -138,7 +138,7 @@ export default function TeacherAttendance() {
                             className={`p-2 rounded-md border transition-all ${
                               status === 'LATE' 
                                 ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' 
-                                : 'border-white/10 text-zinc-400 hover:border-amber-500/50 hover:text-amber-400 hover:bg-amber-500/10'
+                                : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-amber-500/50 hover:text-amber-400 hover:bg-amber-500/10'
                             }`}
                             title="Mark Late"
                           >
@@ -149,7 +149,7 @@ export default function TeacherAttendance() {
                             className={`p-2 rounded-md border transition-all ${
                               status === 'ABSENT' 
                                 ? 'bg-red-500/20 border-red-500/50 text-red-400' 
-                                : 'border-white/10 text-zinc-400 hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
+                                : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
                             }`}
                             title="Mark Absent"
                           >
@@ -162,7 +162,7 @@ export default function TeacherAttendance() {
                 })}
                 {currentStudents.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="p-8 text-center text-zinc-400">
+                    <td colSpan={3} className="p-8 text-center text-zinc-600 dark:text-zinc-400">
                       No students enrolled in this course yet.
                     </td>
                   </tr>

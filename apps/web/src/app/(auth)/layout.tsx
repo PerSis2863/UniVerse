@@ -23,7 +23,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               Collaborate.<br />
               <span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">Make Impact.</span>
             </h2>
-            <p className="text-zinc-400 text-base leading-relaxed max-w-md">
+            <p className="text-zinc-600 dark:text-zinc-400 text-base leading-relaxed max-w-md">
               UniVerse empowers students, world-class universities, and leading NGOs to collaborate on real-world projects, research initiatives, and social impact summits.
             </p>
             <div className="mt-8 grid grid-cols-2 gap-4 max-w-md">
@@ -35,12 +35,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               ].map(s => (
                 <div key={s.l} className="glass rounded-xl p-4 border border-white/[0.08] hover:border-indigo-500/30 transition-colors">
                   <div className="text-2xl font-black bg-gradient-to-r from-indigo-300 via-white to-amber-300 bg-clip-text text-transparent">{s.n}</div>
-                  <div className="text-zinc-400 text-xs font-medium">{s.l}</div>
+                  <div className="text-zinc-600 dark:text-zinc-400 text-xs font-medium">{s.l}</div>
                 </div>
               ))}
             </div>
           </div>
-          <div className="text-zinc-500 text-xs flex items-center justify-between">
+          <div className="text-zinc-500 dark:text-zinc-500 text-xs flex items-center justify-between">
             <span>© 2026 UniVerse Impact Network</span>
             <span>UN Sustainable Development Partner</span>
           </div>

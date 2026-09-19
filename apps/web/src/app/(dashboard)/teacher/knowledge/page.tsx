@@ -94,7 +94,7 @@ export default function TeacherKnowledgeHubPage() {
           <div className="flex justify-end">
             <button 
               onClick={() => { setFormData({ title: '', category: 'General', type: 'Document', url: '' }); setShowAddModal(true); }}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 whitespace-nowrap z-20 relative"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 whitespace-nowrap z-20 relative"
             >
                Add Resource
             </button>
@@ -106,10 +106,10 @@ export default function TeacherKnowledgeHubPage() {
                    
                    {/* Actions Overlay */}
                    <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                     <button className="p-2 text-zinc-400 hover:text-white rounded-md transition-colors bg-zinc-800/80 hover:bg-zinc-700" onClick={() => openEdit(resource)}>
+                     <button className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-md transition-colors bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-700" onClick={() => openEdit(resource)}>
                        <Edit className="w-4 h-4" />
                      </button>
-                     <button onClick={() => handleDelete(resource.id)} className="p-2 text-red-500/80 hover:text-red-400 rounded-md transition-colors bg-zinc-800/80 hover:bg-zinc-700">
+                     <button onClick={() => handleDelete(resource.id)} className="p-2 text-red-500/80 hover:text-red-400 rounded-md transition-colors bg-zinc-100 dark:bg-zinc-800/80 hover:bg-zinc-700">
                        <Trash2 className="w-4 h-4" />
                      </button>
                    </div>
@@ -118,17 +118,17 @@ export default function TeacherKnowledgeHubPage() {
                      {resource.label}
                    </div>
                    
-                   <h4 className="text-lg font-bold text-white mb-2">{resource.title}</h4>
-                   <p className="text-sm text-zinc-400 flex-1 mb-6">Course material in {resource.category}</p>
+                   <h4 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">{resource.title}</h4>
+                   <p className="text-sm text-zinc-600 dark:text-zinc-400 flex-1 mb-6">Course material in {resource.category}</p>
                    
                    <div className="flex items-center justify-between text-sm">
-                     <span className="text-zinc-500">Added {new Date(resource.date).toLocaleDateString()}</span>
+                     <span className="text-zinc-500 dark:text-zinc-500">Added {new Date(resource.date).toLocaleDateString()}</span>
                      <span className="text-indigo-400 font-medium flex items-center gap-1">View <ExternalLink className="w-3 h-3" /></span>
                    </div>
                 </div>
              ))}
              {filteredResources.length === 0 && (
-                <div className="col-span-full py-12 text-center text-zinc-500 card">
+                <div className="col-span-full py-12 text-center text-zinc-500 dark:text-zinc-500 card">
                   No resources have been added yet.
                 </div>
              )}
@@ -138,13 +138,13 @@ export default function TeacherKnowledgeHubPage() {
 
       {(showAddModal || showEditModal) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5 relative">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5 relative">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white">{showEditModal ? 'Edit Resource' : 'Add New Resource'}</h2>
-                <p className="text-sm text-zinc-400 mt-1">Configure resource details.</p>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{showEditModal ? 'Edit Resource' : 'Add New Resource'}</h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Configure resource details.</p>
               </div>
-              <button onClick={() => { setShowAddModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+              <button onClick={() => { setShowAddModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -152,11 +152,11 @@ export default function TeacherKnowledgeHubPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">Resource Title *</label>
-                <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 relative z-10" placeholder="e.g. Study Guide v2" />
+                <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 relative z-10" placeholder="e.g. Study Guide v2" />
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">Category</label>
-                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500">
                   {CATEGORIES.filter(c => c !== 'All').map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -164,7 +164,7 @@ export default function TeacherKnowledgeHubPage() {
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">Type</label>
-                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500">
                   <option value="Document">Document</option>
                   <option value="PDF">PDF</option>
                   <option value="Video">Video</option>
@@ -174,14 +174,14 @@ export default function TeacherKnowledgeHubPage() {
               {formData.type === 'Link' && (
                 <div>
                   <label className="text-xs font-medium text-zinc-300 block mb-1">URL</label>
-                  <input type="url" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="https://" />
+                  <input type="url" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" placeholder="https://" />
                 </div>
               )}
             </div>
             
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
-              <button onClick={() => { setShowAddModal(false); setShowEditModal(null); }} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
-              <button onClick={showEditModal ? handleEdit : handleAdd} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <button onClick={() => { setShowAddModal(false); setShowEditModal(null); }} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
+              <button onClick={showEditModal ? handleEdit : handleAdd} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg flex items-center gap-2 transition-all">
                 <Upload className="w-4 h-4" /> {showEditModal ? 'Save Changes' : 'Add Resource'}
               </button>
             </div>

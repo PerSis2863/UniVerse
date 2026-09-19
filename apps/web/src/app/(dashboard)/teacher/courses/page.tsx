@@ -57,7 +57,7 @@ export default function TeacherCourses() {
         <div className="flex justify-end mb-6">
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
           >
             <Plus className="w-4 h-4" /> Create Course
           </button>
@@ -66,8 +66,8 @@ export default function TeacherCourses() {
         {courses.length === 0 ? (
           <div className="card text-center py-12">
             <BookOpen className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">No courses yet</h2>
-            <p className="text-zinc-400">You haven't created any courses.</p>
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">No courses yet</h2>
+            <p className="text-zinc-600 dark:text-zinc-400">You haven't created any courses.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -76,10 +76,10 @@ export default function TeacherCourses() {
                 
                 {/* Actions Overlay */}
                 <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => openEdit(course)} className="p-2 bg-black/60 hover:bg-black text-zinc-300 hover:text-white rounded-md backdrop-blur-md transition-colors">
+                  <button onClick={() => openEdit(course)} className="p-2 bg-black/60 hover:bg-black text-zinc-300 hover:text-zinc-900 dark:text-white rounded-md backdrop-blur-md transition-colors">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(course.id)} className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-white rounded-md backdrop-blur-md transition-colors">
+                  <button onClick={() => handleDelete(course.id)} className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-zinc-900 dark:text-white rounded-md backdrop-blur-md transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -89,13 +89,13 @@ export default function TeacherCourses() {
                     <div className="absolute top-4 left-4 text-4xl opacity-50 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-300">
                       {course.emoji || '📚'}
                     </div>
-                    <div className="bg-black/40 backdrop-blur-sm inline-block px-3 py-1 rounded-full text-xs font-medium text-white w-max mb-2">
+                    <div className="bg-black/40 backdrop-blur-sm inline-block px-3 py-1 rounded-full text-xs font-medium text-zinc-900 dark:text-white w-max mb-2">
                       {course.code}
                     </div>
-                    <h2 className="text-xl font-bold text-white drop-shadow-md truncate">{course.name}</h2>
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white drop-shadow-md truncate">{course.name}</h2>
                   </div>
                   <div className="p-5 flex-1 flex flex-col">
-                    <p className="text-sm text-zinc-400 line-clamp-2 mb-4 flex-1">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 mb-4 flex-1">
                       {course.description || 'No description provided.'}
                     </p>
                     
@@ -109,7 +109,7 @@ export default function TeacherCourses() {
                   </div>
                   
                   <div className="px-5 py-3 border-t border-white/[0.05] bg-white/[0.02] flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-xs text-zinc-400">
+                    <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-400">
                       <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5"/> {course._count?.enrollments || 0} Students</span>
                       <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/> {course._count?.materials || 0} Materials</span>
                     </div>
@@ -125,35 +125,35 @@ export default function TeacherCourses() {
       {/* Course Details Modal */}
       {showDetailsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowDetailsModal(null)}>
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
             <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: showDetailsModal.color || '#6366f1' }}>
-               <button onClick={() => setShowDetailsModal(null)} className="absolute top-4 right-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white transition-colors">
+               <button onClick={() => setShowDetailsModal(null)} className="absolute top-4 right-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-zinc-900 dark:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
               <div className="absolute top-4 left-4 text-4xl opacity-50">
                 {showDetailsModal.emoji || '📚'}
               </div>
-              <h2 className="text-2xl font-bold text-white drop-shadow-md z-10">{showDetailsModal.name}</h2>
+              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white drop-shadow-md z-10">{showDetailsModal.name}</h2>
             </div>
             
             <div className="p-6 overflow-y-auto space-y-8 flex-1">
               <div>
-                <h3 className="text-lg font-bold text-white mb-2">Description</h3>
-                <p className="text-sm text-zinc-400">{showDetailsModal.description}</p>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Description</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">{showDetailsModal.description}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                   <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-400" /> Enrolled Students</h3>
+                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-400" /> Enrolled Students</h3>
                    <div className="space-y-3">
                       {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex items-center gap-3 bg-zinc-800/30 p-2 rounded-lg border border-zinc-800/50">
+                        <div key={i} className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800/30 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800/50">
                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">
                              ST
                            </div>
                            <div>
-                             <div className="text-sm font-medium text-white">Student {i}</div>
-                             <div className="text-xs text-zinc-500">student{i}@universe.edu</div>
+                             <div className="text-sm font-medium text-zinc-900 dark:text-white">Student {i}</div>
+                             <div className="text-xs text-zinc-500 dark:text-zinc-500">student{i}@universe.edu</div>
                            </div>
                         </div>
                       ))}
@@ -170,10 +170,10 @@ export default function TeacherCourses() {
                    </div>
                 </div>
                 <div>
-                   <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><FileText className="w-5 h-5 text-emerald-400" /> Recent Materials</h3>
+                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2"><FileText className="w-5 h-5 text-emerald-400" /> Recent Materials</h3>
                    <div className="space-y-3">
                       {['Syllabus.pdf', 'Lecture1_Slides.pdf', 'Assignment1.docx'].map((file, i) => (
-                        <div key={i} className="flex items-center gap-3 bg-zinc-800/30 p-2 rounded-lg border border-zinc-800/50">
+                        <div key={i} className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800/30 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800/50">
                            <FileText className="w-4 h-4 text-emerald-500" />
                            <div className="text-sm text-zinc-300 truncate">{file}</div>
                         </div>
@@ -199,13 +199,13 @@ export default function TeacherCourses() {
       {/* Create / Edit Modal */}
       {(showCreateModal || showEditModal) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-5">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white">{showEditModal ? 'Edit Course' : 'Create New Course'}</h2>
-                <p className="text-sm text-zinc-400 mt-1">Fill in the details for this course.</p>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{showEditModal ? 'Edit Course' : 'Create New Course'}</h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Fill in the details for this course.</p>
               </div>
-              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -214,30 +214,30 @@ export default function TeacherCourses() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="text-xs font-medium text-zinc-300 block mb-1">Course Code *</label>
-                  <input type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} placeholder="e.g. CS101" className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500" />
+                  <input type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} placeholder="e.g. CS101" className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-zinc-300 block mb-1">Emoji</label>
-                  <input type="text" value={formData.emoji} onChange={e => setFormData({...formData, emoji: e.target.value})} className="w-20 px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 text-center" />
+                  <input type="text" value={formData.emoji} onChange={e => setFormData({...formData, emoji: e.target.value})} className="w-20 px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 text-center" />
                 </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">Course Name *</label>
-                <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Introduction to Computer Science" className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500" />
+                <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Introduction to Computer Science" className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" />
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">Description</label>
-                <textarea rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="What is this course about?" className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 resize-none" />
+                <textarea rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="What is this course about?" className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none" />
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">Theme Color</label>
-                <input type="color" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full h-10 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none" />
+                <input type="color" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full h-10 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none" />
               </div>
             </div>
             
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
-              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
-              <button onClick={showEditModal ? handleEdit : handleCreate} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
+              <button onClick={showEditModal ? handleEdit : handleCreate} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg flex items-center gap-2 transition-all">
                 <Upload className="w-4 h-4" /> {showEditModal ? 'Save Changes' : 'Create Course'}
               </button>
             </div>

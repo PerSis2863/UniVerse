@@ -68,7 +68,7 @@ export default function AdminAnnouncements() {
         <div className="flex justify-end mb-6">
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
           >
             <Plus className="w-4 h-4" /> Create Announcement
           </button>
@@ -81,9 +81,9 @@ export default function AdminAnnouncements() {
         ) : announcements.length === 0 ? (
           <div className="card text-center py-12">
             <Megaphone className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-white mb-2">No announcements</h2>
-            <p className="text-zinc-400 mb-6">There are no announcements in the system.</p>
-            <button onClick={openCreate} className="mx-auto flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">No announcements</h2>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-6">There are no announcements in the system.</p>
+            <button onClick={openCreate} className="mx-auto flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
               <Plus className="w-4 h-4" /> Create First Announcement
             </button>
           </div>
@@ -96,14 +96,14 @@ export default function AdminAnnouncements() {
                 <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => openEdit(ann)}
-                    className="p-2 bg-black/60 hover:bg-indigo-600 text-zinc-300 hover:text-white rounded-md backdrop-blur-md transition-colors"
+                    className="p-2 bg-black/60 hover:bg-indigo-600 text-zinc-300 hover:text-zinc-900 dark:text-white rounded-md backdrop-blur-md transition-colors"
                     title="Edit"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setConfirmDelete(ann.id)}
-                    className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-white rounded-md backdrop-blur-md transition-colors"
+                    className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-zinc-900 dark:text-white rounded-md backdrop-blur-md transition-colors"
                     title="Delete"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -116,18 +116,18 @@ export default function AdminAnnouncements() {
                       {ann.course?.name || 'Global Announcement'}
                     </span>
                   </div>
-                  <h2 className="text-xl font-bold text-white mb-3">{ann.title}</h2>
-                  <p className="text-sm text-zinc-400 line-clamp-3 flex-1">
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-3">{ann.title}</h2>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-3 flex-1">
                     {ann.content || ann.body || 'No content.'}
                   </p>
                 </div>
 
                 <div className="p-4 mt-auto border-t border-white/[0.05] bg-white/[0.02] flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
                     <User className="w-3.5 h-3.5" />
                     {ann.author?.name || 'Unknown Author'}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-500">
                     <Calendar className="w-3.5 h-3.5" />
                     {new Date(ann.createdAt).toLocaleDateString()}
                   </div>
@@ -141,29 +141,29 @@ export default function AdminAnnouncements() {
       {/* Create / Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-5">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white">{editTarget ? 'Edit Announcement' : 'New Announcement'}</h2>
-                <p className="text-sm text-zinc-400 mt-1">{editTarget ? 'Update the announcement details below.' : 'This will be published to all users immediately.'}</p>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{editTarget ? 'Edit Announcement' : 'New Announcement'}</h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{editTarget ? 'Update the announcement details below.' : 'This will be published to all users immediately.'}</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">Title *</label>
-                <input type="text" value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Announcement title..." className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500" />
+                <input type="text" value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Announcement title..." className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" />
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">Content</label>
-                <textarea rows={5} value={formBody} onChange={e => setFormBody(e.target.value)} placeholder="Write the full announcement body here..." className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 resize-none" />
+                <textarea rows={5} value={formBody} onChange={e => setFormBody(e.target.value)} placeholder="Write the full announcement body here..." className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none" />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleSave} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
+              <button onClick={handleSave} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg flex items-center gap-2 transition-all">
                 <Send className="w-4 h-4" /> {editTarget ? 'Save Changes' : 'Publish'}
               </button>
             </div>
@@ -174,15 +174,15 @@ export default function AdminAnnouncements() {
       {/* Delete Confirmation Modal */}
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6 text-red-400" />
             </div>
-            <h2 className="text-lg font-bold text-white text-center">Delete Announcement?</h2>
-            <p className="text-sm text-zinc-400 text-center">This action cannot be undone. The announcement will be permanently removed.</p>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white text-center">Delete Announcement?</h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center">This action cannot be undone. The announcement will be permanently removed.</p>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 px-4 py-2 text-sm text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(confirmDelete)} className="flex-1 px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-500 rounded-xl transition-colors">Delete</button>
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors">Cancel</button>
+              <button onClick={() => handleDelete(confirmDelete)} className="flex-1 px-4 py-2 text-sm font-bold text-zinc-900 dark:text-white bg-red-600 hover:bg-red-500 rounded-xl transition-colors">Delete</button>
             </div>
           </div>
         </div>

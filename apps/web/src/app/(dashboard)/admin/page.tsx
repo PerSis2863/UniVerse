@@ -64,15 +64,15 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Departments */}
           <div className="xl:col-span-2 card">
-            <h2 className="font-bold text-white mb-5">Departments</h2>
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Departments</h2>
             <div className="space-y-4">
               {departments.map((d, i) => (
                 <div key={i} className="flex items-center gap-4">
                   <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium text-white">{d.name}</span>
-                      <span className="text-xs text-zinc-400">{d.students} students</span>
+                      <span className="text-sm font-medium text-zinc-900 dark:text-white">{d.name}</span>
+                      <span className="text-xs text-zinc-600 dark:text-zinc-400">{d.students} students</span>
                     </div>
                     <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
                       <div className="h-full rounded-full" style={{
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
                       }} />
                     </div>
                   </div>
-                  <div className="text-xs text-zinc-500 w-20 text-right">{d.teachers} teachers</div>
+                  <div className="text-xs text-zinc-500 dark:text-zinc-500 w-20 text-right">{d.teachers} teachers</div>
                 </div>
               ))}
             </div>
@@ -90,7 +90,7 @@ export default function AdminDashboard() {
             {/* Revenue chart placeholder */}
             <div className="mt-6 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-white">Revenue Overview</h3>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Revenue Overview</h3>
                 <span className="badge-green">+8% this month</span>
               </div>
               {/* Simple bar chart */}
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
 
           {/* Recent Payments */}
           <div className="card">
-            <h2 className="font-bold text-white mb-5">Recent Payments</h2>
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Recent Payments</h2>
             <div className="space-y-3">
               {recentPayments.map((p, i) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
@@ -123,11 +123,11 @@ export default function AdminDashboard() {
                     {p.name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{p.name}</div>
-                    <div className="text-xs text-zinc-500">{p.type}</div>
+                    <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">{p.name}</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-500">{p.type}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="text-sm font-bold text-white">{formatCurrency(p.amount)}</span>
+                    <span className="text-sm font-bold text-zinc-900 dark:text-white">{formatCurrency(p.amount)}</span>
                     {statusIcon[p.status as keyof typeof statusIcon]}
                   </div>
                 </div>
@@ -143,10 +143,10 @@ export default function AdminDashboard() {
 
         {/* Pending Approvals */}
         <div className="card">
-          <h2 className="font-bold text-white mb-5">Pending User Approvals</h2>
+          <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Pending User Approvals</h2>
           <div className="space-y-2">
             {pendingUsers.length === 0 ? (
-              <div className="text-sm text-zinc-500 py-4 text-center">No pending approvals.</div>
+              <div className="text-sm text-zinc-500 dark:text-zinc-500 py-4 text-center">No pending approvals.</div>
             ) : (
               pendingUsers.map((u, i) => (
                 <div key={u.id} className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
@@ -154,8 +154,8 @@ export default function AdminDashboard() {
                     {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-white">{u.name}</div>
-                    <div className="text-xs text-zinc-500">{u.role} • {u.dept} • {u.applied}</div>
+                    <div className="text-sm font-medium text-zinc-900 dark:text-white">{u.name}</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-500">{u.role} • {u.dept} • {u.applied}</div>
                   </div>
                   <div className="flex gap-2">
                     <button 

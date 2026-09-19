@@ -25,42 +25,42 @@ export default function InternshipHistory() {
           
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <input 
                 type="text" 
                 placeholder="Search by company, role, or student name..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-900/50 border border-zinc-800 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
               />
             </div>
-            <button onClick={() => toast.success('Filters clicked')} className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+            <button onClick={() => toast.success('Filters clicked')} className="flex items-center gap-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:bg-zinc-800 text-zinc-300 px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
               <Filter className="w-4 h-4" /> Filters
             </button>
           </div>
 
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-900/80">
-                  <th className="p-4 text-sm font-medium text-zinc-400">Company & Role</th>
-                  <th className="p-4 text-sm font-medium text-zinc-400">Student</th>
-                  <th className="p-4 text-sm font-medium text-zinc-400 hidden sm:table-cell">Location</th>
-                  <th className="p-4 text-sm font-medium text-zinc-400 hidden md:table-cell">Term</th>
-                  <th className="p-4 text-sm font-medium text-zinc-400 text-right">Connect</th>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80">
+                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">Company & Role</th>
+                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">Student</th>
+                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400 hidden sm:table-cell">Location</th>
+                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400 hidden md:table-cell">Term</th>
+                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400 text-right">Connect</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
                 {INTERNSHIP_HISTORY.map((internship) => (
-                  <tr key={internship.id} className="hover:bg-zinc-800/30 transition-colors group">
+                  <tr key={internship.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-400 flex-shrink-0">
                           {internship.logo}
                         </div>
                         <div>
-                          <div className="font-medium text-white group-hover:text-indigo-400 transition-colors cursor-pointer">{internship.role}</div>
-                          <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-0.5">
+                          <div className="font-medium text-zinc-900 dark:text-white group-hover:text-indigo-400 transition-colors cursor-pointer">{internship.role}</div>
+                          <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
                             <Building className="w-3 h-3" /> {internship.company}
                           </div>
                         </div>
@@ -69,18 +69,18 @@ export default function InternshipHistory() {
                     <td className="p-4">
                       <div className="text-sm font-medium text-zinc-200">{internship.student}</div>
                     </td>
-                    <td className="p-4 text-sm text-zinc-400 hidden sm:table-cell">
+                    <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400 hidden sm:table-cell">
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3 h-3" /> {internship.location}
                       </div>
                     </td>
-                    <td className="p-4 text-sm text-zinc-400 hidden md:table-cell">
+                    <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400 hidden md:table-cell">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3 h-3" /> {internship.term}
                       </div>
                     </td>
                     <td className="p-4 text-right">
-                      <button onClick={() => toast.success(`Asking ${internship.student} about their experience...`)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-lg text-sm font-medium transition-colors">
+                      <button onClick={() => toast.success(`Asking ${internship.student} about their experience...`)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors">
                         Ask about experience <ExternalLink className="w-3 h-3" />
                       </button>
                     </td>

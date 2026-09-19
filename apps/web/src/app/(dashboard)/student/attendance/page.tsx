@@ -66,13 +66,13 @@ export default function StudentAttendance() {
       {/* Justification Modal */}
       {isJustifyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-zinc-800">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-400" />
                 Justify Absence
               </h2>
-              <button onClick={() => setIsJustifyModalOpen(false)} className="text-zinc-400 hover:text-white transition-colors">
+              <button onClick={() => setIsJustifyModalOpen(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -84,21 +84,21 @@ export default function StudentAttendance() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Reason for Absence</label>
+                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Reason for Absence</label>
                 <textarea 
                   required 
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-white outline-none focus:border-indigo-500 h-24 resize-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-3 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 h-24 resize-none"
                   placeholder="e.g. Medical emergency (see attached doctor's note)"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Supporting Photo / Document</label>
+                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Supporting Photo / Document</label>
                 <label 
                   className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center transition-colors cursor-pointer ${
-                    fileAttached ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-zinc-800 hover:border-indigo-500/50 bg-zinc-950'
+                    fileAttached ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-zinc-200 dark:border-zinc-800 hover:border-indigo-500/50 bg-zinc-50 dark:bg-zinc-950'
                   }`}
                 >
                   <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => setFileAttached(e.target.files && e.target.files.length > 0 ? true : false)} />
@@ -106,25 +106,25 @@ export default function StudentAttendance() {
                     <>
                       <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2" />
                       <span className="text-emerald-400 text-sm font-medium">Document attached successfully</span>
-                      <span className="text-zinc-500 text-xs mt-1">Click to replace</span>
+                      <span className="text-zinc-500 dark:text-zinc-500 text-xs mt-1">Click to replace</span>
                     </>
                   ) : (
                     <>
                       <Upload className="w-8 h-8 text-zinc-600 mb-2" />
-                      <span className="text-zinc-400 text-sm font-medium">Click to upload photo/PDF</span>
+                      <span className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Click to upload photo/PDF</span>
                       <span className="text-zinc-600 text-xs mt-1">Max file size: 5MB</span>
                     </>
                   )}
                 </label>
               </div>
 
-              <div className="pt-4 border-t border-zinc-800">
+              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full py-2.5 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-zinc-900 dark:text-white rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : null}
+                  {isSubmitting ? <div className="w-5 h-5 border-2 border-zinc-300 dark:border-white/20 border-t-white rounded-full animate-spin" /> : null}
                   {isSubmitting ? 'Submitting...' : 'Submit Justification'}
                 </button>
               </div>
@@ -142,46 +142,46 @@ export default function StudentAttendance() {
               <div className="text-4xl font-bold text-indigo-400 mb-1">{attendanceRate}%</div>
               <div className="text-sm font-medium text-indigo-300">Overall Rate</div>
             </div>
-            <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-6 flex flex-col items-center justify-center">
+            <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-6 flex flex-col items-center justify-center">
               <div className="flex items-center gap-2 text-2xl font-bold text-emerald-400 mb-1">
                 <CheckCircle2 className="w-6 h-6" /> {presentClasses}
               </div>
-              <div className="text-sm font-medium text-zinc-400">Present</div>
+              <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Present</div>
             </div>
-            <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-6 flex flex-col items-center justify-center">
+            <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-6 flex flex-col items-center justify-center">
               <div className="flex items-center gap-2 text-2xl font-bold text-amber-400 mb-1">
                 <Clock className="w-6 h-6" /> {lateClasses}
               </div>
-              <div className="text-sm font-medium text-zinc-400">Late</div>
+              <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Late</div>
             </div>
-            <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl p-6 flex flex-col items-center justify-center">
+            <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-6 flex flex-col items-center justify-center">
               <div className="flex items-center gap-2 text-2xl font-bold text-red-400 mb-1">
                 <XCircle className="w-6 h-6" /> {absentClasses}
               </div>
-              <div className="text-sm font-medium text-zinc-400">Absent</div>
+              <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Absent</div>
             </div>
           </div>
 
           {/* Attendance Records */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Recent Records</h2>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Recent Records</h2>
             </div>
             
-            <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-xl">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-zinc-950/80">
-                    <th className="p-5 text-xs font-semibold tracking-wider text-zinc-500 uppercase border-b border-zinc-800/50">Date</th>
-                    <th className="p-5 text-xs font-semibold tracking-wider text-zinc-500 uppercase border-b border-zinc-800/50">Course</th>
-                    <th className="p-5 text-xs font-semibold tracking-wider text-zinc-500 uppercase border-b border-zinc-800/50">Status</th>
-                    <th className="p-5 text-xs font-semibold tracking-wider text-zinc-500 uppercase border-b border-zinc-800/50 text-right">Action</th>
+                  <tr className="bg-zinc-50 dark:bg-zinc-950/80">
+                    <th className="p-5 text-xs font-semibold tracking-wider text-zinc-500 dark:text-zinc-500 uppercase border-b border-zinc-200 dark:border-zinc-800/50">Date</th>
+                    <th className="p-5 text-xs font-semibold tracking-wider text-zinc-500 dark:text-zinc-500 uppercase border-b border-zinc-200 dark:border-zinc-800/50">Course</th>
+                    <th className="p-5 text-xs font-semibold tracking-wider text-zinc-500 dark:text-zinc-500 uppercase border-b border-zinc-200 dark:border-zinc-800/50">Status</th>
+                    <th className="p-5 text-xs font-semibold tracking-wider text-zinc-500 dark:text-zinc-500 uppercase border-b border-zinc-200 dark:border-zinc-800/50 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/30">
                   {records.map((record) => (
-                    <tr key={record.id} className="hover:bg-zinc-800/20 transition-colors">
-                      <td className="p-5 text-white text-sm font-medium">
+                    <tr key={record.id} className="hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors">
+                      <td className="p-5 text-zinc-900 dark:text-white text-sm font-medium">
                         {new Date(record.date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                       </td>
                       <td className="p-5 text-zinc-300 text-sm">

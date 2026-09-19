@@ -53,7 +53,7 @@ export default function TeacherDashboard() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* My Courses */}
           <div className="xl:col-span-2 card">
-            <h2 className="font-bold text-white mb-5">My Courses</h2>
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">My Courses</h2>
             <div className="space-y-4">
               {myCourses.map((c, i) => (
                 <motion.div 
@@ -67,11 +67,11 @@ export default function TeacherDashboard() {
                         📚
                       </div>
                       <div>
-                        <div className="font-semibold text-white text-sm">{c.name}</div>
-                        <div className="text-xs text-zinc-500">{c.code} • {c.students} students</div>
+                        <div className="font-semibold text-zinc-900 dark:text-white text-sm">{c.name}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-500">{c.code} • {c.students} students</div>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-white">{c.completion}%</span>
+                    <span className="text-sm font-bold text-zinc-900 dark:text-white">{c.completion}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                     <motion.div className="h-full rounded-full"
@@ -92,7 +92,7 @@ export default function TeacherDashboard() {
 
           {/* Students needing attention */}
           <div className="card">
-            <h2 className="font-bold text-white mb-5">Student Performance</h2>
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Student Performance</h2>
             <div className="space-y-3">
               {recentStudents.map((s, i) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
@@ -100,11 +100,11 @@ export default function TeacherDashboard() {
                     {s.name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{s.name}</div>
-                    <div className="text-xs text-zinc-500 truncate">{s.course}</div>
+                    <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">{s.name}</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-500 truncate">{s.course}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="text-sm font-bold text-white">{s.score}%</span>
+                    <span className="text-sm font-bold text-zinc-900 dark:text-white">{s.score}%</span>
                     <span className={`badge text-[10px] px-2 py-0.5 ${statusColors[s.status as keyof typeof statusColors]}`}>
                       {s.status.replace('-', ' ')}
                     </span>
@@ -117,7 +117,7 @@ export default function TeacherDashboard() {
 
         {/* Quick Actions */}
         <div className="card">
-          <h2 className="font-bold text-white mb-5">Quick Actions</h2>
+          <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Quick Actions</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { icon: CheckCircle2, label: 'Mark Attendance', color: 'green', href: '/teacher/attendance' },
@@ -135,7 +135,7 @@ export default function TeacherDashboard() {
                     a.color === 'cyan' ? 'bg-cyan-600/20 text-cyan-400' : 'bg-amber-900/30 text-amber-400'}`}>
                   <a.icon className="w-5 h-5" />
                 </div>
-                <span className="text-xs text-zinc-400 group-hover:text-white text-center">{a.label}</span>
+                <span className="text-xs text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white text-center">{a.label}</span>
               </motion.button>
             ))}
           </div>

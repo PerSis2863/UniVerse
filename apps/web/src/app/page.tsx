@@ -60,7 +60,7 @@ export default function HomePage() {
               <span className="gradient-text">Social Impact</span>
               <br />Platform
             </h1>
-            <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
               A modern network unifying universities, students, and NGOs to drive social change, inter-college collaborations, and real-world impact.
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
@@ -98,8 +98,8 @@ export default function HomePage() {
                 <div className="w-10 h-10 rounded-xl bg-indigo-600/15 flex items-center justify-center mb-4 group-hover:bg-indigo-600/25 transition-colors">
                   <f.icon className="w-5 h-5 text-indigo-400" />
                 </div>
-                <h3 className="font-bold text-white mb-1.5">{f.title}</h3>
-                <p className="text-zinc-400 text-sm leading-relaxed">{f.desc}</p>
+                <h3 className="font-bold text-zinc-900 dark:text-white mb-1.5">{f.title}</h3>
+                <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -107,7 +107,7 @@ export default function HomePage() {
 
         {/* Footer */}
         <div className="max-w-6xl mx-auto mt-32 border-t border-white/[0.05] pt-8 flex items-center justify-center">
-          <p className="text-xs text-zinc-500 flex items-center gap-1.5 font-medium">
+          <p className="text-xs text-zinc-500 dark:text-zinc-500 flex items-center gap-1.5 font-medium">
             made with <span className="text-rose-500 animate-pulse">❤️</span> by Aditya Bhatt
           </p>
         </div>

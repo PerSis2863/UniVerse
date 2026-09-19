@@ -92,37 +92,37 @@ export default function AdminStudentLifePage() {
         <div className="max-w-7xl mx-auto space-y-8">
           
           {/* Tabs */}
-          <div className="flex border-b border-zinc-800">
-            <button onClick={() => setActiveTab('events')} className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'events' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}>
+          <div className="flex border-b border-zinc-200 dark:border-zinc-800">
+            <button onClick={() => setActiveTab('events')} className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'events' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-300'}`}>
               <Calendar className="w-4 h-4" /> Events
             </button>
-            <button onClick={() => setActiveTab('clubs')} className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'clubs' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}>
+            <button onClick={() => setActiveTab('clubs')} className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'clubs' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-300'}`}>
               <Users className="w-4 h-4" /> Clubs
             </button>
-            <button onClick={() => setActiveTab('forums')} className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'forums' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}>
+            <button onClick={() => setActiveTab('forums')} className={`px-6 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'forums' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-300'}`}>
               <MessageSquare className="w-4 h-4" /> Forums
             </button>
           </div>
 
           <div className="flex justify-between items-center gap-4">
             <div className="relative w-96">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-500" />
               <input
                 type="text"
                 placeholder={`Search ${activeTab}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
-            <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20">
+            <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20">
               <Plus className="w-4 h-4" /> Add {activeTab === 'events' ? 'Event' : activeTab === 'clubs' ? 'Club' : 'Forum'}
             </button>
           </div>
 
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-zinc-400 uppercase bg-zinc-900/80 border-b border-zinc-800">
+              <thead className="text-xs text-zinc-600 dark:text-zinc-400 uppercase bg-white dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800">
                 <tr>
                   {activeTab === 'events' && (
                     <>
@@ -151,36 +151,36 @@ export default function AdminStudentLifePage() {
               </thead>
               <tbody className="divide-y divide-zinc-800/50 text-zinc-300">
                 {activeTab === 'events' && filteredEvents.map(event => (
-                  <tr key={event.id} className="hover:bg-zinc-800/30">
-                    <td className="px-6 py-4 font-medium text-white">{event.title}</td>
-                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-zinc-500"/> {event.date}</span></td>
-                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-zinc-500"/> {event.location}</span></td>
-                    <td className="px-6 py-4"><span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-400">{event.type}</span></td>
+                  <tr key={event.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30">
+                    <td className="px-6 py-4 font-medium text-zinc-900 dark:text-white">{event.title}</td>
+                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {event.date}</span></td>
+                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {event.location}</span></td>
+                    <td className="px-6 py-4"><span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">{event.type}</span></td>
                     <td className="px-6 py-4 flex justify-end gap-2">
-                      <button onClick={() => handleOpenModal(event)} className="p-1.5 text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(event.id)} className="p-1.5 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleOpenModal(event)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(event.id)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-rose-400 hover:bg-rose-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))}
                 {activeTab === 'clubs' && filteredClubs.map(club => (
-                  <tr key={club.id} className="hover:bg-zinc-800/30">
-                    <td className="px-6 py-4 font-medium text-white">{club.name}</td>
-                    <td className="px-6 py-4"><span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-400">{club.category}</span></td>
-                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-zinc-500"/> {club.members}</span></td>
+                  <tr key={club.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30">
+                    <td className="px-6 py-4 font-medium text-zinc-900 dark:text-white">{club.name}</td>
+                    <td className="px-6 py-4"><span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">{club.category}</span></td>
+                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {club.members}</span></td>
                     <td className="px-6 py-4 flex justify-end gap-2">
-                      <button onClick={() => handleOpenModal(club)} className="p-1.5 text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(club.id)} className="p-1.5 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleOpenModal(club)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(club.id)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-rose-400 hover:bg-rose-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))}
                 {activeTab === 'forums' && filteredForums.map(forum => (
-                  <tr key={forum.id} className="hover:bg-zinc-800/30">
-                    <td className="px-6 py-4 font-medium text-white">{forum.topic}</td>
-                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5 text-zinc-500"/> {forum.posts}</span></td>
-                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-zinc-500"/> {forum.lastActive}</span></td>
+                  <tr key={forum.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30">
+                    <td className="px-6 py-4 font-medium text-zinc-900 dark:text-white">{forum.topic}</td>
+                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {forum.posts}</span></td>
+                    <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {forum.lastActive}</span></td>
                     <td className="px-6 py-4 flex justify-end gap-2">
-                      <button onClick={() => handleOpenModal(forum)} className="p-1.5 text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(forum.id)} className="p-1.5 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleOpenModal(forum)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(forum.id)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-rose-400 hover:bg-rose-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))}
@@ -192,10 +192,10 @@ export default function AdminStudentLifePage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between">
-              <h2 className="text-xl font-bold text-white">{editingItem ? 'Edit' : 'Add'} {activeTab === 'events' ? 'Event' : activeTab === 'clubs' ? 'Club' : 'Forum'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800"><X className="w-5 h-5" /></button>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{editingItem ? 'Edit' : 'Add'} {activeTab === 'events' ? 'Event' : activeTab === 'clubs' ? 'Club' : 'Forum'}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800"><X className="w-5 h-5" /></button>
             </div>
             
             <div className="space-y-4">
@@ -203,19 +203,19 @@ export default function AdminStudentLifePage() {
                 <>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Title *</label>
-                    <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Date</label>
-                    <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Location</label>
-                    <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Type</label>
-                    <input type="text" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="text" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                 </>
               )}
@@ -223,15 +223,15 @@ export default function AdminStudentLifePage() {
                 <>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Name *</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Category</label>
-                    <input type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Members</label>
-                    <input type="number" value={formData.members} onChange={e => setFormData({...formData, members: parseInt(e.target.value) || 0})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="number" value={formData.members} onChange={e => setFormData({...formData, members: parseInt(e.target.value) || 0})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                 </>
               )}
@@ -239,19 +239,19 @@ export default function AdminStudentLifePage() {
                 <>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Topic *</label>
-                    <input type="text" value={formData.topic} onChange={e => setFormData({...formData, topic: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="text" value={formData.topic} onChange={e => setFormData({...formData, topic: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-zinc-300 block mb-1">Posts</label>
-                    <input type="number" value={formData.posts} onChange={e => setFormData({...formData, posts: parseInt(e.target.value) || 0})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white" />
+                    <input type="number" value={formData.posts} onChange={e => setFormData({...formData, posts: parseInt(e.target.value) || 0})} className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white" />
                   </div>
                 </>
               )}
             </div>
             
             <div className="flex justify-end gap-3 pt-2">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white">Cancel</button>
-              <button onClick={handleSave} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2"><Save className="w-4 h-4" /> Save</button>
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white">Cancel</button>
+              <button onClick={handleSave} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white flex items-center gap-2"><Save className="w-4 h-4" /> Save</button>
             </div>
           </div>
         </div>

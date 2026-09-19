@@ -36,7 +36,7 @@ export default function ImpactMetricsPage() {
             <motion.div 
               key={i}
               whileHover={{ y: -4 }}
-              className="bg-zinc-900/50 border border-white/[0.04] p-5 rounded-2xl"
+              className="bg-white dark:bg-zinc-900/50 border border-white/[0.04] p-5 rounded-2xl"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className={`p-2 rounded-lg bg-${kpi.color}-500/10 text-${kpi.color}-400`}>
@@ -46,17 +46,17 @@ export default function ImpactMetricsPage() {
                   {kpi.change}
                 </span>
               </div>
-              <div className="text-xs text-zinc-400 font-medium mb-1">{kpi.title}</div>
-              <div className="text-3xl font-black text-white">
-                {kpi.value} <span className="text-sm font-medium text-zinc-500">{kpi.suffix}</span>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">{kpi.title}</div>
+              <div className="text-3xl font-black text-zinc-900 dark:text-white">
+                {kpi.value} <span className="text-sm font-medium text-zinc-500 dark:text-zinc-500">{kpi.suffix}</span>
               </div>
             </motion.div>
           ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-zinc-900/40 border border-white/[0.04] rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-white mb-6">Impact Growth (YTD)</h2>
+          <div className="lg:col-span-2 bg-white dark:bg-zinc-900/40 border border-white/[0.04] rounded-2xl p-6">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-6">Impact Growth (YTD)</h2>
             <div className="h-64 flex items-end justify-between gap-2">
               {[40, 55, 45, 70, 65, 85, 80, 95].map((val, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-2">
@@ -68,14 +68,14 @@ export default function ImpactMetricsPage() {
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/0 to-indigo-400/50 rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                   </motion.div>
-                  <span className="text-xs text-zinc-500">M{i+1}</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-500">M{i+1}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-zinc-900/40 border border-white/[0.04] rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-white mb-4">Top Regions</h2>
+          <div className="bg-white dark:bg-zinc-900/40 border border-white/[0.04] rounded-2xl p-6">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Top Regions</h2>
             <div className="space-y-4">
               {[
                 { region: 'Sub-Saharan Africa', percent: 45, color: 'indigo' },
@@ -86,9 +86,9 @@ export default function ImpactMetricsPage() {
                 <div key={i}>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-zinc-300">{r.region}</span>
-                    <span className="text-white font-bold">{r.percent}%</span>
+                    <span className="text-zinc-900 dark:text-white font-bold">{r.percent}%</span>
                   </div>
-                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${r.percent}%` }}

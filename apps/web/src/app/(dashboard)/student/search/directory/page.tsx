@@ -31,40 +31,40 @@ export default function StudentDirectory() {
           
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <input 
                 type="text" 
                 placeholder="Search by name, major, or year..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all shadow-sm"
+                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all shadow-sm"
               />
             </div>
-            <button onClick={() => toast.success('Filters clicked')} className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 px-6 py-3 rounded-xl transition-colors whitespace-nowrap font-medium">
+            <button onClick={() => toast.success('Filters clicked')} className="flex items-center gap-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:bg-zinc-800 text-zinc-300 px-6 py-3 rounded-xl transition-colors whitespace-nowrap font-medium">
               <Filter className="w-4 h-4" /> Filters
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredStudents.map((student) => (
-              <div key={student.id} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group">
+              <div key={student.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-xl font-bold text-indigo-400 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
                     {student.avatar}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-lg font-semibold text-white truncate">{student.name}</h3>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-white truncate">{student.name}</h3>
                     <div className="text-sm font-medium text-indigo-400 truncate">{student.major}</div>
                   </div>
                 </div>
 
                 <div className="space-y-2 mb-6">
-                  <div className="flex items-center gap-2 text-sm text-zinc-400">
-                    <Building2 className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <Building2 className="w-4 h-4 text-zinc-500 dark:text-zinc-500 flex-shrink-0" />
                     <span>{student.year}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-zinc-400">
-                    <MapPin className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <MapPin className="w-4 h-4 text-zinc-500 dark:text-zinc-500 flex-shrink-0" />
                     <span>{student.location}</span>
                   </div>
                 </div>
@@ -77,8 +77,8 @@ export default function StudentDirectory() {
           </div>
           
           {filteredStudents.length === 0 && (
-            <div className="p-12 text-center bg-zinc-900/50 border border-zinc-800 rounded-xl">
-              <div className="text-zinc-400 text-lg">No students found matching your search.</div>
+            <div className="p-12 text-center bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+              <div className="text-zinc-600 dark:text-zinc-400 text-lg">No students found matching your search.</div>
             </div>
           )}
 

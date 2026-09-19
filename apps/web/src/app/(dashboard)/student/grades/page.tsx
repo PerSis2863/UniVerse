@@ -58,32 +58,32 @@ export default function StudentGrades() {
               </div>
               <div className="card text-center flex flex-col items-center justify-center">
                 <div className="text-3xl font-bold text-emerald-400 mb-1">{cumulativePercentage}%</div>
-                <div className="text-sm font-medium text-zinc-400">Average Score</div>
+                <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Average Score</div>
               </div>
               <div className="card text-center flex flex-col items-center justify-center">
-                <div className="text-3xl font-bold text-white mb-1">{grades.length}</div>
-                <div className="text-sm font-medium text-zinc-400 flex items-center gap-2"><Award className="w-4 h-4"/> Graded Assignments</div>
+                <div className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">{grades.length}</div>
+                <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-2"><Award className="w-4 h-4"/> Graded Assignments</div>
               </div>
             </div>
 
             {/* Grades List */}
             <div>
-              <h2 className="text-xl font-bold text-white mb-4">Recent Grades</h2>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-4">Recent Grades</h2>
               {grades.length === 0 ? (
                 <div className="card text-center py-12">
                    <BookOpen className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-                   <h3 className="text-lg font-semibold text-white mb-2">No Grades Yet</h3>
-                   <p className="text-zinc-400">Your teachers haven't posted any grades for your courses.</p>
+                   <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">No Grades Yet</h3>
+                   <p className="text-zinc-600 dark:text-zinc-400">Your teachers haven't posted any grades for your courses.</p>
                 </div>
               ) : (
                 <div className="card p-0 overflow-hidden">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-white/[0.05] bg-white/[0.02]">
-                        <th className="p-4 text-xs font-semibold tracking-wider text-zinc-400 uppercase">Assignment</th>
-                        <th className="p-4 text-xs font-semibold tracking-wider text-zinc-400 uppercase">Course</th>
-                        <th className="p-4 text-xs font-semibold tracking-wider text-zinc-400 uppercase">Date Posted</th>
-                        <th className="p-4 text-xs font-semibold tracking-wider text-zinc-400 uppercase text-right">Score</th>
+                        <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase">Assignment</th>
+                        <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase">Course</th>
+                        <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase">Date Posted</th>
+                        <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase text-right">Score</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.05]">
@@ -95,19 +95,19 @@ export default function StudentGrades() {
 
                         return (
                           <tr key={grade.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="p-4 text-white text-sm font-medium">
+                            <td className="p-4 text-zinc-900 dark:text-white text-sm font-medium">
                               {grade.assignmentName}
                             </td>
                             <td className="p-4 text-zinc-300 text-sm">
                               {grade.course?.name || grade.courseId}
                             </td>
-                            <td className="p-4 text-zinc-400 text-sm">
+                            <td className="p-4 text-zinc-600 dark:text-zinc-400 text-sm">
                               {new Date(grade.createdAt).toLocaleDateString()}
                             </td>
                             <td className="p-4 text-right">
                               <div className="flex items-center justify-end gap-3">
-                                <span className="text-zinc-400 text-xs">{grade.score} / {grade.maxScore}</span>
-                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-white/5 border border-white/10 ${colorClass}`}>
+                                <span className="text-zinc-600 dark:text-zinc-400 text-xs">{grade.score} / {grade.maxScore}</span>
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 ${colorClass}`}>
                                   {percentage}%
                                 </span>
                               </div>

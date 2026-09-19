@@ -39,8 +39,8 @@ export function KpiCard({ title, value, icon: Icon, change, color = 'indigo' }: 
           </div>
         )}
       </div>
-      <div className="text-2xl font-black text-white mb-1">{value}</div>
-      <div className="text-sm text-zinc-400">{title}</div>
+      <div className="text-2xl font-black text-zinc-900 dark:text-white mb-1">{value}</div>
+      <div className="text-sm text-zinc-600 dark:text-zinc-400">{title}</div>
     </motion.div>
   );
 }

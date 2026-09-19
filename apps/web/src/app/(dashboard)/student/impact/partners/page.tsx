@@ -164,48 +164,48 @@ export default function GlobalPartnersPage() {
         }
       />
 
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Stats Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-2xl flex items-center gap-4">
+            <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
                 <Building2 className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-2xl font-black text-white">48+</div>
-                <div className="text-xs text-zinc-400">Partner Universities</div>
+                <div className="text-2xl font-black text-zinc-900 dark:text-white">48+</div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-400">Partner Universities</div>
               </div>
             </div>
 
-            <div className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-2xl flex items-center gap-4">
+            <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center">
                 <HandHeart className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-2xl font-black text-white">35+</div>
-                <div className="text-xs text-zinc-400">Collaborating NGOs</div>
+                <div className="text-2xl font-black text-zinc-900 dark:text-white">35+</div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-400">Collaborating NGOs</div>
               </div>
             </div>
 
-            <div className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-2xl flex items-center gap-4">
+            <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
                 <Globe2 className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-2xl font-black text-white">28</div>
-                <div className="text-xs text-zinc-400">Countries Represented</div>
+                <div className="text-2xl font-black text-zinc-900 dark:text-white">28</div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-400">Countries Represented</div>
               </div>
             </div>
 
-            <div className="bg-zinc-900/60 border border-zinc-800 p-5 rounded-2xl flex items-center gap-4">
+            <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
                 <Users className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-2xl font-black text-white">450+</div>
-                <div className="text-xs text-zinc-400">Exchanges & Fellows</div>
+                <div className="text-2xl font-black text-zinc-900 dark:text-white">450+</div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-400">Exchanges & Fellows</div>
               </div>
             </div>
           </div>
@@ -213,13 +213,13 @@ export default function GlobalPartnersPage() {
           {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative w-full sm:w-96">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search university, NGO, country, or focus area..."
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-900/70 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
 
@@ -230,8 +230,8 @@ export default function GlobalPartnersPage() {
                   onClick={() => setFilterType(type)}
                   className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                     filterType === type
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                      : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white'
+                      ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30'
+                      : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'
                   }`}
                 >
                   {type === 'ALL' ? 'All Institutions' : type === 'University' ? 'Universities' : 'NGOs & Non-Profits'}
@@ -245,20 +245,20 @@ export default function GlobalPartnersPage() {
             {filteredPartners.map(partner => (
               <div
                 key={partner.id}
-                className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 hover:border-indigo-500/30 transition-all flex flex-col justify-between group space-y-5"
+                className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-6 hover:border-indigo-500/30 transition-all flex flex-col justify-between group space-y-5"
               >
                 <div className="space-y-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3.5">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${partner.badgeColor} flex items-center justify-center text-white font-black text-base shadow-lg flex-shrink-0`}>
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${partner.badgeColor} flex items-center justify-center text-zinc-900 dark:text-white font-black text-base shadow-lg flex-shrink-0`}>
                         {partner.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">
+                        <h3 className="text-base font-bold text-zinc-900 dark:text-white group-hover:text-indigo-300 transition-colors">
                           {partner.name}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-0.5">
-                          <MapPin className="w-3.5 h-3.5 text-zinc-500" />
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500" />
                           {partner.location}
                         </div>
                       </div>
@@ -269,19 +269,19 @@ export default function GlobalPartnersPage() {
                     </span>
                   </div>
 
-                  <p className="text-zinc-400 text-xs leading-relaxed">
+                  <p className="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed">
                     {partner.description}
                   </p>
 
                   <div className="space-y-1.5">
-                    <div className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500">
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500 dark:text-zinc-500">
                       Primary Collaboration Disciplines:
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {partner.focusAreas.map((area, idx) => (
                         <span
                           key={idx}
-                          className="text-[11px] px-2.5 py-0.5 rounded-md bg-zinc-800/60 border border-zinc-700/50 text-zinc-300"
+                          className="text-[11px] px-2.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-700/50 text-zinc-300"
                         >
                           {area}
                         </span>
@@ -289,7 +289,7 @@ export default function GlobalPartnersPage() {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-zinc-950/60 border border-zinc-800/60 rounded-xl text-xs space-y-1 text-zinc-400">
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/60 rounded-xl text-xs space-y-1 text-zinc-600 dark:text-zinc-400">
                     <div className="flex justify-between">
                       <span>Institutional Liaison:</span>
                       <span className="font-medium text-zinc-200">{partner.liaison}</span>
@@ -297,13 +297,13 @@ export default function GlobalPartnersPage() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-zinc-800/60 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-4 text-zinc-400">
+                <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800/60 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-4 text-zinc-600 dark:text-zinc-400">
                     <div>
-                      <strong className="text-white font-semibold">{partner.activeProjects}</strong> Active Projects
+                      <strong className="text-zinc-900 dark:text-white font-semibold">{partner.activeProjects}</strong> Active Projects
                     </div>
                     <div>
-                      <strong className="text-white font-semibold">{partner.studentsExchanged}</strong> Fellowships
+                      <strong className="text-zinc-900 dark:text-white font-semibold">{partner.studentsExchanged}</strong> Fellowships
                     </div>
                   </div>
 

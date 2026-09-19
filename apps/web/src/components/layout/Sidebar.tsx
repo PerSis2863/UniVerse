@@ -199,7 +199,7 @@ function NavItemComponent({ item, pathname, onClose }: { item: NavItem, pathname
       <motion.button 
         whileHover={{ x: 4 }}
         whileTap={{ scale: 0.98 }}
-        className="sidebar-item w-full justify-start text-zinc-400 hover:text-white">
+        className="sidebar-item w-full justify-start text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white">
         <item.icon className="w-4 h-4 flex-shrink-0" />
         <span>{item.label}</span>
       </motion.button>
@@ -259,14 +259,14 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         <UniverseLogo size="md" animated={true} withGlow={true} />
         <div>
           <div className="flex items-center gap-1.5">
-            <span className="font-black text-sm tracking-tight text-white">
+            <span className="font-black text-sm tracking-tight text-zinc-900 dark:text-white">
               Uni<span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">Verse</span>
             </span>
             <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-500/20 to-amber-500/20 text-indigo-300 font-bold border border-indigo-400/30">
               IMPACT
             </span>
           </div>
-          <div className="text-[10px] text-zinc-400 font-medium tracking-wider flex items-center gap-1.5">
+          <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium tracking-wider flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             {user.role} PORTAL
           </div>
@@ -287,14 +287,14 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-white truncate group-hover:text-indigo-400 transition-colors flex items-center justify-between">
+            <div className="text-sm font-medium text-zinc-900 dark:text-white truncate group-hover:text-indigo-400 transition-colors flex items-center justify-between">
               {user.name}
               <ChevronRight className="w-4 h-4 opacity-50" />
             </div>
           </div>
         </div>
         <button onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-zinc-500 hover:text-rose-400 hover:bg-rose-900/20 transition-all text-sm">
+          className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-zinc-500 dark:text-zinc-500 hover:text-rose-400 hover:bg-rose-900/20 transition-all text-sm">
           <LogOut className="w-4 h-4" />
           <span>Sign out</span>
         </button>

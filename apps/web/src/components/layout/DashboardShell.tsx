@@ -19,7 +19,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         {/* Mobile Header */}
         <header className="lg:hidden flex items-center justify-between px-4 h-16 border-b border-white/[0.06] bg-[#09090b] sticky top-0 z-30">
           <UniverseLogo size="sm" showText={true} animated={false} />
-          <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-400 hover:text-white">
+          <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white">
             <Menu className="w-6 h-6" />
           </button>
         </header>

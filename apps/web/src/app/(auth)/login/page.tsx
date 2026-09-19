@@ -39,7 +39,7 @@ export default function LoginPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-black mb-2">Welcome back</h1>
-        <p className="text-zinc-400">Sign in to your Universe Impact account</p>
+        <p className="text-zinc-600 dark:text-zinc-400">Sign in to your Universe Impact account</p>
       </div>
 
       {error && (
@@ -52,7 +52,7 @@ export default function LoginPage() {
         <div>
           <label className="label">Email address</label>
           <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 dark:text-zinc-500" />
             <input
               type="email"
               value={email}
@@ -66,7 +66,7 @@ export default function LoginPage() {
         <div>
           <label className="label">Password</label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 dark:text-zinc-500" />
             <input
               type={showPw ? 'text' : 'password'}
               value={password}
@@ -76,7 +76,7 @@ export default function LoginPage() {
               required
             />
             <button type="button" onClick={() => setShowPw(!showPw)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-500 hover:text-zinc-300">
               {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
@@ -89,7 +89,7 @@ export default function LoginPage() {
         </motion.button>
       </form>
 
-      <div className="mt-6 text-center text-sm text-zinc-500">
+      <div className="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-500">
         Don&apos;t have an account?{' '}
         <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-medium">
           Create one
@@ -98,7 +98,7 @@ export default function LoginPage() {
 
       {/* Demo credentials */}
       <div className="mt-8 p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-        <p className="text-xs text-zinc-500 font-medium mb-3 uppercase tracking-wider">Demo accounts</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-500 font-medium mb-3 uppercase tracking-wider">Demo accounts</p>
         <div className="space-y-2">
           {[
             { role: 'Student', email: 'student@universe.edu', pw: 'student123' },
@@ -111,8 +111,8 @@ export default function LoginPage() {
               key={d.role} type="button" onClick={() => { setEmail(d.email); setPassword(d.pw); }}
               className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors group">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-medium text-zinc-400 group-hover:text-white">{d.role}</span>
-                <span className="text-xs text-zinc-600 group-hover:text-zinc-400">{d.email}</span>
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white">{d.role}</span>
+                <span className="text-xs text-zinc-600 group-hover:text-zinc-600 dark:text-zinc-400">{d.email}</span>
               </div>
             </motion.button>
           ))}

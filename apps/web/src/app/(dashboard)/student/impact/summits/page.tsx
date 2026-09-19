@@ -95,22 +95,22 @@ export default function GlobalSummitsPage() {
         }
       />
 
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Intro Banner */}
-          <div className="p-8 rounded-3xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-zinc-900 border border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
+          <div className="p-8 rounded-3xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-zinc-900 border border-zinc-200 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
             <div className="space-y-2 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold">
                 <UniverseLogo size="sm" animated={false} withGlow={false} />
                 Multi-Institution Collaboration Summits
               </div>
-              <h2 className="text-2xl font-black text-white">Cross-University Team Matchmaking</h2>
-              <p className="text-zinc-400 text-xs leading-relaxed">
+              <h2 className="text-2xl font-black text-zinc-900 dark:text-white">Cross-University Team Matchmaking</h2>
+              <p className="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed">
                 Need a teammate from another university? Our matchmaking engine pairs UniVerse students with computer scientists at MIT, medical students at Oxford, and policy advocates at Sorbonne.
               </p>
             </div>
-            <button className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 whitespace-nowrap">
+            <button className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 whitespace-nowrap">
               <Users className="w-4 h-4" /> Find Inter-College Teammates
             </button>
           </div>
@@ -123,7 +123,7 @@ export default function GlobalSummitsPage() {
               return (
                 <div
                   key={summit.id}
-                  className={`rounded-3xl border border-zinc-800/80 bg-gradient-to-r ${summit.bannerGradient} p-8 hover:border-indigo-500/40 transition-all shadow-xl space-y-6`}
+                  className={`rounded-3xl border border-zinc-200 dark:border-zinc-800/80 bg-gradient-to-r ${summit.bannerGradient} p-8 hover:border-indigo-500/40 transition-all shadow-xl space-y-6`}
                 >
                   <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                     <div className="space-y-2">
@@ -135,42 +135,42 @@ export default function GlobalSummitsPage() {
                           <Trophy className="w-3 h-3" /> {summit.prizePool}
                         </span>
                       </div>
-                      <h3 className="text-2xl font-black text-white">{summit.title}</h3>
+                      <h3 className="text-2xl font-black text-zinc-900 dark:text-white">{summit.title}</h3>
                       <p className="text-zinc-300 text-xs">{summit.theme}</p>
                     </div>
 
                     {/* Countdown Box */}
-                    <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-4 flex items-center gap-4 flex-shrink-0">
+                    <div className="bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-4 flex items-center gap-4 flex-shrink-0">
                       <div className="text-center">
                         <div className="text-2xl font-black text-indigo-400">{summit.daysRemaining}</div>
-                        <div className="text-[10px] text-zinc-400 font-medium">Days Left</div>
+                        <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium">Days Left</div>
                       </div>
-                      <div className="h-8 w-[1px] bg-zinc-800" />
+                      <div className="h-8 w-[1px] bg-zinc-100 dark:bg-zinc-800" />
                       <div className="text-center">
-                        <div className="text-2xl font-black text-white">{summit.teamsRegistered}</div>
-                        <div className="text-[10px] text-zinc-400 font-medium">Teams In</div>
+                        <div className="text-2xl font-black text-zinc-900 dark:text-white">{summit.teamsRegistered}</div>
+                        <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium">Teams In</div>
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-zinc-400 text-sm leading-relaxed max-w-4xl">
+                  <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed max-w-4xl">
                     {summit.description}
                   </p>
 
                   {/* Organizers & Tracks */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-zinc-800/60 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-800/60 text-xs">
                     <div>
-                      <span className="text-zinc-500 font-medium block mb-1">Co-Organized By:</span>
+                      <span className="text-zinc-500 dark:text-zinc-500 font-medium block mb-1">Co-Organized By:</span>
                       <div className="flex flex-wrap gap-2 text-zinc-300 font-medium">
                         {summit.organizers.join(' • ')}
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-zinc-500 font-medium block mb-1">Competition Tracks:</span>
+                      <span className="text-zinc-500 dark:text-zinc-500 font-medium block mb-1">Competition Tracks:</span>
                       <div className="flex flex-wrap gap-1.5">
                         {summit.tracks.map((t, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+                          <span key={i} className="px-2 py-0.5 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-300">
                             {t}
                           </span>
                         ))}
@@ -180,8 +180,8 @@ export default function GlobalSummitsPage() {
 
                   {/* Actions */}
                   <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 text-xs text-zinc-400">
-                      <Calendar className="w-4 h-4 text-zinc-500" />
+                    <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                      <Calendar className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
                       <span>Dates: <strong>{summit.date}</strong></span>
                     </div>
 
@@ -192,7 +192,7 @@ export default function GlobalSummitsPage() {
                         className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                           isRegistered
                             ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'
+                            : 'bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30'
                         }`}
                       >
                         {isRegistered ? (

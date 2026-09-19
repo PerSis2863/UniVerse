@@ -12,7 +12,7 @@ const MOCK_SCHEDULE = [
   { id: '11', day: 'Tuesday', time: '15:00', duration: 2, subject: 'Artificial Intelligence', location: 'Auditorium B', type: 'Lecture', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   { id: '4', day: 'Wednesday', time: '09:00', duration: 2, subject: 'Computer Science 101', location: 'Room 302', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
   { id: '5', day: 'Wednesday', time: '14:00', duration: 1.5, subject: 'World History', location: 'Auditorium A', type: 'Lecture', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  { id: '12', day: 'Wednesday', time: '18:00', duration: 2, subject: 'Study Group', location: 'Library', type: 'Meeting', color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' },
+  { id: '12', day: 'Wednesday', time: '18:00', duration: 2, subject: 'Study Group', location: 'Library', type: 'Meeting', color: 'bg-zinc-500/20 text-zinc-600 dark:text-zinc-400 border-zinc-500/30' },
   { id: '6', day: 'Thursday', time: '11:00', duration: 1.5, subject: 'Advanced Calculus', location: 'Room 105', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { id: '7', day: 'Thursday', time: '16:00', duration: 2, subject: 'Data Structures', location: 'Room 401', type: 'Lecture', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   { id: '8', day: 'Friday', time: '10:00', duration: 3, subject: 'Software Engineering', location: 'Innovation Hub', type: 'Workshop', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
@@ -21,7 +21,7 @@ const MOCK_SCHEDULE = [
 
 const SPECIAL_EVENTS = [
   { id: 's1', day: 'Friday', time: '08:00', duration: 12, subject: 'Annual Sports Day', location: 'Main Stadium', type: 'Event', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', isSpecial: true },
-  { id: 's2', day: 'Monday', time: '08:00', duration: 12, subject: 'Public Holiday', location: 'Campus Closed', type: 'Holiday', color: 'bg-zinc-800/80 text-zinc-300 border-zinc-600', isSpecial: true },
+  { id: 's2', day: 'Monday', time: '08:00', duration: 12, subject: 'Public Holiday', location: 'Campus Closed', type: 'Holiday', color: 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-300 border-zinc-600', isSpecial: true },
   { id: 's3', day: 'Wednesday', time: '08:00', duration: 12, subject: 'Tech Festival', location: 'Campus Wide', type: 'Festival', color: 'bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/30', isSpecial: true },
 ];
 
@@ -97,34 +97,34 @@ export default function CalendarPage() {
         <div className="max-w-7xl mx-auto space-y-6">
           
           {/* Header Controls */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
             <div className="flex items-center gap-4">
-              <button onClick={() => setCurrentWeekOffset(prev => prev - 1)} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors">
+              <button onClick={() => setCurrentWeekOffset(prev => prev - 1)} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <h2 className="text-lg font-semibold text-white min-w-[200px] text-center">{currentWeekString}</h2>
-              <button onClick={() => setCurrentWeekOffset(prev => prev + 1)} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white min-w-[200px] text-center">{currentWeekString}</h2>
+              <button onClick={() => setCurrentWeekOffset(prev => prev + 1)} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
-              <button onClick={() => setView('Day')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Day' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>Day</button>
-              <button onClick={() => setView('Week')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Week' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>Week</button>
-              <button onClick={() => setView('Month')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Month' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>Month</button>
+              <button onClick={() => setView('Day')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Day' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Day</button>
+              <button onClick={() => setView('Week')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Week' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Week</button>
+              <button onClick={() => setView('Month')} className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Month' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Month</button>
             </div>
           </div>
 
           {/* Grid View */}
-          <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <div className="min-w-[800px]">
                 {/* Header Row */}
-                <div className="grid grid-cols-6 border-b border-zinc-800 bg-zinc-900/80">
-                  <div className="p-4 border-r border-zinc-800 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-zinc-500" />
+                <div className="grid grid-cols-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80">
+                  <div className="p-4 border-r border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-zinc-500 dark:text-zinc-500" />
                   </div>
                   {DAYS.map(day => (
-                    <div key={day} className="p-4 text-center border-r border-zinc-800 last:border-r-0">
+                    <div key={day} className="p-4 text-center border-r border-zinc-200 dark:border-zinc-800 last:border-r-0">
                       <h3 className="font-semibold text-zinc-300">{day}</h3>
                     </div>
                   ))}
@@ -133,12 +133,12 @@ export default function CalendarPage() {
                 {/* Time Rows */}
                 <div className="relative">
                   {HOURS.map(hour => (
-                    <div key={hour} className="grid grid-cols-6 border-b border-zinc-800/50 last:border-b-0 h-24">
-                      <div className="p-2 border-r border-zinc-800 text-xs font-medium text-zinc-500 text-center relative">
-                        <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-950 px-2">{hour}</span>
+                    <div key={hour} className="grid grid-cols-6 border-b border-zinc-200 dark:border-zinc-800/50 last:border-b-0 h-24">
+                      <div className="p-2 border-r border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-500 dark:text-zinc-500 text-center relative">
+                        <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-50 dark:bg-zinc-950 px-2">{hour}</span>
                       </div>
                       {DAYS.map(day => (
-                        <div key={day} className="border-r border-zinc-800/50 last:border-r-0 relative hover:bg-white/[0.01] transition-colors">
+                        <div key={day} className="border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0 relative hover:bg-white/[0.01] transition-colors">
                           {/* Render blocks here if they match hour & day */}
                           {activeSchedule.filter(s => s.day === day && s.time === hour).map(cls => (
                             <div 

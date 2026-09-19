@@ -92,37 +92,37 @@ export default function TeacherCalendarPage() {
         title="Teaching Timetable" 
         subtitle="Manage your classes and office hours" 
         rightNode={
-          <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Exporting schedule...')}>
+          <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Exporting schedule...')}>
             <Download className="w-4 h-4" /> Export
           </button>
         }
       />
       
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto space-y-6">
           
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center gap-4">
-              <button onClick={handleToday} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <button onClick={handleToday} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors">
                 Today
               </button>
               <div className="flex items-center gap-2">
-                <button onClick={handlePrevWeek} className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 transition-colors">
+                <button onClick={handlePrevWeek} className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div className="relative">
                   <button 
                     onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="flex items-center gap-2 px-4 py-2 hover:bg-zinc-800 rounded-lg text-white font-medium transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-900 dark:text-white font-medium transition-colors"
                   >
                     <CalendarIcon className="w-5 h-5 text-indigo-400" />
                     {format(start, 'MMM d')} - {format(addDays(start, 4), 'MMM d, yyyy')}
                   </button>
                   {showDatePicker && (
-                    <div className="absolute top-full mt-2 left-0 w-64 bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-xl z-50">
+                    <div className="absolute top-full mt-2 left-0 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-xl z-50">
                       <input 
                         type="date" 
-                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white [color-scheme:dark]"
+                        className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white [color-scheme:dark]"
                         onChange={(e) => {
                           if (e.target.value) {
                             setCurrentDate(new Date(e.target.value));
@@ -133,26 +133,26 @@ export default function TeacherCalendarPage() {
                     </div>
                   )}
                 </div>
-                <button onClick={handleNextWeek} className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 transition-colors">
+                <button onClick={handleNextWeek} className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
             
             <div className="flex gap-2">
-              <button className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Add Office Hours Modal')}>
+              <button className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Add Office Hours Modal')}>
                 + Add Office Hours
               </button>
             </div>
           </div>
 
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-x-auto shadow-lg">
+          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto shadow-lg">
             <div className="flex min-w-[1000px]">
-              <div className="w-20 flex-shrink-0 border-r border-zinc-800/50 bg-zinc-900/80">
-                <div className="h-16 border-b border-zinc-800/50"></div>
+              <div className="w-20 flex-shrink-0 border-r border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-900/80">
+                <div className="h-16 border-b border-zinc-200 dark:border-zinc-800/50"></div>
               {hours.map(hour => (
-                <div key={hour} className="h-24 border-b border-zinc-800/50 relative">
-                  <span className="absolute -top-3 right-3 text-xs text-zinc-500 font-medium">
+                <div key={hour} className="h-24 border-b border-zinc-200 dark:border-zinc-800/50 relative">
+                  <span className="absolute -top-3 right-3 text-xs text-zinc-500 dark:text-zinc-500 font-medium">
                     {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                   </span>
                 </div>
@@ -166,15 +166,15 @@ export default function TeacherCalendarPage() {
                 const dayClasses = getDayClasses(day);
 
                 return (
-                  <div key={day} className="flex-1 min-w-[200px] border-r border-zinc-800/50 last:border-r-0">
-                    <div className={`h-16 border-b border-zinc-800/50 flex flex-col items-center justify-center ${isToday ? 'bg-indigo-500/10' : 'bg-zinc-900/80'}`}>
-                      <span className={`text-xs font-semibold uppercase tracking-wider ${isToday ? 'text-indigo-400' : 'text-zinc-500'}`}>{day}</span>
+                  <div key={day} className="flex-1 min-w-[200px] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0">
+                    <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800/50 flex flex-col items-center justify-center ${isToday ? 'bg-indigo-500/10' : 'bg-white dark:bg-zinc-900/80'}`}>
+                      <span className={`text-xs font-semibold uppercase tracking-wider ${isToday ? 'text-indigo-400' : 'text-zinc-500 dark:text-zinc-500'}`}>{day}</span>
                       <span className={`text-xl font-bold ${isToday ? 'text-indigo-400' : 'text-zinc-300'}`}>{format(date, 'd')}</span>
                     </div>
 
                     <div className="relative" style={{ height: `${hours.length * 96}px` }}>
                       {hours.map(hour => (
-                        <div key={hour} className="h-24 border-b border-zinc-800/20"></div>
+                        <div key={hour} className="h-24 border-b border-zinc-200 dark:border-zinc-800/20"></div>
                       ))}
                       
                       {dayClasses.map((cls, i) => {
@@ -202,7 +202,7 @@ export default function TeacherCalendarPage() {
                             <div className="text-xs font-bold mb-1" style={{ color: cls.course.color || '#818cf8' }}>
                               {cls.course.code}
                             </div>
-                            <div className="text-sm font-medium text-white mb-2 leading-tight">
+                            <div className="text-sm font-medium text-zinc-900 dark:text-white mb-2 leading-tight">
                               {cls.course.name}
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-zinc-300 mb-1">

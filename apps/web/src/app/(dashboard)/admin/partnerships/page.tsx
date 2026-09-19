@@ -74,62 +74,62 @@ export default function AdminPartnershipsPage() {
         rightNode={
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
           >
             <PlusCircle className="w-4 h-4" /> Ratify New Institutional MOU
           </button>
         }
       />
 
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Admin Overview Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-2xl">
-              <div className="text-xs text-zinc-400 font-medium mb-1">Total Active Partnerships</div>
-              <div className="text-3xl font-black text-white">{partners.length} Institutions</div>
+            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl">
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">Total Active Partnerships</div>
+              <div className="text-3xl font-black text-zinc-900 dark:text-white">{partners.length} Institutions</div>
               <div className="text-[11px] text-emerald-400 mt-2 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> 100% Compliance Verified
               </div>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-2xl">
-              <div className="text-xs text-zinc-400 font-medium mb-1">Total Impact Grant Pool</div>
+            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl">
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">Total Impact Grant Pool</div>
               <div className="text-3xl font-black text-indigo-400">$495,000</div>
-              <div className="text-[11px] text-zinc-500 mt-2">Allocated across 2026-2027</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-500 mt-2">Allocated across 2026-2027</div>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-2xl">
-              <div className="text-xs text-zinc-400 font-medium mb-1">Cross-Enrolled Students</div>
+            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl">
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">Cross-Enrolled Students</div>
               <div className="text-3xl font-black text-amber-400">97 Fellows</div>
-              <div className="text-[11px] text-zinc-500 mt-2">Active in NGO & campus programs</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-500 mt-2">Active in NGO & campus programs</div>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-2xl">
-              <div className="text-xs text-zinc-400 font-medium mb-1">Institutional Reach</div>
+            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl">
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">Institutional Reach</div>
               <div className="text-3xl font-black text-pink-400">24 Nations</div>
-              <div className="text-[11px] text-zinc-500 mt-2">North America, Europe, Africa, Asia</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-500 mt-2">North America, Europe, Africa, Asia</div>
             </div>
           </div>
 
           {/* Table of Partnerships */}
-          <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+          <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white">Active Institutional Agreements & Charters</h3>
-                <p className="text-xs text-zinc-400">Governed under UniVerse Global Consortium Charter 2026.</p>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white">Active Institutional Agreements & Charters</h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">Governed under UniVerse Global Consortium Charter 2026.</p>
               </div>
               <UniverseLogo size="sm" animated={true} withGlow={true} />
             </div>
 
             <div className="divide-y divide-zinc-800/60">
               {partners.map(p => (
-                <div key={p.id} className="p-6 hover:bg-zinc-800/20 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div key={p.id} className="p-6 hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                   <div className="space-y-1 max-w-xl">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-base font-bold text-white">{p.entity}</h4>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
+                      <h4 className="text-base font-bold text-zinc-900 dark:text-white">{p.entity}</h4>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-300 border border-zinc-700">
                         {p.category}
                       </span>
                       <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
@@ -141,9 +141,9 @@ export default function AdminPartnershipsPage() {
                       </span>
                     </div>
 
-                    <div className="text-xs text-zinc-400">{p.agreementType}</div>
+                    <div className="text-xs text-zinc-600 dark:text-zinc-400">{p.agreementType}</div>
 
-                    <div className="flex flex-wrap gap-4 text-xs text-zinc-500 pt-1">
+                    <div className="flex flex-wrap gap-4 text-xs text-zinc-500 dark:text-zinc-500 pt-1">
                       <span>Term: <strong className="text-zinc-300">{p.validUntil}</strong></span>
                       <span>Budget: <strong className="text-emerald-400">{p.allocatedBudget}</strong></span>
                       <span>Students: <strong className="text-zinc-300">{p.studentsEnrolled}</strong></span>
@@ -155,14 +155,14 @@ export default function AdminPartnershipsPage() {
                     {p.status === 'Pending Review' && (
                       <button
                         onClick={() => handleApprove(p.id)}
-                        className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all"
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-zinc-900 dark:text-white shadow-md transition-all"
                       >
                         Ratify Agreement
                       </button>
                     )}
                     <button 
                       onClick={() => toast.info('Loading Charter PDF...')}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors">
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors">
                       View Charter PDF
                     </button>
                   </div>
@@ -174,10 +174,10 @@ export default function AdminPartnershipsPage() {
           {/* Add MOU Modal */}
           {showAddModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-lg rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl">
                 <div>
-                  <h3 className="text-xl font-bold text-white">Ratify New Institutional Partnership</h3>
-                  <p className="text-xs text-zinc-400 mt-1">
+                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Ratify New Institutional Partnership</h3>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
                     Register a new university or non-governmental organization to the UniVerse network.
                   </p>
                 </div>
@@ -190,7 +190,7 @@ export default function AdminPartnershipsPage() {
                       value={newEntity}
                       onChange={e => setNewEntity(e.target.value)}
                       placeholder="e.g., Red Cross International or Stanford University"
-                      className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
 
@@ -199,7 +199,7 @@ export default function AdminPartnershipsPage() {
                     <select
                       value={newCategory}
                       onChange={e => setNewCategory(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
                     >
                       <option value="Academic Institution">Academic Institution (University / College)</option>
                       <option value="International NGO">International NGO (Humanitarian / Climate)</option>
@@ -208,10 +208,10 @@ export default function AdminPartnershipsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-white"
+                    className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white"
                   >
                     Cancel
                   </button>
@@ -236,7 +236,7 @@ export default function AdminPartnershipsPage() {
                       setNewEntity('');
                       toast.success(`Successfully onboarded ${newEntity}`);
                     }}
-                    className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30"
+                    className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30"
                   >
                     Sign & Onboard Institution
                   </button>
