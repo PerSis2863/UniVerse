@@ -7,15 +7,46 @@ const isProtectedRoute = createRouteMatcher([
   '/admin(.*)',
 ])
 
-export default clerkMiddleware(async (auth, req) => {
-  if (req.cookies.has('demo_token')) {
-    return;
-  }
-  if (isProtectedRoute(req)) {
-    await auth.protect()
-  }
-})
+import { NextResponse } from 'next/server';
 
+export default clerkMiddleware(async (auth, req) => {
+  // Demo Login Bypass
+  if (req.cookies.has('demo_token')) {
+    return applySecurityHeaders(NextResponse.next());
+  }
+
+  // Real Auth Checking
+  if (isProtectedRoute(req)) {
+    await auth.protect();
+  }
+
+  return applySecurityHeaders(NextResponse.next());
+});
+
+function applySecurityHeaders(res: NextResponse) {
+  const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://clerk.dev;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' blob: data: https://images.unsplash.com https://img.clerk.com https://ui-avatars.com;
+    font-src 'self';
+    connect-src 'self' https://api.clerk.dev wss://ws.clerk.dev https://vitals.vercel-insights.com;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+    frame-ancestors 'none';
+    upgrade-insecure-requests;
+  `;
+
+  res.headers.set('Content-Security-Policy', cspHeader.replace(/\s{2,}/g, ' ').trim());
+  res.headers.set('X-Frame-Options', 'DENY');
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+
+  return res;
+}
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files
