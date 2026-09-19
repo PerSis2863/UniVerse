@@ -54,6 +54,7 @@ const navByRole: Record<string, NavItem[]> = {
       label: 'Global Impact', icon: Globe2,
       subItems: [
         { href: '/student/impact/projects', label: 'Collaborative Projects' },
+        { href: '/student/impact/needs', label: 'Needs & Support Board' },
         { href: '/student/impact/partners', label: 'Universities & Partners' },
         { href: '/student/impact/dashboard', label: 'My Social Impact' },
         { href: '/student/impact/summits', label: 'Global Summits' },
@@ -97,6 +98,7 @@ const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/teacher/collaborations', label: 'Inter-Uni Research' },
         { href: '/teacher/collaborations/projects', label: 'NGO Mentorship' },
+        { href: '/teacher/mentorship', label: 'Volunteer & Mentor Portal' },
       ]
     },
     {
@@ -125,6 +127,7 @@ const navByRole: Record<string, NavItem[]> = {
       label: 'Global Impact', icon: Globe2,
       subItems: [
         { href: '/admin/partnerships', label: 'Partner Institutions' },
+        { href: '/admin/partners', label: 'Sponsor Portal' },
         { href: '/admin/impact-metrics', label: 'Impact Analytics' },
       ]
     },

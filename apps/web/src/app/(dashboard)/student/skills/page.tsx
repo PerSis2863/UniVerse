@@ -24,6 +24,11 @@ const ACHIEVEMENTS = [
   { title: '100% Attendance', date: 'CS101', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
 ];
 
+const IMPACT_BADGES = [
+  { title: 'Top Mentor', date: '50+ Hours', icon: Users, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  { title: 'Global Innovator', date: 'Climate Tech Project', icon: Brain, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+];
+
 export default function StudentSkills() {
   const getLevelColor = (level: number) => {
     if (level >= 90) return 'bg-emerald-500';
@@ -144,6 +149,26 @@ export default function StudentSkills() {
                 </h3>
                 <div className="grid gap-4">
                   {ACHIEVEMENTS.map((item, i) => (
+                    <div key={i} className="flex items-center gap-4 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/50">
+                      <div className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center flex-shrink-0 border border-white/5`}>
+                        <item.icon className={`w-6 h-6 ${item.color}`} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-zinc-900 dark:text-white mb-0.5">{item.title}</h4>
+                        <div className="text-xs font-medium text-zinc-500 dark:text-zinc-500">{item.date}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center justify-between">
+                  Social Impact Badges
+                  <button onClick={() => toast.success('Viewing impact history')} className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View All</button>
+                </h3>
+                <div className="grid gap-4">
+                  {IMPACT_BADGES.map((item, i) => (
                     <div key={i} className="flex items-center gap-4 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/50">
                       <div className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center flex-shrink-0 border border-white/5`}>
                         <item.icon className={`w-6 h-6 ${item.color}`} />
