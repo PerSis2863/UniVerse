@@ -1,7 +1,15 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { GamificationWidget } from '@/components/dashboard/GamificationWidget';
+import dynamic from 'next/dynamic';
+
+const GamificationWidget = dynamic(
+  () => import('@/components/dashboard/GamificationWidget').then(mod => mod.GamificationWidget),
+  { 
+    ssr: false, 
+    loading: () => <div className="h-64 w-full bg-zinc-100 dark:bg-zinc-900/50 animate-pulse rounded-2xl flex items-center justify-center text-zinc-500 text-sm">Loading widget...</div> 
+  }
+);
 import { useAuthStore } from '@/store/auth';
 import { BookOpen, ClipboardList, BarChart3, Trophy, TrendingUp, Clock, CheckCircle2, FileText, Globe2, ArrowUpRight, Sparkles, HeartHandshake, AlertCircle, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';

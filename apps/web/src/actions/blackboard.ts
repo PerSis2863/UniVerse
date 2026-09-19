@@ -8,7 +8,7 @@ export async function getCourseData(courseCode: string) {
       where: { code: courseCode },
       include: {
         announcements: true,
-        assignments: {
+        quizzes: {
           include: { submissions: true }
         }
       }
