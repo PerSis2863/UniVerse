@@ -1,16 +1,32 @@
 'use client';
+import { useState } from 'react';
 import { Sidebar } from './Sidebar';
+import { Menu } from 'lucide-react';
+import { UniverseLogo } from '@/components/ui/UniverseLogo';
 
 interface DashboardShellProps {
   children: React.ReactNode;
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 ml-64 flex flex-col">
-        {children}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      
+      <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
+        {/* Mobile Header */}
+        <header className="lg:hidden flex items-center justify-between px-4 h-16 border-b border-white/[0.06] bg-[#09090b] sticky top-0 z-30">
+          <UniverseLogo size="sm" showText={true} animated={false} />
+          <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-400 hover:text-white">
+            <Menu className="w-6 h-6" />
+          </button>
+        </header>
+
+        <main className="flex-1 flex flex-col">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -153,7 +153,7 @@ const navByRole: Record<string, NavItem[]> = {
   ],
 };
 
-function NavItemComponent({ item, pathname }: { item: NavItem, pathname: string }) {
+function NavItemComponent({ item, pathname, onClose }: { item: NavItem, pathname: string, onClose?: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
   
   const hasActiveChild = item.subItems?.some(sub => pathname === sub.href || pathname.startsWith(sub.href + '/'));
@@ -175,7 +175,7 @@ function NavItemComponent({ item, pathname }: { item: NavItem, pathname: string 
         {isOpen && (
           <div className="pl-9 space-y-1 mt-1">
             {item.subItems.map(sub => (
-              <Link key={sub.href} href={sub.href}>
+              <Link key={sub.href} href={sub.href} onClick={onClose}>
                 <div className={cn('sidebar-item text-sm py-1.5', pathname === sub.href && 'active text-indigo-400')}>
                   <span>{sub.label}</span>
                 </div>
@@ -198,7 +198,7 @@ function NavItemComponent({ item, pathname }: { item: NavItem, pathname: string 
 
   if (item.href) {
     return (
-      <Link href={item.href}>
+      <Link href={item.href} onClick={onClose}>
         <div className={cn('sidebar-item', pathname === item.href && 'active')}>
           <item.icon className="w-4 h-4 flex-shrink-0" />
           <span>{item.label}</span>
@@ -210,7 +210,7 @@ function NavItemComponent({ item, pathname }: { item: NavItem, pathname: string 
   return null;
 }
 
-export function Sidebar() {
+export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
   const pathname = usePathname();
   const router = useRouter();
@@ -226,8 +226,19 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#0d1424]/90 backdrop-blur-xl border-r border-white/[0.06] flex flex-col z-40">
-      {/* Brand */}
+    <>
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden" 
+          onClick={onClose}
+        />
+      )}
+      
+      <aside className={cn(
+        "fixed left-0 top-0 bottom-0 w-64 bg-[#0d1424]/90 backdrop-blur-xl border-r border-white/[0.06] flex flex-col z-50 transition-transform duration-300 lg:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        {/* Brand */}
       <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06] bg-gradient-to-r from-indigo-950/20 via-transparent to-transparent">
         <UniverseLogo size="md" animated={true} withGlow={true} />
         <div>
@@ -249,7 +260,7 @@ export function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {nav.map((item, i) => (
-          <NavItemComponent key={i} item={item} pathname={pathname} />
+          <NavItemComponent key={i} item={item} pathname={pathname} onClose={onClose} />
         ))}
       </nav>
 
@@ -273,5 +284,6 @@ export function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }
