@@ -2,25 +2,40 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { HelpCircle, Clock, PlayCircle, Trophy, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState } from 'react';
-
-const MOCK_QUIZZES = [
-  { id: '1', title: 'Calculus Midterm Review', subject: 'Mathematics', duration: 45, questions: 20, completed: false },
-  { id: '2', title: 'Quantum Mechanics Basics', subject: 'Physics', duration: 30, questions: 15, completed: true, score: 92 },
-  { id: '3', title: 'Data Structures - Trees & Graphs', subject: 'Computer Science', duration: 60, questions: 25, completed: false },
-  { id: '4', title: 'World History: WW2', subject: 'History', duration: 45, questions: 30, completed: true, score: 85 },
-];
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
 export default function QuizzesPage() {
-  const [quizzes, setQuizzes] = useState(MOCK_QUIZZES);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const startQuiz = (id: string) => {
+  useEffect(() => {
+    fetchQuizzes();
+  }, []);
+
+  const fetchQuizzes = async () => {
+    try {
+      const res = await api.get('/quizzes/student/my-quizzes');
+      setQuizzes(res.data);
+    } catch (error) {
+      toast.error('Failed to load quizzes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startQuiz = async (id: string) => {
     toast.success('Quiz started! Good luck.');
-    // In a real app, this would route to a quiz taking interface.
-    // For now, let's just mark it as completed after 2 seconds to simulate taking it.
-    setTimeout(() => {
-      setQuizzes(quizzes.map(q => q.id === id ? { ...q, completed: true, score: Math.floor(Math.random() * 20) + 80 } : q));
-      toast.info('Quiz completed!');
+    // Simulate answering some questions and submitting
+    setTimeout(async () => {
+      try {
+        const answers = {}; // Mock answers
+        const res = await api.post(`/quizzes/${id}/submit`, { answers });
+        toast.info(`Quiz completed! Score: ${res.data.score}/${res.data.maxScore}`);
+        fetchQuizzes(); // Refresh the list
+      } catch (error) {
+        toast.error('Failed to submit quiz');
+      }
     }, 2000);
   };
 
@@ -58,12 +73,12 @@ export default function QuizzesPage() {
               {quizzes.filter(q => !q.completed).map((quiz) => (
                 <div key={quiz.id} className="card p-6 flex flex-col hover:border-indigo-500/50 transition-colors group">
                   <div className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 w-max mb-4">
-                    {quiz.subject}
+                    {quiz.course?.name || 'General'}
                   </div>
                   <h4 className="text-lg font-bold text-white mb-2">{quiz.title}</h4>
                   <div className="flex flex-wrap gap-4 text-sm text-zinc-400 mb-6">
                     <span className="flex items-center gap-1.5"><Clock className="w-4 h-4"/> {quiz.duration} mins</span>
-                    <span className="flex items-center gap-1.5"><HelpCircle className="w-4 h-4"/> {quiz.questions} Questions</span>
+                    <span className="flex items-center gap-1.5"><HelpCircle className="w-4 h-4"/> {quiz._count?.questions || 0} Questions</span>
                   </div>
                   <button 
                     onClick={() => startQuiz(quiz.id)}
@@ -88,7 +103,7 @@ export default function QuizzesPage() {
                 <div key={quiz.id} className="card p-5 flex items-center justify-between">
                   <div>
                     <div className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-400 mb-2">
-                      {quiz.subject}
+                      {quiz.course?.name || 'General'}
                     </div>
                     <h4 className="text-md font-bold text-white flex items-center gap-2">
                       {quiz.title}

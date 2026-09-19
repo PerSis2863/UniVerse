@@ -1,25 +1,35 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
-
-const INITIAL_RESOURCES = [
-  { id: '1', title: 'React Performance Optimization', type: 'PDF', category: 'Computer Science', size: '2.4 MB', date: '2023-10-20' },
-  { id: '2', title: 'Advanced Calculus Formula Sheet', type: 'Document', category: 'General', size: '1.1 MB', date: '2023-09-15' },
-  { id: '3', title: 'Business Strategy Frameworks', type: 'Link', category: 'Business', url: 'https://example.com', date: '2023-10-05' },
-  { id: '4', title: 'Corporate Finance Case Studies', type: 'PDF', category: 'Finance', size: '4.5 MB', date: '2023-08-20' },
-];
 
 export default function KnowledgeHubPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const [resources, setResources] = useState(INITIAL_RESOURCES);
+  const [resources, setResources] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState({ title: '', category: 'General', type: 'Document' });
+
+  useEffect(() => {
+    fetchResources();
+  }, []);
+
+  const fetchResources = async () => {
+    try {
+      const res = await api.get('/knowledge-hub');
+      setResources(res.data);
+    } catch (error) {
+      toast.error('Failed to load resources');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredResources = resources.filter(r => {
     const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -27,22 +37,26 @@ export default function KnowledgeHubPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!formData.title) {
       toast.error('Title is required');
       return;
     }
-    setResources([...resources, {
-      id: Date.now().toString(),
-      title: formData.title,
-      category: formData.category,
-      type: formData.type,
-      size: '1.0 MB',
-      date: new Date().toISOString().split('T')[0]
-    }]);
-    setShowAddModal(false);
-    setFormData({ title: '', category: 'General', type: 'Document' });
-    toast.success('Resource added successfully!');
+
+    try {
+      const res = await api.post('/knowledge-hub', {
+        title: formData.title,
+        category: formData.category,
+        url: formData.type === 'Link' ? 'https://example.com' : undefined,
+        description: 'Uploaded by student',
+      });
+      setResources([...resources, res.data]);
+      setShowAddModal(false);
+      setFormData({ title: '', category: 'General', type: 'Document' });
+      toast.success('Resource added successfully!');
+    } catch (error) {
+      toast.error('Failed to add resource');
+    }
   };
 
   return (
@@ -113,24 +127,23 @@ export default function KnowledgeHubPage() {
                           <div>
                             <h4 className="text-sm font-medium text-white mb-0.5">{resource.title}</h4>
                             <div className="flex items-center gap-3 text-xs text-zinc-500">
-                              <span>{resource.type}</span>
-                              {resource.size && <span>• {resource.size}</span>}
-                              <span>• Added {new Date(resource.date).toLocaleDateString()}</span>
+                              <span>{resource.url ? 'Link' : 'Document'}</span>
+                              <span>• Added {new Date(resource.createdAt).toLocaleDateString()}</span>
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => {
-                              if (resource.type === 'Link') {
-                                window.open(resource.url || 'https://example.com', '_blank');
+                              if (resource.url) {
+                                window.open(resource.url, '_blank');
                               } else {
                                 toast.success(`Downloading ${resource.title}...`);
                               }
                             }}
                             className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
                           >
-                            {resource.type === 'Link' ? <ExternalLink className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                            {resource.url ? <ExternalLink className="w-4 h-4" /> : <Download className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>

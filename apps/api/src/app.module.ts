@@ -16,6 +16,8 @@ import { KnowledgeHubModule } from './knowledge-hub/knowledge-hub.module';
 import { MessagesModule } from './messages/messages.module';
 import { CareerModule } from './career/career.module';
 import { ScheduleModule } from './schedule/schedule.module';
+import { AssociationsModule } from './associations/associations.module';
+import { RoomsModule } from './rooms/rooms.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { ScheduleModule } from './schedule/schedule.module';
     MessagesModule,
     CareerModule,
     ScheduleModule,
+    AssociationsModule,
+    RoomsModule,
   ],
 })
 export class AppModule {}

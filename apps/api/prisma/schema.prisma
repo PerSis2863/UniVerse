@@ -112,6 +112,8 @@ model User {
   materials        Material[]
   announcements    Announcement[]
   knowledgeHubResources KnowledgeHubResource[]
+  associationMemberships AssociationMembership[]
+  roomReservations RoomReservation[]
 
   @@map("users")
 }
@@ -377,4 +379,62 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@map("refresh_tokens")
+}
+
+// ─── STUDENT LIFE ──────────────────────────────────────────────────────────
+
+model Association {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  description String
+  members     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  memberships AssociationMembership[]
+  
+  @@map("associations")
+}
+
+model AssociationMembership {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  role          String      @default("MEMBER")
+  joinedAt      DateTime    @default(now())
+  
+  @@unique([userId, associationId])
+  @@map("association_memberships")
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  name        String
+  capacity    Int
+  amenities   String
+  type        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  reservations RoomReservation[]
+  
+  @@map("rooms")
+}
+
+model RoomReservation {
+  id          String   @id @default(cuid())
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String
+  time        String
+  duration    String
+  createdAt   DateTime @default(now())
+  
+  @@unique([roomId, date, time])
+  @@map("room_reservations")
 }

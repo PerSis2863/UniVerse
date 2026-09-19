@@ -2,17 +2,9 @@
 
 import { Topbar } from '@/components/layout/Topbar';
 import { Map, CheckCircle2, Clock, X, Calendar, Users } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
-
-const ALL_ROOMS = [
-  { id: 'r-1', name: 'Library Study Room 1A', capacity: 4, amenities: 'Screen + Whiteboard', type: 'individual' },
-  { id: 'r-2', name: 'Library Study Room 2B', capacity: 4, amenities: 'Screen + Whiteboard', type: 'individual' },
-  { id: 'r-3', name: 'Media Lab 101', capacity: 8, amenities: 'iMacs + Green Screen', type: 'small' },
-  { id: 'r-4', name: 'Collaboration Hub 202', capacity: 10, amenities: 'Smart Board + Video Conferencing', type: 'small' },
-  { id: 'r-5', name: 'Seminar Room 301', capacity: 20, amenities: 'Projector + Microphone', type: 'large' },
-  { id: 'r-6', name: 'Conference Room A', capacity: 15, amenities: 'Video Wall + Webcam Kit', type: 'large' },
-];
+import { api } from '@/lib/api';
 
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
 
@@ -21,27 +13,68 @@ export default function RoomReservationPage() {
   const [duration, setDuration] = useState('1 Hour');
   const [capacity, setCapacity] = useState('individual');
   const [searched, setSearched] = useState(false);
-  const [bookings, setBookings] = useState<{ roomId: string; time: string }[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [confirmBooking, setConfirmBooking] = useState<{ room: any; time: string } | null>(null);
+
+  useEffect(() => {
+    fetchRoomsAndBookings();
+  }, []);
+
+  const fetchRoomsAndBookings = async () => {
+    try {
+      const [roomsRes, bookingsRes] = await Promise.all([
+        api.get('/rooms'),
+        api.get('/rooms/my-bookings')
+      ]);
+      setRooms(roomsRes.data);
+      setBookings(bookingsRes.data);
+    } catch (error) {
+      toast.error('Failed to load room data');
+    }
+  };
 
   const filteredRooms = useMemo(() => {
     if (!searched) return [];
-    return ALL_ROOMS.filter(r => {
+    return rooms.filter(r => {
       if (capacity === 'individual') return r.type === 'individual';
       if (capacity === 'small') return r.type === 'small';
       if (capacity === 'large') return r.type === 'large';
       return true;
     });
-  }, [searched, capacity]);
+  }, [searched, capacity, rooms]);
 
   const isBooked = (roomId: string, time: string) =>
-    bookings.some(b => b.roomId === roomId && b.time === time);
+    bookings.some(b => b.roomId === roomId && b.time === time && b.date === date);
 
-  const handleBook = () => {
-    if (!confirmBooking) return;
-    setBookings(prev => [...prev, { roomId: confirmBooking.room.id, time: confirmBooking.time }]);
-    toast.success(`Booked ${confirmBooking.room.name} at ${confirmBooking.time} on ${date || 'selected date'}!`);
-    setConfirmBooking(null);
+  const handleBook = async () => {
+    if (!confirmBooking || !date) {
+      toast.error('Please select a date first');
+      return;
+    }
+    
+    try {
+      const res = await api.post(`/rooms/${confirmBooking.room.id}/book`, {
+        date,
+        time: confirmBooking.time,
+        duration,
+      });
+      setBookings(prev => [res.data, ...prev]);
+      toast.success(`Booked ${confirmBooking.room.name} at ${confirmBooking.time} on ${date}!`);
+      setConfirmBooking(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to book room');
+    }
+  };
+
+  const handleCancelBooking = async (id: string) => {
+    try {
+      await api.delete(`/rooms/bookings/${id}`);
+      setBookings(prev => prev.filter(b => b.id !== id));
+      toast.success('Booking cancelled.');
+    } catch (error) {
+      toast.error('Failed to cancel booking');
+    }
   };
 
   return (
@@ -140,9 +173,9 @@ export default function RoomReservationPage() {
             <div className="space-y-3">
               <h3 className="font-semibold text-white">My Reservations</h3>
               {bookings.map((b, i) => {
-                const room = ALL_ROOMS.find(r => r.id === b.roomId);
+                const room = b.room;
                 return (
-                  <div key={i} className="flex items-center justify-between p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+                  <div key={b.id || i} className="flex items-center justify-between p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
                     <div>
                       <div className="font-medium text-white text-sm">{room?.name}</div>
                       <div className="text-xs text-zinc-400 flex items-center gap-2 mt-0.5">
@@ -150,10 +183,7 @@ export default function RoomReservationPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        setBookings(prev => prev.filter((_, idx) => idx !== i));
-                        toast.success('Booking cancelled.');
-                      }}
+                      onClick={() => handleCancelBooking(b.id)}
                       className="text-xs text-red-400 hover:text-red-300 transition-colors"
                     >
                       Cancel

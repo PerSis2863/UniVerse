@@ -39,4 +39,16 @@ export class QuizzesController {
   remove(@Param('id') id: string) {
     return this.quizzesService.remove(id);
   }
+
+  @Get('student/my-quizzes')
+  @Roles(Role.STUDENT, Role.ADMIN)
+  getStudentQuizzes(@Req() req) {
+    return this.quizzesService.getStudentQuizzes(req.user.userId);
+  }
+
+  @Post(':id/submit')
+  @Roles(Role.STUDENT)
+  submitQuiz(@Req() req, @Param('id') id: string, @Body('answers') answers: any) {
+    return this.quizzesService.submitQuiz(req.user.userId, id, answers);
+  }
 }

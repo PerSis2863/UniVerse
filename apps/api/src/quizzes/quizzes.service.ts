@@ -43,4 +43,58 @@ export class QuizzesService {
       where: { id },
     });
   }
+
+  async getStudentQuizzes(studentId: string) {
+    const quizzes = await this.prisma.quiz.findMany({
+      include: { 
+        course: { select: { name: true } },
+        _count: { select: { questions: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const submissions = await this.prisma.quizSubmission.findMany({
+      where: { studentId },
+    });
+
+    const subMap = new Map(submissions.map(s => [s.quizId, s]));
+
+    return quizzes.map(q => {
+      const sub = subMap.get(q.id);
+      return {
+        ...q,
+        completed: !!sub,
+        score: sub ? (sub.score !== null ? Math.round((sub.score / (sub.maxScore || 100)) * 100) : null) : null,
+      };
+    });
+  }
+
+  async submitQuiz(studentId: string, quizId: string, answers: any) {
+    const quiz = await this.prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: { questions: true },
+    });
+    
+    if (!quiz) throw new NotFoundException('Quiz not found');
+
+    let score = 0;
+    let maxScore = 0;
+
+    quiz.questions.forEach(q => {
+      maxScore += q.points;
+      if (answers[q.id] === q.correctAnswer) {
+        score += q.points;
+      }
+    });
+
+    return this.prisma.quizSubmission.create({
+      data: {
+        studentId,
+        quizId,
+        answers,
+        score,
+        maxScore,
+      }
+    });
+  }
 }

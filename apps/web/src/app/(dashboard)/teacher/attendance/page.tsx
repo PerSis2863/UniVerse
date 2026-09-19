@@ -99,8 +99,8 @@ export default function TeacherAttendance() {
           </div>
 
           {/* Roster */}
-          <div className="card p-0 overflow-hidden">
-            <table className="w-full text-left border-collapse">
+          <div className="card p-0 overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="border-b border-white/[0.05] bg-white/[0.02]">
                   <th className="p-4 text-xs font-semibold tracking-wider text-zinc-400 uppercase">Student Name</th>
