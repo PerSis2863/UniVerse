@@ -46,7 +46,7 @@ export default function CalendarPage() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [view, setView] = useState('Semester'); // Day, Week, Month, Semester
 
-  // Base date is Monday, Sep 14, 2026 (adjust to a standard Monday)
+  // Base date is Monday, Sep 14, 2026
   const baseDate = new Date(2026, 8, 14);
 
   const generatedDates = useMemo(() => {
@@ -142,35 +142,35 @@ export default function CalendarPage() {
         <div className="max-w-7xl mx-auto space-y-6">
           
           {/* Header Controls */}
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
-            <div className="flex items-center gap-4">
-              <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
-                <ChevronLeft className="w-5 h-5" />
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 xl:gap-4 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 xl:p-4">
+            <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto justify-between xl:justify-start">
+              <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+                <ChevronLeft className="w-6 h-6 sm:w-5 sm:h-5" />
               </button>
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white min-w-[220px] text-center">{currentRangeString()}</h2>
-              <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
-                <ChevronRight className="w-5 h-5" />
+              <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-white min-w-[200px] sm:min-w-[220px] text-center">{currentRangeString()}</h2>
+              <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+                <ChevronRight className="w-6 h-6 sm:w-5 sm:h-5" />
               </button>
             </div>
             <div className="flex flex-wrap gap-2 w-full xl:w-auto">
-              <button onClick={() => setView('Day')} className={`flex-1 xl:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Day' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Day</button>
-              <button onClick={() => setView('Week')} className={`flex-1 xl:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Week' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Week</button>
-              <button onClick={() => setView('Month')} className={`flex-1 xl:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Month' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Month</button>
-              <button onClick={() => setView('Semester')} className={`flex-1 xl:flex-none px-4 py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Semester' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Semester</button>
+              <button onClick={() => setView('Day')} className={`flex-1 xl:flex-none px-4 py-3 sm:py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Day' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Day</button>
+              <button onClick={() => setView('Week')} className={`flex-1 xl:flex-none px-4 py-3 sm:py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Week' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Week</button>
+              <button onClick={() => setView('Month')} className={`flex-1 xl:flex-none px-4 py-3 sm:py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Month' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Month</button>
+              <button onClick={() => setView('Semester')} className={`flex-1 xl:flex-none px-4 py-3 sm:py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Semester' ? 'bg-indigo-600 text-zinc-900 dark:text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800'}`}>Semester</button>
             </div>
           </div>
 
           {/* Continuous Scroll View */}
-          <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl flex">
+          <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl flex [--hour-height:130px] sm:[--hour-height:96px]">
             {/* Sticky Time Column */}
-            <div className="w-20 flex-shrink-0 sticky left-0 z-20 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 shadow-[2px_0_10px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
+            <div className="w-16 sm:w-20 flex-shrink-0 sticky left-0 z-20 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 shadow-[2px_0_10px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
               <div className="h-16 flex items-center justify-center border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80">
-                <Clock className="w-5 h-5 text-zinc-500" />
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500" />
               </div>
-              <div className="relative" style={{ height: `${HOURS.length * 96}px` }}>
+              <div className="relative" style={{ height: `calc(${HOURS.length} * var(--hour-height))` }}>
                 {HOURS.map((hour, i) => (
-                  <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/50 flex items-start justify-center pt-2" style={{ top: `${i * 96}px`, height: '96px' }}>
-                    <span className="text-xs font-medium text-zinc-500 bg-white dark:bg-zinc-900 px-1">{hour}</span>
+                  <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/50 flex items-start justify-center pt-2" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}>
+                    <span className="text-[10px] sm:text-xs font-medium text-zinc-500 bg-white dark:bg-zinc-900 px-1">{hour}</span>
                   </div>
                 ))}
               </div>
@@ -178,13 +178,13 @@ export default function CalendarPage() {
 
             {/* Scrollable Days */}
             <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2">
-              <div className="flex" style={{ width: `${generatedDates.length * 240}px` }}>
+              <div className="flex [--col-width:280px] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
                 {generatedDates.map((date, idx) => {
                   const scheduleForDate = getScheduleForDate(date);
                   const isToday = new Date().toDateString() === date.toDateString();
                   
                   return (
-                    <div key={idx} className="flex-1 w-[240px] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0">
+                    <div key={idx} className="flex-1 w-[var(--col-width)] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0">
                       {/* Day Header */}
                       <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center sticky top-0 z-10 ${isToday ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'bg-white dark:bg-zinc-900/80'}`}>
                         <h3 className={`font-semibold ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-900 dark:text-zinc-300'}`}>
@@ -196,10 +196,10 @@ export default function CalendarPage() {
                       </div>
                       
                       {/* Day Content */}
-                      <div className="relative bg-zinc-50/30 dark:bg-zinc-950/20" style={{ height: `${HOURS.length * 96}px` }}>
+                      <div className="relative bg-zinc-50/30 dark:bg-zinc-950/20" style={{ height: `calc(${HOURS.length} * var(--hour-height))` }}>
                         {/* Grid Lines */}
                         {HOURS.map((hour, i) => (
-                          <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/30 transition-colors" style={{ top: `${i * 96}px`, height: '96px' }}></div>
+                          <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/30 transition-colors" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}></div>
                         ))}
                         
                         {/* Schedule Blocks */}
@@ -207,14 +207,17 @@ export default function CalendarPage() {
                           const startHour = parseInt(cls.time.split(':')[0]);
                           const startMin = parseInt(cls.time.split(':')[1]);
                           const baseStart = 8; // 08:00
-                          const topOffset = ((startHour - baseStart) + (startMin / 60)) * 96;
-                          const height = cls.duration * 96;
+                          const topOffsetHours = (startHour - baseStart) + (startMin / 60);
+                          const durationHours = cls.duration;
 
                           return (
                             <div 
                               key={cls.id} 
-                              className={`absolute left-2 right-2 rounded-xl border p-3 z-10 hover:z-20 transition-all cursor-pointer hover:shadow-lg ${cls.color}`}
-                              style={{ top: `${topOffset + 4}px`, height: `${height - 8}px` }}
+                              className={`absolute left-2 right-2 rounded-xl border p-3 sm:p-4 z-10 hover:z-20 transition-all cursor-pointer hover:shadow-lg ${cls.color}`}
+                              style={{ 
+                                top: `calc(${topOffsetHours} * var(--hour-height) + 4px)`, 
+                                height: `calc(${durationHours} * var(--hour-height) - 8px)` 
+                              }}
                               onClick={() => toast.success(`Viewing details for ${cls.subject}`)}
                             >
                               <div className="font-bold text-sm leading-tight mb-1 truncate">{cls.subject}</div>

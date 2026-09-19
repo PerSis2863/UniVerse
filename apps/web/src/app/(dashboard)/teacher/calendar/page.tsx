@@ -142,13 +142,13 @@ export default function TeacherCalendarPage() {
           
           {/* Header Controls */}
           <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center gap-4">
-              <button onClick={() => { setCurrentWeekOffset(0); setView('Day'); }} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors">
+            <div className="flex items-center gap-4 justify-between w-full xl:w-auto">
+              <button onClick={() => { setCurrentWeekOffset(0); setView('Day'); }} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors hidden sm:block">
                 Today
               </button>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
-                  <ChevronLeft className="w-5 h-5" />
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
+                  <ChevronLeft className="w-6 h-6 sm:w-5 sm:h-5" />
                 </button>
                 <div className="relative">
                   <button 
@@ -176,35 +176,35 @@ export default function TeacherCalendarPage() {
                     </div>
                   )}
                 </div>
-                <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
-                  <ChevronRight className="w-5 h-5" />
+                <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
+                  <ChevronRight className="w-6 h-6 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
             
             <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
               <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg w-full xl:w-auto justify-between xl:justify-start overflow-x-auto scrollbar-none">
-                <button onClick={() => setView('Day')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Day' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Day</button>
-                <button onClick={() => setView('Week')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Week' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Week</button>
-                <button onClick={() => setView('Month')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Month' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Month</button>
-                <button onClick={() => setView('Semester')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Semester' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Semester</button>
+                <button onClick={() => setView('Day')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Day' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Day</button>
+                <button onClick={() => setView('Week')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Week' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Week</button>
+                <button onClick={() => setView('Month')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Month' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Month</button>
+                <button onClick={() => setView('Semester')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Semester' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Semester</button>
               </div>
               <div className="hidden xl:block w-px h-8 bg-zinc-200 dark:bg-zinc-700"></div>
-              <button className="w-full xl:w-auto px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Add Office Hours Modal')}>
+              <button className="w-full xl:w-auto px-4 py-3 sm:py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Add Office Hours Modal')}>
                 + Office Hours
               </button>
             </div>
           </div>
 
           {/* Continuous Scroll View */}
-          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-lg flex">
+          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-lg flex [--hour-height:130px] sm:[--hour-height:96px]">
             {/* Sticky Time Column */}
-            <div className="w-20 flex-shrink-0 sticky left-0 z-20 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800/50 shadow-[2px_0_10px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
+            <div className="w-16 sm:w-20 flex-shrink-0 sticky left-0 z-20 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800/50 shadow-[2px_0_10px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
               <div className="h-16 border-b border-zinc-200 dark:border-zinc-800/50 bg-zinc-50 dark:bg-zinc-900/80"></div>
-              <div className="relative" style={{ height: `${HOURS.length * 96}px` }}>
+              <div className="relative" style={{ height: `calc(${HOURS.length} * var(--hour-height))` }}>
                 {HOURS.map((hour, i) => (
-                  <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/50 flex justify-end pr-2 pt-2" style={{ top: `${i * 96}px`, height: '96px' }}>
-                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">
+                  <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/50 flex justify-end pr-1 sm:pr-2 pt-2" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}>
+                    <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-500">
                       {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                     </span>
                   </div>
@@ -214,13 +214,13 @@ export default function TeacherCalendarPage() {
 
             {/* Scrollable Days */}
             <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2">
-              <div className="flex" style={{ width: `${generatedDates.length * 240}px` }}>
+              <div className="flex [--col-width:280px] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
                 {generatedDates.map((date, index) => {
                   const scheduleForDate = getScheduleForDate(date);
                   const isToday = isSameDay(date, new Date());
                   
                   return (
-                    <div key={index} className="flex-1 w-[240px] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0">
+                    <div key={index} className="flex-1 w-[var(--col-width)] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0">
                       {/* Day Header */}
                       <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800/50 flex flex-col items-center justify-center sticky top-0 z-10 ${isToday ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'bg-white dark:bg-zinc-900/80'}`}>
                         <span className={`text-xs font-semibold uppercase tracking-wider ${isToday ? 'text-indigo-500 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-500'}`}>
@@ -232,27 +232,27 @@ export default function TeacherCalendarPage() {
                       </div>
 
                       {/* Day Content */}
-                      <div className="relative bg-zinc-50/30 dark:bg-zinc-950/20" style={{ height: `${HOURS.length * 96}px` }}>
+                      <div className="relative bg-zinc-50/30 dark:bg-zinc-950/20" style={{ height: `calc(${HOURS.length} * var(--hour-height))` }}>
                         {/* Grid Lines */}
                         {HOURS.map((hour, i) => (
-                          <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/20 transition-colors" style={{ top: `${i * 96}px`, height: '96px' }}></div>
+                          <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/20 transition-colors" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}></div>
                         ))}
                         
                         {/* Schedule Blocks */}
                         {scheduleForDate.map((cls, i) => {
                           const startMinutes = parseTimeToMinutes(cls.time);
                           const gridStartMinutes = 8 * 60;
-                          const topOffset = ((startMinutes - gridStartMinutes) / 60) * 96;
+                          const topOffsetHours = (startMinutes - gridStartMinutes) / 60;
                           const durationMinutes = parseInt(cls.duration) || 90;
-                          const height = (durationMinutes / 60) * 96;
+                          const durationHours = durationMinutes / 60;
 
                           return (
                             <div 
                               key={i}
-                              className="absolute left-1 right-1 rounded-lg p-3 overflow-hidden shadow-sm transition-transform hover:scale-[1.02] hover:z-10 cursor-pointer"
+                              className="absolute left-1 right-1 rounded-lg p-3 sm:p-4 overflow-hidden shadow-sm transition-transform hover:scale-[1.02] hover:z-10 cursor-pointer"
                               style={{
-                                top: `${topOffset + 2}px`,
-                                height: `${height - 4}px`,
+                                top: `calc(${topOffsetHours} * var(--hour-height) + 2px)`,
+                                height: `calc(${durationHours} * var(--hour-height) - 4px)`,
                                 backgroundColor: `${cls.course.color}20` || '#6366f120',
                                 borderLeft: `4px solid ${cls.course.color || '#6366f1'}`,
                                 borderTop: `1px solid ${cls.course.color}40`,
