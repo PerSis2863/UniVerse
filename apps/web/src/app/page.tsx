@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { GraduationCap, BookOpen, Users, BarChart3, Shield, Zap, ArrowRight, Globe2, HandHeart } from 'lucide-react';
+import { BookOpen, Users, BarChart3, Zap, ArrowRight, Globe2, HandHeart } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 
 const features = [
