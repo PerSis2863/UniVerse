@@ -107,7 +107,7 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    color: var(--text-primary);
+    color: inherit;
   }
 
   ::selection { background-color: rgb(99 102 241 / 0.25); }

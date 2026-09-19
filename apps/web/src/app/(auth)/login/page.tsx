@@ -3,12 +3,10 @@
 import { SignIn } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 
 export default function LoginPage() {
-  const { setTheme, theme } = useTheme();
   const router = useRouter();
   const { login } = useAuthStore();
 
@@ -23,12 +21,12 @@ export default function LoginPage() {
     <div className="w-full">
       {/* Header */}
       <div className="mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-5 transition-colors">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-5 transition-colors">
           <Sparkles className="w-3 h-3" />
           UniVerse Impact
         </div>
-        <h1 className="text-3xl font-black text-zinc-900 dark:text-white mb-2 transition-colors">Welcome back</h1>
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm transition-colors">
+        <h1 className="text-3xl font-black text-white mb-2 transition-colors">Welcome back</h1>
+        <p className="text-zinc-400 text-sm transition-colors">
           Sign in to continue making an impact.
         </p>
       </div>
@@ -41,73 +39,75 @@ export default function LoginPage() {
           variables: {
             colorPrimary: '#4f46e5',
             borderRadius: '0.75rem',
+            colorBackground: '#09090b',
+            colorText: '#ffffff',
           },
           elements: {
             rootBox: 'w-full flex justify-center',
-            card: 'bg-white dark:bg-zinc-950 shadow-xl border border-zinc-200 dark:border-zinc-800 rounded-2xl',
-            headerTitle: 'text-zinc-900 dark:text-white',
-            headerSubtitle: 'text-zinc-500 dark:text-zinc-400',
+            card: 'bg-[#09090b] shadow-xl border border-zinc-800 rounded-2xl',
+            headerTitle: 'text-white',
+            headerSubtitle: 'text-zinc-400',
             // Social buttons
             socialButtonsBlockButton:
-              'w-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl transition-colors h-11',
-            socialButtonsBlockButtonText: 'font-semibold text-sm',
+              'w-full border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 text-zinc-300 rounded-xl transition-colors h-11',
+            socialButtonsBlockButtonText: 'font-semibold text-sm text-zinc-300',
             // Divider
             dividerRow: 'my-5',
-            dividerLine: 'bg-zinc-200 dark:bg-zinc-800',
-            dividerText: 'text-zinc-400 dark:text-zinc-500 text-xs',
+            dividerLine: 'bg-zinc-800',
+            dividerText: 'text-zinc-500 text-xs',
             // Form fields
-            formFieldLabel: 'text-zinc-600 dark:text-zinc-400 text-sm font-medium',
+            formFieldLabel: 'text-zinc-400 text-sm font-medium',
             formFieldInput:
-              'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 rounded-xl text-sm focus:border-indigo-500 dark:focus:border-indigo-500 shadow-sm transition-colors',
+              'bg-[#09090b] border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl text-sm focus:border-indigo-500 shadow-sm transition-colors',
             // Primary button
             formButtonPrimary:
               'bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm shadow-md',
             // Footer
-            footer: 'bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-200 dark:border-zinc-800',
-            footerActionText: 'text-zinc-500 dark:text-zinc-400 text-sm',
-            footerActionLink: 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold',
+            footer: 'bg-zinc-900/50 border-t border-zinc-800',
+            footerActionText: 'text-zinc-400 text-sm',
+            footerActionLink: 'text-indigo-400 hover:text-indigo-300 font-semibold',
             // Identity preview
-            identityPreviewText: 'text-zinc-700 dark:text-zinc-300',
-            identityPreviewEditButton: 'text-indigo-600 dark:text-indigo-400',
+            identityPreviewText: 'text-zinc-300',
+            identityPreviewEditButton: 'text-indigo-400',
             // Alerts
-            alertText: 'text-red-600 dark:text-red-400 text-sm',
-            formFieldErrorText: 'text-red-500 dark:text-red-400 text-xs',
+            alertText: 'text-red-400 text-sm',
+            formFieldErrorText: 'text-red-400 text-xs',
           },
         }}
       />
 
       {/* Demo Logins */}
-      <div className="mt-8 pt-8 border-t border-zinc-200 dark:border-white/[0.08]">
-        <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4 text-center">
+      <div className="mt-8 pt-8 border-t border-white/[0.08]">
+        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4 text-center">
           Demo Access (No Clerk Config Required)
         </p>
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => handleDemoLogin('student')}
-            className="px-3 py-2 text-xs font-medium bg-zinc-100 dark:bg-white/[0.05] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-700 dark:text-zinc-300 rounded-lg transition-colors border border-zinc-200 dark:border-white/[0.05]"
+            className="px-3 py-2 text-xs font-medium bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 rounded-lg transition-colors border border-white/[0.05]"
           >
             Student
           </button>
           <button
             onClick={() => handleDemoLogin('teacher')}
-            className="px-3 py-2 text-xs font-medium bg-zinc-100 dark:bg-white/[0.05] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-700 dark:text-zinc-300 rounded-lg transition-colors border border-zinc-200 dark:border-white/[0.05]"
+            className="px-3 py-2 text-xs font-medium bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 rounded-lg transition-colors border border-white/[0.05]"
           >
             Teacher
           </button>
           <button
             onClick={() => handleDemoLogin('admin')}
-            className="px-3 py-2 text-xs font-medium bg-zinc-100 dark:bg-white/[0.05] hover:bg-zinc-200 dark:hover:bg-white/[0.1] text-zinc-700 dark:text-zinc-300 rounded-lg transition-colors border border-zinc-200 dark:border-white/[0.05]"
+            className="px-3 py-2 text-xs font-medium bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 rounded-lg transition-colors border border-white/[0.05]"
           >
             Admin
           </button>
         </div>
       </div>
 
-      <p className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
+      <p className="mt-6 text-center text-xs text-zinc-500">
         By signing in, you agree to our{' '}
-        <Link href="#" className="text-indigo-600 dark:text-indigo-400 hover:underline">Terms</Link>
+        <Link href="#" className="text-indigo-400 hover:underline">Terms</Link>
         {' & '}
-        <Link href="#" className="text-indigo-600 dark:text-indigo-400 hover:underline">Privacy Policy</Link>.
+        <Link href="#" className="text-indigo-400 hover:underline">Privacy Policy</Link>.
       </p>
     </div>
   );
