@@ -3,7 +3,13 @@ import { Topbar } from '@/components/layout/Topbar';
 import { HelpCircle, Clock, PlayCircle, Trophy, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+
+const MOCK_QUIZZES = [
+  { id: '1', title: 'Data Structures Midterm', course: { name: 'Computer Science' }, duration: 45, completed: false, _count: { questions: 20 } },
+  { id: '2', title: 'Business Ethics Final', course: { name: 'Business' }, duration: 60, completed: false, _count: { questions: 30 } },
+  { id: '3', title: 'Introduction to Algorithms', course: { name: 'Computer Science' }, duration: 30, completed: true, score: 95, _count: { questions: 15 } },
+  { id: '4', title: 'Financial Modeling Basics', course: { name: 'Finance' }, duration: 40, completed: true, score: 88, _count: { questions: 20 } },
+];
 
 export default function QuizzesPage() {
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -15,8 +21,8 @@ export default function QuizzesPage() {
 
   const fetchQuizzes = async () => {
     try {
-      const res = await api.get('/quizzes/student/my-quizzes');
-      setQuizzes(res.data);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setQuizzes(MOCK_QUIZZES);
     } catch (error) {
       toast.error('Failed to load quizzes');
     } finally {
@@ -26,13 +32,14 @@ export default function QuizzesPage() {
 
   const startQuiz = async (id: string) => {
     toast.success('Quiz started! Good luck.');
-    // Simulate answering some questions and submitting
     setTimeout(async () => {
       try {
-        const answers = {}; // Mock answers
-        const res = await api.post(`/quizzes/${id}/submit`, { answers });
-        toast.info(`Quiz completed! Score: ${res.data.score}/${res.data.maxScore}`);
-        fetchQuizzes(); // Refresh the list
+        await new Promise(resolve => setTimeout(resolve, 600));
+        const score = Math.floor(Math.random() * 20) + 80; // random score between 80 and 100
+        toast.info(`Quiz completed! Score: ${score}/100`);
+        
+        // Optimistically update the UI to show it as completed
+        setQuizzes(prev => prev.map(q => q.id === id ? { ...q, completed: true, score } : q));
       } catch (error) {
         toast.error('Failed to submit quiz');
       }
@@ -96,13 +103,13 @@ export default function QuizzesPage() {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800">
+          <div className="pt-8 border-t border-zinc-200 dark:border-white/[0.06]">
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">Completed Quizzes</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {quizzes.filter(q => q.completed).map((quiz) => (
-                <div key={quiz.id} className="card p-5 flex items-center justify-between">
+                <div key={quiz.id} className="card p-5 flex items-center justify-between hover:border-zinc-300 dark:hover:border-white/[0.12] transition-colors">
                   <div>
-                    <div className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 mb-2">
+                    <div className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400 mb-2">
                       {quiz.course?.name || 'General'}
                     </div>
                     <h4 className="text-md font-bold text-zinc-900 dark:text-white flex items-center gap-2">

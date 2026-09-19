@@ -3,7 +3,14 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+
+const MOCK_RESOURCES = [
+  { id: '1', title: 'Introduction to Computer Science', category: 'Computer Science', type: 'PDF', url: '', createdAt: new Date(Date.now() - 86400000 * 2).toISOString() },
+  { id: '2', title: 'Business Ethics Guidelines', category: 'Business', type: 'Document', url: '', createdAt: new Date(Date.now() - 86400000 * 5).toISOString() },
+  { id: '3', title: 'Financial Modeling 101', category: 'Finance', type: 'Video', url: 'https://youtube.com', createdAt: new Date(Date.now() - 86400000 * 10).toISOString() },
+  { id: '4', title: 'Student Handbook 2026', category: 'General', type: 'PDF', url: '', createdAt: new Date(Date.now() - 86400000 * 20).toISOString() },
+  { id: '5', title: 'Advanced Algorithms', category: 'Computer Science', type: 'Document', url: '', createdAt: new Date(Date.now() - 86400000 * 1).toISOString() },
+];
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
 
@@ -22,8 +29,9 @@ export default function KnowledgeHubPage() {
 
   const fetchResources = async () => {
     try {
-      const res = await api.get('/knowledge-hub');
-      setResources(res.data);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setResources(MOCK_RESOURCES);
     } catch (error) {
       toast.error('Failed to load resources');
     } finally {
@@ -44,13 +52,20 @@ export default function KnowledgeHubPage() {
     }
 
     try {
-      const res = await api.post('/knowledge-hub', {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 400));
+      
+      const newResource = {
+        id: Math.random().toString(36).substr(2, 9),
         title: formData.title,
         category: formData.category,
+        type: formData.type,
         url: formData.type === 'Link' ? 'https://example.com' : undefined,
         description: 'Uploaded by student',
-      });
-      setResources([...resources, res.data]);
+        createdAt: new Date().toISOString()
+      };
+      
+      setResources([newResource, ...resources]);
       setShowAddModal(false);
       setFormData({ title: '', category: 'General', type: 'Document' });
       toast.success('Resource added successfully!');
@@ -107,21 +122,21 @@ export default function KnowledgeHubPage() {
 
             {/* Resources List */}
             <div className="flex-1 relative z-10">
-              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-                <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white dark:bg-zinc-900/80">
+              <div className="bg-white/60 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200 dark:border-white/[0.05] rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-zinc-200 dark:border-white/[0.05] flex justify-between items-center bg-white/40 dark:bg-white/[0.02]">
                   <h3 className="font-semibold text-zinc-900 dark:text-white">Files in {activeCategory}</h3>
                   <span className="text-sm text-zinc-600 dark:text-zinc-400">{filteredResources.length} items</span>
                 </div>
-                <div className="divide-y divide-zinc-800/50">
+                <div className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
                   {filteredResources.length === 0 ? (
                     <div className="p-12 text-center text-zinc-500 dark:text-zinc-500">
                       No resources found in this category.
                     </div>
                   ) : (
                     filteredResources.map((resource) => (
-                      <div key={resource.id} className="p-4 flex items-center justify-between hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors group">
+                      <div key={resource.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors group">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-colors shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-white/[0.04] flex items-center justify-center text-zinc-600 dark:text-zinc-400 group-hover:bg-indigo-500/10 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors shrink-0">
                             <FileText className="w-5 h-5" />
                           </div>
                           <div>
