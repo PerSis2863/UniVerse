@@ -1,86 +1,106 @@
 'use client';
-
 import { Topbar } from '@/components/layout/Topbar';
 import { Utensils, Bus, ShoppingBag, Coffee } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+const modules = [
+  { title: 'Campus Dining', subtitle: 'Menus and meal plans', icon: Utensils, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  { title: 'Transport', subtitle: 'Shuttle schedules and transit', icon: Bus, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { title: 'Campus Store', subtitle: 'Merch and supplies', icon: ShoppingBag, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { title: 'Cafes', subtitle: 'Coffee shops and hours', icon: Coffee, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+];
 
 export default function EverydayLifePage() {
-  const amenities = [
-    { name: 'Campus Dining', icon: Utensils, desc: 'Menus and meal plans', color: 'text-orange-400', bg: 'bg-orange-500/20' },
-    { name: 'Transport', icon: Bus, desc: 'Shuttle schedules and transit', color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
-    { name: 'Campus Store', icon: ShoppingBag, desc: 'Merch and supplies', color: 'text-blue-400', bg: 'bg-blue-500/20' },
-    { name: 'Cafes', icon: Coffee, desc: 'Coffee shops and hours', color: 'text-amber-400', bg: 'bg-amber-500/20' },
-  ];
-
   return (
     <>
-      <Topbar title="Everyday Life" subtitle="Dining, transport, and campus amenities" />
-      
+      <Topbar 
+        title="Everyday Life" 
+        subtitle="Dining, transport, and campus amenities" 
+      />
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto">
+        <div className="space-y-8">
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            {amenities.map(item => (
-              <div key={item.name} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl text-center hover:border-zinc-700 transition-colors cursor-pointer">
-                <div className={`w-12 h-12 ${item.bg} mx-auto rounded-full flex items-center justify-center mb-4`}>
-                  <item.icon className={`w-6 h-6 ${item.color}`} />
+          {/* Top Modules */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {modules.map((mod, i) => (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.1 }}
+                key={i}
+                className="bg-[#0d1117] border border-white/[0.08] rounded-3xl p-6 flex flex-col items-center justify-center text-center hover:bg-white/[0.02] hover:border-indigo-500/30 transition-all cursor-pointer group"
+              >
+                <div className={`w-14 h-14 rounded-2xl ${mod.bg} ${mod.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <mod.icon className="w-7 h-7" />
                 </div>
-                <h3 className="font-semibold text-zinc-900 dark:text-white mb-1">{item.name}</h3>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400">{item.desc}</p>
-              </div>
+                <h3 className="font-bold text-white mb-1">{mod.title}</h3>
+                <p className="text-xs text-zinc-400">{mod.subtitle}</p>
+              </motion.div>
             ))}
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Today's Dining Menu</h3>
-              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                  <h4 className="font-semibold text-zinc-900 dark:text-white">Main Dining Hall</h4>
-                  <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">Open till 9 PM</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Dining Menu */}
+            <motion.div 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="space-y-4"
+            >
+              <h2 className="text-lg font-bold text-white">Today's Dining Menu</h2>
+              <div className="bg-[#0d1117] border border-white/[0.08] rounded-3xl p-6">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/[0.06]">
+                  <h3 className="font-bold text-white">Main Dining Hall</h3>
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                    Open till 9 PM
+                  </span>
                 </div>
-                <ul className="space-y-3">
-                  <li className="flex justify-between text-sm">
-                    <span className="text-zinc-300">Grilled Salmon</span>
-                    <span className="text-zinc-500 dark:text-zinc-500">Lunch/Dinner</span>
-                  </li>
-                  <li className="flex justify-between text-sm">
-                    <span className="text-zinc-300">Vegan Pasta</span>
-                    <span className="text-zinc-500 dark:text-zinc-500">Lunch/Dinner</span>
-                  </li>
-                  <li className="flex justify-between text-sm">
-                    <span className="text-zinc-300">Salad Bar</span>
-                    <span className="text-zinc-500 dark:text-zinc-500">All Day</span>
-                  </li>
-                </ul>
+                <div className="space-y-4">
+                  {[
+                    { item: 'Grilled Salmon', type: 'Lunch/Dinner' },
+                    { item: 'Vegan Pasta', type: 'Lunch/Dinner' },
+                    { item: 'Salad Bar', type: 'All Day' },
+                  ].map((meal, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-300 font-medium">{meal.item}</span>
+                      <span className="text-zinc-500">{meal.type}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="space-y-4">
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Shuttle Schedule</h3>
-              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
-                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                  <h4 className="font-semibold text-zinc-900 dark:text-white">Campus Loop (Red Line)</h4>
-                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Next in 5 min</span>
+            {/* Shuttle Schedule */}
+            <motion.div 
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+              className="space-y-4"
+            >
+              <h2 className="text-lg font-bold text-white">Shuttle Schedule</h2>
+              <div className="bg-[#0d1117] border border-white/[0.08] rounded-3xl p-6">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/[0.06]">
+                  <h3 className="font-bold text-white">Campus Loop (Red Line)</h3>
+                  <span className="text-xs text-zinc-400 font-medium">Next in 5 min</span>
                 </div>
-                <div className="relative pl-6 space-y-6 before:absolute before:inset-y-0 before:left-[11px] before:w-[2px] before:bg-zinc-100 dark:bg-zinc-800">
-                  <div className="relative">
-                    <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-zinc-900" />
-                    <div className="text-sm font-medium text-zinc-900 dark:text-white">Student Union</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-500">Departed 10:15 AM</div>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-zinc-900 animate-pulse" />
-                    <div className="text-sm font-medium text-zinc-900 dark:text-white">Engineering Quad</div>
-                    <div className="text-xs text-indigo-400">Arriving 10:20 AM</div>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-zinc-700 ring-4 ring-zinc-900" />
-                    <div className="text-sm font-medium text-zinc-900 dark:text-white">North Dorms</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-500">Scheduled 10:28 AM</div>
-                  </div>
+                
+                <div className="space-y-6 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px before:h-full before:w-0.5 before:bg-zinc-800">
+                  {[
+                    { stop: 'Student Union', time: 'Departed 10:15 AM', status: 'past', color: 'bg-emerald-500' },
+                    { stop: 'Engineering Quad', time: 'Arriving 10:20 AM', status: 'current', color: 'bg-indigo-500', active: true },
+                    { stop: 'North Dorms', time: 'Scheduled 10:28 AM', status: 'future', color: 'bg-zinc-700' },
+                  ].map((stop, idx) => (
+                    <div key={idx} className="relative flex items-start gap-4 z-10 pl-8">
+                      <div className={`absolute left-0 w-4 h-4 rounded-full border-4 border-[#0d1117] ${stop.color} ${stop.active ? 'ring-2 ring-indigo-500/50' : ''}`} />
+                      <div>
+                        <div className={`text-sm font-bold ${stop.active ? 'text-white' : 'text-zinc-300'}`}>{stop.stop}</div>
+                        <div className={`text-xs mt-1 ${stop.active ? 'text-indigo-400' : 'text-zinc-500'}`}>{stop.time}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
         </div>
