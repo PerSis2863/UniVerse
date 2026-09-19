@@ -5,7 +5,7 @@ import {
   BookOpen, FileText, Plus, X, Upload, Pin, Bell, Users, Search,
   Trash2, Edit3, ChevronRight, Send, MessageSquare, Calendar, Star,
   BarChart3, CheckCircle2, Activity, Target, Video, Link as LinkIcon,
-  Bookmark, Award, Sparkles, BrainCircuit, PenTool
+  Bookmark, Award, Sparkles, BrainCircuit, PenTool, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
