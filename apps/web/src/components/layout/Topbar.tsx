@@ -83,7 +83,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
                 ))}
               </div>
               <div className="p-2 bg-zinc-950 text-center">
-                <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Mark all as read</button>
+                <button onClick={() => { import('sonner').then(m => m.toast.success('All notifications marked as read!')); setShowNotifications(false); }} className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Mark all as read</button>
               </div>
             </motion.div>
           )}

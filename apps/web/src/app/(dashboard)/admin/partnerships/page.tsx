@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { toast } from 'sonner';
 import {
   Globe2, Building2, HandHeart, CheckCircle2, AlertTriangle, ShieldCheck,
   PlusCircle, Search, Filter, ExternalLink, ArrowUpRight, DollarSign, Users
@@ -62,6 +63,7 @@ export default function AdminPartnershipsPage() {
 
   const handleApprove = (id: string) => {
     setPartners(partners.map(p => p.id === id ? { ...p, status: 'Active', validUntil: 'Sep 2029' } : p));
+    toast.success('Agreement Ratified Successfully');
   };
 
   return (
@@ -158,7 +160,9 @@ export default function AdminPartnershipsPage() {
                         Ratify Agreement
                       </button>
                     )}
-                    <button className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors">
+                    <button 
+                      onClick={() => toast.info('Loading Charter PDF...')}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors">
                       View Charter PDF
                     </button>
                   </div>
@@ -230,6 +234,7 @@ export default function AdminPartnershipsPage() {
                       ]);
                       setShowAddModal(false);
                       setNewEntity('');
+                      toast.success(`Successfully onboarded ${newEntity}`);
                     }}
                     className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30"
                   >

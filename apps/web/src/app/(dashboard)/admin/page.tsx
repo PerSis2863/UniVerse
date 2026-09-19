@@ -24,10 +24,33 @@ const departments = [
   { name: 'Electronics', students: 365, teachers: 24, color: '#f59e0b' },
 ];
 
+import { useState } from 'react';
+import { toast } from 'sonner';
+
 export default function AdminDashboard() {
+  const [pendingUsers, setPendingUsers] = useState([
+    { id: 1, name: 'Dr. Kavya Reddy', role: 'Teacher', dept: 'Computer Science', applied: '2 hours ago' },
+    { id: 2, name: 'Mohammed Ali', role: 'Teacher', dept: 'Mathematics', applied: '5 hours ago' },
+    { id: 3, name: 'Lisa Chen', role: 'Admin', dept: 'Administration', applied: '1 day ago' },
+  ]);
+
+  const handleApprove = (id: number, name: string) => {
+    setPendingUsers(prev => prev.filter(u => u.id !== id));
+    toast.success(`${name} approved successfully`);
+  };
+
+  const handleReject = (id: number, name: string) => {
+    setPendingUsers(prev => prev.filter(u => u.id !== id));
+    toast.error(`${name}'s application rejected`);
+  };
+
+  const handleSendAnnouncement = () => {
+    toast.info('Opening announcement composer...');
+  };
+
   return (
     <>
-      <Topbar title="Admin Overview" subtitle="System health and key metrics" action={{ label: 'Send Announcement', onClick: () => {} }} />
+      <Topbar title="Admin Overview" subtitle="System health and key metrics" action={{ label: 'Send Announcement', onClick: handleSendAnnouncement }} />
       <div className="flex-1 p-8 space-y-8">
 
         {/* KPIs */}
@@ -110,7 +133,11 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
-            <button className="w-full mt-4 btn-secondary text-sm py-2">View all payments</button>
+            <button 
+              onClick={() => toast.info('Loading all payments...')}
+              className="w-full mt-4 btn-secondary text-sm py-2">
+              View all payments
+            </button>
           </div>
         </div>
 
@@ -118,25 +145,33 @@ export default function AdminDashboard() {
         <div className="card">
           <h2 className="font-bold text-white mb-5">Pending User Approvals</h2>
           <div className="space-y-2">
-            {[
-              { name: 'Dr. Kavya Reddy', role: 'Teacher', dept: 'Computer Science', applied: '2 hours ago' },
-              { name: 'Mohammed Ali', role: 'Teacher', dept: 'Mathematics', applied: '5 hours ago' },
-              { name: 'Lisa Chen', role: 'Admin', dept: 'Administration', applied: '1 day ago' },
-            ].map((u, i) => (
-              <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
-                <div className="w-9 h-9 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
-                  {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+            {pendingUsers.length === 0 ? (
+              <div className="text-sm text-zinc-500 py-4 text-center">No pending approvals.</div>
+            ) : (
+              pendingUsers.map((u, i) => (
+                <div key={u.id} className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
+                  <div className="w-9 h-9 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
+                    {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-white">{u.name}</div>
+                    <div className="text-xs text-zinc-500">{u.role} • {u.dept} • {u.applied}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleApprove(u.id, u.name)}
+                      className="px-3 py-1.5 rounded-lg bg-green-900/30 text-green-400 border border-green-700/30 text-xs font-semibold hover:bg-green-900/50 transition-colors">
+                      Approve
+                    </button>
+                    <button 
+                      onClick={() => handleReject(u.id, u.name)}
+                      className="px-3 py-1.5 rounded-lg bg-rose-900/30 text-rose-400 border border-rose-700/30 text-xs font-semibold hover:bg-rose-900/50 transition-colors">
+                      Reject
+                    </button>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-white">{u.name}</div>
-                  <div className="text-xs text-zinc-500">{u.role} • {u.dept} • {u.applied}</div>
-                </div>
-                <div className="flex gap-2">
-                  <button className="px-3 py-1.5 rounded-lg bg-green-900/30 text-green-400 border border-green-700/30 text-xs font-semibold hover:bg-green-900/50 transition-colors">Approve</button>
-                  <button className="px-3 py-1.5 rounded-lg bg-rose-900/30 text-rose-400 border border-rose-700/30 text-xs font-semibold hover:bg-rose-900/50 transition-colors">Reject</button>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

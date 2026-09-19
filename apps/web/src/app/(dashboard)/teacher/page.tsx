@@ -25,6 +25,7 @@ const myCourses = [
 
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -32,9 +33,13 @@ export default function TeacherDashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
+  const handleNewCourse = () => {
+    toast.info('Opening course creator workflow...');
+  };
+
   return (
     <>
-      <Topbar title="Teacher Dashboard" subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`} action={{ label: 'New Course', onClick: () => {} }} />
+      <Topbar title="Teacher Dashboard" subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`} action={{ label: 'New Course', onClick: handleNewCourse }} />
       <div className="flex-1 p-8 space-y-8">
 
         {/* KPIs */}
