@@ -1,22 +1,24 @@
 'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/auth';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { BookOpen, Users, BarChart3, Zap, ArrowRight, Globe2, HandHeart } from 'lucide-react';
-import { UniverseLogo } from '@/components/ui/UniverseLogo';
 
-const features = [
-  { icon: Globe2, title: 'Global Network', desc: 'Connect with universities, NGOs, and student groups worldwide.' },
-  { icon: HandHeart, title: 'Social Impact', desc: 'Participate in inter-college hackathons and grassroots volunteering.' },
-  { icon: Users, title: 'Collaborative Projects', desc: 'Work across borders on joint research and NGO field mentoring.' },
-  { icon: BookOpen, title: 'Smart Learning', desc: 'Interactive courses, quizzes, and real-time progress tracking.' },
-  { icon: BarChart3, title: 'Impact Analytics', desc: 'Measure and visualize your real-world social impact.' },
-  { icon: Zap, title: 'Real-time', desc: 'Live notifications, announcements, and chat powered by WebSockets.' },
+import { motion } from 'framer-motion';
+import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import { Globe2, ArrowRight, Heart, Users, Sparkles, Sprout } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
+const stats = [
+  { value: '50+', label: 'Global NGO Partners', icon: Globe2, color: 'text-blue-500' },
+  { value: '12K', label: 'Students Engaged', icon: Users, color: 'text-indigo-500' },
+  { value: '2M', label: 'Hours Volunteered', icon: Heart, color: 'text-rose-500' },
+  { value: '85', label: 'Active Projects', icon: Sprout, color: 'text-emerald-500' },
 ];
 
-export default function HomePage() {
+export default function ShowcasePage() {
+  const [hoveredStat, setHoveredStat] = useState<number | null>(null);
   const { user } = useAuthStore();
   const router = useRouter();
 
@@ -28,89 +30,104 @@ export default function HomePage() {
   }, [user, router]);
 
   return (
-    <div className="min-h-screen bg-[#09090b] overflow-hidden">
-      {/* Background orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-indigo-600/10 blur-[120px]" />
-        <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-cyan-500/8 blur-[120px]" />
+    <div className="min-h-screen bg-white dark:bg-[#0d1424] text-zinc-900 dark:text-white overflow-hidden font-sans selection:bg-indigo-500/30">
+      
+      {/* Dynamic Background Effects */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-fuchsia-500/10 blur-[120px]" />
       </div>
 
-      {/* Nav */}
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.06] backdrop-blur-xl bg-[#09090b]/80">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <UniverseLogo size="md" showText={true} animated={true} />
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="btn-ghost text-sm">Sign in</Link>
-            <Link href="/register" className="btn-primary text-sm">Get started</Link>
-          </div>
+      {/* Navbar */}
+      <nav className="relative z-10 w-full p-6 flex justify-between items-center max-w-7xl mx-auto">
+        <div className="flex items-center gap-2">
+          <UniverseLogo size="md" animated withGlow />
+          <span className="font-bold text-lg tracking-tight ml-2">Uni<span className="bg-gradient-to-r from-indigo-500 to-amber-500 bg-clip-text text-transparent">Verse</span> Impact</span>
         </div>
+        <Link href="/login" className="px-6 py-2.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm hover:scale-105 transition-transform shadow-lg shadow-zinc-900/20 dark:shadow-white/10">
+          Sign In
+        </Link>
       </nav>
 
-      {/* Hero */}
-      <main className="pt-32 pb-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+      {/* Hero Section */}
+      <main className="relative z-10 w-full max-w-7xl mx-auto px-6 pt-20 pb-32 flex flex-col items-center text-center">
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 text-indigo-500 font-bold text-xs mb-8 border border-indigo-500/20"
+        >
+          <Sparkles className="w-4 h-4" /> Shaping the Future Together
+        </motion.div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-tight mb-6 font-display">
-              The Global{' '}
-              <span className="gradient-text">Social Impact</span>
-              <br />Platform
-            </h1>
-            <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-              A modern network unifying universities, students, and NGOs to drive social change, inter-college collaborations, and real-world impact.
-            </p>
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              <Link href="/register" passHref legacyBehavior>
-                <motion.a 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="btn-primary flex items-center gap-2 text-base px-7 py-3.5">
-                  Get started free <ArrowRight className="w-4 h-4" />
-                </motion.a>
-              </Link>
-              <Link href="/login" passHref legacyBehavior>
-                <motion.a 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="btn-secondary flex items-center gap-2 text-base px-7 py-3.5">
-                  Sign in
-                </motion.a>
-              </Link>
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="text-5xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6 max-w-4xl"
+        >
+          Education that creates <br className="hidden md:block"/>
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            real-world impact.
+          </span>
+        </motion.h1>
+
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-lg md:text-xl text-zinc-500 dark:text-zinc-400 max-w-2xl mb-12"
+        >
+          We connect students, mentors, and NGOs globally. Learn, collaborate, and solve the world's most pressing challenges.
+        </motion.p>
+
+        {/* Impact Stats Grid */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-5xl mb-20"
+        >
+          {stats.map((stat, i) => (
+            <div 
+              key={i}
+              onMouseEnter={() => setHoveredStat(i)}
+              onMouseLeave={() => setHoveredStat(null)}
+              className="relative p-6 rounded-3xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] overflow-hidden group transition-all duration-500 hover:border-indigo-500/50 hover:bg-white dark:hover:bg-white/[0.05]"
+            >
+              <div className={cn(
+                "absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500",
+                stat.color.replace('text-', 'bg-')
+              )} />
+              
+              <stat.icon className={cn(
+                "w-8 h-8 mb-4 transition-transform duration-500",
+                stat.color,
+                hoveredStat === i ? "scale-110" : ""
+              )} />
+              
+              <div className="text-4xl font-black tracking-tight mb-1">{stat.value}</div>
+              <div className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{stat.label}</div>
             </div>
-          </motion.div>
-        </div>
+          ))}
+        </motion.div>
 
-        {/* Features */}
-        <div className="max-w-6xl mx-auto mt-28">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * i, duration: 0.5 }}
-                className="card-hover group"
-              >
-                <div className="w-10 h-10 rounded-xl bg-indigo-600/15 flex items-center justify-center mb-4 group-hover:bg-indigo-600/25 transition-colors">
-                  <f.icon className="w-5 h-5 text-indigo-400" />
-                </div>
-                <h3 className="font-bold text-zinc-900 dark:text-white mb-1.5">{f.title}</h3>
-                <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+        {/* Visual Showcase (Abstract) */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4 }}
+          className="w-full max-w-5xl aspect-video rounded-3xl overflow-hidden relative border border-zinc-200 dark:border-white/10 shadow-2xl bg-zinc-100 dark:bg-zinc-900/50 flex flex-col items-center justify-center p-8 text-center"
+        >
+          <Globe2 className="w-24 h-24 text-zinc-300 dark:text-zinc-700 mb-6 animate-pulse" />
+          <h3 className="text-2xl font-bold mb-2">Join a Global Network</h3>
+          <p className="text-zinc-500 dark:text-zinc-400 max-w-md">Discover projects, connect with mentors, and track your social impact through our unified portal.</p>
+          
+          <Link href="/login" className="mt-8 px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold transition-colors flex items-center gap-2">
+            Explore the Portal <ArrowRight className="w-4 h-4" />
+          </Link>
+        </motion.div>
 
-        {/* Footer */}
-        <div className="max-w-6xl mx-auto mt-32 border-t border-white/[0.05] pt-8 flex items-center justify-center">
-          <p className="text-xs text-zinc-500 dark:text-zinc-500 flex items-center gap-1.5 font-medium">
-            made with <span className="text-rose-500 animate-pulse">❤️</span> by Aditya Bhatt
-          </p>
-        </div>
       </main>
     </div>
   );
