@@ -130,11 +130,10 @@ export default function CalendarPage() {
           </div>
 
           {/* Grid View */}
-          <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <div className="min-w-[800px]">
-                {/* Header Row */}
-                <div className="grid grid-cols-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80">
+          <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-x-auto shadow-xl scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2">
+            <div className="min-w-[1000px]">
+              {/* Header Row */}
+              <div className="grid grid-cols-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80">
                   <div className="p-4 border-r border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
                     <Clock className="w-5 h-5 text-zinc-500 dark:text-zinc-500" />
                   </div>

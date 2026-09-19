@@ -146,7 +146,7 @@ export default function TeacherCalendarPage() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto shadow-lg">
+          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto shadow-lg scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2">
             <div className="flex min-w-[1000px]">
               <div className="w-20 flex-shrink-0 border-r border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-900/80">
                 <div className="h-16 border-b border-zinc-200 dark:border-zinc-800/50"></div>
