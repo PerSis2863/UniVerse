@@ -39,8 +39,6 @@ export default function LoginPage() {
           variables: {
             colorPrimary: '#4f46e5',
             borderRadius: '0.75rem',
-            colorBackground: '#09090b',
-            colorText: '#ffffff',
           },
           elements: {
             rootBox: 'w-full flex justify-center',
