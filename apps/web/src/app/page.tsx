@@ -44,7 +44,7 @@ export default function ShowcasePage() {
   }, [isSignedIn, router]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0d1117] text-zinc-900 dark:text-white overflow-hidden font-sans transition-colors duration-300">
+    <div className="min-h-screen overflow-hidden font-sans" style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
 
       {/* Gradient blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -56,17 +56,13 @@ export default function ShowcasePage() {
       {/* ── Navbar ──────────────────────────────────────── */}
       <nav className="relative z-10 w-full px-6 py-5 flex justify-between items-center max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
-          <UniverseLogo size="md" animated withGlow />
-          <span className="font-bold text-lg tracking-tight ml-1">
-            Uni<span className="bg-gradient-to-r from-indigo-600 to-amber-500 bg-clip-text text-transparent">Verse</span> Impact
-          </span>
+          <UniverseLogo size="md" animated withGlow showText />
         </div>
         <div className="flex items-center gap-3">
-          {/* Dark / Light toggle */}
           <ThemeToggle />
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-bold hover:opacity-90 transition-opacity shadow-lg shadow-zinc-900/20 dark:shadow-white/10"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-all shadow-lg shadow-indigo-500/25"
           >
             Sign In <ArrowRight className="w-4 h-4" />
           </Link>

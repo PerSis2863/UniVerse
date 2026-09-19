@@ -87,14 +87,6 @@ export function UniverseLogo({
             </filter>
           </defs>
 
-          {/* 1. Subtle background track for the U-curve */}
-          <path
-            d="M 28 12 C 12 28 12 56 28 72 C 40 84 55 78 55 50"
-            stroke="rgba(255, 255, 255, 0.08)"
-            strokeWidth="6"
-            strokeLinecap="round"
-          />
-
           {/* 2. Main U Curve: Left sweep (Uni) */}
           <path
             d="M 28 12 C 12 28 12 56 28 72 C 40 84 55 78 55 50"
@@ -103,7 +95,7 @@ export function UniverseLogo({
             strokeLinecap="round"
             className={cn(animated && "universe-u-curve")}
             style={{
-              filter: 'drop-shadow(0 0 4px rgba(56,189,248,0.5))'
+              filter: 'drop-shadow(0 0 4px rgba(56,189,248,0.6))'
             }}
           />
 
@@ -162,7 +154,7 @@ export function UniverseLogo({
               cx="42"
               cy="34"
               r="4"
-              fill="#0d1424"
+              fill="var(--background)"
               stroke="#38bdf8"
               strokeWidth="2"
             />
@@ -183,7 +175,7 @@ export function UniverseLogo({
             width="7"
             height="7"
             rx="1.5"
-            fill="#0d1424"
+            fill="var(--background)"
             stroke="#fb923c"
             strokeWidth="2"
             className={cn(animated && "transition-transform duration-300 group-hover:rotate-45")}

@@ -13,7 +13,6 @@ export const metadata: Metadata = {
 
 import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from 'sonner';
-import { ThemeProvider } from '@/components/ThemeProvider';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -36,17 +35,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             rel="stylesheet"
           />
         </head>
-        <body className="min-h-screen bg-background text-foreground antialiased transition-colors duration-300">
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <body className="min-h-screen antialiased" style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
             {children}
             <Toaster 
               position="bottom-right"
               toastOptions={{
-                className: 'dark:bg-zinc-950 dark:border-white/10 dark:text-white bg-white border-zinc-200 text-zinc-900',
+                style: { background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }
               }}
             />
             <Analytics />
-          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>
