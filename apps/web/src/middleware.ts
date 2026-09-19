@@ -8,6 +8,9 @@ const isProtectedRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, req) => {
+  if (req.cookies.has('demo_token')) {
+    return;
+  }
   if (isProtectedRoute(req)) {
     await auth.protect()
   }

@@ -70,14 +70,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       </div>
 
-      {/*
-        ── Right Panel ───────────────────────────────────
-        We force the `light` class here so Clerk always
-        renders with light-mode styles regardless of the
-        system / app dark mode preference.
-      */}
-      <div className="light flex-1 flex items-center justify-center p-6 lg:p-12"
-        style={{ background: '#ffffff', color: '#09090b' }}>
+      {/* Right Panel */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white dark:bg-[#09090b]">
         {/* Mobile logo */}
         <div className="absolute top-6 left-6 flex lg:hidden">
           <UniverseLogo size="md" showText={true} animated={true} />
