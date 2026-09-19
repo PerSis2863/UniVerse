@@ -43,7 +43,7 @@ export default function ShowcasePage() {
   }, [isSignedIn, router]);
 
   return (
-    <div className="min-h-screen overflow-hidden font-sans" style={{ backgroundColor: '#0d1117', color: '#ffffff' }}>
+    <div className="dark min-h-screen overflow-hidden font-sans" style={{ backgroundColor: '#0d1117', color: '#ffffff' }}>
 
       {/* Gradient blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -175,7 +175,7 @@ export default function ShowcasePage() {
               Empowering the next generation of{' '}
               <span className="text-indigo-600 dark:text-indigo-400">changemakers.</span>
             </h2>
-            <p className="text-zinc-500 dark:text-zinc-400 mb-8 text-lg leading-relaxed">
+            <p className="text-zinc-400 mb-8 text-lg leading-relaxed">
               UniVerse Impact bridges the gap between academic learning and real-world social impact.
               We provide a platform where students can apply their skills to solve genuine challenges
               faced by NGOs and communities globally.
@@ -189,8 +189,8 @@ export default function ShowcasePage() {
                 <li key={i} className="flex gap-3">
                   <CheckCircle className="w-5 h-5 text-indigo-500 dark:text-indigo-400 mt-0.5 shrink-0" />
                   <div>
-                    <h4 className="font-bold text-zinc-900 dark:text-white mb-1">{item.title}</h4>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">{item.desc}</p>
+                    <h4 className="font-bold text-white mb-1">{item.title}</h4>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
                   </div>
                 </li>
               ))}
@@ -217,6 +217,43 @@ export default function ShowcasePage() {
                 ))}
               </div>
             </div>
+          </div>
+        </motion.div>
+
+        {/* ── Core Values / Features ────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="w-full mb-28"
+        >
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-black mb-4 tracking-tight">Built for modern education</h2>
+            <p className="text-zinc-400 max-w-2xl mx-auto">
+              Everything you need to manage academics, collaborate on projects, and track social impact in one beautiful unified platform.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { title: "Intelligent Dashboard", desc: "Get a bird's eye view of your grades, attendance, and upcoming deadlines with our smart widgets.", icon: "🎯", color: "bg-blue-500/10 text-blue-400" },
+              { title: "Seamless Collaboration", desc: "Work together with peers and professors in real-time. Share documents and track project milestones.", icon: "🤝", color: "bg-fuchsia-500/10 text-fuchsia-400" },
+              { title: "Impact Tracking", desc: "Quantify your social impact. Log volunteer hours and earn verifiable digital credentials for your portfolio.", icon: "🌍", color: "bg-emerald-500/10 text-emerald-400" }
+            ].map((feature, idx) => (
+              <motion.div
+                key={idx}
+                whileHover={{ y: -8, scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                className="p-8 rounded-3xl bg-white/[0.03] border border-white/[0.06] flex flex-col items-center text-center backdrop-blur-sm"
+              >
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-6 ${feature.color}`}>
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed">{feature.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
 
@@ -280,6 +317,101 @@ export default function ShowcasePage() {
           </div>
         </motion.div>
 
+        {/* ── How it Works ──────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="w-full mb-32"
+        >
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-black mb-4 tracking-tight">How UniVerse Works</h2>
+            <p className="text-zinc-400 max-w-2xl mx-auto text-lg">
+              A streamlined journey from campus enrollment to global impact.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
+            {/* Connecting Line */}
+            <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-indigo-500/0 via-indigo-500/30 to-indigo-500/0 -translate-y-1/2 -z-10" />
+
+            {[
+              { step: '01', title: 'Enroll & Setup', desc: 'Join through your university portal. We instantly sync your timetable, courses, and accounting data.' },
+              { step: '02', title: 'Learn & Grow', desc: 'Track grades, join study groups, and complete assignments within a unified academic ecosystem.' },
+              { step: '03', title: 'Discover Projects', desc: 'Browse our Global Impact board for volunteering, internships, and NGO partnerships.' },
+              { step: '04', title: 'Make an Impact', desc: 'Apply your skills, earn verifiable impact credits, and build a resume of real-world change.' },
+            ].map((item, idx) => (
+              <motion.div
+                key={idx}
+                whileHover={{ y: -10 }}
+                className="relative bg-[#0d1117] p-8 rounded-3xl border border-white/[0.08] shadow-2xl flex flex-col items-center text-center group z-10"
+              >
+                <div className="absolute -top-6 w-12 h-12 rounded-full bg-indigo-600 border-4 border-[#0d1117] flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/40">
+                  {item.step}
+                </div>
+                <h3 className="text-xl font-bold mt-4 mb-3 text-white group-hover:text-indigo-400 transition-colors">{item.title}</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── Testimonials ──────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="w-full mb-32 relative overflow-hidden py-10"
+        >
+          <div className="absolute inset-0 bg-indigo-500/5 blur-3xl rounded-full" />
+          <div className="text-center mb-12 relative z-10">
+            <h2 className="text-3xl font-black tracking-tight mb-4">Loved by Students Globally</h2>
+          </div>
+          
+          <div className="flex gap-6 animate-marquee-x w-max relative z-10 hover:[animation-play-state:paused]">
+            {[
+              { quote: "UniVerse completely transformed how I handle my coursework. The impact dashboard is just the cherry on top!", author: "Elena M.", role: "Computer Science, MIT" },
+              { quote: "I found my summer internship at UNICEF directly through the Global Impact portal. Incredible platform.", author: "James T.", role: "Public Policy, Oxford" },
+              { quote: "Finally, a portal that doesn't look like it was built in 2005. The glassmorphism UI makes studying almost enjoyable.", author: "Sarah K.", role: "Design, ETH Zürich" },
+              { quote: "The integration between my tuition payments, classes, and study groups is flawless.", author: "Ahmed R.", role: "Engineering, NUS" },
+              { quote: "Tracking my volunteer hours automatically synced with my transcript is a game-changer.", author: "Chloe S.", role: "Bioethics, Stanford" },
+            ].map((t, i) => (
+              <div key={i} className="w-80 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between shrink-0">
+                <div className="text-indigo-400 mb-4">
+                  {[...Array(5)].map((_, i) => <span key={i}>★</span>)}
+                </div>
+                <p className="text-zinc-300 text-sm italic mb-6 leading-relaxed">"{t.quote}"</p>
+                <div>
+                  <div className="font-bold text-white text-sm">{t.author}</div>
+                  <div className="text-xs text-zinc-500">{t.role}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── CTA Section ───────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          className="w-full mb-10 p-12 md:p-16 rounded-[3rem] bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-center relative overflow-hidden shadow-2xl shadow-indigo-500/20"
+        >
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+          <div className="relative z-10 flex flex-col items-center">
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">Ready to join the movement?</h2>
+            <p className="text-indigo-100 max-w-2xl text-lg mb-10">
+              Experience the future of academic portals. Sign in now to explore your personalized dashboard and start making an impact.
+            </p>
+            <Link
+              href="/login"
+              className="px-10 py-4 rounded-full bg-white text-indigo-600 font-black text-lg hover:scale-105 transition-transform shadow-xl"
+            >
+              Access Student Portal
+            </Link>
+          </div>
+        </motion.div>
       </main>
 
       {/* Footer */}

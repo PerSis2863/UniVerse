@@ -1,183 +1,97 @@
 'use client';
-
 import { Topbar } from '@/components/layout/Topbar';
-import { FileText, Download, UploadCloud, Search, Eye, CheckCircle2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { useState } from 'react';
+import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-const DOCUMENTS = [
-  { id: 1, name: 'Official Transcript (Fall 2025)', date: 'Jan 15, 2026', type: 'Academic', size: '245 KB' },
-  { id: 2, name: 'Enrollment Verification Letter', date: 'Sep 01, 2025', type: 'Administrative', size: '120 KB' },
-  { id: 3, name: 'Student ID Card (Digital Copy)', date: 'Aug 20, 2025', type: 'Identity', size: '1.2 MB' },
-  { id: 4, name: 'Health Insurance Waiver', date: 'Aug 15, 2025', type: 'Health', size: '340 KB' },
+const documents = [
+  { id: '1', name: 'Official Transcript 2025-2026', type: 'PDF', size: '2.4 MB', date: 'Sept 15, 2026', category: 'Academic' },
+  { id: '2', name: 'Enrollment Certificate', type: 'PDF', size: '1.1 MB', date: 'Aug 20, 2026', category: 'Administrative' },
+  { id: '3', name: 'Student ID Card (Digital)', type: 'JPG', size: '3.5 MB', date: 'Aug 10, 2026', category: 'Identity' },
+  { id: '4', name: 'Tuition Receipt Q1', type: 'PDF', size: '840 KB', date: 'Jul 28, 2026', category: 'Financial' },
 ];
 
-export default function SchoolDocuments() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-
-  const handleAction = (message: string) => {
-    setToastMessage(message);
-    setShowRequestModal(false);
-    setShowUploadModal(false);
-    setTimeout(() => setToastMessage(''), 3000);
-  };
-
+export default function DocumentsPage() {
   return (
     <>
-      <Topbar title="School Documents" subtitle="Access and request official university documents" />
-      
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
-          
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="relative w-full sm:w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-              <input 
-                type="text" 
-                placeholder="Search documents..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
-              />
-            </div>
-            
-            <div className="flex gap-2 w-full sm:w-auto">
-              <button 
-                onClick={() => setShowUploadModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                <UploadCloud className="w-4 h-4" /> Upload
-              </button>
-              <button 
-                onClick={() => setShowRequestModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                Request Document
-              </button>
-            </div>
+      <Topbar 
+        title="School Documents" 
+        subtitle="Manage your official academic and administrative files." 
+        action={{ label: 'Upload Document', onClick: () => console.log('Upload clicked') }}
+      />
+      <div className="flex-1 p-8 space-y-8">
+        
+        {/* Upload Banner */}
+        <div className="relative overflow-hidden rounded-2xl border border-dashed border-indigo-500/30 bg-indigo-500/5 dark:bg-indigo-500/10 p-8 flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400">
+            <UploadCloud className="w-8 h-8" />
           </div>
-
-          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80">
-                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">Document Name</th>
-                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400 hidden md:table-cell">Category</th>
-                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">Date Issued</th>
-                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400 hidden sm:table-cell">Size</th>
-                  <th className="p-4 text-sm font-medium text-zinc-600 dark:text-zinc-400 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/50">
-                {DOCUMENTS.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30 transition-colors group">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 text-indigo-400" />
-                        </div>
-                        <span className="font-medium text-zinc-900 dark:text-white group-hover:text-indigo-400 transition-colors cursor-pointer">{doc.name}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 hidden md:table-cell">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-300">
-                        {doc.type}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm text-zinc-300">{doc.date}</td>
-                    <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400 hidden sm:table-cell">{doc.size}</td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-700/50 rounded-lg transition-colors" title="View">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-700/50 rounded-lg transition-colors" title="Download">
-                          <Download className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {DOCUMENTS.length === 0 && (
-              <div className="p-8 text-center text-zinc-500 dark:text-zinc-500">
-                No documents found.
-              </div>
-            )}
-          </div>
-
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Upload new documents</h3>
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm max-w-sm mb-6">
+            Drag and drop your files here, or click to browse. Supported formats: PDF, JPG, PNG (Max 10MB).
+          </p>
+          <button className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Browse Files
+          </button>
         </div>
+
+        {/* Document List */}
+        <div className="card">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <FileBadge2 className="w-5 h-5 text-indigo-500" /> My Documents
+            </h2>
+            <div className="flex gap-2">
+              <select className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50">
+                <option>All Categories</option>
+                <option>Academic</option>
+                <option>Administrative</option>
+                <option>Financial</option>
+                <option>Identity</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {documents.map((doc, i) => (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.1 }}
+                key={doc.id} 
+                className="group relative p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-zinc-200 dark:bg-white/[0.06] flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:text-indigo-400 group-hover:bg-indigo-500/10 transition-colors">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                    {doc.type}
+                  </span>
+                </div>
+                
+                <h4 className="font-bold text-zinc-900 dark:text-white mb-1 line-clamp-1" title={doc.name}>
+                  {doc.name}
+                </h4>
+                <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400 mb-6">
+                  <span>{doc.size}</span>
+                  <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                  <span>{doc.date}</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-4 border-t border-zinc-200 dark:border-white/[0.06]">
+                  <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors">
+                    <Eye className="w-3.5 h-3.5" /> View
+                  </button>
+                  <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors">
+                    <Download className="w-3.5 h-3.5" /> Download
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
       </div>
-
-      {/* Toast */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 bg-emerald-500/90 backdrop-blur text-zinc-900 dark:text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-in slide-in-from-bottom-5 flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="font-medium">{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Request Modal */}
-      {showRequestModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-4">Request Official Document</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1">Document Type</label>
-                <select className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
-                  <option>Official Transcript</option>
-                  <option>Enrollment Verification</option>
-                  <option>Degree Certificate</option>
-                  <option>Recommendation Letter Template</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1">Reason (Optional)</label>
-                <textarea className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors h-24 resize-none" placeholder="E.g., for visa application..."></textarea>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button onClick={() => setShowRequestModal(false)} className="px-4 py-2 text-zinc-300 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
-                <button onClick={() => handleAction('Document requested successfully!')} className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white rounded-lg font-medium transition-colors">Submit Request</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-4">Upload Document</h2>
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-zinc-700 rounded-xl p-8 text-center bg-zinc-100 dark:bg-zinc-800/30">
-                <UploadCloud className="w-8 h-8 text-zinc-500 dark:text-zinc-500 mx-auto mb-3" />
-                <p className="text-zinc-300 font-medium mb-1">Click to upload or drag and drop</p>
-                <p className="text-zinc-500 dark:text-zinc-500 text-xs">PDF, JPG, PNG up to 10MB</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1">Document Category</label>
-                <select className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
-                  <option>Identity Proof</option>
-                  <option>Medical Certificate</option>
-                  <option>Previous Transcripts</option>
-                  <option>Other</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button onClick={() => setShowUploadModal(false)} className="px-4 py-2 text-zinc-300 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
-                <button onClick={() => handleAction('Document uploaded successfully!')} className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white rounded-lg font-medium transition-colors">Upload</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

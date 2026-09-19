@@ -123,9 +123,9 @@ export default function AdminPartnershipsPage() {
               <UniverseLogo size="sm" animated={true} withGlow={true} />
             </div>
 
-            <div className="divide-y divide-zinc-800/60">
+            <div className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
               {partners.map(p => (
-                <div key={p.id} className="p-6 hover:bg-zinc-100 dark:bg-zinc-800/20 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div key={p.id} className="p-6 hover:bg-zinc-100 dark:bg-zinc-800/20 dark:hover:bg-zinc-800/40 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                   <div className="space-y-1 max-w-xl">
                     <div className="flex items-center gap-2">
                       <h4 className="text-base font-bold text-zinc-900 dark:text-white">{p.entity}</h4>

@@ -68,14 +68,14 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute right-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-50">
-              <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+              className="absolute right-0 mt-2 w-72 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-xl border border-zinc-200 dark:border-white/[0.06] rounded-xl shadow-2xl overflow-hidden z-50">
+              <div className="p-3 border-b border-zinc-200 dark:border-white/[0.06] flex items-center justify-between">
                 <span className="text-sm font-semibold text-zinc-900 dark:text-white">Notifications</span>
                 <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full">1 New</span>
               </div>
               <div className="max-h-80 overflow-y-auto">
                 {notifications.map(n => (
-                  <div key={n.id} className="p-3 border-b border-zinc-200 dark:border-zinc-800/50 hover:bg-zinc-100 dark:bg-zinc-800/30 cursor-pointer transition-colors flex items-start gap-3">
+                  <div key={n.id} className="p-3 border-b border-zinc-200 dark:border-white/[0.06] hover:bg-zinc-100 dark:hover:bg-white/[0.03] cursor-pointer transition-colors flex items-start gap-3">
                     <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", n.unread ? "bg-indigo-500" : "bg-transparent")} />
                     <div>
                       <div className={cn("text-xs", n.unread ? "text-zinc-900 dark:text-white font-medium" : "text-zinc-600 dark:text-zinc-400")}>{n.title}</div>
