@@ -2,13 +2,12 @@
 
 import { motion } from 'framer-motion';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { Globe2, ArrowRight, Heart, Users, Sparkles, Sprout } from 'lucide-react';
+import { Globe2, Heart, Users, Sparkles, Sprout } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/store/auth';
+import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 
 const stats = [
   { value: '50+', label: 'Global NGO Partners', icon: Globe2, color: 'text-blue-500' },
@@ -19,15 +18,15 @@ const stats = [
 
 export default function ShowcasePage() {
   const [hoveredStat, setHoveredStat] = useState<number | null>(null);
-  const { user } = useAuthStore();
+  const { isSignedIn } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      const path = user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin';
-      router.push(path);
+    // If user is already logged in, send them to their dashboard
+    if (isSignedIn) {
+      router.push('/student'); // Clerk handles role routing via metadata
     }
-  }, [user, router]);
+  }, [isSignedIn, router]);
 
   return (
     <div className="min-h-screen bg-background text-zinc-900 dark:text-white overflow-hidden font-sans selection:bg-indigo-500/30">

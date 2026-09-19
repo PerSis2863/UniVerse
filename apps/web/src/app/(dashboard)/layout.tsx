@@ -1,18 +1,22 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/auth';
+import { useUser } from '@clerk/nextjs';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthStore();
+  const { isLoaded, isSignedIn } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (!user) router.replace('/login');
-  }, [user, router]);
+    // Wait for Clerk to load before checking auth state
+    if (isLoaded && !isSignedIn) {
+      router.replace('/login');
+    }
+  }, [isLoaded, isSignedIn, router]);
 
-  if (!user) return null;
+  // Show nothing while Clerk is loading session
+  if (!isLoaded || !isSignedIn) return null;
   
   return <DashboardShell>{children}</DashboardShell>;
 }
