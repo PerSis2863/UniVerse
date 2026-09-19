@@ -65,7 +65,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           {/* Footer */}
           <div className="text-zinc-600 text-xs flex items-center justify-between">
             <span>© 2026 UniVerse Impact Network</span>
-            <span>UN Sustainable Development Partner</span>
+            <span className="flex items-center gap-1">Made with <span className="text-red-500">❤️</span> by Aditya Bhatt</span>
           </div>
         </div>
       </div>
