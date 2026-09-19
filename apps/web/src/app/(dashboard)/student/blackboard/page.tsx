@@ -5,11 +5,17 @@ import {
   BookOpen, FileText, Search, MessageSquare, Bell, Calendar,
   Download, ExternalLink, Pin, Star, Clock, Users, ChevronRight,
   Upload, Video, Activity, Briefcase, Target, Plus, X, Send,
-  CheckCircle2, AlertCircle, BarChart3, Layers, Award, Bookmark, UploadCloud
+  CheckCircle2, AlertCircle, BarChart3, Layers, Award, Bookmark, UploadCloud, PenTool
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
+
+const CollaborationWhiteboard = dynamic(
+  () => import('@/components/dashboard/CollaborationWhiteboard').then(mod => mod.CollaborationWhiteboard),
+  { ssr: false, loading: () => <div className="h-[600px] w-full bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-2xl flex items-center justify-center text-zinc-500">Loading Whiteboard...</div> }
+);
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
@@ -81,6 +87,7 @@ const TABS = [
   { id: 'assignments', label: 'Assignments', icon: CheckCircle2 },
   { id: 'quizzes', label: 'Quiz Results', icon: Star },
   { id: 'discussion', label: 'Discussion', icon: MessageSquare },
+  { id: 'whiteboard', label: 'Whiteboard', icon: PenTool },
   { id: 'activity', label: 'Activity', icon: Activity },
   { id: 'messages', label: 'Messages', icon: Send },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
@@ -395,6 +402,17 @@ export default function BlackboardPage() {
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              )}
+
+              {/* ── WHITEBOARD ────────────────────── */}
+              {activeTab === 'whiteboard' && (
+                <div className="max-w-6xl mx-auto space-y-4 h-[650px]">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><PenTool className="w-4 h-4 text-indigo-500" /> Collaborative Whiteboard</h3>
+                    <p className="text-xs text-zinc-500">Connected: 3 Members</p>
+                  </div>
+                  <CollaborationWhiteboard />
                 </div>
               )}
 

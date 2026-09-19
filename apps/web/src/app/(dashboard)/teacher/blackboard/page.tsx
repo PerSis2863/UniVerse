@@ -5,11 +5,17 @@ import {
   BookOpen, FileText, Plus, X, Upload, Pin, Bell, Users, Search,
   Trash2, Edit3, ChevronRight, Send, MessageSquare, Calendar, Star,
   BarChart3, CheckCircle2, Activity, Target, Video, Link as LinkIcon,
-  ExternalLink, Download, Bookmark, Award
+  Bookmark, Award, Sparkles, BrainCircuit, PenTool
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
+
+const CollaborationWhiteboard = dynamic(
+  () => import('@/components/dashboard/CollaborationWhiteboard').then(mod => mod.CollaborationWhiteboard),
+  { ssr: false, loading: () => <div className="h-[600px] w-full bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-2xl flex items-center justify-center text-zinc-500">Loading Whiteboard...</div> }
+);
 
 const COURSES = [
   { code: 'CS301', name: 'Data Structures & Algorithms', students: 45, color: '#6366f1' },
@@ -23,6 +29,7 @@ const TEACHER_TABS = [
   { id: 'research', label: 'Research', icon: BookOpen },
   { id: 'assignments', label: 'Assignments', icon: CheckCircle2 },
   { id: 'gradebook', label: 'Gradebook', icon: Star },
+  { id: 'whiteboard', label: 'Whiteboard', icon: PenTool },
   { id: 'discussion', label: 'Discussion', icon: MessageSquare },
   { id: 'activity', label: 'Activity', icon: Activity },
   { id: 'messages', label: 'Messages', icon: Send },
@@ -70,6 +77,9 @@ export default function TeacherBlackboardPage() {
   const [activeTab, setActiveTab] = useState('board');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [showAiGradeModal, setShowAiGradeModal] = useState(false);
+  const [isGrading, setIsGrading] = useState(false);
+  const [aiProgress, setAiProgress] = useState(0);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadWeek, setUploadWeek] = useState('Week 1');
   const [uploadType, setUploadType] = useState('PDF');
@@ -251,6 +261,7 @@ export default function TeacherBlackboardPage() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Star className="w-4 h-4 text-indigo-500" /> Advanced Gradebook</h3>
                     <div className="flex gap-2">
+                      <button onClick={() => setShowAiGradeModal(true)} className="btn-primary bg-gradient-to-r from-indigo-500 to-purple-500 text-xs py-2 px-3 flex items-center gap-1.5 shadow-lg shadow-indigo-500/25 border-none"><Sparkles className="w-3.5 h-3.5 text-white" /> AI Auto-Grade</button>
                       <button className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export CSV</button>
                     </div>
                   </div>
@@ -404,6 +415,17 @@ export default function TeacherBlackboardPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {/* WHITEBOARD */}
+              {activeTab === 'whiteboard' && (
+                <div className="max-w-6xl mx-auto space-y-4 h-[650px]">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><PenTool className="w-4 h-4 text-indigo-500" /> Collaborative Whiteboard</h3>
+                    <p className="text-xs text-zinc-500">Connected: 3 Members</p>
+                  </div>
+                  <CollaborationWhiteboard />
                 </div>
               )}
 
@@ -588,6 +610,67 @@ export default function TeacherBlackboardPage() {
               <div className="flex gap-2 mt-5">
                 <button onClick={() => setShowEventModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
                 <button onClick={handleAddEvent} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2"><Plus className="w-4 h-4" /> Add Event</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Auto-Grade Modal */}
+      <AnimatePresence>
+        {showAiGradeModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && !isGrading && setShowAiGradeModal(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center border border-indigo-500/20">
+                    <BrainCircuit className="w-6 h-6 text-indigo-500" />
+                  </div>
+                  {!isGrading && <button onClick={() => setShowAiGradeModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>}
+                </div>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">AI Auto-Grading & Feedback</h2>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8">
+                  Let UniVerse AI analyze the 45 pending submissions for <span className="font-semibold text-zinc-700 dark:text-zinc-300">Assignment 3</span>. It will check for originality, logic correctness, and provide personalized constructive feedback.
+                </p>
+
+                {isGrading ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span className="text-indigo-500 animate-pulse">Analyzing submissions...</span>
+                      <span className="text-zinc-900 dark:text-white">{aiProgress}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                      <motion.div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" initial={{ width: 0 }} animate={{ width: `${aiProgress}%` }} />
+                    </div>
+                    <p className="text-[10px] text-zinc-400 text-center">Processing natural language inputs and cross-referencing rubrics...</p>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <button onClick={() => setShowAiGradeModal(false)} className="flex-1 btn-secondary py-3">Cancel</button>
+                    <button onClick={() => {
+                      setIsGrading(true);
+                      let p = 0;
+                      const interval = setInterval(() => {
+                        p += Math.floor(Math.random() * 15) + 5;
+                        if (p >= 100) {
+                          clearInterval(interval);
+                          setAiProgress(100);
+                          setTimeout(() => {
+                            setIsGrading(false);
+                            setShowAiGradeModal(false);
+                            toast.success('AI Auto-Grading Complete! Grades updated.');
+                            setAiProgress(0);
+                          }, 500);
+                        } else {
+                          setAiProgress(p);
+                        }
+                      }, 400);
+                    }} className="flex-1 btn-primary bg-gradient-to-r from-indigo-600 to-purple-600 border-none shadow-xl shadow-indigo-500/20 py-3 flex justify-center items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-white" /> Start Auto-Grade
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

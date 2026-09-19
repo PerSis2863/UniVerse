@@ -1,6 +1,7 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
+import { GamificationWidget } from '@/components/dashboard/GamificationWidget';
 import { useAuthStore } from '@/store/auth';
 import { BookOpen, ClipboardList, BarChart3, Trophy, TrendingUp, Clock, CheckCircle2, FileText, Globe2, ArrowUpRight, Sparkles, HeartHandshake, AlertCircle, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,12 +9,6 @@ import Link from 'next/link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { motion } from 'framer-motion';
 
-const recentActivity = [
-  { icon: '🌍', text: 'Joined UNICEF & MIT Water Telemetry Taskforce', time: '10 min ago', type: 'success' },
-  { icon: '📚', text: 'New material uploaded in Data Structures', time: '2 hours ago', type: 'info' },
-  { icon: '✅', text: 'Attendance marked for Mathematics', time: '4 hours ago', type: 'success' },
-  { icon: '🎯', text: 'Assignment grade posted — 94/100', time: 'Yesterday', type: 'success' },
-];
 
 const upcomingClasses = [
   { name: 'Data Structures & Algorithms', time: '9:00 AM', room: 'CS-201', color: '#6366f1' },
@@ -158,22 +153,9 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* Recent Activity */}
-          <div className="xl:col-span-1 card">
-            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Recent Activity</h2>
-            <div className="space-y-3">
-              {recentActivity.map((item, i) => (
-                <motion.div 
-                  whileHover={{ scale: 1.02, backgroundColor: 'var(--card-hover-bg)' }}
-                  key={i} className="flex items-start gap-3 py-2 rounded-xl px-2 transition-colors">
-                  <div className="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-white/[0.04] flex items-center justify-center text-sm flex-shrink-0">{item.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{item.text}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-600 mt-0.5">{item.time}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+          {/* Gamification */}
+          <div className="xl:col-span-1">
+            <GamificationWidget />
           </div>
         </div>
 

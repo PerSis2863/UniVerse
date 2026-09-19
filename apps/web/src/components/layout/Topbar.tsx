@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Plus, CheckCircle2, X, Archive, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import Link from 'next/link';
@@ -21,6 +21,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const [showNotifications, setShowNotifications] = useState(false);
   const [activeNotifTab, setActiveNotifTab] = useState('All');
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
