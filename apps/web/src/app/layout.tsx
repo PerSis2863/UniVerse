@@ -3,8 +3,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'UniVerse — University Management Platform',
-    template: '%s | UniVerse',
+    default: 'Universe Impact — University Management Platform',
+    template: '%s | Universe Impact',
   },
   description: 'A modern, full-featured university management platform for students, teachers, and administrators.',
   keywords: ['university', 'education', 'management', 'students', 'teachers'],

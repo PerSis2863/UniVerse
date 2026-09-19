@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-black mb-2">Welcome back</h1>
-        <p className="text-zinc-400">Sign in to your UniVerse account</p>
+        <p className="text-zinc-400">Sign in to your Universe Impact account</p>
       </div>
 
       {error && (
