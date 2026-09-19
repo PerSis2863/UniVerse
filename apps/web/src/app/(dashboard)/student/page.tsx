@@ -6,6 +6,7 @@ import { BookOpen, ClipboardList, BarChart3, Trophy, TrendingUp, Clock, CheckCir
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import { motion } from 'framer-motion';
 
 const recentActivity = [
   { icon: '🌍', text: 'Joined UNICEF & MIT Water Telemetry Taskforce', time: '10 min ago', type: 'success' },
@@ -84,7 +85,9 @@ export default function StudentDashboard() {
             </div>
             <div className="space-y-3">
               {upcomingClasses.map((cls, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-white/[0.06]">
+                <motion.div 
+                  whileHover={{ scale: 1.02, x: 5 }}
+                  key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-white/[0.06]">
                   <div className="w-1 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white truncate">{cls.name}</div>
@@ -94,7 +97,7 @@ export default function StudentDashboard() {
                     <Clock className="w-3 h-3" />
                     {cls.time}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -147,13 +150,15 @@ export default function StudentDashboard() {
             <h2 className="font-bold text-white mb-5">Recent Activity</h2>
             <div className="space-y-3">
               {recentActivity.map((item, i) => (
-                <div key={i} className="flex items-start gap-3 py-2">
+                <motion.div 
+                  whileHover={{ scale: 1.02, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                  key={i} className="flex items-start gap-3 py-2 rounded-xl px-2 transition-colors">
                   <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-sm flex-shrink-0">{item.icon}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-zinc-300 leading-snug">{item.text}</p>
                     <p className="text-xs text-zinc-600 mt-0.5">{item.time}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -169,15 +174,20 @@ export default function StudentDashboard() {
               { icon: TrendingUp, label: 'View Grades', color: 'green', href: '/student/grades' },
               { icon: CheckCircle2, label: 'Take Quiz', color: 'amber', href: '/student/quizzes' },
             ].map(a => (
-              <Link href={a.href} key={a.label} className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group cursor-pointer transition-all">
-                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center',
-                  a.color === 'indigo' ? 'bg-indigo-600/20 text-indigo-400' :
-                  a.color === 'cyan' ? 'bg-cyan-600/20 text-cyan-400' :
-                  a.color === 'green' ? 'bg-green-900/30 text-green-400' : 'bg-amber-900/30 text-amber-400'
-                )}>
-                  <a.icon className="w-5 h-5" />
-                </div>
-                <span className="text-xs text-zinc-400 group-hover:text-white text-center">{a.label}</span>
+              <Link href={a.href} key={a.label} passHref legacyBehavior>
+                <motion.a 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group cursor-pointer transition-all">
+                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center',
+                    a.color === 'indigo' ? 'bg-indigo-600/20 text-indigo-400' :
+                    a.color === 'cyan' ? 'bg-cyan-600/20 text-cyan-400' :
+                    a.color === 'green' ? 'bg-green-900/30 text-green-400' : 'bg-amber-900/30 text-amber-400'
+                  )}>
+                    <a.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs text-zinc-400 group-hover:text-white text-center">{a.label}</span>
+                </motion.a>
               </Link>
             ))}
           </div>

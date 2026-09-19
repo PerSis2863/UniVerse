@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import { motion } from 'framer-motion';
 
 type NavItem = {
   href?: string;
@@ -164,7 +165,9 @@ function NavItemComponent({ item, pathname, onClose }: { item: NavItem, pathname
   if (item.subItems) {
     return (
       <div className="space-y-1">
-        <button
+        <motion.button
+          whileHover={{ x: 4 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => setIsOpen(!isOpen)}
           className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active text-indigo-400')}
         >
@@ -173,14 +176,16 @@ function NavItemComponent({ item, pathname, onClose }: { item: NavItem, pathname
             <span>{item.label}</span>
           </div>
           {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </button>
+        </motion.button>
         {isOpen && (
           <div className="pl-9 space-y-1 mt-1">
             {item.subItems.map(sub => (
-              <Link key={sub.href} href={sub.href} onClick={onClose}>
-                <div className={cn('sidebar-item text-sm py-1.5', pathname === sub.href && 'active text-indigo-400')}>
+              <Link key={sub.href} href={sub.href} onClick={onClose} passHref legacyBehavior>
+                <motion.a 
+                  whileHover={{ x: 4 }}
+                  className={cn('sidebar-item block text-sm py-1.5', pathname === sub.href && 'active text-indigo-400')}>
                   <span>{sub.label}</span>
-                </div>
+                </motion.a>
               </Link>
             ))}
           </div>
@@ -191,20 +196,29 @@ function NavItemComponent({ item, pathname, onClose }: { item: NavItem, pathname
 
   if (item.action) {
     return (
-      <button className="sidebar-item w-full justify-start text-zinc-400 hover:text-white">
+      <motion.button 
+        whileHover={{ x: 4 }}
+        whileTap={{ scale: 0.98 }}
+        className="sidebar-item w-full justify-start text-zinc-400 hover:text-white">
         <item.icon className="w-4 h-4 flex-shrink-0" />
         <span>{item.label}</span>
-      </button>
+      </motion.button>
     );
   }
 
   if (item.href) {
     return (
-      <Link href={item.href} onClick={onClose}>
-        <div className={cn('sidebar-item', pathname === item.href && 'active')}>
-          <item.icon className="w-4 h-4 flex-shrink-0" />
-          <span>{item.label}</span>
-        </div>
+      <Link href={item.href} onClick={onClose} passHref legacyBehavior>
+        <motion.a 
+          whileHover={{ x: 4 }}
+          whileTap={{ scale: 0.98 }}
+          className={cn('sidebar-item block', pathname === item.href && 'active')}
+        >
+          <div className="flex items-center gap-3">
+            <item.icon className="w-4 h-4 flex-shrink-0" />
+            <span>{item.label}</span>
+          </div>
+        </motion.a>
       </Link>
     );
   }

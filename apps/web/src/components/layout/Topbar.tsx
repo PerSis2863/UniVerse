@@ -4,6 +4,7 @@ import { Bell, Search, Plus, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface TopbarProps {
   title: string;
@@ -49,16 +50,23 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
         {rightNode}
         
         <div className="relative" ref={dropdownRef}>
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowNotifications(!showNotifications)}
             className={cn("btn-ghost p-2 relative", showNotifications && "bg-white/[0.06] text-white")}
           >
             <Bell className="w-4 h-4" />
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
-          </button>
+          </motion.button>
           
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-72 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <AnimatePresence>
+            {showNotifications && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute right-0 mt-2 w-72 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-50">
               <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
                 <span className="text-sm font-semibold text-white">Notifications</span>
                 <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full">1 New</span>
@@ -77,15 +85,19 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
               <div className="p-2 bg-zinc-950 text-center">
                 <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Mark all as read</button>
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
 
         {action && (
-          <button onClick={action.onClick} className="btn-primary flex items-center gap-2 text-sm py-2 whitespace-nowrap">
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={action.onClick} className="btn-primary flex items-center gap-2 text-sm py-2 whitespace-nowrap">
             <Plus className="w-3.5 h-3.5" />
             {action.label}
-          </button>
+          </motion.button>
         )}
       </div>
     </header>

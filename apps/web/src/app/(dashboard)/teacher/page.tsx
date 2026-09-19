@@ -24,6 +24,7 @@ const myCourses = [
 ];
 
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -50,7 +51,10 @@ export default function TeacherDashboard() {
             <h2 className="font-bold text-white mb-5">My Courses</h2>
             <div className="space-y-4">
               {myCourses.map((c, i) => (
-                <div key={i} className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.05] transition-all cursor-pointer">
+                <motion.div 
+                  whileHover={{ scale: 1.01, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  key={i} className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
@@ -65,15 +69,18 @@ export default function TeacherDashboard() {
                     <span className="text-sm font-bold text-white">{c.completion}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${c.completion}%`, background: `linear-gradient(90deg, ${c.color}, ${c.color}aa)` }} />
+                    <motion.div className="h-full rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${c.completion}%` }}
+                      transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+                      style={{ background: `linear-gradient(90deg, ${c.color}, ${c.color}aa)` }} />
                   </div>
                   <div className="flex gap-3 mt-3">
-                    <button onClick={() => router.push('/teacher/students')} className="btn-ghost text-xs py-1">Manage</button>
-                    <button onClick={() => router.push('/teacher/attendance')} className="btn-ghost text-xs py-1">Attendance</button>
-                    <button onClick={() => router.push('/teacher/grades')} className="btn-ghost text-xs py-1">Grades</button>
+                    <button onClick={() => router.push('/teacher/students')} className="btn-ghost text-xs py-1 hover:bg-white/[0.1]">Manage</button>
+                    <button onClick={() => router.push('/teacher/attendance')} className="btn-ghost text-xs py-1 hover:bg-white/[0.1]">Attendance</button>
+                    <button onClick={() => router.push('/teacher/grades')} className="btn-ghost text-xs py-1 hover:bg-white/[0.1]">Grades</button>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -113,7 +120,10 @@ export default function TeacherDashboard() {
               { icon: TrendingUp, label: 'Post Grades', color: 'cyan', href: '/teacher/grades' },
               { icon: Clock, label: 'Create Quiz', color: 'amber', href: '/teacher/quizzes' },
             ].map(a => (
-              <button key={a.label} onClick={() => router.push(a.href)} className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group">
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                key={a.label} onClick={() => router.push(a.href)} className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center
                   ${a.color === 'green' ? 'bg-green-900/30 text-green-400' :
                     a.color === 'indigo' ? 'bg-indigo-600/20 text-indigo-400' :
@@ -121,7 +131,7 @@ export default function TeacherDashboard() {
                   <a.icon className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-zinc-400 group-hover:text-white text-center">{a.label}</span>
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>

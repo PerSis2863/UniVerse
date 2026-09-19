@@ -64,11 +64,21 @@ export default function HomePage() {
               A modern network unifying universities, students, and NGOs to drive social change, inter-college collaborations, and real-world impact.
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
-              <Link href="/register" className="btn-primary flex items-center gap-2 text-base px-7 py-3.5">
-                Get started free <ArrowRight className="w-4 h-4" />
+              <Link href="/register" passHref legacyBehavior>
+                <motion.a 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="btn-primary flex items-center gap-2 text-base px-7 py-3.5">
+                  Get started free <ArrowRight className="w-4 h-4" />
+                </motion.a>
               </Link>
-              <Link href="/login" className="btn-secondary flex items-center gap-2 text-base px-7 py-3.5">
-                Sign in
+              <Link href="/login" passHref legacyBehavior>
+                <motion.a 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="btn-secondary flex items-center gap-2 text-base px-7 py-3.5">
+                  Sign in
+                </motion.a>
               </Link>
             </div>
           </motion.div>

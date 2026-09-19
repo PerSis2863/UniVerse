@@ -1,6 +1,7 @@
 'use client';
 import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 interface KpiCardProps {
   title: string;
@@ -22,7 +23,11 @@ export function KpiCard({ title, value, icon: Icon, change, color = 'indigo' }: 
   const isPositive = change !== undefined && change >= 0;
 
   return (
-    <div className="kpi-card glass-hover">
+    <motion.div 
+      whileHover={{ scale: 1.02, y: -2 }}
+      transition={{ type: "spring", stiffness: 300 }}
+      className="kpi-card glass-hover"
+    >
       <div className="flex items-start justify-between mb-4">
         <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colors[color])}>
           <Icon className="w-5 h-5" />
@@ -36,6 +41,6 @@ export function KpiCard({ title, value, icon: Icon, change, color = 'indigo' }: 
       </div>
       <div className="text-2xl font-black text-white mb-1">{value}</div>
       <div className="text-sm text-zinc-400">{title}</div>
-    </div>
+    </motion.div>
   );
 }

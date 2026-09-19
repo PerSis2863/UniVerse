@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
 import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -19,9 +22,15 @@ export default function LoginPage() {
     await login(email, password);
     const user = useAuthStore.getState().user;
     if (user) {
+      toast.success('Successfully logged in!', {
+        description: `Welcome back, ${user.name}`
+      });
       const path = user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin';
       router.push(path);
     } else {
+      toast.error('Login failed', {
+        description: 'Please check your credentials and try again.'
+      });
       setError('Login failed. Please try again.');
     }
   };
@@ -72,9 +81,12 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
-        <button type="submit" disabled={isLoading} className="btn-primary w-full flex items-center justify-center gap-2 py-3">
+        <motion.button 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          type="submit" disabled={isLoading} className="btn-primary w-full flex items-center justify-center gap-2 py-3">
           {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</> : 'Sign in'}
-        </button>
+        </motion.button>
       </form>
 
       <div className="mt-6 text-center text-sm text-zinc-500">
@@ -93,13 +105,16 @@ export default function LoginPage() {
             { role: 'Teacher', email: 'teacher@universe.edu', pw: 'teacher123' },
             { role: 'Admin', email: 'admin@universe.edu', pw: 'admin123' },
           ].map(d => (
-            <button key={d.role} type="button" onClick={() => { setEmail(d.email); setPassword(d.pw); }}
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              key={d.role} type="button" onClick={() => { setEmail(d.email); setPassword(d.pw); }}
               className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors group">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-medium text-zinc-400 group-hover:text-white">{d.role}</span>
                 <span className="text-xs text-zinc-600 group-hover:text-zinc-400">{d.email}</span>
               </div>
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
