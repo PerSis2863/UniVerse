@@ -1,7 +1,7 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { Calendar as CalendarIcon, Clock, Users, ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, addDays, startOfWeek, subWeeks, addWeeks, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -26,41 +26,67 @@ const SPECIAL_EVENTS = [
   { day: 'Wednesday', time: '08:00', duration: '720', course: { name: 'Tech Festival', code: 'FEST', color: '#d946ef' }, isSpecial: true },
 ];
 
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
+
 export default function TeacherCalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+  const [view, setView] = useState('Semester'); // Day, Week, Month, Semester
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const start = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  const hours = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
+  // Base date is Monday, Sep 14, 2026
+  const baseDate = new Date(2026, 8, 14);
 
-  // Calculate week offset based on distance from current date
-  const today = new Date();
-  const diffTime = Math.abs(currentDate.getTime() - today.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-  const weekOffset = Math.floor(diffDays / 7);
+  const generatedDates = useMemo(() => {
+    let daysToGenerate = 40; // Semester (8 weeks)
+    if (view === 'Day') daysToGenerate = 1;
+    if (view === 'Week') daysToGenerate = 5;
+    if (view === 'Month') daysToGenerate = 20;
 
-  const getDayClasses = (dayName: string) => {
-    const dMap: Record<string, string> = { 'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday', 'Thu': 'Thursday', 'Fri': 'Friday' };
-    const fullDayName = dMap[dayName];
+    const dates = [];
+    const startDate = new Date(baseDate.getTime() + currentWeekOffset * 7 * 24 * 60 * 60 * 1000);
     
-    let schedule = [...MOCK_SCHEDULE];
-    
-    // Inject special events based on current week offset to create variety
-    if (weekOffset % 3 === 1) {
-      schedule = schedule.filter(s => s.day !== 'Friday');
-      schedule.push(SPECIAL_EVENTS[0]); // Sports Day
-    } else if (weekOffset % 4 === 2) {
-      schedule = schedule.filter(s => s.day !== 'Monday');
-      schedule.push(SPECIAL_EVENTS[1]); // Public Holiday
-    } else if (weekOffset % 5 === 3) {
-      schedule = schedule.filter(s => s.day !== 'Wednesday');
-      schedule.push(SPECIAL_EVENTS[2]); // Tech Festival
+    let currentDate = new Date(startDate);
+    if (view !== 'Day') {
+      while (currentDate.getDay() !== 1) {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    } else {
+      if (currentDate.getDay() === 0) currentDate.setDate(currentDate.getDate() + 1);
+      if (currentDate.getDay() === 6) currentDate.setDate(currentDate.getDate() + 2);
     }
 
-    if (weekOffset === 0) return schedule.filter(cls => cls.day === fullDayName);
+    let count = 0;
+    while (count < daysToGenerate) {
+      const day = currentDate.getDay();
+      if (day >= 1 && day <= 5) { // Mon-Fri
+        dates.push(new Date(currentDate));
+        count++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return dates;
+  }, [currentWeekOffset, view]);
+
+  const getScheduleForDate = (date: Date) => {
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    const diffTime = date.getTime() - baseDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const weekOffset = Math.floor(diffDays / 7);
     
-    const shift = weekOffset;
+    let schedule = [...MOCK_SCHEDULE].filter(s => s.day === dayName);
+    
+    if (Math.abs(weekOffset) % 3 === 1 && dayName === 'Friday') {
+      schedule = [];
+      schedule.push(SPECIAL_EVENTS[0]);
+    } else if (Math.abs(weekOffset) % 4 === 2 && dayName === 'Monday') {
+      schedule = [];
+      schedule.push(SPECIAL_EVENTS[1]);
+    } else if (Math.abs(weekOffset) % 5 === 3 && dayName === 'Wednesday') {
+      schedule = [];
+      schedule.push(SPECIAL_EVENTS[2]);
+    }
+
+    const shift = Math.abs(weekOffset);
     
     return schedule.filter((s, idx) => {
       if ((s as any).isSpecial) return true;
@@ -74,16 +100,29 @@ export default function TeacherCalendarPage() {
         return { ...s, time: `${newHour < 10 ? '0' : ''}${newHour}:00` };
       }
       return s;
-    }).filter(cls => cls.day === fullDayName);
+    });
   };
-
-  const handlePrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
-  const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
-  const handleToday = () => setCurrentDate(new Date());
 
   const parseTimeToMinutes = (timeStr: string) => {
     const [h, m] = timeStr.split(':').map(Number);
     return h * 60 + (m || 0);
+  };
+
+  const currentRangeString = () => {
+    if (generatedDates.length === 0) return '';
+    const start = generatedDates[0];
+    const end = generatedDates[generatedDates.length - 1];
+    
+    const formatOptsShort: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    const formatOptsFull: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    
+    if (view === 'Day') {
+      return start.toLocaleDateString('en-US', formatOptsFull);
+    }
+    if (start.getFullYear() === end.getFullYear()) {
+      return `${start.toLocaleDateString('en-US', formatOptsShort)} - ${end.toLocaleDateString('en-US', formatOptsFull)}`;
+    }
+    return `${start.toLocaleDateString('en-US', formatOptsFull)} - ${end.toLocaleDateString('en-US', formatOptsFull)}`;
   };
 
   return (
@@ -98,25 +137,26 @@ export default function TeacherCalendarPage() {
         }
       />
       
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex-1 p-4 sm:p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto space-y-6">
           
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+          {/* Header Controls */}
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center gap-4">
-              <button onClick={handleToday} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors">
+              <button onClick={() => { setCurrentWeekOffset(0); setView('Day'); }} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors">
                 Today
               </button>
               <div className="flex items-center gap-2">
-                <button onClick={handlePrevWeek} className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
+                <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div className="relative">
                   <button 
                     onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="flex items-center gap-2 px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-900 dark:text-white font-medium transition-colors"
+                    className="flex items-center gap-2 px-2 sm:px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-900 dark:text-white font-medium transition-colors min-w-[180px] sm:min-w-[220px] justify-center text-sm sm:text-base"
                   >
-                    <CalendarIcon className="w-5 h-5 text-indigo-400" />
-                    {format(start, 'MMM d')} - {format(addDays(start, 4), 'MMM d, yyyy')}
+                    <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+                    {currentRangeString()}
                   </button>
                   {showDatePicker && (
                     <div className="absolute top-full mt-2 left-0 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-xl z-50">
@@ -125,7 +165,10 @@ export default function TeacherCalendarPage() {
                         className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white [color-scheme:dark]"
                         onChange={(e) => {
                           if (e.target.value) {
-                            setCurrentDate(new Date(e.target.value));
+                            const selectedDate = new Date(e.target.value);
+                            const diffTime = selectedDate.getTime() - baseDate.getTime();
+                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                            setCurrentWeekOffset(Math.floor(diffDays / 7));
                             setShowDatePicker(false);
                           }
                         }}
@@ -133,94 +176,113 @@ export default function TeacherCalendarPage() {
                     </div>
                   )}
                 </div>
-                <button onClick={handleNextWeek} className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
+                <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
             </div>
             
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Add Office Hours Modal')}>
-                + Add Office Hours
+            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+              <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg w-full xl:w-auto justify-between xl:justify-start overflow-x-auto scrollbar-none">
+                <button onClick={() => setView('Day')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Day' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Day</button>
+                <button onClick={() => setView('Week')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Week' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Week</button>
+                <button onClick={() => setView('Month')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Month' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Month</button>
+                <button onClick={() => setView('Semester')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Semester' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Semester</button>
+              </div>
+              <div className="hidden xl:block w-px h-8 bg-zinc-200 dark:bg-zinc-700"></div>
+              <button className="w-full xl:w-auto px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Add Office Hours Modal')}>
+                + Office Hours
               </button>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto shadow-lg scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2">
-            <div className="flex min-w-[1000px]">
-              <div className="w-20 flex-shrink-0 border-r border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-900/80">
-                <div className="h-16 border-b border-zinc-200 dark:border-zinc-800/50"></div>
-              {hours.map(hour => (
-                <div key={hour} className="h-24 border-b border-zinc-200 dark:border-zinc-800/50 relative">
-                  <span className="absolute -top-3 right-3 text-xs text-zinc-500 dark:text-zinc-500 font-medium">
-                    {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex-1 flex overflow-x-auto">
-              {days.map((day, index) => {
-                const date = addDays(start, index);
-                const isToday = isSameDay(date, new Date());
-                const dayClasses = getDayClasses(day);
-
-                return (
-                  <div key={day} className="flex-1 min-w-[200px] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0">
-                    <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800/50 flex flex-col items-center justify-center ${isToday ? 'bg-indigo-500/10' : 'bg-white dark:bg-zinc-900/80'}`}>
-                      <span className={`text-xs font-semibold uppercase tracking-wider ${isToday ? 'text-indigo-400' : 'text-zinc-500 dark:text-zinc-500'}`}>{day}</span>
-                      <span className={`text-xl font-bold ${isToday ? 'text-indigo-400' : 'text-zinc-300'}`}>{format(date, 'd')}</span>
-                    </div>
-
-                    <div className="relative" style={{ height: `${hours.length * 96}px` }}>
-                      {hours.map(hour => (
-                        <div key={hour} className="h-24 border-b border-zinc-200 dark:border-zinc-800/20"></div>
-                      ))}
-                      
-                      {dayClasses.map((cls, i) => {
-                        const startMinutes = parseTimeToMinutes(cls.time);
-                        const gridStartMinutes = 8 * 60;
-                        const topOffset = ((startMinutes - gridStartMinutes) / 60) * 96;
-                        const durationMinutes = parseInt(cls.duration) || 90;
-                        const height = (durationMinutes / 60) * 96;
-
-                        return (
-                          <div 
-                            key={i}
-                            className="absolute left-1 right-1 rounded-lg p-3 overflow-hidden shadow-sm transition-transform hover:scale-[1.02] hover:z-10 cursor-pointer"
-                            style={{
-                              top: `${topOffset}px`,
-                              height: `${height}px`,
-                              backgroundColor: `${cls.course.color}20` || '#6366f120',
-                              borderLeft: `4px solid ${cls.course.color || '#6366f1'}`,
-                              borderTop: `1px solid ${cls.course.color}40`,
-                              borderRight: `1px solid ${cls.course.color}40`,
-                              borderBottom: `1px solid ${cls.course.color}40`,
-                            }}
-                            onClick={() => toast.success(`Viewing details for ${cls.course.name}`)}
-                          >
-                            <div className="text-xs font-bold mb-1" style={{ color: cls.course.color || '#818cf8' }}>
-                              {cls.course.code}
-                            </div>
-                            <div className="text-sm font-medium text-zinc-900 dark:text-white mb-2 leading-tight">
-                              {cls.course.name}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-zinc-300 mb-1">
-                              <Clock className="w-3 h-3" />
-                              {cls.time}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-                              <Users className="w-3 h-3" />
-                              32 Students
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+          {/* Continuous Scroll View */}
+          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-lg flex">
+            {/* Sticky Time Column */}
+            <div className="w-20 flex-shrink-0 sticky left-0 z-20 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800/50 shadow-[2px_0_10px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
+              <div className="h-16 border-b border-zinc-200 dark:border-zinc-800/50 bg-zinc-50 dark:bg-zinc-900/80"></div>
+              <div className="relative" style={{ height: `${HOURS.length * 96}px` }}>
+                {HOURS.map((hour, i) => (
+                  <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/50 flex justify-end pr-2 pt-2" style={{ top: `${i * 96}px`, height: '96px' }}>
+                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">
+                      {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
+                    </span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
+
+            {/* Scrollable Days */}
+            <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2">
+              <div className="flex" style={{ width: `${generatedDates.length * 240}px` }}>
+                {generatedDates.map((date, index) => {
+                  const scheduleForDate = getScheduleForDate(date);
+                  const isToday = isSameDay(date, new Date());
+                  
+                  return (
+                    <div key={index} className="flex-1 w-[240px] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0">
+                      {/* Day Header */}
+                      <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800/50 flex flex-col items-center justify-center sticky top-0 z-10 ${isToday ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'bg-white dark:bg-zinc-900/80'}`}>
+                        <span className={`text-xs font-semibold uppercase tracking-wider ${isToday ? 'text-indigo-500 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-500'}`}>
+                          {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                        </span>
+                        <span className={`text-xl font-bold ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-800 dark:text-zinc-300'}`}>
+                          {format(date, 'd')}
+                        </span>
+                      </div>
+
+                      {/* Day Content */}
+                      <div className="relative bg-zinc-50/30 dark:bg-zinc-950/20" style={{ height: `${HOURS.length * 96}px` }}>
+                        {/* Grid Lines */}
+                        {HOURS.map((hour, i) => (
+                          <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/20 transition-colors" style={{ top: `${i * 96}px`, height: '96px' }}></div>
+                        ))}
+                        
+                        {/* Schedule Blocks */}
+                        {scheduleForDate.map((cls, i) => {
+                          const startMinutes = parseTimeToMinutes(cls.time);
+                          const gridStartMinutes = 8 * 60;
+                          const topOffset = ((startMinutes - gridStartMinutes) / 60) * 96;
+                          const durationMinutes = parseInt(cls.duration) || 90;
+                          const height = (durationMinutes / 60) * 96;
+
+                          return (
+                            <div 
+                              key={i}
+                              className="absolute left-1 right-1 rounded-lg p-3 overflow-hidden shadow-sm transition-transform hover:scale-[1.02] hover:z-10 cursor-pointer"
+                              style={{
+                                top: `${topOffset + 2}px`,
+                                height: `${height - 4}px`,
+                                backgroundColor: `${cls.course.color}20` || '#6366f120',
+                                borderLeft: `4px solid ${cls.course.color || '#6366f1'}`,
+                                borderTop: `1px solid ${cls.course.color}40`,
+                                borderRight: `1px solid ${cls.course.color}40`,
+                                borderBottom: `1px solid ${cls.course.color}40`,
+                              }}
+                              onClick={() => toast.success(`Viewing details for ${cls.course.name}`)}
+                            >
+                              <div className="text-xs font-bold mb-1" style={{ color: cls.course.color || '#818cf8' }}>
+                                {cls.course.code}
+                              </div>
+                              <div className="text-sm font-medium text-zinc-900 dark:text-white mb-2 leading-tight">
+                                {cls.course.name}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300 mb-1">
+                                <Clock className="w-3 h-3" />
+                                {cls.time}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+                                <Users className="w-3 h-3" />
+                                32 Students
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
