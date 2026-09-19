@@ -42,7 +42,6 @@ export default function LoginPage() {
             colorPrimary: '#4f46e5',
             colorBackground: 'transparent',
             borderRadius: '0.75rem',
-            colorText: theme === 'dark' ? '#ffffff' : '#09090b',
           },
           elements: {
             rootBox: 'w-full',
