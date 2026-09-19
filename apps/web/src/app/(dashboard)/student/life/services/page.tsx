@@ -48,7 +48,7 @@ export default function ServicesPage() {
               <button onClick={() => toast.success('Calling IT Support...')} className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Call IT Support
               </button>
-              <button onClick={() => toast.success('Opening Live Chat...')} className="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+              <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
                 Live Chat
               </button>
             </div>

@@ -72,7 +72,7 @@ export default function StudentAccounting() {
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-indigo-400" /> Recent Transactions
               </h3>
-              <button onClick={() => toast.success('Download Statement clicked')} className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors">
+              <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors">
                 <Download className="w-4 h-4" /> Download Statement
               </button>
             </div>

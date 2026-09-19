@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 export default function StudentInformation() {
   const handleLinkClick = (e: React.MouseEvent, docName: string) => {
     e.preventDefault();
-    toast.info(`Opening ${docName}...`);
+    window.open('/assets/dummy.pdf', '_blank');
   };
 
   return (

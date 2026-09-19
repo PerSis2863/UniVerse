@@ -91,10 +91,10 @@ export default function SchoolDocuments() {
                     <td className="p-4 text-sm text-zinc-400 hidden sm:table-cell">{doc.size}</td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => toast.success('Viewing document...')} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-lg transition-colors" title="View">
+                        <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-lg transition-colors" title="View">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => toast.success('Downloading document...')} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-lg transition-colors" title="Download">
+                        <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-lg transition-colors" title="Download">
                           <Download className="w-4 h-4" />
                         </button>
                       </div>

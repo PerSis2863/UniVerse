@@ -73,10 +73,10 @@ export default function TeacherKnowledgeHubPage() {
 
   const handleView = (resource: any) => {
     if (resource.type === 'Link' || resource.url) {
-      toast.success(`Opening ${resource.title} link in new tab`);
+      window.open('/assets/dummy.pdf', '_blank');
       window.open(resource.url || 'https://example.com', '_blank');
     } else {
-      toast.success(`Downloading ${resource.title}`);
+      window.open('/assets/dummy.pdf', '_blank');
     }
   };
 

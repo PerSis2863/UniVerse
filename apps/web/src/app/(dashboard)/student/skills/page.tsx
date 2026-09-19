@@ -83,7 +83,7 @@ export default function StudentSkills() {
             <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl p-6 md:p-8">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-bold text-white">Technical Skills</h3>
-                <button onClick={() => toast.success('Opening catalog')} className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View Catalog</button>
+                <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View Catalog</button>
               </div>
               
               <div className="space-y-6">

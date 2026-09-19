@@ -45,7 +45,7 @@ export default function FinancingPage() {
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
               <h3 className="font-bold text-white">Recent Transactions</h3>
-              <button onClick={() => toast.success('Downloading tax forms...')} className="text-sm text-zinc-400 hover:text-white flex items-center gap-2">
+              <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="text-sm text-zinc-400 hover:text-white flex items-center gap-2">
                 <FileText className="w-4 h-4" /> Download Tax Forms
               </button>
             </div>

@@ -46,7 +46,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
           {subtitle && <p className="text-xs text-zinc-500 line-clamp-1 sm:line-clamp-none max-w-sm">{subtitle ?? `${greeting}, ${user?.name?.split(' ')[0]}!`}</p>}
         </div>
       </div>
-      <div className="flex items-center gap-3 self-end md:self-auto w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+      <div className="flex items-center gap-3 self-end md:self-auto w-full md:w-auto overflow-visible pb-1 md:pb-0 flex-wrap">
         {rightNode}
         
         <div className="relative" ref={dropdownRef}>

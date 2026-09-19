@@ -138,7 +138,7 @@ export default function KnowledgeHubPage() {
                               if (resource.url) {
                                 window.open(resource.url, '_blank');
                               } else {
-                                toast.success(`Downloading ${resource.title}...`);
+                                window.open('/assets/dummy.pdf', '_blank');
                               }
                             }}
                             className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
