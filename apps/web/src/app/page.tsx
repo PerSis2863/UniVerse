@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { Globe2, Heart, Users, Sparkles, Sprout, ArrowRight, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
@@ -44,25 +43,32 @@ export default function ShowcasePage() {
   }, [isSignedIn, router]);
 
   return (
-    <div className="min-h-screen overflow-hidden font-sans" style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
+    <div className="min-h-screen overflow-hidden font-sans" style={{ backgroundColor: '#0d1117', color: '#ffffff' }}>
 
       {/* Gradient blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-[-15%] left-[-5%] w-[45%] h-[45%] rounded-full bg-indigo-400/[0.06] dark:bg-indigo-700/20 blur-[120px]" />
-        <div className="absolute bottom-[-15%] right-[-5%] w-[45%] h-[45%] rounded-full bg-fuchsia-400/[0.06] dark:bg-fuchsia-700/15 blur-[120px]" />
-        <div className="absolute top-[40%] left-[50%] w-[30%] h-[30%] rounded-full bg-cyan-400/[0.04] dark:bg-cyan-700/10 blur-[100px]" />
+        <div className="absolute top-[-15%] left-[-5%] w-[45%] h-[45%] rounded-full blur-[120px]" style={{ background: 'rgba(99,102,241,0.15)' }} />
+        <div className="absolute bottom-[-15%] right-[-5%] w-[45%] h-[45%] rounded-full blur-[120px]" style={{ background: 'rgba(192,38,211,0.1)' }} />
+        <div className="absolute top-[40%] left-[50%] w-[30%] h-[30%] rounded-full blur-[100px]" style={{ background: 'rgba(6,182,212,0.08)' }} />
       </div>
 
       {/* ── Navbar ──────────────────────────────────────── */}
       <nav className="relative z-10 w-full px-6 py-5 flex justify-between items-center max-w-7xl mx-auto">
-        <div className="flex items-center gap-2">
-          <UniverseLogo size="md" animated withGlow showText />
+        <div className="flex items-center gap-3">
+          <UniverseLogo size="md" animated withGlow />
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5">
+              <span className="font-black tracking-tight text-white text-lg">Universe</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold border" style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', borderColor: 'rgba(99,102,241,0.3)' }}>IMPACT</span>
+            </div>
+            <span className="text-[11px] tracking-wider" style={{ color: '#6b7280' }}>Global Universities &amp; NGO Network</span>
+          </div>
         </div>
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-all shadow-lg shadow-indigo-500/25"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-all shadow-lg"
+            style={{ boxShadow: '0 10px 25px -5px rgba(99,102,241,0.4)' }}
           >
             Sign In <ArrowRight className="w-4 h-4" />
           </Link>
@@ -76,7 +82,8 @@ export default function ShowcasePage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-bold text-xs mb-8 border border-indigo-100 dark:border-indigo-500/20"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-xs mb-8 border"
+            style={{ background: 'rgba(99,102,241,0.1)', color: '#a5b4fc', borderColor: 'rgba(99,102,241,0.2)' }}
           >
             <Sparkles className="w-3.5 h-3.5" /> Shaping the Future Together
           </motion.div>
@@ -97,10 +104,11 @@ export default function ShowcasePage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-lg md:text-xl text-zinc-500 dark:text-zinc-400 max-w-2xl mb-10 leading-relaxed"
+            className="text-lg md:text-xl max-w-2xl mb-10 leading-relaxed"
+            style={{ color: '#9ca3af' }}
           >
             We connect students, mentors, and NGOs globally. Learn, collaborate,
-            and solve the world's most pressing challenges.
+            and solve the world&apos;s most pressing challenges.
           </motion.p>
 
           <motion.div
@@ -117,7 +125,10 @@ export default function ShowcasePage() {
             </Link>
             <a
               href="#about"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/[0.10] text-zinc-700 dark:text-zinc-200 font-bold text-sm transition-colors border border-zinc-200 dark:border-white/[0.08]"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm transition-all border"
+              style={{ background: 'rgba(255,255,255,0.06)', color: '#e4e4e7', borderColor: 'rgba(255,255,255,0.08)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
             >
               Learn More
             </a>
@@ -135,13 +146,17 @@ export default function ShowcasePage() {
                 key={i}
                 onMouseEnter={() => setHoveredStat(i)}
                 onMouseLeave={() => setHoveredStat(null)}
-                className={`relative p-6 rounded-3xl bg-white dark:bg-white/[0.03] border ${stat.border} shadow-sm dark:shadow-none overflow-hidden transition-all duration-300 hover:shadow-md dark:hover:bg-white/[0.06] hover:-translate-y-1 cursor-default`}
+                className="relative p-6 rounded-3xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-default"
+                style={{
+                  background: hoveredStat === i ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+                  borderColor: 'rgba(255,255,255,0.08)',
+                }}
               >
-                <div className={`w-10 h-10 rounded-2xl ${stat.lightBg} ${stat.darkBg} flex items-center justify-center mb-4 transition-transform duration-300 ${hoveredStat === i ? 'scale-110' : ''}`}>
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 ${hoveredStat === i ? 'scale-110' : ''}`} style={{ background: 'rgba(99,102,241,0.1)' }}>
                   <stat.icon className={`w-5 h-5 ${stat.color}`} />
                 </div>
-                <div className="text-4xl font-black tracking-tight mb-1 text-zinc-900 dark:text-white">{stat.value}</div>
-                <div className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{stat.label}</div>
+                <div className="text-4xl font-black tracking-tight mb-1 text-white">{stat.value}</div>
+                <div className="text-sm font-medium" style={{ color: '#9ca3af' }}>{stat.label}</div>
               </div>
             ))}
           </motion.div>
