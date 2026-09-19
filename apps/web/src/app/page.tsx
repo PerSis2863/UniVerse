@@ -199,19 +199,19 @@ export default function ShowcasePage() {
 
           {/* Steps card */}
           <div className="relative hidden md:block">
-            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-100 via-purple-50 to-emerald-100 dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-emerald-900/20 rounded-[2.5rem] blur-2xl opacity-60" />
-            <div className="relative bg-white dark:bg-white/[0.03] rounded-[2.5rem] p-8 border border-zinc-100 dark:border-white/[0.06] shadow-xl dark:shadow-none">
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/20 via-purple-900/10 to-emerald-900/20 rounded-[2.5rem] blur-2xl opacity-60" />
+            <div className="relative bg-white/[0.03] rounded-[2.5rem] p-8 border border-white/[0.06]">
               <div className="flex flex-col gap-5">
                 {[
-                  { num: '1', title: 'Connect',    sub: 'Join as a student, university, or NGO.',    lb: 'bg-indigo-50',  db: 'dark:bg-indigo-500/15', lt: 'text-indigo-600',  dt: 'dark:text-indigo-400', ml: '' },
-                  { num: '2', title: 'Collaborate', sub: 'Form teams and tackle live projects.',      lb: 'bg-fuchsia-50', db: 'dark:bg-fuchsia-500/15', lt: 'text-fuchsia-600', dt: 'dark:text-fuchsia-400', ml: 'ml-8' },
-                  { num: '3', title: 'Impact',      sub: 'Deliver solutions and track global change.', lb: 'bg-emerald-50', db: 'dark:bg-emerald-500/15', lt: 'text-emerald-600', dt: 'dark:text-emerald-400', ml: 'ml-16' },
+                  { num: '1', title: 'Connect',    sub: 'Join as a student, university, or NGO.',    lb: 'bg-indigo-500/15', lt: 'text-indigo-400', ml: '' },
+                  { num: '2', title: 'Collaborate', sub: 'Form teams and tackle live projects.',      lb: 'bg-fuchsia-500/15', lt: 'text-fuchsia-400', ml: 'ml-8' },
+                  { num: '3', title: 'Impact',      sub: 'Deliver solutions and track global change.', lb: 'bg-emerald-500/15', lt: 'text-emerald-400', ml: 'ml-16' },
                 ].map((s) => (
-                  <div key={s.num} className={`flex items-center gap-4 p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-100 dark:border-white/[0.05] ${s.ml}`}>
-                    <div className={`w-12 h-12 rounded-full ${s.lb} ${s.db} flex items-center justify-center ${s.lt} ${s.dt} font-black text-xl`}>{s.num}</div>
+                  <div key={s.num} className={`flex items-center gap-4 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.05] ${s.ml}`}>
+                    <div className={`w-12 h-12 rounded-full ${s.lb} flex items-center justify-center ${s.lt} font-black text-xl`}>{s.num}</div>
                     <div>
-                      <div className="font-bold text-zinc-900 dark:text-white">{s.title}</div>
-                      <div className="text-sm text-zinc-500 dark:text-zinc-400">{s.sub}</div>
+                      <div className="font-bold text-white">{s.title}</div>
+                      <div className="text-sm text-zinc-400">{s.sub}</div>
                     </div>
                   </div>
                 ))}
@@ -239,14 +239,14 @@ export default function ShowcasePage() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 + i * 0.08 }}
-                  className="p-5 rounded-2xl bg-white dark:bg-white/[0.03] border border-zinc-100 dark:border-white/[0.05] hover:border-indigo-200 dark:hover:border-indigo-500/30 hover:shadow-md dark:hover:bg-white/[0.05] transition-all duration-300 cursor-pointer group"
+                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:border-indigo-500/30 hover:bg-white/[0.05] transition-all duration-300 cursor-pointer group"
                 >
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${proj.color} mb-4 opacity-80 group-hover:opacity-100 transition-opacity`} />
-                  <h4 className="font-bold text-lg text-zinc-900 dark:text-white mb-1">{proj.title}</h4>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">{proj.org}</p>
+                  <h4 className="font-bold text-lg text-white mb-1">{proj.title}</h4>
+                  <p className="text-sm text-zinc-400 mb-4">{proj.org}</p>
                   <div className="flex gap-2">
                     {proj.tags.map(t => (
-                      <span key={t} className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400">
+                      <span key={t} className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-white/[0.06] text-zinc-400">
                         {t}
                       </span>
                     ))}
@@ -261,18 +261,18 @@ export default function ShowcasePage() {
             <h3 className="text-xl font-bold flex items-center gap-2 mb-5">
               <Globe2 className="w-5 h-5 text-indigo-500" /> Live Impact
             </h3>
-            <div className="p-5 rounded-2xl bg-white dark:bg-white/[0.03] border border-zinc-100 dark:border-white/[0.05] shadow-sm dark:shadow-none flex flex-col gap-3 h-[360px] overflow-hidden relative">
-              <div className="absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-white dark:from-[#0d1117] to-transparent z-10" />
-              <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-white dark:from-[#0d1117] to-transparent z-10 flex items-end justify-center pb-4">
-                <Link href="/login" className="px-4 py-2 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-xs hover:opacity-90 transition-opacity shadow-lg z-20 inline-flex items-center gap-1.5">
+            <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex flex-col gap-3 h-[360px] overflow-hidden relative">
+              <div className="absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-[#0d1117] to-transparent z-10" />
+              <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-[#0d1117] to-transparent z-10 flex items-end justify-center pb-4">
+                <Link href="/login" className="px-4 py-2 rounded-full bg-white text-zinc-900 font-bold text-xs hover:opacity-90 transition-opacity shadow-lg z-20 inline-flex items-center gap-1.5">
                   Join the Network <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
               <div className="space-y-3 animate-marquee-y hover:[animation-play-state:paused]">
                 {[...liveItems, ...liveItems].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-zinc-50 dark:bg-white/[0.03] p-3 rounded-xl border border-zinc-100 dark:border-white/[0.05]">
+                  <div key={i} className="flex items-center gap-3 bg-white/[0.03] p-3 rounded-xl border border-white/[0.05]">
                     <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
-                    <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{item}</span>
+                    <span className="text-sm font-medium text-zinc-300">{item}</span>
                   </div>
                 ))}
               </div>
