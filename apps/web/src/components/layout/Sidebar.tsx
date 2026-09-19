@@ -254,16 +254,16 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       )}
       
       <aside className={cn(
-        "fixed left-0 top-0 bottom-0 w-64 bg-[#0d1424]/90 backdrop-blur-xl border-r border-white/[0.06] flex flex-col z-50 transition-transform duration-300 lg:translate-x-0",
+        "fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-[#0d1424]/90 backdrop-blur-xl border-r border-zinc-200 dark:border-white/[0.06] flex flex-col z-50 transition-transform duration-300 lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {/* Brand */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06] bg-gradient-to-r from-indigo-950/20 via-transparent to-transparent">
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-zinc-200 dark:border-white/[0.06] bg-gradient-to-r from-indigo-50 dark:from-indigo-950/20 via-transparent to-transparent">
         <UniverseLogo size="md" animated={true} withGlow={true} />
         <div>
           <div className="flex items-center gap-1.5">
             <span className="font-black text-sm tracking-tight text-zinc-900 dark:text-white">
-              Uni<span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">Verse</span>
+              Uni<span className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500 dark:from-indigo-400 dark:via-pink-400 dark:to-amber-400 bg-clip-text text-transparent">Verse</span>
             </span>
             <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-500/20 to-amber-500/20 text-indigo-300 font-bold border border-indigo-400/30">
               IMPACT
@@ -284,8 +284,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       </nav>
 
       {/* User */}
-      <div className="px-3 py-4 border-t border-white/[0.06]">
-        <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer group">
+      <div className="px-3 py-4 border-t border-zinc-200 dark:border-white/[0.06]">
+        <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors cursor-pointer group">
           <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
             {initials}
           </div>

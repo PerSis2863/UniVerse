@@ -40,29 +40,30 @@ export default function LoginPage() {
         appearance={{
           variables: {
             colorPrimary: '#4f46e5',
-            colorBackground: 'transparent',
             borderRadius: '0.75rem',
           },
           elements: {
-            rootBox: 'w-full',
-            card: 'bg-transparent shadow-none border-0 p-0',
-            header: 'hidden',
+            rootBox: 'w-full flex justify-center',
+            card: 'bg-white dark:bg-zinc-950 shadow-xl border border-zinc-200 dark:border-zinc-800 rounded-2xl',
+            headerTitle: 'text-zinc-900 dark:text-white',
+            headerSubtitle: 'text-zinc-500 dark:text-zinc-400',
             // Social buttons
             socialButtonsBlockButton:
-              'w-full border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-zinc-50 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 rounded-xl transition-colors h-11 shadow-sm',
+              'w-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl transition-colors h-11',
             socialButtonsBlockButtonText: 'font-semibold text-sm',
             // Divider
             dividerRow: 'my-5',
-            dividerLine: 'bg-zinc-200 dark:bg-white/[0.08]',
+            dividerLine: 'bg-zinc-200 dark:bg-zinc-800',
             dividerText: 'text-zinc-400 dark:text-zinc-500 text-xs',
             // Form fields
             formFieldLabel: 'text-zinc-600 dark:text-zinc-400 text-sm font-medium',
             formFieldInput:
-              'bg-white dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 rounded-xl text-sm focus:border-indigo-500 dark:focus:border-indigo-500 shadow-sm transition-colors',
+              'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 rounded-xl text-sm focus:border-indigo-500 dark:focus:border-indigo-500 shadow-sm transition-colors',
             // Primary button
             formButtonPrimary:
               'bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm shadow-md',
             // Footer
+            footer: 'bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-200 dark:border-zinc-800',
             footerActionText: 'text-zinc-500 dark:text-zinc-400 text-sm',
             footerActionLink: 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold',
             // Identity preview
@@ -71,9 +72,6 @@ export default function LoginPage() {
             // Alerts
             alertText: 'text-red-600 dark:text-red-400 text-sm',
             formFieldErrorText: 'text-red-500 dark:text-red-400 text-xs',
-            // OTP
-            otpCodeFieldInput:
-              'bg-white dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.08] text-zinc-900 dark:text-white rounded-xl text-center text-lg font-bold focus:border-indigo-500',
           },
         }}
       />
