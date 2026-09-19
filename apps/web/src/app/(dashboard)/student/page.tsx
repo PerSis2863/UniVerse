@@ -164,12 +164,12 @@ export default function StudentDashboard() {
           <h2 className="font-bold text-white mb-5">Quick Actions</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { icon: FileText, label: 'View Assignments', color: 'indigo' },
-              { icon: ClipboardList, label: 'Check Attendance', color: 'cyan' },
-              { icon: TrendingUp, label: 'View Grades', color: 'green' },
-              { icon: CheckCircle2, label: 'Take Quiz', color: 'amber' },
+              { icon: FileText, label: 'View Assignments', color: 'indigo', href: '/student/courses' },
+              { icon: ClipboardList, label: 'Check Attendance', color: 'cyan', href: '/student/attendance' },
+              { icon: TrendingUp, label: 'View Grades', color: 'green', href: '/student/grades' },
+              { icon: CheckCircle2, label: 'Take Quiz', color: 'amber', href: '/student/quizzes' },
             ].map(a => (
-              <button key={a.label} className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group cursor-pointer transition-all">
+              <Link href={a.href} key={a.label} className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group cursor-pointer transition-all">
                 <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center',
                   a.color === 'indigo' ? 'bg-indigo-600/20 text-indigo-400' :
                   a.color === 'cyan' ? 'bg-cyan-600/20 text-cyan-400' :
@@ -178,7 +178,7 @@ export default function StudentDashboard() {
                   <a.icon className="w-5 h-5" />
                 </div>
                 <span className="text-xs text-zinc-400 group-hover:text-white text-center">{a.label}</span>
-              </button>
+              </Link>
             ))}
           </div>
         </div>

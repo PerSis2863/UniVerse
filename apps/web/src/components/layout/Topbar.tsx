@@ -1,7 +1,7 @@
 'use client';
 import { Bell, Search, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
-
+import Link from 'next/link';
 interface TopbarProps {
   title: string;
   subtitle?: string;
@@ -26,10 +26,10 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
       </div>
       <div className="flex items-center gap-3">
         {rightNode}
-        <button className="btn-ghost p-2 relative">
+        <Link href={user?.role === 'TEACHER' ? '/teacher/inbox' : user?.role === 'ADMIN' ? '/admin/inbox' : '/student/inbox'} className="btn-ghost p-2 relative">
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
-        </button>
+        </Link>
         {action && (
           <button onClick={action.onClick} className="btn-primary flex items-center gap-2 text-sm py-2">
             <Plus className="w-3.5 h-3.5" />
