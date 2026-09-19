@@ -5,6 +5,7 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { Globe2, ArrowRight, Heart, Users, Sparkles, Sprout } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 const stats = [
   { value: '50+', label: 'Global NGO Partners', icon: Globe2, color: 'text-blue-500' },
