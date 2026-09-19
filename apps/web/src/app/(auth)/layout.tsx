@@ -3,10 +3,10 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#09090b] flex">
+    <div className="min-h-screen bg-background flex">
       {/* Left panel */}
       <div className="hidden lg:flex w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/40 via-[#09090b] to-cyan-950/30" />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/40 via-background to-cyan-950/30" />
         <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-indigo-600/15 blur-[100px]" />
         <div className="absolute -bottom-32 -right-32 w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[100px]" />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">

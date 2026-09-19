@@ -19,10 +19,10 @@
     --surface-2: #e4e4e7;
   }
   .dark {
-    --background: #09090b;
+    --background: #0d1424;
     --foreground: #fafafa;
-    --surface: #0d1424;
-    --surface-2: #141723;
+    --surface: #141723;
+    --surface-2: #1e2235;
   }
 
   body {

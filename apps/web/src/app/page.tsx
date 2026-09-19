@@ -30,7 +30,7 @@ export default function ShowcasePage() {
   }, [user, router]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0d1424] text-zinc-900 dark:text-white overflow-hidden font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-background text-zinc-900 dark:text-white overflow-hidden font-sans selection:bg-indigo-500/30">
       
       {/* Dynamic Background Effects */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -86,7 +86,7 @@ export default function ShowcasePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-5xl mb-20"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-5xl mb-24"
         >
           {stats.map((stat, i) => (
             <div 
@@ -112,8 +112,73 @@ export default function ShowcasePage() {
           ))}
         </motion.div>
 
+        {/* About Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="w-full max-w-5xl mb-24 text-left grid md:grid-cols-2 gap-12 items-center"
+        >
+          <div>
+            <h2 className="text-3xl md:text-4xl font-black mb-6 tracking-tight">
+              Empowering the next generation of <span className="text-indigo-500">changemakers.</span>
+            </h2>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-8 text-lg leading-relaxed">
+              UniVerse Impact bridges the gap between academic learning and real-world social impact. We provide a platform where students can apply their skills to solve genuine challenges faced by NGOs, non-profits, and communities globally.
+            </p>
+            <ul className="space-y-6">
+              {[
+                { title: 'For Students', desc: 'Gain real-world experience, earn verified certificates, and build a portfolio of impactful work.' },
+                { title: 'For Universities', desc: 'Track student engagement, manage volunteering hours, and foster a culture of social responsibility.' },
+                { title: 'For Organizations', desc: 'Access a global pool of motivated talent ready to help scale your impact initiatives.' }
+              ].map((item, i) => (
+                <li key={i} className="flex gap-4">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2 shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-zinc-900 dark:text-white mb-1">{item.title}</h4>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">{item.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="relative hidden md:block">
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/20 via-purple-500/10 to-emerald-500/20 rounded-[2.5rem] blur-2xl" />
+            <div className="relative bg-zinc-50 dark:bg-[#09090b]/40 backdrop-blur-xl rounded-[2.5rem] p-8 border border-zinc-200 dark:border-white/10 shadow-2xl">
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-4 p-5 rounded-2xl bg-white dark:bg-white/5 border border-zinc-100 dark:border-white/5 shadow-sm">
+                  <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-xl">1</div>
+                  <div>
+                    <div className="font-bold text-zinc-900 dark:text-white">Connect</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">Join as a student, university, or NGO.</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 p-5 rounded-2xl bg-white dark:bg-white/5 border border-zinc-100 dark:border-white/5 ml-8 shadow-sm">
+                  <div className="w-12 h-12 rounded-full bg-fuchsia-100 dark:bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-600 dark:text-fuchsia-400 font-black text-xl">2</div>
+                  <div>
+                    <div className="font-bold text-zinc-900 dark:text-white">Collaborate</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">Form teams and tackle live projects.</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 p-5 rounded-2xl bg-white dark:bg-white/5 border border-zinc-100 dark:border-white/5 ml-16 shadow-sm">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-black text-xl">3</div>
+                  <div>
+                    <div className="font-bold text-zinc-900 dark:text-white">Impact</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">Deliver solutions and track global change.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Interactive Showcase Section */}
-        <div className="w-full max-w-6xl mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6 text-left"
+        >
           {/* Active Projects Column */}
           <div className="lg:col-span-2 space-y-4">
             <h3 className="text-xl font-bold px-2 flex items-center gap-2">
@@ -191,7 +256,7 @@ export default function ShowcasePage() {
               </div>
             </motion.div>
           </div>
-        </div>
+        </motion.div>
 
       </main>
     </div>
