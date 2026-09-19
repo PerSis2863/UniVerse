@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import {
-  LayoutDashboard, BookOpen, Users, Calendar, BarChart3,
-  FileText, MessageSquare, Bell, Settings, LogOut,
-  GraduationCap, ClipboardList, Brain, Briefcase,
-  Info, AlertTriangle, Maximize, Globe, Folder, Search, Link as LinkIcon, ChevronDown, ChevronRight,
-  Coffee, Shield, Map, Globe2, HandHeart, Sparkles
+  LayoutDashboard, Users,
+  MessageSquare, Bell, Settings, LogOut,
+  GraduationCap, Brain,
+  Info, AlertTriangle, Globe, Folder, Search, Link as LinkIcon, ChevronDown, ChevronRight,
+  Coffee, Shield, Map, Globe2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
