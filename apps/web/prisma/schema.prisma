@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   // "STUDENT" or "TEACHER"
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  coursesAsTeacher Course[]      @relation("TeacherCourses")
+  enrollments      Enrollment[]
+  assignments      Assignment[]
+  messagesSent     Message[]     @relation("Sender")
+  messagesReceived Message[]     @relation("Receiver")
+  announcements    Announcement[]
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  color       String   @default("#6366f1")
+  teacherId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teacher       User           @relation("TeacherCourses", fields: [teacherId], references: [id])
+  enrollments   Enrollment[]
+  announcements Announcement[]
+  resources     Resource[]
+  assignments   AssignmentDef[]
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  priority  String   @default("normal")
+  pinned    Boolean  @default(false)
+  authorId  String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  author User   @relation(fields: [authorId], references: [id])
+  course Course @relation(fields: [courseId], references: [id])
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  title     String
+  type      String
+  url       String
+  size      String?
+  week      String?
+  color     String?
+  pinned    Boolean  @default(false)
+  courseId  String
+  createdAt DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id])
+}
+
+model AssignmentDef {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  dueDate     DateTime
+  maxScore    Int      @default(100)
+  courseId    String
+  createdAt   DateTime @default(now())
+
+  course      Course       @relation(fields: [courseId], references: [id])
+  submissions Assignment[]
+}
+
+model Assignment {
+  id              String   @id @default(cuid())
+  assignmentDefId String
+  studentId       String
+  status          String   @default("pending") // "pending", "submitted", "graded"
+  score           Int?
+  submittedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  assignmentDef AssignmentDef @relation(fields: [assignmentDefId], references: [id])
+  student       User          @relation(fields: [studentId], references: [id])
+
+  @@unique([assignmentDefId, studentId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String
+  senderId   String
+  receiverId String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("Sender", fields: [senderId], references: [id])
+  receiver User @relation("Receiver", fields: [receiverId], references: [id])
+}
