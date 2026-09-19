@@ -52,7 +52,6 @@ export default function LoginPage() {
             socialButtonsBlockButton:
               'w-full border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-zinc-50 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 rounded-xl transition-colors h-11 shadow-sm',
             socialButtonsBlockButtonText: 'font-semibold text-sm',
-            socialButtonsProviderIcon: 'dark:invert-0', // Clerk icons can sometimes look weird in dark mode if not handled
             // Divider
             dividerRow: 'my-5',
             dividerLine: 'bg-zinc-200 dark:bg-white/[0.08]',
