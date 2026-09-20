@@ -407,3 +407,10 @@ div[class*="cl-internal-"] > a[href*="clerk.com"] {
   background: rgba(120,120,140,0.3);
   border-radius: 100px;
 }
+
+/* Hide Clerk watermarks */
+.cl-internal-b3al4t, 
+.cl-internal-1dauvpw,
+.cl-watermark {
+  display: none !important;
+}

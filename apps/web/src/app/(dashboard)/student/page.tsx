@@ -12,18 +12,12 @@ const GamificationWidget = dynamic(
 );
 import { useAuthStore } from '@/store/auth';
 import { useLanguageStore } from '@/store/language';
+import { ClassDetailModal, ClassData } from '@/components/dashboard/ClassDetailModal';
 import { BookOpen, ClipboardList, BarChart3, Trophy, TrendingUp, Clock, CheckCircle2, FileText, Globe2, ArrowUpRight, Sparkles, HeartHandshake, AlertCircle, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { motion } from 'framer-motion';
-
-
-const upcomingClasses = [
-  { name: 'Data Structures & Algorithms', time: '9:00 AM', room: 'CS-201', color: '#6366f1' },
-  { name: 'Operating Systems', time: '11:00 AM', room: 'CS-105', color: '#06b6d4' },
-  { name: 'Database Management', time: '2:00 PM', room: 'CS-302', color: '#10b981' },
-];
 
 const deadlines = [
   { title: 'Project Phase 1', course: 'Software Eng', due: 'Tomorrow, 11:59 PM', urgent: true },
@@ -41,6 +35,7 @@ const courseProgress = [
 export default function StudentDashboard() {
   const { user } = useAuthStore();
   const { t } = useLanguageStore();
+  const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
 
@@ -102,14 +97,16 @@ export default function StudentDashboard() {
               <span className="text-xs text-zinc-500 dark:text-zinc-500">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
             </div>
             <div className="space-y-3">
-              {upcomingClasses.map((cls, i) => (
-                <motion.div 
-                  whileHover={{ scale: 1.02, x: 5 }}
-                  key={i} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-100 dark:bg-white/[0.03] hover:bg-zinc-200 dark:hover:bg-white/[0.06] transition-colors border border-zinc-200 dark:border-white/[0.06]">
-                  <div className="w-1 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
+              {[
+                { time: '09:00 AM', course: 'Advanced Algorithms', location: 'Room 302', duration: 1.5, type: 'Lecture', color: '#6366f1' },
+                { time: '11:30 AM', course: 'Operating Systems', location: 'Lab 4', duration: 2, type: 'Lab', color: '#10b981' },
+                { time: '02:00 PM', course: 'Machine Learning', location: 'Virtual', duration: 1.5, type: 'Lecture', color: '#a855f7' }
+              ].map((cls, i) => (
+                <div key={i} onClick={() => setSelectedClass({ ...cls, subject: cls.course })} className="flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group border border-zinc-200 dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.03]">
+                  <div className="w-1.5 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">{cls.name}</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-500">{cls.room}</div>
+                    <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">{cls.course}</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-500">{cls.location}</div>
                   </div>
                   <div className="text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
@@ -254,6 +251,11 @@ export default function StudentDashboard() {
         </div>
 
       </div>
+
+      <ClassDetailModal 
+        selectedClass={selectedClass} 
+        onClose={() => setSelectedClass(null)} 
+      />
     </>
   );
 }

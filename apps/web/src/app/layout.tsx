@@ -30,6 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider
       appearance={{
+        elements: {
+          footer: "hidden",
+          footerAction: "hidden",
+          watermark: "hidden",
+        },
         variables: {
           colorPrimary: '#6366f1',
           borderRadius: '0.75rem',
