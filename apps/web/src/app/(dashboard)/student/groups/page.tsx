@@ -190,20 +190,7 @@ export default function GroupsPage() {
                     <span className="text-xs text-zinc-500">{group.members} members</span>
                   </div>
 
-                  {/* Progress */}
-                  <div className="mb-3">
-                    <div className="flex justify-between text-[10px] text-zinc-500 mb-1.5">
-                      <span>Progress</span>
-                      <span className="font-semibold">{group.completion}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }} animate={{ width: `${group.completion}%` }}
-                        transition={{ duration: 0.8, ease: 'easeOut', delay: i * 0.1 + 0.2 }}
-                        className={`h-full rounded-full bg-gradient-to-r ${group.color}`}
-                      />
-                    </div>
-                  </div>
+
 
                   {/* Latest Activity */}
                   <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between border-t border-zinc-100 dark:border-white/[0.04] pt-3">
@@ -340,16 +327,7 @@ export default function GroupsPage() {
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Progress</h4>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-zinc-600 dark:text-zinc-400">Overall completion</span>
-                    <span className="font-bold text-zinc-900 dark:text-white">{selectedGroup.completion}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                    <div className={`h-full rounded-full bg-gradient-to-r ${selectedGroup.color}`} style={{ width: `${selectedGroup.completion}%` }} />
-                  </div>
-                </div>
+
 
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Shared Resources</h4>
