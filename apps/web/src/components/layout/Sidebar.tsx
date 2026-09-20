@@ -90,7 +90,7 @@ const navByRole: Record<string, NavItem[]> = {
     { href: '/student/community', label: 'Community', icon: Users },
     { href: '/student/support', label: 'Support', icon: Settings },
     { href: '/student/beesafe', label: 'BeeSafe Reporting', icon: AlertTriangle },
-    { action: 'language', label: 'Change language', icon: Globe },
+    { href: '/student/settings?section=language', label: 'Change language', icon: Globe },
   ],
   TEACHER: [
     { href: '/teacher', label: 'Dashboard', icon: LayoutDashboard },

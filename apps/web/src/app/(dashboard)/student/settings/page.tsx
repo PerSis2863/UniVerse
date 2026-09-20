@@ -17,6 +17,12 @@ export default function StudentSettings() {
   const [activeSection, setActiveSection] = useState('profile');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const section = params.get('section');
+    if (section && ['profile', 'language', 'notifications', 'privacy'].includes(section)) {
+      setActiveSection(section);
+    }
+    
     api.get('/users/me')
       .then(res => setUser(res.data))
       .catch(() => setUser({ name: 'Student User', email: 'student@universe.edu', emailNotifications: true }))
