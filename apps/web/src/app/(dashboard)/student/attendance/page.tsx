@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
@@ -14,6 +15,9 @@ const attendanceData = [
 ];
 
 export default function AttendancePage() {
+  const [selectedCourse, setSelectedCourse] = useState('All Courses');
+  const filteredData = selectedCourse === 'All Courses' ? attendanceData : attendanceData.filter(r => r.course === selectedCourse);
+
   return (
     <>
       <Topbar title="Attendance" subtitle="Track your class presence and absences." />
@@ -30,11 +34,15 @@ export default function AttendancePage() {
         <div className="card">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold text-zinc-900 dark:text-white">Recent Classes</h2>
-            <select className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50">
-              <option>All Courses</option>
-              <option>Data Structures & Algorithms</option>
-              <option>Operating Systems</option>
-              <option>Database Management</option>
+            <select 
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50"
+            >
+              <option value="All Courses">All Courses</option>
+              <option value="Data Structures & Algorithms">Data Structures & Algorithms</option>
+              <option value="Operating Systems">Operating Systems</option>
+              <option value="Database Management">Database Management</option>
             </select>
           </div>
 
@@ -48,7 +56,7 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody>
-                {attendanceData.map((record, i) => (
+                {filteredData.map((record, i) => (
                   <motion.tr 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
