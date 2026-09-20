@@ -58,6 +58,7 @@ export default function GroupsPage() {
   const [chatInput, setChatInput] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<number | string | null>(null);
   const [editingMessageText, setEditingMessageText] = useState('');
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   
   const [showMeeting, setShowMeeting] = useState(false);
   const [showMeetingChat, setShowMeetingChat] = useState(false); // In-meeting chat panel
@@ -687,22 +688,53 @@ export default function GroupsPage() {
                     <button onClick={() => { setEditingMessageId(null); setEditingMessageText(''); setChatInput(''); }} className="hover:text-zinc-900 dark:hover:text-white"><X className="w-3 h-3" /></button>
                   </div>
                 )}
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors hidden sm:block" title="Upload Photo" onClick={() => toast.success('Photo option clicked')}>
-                    <ImageIcon className="w-5 h-5" />
+                <div className="flex items-center gap-1 sm:gap-2 relative">
+                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors bg-zinc-100 dark:bg-zinc-800 rounded-full shrink-0" title="Attachments" onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}>
+                    <Plus className="w-5 h-5" />
                   </button>
-                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors hidden sm:block" title="Create Poll" onClick={() => toast.success('Poll option clicked')}>
-                    <BarChart2 className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors hidden sm:block" title="Share Contact" onClick={() => toast.success('Contact option clicked')}>
-                    <Contact className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors hidden sm:block" title="Generate AI Image" onClick={() => toast.success('AI Images option clicked')}>
-                    <Sparkles className="w-5 h-5" />
-                  </button>
-                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" title="Attach File" onClick={() => fileInputRef.current?.click()}>
-                    <Paperclip className="w-5 h-5" />
-                  </button>
+                  
+                  <AnimatePresence>
+                    {showAttachmentMenu && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute bottom-full left-0 mb-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-2xl p-2 flex flex-col gap-1 w-48 z-50 origin-bottom-left"
+                      >
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); toast.success('Photo option clicked'); }}>
+                          <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                            <ImageIcon className="w-4 h-4 text-blue-500" />
+                          </div>
+                          Photos & Video
+                        </button>
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}>
+                          <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
+                            <Paperclip className="w-4 h-4 text-indigo-500" />
+                          </div>
+                          Document
+                        </button>
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); toast.success('Poll option clicked'); }}>
+                          <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                            <BarChart2 className="w-4 h-4 text-emerald-500" />
+                          </div>
+                          Poll
+                        </button>
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); toast.success('Contact option clicked'); }}>
+                          <div className="w-8 h-8 rounded-full bg-fuchsia-500/10 flex items-center justify-center shrink-0">
+                            <Contact className="w-4 h-4 text-fuchsia-500" />
+                          </div>
+                          Contact
+                        </button>
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); toast.success('AI Images option clicked'); }}>
+                          <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-4 h-4 text-amber-500" />
+                          </div>
+                          AI Images
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   <input 
                     value={editingMessageId ? editingMessageText : chatInput} 
                     onChange={e => editingMessageId ? setEditingMessageText(e.target.value) : setChatInput(e.target.value)} 

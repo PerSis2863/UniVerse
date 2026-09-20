@@ -2,7 +2,7 @@
 
 import { Topbar } from '@/components/layout/Topbar';
 import { Briefcase, Building, MapPin, DollarSign, Search, Filter, Bookmark, ExternalLink, X, FileText, Check, Edit2, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -29,6 +29,7 @@ export default function StudentInternships() {
   const [showMyApplications, setShowMyApplications] = useState(false);
   const [applications, setApplications] = useState<{ id: number; internship: typeof INITIAL_INTERNSHIPS[0]; resume: string; coverLetter: string; appliedAt: string; status: string }[]>([]);
   const [editingAppId, setEditingAppId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleBookmark = (id: number) => {
     setBookmarkedIds(prev => prev.includes(id) ? prev.filter(bId => bId !== id) : [...prev, id]);
@@ -222,10 +223,23 @@ export default function StudentInternships() {
                       <FileText className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-zinc-900 dark:text-white">Aditya_Bhatt_Resume.pdf</p>
-                      <p className="text-xs text-zinc-500">Using default profile resume</p>
+                      <p className="text-sm font-medium text-zinc-900 dark:text-white">{formData.resume || 'Aditya_Bhatt_Resume.pdf'}</p>
+                      <p className="text-xs text-zinc-500">{formData.resume ? 'Custom resume attached' : 'Using default profile resume'}</p>
                     </div>
-                    <button type="button" className="text-sm font-medium text-indigo-500 hover:text-indigo-600 transition-colors">Change</button>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm font-medium text-indigo-500 hover:text-indigo-600 transition-colors">Change</button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      className="hidden" 
+                      accept=".pdf,.doc,.docx" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setFormData({ ...formData, resume: file.name });
+                          toast.success(`Attached ${file.name}`);
+                        }
+                      }} 
+                    />
                   </div>
                 </div>
                 
