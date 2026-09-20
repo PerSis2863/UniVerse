@@ -71,12 +71,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12" style={{ backgroundColor: '#09090b', color: '#ffffff' }}>
+      <div className="flex-1 flex flex-col p-6 lg:p-12" style={{ backgroundColor: '#09090b', color: '#ffffff' }}>
         {/* Mobile logo */}
-        <div className="absolute top-6 left-6 flex lg:hidden">
+        <div className="flex lg:hidden pt-2 pb-8">
           <UniverseLogo size="md" showText={true} animated={true} />
         </div>
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center pb-8 lg:pb-0">
           {children}
         </div>
       </div>
