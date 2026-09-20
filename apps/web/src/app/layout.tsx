@@ -1,6 +1,21 @@
 import type { Metadata } from 'next';
+import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
+import { Analytics } from "@vercel/analytics/react";
+import { Toaster } from 'sonner';
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: {
@@ -10,9 +25,6 @@ export const metadata: Metadata = {
   description: 'Connecting students, universities, and NGOs to collaborate on real-world social impact projects.',
   keywords: ['university', 'education', 'NGO', 'social impact', 'volunteering', 'students'],
 };
-
-import { Analytics } from "@vercel/analytics/react";
-import { Toaster } from 'sonner';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,14 +40,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <head>
           {/* Blocking script: applies .dark class before paint to prevent theme flash */}
           <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link
-            href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap"
-            rel="stylesheet"
-          />
         </head>
-        <body className="min-h-screen antialiased" style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
+        <body className={`${inter.variable} ${outfit.variable} min-h-screen antialiased`} style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
             {children}
             <Toaster 
               position="bottom-right"
