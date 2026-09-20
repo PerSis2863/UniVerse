@@ -1,6 +1,6 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar } from 'lucide-react';
+import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -40,6 +40,18 @@ export default function GroupsPage() {
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('Study');
+  
+  // New Modals State
+  const [showAllActivity, setShowAllActivity] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, user: 'Alex Chen', initials: 'AC', text: 'Hey guys, I uploaded the notes for Chapter 4.', time: '10:00 AM' },
+    { id: 2, user: 'Sarah Kim', initials: 'SK', text: 'Thanks! I will review them tonight.', time: '10:05 AM' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [showMeeting, setShowMeeting] = useState(false);
+  const [showAllMembers, setShowAllMembers] = useState(false);
+  const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string} | null>(null);
 
   const filtered = groups.filter(g =>
     (filter === 'All' || g.type === filter) &&
@@ -207,7 +219,7 @@ export default function GroupsPage() {
                 })}
               </div>
 
-              <button className="w-full mt-4 text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center justify-center gap-1 py-2" onClick={() => toast.info('Loading full feed...')}>
+              <button className="w-full mt-4 text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center justify-center gap-1 py-2" onClick={() => setShowAllActivity(true)}>
                 View all activity <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -236,13 +248,18 @@ export default function GroupsPage() {
               </div>
               <div className="p-5 space-y-5">
                 <div className="flex gap-2">
-                  <button className="flex-1 btn-primary py-2 text-sm" onClick={() => toast.success('Opening group chat...')}>
+                  <button className="flex-1 btn-primary py-2 text-sm" onClick={() => setShowChat(true)}>
                     <MessageSquare className="w-4 h-4 inline mr-1" /> Chat
                   </button>
-                  <button className="flex-1 btn-secondary py-2 text-sm" onClick={() => toast.info('Opening files...')}>
+                  <button className="flex-1 btn-secondary py-2 text-sm" onClick={() => {
+                    const newFile = { id: Date.now(), user: 'You', initials: 'ME', text: '', isFile: true, fileName: 'New_Upload.pdf', time: 'Just now' };
+                    setChatMessages([...chatMessages, newFile]);
+                    setShowChat(true);
+                    toast.success('File shared in chat');
+                  }}>
                     <Upload className="w-4 h-4 inline mr-1" /> Files
                   </button>
-                  <button className="flex-1 btn-secondary py-2 text-sm" onClick={() => toast.info('Starting video call...')}>
+                  <button className="flex-1 btn-secondary py-2 text-sm" onClick={() => setShowMeeting(true)}>
                     <Video className="w-4 h-4 inline mr-1" /> Meet
                   </button>
                 </div>
@@ -260,7 +277,7 @@ export default function GroupsPage() {
                       </div>
                     ))}
                     {selectedGroup.members > 4 && (
-                      <button className="text-xs text-indigo-500 pl-2 hover:underline" onClick={() => toast.info('Loading all members...')}>
+                      <button className="text-xs text-indigo-500 pl-2 hover:underline" onClick={() => setShowAllMembers(true)}>
                         +{selectedGroup.members - 4} more members
                       </button>
                     )}
@@ -281,7 +298,7 @@ export default function GroupsPage() {
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Shared Resources</h4>
                   {['Study_Guide_Week3.pdf', 'Project_Architecture.fig', 'Research_Notes.docx'].map((f, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700" onClick={() => toast.info(`Opening ${f}...`)}>
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700" onClick={() => setShowFilePreview({ name: f, ext: f.split('.').pop() || '' })}>
                       <FileText className="w-4 h-4 text-indigo-400" />
                       <span className="text-sm text-zinc-700 dark:text-zinc-300 flex-1">{f}</span>
                       <ChevronRight className="w-4 h-4 text-zinc-400" />
@@ -323,6 +340,205 @@ export default function GroupsPage() {
                 <button onClick={() => setShowNewGroup(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
                 <button onClick={() => { setShowNewGroup(false); toast.success(`"${newGroupName || 'New Group'}" created!`); setNewGroupName(''); }} className="flex-1 btn-primary py-2.5 text-sm">Create Group</button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Modals for new functionality */}
+      <AnimatePresence>
+        {/* Full Activity Feed */}
+        {showAllActivity && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.target === e.currentTarget && setShowAllActivity(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+              <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900">
+                <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Full Activity Feed</h3>
+                <button onClick={() => setShowAllActivity(false)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                {[...feed, ...feed, ...feed].map((item, i) => {
+                  const Icon = itemIcons[item.itemType] || FileText;
+                  return (
+                    <div key={i} className="flex gap-4 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors group">
+                      <div className={`w-10 h-10 rounded-full ${item.color} flex items-center justify-center text-sm font-bold flex-shrink-0`}>{item.initials}</div>
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="text-sm text-zinc-900 dark:text-zinc-100">
+                            <span className="font-semibold">{item.user}</span> {item.action} in <span className={`font-semibold ${item.groupColor}`}>{item.group}</span>
+                          </p>
+                          <span className="text-xs text-zinc-400 whitespace-nowrap ml-4">{item.time}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 mt-1">
+                          <Icon className={`w-4 h-4 ${item.color.split(' ')[1]}`} />
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{item.item}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Group Chat Modal */}
+        {showChat && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.target === e.currentTarget && setShowChat(false)}>
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col h-[70vh]">
+              <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/20 rounded-t-2xl">
+                <div>
+                  <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Hash className="w-4 h-4 text-indigo-500" /> {selectedGroup?.name || 'Group Chat'}</h3>
+                  <p className="text-xs text-zinc-500">{selectedGroup?.members || 0} members</p>
+                </div>
+                <button onClick={() => setShowChat(false)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50/50 dark:bg-zinc-900/50">
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className={`flex gap-3 ${msg.user === 'You' ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${msg.user === 'You' ? 'bg-indigo-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'}`}>{msg.initials}</div>
+                    <div className={`max-w-[75%] ${msg.user === 'You' ? 'items-end' : 'items-start'} flex flex-col`}>
+                      <div className="flex items-baseline gap-2 mb-1 px-1">
+                        <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{msg.user}</span>
+                        <span className="text-[10px] text-zinc-400">{msg.time}</span>
+                      </div>
+                      <div className={`p-3 rounded-2xl text-sm ${msg.user === 'You' ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
+                        {msg.isFile ? (
+                          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => setShowFilePreview({ name: msg.fileName || '', ext: msg.fileName?.split('.').pop() || '' })}>
+                            <FileText className="w-5 h-5" />
+                            <span className="underline font-medium">{msg.fileName}</span>
+                          </div>
+                        ) : (
+                          msg.text
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-b-2xl">
+                <div className="flex items-center gap-2">
+                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => {
+                    const newFile = { id: Date.now(), user: 'You', initials: 'ME', text: '', isFile: true, fileName: 'Attached_Document.pdf', time: 'Just now' };
+                    setChatMessages([...chatMessages, newFile]);
+                    toast.success('Document attached');
+                  }}>
+                    <Paperclip className="w-5 h-5" />
+                  </button>
+                  <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => {
+                    if (e.key === 'Enter' && chatInput.trim()) {
+                      setChatMessages([...chatMessages, { id: Date.now(), user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
+                      setChatInput('');
+                    }
+                  }} placeholder="Type a message..." className="flex-1 bg-zinc-100 dark:bg-zinc-800 border-none rounded-full px-4 py-2 text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <button className="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition-colors" onClick={() => {
+                    if (chatInput.trim()) {
+                      setChatMessages([...chatMessages, { id: Date.now(), user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
+                      setChatInput('');
+                    }
+                  }}>
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Video Meeting Simulation */}
+        {showMeeting && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-zinc-950 z-[70] flex flex-col">
+            <div className="p-4 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-white font-semibold">Meeting: {selectedGroup?.name}</span>
+                <span className="text-zinc-400 text-sm pl-4 border-l border-zinc-700">04:23</span>
+              </div>
+            </div>
+            <div className="flex-1 p-4 sm:p-8 grid grid-cols-2 md:grid-cols-3 gap-4 place-content-center">
+              {[...Array(selectedGroup ? Math.min(selectedGroup.members, 6) : 4)].map((_, i) => (
+                <div key={i} className="aspect-video bg-zinc-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-zinc-700">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
+                    {selectedGroup?.avatars[i] || 'U'}
+                  </div>
+                  <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur px-2 py-1 rounded-md text-xs text-white flex items-center gap-2">
+                    {i === 0 && <MicOff className="w-3 h-3 text-red-400" />} User {i + 1}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-6 bg-zinc-900/80 backdrop-blur-lg flex justify-center items-center gap-4 border-t border-zinc-800">
+              <button className="w-12 h-12 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white transition-colors" onClick={() => toast.success('Microphone toggled')}><Mic className="w-5 h-5" /></button>
+              <button className="w-12 h-12 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white transition-colors" onClick={() => toast.success('Camera toggled')}><VideoOff className="w-5 h-5" /></button>
+              <button className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors shadow-lg" onClick={() => setShowMeeting(false)}><PhoneOff className="w-6 h-6" /></button>
+              <button className="w-12 h-12 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white transition-colors" onClick={() => { setShowMeeting(false); setShowChat(true); }}><MessageSquare className="w-5 h-5" /></button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* All Members Modal */}
+        {showAllMembers && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.target === e.currentTarget && setShowAllMembers(false)}>
+             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[70vh]">
+              <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Group Members ({selectedGroup?.members})</h3>
+                <button onClick={() => setShowAllMembers(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {[...Array(selectedGroup?.members || 10)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-sm text-white font-bold">U{i+1}</div>
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-zinc-900 dark:text-white">Group Member {i + 1}</div>
+                      <div className="text-xs text-zinc-500">{i === 0 ? 'Admin' : 'Member'} • Joined recently</div>
+                    </div>
+                    <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => { setShowAllMembers(false); setShowChat(true); }}><MessageSquare className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
+             </motion.div>
+          </motion.div>
+        )}
+
+        {/* File Preview Modal */}
+        {showFilePreview && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[80] flex flex-col p-4 sm:p-8" onClick={(e) => e.target === e.currentTarget && setShowFilePreview(null)}>
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3 bg-zinc-900/50 p-2 pr-4 rounded-xl border border-zinc-700">
+                <div className={`p-2 rounded-lg ${showFilePreview.ext === 'pdf' ? 'bg-red-500/20 text-red-400' : showFilePreview.ext === 'fig' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">{showFilePreview.name}</h3>
+                  <p className="text-zinc-400 text-xs">{showFilePreview.ext.toUpperCase()} Document • 2.4 MB</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors"><Download className="w-5 h-5" /></button>
+                <button className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors"><ExternalLink className="w-5 h-5" /></button>
+                <button onClick={() => setShowFilePreview(null)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors ml-4"><X className="w-5 h-5" /></button>
+              </div>
+            </div>
+            
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex-1 bg-white dark:bg-zinc-950 rounded-2xl overflow-hidden flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-2xl relative">
+               {/* Simulated Document Content */}
+               <div className="w-full h-full max-w-4xl mx-auto p-12 bg-white dark:bg-zinc-900 overflow-y-auto shadow-inner">
+                  <div className="h-8 w-3/4 bg-zinc-200 dark:bg-zinc-800 rounded-md mb-8 animate-pulse" />
+                  <div className="space-y-4 mb-12">
+                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
+                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
+                    <div className="h-4 w-5/6 bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
+                    <div className="h-4 w-11/12 bg-zinc-100 dark:bg-zinc-800 rounded" />
+                  </div>
+                  
+                  <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl mb-12 flex items-center justify-center">
+                    <Video className="w-12 h-12 text-zinc-300 dark:text-zinc-700" />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
+                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
+                    <div className="h-4 w-4/6 bg-zinc-100 dark:bg-zinc-800 rounded" />
+                  </div>
+               </div>
             </motion.div>
           </motion.div>
         )}

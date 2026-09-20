@@ -37,8 +37,8 @@ export function CollaborationWhiteboard() {
             </button>
           ))}
           <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2" />
-          <button className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><Undo className="w-4 h-4" /></button>
-          <button className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><Redo className="w-4 h-4" /></button>
+          <button onClick={() => toast.info('Undo last action')} className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><Undo className="w-4 h-4" /></button>
+          <button onClick={() => toast.info('Redo action')} className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><Redo className="w-4 h-4" /></button>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2">

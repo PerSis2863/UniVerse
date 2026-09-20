@@ -111,6 +111,10 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
   const [newDiscTitle, setNewDiscTitle] = useState('');
   const [showNewDisc, setShowNewDisc] = useState(false);
   const [submissionModal, setSubmissionModal] = useState<any>(null);
+  const [quizReviewModal, setQuizReviewModal] = useState<any>(null);
+  const [discussionModal, setDiscussionModal] = useState<any>(null);
+  const [toolModal, setToolModal] = useState<any>(null);
+  const [selectedInstructor, setSelectedInstructor] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [renderTrigger, setRenderTrigger] = useState(0);
 
@@ -303,9 +307,10 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                         <span className={cn('text-[10px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap',
                           a.status === 'graded' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                           a.status === 'submitted' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                          a.status === 'submitted_late' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
                           'bg-amber-500/10 text-amber-500 border-amber-500/20'
                         )}>
-                          {a.status === 'graded' ? `✓ ${a.score}/${a.maxScore}` : a.status === 'submitted' ? 'Submitted' : 'Pending'}
+                          {a.status === 'graded' ? `✓ ${a.score}/${a.maxScore}` : a.status === 'submitted' ? 'Submitted' : a.status === 'submitted_late' ? 'Late Submission' : 'Pending'}
                         </span>
                       </div>
                       <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">{a.description}</p>
@@ -318,9 +323,9 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                             Submit
                           </button>
                         )}
-                        {a.status === 'submitted' && (
+                        {(a.status === 'submitted' || a.status === 'submitted_late') && (
                           <button className="btn-secondary text-xs py-1.5 px-4 opacity-50 cursor-not-allowed">
-                            Submitted
+                            {a.status === 'submitted_late' ? 'Submitted Late' : 'Submitted'}
                           </button>
                         )}
                         {a.status === 'graded' && (
@@ -360,7 +365,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                           <div className="h-full rounded-full bg-emerald-500" style={{ width: `${q.score}%` }} />
                         </div>
                       </div>
-                      <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => toast.info('Reviewing quiz...')}>Review</button>
+                      <button className="btn-secondary text-xs py-1.5 px-3" onClick={() => setQuizReviewModal(q)}>Review</button>
                     </motion.div>
                   ))}
                   <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl p-5 text-center">
@@ -392,7 +397,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                   {data.discussion.map((d, i) => (
                     <motion.div key={d.id} 
                       className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-indigo-500/30 transition-all cursor-pointer group"
-                      onClick={() => toast.info(`Opening: ${d.title}`)}>
+                      onClick={() => setDiscussionModal(d)}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -455,48 +460,84 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
 
               {/* ── MESSAGES ──────────────────── */}
               {activeTab === 'messages' && (
-                <div className="max-w-2xl mx-auto h-[500px] flex flex-col">
-                  <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4"><Send className="w-4 h-4 text-indigo-500" /> Message Instructor</h3>
-                  <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50">
-                      <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-sm font-bold text-indigo-500">
-                        {selectedCourse.instructor.split(' ').map((w: string) => w[0]).join('')}
+                <div className="max-w-4xl mx-auto h-[600px] flex flex-col">
+                  <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4"><Send className="w-4 h-4 text-indigo-500" /> Course Messages</h3>
+                  <div className="flex-1 flex bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                    {/* Contacts Sidebar */}
+                    <div className="w-1/3 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30 flex flex-col">
+                      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+                        <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Instructors & TAs</h4>
                       </div>
-                      <div>
-                        <p className="font-bold text-zinc-900 dark:text-white text-sm">{selectedCourse.instructor}</p>
-                        <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Online</p>
-                      </div>
-                    </div>
-                    <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                      {[
-                        { from: 'instructor', text: 'Hello! Feel free to ask me any questions about the course material.', time: '2 days ago', read: true },
-                        { from: 'me', text: 'Thank you Professor! I had a question about the midterm scope.', time: '2 days ago', read: true },
-                        { from: 'instructor', text: 'Sure! The midterm covers chapters 1–8. Focus on time complexity and graph traversal.', time: '2 days ago', read: true },
-                        { from: 'me', text: 'Professor, can you clarify the midterm scope for dynamic programming?', time: '15m ago', read: false }
-                      ].map((m, i) => (
-                        <div key={i} className={cn('flex', m.from === 'me' ? 'justify-end' : 'justify-start')}>
-                          <div className={cn('max-w-[70%] px-4 py-2.5 rounded-2xl text-sm', m.from === 'me' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-sm')}>
-                            <p>{m.text}</p>
-                            <div className={cn('text-[10px] mt-1.5 flex items-center gap-1 justify-end', m.from === 'me' ? 'text-white/70' : 'text-zinc-400')}>
-                              <span>{m.time}</span>
-                              {m.from === 'me' && (
-                                <div className="flex">
-                                  <CheckCircle2 className="w-3 h-3 text-white/50" />
-                                  {m.read && <CheckCircle2 className="w-3 h-3 text-white -ml-1.5" />}
-                                </div>
-                              )}
+                      <div className="flex-1 overflow-y-auto">
+                        {[
+                          { name: selectedCourse.instructor, role: 'Course Instructor', status: 'online', initials: selectedCourse.instructor.split(' ').map((w: string) => w[0]).join('') },
+                          { name: 'Alice Chen', role: 'Teaching Assistant', status: 'offline', initials: 'AC' },
+                          { name: 'Dr. Robert Smith', role: 'Department Head', status: 'offline', initials: 'RS' }
+                        ].map((contact, i) => (
+                          <div 
+                            key={i} 
+                            onClick={() => setSelectedInstructor(contact)}
+                            className={cn('p-4 flex items-center gap-3 cursor-pointer transition-colors border-l-2', 
+                              (!selectedInstructor && i === 0) || selectedInstructor?.name === contact.name ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800')}
+                          >
+                            <div className="relative">
+                              <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                {contact.initials}
+                              </div>
+                              {contact.status === 'online' && <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{contact.name}</p>
+                              <p className="text-xs text-zinc-500 truncate">{contact.role}</p>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                    <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex gap-2">
-                      <input value={messageText} onChange={e => setMessageText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                        placeholder={`Message ${selectedCourse.instructor}...`}
-                        className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
-                      <button onClick={handleSendMessage} className="btn-primary p-2.5 aspect-square flex items-center justify-center">
-                        <Send className="w-4 h-4" />
-                      </button>
+                    {/* Chat Area */}
+                    <div className="flex-1 flex flex-col">
+                      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                            {selectedInstructor ? selectedInstructor.initials : selectedCourse.instructor.split(' ').map((w: string) => w[0]).join('')}
+                          </div>
+                          <div>
+                            <p className="font-bold text-zinc-900 dark:text-white text-sm">{selectedInstructor ? selectedInstructor.name : selectedCourse.instructor}</p>
+                            <p className="text-xs text-zinc-500">{selectedInstructor ? selectedInstructor.role : 'Course Instructor'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-zinc-50/50 dark:bg-zinc-900/50">
+                        {[
+                          { from: 'instructor', text: 'Hello! Feel free to ask me any questions about the course material.', time: '2 days ago', read: true },
+                          { from: 'me', text: 'Thank you! I had a question about the midterm scope.', time: '2 days ago', read: true },
+                          { from: 'instructor', text: 'Sure! The midterm covers chapters 1–8. Focus on time complexity and graph traversal.', time: '2 days ago', read: true },
+                          { from: 'me', text: 'Can you clarify the midterm scope for dynamic programming?', time: '15m ago', read: false }
+                        ].map((m, i) => (
+                          <div key={i} className={cn('flex', m.from === 'me' ? 'justify-end' : 'justify-start')}>
+                            <div className={cn('max-w-[70%] px-4 py-2.5 rounded-2xl text-sm shadow-sm border', m.from === 'me' ? 'bg-indigo-600 border-indigo-600 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white rounded-tl-sm')}>
+                              <p>{m.text}</p>
+                              <div className={cn('text-[10px] mt-1 flex items-center gap-1 justify-end', m.from === 'me' ? 'text-white/70' : 'text-zinc-400')}>
+                                <span>{m.time}</span>
+                                {m.from === 'me' && (
+                                  <div className="flex">
+                                    <CheckCircle2 className="w-3 h-3 text-white/50" />
+                                    {m.read && <CheckCircle2 className="w-3 h-3 text-white -ml-1.5" />}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2">
+                        <input value={messageText} onChange={e => setMessageText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                          placeholder={`Message ${selectedInstructor ? selectedInstructor.name : selectedCourse.instructor}...`}
+                          className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
+                        <button onClick={handleSendMessage} className="btn-primary p-2.5 aspect-square flex items-center justify-center">
+                          <Send className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -541,7 +582,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                       return (
                         <motion.div key={i} 
                           className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-indigo-500/30 hover:shadow-sm transition-all cursor-pointer group"
-                          onClick={() => toast.info(`Opening ${tool.title}...`)}>
+                          onClick={() => setToolModal(tool)}>
                           <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${tool.color}18` }}>
                               <Icon className="w-5 h-5" style={{ color: tool.color }} />
@@ -635,16 +676,21 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                 <button 
                   onClick={async () => {
                     const asmtId = submissionModal.id;
+                    const dueDate = new Date(submissionModal.due);
+                    const now = new Date();
+                    const isLate = dueDate < now;
+                    const newStatus = isLate ? 'submitted_late' : 'submitted';
+
                     setSubmissionModal(null);
-                    addOptimisticAssignment({ id: asmtId, status: 'submitted' });
-                    toast.success('Assignment submitted successfully!');
+                    addOptimisticAssignment({ id: asmtId, status: newStatus });
+                    toast.success(isLate ? 'Assignment submitted late!' : 'Assignment submitted successfully!');
                     
                     await new Promise(resolve => setTimeout(resolve, 1500));
                     
                     const course = BLACKBOARD_DATA[selectedCourse.code];
                     const asmt = course.assignments.find(a => a.id === asmtId);
                     if (asmt) {
-                      asmt.status = 'submitted';
+                      asmt.status = newStatus;
                     }
                     setRenderTrigger(r => r + 1);
                   }} 
@@ -652,6 +698,104 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                 >
                   <CheckCircle2 className="w-4 h-4" /> Submit Assignment
                 </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+        {quizReviewModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm" onClick={() => setQuizReviewModal(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col max-h-[80vh]">
+              <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-zinc-900 dark:text-white">Quiz Review</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">{quizReviewModal.title} - Score: {quizReviewModal.score}/{quizReviewModal.maxScore}</p>
+                </div>
+                <button onClick={() => setQuizReviewModal(null)} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto space-y-6">
+                {[1, 2, 3].map((num) => (
+                  <div key={num} className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-5">
+                    <p className="font-semibold text-zinc-900 dark:text-white mb-4">Question {num}: What is the time complexity of a binary search?</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">O(log n) (Your Answer)</span>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 opacity-60">
+                        <div className="w-5 h-5 rounded-full border border-zinc-300 dark:border-zinc-600" />
+                        <span className="text-sm text-zinc-900 dark:text-white">O(n)</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {discussionModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm" onClick={() => setDiscussionModal(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col max-h-[80vh]">
+              <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-zinc-900 dark:text-white">{discussionModal.title}</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">Posted by {discussionModal.author} · {discussionModal.time}</p>
+                </div>
+                <button onClick={() => setDiscussionModal(null)} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto space-y-4">
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-700 dark:text-zinc-300">
+                  Can someone explain the edge cases for Assignment 3? I am getting a segmentation fault on test case 4.
+                </div>
+                <div className="space-y-4 pl-4 border-l-2 border-zinc-200 dark:border-zinc-800">
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-500 shrink-0">TA</div>
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 rounded-xl text-sm flex-1">
+                      <p className="font-bold mb-1">Teaching Assistant <span className="text-xs font-normal text-zinc-400">1 hr ago</span></p>
+                      <p className="text-zinc-700 dark:text-zinc-300">Make sure you are handling the case where the graph is disconnected!</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2">
+                <input placeholder="Type a reply..." className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500" />
+                <button className="btn-primary p-2.5 aspect-square"><Send className="w-4 h-4" /></button>
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {toolModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm" onClick={() => setToolModal(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col min-h-[400px]">
+              <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${toolModal.color}18` }}>
+                    <toolModal.icon className="w-5 h-5" style={{ color: toolModal.color }} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-zinc-900 dark:text-white">{toolModal.title}</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">{toolModal.desc}</p>
+                  </div>
+                </div>
+                <button onClick={() => setToolModal(null)} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                  <toolModal.icon className="w-10 h-10 text-zinc-400" />
+                </div>
+                <h4 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">{toolModal.title} Interface</h4>
+                <p className="text-sm text-zinc-500 max-w-sm">This is a simulated view for {toolModal.title}. Integration with external provider pending.</p>
+                <button onClick={() => setToolModal(null)} className="mt-6 btn-primary">Close Tool</button>
               </div>
             </motion.div>
           </>
