@@ -13,7 +13,7 @@ export class KnowledgeHubController {
   constructor(private readonly knowledgeHubService: KnowledgeHubService) {}
 
   @Post()
-  @Roles(Role.TEACHER, Role.ADMIN)
+  @Roles(Role.STUDENT, Role.TEACHER, Role.ADMIN)
   create(@Body() createKnowledgeHubDto: CreateKnowledgeHubDto, @Req() req) {
     return this.knowledgeHubService.create(createKnowledgeHubDto, req.user.userId);
   }
@@ -23,19 +23,24 @@ export class KnowledgeHubController {
     return this.knowledgeHubService.findAll();
   }
 
+  @Get('public')
+  findPublic() {
+    return this.knowledgeHubService.findPublic();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.knowledgeHubService.findOne(id);
   }
 
   @Patch(':id')
-  @Roles(Role.TEACHER, Role.ADMIN)
+  @Roles(Role.STUDENT, Role.TEACHER, Role.ADMIN)
   update(@Param('id') id: string, @Body() updateKnowledgeHubDto: UpdateKnowledgeHubDto) {
     return this.knowledgeHubService.update(id, updateKnowledgeHubDto);
   }
 
   @Delete(':id')
-  @Roles(Role.TEACHER, Role.ADMIN)
+  @Roles(Role.STUDENT, Role.TEACHER, Role.ADMIN)
   remove(@Param('id') id: string) {
     return this.knowledgeHubService.remove(id);
   }

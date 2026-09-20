@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Mail, Book, MapPin, Building2, Download, ExternalLink, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import api from '@/lib/api';
 
 type Resource = {
   id: string;
@@ -30,11 +31,36 @@ export default function StudentProfile() {
   const userName = decodeURIComponent(id);
 
   const [sharedResources, setSharedResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In a real application, we would fetch the shared resources for this specific user.
-    // For now, we'll just use the mock data to represent what a shared hub looks like.
-    setSharedResources(MOCK_SHARED_RESOURCES);
+    const fetchSharedResources = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get('/knowledge-hub/public');
+        
+        // Filter by the author name. (In a real app, this would be done on the backend by ID)
+        const userResources = res.data.filter((r: any) => r.author?.name === userName);
+        
+        const mapped = userResources.map((r: any) => ({
+          id: r.id,
+          title: r.title,
+          type: r.url ? 'Link' : 'Document',
+          category: r.category || 'General',
+          url: r.url,
+          date: new Date(r.createdAt).toISOString().split('T')[0],
+        }));
+        
+        setSharedResources(mapped);
+      } catch (error) {
+        console.error('Failed to load shared resources', error);
+        toast.error('Failed to load shared resources');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSharedResources();
   }, [userName]);
 
   const handleDownload = (resource: Resource) => {
@@ -102,7 +128,11 @@ export default function StudentProfile() {
 
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
               <div className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
-                {sharedResources.length === 0 ? (
+                {loading ? (
+                  <div className="p-12 text-center text-zinc-500">
+                    Loading shared resources...
+                  </div>
+                ) : sharedResources.length === 0 ? (
                   <div className="p-12 text-center text-zinc-500">
                     This user hasn't shared any resources yet.
                   </div>

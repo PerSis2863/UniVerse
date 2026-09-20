@@ -1,8 +1,10 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, Copy } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
+import api from '@/lib/api';
+import { useAuthStore } from '@/store/auth';
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
 
@@ -11,17 +13,8 @@ type Resource = {
   title: string;
   type: string;
   category: string;
-  size?: string;
-  url?: string;
-  date: string;
+  isPublic?: boolean;
 };
-
-const MOCK_RESOURCES: Resource[] = [
-  { id: '1', title: 'Introduction to Computer Science', category: 'Computer Science', type: 'PDF', size: '2.4 MB', date: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0] },
-  { id: '2', title: 'Business Ethics Guidelines', category: 'Business', type: 'Document', size: '1.1 MB', date: new Date(Date.now() - 86400000 * 5).toISOString().split('T')[0] },
-  { id: '3', title: 'Financial Modeling 101', category: 'Finance', type: 'Link', url: 'https://youtube.com', date: new Date(Date.now() - 86400000 * 10).toISOString().split('T')[0] },
-  { id: '4', title: 'Student Handbook 2026', category: 'General', type: 'PDF', size: '4.5 MB', date: new Date(Date.now() - 86400000 * 20).toISOString().split('T')[0] },
-];
 
 export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'admin' }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,27 +25,35 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   const [shareSearchTerm, setShareSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   
-  const [formData, setFormData] = useState({ title: '', category: 'General', type: 'Document', url: '' });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuthStore();
+
+  const fetchResources = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/knowledge-hub');
+      // The backend returns an array of KnowledgeHubResource objects.
+      // We map them to our frontend Resource type.
+      const mapped = res.data.map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        type: r.url ? 'Link' : 'Document',
+        category: r.category || 'General',
+        url: r.url,
+        date: new Date(r.createdAt).toISOString().split('T')[0],
+        isPublic: r.isPublic,
+      }));
+      setResources(mapped);
+    } catch (error) {
+      console.error('Failed to load resources', error);
+      toast.error('Failed to load resources');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Load from local storage or fallback to mock
-    const saved = localStorage.getItem(`knowledge_hub_${role}`);
-    if (saved) {
-      setResources(JSON.parse(saved));
-    } else {
-      setResources(MOCK_RESOURCES);
-    }
-    setLoading(false);
-  }, [role]);
-
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem(`knowledge_hub_${role}`, JSON.stringify(resources));
-    }
-  }, [resources, loading, role]);
+    fetchResources();
+  }, [fetchResources]);
 
   const filteredResources = resources.filter(r => {
     const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -80,47 +81,61 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
 
     try {
       let fileUrl = formData.url;
-      let fileSize = 'Unknown';
 
       if (formData.type !== 'Link' && selectedFile) {
-        // Create an object URL representing the file in memory
-        fileUrl = URL.createObjectURL(selectedFile);
-        fileSize = (selectedFile.size / (1024 * 1024)).toFixed(1) + ' MB';
+        // In a real app we would upload the file to S3/GCS.
+        // For this demo, we'll just mock a URL.
+        fileUrl = `https://mock-storage.com/${selectedFile.name}`;
       }
 
-      const newResource: Resource = {
-        id: Math.random().toString(36).substr(2, 9),
+      await api.post('/knowledge-hub', {
         title: formData.title || (selectedFile ? selectedFile.name : 'Untitled'),
         category: formData.category,
-        type: formData.type,
-        url: fileUrl,
-        size: formData.type !== 'Link' ? fileSize : undefined,
-        date: new Date().toISOString().split('T')[0]
-      };
+        url: fileUrl || undefined,
+        isPublic: false,
+      });
       
-      setResources([newResource, ...resources]);
       setShowAddModal(false);
       setFormData({ title: '', category: 'General', type: 'Document', url: '' });
       setSelectedFile(null);
       toast.success('Resource added successfully!');
+      fetchResources();
     } catch (error) {
+      console.error(error);
       toast.error('Failed to add resource');
     }
   };
 
-  const handleDelete = (id: string) => {
-    setResources(resources.filter(r => r.id !== id));
-    toast.success('Resource deleted successfully.');
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/knowledge-hub/${id}`);
+      setResources(resources.filter(r => r.id !== id));
+      toast.success('Resource deleted successfully.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete resource');
+    }
   };
 
   const handleShareHub = () => {
     setShowShareModal(true);
   };
 
-  const submitShareHub = () => {
-    toast.success('Your Knowledge Hub is now shared successfully!');
-    setShowShareModal(false);
-    setShareSearchTerm('');
+  const submitShareHub = async () => {
+    try {
+      // For demo purposes, we will just make all current user's resources public
+      // In a real app we'd probably have a 'share hub' endpoint or a 'profile settings' toggle
+      const myResources = resources.filter(r => !r.isPublic);
+      await Promise.all(myResources.map(r => api.patch(`/knowledge-hub/${r.id}`, { isPublic: true })));
+      
+      toast.success('Your Knowledge Hub is now public and shared successfully!');
+      setShowShareModal(false);
+      setShareSearchTerm('');
+      fetchResources();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to share hub');
+    }
   };
 
   const handleShareFile = (title: string) => {

@@ -102,7 +102,7 @@ model User {
   attendance       Attendance[]
   submissions      QuizSubmission[]
   sentMessages     Message[]        @relation("MessageSender")
-  receivedMessages Message[]        @relation("MessageReceiver")
+  conversations    ConversationParticipant[]
   notifications    Notification[]
   payments         Payment[]
   refreshTokens    RefreshToken[]
@@ -288,6 +288,7 @@ model KnowledgeHubResource {
   course      Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   authorId    String
   author      User     @relation(fields: [authorId], references: [id])
+  isPublic    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -324,16 +325,39 @@ model Announcement {
   @@map("announcements")
 }
 
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
 model Message {
-  id         String   @id @default(cuid())
-  subject    String
-  body       String
-  senderId   String
-  sender     User     @relation("MessageSender", fields: [senderId], references: [id])
-  receiverId String
-  receiver   User     @relation("MessageReceiver", fields: [receiverId], references: [id])
-  read       Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  body           String
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
 
   @@map("messages")
 }

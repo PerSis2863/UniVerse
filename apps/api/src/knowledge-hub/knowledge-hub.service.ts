@@ -23,6 +23,16 @@ export class KnowledgeHubService {
     });
   }
 
+  async findPublic() {
+    return this.prisma.knowledgeHubResource.findMany({
+      where: {
+        isPublic: true,
+      },
+      include: { author: { select: { name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async findOne(id: string) {
     const resource = await this.prisma.knowledgeHubResource.findUnique({
       where: { id },

@@ -29,20 +29,9 @@ export const useAuthStore = create<AuthStore>()(
           localStorage.setItem('accessToken', data.accessToken);
           localStorage.setItem('refreshToken', data.refreshToken);
           set({ user: data.user, accessToken: data.accessToken, refreshToken: data.refreshToken });
-        } catch {
-          // Fallback to mock login when backend is not available
-          let role: Role = 'STUDENT';
-          if (email.toLowerCase().includes('teacher')) role = 'TEACHER';
-          if (email.toLowerCase().includes('admin')) role = 'ADMIN';
-          const mockUser: User = {
-            id: 'mock-1', email,
-            name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-            role,
-            status: 'ACTIVE',
-            createdAt: new Date().toISOString(),
-          };
-          localStorage.setItem('accessToken', 'mock-token');
-          set({ user: mockUser, accessToken: 'mock-token', refreshToken: 'mock-refresh' });
+        } catch (error) {
+          console.error('Login failed:', error);
+          throw error;
         } finally {
           set({ isLoading: false });
         }

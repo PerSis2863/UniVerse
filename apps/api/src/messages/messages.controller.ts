@@ -8,21 +8,26 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
-  @Get()
-  getMessages(@CurrentUser() user: any) {
-    return this.messagesService.getMessages(user.id);
+  @Get('conversations')
+  getConversations(@CurrentUser() user: any) {
+    return this.messagesService.getConversations(user.id);
+  }
+
+  @Get('conversations/:id')
+  getMessages(@Param('id') conversationId: string, @CurrentUser() user: any) {
+    return this.messagesService.getMessages(conversationId, user.id);
   }
 
   @Post()
   sendMessage(
     @CurrentUser() user: any,
-    @Body() body: { receiverId: string, subject: string, body: string }
+    @Body() body: { receiverId: string, body: string }
   ) {
-    return this.messagesService.sendMessage(user.id, body.receiverId, body.subject, body.body);
+    return this.messagesService.sendMessage(user.id, body.receiverId, body.body);
   }
 
-  @Post(':id/read')
-  markAsRead(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.messagesService.markAsRead(id, user.id);
+  @Post('conversations/:id/read')
+  markAsRead(@Param('id') conversationId: string, @CurrentUser() user: any) {
+    return this.messagesService.markAsRead(conversationId, user.id);
   }
 }

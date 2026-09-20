@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "prisma generate && next build --webpack",
-    "postinstall": "prisma generate",
+    "build": "prisma generate --schema=../api/prisma/schema.prisma && next build --webpack",
+    "postinstall": "prisma generate --schema=../api/prisma/schema.prisma",
     "start": "next start",
     "lint": "eslint"
   },
@@ -35,7 +35,8 @@
     "swr": "^2.5.1",
     "tailwind-merge": "^3.7.0",
     "zod": "^3.23.8",
-    "zustand": "^5.0.15"
+    "zustand": "^5.0.15",
+    "socket.io-client": "^4.7.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

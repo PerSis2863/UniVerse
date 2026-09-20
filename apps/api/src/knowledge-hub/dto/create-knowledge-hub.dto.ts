@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsOptional, IsString, IsUrl, IsBoolean } from 'class-validator';
 
 export class CreateKnowledgeHubDto {
   @IsString()
@@ -19,5 +19,9 @@ export class CreateKnowledgeHubDto {
   @IsString()
   @IsOptional()
   courseId?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isPublic?: boolean;
 }
 
