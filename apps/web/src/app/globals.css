@@ -336,7 +336,22 @@
 }
 
 
-/* Hide Clerk Watermarks */
-.cl-internal-1dauvpw, .cl-watermark, .cl-internal-phgxa0 {
+/* Hide Clerk Watermarks and Dev Mode Badges */
+.cl-internal-1dauvpw, 
+.cl-watermark, 
+.cl-internal-phgxa0,
+.cl-internal-b3al4t,
+.cl-devMode {
+  display: none !important;
+}
+
+/* Hide the "Secured by Clerk" and "Development mode" footer elements robustly */
+.cl-footer > div:not(.cl-footerAction) {
+  display: none !important;
+}
+
+/* Also hide any floating dev badges just in case */
+div[class*="cl-internal-"] > a[href*="clerk.dev"],
+div[class*="cl-internal-"] > a[href*="clerk.com"] {
   display: none !important;
 }
