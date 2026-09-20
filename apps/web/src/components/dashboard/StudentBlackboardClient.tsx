@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useOptimistic } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   BookOpen, FileText, Search, MessageSquare, Bell, Calendar,
@@ -116,6 +116,13 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
 
   const data = BLACKBOARD_DATA[selectedCourse.code];
 
+  const [optimisticAssignments, addOptimisticAssignment] = useOptimistic(
+    data.assignments,
+    (state: any[], updatedAssignment: any) => {
+      return state.map(a => a.id === updatedAssignment.id ? { ...a, ...updatedAssignment } : a);
+    }
+  );
+
   const handleSendMessage = () => {
     if (!messageText.trim()) return;
     toast.success('Message sent to Prof. ' + selectedCourse.instructor.split(' ')[1]);
@@ -134,15 +141,22 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
               key={c.code}
               onClick={() => setSelectedCourse(c)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border',
+                'relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border',
                 selectedCourse.code === c.code
                   ? 'text-white shadow-lg border-transparent'
                   : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
               )}
-              style={selectedCourse.code === c.code ? { background: c.color, boxShadow: `0 4px 14px ${c.color}40` } : {}}
             >
-              <span className="font-bold">{c.code}</span>
-              <span className="hidden sm:inline opacity-75">{c.name.split(' ').slice(0, 2).join(' ')}</span>
+              {selectedCourse.code === c.code && (
+                <motion.div
+                  layoutId="activeCourseStudent"
+                  className="absolute inset-0 rounded-xl"
+                  style={{ background: c.color, boxShadow: `0 4px 14px ${c.color}40` }}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <span className="relative z-10 font-bold">{c.code}</span>
+              <span className="relative z-10 hidden sm:inline opacity-75">{c.name.split(' ').slice(0, 2).join(' ')}</span>
             </button>
           ))}
         </div>
@@ -281,7 +295,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
               {activeTab === 'assignments' && (
                 <div className="max-w-3xl mx-auto space-y-4">
                   <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500" /> Assignments</h3>
-                  {data.assignments.map((a, i) => (
+                  {optimisticAssignments.map((a: any, i: number) => (
                     <motion.div key={a.id} 
                       className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
                       <div className="flex items-start justify-between gap-3 mb-2">
@@ -619,28 +633,24 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                   Cancel
                 </button>
                 <button 
-                  onClick={() => {
-                    setIsSubmitting(true);
-                    setTimeout(() => {
-                      const course = BLACKBOARD_DATA[selectedCourse.code];
-                      const asmt = course.assignments.find(a => a.id === submissionModal.id);
-                      if (asmt) {
-                        asmt.status = 'submitted';
-                      }
-                      setRenderTrigger(r => r + 1);
-                      setIsSubmitting(false);
-                      setSubmissionModal(null);
-                      toast.success('Assignment submitted successfully!');
-                    }, 1500);
+                  onClick={async () => {
+                    const asmtId = submissionModal.id;
+                    setSubmissionModal(null);
+                    addOptimisticAssignment({ id: asmtId, status: 'submitted' });
+                    toast.success('Assignment submitted successfully!');
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    const course = BLACKBOARD_DATA[selectedCourse.code];
+                    const asmt = course.assignments.find(a => a.id === asmtId);
+                    if (asmt) {
+                      asmt.status = 'submitted';
+                    }
+                    setRenderTrigger(r => r + 1);
                   }} 
-                  disabled={isSubmitting}
                   className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2"
                 >
-                  {isSubmitting ? (
-                    <><span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Submitting...</>
-                  ) : (
-                    <><CheckCircle2 className="w-4 h-4" /> Submit Assignment</>
-                  )}
+                  <CheckCircle2 className="w-4 h-4" /> Submit Assignment
                 </button>
               </div>
             </motion.div>

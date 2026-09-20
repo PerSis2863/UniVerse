@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useOptimistic } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   BookOpen, FileText, Plus, X, Upload, Pin, Bell, Users, Search,
@@ -94,6 +94,11 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
     { id: 2, pinned: false, title: 'Office Hours This Week', body: 'Office hours moved to Wednesday 3–5 PM due to faculty meeting.', time: '1 day ago', priority: 'normal' },
   ]);
 
+  const [optimisticAnnouncements, addOptimisticAnnouncement] = useOptimistic(
+    announcements,
+    (state, newAnnouncement: any) => [newAnnouncement, ...state]
+  );
+
   const [showEventModal, setShowEventModal] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -114,12 +119,19 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
     toast.success('Event added to calendar!');
   };
 
-  const handlePostAnnouncement = () => {
+  const handlePostAnnouncement = async () => {
     if (!annTitle) return toast.error('Please add a title');
-    setAnnouncements(prev => [{ id: Date.now(), pinned: annPriority === 'high', title: annTitle, body: annBody, time: 'Just now', priority: annPriority }, ...prev]);
+    
+    const newAnn = { id: Date.now(), pinned: annPriority === 'high', title: annTitle, body: annBody, time: 'Just now', priority: annPriority };
+    
     setShowAnnouncementModal(false);
-    setAnnTitle(''); setAnnBody('');
+    addOptimisticAnnouncement(newAnn);
     toast.success('Announcement posted to all students!');
+    
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Mock network
+    setAnnouncements(prev => [newAnn, ...prev]);
+    
+    setAnnTitle(''); setAnnBody('');
   };
 
   const handleUpload = () => {
@@ -139,11 +151,19 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
         <div className="border-b border-zinc-200 dark:border-white/[0.06] bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-none">
           {COURSES.map(c => (
             <button key={c.code} onClick={() => setSelectedCourse(c)}
-              className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border',
+              className={cn('relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border',
                 selectedCourse.code === c.code ? 'text-white shadow-lg border-transparent' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400')}
-              style={selectedCourse.code === c.code ? { background: c.color, boxShadow: `0 4px 14px ${c.color}40` } : {}}>
-              <span className="font-bold">{c.code}</span>
-              <span className="hidden sm:inline opacity-75">{c.name.split(' ').slice(0, 2).join(' ')}</span>
+            >
+              {selectedCourse.code === c.code && (
+                <motion.div
+                  layoutId="activeCourseTeacher"
+                  className="absolute inset-0 rounded-xl"
+                  style={{ background: c.color, boxShadow: `0 4px 14px ${c.color}40` }}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <span className="relative z-10 font-bold">{c.code}</span>
+              <span className="relative z-10 hidden sm:inline opacity-75">{c.name.split(' ').slice(0, 2).join(' ')}</span>
             </button>
           ))}
         </div>
@@ -194,7 +214,7 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
                     <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Bell className="w-4 h-4 text-indigo-500" /> Announcements</h3>
                     <button onClick={() => setShowAnnouncementModal(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> New</button>
                   </div>
-                  {announcements.map((a, i) => (
+                  {optimisticAnnouncements.map((a: any, i: number) => (
                     <motion.div key={a.id} 
                       className={cn('bg-white dark:bg-zinc-900 border rounded-2xl p-5', a.priority === 'high' ? 'border-rose-500/30' : 'border-zinc-200 dark:border-zinc-800')}>
                       <div className="flex items-start justify-between gap-3 mb-2">

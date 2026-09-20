@@ -2,20 +2,26 @@
 
 import prisma from '@/lib/db';
 
-export async function getCourseData(courseCode: string) {
-  try {
-    const course = await prisma.course.findUnique({
-      where: { code: courseCode },
-      include: {
-        announcements: true,
-      }
-    });
-    return course;
-  } catch (error) {
-    console.error('Failed to fetch course from DB:', error);
-    return null;
-  }
-}
+import { unstable_cache } from 'next/cache';
+
+export const getCourseData = unstable_cache(
+  async (courseCode: string) => {
+    try {
+      const course = await prisma.course.findUnique({
+        where: { code: courseCode },
+        include: {
+          announcements: true,
+        }
+      });
+      return course;
+    } catch (error) {
+      console.error('Failed to fetch course from DB:', error);
+      return null;
+    }
+  },
+  ['course-data'],
+  { revalidate: 60 }
+);
 
 export async function getUserMessages(userId: string) {
   try {
