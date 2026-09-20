@@ -161,9 +161,19 @@ const navByRole: Record<string, NavItem[]> = {
   ],
 };
 
-function NavItemComponent({ item, pathname, onClose }: { item: NavItem, pathname: string, onClose?: () => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  
+function NavItemComponent({ 
+  item, 
+  pathname, 
+  onClose,
+  isOpen,
+  onToggle
+}: { 
+  item: NavItem; 
+  pathname: string; 
+  onClose?: () => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   const hasActiveChild = item.subItems?.some(sub => pathname === sub.href || pathname.startsWith(sub.href + '/'));
   const active = pathname === item.href || (item.href && item.href !== '/' && pathname.startsWith(item.href)) || hasActiveChild;
 
@@ -173,7 +183,7 @@ function NavItemComponent({ item, pathname, onClose }: { item: NavItem, pathname
         <motion.button
           whileHover={{ x: 4 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={onToggle}
           className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active text-indigo-400')}
         >
           <div className="flex items-center gap-3">
@@ -235,6 +245,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const { user, logout } = useAuthStore();
   const pathname = usePathname();
   const router = useRouter();
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   if (!user) return null;
 
@@ -279,9 +290,16 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto min-h-0 px-3 py-4 space-y-1 custom-scrollbar">
         {nav.map((item, i) => (
-          <NavItemComponent key={i} item={item} pathname={pathname} onClose={onClose} />
+          <NavItemComponent 
+            key={i} 
+            item={item} 
+            pathname={pathname} 
+            onClose={onClose}
+            isOpen={openIndex === i || (item.subItems?.some(sub => pathname === sub.href || pathname.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
+            onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+          />
         ))}
       </nav>
 
