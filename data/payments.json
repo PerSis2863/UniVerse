@@ -1,0 +1,3429 @@
+{
+  "invoices": [
+    {
+      "id": "inv_u1_1",
+      "studentId": "u1",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Hostel",
+      "amount": 779,
+      "dueDate": "2026-09-06T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3398
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 420
+        }
+      ],
+      "paidDate": "2026-08-20T20:31:13.888Z",
+      "receiptId": "REC-93270"
+    },
+    {
+      "id": "inv_u1_2",
+      "studentId": "u1",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Hostel",
+      "amount": 1303,
+      "dueDate": "2026-10-11T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2197
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 224
+        }
+      ],
+      "paidDate": "2026-09-03T20:31:13.888Z",
+      "receiptId": "REC-90596"
+    },
+    {
+      "id": "inv_u1_3",
+      "studentId": "u1",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Misc",
+      "amount": 4998,
+      "dueDate": "2026-08-22T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1369
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 269
+        }
+      ],
+      "paidDate": "2026-09-06T20:31:13.888Z",
+      "receiptId": "REC-46586"
+    },
+    {
+      "id": "inv_u1_4",
+      "studentId": "u1",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 4617,
+      "dueDate": "2026-08-29T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3702
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 287
+        }
+      ],
+      "paidDate": "2026-09-17",
+      "receiptId": "RCP1789679209129"
+    },
+    {
+      "id": "inv_u1_5",
+      "studentId": "u1",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 1410,
+      "dueDate": "2026-08-21T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2996
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 467
+        }
+      ],
+      "paidDate": "2026-09-14T20:31:13.888Z",
+      "receiptId": "REC-13131"
+    },
+    {
+      "id": "inv_u2_1",
+      "studentId": "u2",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4254,
+      "dueDate": "2026-09-07T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1246
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 444
+        }
+      ],
+      "paidDate": "2026-08-28T20:31:13.888Z",
+      "receiptId": "REC-20582"
+    },
+    {
+      "id": "inv_u2_2",
+      "studentId": "u2",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4943,
+      "dueDate": "2026-10-04T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 843
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 120
+        }
+      ],
+      "paidDate": "2026-09-15T20:31:13.888Z",
+      "receiptId": "REC-26084"
+    },
+    {
+      "id": "inv_u2_3",
+      "studentId": "u2",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4877,
+      "dueDate": "2026-09-02T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3659
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 46
+        }
+      ],
+      "paidDate": "2026-09-07T20:31:13.888Z",
+      "receiptId": "REC-38953"
+    },
+    {
+      "id": "inv_u2_4",
+      "studentId": "u2",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Misc",
+      "amount": 1347,
+      "dueDate": "2026-08-24T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2830
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 385
+        }
+      ],
+      "paidDate": "2026-09-06T20:31:13.888Z",
+      "receiptId": "REC-44164"
+    },
+    {
+      "id": "inv_u2_5",
+      "studentId": "u2",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Misc",
+      "amount": 3335,
+      "dueDate": "2026-09-19T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3357
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 407
+        }
+      ]
+    },
+    {
+      "id": "inv_u3_1",
+      "studentId": "u3",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Misc",
+      "amount": 4184,
+      "dueDate": "2026-10-09T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2179
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 401
+        }
+      ]
+    },
+    {
+      "id": "inv_u3_2",
+      "studentId": "u3",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 1407,
+      "dueDate": "2026-10-06T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2304
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 86
+        }
+      ],
+      "paidDate": "2026-08-28T20:31:13.888Z",
+      "receiptId": "REC-93536"
+    },
+    {
+      "id": "inv_u3_3",
+      "studentId": "u3",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 4141,
+      "dueDate": "2026-09-25T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1735
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 216
+        }
+      ],
+      "paidDate": "2026-09-16T20:31:13.888Z",
+      "receiptId": "REC-59861"
+    },
+    {
+      "id": "inv_u3_4",
+      "studentId": "u3",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Hostel",
+      "amount": 1356,
+      "dueDate": "2026-09-03T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3081
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 297
+        }
+      ],
+      "paidDate": "2026-08-22T20:31:13.888Z",
+      "receiptId": "REC-49838"
+    },
+    {
+      "id": "inv_u3_5",
+      "studentId": "u3",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Tuition",
+      "amount": 978,
+      "dueDate": "2026-08-19T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1805
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 28
+        }
+      ]
+    },
+    {
+      "id": "inv_u4_1",
+      "studentId": "u4",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Library",
+      "amount": 2834,
+      "dueDate": "2026-10-15T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2818
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 465
+        }
+      ],
+      "paidDate": "2026-09-14T20:31:13.888Z",
+      "receiptId": "REC-20756"
+    },
+    {
+      "id": "inv_u4_2",
+      "studentId": "u4",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 2461,
+      "dueDate": "2026-09-03T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2422
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 174
+        }
+      ]
+    },
+    {
+      "id": "inv_u4_3",
+      "studentId": "u4",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Library",
+      "amount": 2076,
+      "dueDate": "2026-10-02T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 776
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 342
+        }
+      ]
+    },
+    {
+      "id": "inv_u4_4",
+      "studentId": "u4",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Library",
+      "amount": 372,
+      "dueDate": "2026-09-06T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 326
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 315
+        }
+      ],
+      "paidDate": "2026-09-16T20:31:13.888Z",
+      "receiptId": "REC-95298"
+    },
+    {
+      "id": "inv_u4_5",
+      "studentId": "u4",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Hostel",
+      "amount": 2797,
+      "dueDate": "2026-10-13T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 797
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 406
+        }
+      ],
+      "paidDate": "2026-09-07T20:31:13.888Z",
+      "receiptId": "REC-98413"
+    },
+    {
+      "id": "inv_u5_1",
+      "studentId": "u5",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Hostel",
+      "amount": 2203,
+      "dueDate": "2026-09-15T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 346
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 26
+        }
+      ],
+      "paidDate": "2026-08-27T20:31:13.888Z",
+      "receiptId": "REC-64825"
+    },
+    {
+      "id": "inv_u5_2",
+      "studentId": "u5",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Library",
+      "amount": 2359,
+      "dueDate": "2026-08-27T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2200
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 66
+        }
+      ],
+      "paidDate": "2026-08-26T20:31:13.888Z",
+      "receiptId": "REC-47462"
+    },
+    {
+      "id": "inv_u5_3",
+      "studentId": "u5",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4681,
+      "dueDate": "2026-08-19T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3815
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 286
+        }
+      ],
+      "paidDate": "2026-09-08T20:31:13.888Z",
+      "receiptId": "REC-46484"
+    },
+    {
+      "id": "inv_u5_4",
+      "studentId": "u5",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Tuition",
+      "amount": 3793,
+      "dueDate": "2026-09-20T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2651
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 232
+        }
+      ],
+      "paidDate": "2026-08-19T20:31:13.888Z",
+      "receiptId": "REC-10189"
+    },
+    {
+      "id": "inv_u5_5",
+      "studentId": "u5",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4736,
+      "dueDate": "2026-08-29T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2807
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 493
+        }
+      ],
+      "paidDate": "2026-09-05T20:31:13.888Z",
+      "receiptId": "REC-65401"
+    },
+    {
+      "id": "inv_u6_1",
+      "studentId": "u6",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4574,
+      "dueDate": "2026-09-22T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1330
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 363
+        }
+      ]
+    },
+    {
+      "id": "inv_u6_2",
+      "studentId": "u6",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Misc",
+      "amount": 4197,
+      "dueDate": "2026-10-11T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1596
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 432
+        }
+      ],
+      "paidDate": "2026-08-21T20:31:13.888Z",
+      "receiptId": "REC-81138"
+    },
+    {
+      "id": "inv_u6_3",
+      "studentId": "u6",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Hostel",
+      "amount": 3292,
+      "dueDate": "2026-09-17T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1659
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 138
+        }
+      ],
+      "paidDate": "2026-08-23T20:31:13.888Z",
+      "receiptId": "REC-24964"
+    },
+    {
+      "id": "inv_u6_4",
+      "studentId": "u6",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Tuition",
+      "amount": 3241,
+      "dueDate": "2026-08-26T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 247
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 151
+        }
+      ],
+      "paidDate": "2026-08-22T20:31:13.888Z",
+      "receiptId": "REC-85116"
+    },
+    {
+      "id": "inv_u6_5",
+      "studentId": "u6",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Hostel",
+      "amount": 2559,
+      "dueDate": "2026-10-15T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1174
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 21
+        }
+      ],
+      "paidDate": "2026-09-08T20:31:13.888Z",
+      "receiptId": "REC-55116"
+    },
+    {
+      "id": "inv_u7_1",
+      "studentId": "u7",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Hostel",
+      "amount": 837,
+      "dueDate": "2026-09-24T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 663
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 163
+        }
+      ],
+      "paidDate": "2026-09-01T20:31:13.888Z",
+      "receiptId": "REC-43072"
+    },
+    {
+      "id": "inv_u7_2",
+      "studentId": "u7",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4296,
+      "dueDate": "2026-09-06T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1908
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 384
+        }
+      ],
+      "paidDate": "2026-08-19T20:31:13.888Z",
+      "receiptId": "REC-60425"
+    },
+    {
+      "id": "inv_u7_3",
+      "studentId": "u7",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Hostel",
+      "amount": 1365,
+      "dueDate": "2026-08-21T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 256
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 142
+        }
+      ],
+      "paidDate": "2026-09-04T20:31:13.888Z",
+      "receiptId": "REC-86110"
+    },
+    {
+      "id": "inv_u7_4",
+      "studentId": "u7",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4744,
+      "dueDate": "2026-08-31T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1826
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 55
+        }
+      ],
+      "paidDate": "2026-08-26T20:31:13.888Z",
+      "receiptId": "REC-87202"
+    },
+    {
+      "id": "inv_u7_5",
+      "studentId": "u7",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Tuition",
+      "amount": 2213,
+      "dueDate": "2026-09-29T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 795
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 333
+        }
+      ],
+      "paidDate": "2026-08-28T20:31:13.888Z",
+      "receiptId": "REC-56523"
+    },
+    {
+      "id": "inv_u8_1",
+      "studentId": "u8",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Library",
+      "amount": 739,
+      "dueDate": "2026-09-17T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2945
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 187
+        }
+      ]
+    },
+    {
+      "id": "inv_u8_2",
+      "studentId": "u8",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Library",
+      "amount": 1905,
+      "dueDate": "2026-09-21T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1091
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 372
+        }
+      ]
+    },
+    {
+      "id": "inv_u8_3",
+      "studentId": "u8",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4805,
+      "dueDate": "2026-09-07T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 168
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 286
+        }
+      ]
+    },
+    {
+      "id": "inv_u8_4",
+      "studentId": "u8",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Misc",
+      "amount": 3427,
+      "dueDate": "2026-10-05T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3635
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 132
+        }
+      ],
+      "paidDate": "2026-08-28T20:31:13.888Z",
+      "receiptId": "REC-66078"
+    },
+    {
+      "id": "inv_u8_5",
+      "studentId": "u8",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Library",
+      "amount": 2472,
+      "dueDate": "2026-09-25T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 179
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 200
+        }
+      ],
+      "paidDate": "2026-08-29T20:31:13.888Z",
+      "receiptId": "REC-14708"
+    },
+    {
+      "id": "inv_u9_1",
+      "studentId": "u9",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Library",
+      "amount": 740,
+      "dueDate": "2026-09-07T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1927
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 76
+        }
+      ],
+      "paidDate": "2026-08-24T20:31:13.888Z",
+      "receiptId": "REC-35089"
+    },
+    {
+      "id": "inv_u9_2",
+      "studentId": "u9",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Tuition",
+      "amount": 1884,
+      "dueDate": "2026-10-02T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 730
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 166
+        }
+      ],
+      "paidDate": "2026-09-03T20:31:13.888Z",
+      "receiptId": "REC-81722"
+    },
+    {
+      "id": "inv_u9_3",
+      "studentId": "u9",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Library",
+      "amount": 4352,
+      "dueDate": "2026-10-06T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3361
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 49
+        }
+      ]
+    },
+    {
+      "id": "inv_u9_4",
+      "studentId": "u9",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4631,
+      "dueDate": "2026-10-02T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2448
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 51
+        }
+      ],
+      "paidDate": "2026-08-24T20:31:13.888Z",
+      "receiptId": "REC-56342"
+    },
+    {
+      "id": "inv_u9_5",
+      "studentId": "u9",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Misc",
+      "amount": 967,
+      "dueDate": "2026-10-03T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1666
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 47
+        }
+      ]
+    },
+    {
+      "id": "inv_u10_1",
+      "studentId": "u10",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Misc",
+      "amount": 3246,
+      "dueDate": "2026-09-12T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2000
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 487
+        }
+      ],
+      "paidDate": "2026-09-14T20:31:13.888Z",
+      "receiptId": "REC-68020"
+    },
+    {
+      "id": "inv_u10_2",
+      "studentId": "u10",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Library",
+      "amount": 401,
+      "dueDate": "2026-08-25T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2307
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 46
+        }
+      ],
+      "paidDate": "2026-08-18T20:31:13.888Z",
+      "receiptId": "REC-60594"
+    },
+    {
+      "id": "inv_u10_3",
+      "studentId": "u10",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4445,
+      "dueDate": "2026-10-08T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3673
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 321
+        }
+      ]
+    },
+    {
+      "id": "inv_u10_4",
+      "studentId": "u10",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Misc",
+      "amount": 3216,
+      "dueDate": "2026-09-23T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 641
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 298
+        }
+      ]
+    },
+    {
+      "id": "inv_u10_5",
+      "studentId": "u10",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Misc",
+      "amount": 4453,
+      "dueDate": "2026-09-10T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1536
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 420
+        }
+      ]
+    },
+    {
+      "id": "inv_u11_1",
+      "studentId": "u11",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Hostel",
+      "amount": 497,
+      "dueDate": "2026-09-11T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2417
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 286
+        }
+      ],
+      "paidDate": "2026-08-25T20:31:13.888Z",
+      "receiptId": "REC-42034"
+    },
+    {
+      "id": "inv_u11_2",
+      "studentId": "u11",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Hostel",
+      "amount": 993,
+      "dueDate": "2026-08-26T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3385
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 280
+        }
+      ],
+      "paidDate": "2026-09-08T20:31:13.888Z",
+      "receiptId": "REC-55090"
+    },
+    {
+      "id": "inv_u11_3",
+      "studentId": "u11",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Library",
+      "amount": 3178,
+      "dueDate": "2026-09-05T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 879
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 177
+        }
+      ],
+      "paidDate": "2026-08-25T20:31:13.888Z",
+      "receiptId": "REC-18154"
+    },
+    {
+      "id": "inv_u11_4",
+      "studentId": "u11",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Misc",
+      "amount": 243,
+      "dueDate": "2026-09-03T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1323
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 52
+        }
+      ]
+    },
+    {
+      "id": "inv_u11_5",
+      "studentId": "u11",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Library",
+      "amount": 4768,
+      "dueDate": "2026-09-22T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2521
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 135
+        }
+      ],
+      "paidDate": "2026-09-14T20:31:13.888Z",
+      "receiptId": "REC-23009"
+    },
+    {
+      "id": "inv_u12_1",
+      "studentId": "u12",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4479,
+      "dueDate": "2026-09-25T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1575
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 459
+        }
+      ],
+      "paidDate": "2026-09-07T20:31:13.888Z",
+      "receiptId": "REC-18763"
+    },
+    {
+      "id": "inv_u12_2",
+      "studentId": "u12",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4745,
+      "dueDate": "2026-09-01T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 823
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 246
+        }
+      ],
+      "paidDate": "2026-09-04T20:31:13.888Z",
+      "receiptId": "REC-90305"
+    },
+    {
+      "id": "inv_u12_3",
+      "studentId": "u12",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Library",
+      "amount": 1136,
+      "dueDate": "2026-08-28T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 418
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 130
+        }
+      ],
+      "paidDate": "2026-08-31T20:31:13.888Z",
+      "receiptId": "REC-15756"
+    },
+    {
+      "id": "inv_u12_4",
+      "studentId": "u12",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Hostel",
+      "amount": 3675,
+      "dueDate": "2026-09-01T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 97
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 313
+        }
+      ],
+      "paidDate": "2026-08-20T20:31:13.888Z",
+      "receiptId": "REC-64242"
+    },
+    {
+      "id": "inv_u12_5",
+      "studentId": "u12",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Library",
+      "amount": 2151,
+      "dueDate": "2026-10-02T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 454
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 35
+        }
+      ],
+      "paidDate": "2026-08-25T20:31:13.888Z",
+      "receiptId": "REC-22934"
+    },
+    {
+      "id": "inv_u13_1",
+      "studentId": "u13",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4815,
+      "dueDate": "2026-08-31T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2087
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 272
+        }
+      ],
+      "paidDate": "2026-09-01T20:31:13.888Z",
+      "receiptId": "REC-16698"
+    },
+    {
+      "id": "inv_u13_2",
+      "studentId": "u13",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Hostel",
+      "amount": 1667,
+      "dueDate": "2026-08-20T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 514
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 229
+        }
+      ],
+      "paidDate": "2026-08-25T20:31:13.888Z",
+      "receiptId": "REC-24882"
+    },
+    {
+      "id": "inv_u13_3",
+      "studentId": "u13",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Misc",
+      "amount": 3850,
+      "dueDate": "2026-09-18T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1945
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 410
+        }
+      ]
+    },
+    {
+      "id": "inv_u13_4",
+      "studentId": "u13",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Misc",
+      "amount": 1139,
+      "dueDate": "2026-09-07T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 523
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 174
+        }
+      ],
+      "paidDate": "2026-09-07T20:31:13.888Z",
+      "receiptId": "REC-19565"
+    },
+    {
+      "id": "inv_u13_5",
+      "studentId": "u13",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Tuition",
+      "amount": 797,
+      "dueDate": "2026-09-03T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3668
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 238
+        }
+      ],
+      "paidDate": "2026-09-09T20:31:13.888Z",
+      "receiptId": "REC-30306"
+    },
+    {
+      "id": "inv_u14_1",
+      "studentId": "u14",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4726,
+      "dueDate": "2026-09-20T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3332
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 412
+        }
+      ],
+      "paidDate": "2026-09-08T20:31:13.888Z",
+      "receiptId": "REC-13147"
+    },
+    {
+      "id": "inv_u14_2",
+      "studentId": "u14",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Library",
+      "amount": 4566,
+      "dueDate": "2026-09-04T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 495
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 455
+        }
+      ],
+      "paidDate": "2026-08-27T20:31:13.888Z",
+      "receiptId": "REC-76785"
+    },
+    {
+      "id": "inv_u14_3",
+      "studentId": "u14",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Hostel",
+      "amount": 1635,
+      "dueDate": "2026-08-22T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3662
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 339
+        }
+      ],
+      "paidDate": "2026-09-05T20:31:13.888Z",
+      "receiptId": "REC-37027"
+    },
+    {
+      "id": "inv_u14_4",
+      "studentId": "u14",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Tuition",
+      "amount": 542,
+      "dueDate": "2026-08-21T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3415
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 87
+        }
+      ],
+      "paidDate": "2026-08-20T20:31:13.888Z",
+      "receiptId": "REC-22097"
+    },
+    {
+      "id": "inv_u14_5",
+      "studentId": "u14",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Tuition",
+      "amount": 3455,
+      "dueDate": "2026-09-09T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 106
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 431
+        }
+      ],
+      "paidDate": "2026-09-03T20:31:13.888Z",
+      "receiptId": "REC-72789"
+    },
+    {
+      "id": "inv_u15_1",
+      "studentId": "u15",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Misc",
+      "amount": 4863,
+      "dueDate": "2026-09-20T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 982
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 182
+        }
+      ],
+      "paidDate": "2026-09-14T20:31:13.888Z",
+      "receiptId": "REC-72874"
+    },
+    {
+      "id": "inv_u15_2",
+      "studentId": "u15",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Hostel",
+      "amount": 3729,
+      "dueDate": "2026-09-30T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3889
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 170
+        }
+      ]
+    },
+    {
+      "id": "inv_u15_3",
+      "studentId": "u15",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Tuition",
+      "amount": 1475,
+      "dueDate": "2026-10-12T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3440
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 110
+        }
+      ]
+    },
+    {
+      "id": "inv_u15_4",
+      "studentId": "u15",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Library",
+      "amount": 3357,
+      "dueDate": "2026-08-20T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1365
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 221
+        }
+      ]
+    },
+    {
+      "id": "inv_u15_5",
+      "studentId": "u15",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 4072,
+      "dueDate": "2026-10-17T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2940
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 246
+        }
+      ]
+    },
+    {
+      "id": "inv_u16_1",
+      "studentId": "u16",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Misc",
+      "amount": 4280,
+      "dueDate": "2026-10-11T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 147
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 269
+        }
+      ],
+      "paidDate": "2026-09-16T20:31:13.888Z",
+      "receiptId": "REC-15888"
+    },
+    {
+      "id": "inv_u16_2",
+      "studentId": "u16",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Misc",
+      "amount": 2899,
+      "dueDate": "2026-08-25T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 910
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 202
+        }
+      ],
+      "paidDate": "2026-08-25T20:31:13.888Z",
+      "receiptId": "REC-88391"
+    },
+    {
+      "id": "inv_u16_3",
+      "studentId": "u16",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Misc",
+      "amount": 790,
+      "dueDate": "2026-09-27T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 140
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 145
+        }
+      ],
+      "paidDate": "2026-08-27T20:31:13.888Z",
+      "receiptId": "REC-66697"
+    },
+    {
+      "id": "inv_u16_4",
+      "studentId": "u16",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Hostel",
+      "amount": 1909,
+      "dueDate": "2026-09-09T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 471
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 273
+        }
+      ]
+    },
+    {
+      "id": "inv_u16_5",
+      "studentId": "u16",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4275,
+      "dueDate": "2026-10-08T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 994
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 252
+        }
+      ],
+      "paidDate": "2026-09-12T20:31:13.888Z",
+      "receiptId": "REC-36278"
+    },
+    {
+      "id": "inv_u17_1",
+      "studentId": "u17",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Tuition",
+      "amount": 3173,
+      "dueDate": "2026-10-11T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2438
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 189
+        }
+      ],
+      "paidDate": "2026-08-31T20:31:13.888Z",
+      "receiptId": "REC-14384"
+    },
+    {
+      "id": "inv_u17_2",
+      "studentId": "u17",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Library",
+      "amount": 3040,
+      "dueDate": "2026-08-18T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 637
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 33
+        }
+      ],
+      "paidDate": "2026-08-29T20:31:13.888Z",
+      "receiptId": "REC-88940"
+    },
+    {
+      "id": "inv_u17_3",
+      "studentId": "u17",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4220,
+      "dueDate": "2026-09-07T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1498
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 210
+        }
+      ]
+    },
+    {
+      "id": "inv_u17_4",
+      "studentId": "u17",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4895,
+      "dueDate": "2026-10-09T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1894
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 251
+        }
+      ],
+      "paidDate": "2026-09-10T20:31:13.888Z",
+      "receiptId": "REC-20222"
+    },
+    {
+      "id": "inv_u17_5",
+      "studentId": "u17",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Library",
+      "amount": 2724,
+      "dueDate": "2026-09-03T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3977
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 250
+        }
+      ],
+      "paidDate": "2026-08-24T20:31:13.888Z",
+      "receiptId": "REC-33963"
+    },
+    {
+      "id": "inv_u18_1",
+      "studentId": "u18",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Hostel",
+      "amount": 128,
+      "dueDate": "2026-08-23T20:31:13.888Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2315
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 66
+        }
+      ]
+    },
+    {
+      "id": "inv_u18_2",
+      "studentId": "u18",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Library",
+      "amount": 3882,
+      "dueDate": "2026-09-12T20:31:13.888Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 834
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 398
+        }
+      ],
+      "paidDate": "2026-09-11T20:31:13.888Z",
+      "receiptId": "REC-61643"
+    },
+    {
+      "id": "inv_u18_3",
+      "studentId": "u18",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Library",
+      "amount": 2439,
+      "dueDate": "2026-08-21T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1619
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 132
+        }
+      ],
+      "paidDate": "2026-08-23T20:31:13.889Z",
+      "receiptId": "REC-53015"
+    },
+    {
+      "id": "inv_u18_4",
+      "studentId": "u18",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Misc",
+      "amount": 1002,
+      "dueDate": "2026-09-09T20:31:13.889Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3143
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 282
+        }
+      ]
+    },
+    {
+      "id": "inv_u18_5",
+      "studentId": "u18",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Tuition",
+      "amount": 3064,
+      "dueDate": "2026-09-23T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1775
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 58
+        }
+      ],
+      "paidDate": "2026-08-18T20:31:13.889Z",
+      "receiptId": "REC-94710"
+    },
+    {
+      "id": "inv_u19_1",
+      "studentId": "u19",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Tuition",
+      "amount": 2494,
+      "dueDate": "2026-09-21T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3730
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 112
+        }
+      ],
+      "paidDate": "2026-09-02T20:31:13.889Z",
+      "receiptId": "REC-76483"
+    },
+    {
+      "id": "inv_u19_2",
+      "studentId": "u19",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Library",
+      "amount": 809,
+      "dueDate": "2026-09-12T20:31:13.889Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 337
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 108
+        }
+      ]
+    },
+    {
+      "id": "inv_u19_3",
+      "studentId": "u19",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Tuition",
+      "amount": 931,
+      "dueDate": "2026-09-14T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1487
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 328
+        }
+      ],
+      "paidDate": "2026-09-15T20:31:13.889Z",
+      "receiptId": "REC-79635"
+    },
+    {
+      "id": "inv_u19_4",
+      "studentId": "u19",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Hostel",
+      "amount": 2278,
+      "dueDate": "2026-10-04T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2404
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 497
+        }
+      ],
+      "paidDate": "2026-09-11T20:31:13.889Z",
+      "receiptId": "REC-15988"
+    },
+    {
+      "id": "inv_u19_5",
+      "studentId": "u19",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Tuition",
+      "amount": 1299,
+      "dueDate": "2026-08-31T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3691
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 79
+        }
+      ],
+      "paidDate": "2026-08-21T20:31:13.889Z",
+      "receiptId": "REC-77509"
+    },
+    {
+      "id": "inv_u20_1",
+      "studentId": "u20",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Library",
+      "amount": 288,
+      "dueDate": "2026-09-30T20:31:13.889Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3023
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 135
+        }
+      ]
+    },
+    {
+      "id": "inv_u20_2",
+      "studentId": "u20",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Library",
+      "amount": 1884,
+      "dueDate": "2026-09-07T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 541
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 418
+        }
+      ],
+      "paidDate": "2026-08-28T20:31:13.889Z",
+      "receiptId": "REC-89118"
+    },
+    {
+      "id": "inv_u20_3",
+      "studentId": "u20",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Library",
+      "amount": 2001,
+      "dueDate": "2026-10-07T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2008
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 181
+        }
+      ],
+      "paidDate": "2026-08-25T20:31:13.889Z",
+      "receiptId": "REC-84827"
+    },
+    {
+      "id": "inv_u20_4",
+      "studentId": "u20",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Hostel",
+      "amount": 3326,
+      "dueDate": "2026-10-09T20:31:13.889Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1056
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 205
+        }
+      ]
+    },
+    {
+      "id": "inv_u20_5",
+      "studentId": "u20",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Library",
+      "amount": 4361,
+      "dueDate": "2026-09-09T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3567
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 240
+        }
+      ],
+      "paidDate": "2026-09-03T20:31:13.889Z",
+      "receiptId": "REC-13096"
+    },
+    {
+      "id": "inv_u21_1",
+      "studentId": "u21",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Tuition",
+      "amount": 1860,
+      "dueDate": "2026-09-12T20:31:13.889Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 225
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 53
+        }
+      ]
+    },
+    {
+      "id": "inv_u21_2",
+      "studentId": "u21",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Tuition",
+      "amount": 3676,
+      "dueDate": "2026-09-12T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2313
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 115
+        }
+      ],
+      "paidDate": "2026-08-23T20:31:13.889Z",
+      "receiptId": "REC-39027"
+    },
+    {
+      "id": "inv_u21_3",
+      "studentId": "u21",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 4180,
+      "dueDate": "2026-09-26T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2191
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 79
+        }
+      ],
+      "paidDate": "2026-09-11T20:31:13.889Z",
+      "receiptId": "REC-66177"
+    },
+    {
+      "id": "inv_u21_4",
+      "studentId": "u21",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Library",
+      "amount": 1396,
+      "dueDate": "2026-09-29T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 882
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 454
+        }
+      ],
+      "paidDate": "2026-09-15T20:31:13.889Z",
+      "receiptId": "REC-60178"
+    },
+    {
+      "id": "inv_u21_5",
+      "studentId": "u21",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Tuition",
+      "amount": 3113,
+      "dueDate": "2026-10-01T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2731
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 106
+        }
+      ],
+      "paidDate": "2026-08-25T20:31:13.889Z",
+      "receiptId": "REC-27193"
+    },
+    {
+      "id": "inv_u22_1",
+      "studentId": "u22",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Hostel",
+      "amount": 2765,
+      "dueDate": "2026-09-26T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 946
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 279
+        }
+      ],
+      "paidDate": "2026-09-11T20:31:13.889Z",
+      "receiptId": "REC-80985"
+    },
+    {
+      "id": "inv_u22_2",
+      "studentId": "u22",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Misc",
+      "amount": 4135,
+      "dueDate": "2026-08-22T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1691
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 34
+        }
+      ],
+      "paidDate": "2026-08-20T20:31:13.889Z",
+      "receiptId": "REC-13398"
+    },
+    {
+      "id": "inv_u22_3",
+      "studentId": "u22",
+      "title": "Semester 2 Tuition Fee",
+      "category": "Hostel",
+      "amount": 4459,
+      "dueDate": "2026-09-08T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2623
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 284
+        }
+      ],
+      "paidDate": "2026-08-20T20:31:13.889Z",
+      "receiptId": "REC-78240"
+    },
+    {
+      "id": "inv_u22_4",
+      "studentId": "u22",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Misc",
+      "amount": 1178,
+      "dueDate": "2026-09-23T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1418
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 59
+        }
+      ],
+      "paidDate": "2026-08-20T20:31:13.889Z",
+      "receiptId": "REC-79547"
+    },
+    {
+      "id": "inv_u22_5",
+      "studentId": "u22",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Tuition",
+      "amount": 4937,
+      "dueDate": "2026-09-03T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 653
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 470
+        }
+      ],
+      "paidDate": "2026-08-30T20:31:13.889Z",
+      "receiptId": "REC-51769"
+    },
+    {
+      "id": "inv_u23_1",
+      "studentId": "u23",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Library",
+      "amount": 2417,
+      "dueDate": "2026-08-20T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1127
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 402
+        }
+      ],
+      "paidDate": "2026-09-02T20:31:13.889Z",
+      "receiptId": "REC-76016"
+    },
+    {
+      "id": "inv_u23_2",
+      "studentId": "u23",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Misc",
+      "amount": 4948,
+      "dueDate": "2026-08-21T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3714
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 343
+        }
+      ],
+      "paidDate": "2026-09-13T20:31:13.889Z",
+      "receiptId": "REC-53745"
+    },
+    {
+      "id": "inv_u23_3",
+      "studentId": "u23",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Library",
+      "amount": 2369,
+      "dueDate": "2026-10-15T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 948
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 112
+        }
+      ],
+      "paidDate": "2026-09-09T20:31:13.889Z",
+      "receiptId": "REC-80323"
+    },
+    {
+      "id": "inv_u23_4",
+      "studentId": "u23",
+      "title": "Semester 5 Tuition Fee",
+      "category": "Library",
+      "amount": 668,
+      "dueDate": "2026-08-26T20:31:13.889Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 618
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 81
+        }
+      ]
+    },
+    {
+      "id": "inv_u23_5",
+      "studentId": "u23",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 3595,
+      "dueDate": "2026-08-26T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3776
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 389
+        }
+      ],
+      "paidDate": "2026-09-08T20:31:13.889Z",
+      "receiptId": "REC-15749"
+    },
+    {
+      "id": "inv_u24_1",
+      "studentId": "u24",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Library",
+      "amount": 4368,
+      "dueDate": "2026-10-17T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3377
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 57
+        }
+      ],
+      "paidDate": "2026-09-03T20:31:13.889Z",
+      "receiptId": "REC-65068"
+    },
+    {
+      "id": "inv_u24_2",
+      "studentId": "u24",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Hostel",
+      "amount": 2964,
+      "dueDate": "2026-09-10T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2623
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 323
+        }
+      ],
+      "paidDate": "2026-08-29T20:31:13.889Z",
+      "receiptId": "REC-19041"
+    },
+    {
+      "id": "inv_u24_3",
+      "studentId": "u24",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Misc",
+      "amount": 4850,
+      "dueDate": "2026-08-18T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3750
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 171
+        }
+      ],
+      "paidDate": "2026-08-30T20:31:13.889Z",
+      "receiptId": "REC-95515"
+    },
+    {
+      "id": "inv_u24_4",
+      "studentId": "u24",
+      "title": "Semester 7 Tuition Fee",
+      "category": "Hostel",
+      "amount": 2120,
+      "dueDate": "2026-09-26T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3034
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 197
+        }
+      ],
+      "paidDate": "2026-09-12T20:31:13.889Z",
+      "receiptId": "REC-38982"
+    },
+    {
+      "id": "inv_u24_5",
+      "studentId": "u24",
+      "title": "Semester 6 Tuition Fee",
+      "category": "Tuition",
+      "amount": 209,
+      "dueDate": "2026-09-20T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 1603
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 83
+        }
+      ],
+      "paidDate": "2026-09-03T20:31:13.889Z",
+      "receiptId": "REC-31859"
+    },
+    {
+      "id": "inv_u25_1",
+      "studentId": "u25",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 4480,
+      "dueDate": "2026-10-09T20:31:13.889Z",
+      "status": "pending",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3086
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 245
+        }
+      ]
+    },
+    {
+      "id": "inv_u25_2",
+      "studentId": "u25",
+      "title": "Semester 1 Tuition Fee",
+      "category": "Hostel",
+      "amount": 3449,
+      "dueDate": "2026-09-11T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 3812
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 189
+        }
+      ],
+      "paidDate": "2026-09-03T20:31:13.889Z",
+      "receiptId": "REC-90898"
+    },
+    {
+      "id": "inv_u25_3",
+      "studentId": "u25",
+      "title": "Semester 8 Tuition Fee",
+      "category": "Misc",
+      "amount": 4533,
+      "dueDate": "2026-09-29T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 2574
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 329
+        }
+      ],
+      "paidDate": "2026-08-25T20:31:13.889Z",
+      "receiptId": "REC-35848"
+    },
+    {
+      "id": "inv_u25_4",
+      "studentId": "u25",
+      "title": "Semester 4 Tuition Fee",
+      "category": "Misc",
+      "amount": 976,
+      "dueDate": "2026-10-05T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 825
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 443
+        }
+      ],
+      "paidDate": "2026-08-20T20:31:13.889Z",
+      "receiptId": "REC-90065"
+    },
+    {
+      "id": "inv_u25_5",
+      "studentId": "u25",
+      "title": "Semester 3 Tuition Fee",
+      "category": "Hostel",
+      "amount": 3583,
+      "dueDate": "2026-09-08T20:31:13.889Z",
+      "status": "paid",
+      "breakdown": [
+        {
+          "item": "Base Fee",
+          "amount": 722
+        },
+        {
+          "item": "Tax/Surcharge",
+          "amount": 190
+        }
+      ],
+      "paidDate": "2026-08-27T20:31:13.889Z",
+      "receiptId": "REC-73145"
+    }
+  ],
+  "transactions": [
+    {
+      "invoiceId": "inv_u1_1",
+      "studentId": "u1",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "5576",
+      "date": "2026-08-20T20:31:13.888Z",
+      "amount": 779
+    },
+    {
+      "invoiceId": "inv_u1_2",
+      "studentId": "u1",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "9840",
+      "date": "2026-09-03T20:31:13.888Z",
+      "amount": 1303
+    },
+    {
+      "invoiceId": "inv_u1_3",
+      "studentId": "u1",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "7662",
+      "date": "2026-09-06T20:31:13.888Z",
+      "amount": 4998
+    },
+    {
+      "invoiceId": "inv_u1_5",
+      "studentId": "u1",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "5790",
+      "date": "2026-09-14T20:31:13.888Z",
+      "amount": 1410
+    },
+    {
+      "invoiceId": "inv_u2_1",
+      "studentId": "u2",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "1682",
+      "date": "2026-08-28T20:31:13.888Z",
+      "amount": 4254
+    },
+    {
+      "invoiceId": "inv_u2_2",
+      "studentId": "u2",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "3643",
+      "date": "2026-09-15T20:31:13.888Z",
+      "amount": 4943
+    },
+    {
+      "invoiceId": "inv_u2_3",
+      "studentId": "u2",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "7043",
+      "date": "2026-09-07T20:31:13.888Z",
+      "amount": 4877
+    },
+    {
+      "invoiceId": "inv_u2_4",
+      "studentId": "u2",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "9484",
+      "date": "2026-09-06T20:31:13.888Z",
+      "amount": 1347
+    },
+    {
+      "invoiceId": "inv_u3_2",
+      "studentId": "u3",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "5123",
+      "date": "2026-08-28T20:31:13.888Z",
+      "amount": 1407
+    },
+    {
+      "invoiceId": "inv_u3_3",
+      "studentId": "u3",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "3893",
+      "date": "2026-09-16T20:31:13.888Z",
+      "amount": 4141
+    },
+    {
+      "invoiceId": "inv_u3_4",
+      "studentId": "u3",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "1673",
+      "date": "2026-08-22T20:31:13.888Z",
+      "amount": 1356
+    },
+    {
+      "invoiceId": "inv_u4_1",
+      "studentId": "u4",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "2516",
+      "date": "2026-09-14T20:31:13.888Z",
+      "amount": 2834
+    },
+    {
+      "invoiceId": "inv_u4_4",
+      "studentId": "u4",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "6743",
+      "date": "2026-09-16T20:31:13.888Z",
+      "amount": 372
+    },
+    {
+      "invoiceId": "inv_u4_5",
+      "studentId": "u4",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "9493",
+      "date": "2026-09-07T20:31:13.888Z",
+      "amount": 2797
+    },
+    {
+      "invoiceId": "inv_u5_1",
+      "studentId": "u5",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "1055",
+      "date": "2026-08-27T20:31:13.888Z",
+      "amount": 2203
+    },
+    {
+      "invoiceId": "inv_u5_2",
+      "studentId": "u5",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "1239",
+      "date": "2026-08-26T20:31:13.888Z",
+      "amount": 2359
+    },
+    {
+      "invoiceId": "inv_u5_3",
+      "studentId": "u5",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "2536",
+      "date": "2026-09-08T20:31:13.888Z",
+      "amount": 4681
+    },
+    {
+      "invoiceId": "inv_u5_4",
+      "studentId": "u5",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "4780",
+      "date": "2026-08-19T20:31:13.888Z",
+      "amount": 3793
+    },
+    {
+      "invoiceId": "inv_u5_5",
+      "studentId": "u5",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "6675",
+      "date": "2026-09-05T20:31:13.888Z",
+      "amount": 4736
+    },
+    {
+      "invoiceId": "inv_u6_2",
+      "studentId": "u6",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "6027",
+      "date": "2026-08-21T20:31:13.888Z",
+      "amount": 4197
+    },
+    {
+      "invoiceId": "inv_u6_3",
+      "studentId": "u6",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "6880",
+      "date": "2026-08-23T20:31:13.888Z",
+      "amount": 3292
+    },
+    {
+      "invoiceId": "inv_u6_4",
+      "studentId": "u6",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "2921",
+      "date": "2026-08-22T20:31:13.888Z",
+      "amount": 3241
+    },
+    {
+      "invoiceId": "inv_u6_5",
+      "studentId": "u6",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "9377",
+      "date": "2026-09-08T20:31:13.888Z",
+      "amount": 2559
+    },
+    {
+      "invoiceId": "inv_u7_1",
+      "studentId": "u7",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "8604",
+      "date": "2026-09-01T20:31:13.888Z",
+      "amount": 837
+    },
+    {
+      "invoiceId": "inv_u7_2",
+      "studentId": "u7",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "3967",
+      "date": "2026-08-19T20:31:13.888Z",
+      "amount": 4296
+    },
+    {
+      "invoiceId": "inv_u7_3",
+      "studentId": "u7",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "1158",
+      "date": "2026-09-04T20:31:13.888Z",
+      "amount": 1365
+    },
+    {
+      "invoiceId": "inv_u7_4",
+      "studentId": "u7",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "9801",
+      "date": "2026-08-26T20:31:13.888Z",
+      "amount": 4744
+    },
+    {
+      "invoiceId": "inv_u7_5",
+      "studentId": "u7",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "1382",
+      "date": "2026-08-28T20:31:13.888Z",
+      "amount": 2213
+    },
+    {
+      "invoiceId": "inv_u8_4",
+      "studentId": "u8",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "9002",
+      "date": "2026-08-28T20:31:13.888Z",
+      "amount": 3427
+    },
+    {
+      "invoiceId": "inv_u8_5",
+      "studentId": "u8",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "6219",
+      "date": "2026-08-29T20:31:13.888Z",
+      "amount": 2472
+    },
+    {
+      "invoiceId": "inv_u9_1",
+      "studentId": "u9",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "6652",
+      "date": "2026-08-24T20:31:13.888Z",
+      "amount": 740
+    },
+    {
+      "invoiceId": "inv_u9_2",
+      "studentId": "u9",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "5188",
+      "date": "2026-09-03T20:31:13.888Z",
+      "amount": 1884
+    },
+    {
+      "invoiceId": "inv_u9_4",
+      "studentId": "u9",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "3213",
+      "date": "2026-08-24T20:31:13.888Z",
+      "amount": 4631
+    },
+    {
+      "invoiceId": "inv_u10_1",
+      "studentId": "u10",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "9123",
+      "date": "2026-09-14T20:31:13.888Z",
+      "amount": 3246
+    },
+    {
+      "invoiceId": "inv_u10_2",
+      "studentId": "u10",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "7033",
+      "date": "2026-08-18T20:31:13.888Z",
+      "amount": 401
+    },
+    {
+      "invoiceId": "inv_u11_1",
+      "studentId": "u11",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "4874",
+      "date": "2026-08-25T20:31:13.888Z",
+      "amount": 497
+    },
+    {
+      "invoiceId": "inv_u11_2",
+      "studentId": "u11",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "2026",
+      "date": "2026-09-08T20:31:13.888Z",
+      "amount": 993
+    },
+    {
+      "invoiceId": "inv_u11_3",
+      "studentId": "u11",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "2575",
+      "date": "2026-08-25T20:31:13.888Z",
+      "amount": 3178
+    },
+    {
+      "invoiceId": "inv_u11_5",
+      "studentId": "u11",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "4862",
+      "date": "2026-09-14T20:31:13.888Z",
+      "amount": 4768
+    },
+    {
+      "invoiceId": "inv_u12_1",
+      "studentId": "u12",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "1935",
+      "date": "2026-09-07T20:31:13.888Z",
+      "amount": 4479
+    },
+    {
+      "invoiceId": "inv_u12_2",
+      "studentId": "u12",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "2565",
+      "date": "2026-09-04T20:31:13.888Z",
+      "amount": 4745
+    },
+    {
+      "invoiceId": "inv_u12_3",
+      "studentId": "u12",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "4499",
+      "date": "2026-08-31T20:31:13.888Z",
+      "amount": 1136
+    },
+    {
+      "invoiceId": "inv_u12_4",
+      "studentId": "u12",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "6844",
+      "date": "2026-08-20T20:31:13.888Z",
+      "amount": 3675
+    },
+    {
+      "invoiceId": "inv_u12_5",
+      "studentId": "u12",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "4934",
+      "date": "2026-08-25T20:31:13.888Z",
+      "amount": 2151
+    },
+    {
+      "invoiceId": "inv_u13_1",
+      "studentId": "u13",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "3098",
+      "date": "2026-09-01T20:31:13.888Z",
+      "amount": 4815
+    },
+    {
+      "invoiceId": "inv_u13_2",
+      "studentId": "u13",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "3458",
+      "date": "2026-08-25T20:31:13.888Z",
+      "amount": 1667
+    },
+    {
+      "invoiceId": "inv_u13_4",
+      "studentId": "u13",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "6071",
+      "date": "2026-09-07T20:31:13.888Z",
+      "amount": 1139
+    },
+    {
+      "invoiceId": "inv_u13_5",
+      "studentId": "u13",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "7513",
+      "date": "2026-09-09T20:31:13.888Z",
+      "amount": 797
+    },
+    {
+      "invoiceId": "inv_u14_1",
+      "studentId": "u14",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "1069",
+      "date": "2026-09-08T20:31:13.888Z",
+      "amount": 4726
+    },
+    {
+      "invoiceId": "inv_u14_2",
+      "studentId": "u14",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "3159",
+      "date": "2026-08-27T20:31:13.888Z",
+      "amount": 4566
+    },
+    {
+      "invoiceId": "inv_u14_3",
+      "studentId": "u14",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "7328",
+      "date": "2026-09-05T20:31:13.888Z",
+      "amount": 1635
+    },
+    {
+      "invoiceId": "inv_u14_4",
+      "studentId": "u14",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "6379",
+      "date": "2026-08-20T20:31:13.888Z",
+      "amount": 542
+    },
+    {
+      "invoiceId": "inv_u14_5",
+      "studentId": "u14",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "4103",
+      "date": "2026-09-03T20:31:13.888Z",
+      "amount": 3455
+    },
+    {
+      "invoiceId": "inv_u15_1",
+      "studentId": "u15",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "1390",
+      "date": "2026-09-14T20:31:13.888Z",
+      "amount": 4863
+    },
+    {
+      "invoiceId": "inv_u16_1",
+      "studentId": "u16",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "8288",
+      "date": "2026-09-16T20:31:13.888Z",
+      "amount": 4280
+    },
+    {
+      "invoiceId": "inv_u16_2",
+      "studentId": "u16",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "2761",
+      "date": "2026-08-25T20:31:13.888Z",
+      "amount": 2899
+    },
+    {
+      "invoiceId": "inv_u16_3",
+      "studentId": "u16",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "6893",
+      "date": "2026-08-27T20:31:13.888Z",
+      "amount": 790
+    },
+    {
+      "invoiceId": "inv_u16_5",
+      "studentId": "u16",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "7093",
+      "date": "2026-09-12T20:31:13.888Z",
+      "amount": 4275
+    },
+    {
+      "invoiceId": "inv_u17_1",
+      "studentId": "u17",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "5401",
+      "date": "2026-08-31T20:31:13.888Z",
+      "amount": 3173
+    },
+    {
+      "invoiceId": "inv_u17_2",
+      "studentId": "u17",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "7012",
+      "date": "2026-08-29T20:31:13.888Z",
+      "amount": 3040
+    },
+    {
+      "invoiceId": "inv_u17_4",
+      "studentId": "u17",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "6380",
+      "date": "2026-09-10T20:31:13.888Z",
+      "amount": 4895
+    },
+    {
+      "invoiceId": "inv_u17_5",
+      "studentId": "u17",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "5805",
+      "date": "2026-08-24T20:31:13.888Z",
+      "amount": 2724
+    },
+    {
+      "invoiceId": "inv_u18_2",
+      "studentId": "u18",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "7351",
+      "date": "2026-09-11T20:31:13.888Z",
+      "amount": 3882
+    },
+    {
+      "invoiceId": "inv_u18_3",
+      "studentId": "u18",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "8274",
+      "date": "2026-08-23T20:31:13.889Z",
+      "amount": 2439
+    },
+    {
+      "invoiceId": "inv_u18_5",
+      "studentId": "u18",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "9627",
+      "date": "2026-08-18T20:31:13.889Z",
+      "amount": 3064
+    },
+    {
+      "invoiceId": "inv_u19_1",
+      "studentId": "u19",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "5086",
+      "date": "2026-09-02T20:31:13.889Z",
+      "amount": 2494
+    },
+    {
+      "invoiceId": "inv_u19_3",
+      "studentId": "u19",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "3716",
+      "date": "2026-09-15T20:31:13.889Z",
+      "amount": 931
+    },
+    {
+      "invoiceId": "inv_u19_4",
+      "studentId": "u19",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "1141",
+      "date": "2026-09-11T20:31:13.889Z",
+      "amount": 2278
+    },
+    {
+      "invoiceId": "inv_u19_5",
+      "studentId": "u19",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "9126",
+      "date": "2026-08-21T20:31:13.889Z",
+      "amount": 1299
+    },
+    {
+      "invoiceId": "inv_u20_2",
+      "studentId": "u20",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "3439",
+      "date": "2026-08-28T20:31:13.889Z",
+      "amount": 1884
+    },
+    {
+      "invoiceId": "inv_u20_3",
+      "studentId": "u20",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "4467",
+      "date": "2026-08-25T20:31:13.889Z",
+      "amount": 2001
+    },
+    {
+      "invoiceId": "inv_u20_5",
+      "studentId": "u20",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "4331",
+      "date": "2026-09-03T20:31:13.889Z",
+      "amount": 4361
+    },
+    {
+      "invoiceId": "inv_u21_2",
+      "studentId": "u21",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "8468",
+      "date": "2026-08-23T20:31:13.889Z",
+      "amount": 3676
+    },
+    {
+      "invoiceId": "inv_u21_3",
+      "studentId": "u21",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "7100",
+      "date": "2026-09-11T20:31:13.889Z",
+      "amount": 4180
+    },
+    {
+      "invoiceId": "inv_u21_4",
+      "studentId": "u21",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "5109",
+      "date": "2026-09-15T20:31:13.889Z",
+      "amount": 1396
+    },
+    {
+      "invoiceId": "inv_u21_5",
+      "studentId": "u21",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "9417",
+      "date": "2026-08-25T20:31:13.889Z",
+      "amount": 3113
+    },
+    {
+      "invoiceId": "inv_u22_1",
+      "studentId": "u22",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "7158",
+      "date": "2026-09-11T20:31:13.889Z",
+      "amount": 2765
+    },
+    {
+      "invoiceId": "inv_u22_2",
+      "studentId": "u22",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "3137",
+      "date": "2026-08-20T20:31:13.889Z",
+      "amount": 4135
+    },
+    {
+      "invoiceId": "inv_u22_3",
+      "studentId": "u22",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "3016",
+      "date": "2026-08-20T20:31:13.889Z",
+      "amount": 4459
+    },
+    {
+      "invoiceId": "inv_u22_4",
+      "studentId": "u22",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "4135",
+      "date": "2026-08-20T20:31:13.889Z",
+      "amount": 1178
+    },
+    {
+      "invoiceId": "inv_u22_5",
+      "studentId": "u22",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "3903",
+      "date": "2026-08-30T20:31:13.889Z",
+      "amount": 4937
+    },
+    {
+      "invoiceId": "inv_u23_1",
+      "studentId": "u23",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "8729",
+      "date": "2026-09-02T20:31:13.889Z",
+      "amount": 2417
+    },
+    {
+      "invoiceId": "inv_u23_2",
+      "studentId": "u23",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "3487",
+      "date": "2026-09-13T20:31:13.889Z",
+      "amount": 4948
+    },
+    {
+      "invoiceId": "inv_u23_3",
+      "studentId": "u23",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "7510",
+      "date": "2026-09-09T20:31:13.889Z",
+      "amount": 2369
+    },
+    {
+      "invoiceId": "inv_u23_5",
+      "studentId": "u23",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "6722",
+      "date": "2026-09-08T20:31:13.889Z",
+      "amount": 3595
+    },
+    {
+      "invoiceId": "inv_u24_1",
+      "studentId": "u24",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "6979",
+      "date": "2026-09-03T20:31:13.889Z",
+      "amount": 4368
+    },
+    {
+      "invoiceId": "inv_u24_2",
+      "studentId": "u24",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "4945",
+      "date": "2026-08-29T20:31:13.889Z",
+      "amount": 2964
+    },
+    {
+      "invoiceId": "inv_u24_3",
+      "studentId": "u24",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "7154",
+      "date": "2026-08-30T20:31:13.889Z",
+      "amount": 4850
+    },
+    {
+      "invoiceId": "inv_u24_4",
+      "studentId": "u24",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "2081",
+      "date": "2026-09-12T20:31:13.889Z",
+      "amount": 2120
+    },
+    {
+      "invoiceId": "inv_u24_5",
+      "studentId": "u24",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "1854",
+      "date": "2026-09-03T20:31:13.889Z",
+      "amount": 209
+    },
+    {
+      "invoiceId": "inv_u25_2",
+      "studentId": "u25",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "7545",
+      "date": "2026-09-03T20:31:13.889Z",
+      "amount": 3449
+    },
+    {
+      "invoiceId": "inv_u25_3",
+      "studentId": "u25",
+      "method": "card",
+      "brand": "Visa",
+      "last4": "3959",
+      "date": "2026-08-25T20:31:13.889Z",
+      "amount": 4533
+    },
+    {
+      "invoiceId": "inv_u25_4",
+      "studentId": "u25",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "2222",
+      "date": "2026-08-20T20:31:13.889Z",
+      "amount": 976
+    },
+    {
+      "invoiceId": "inv_u25_5",
+      "studentId": "u25",
+      "method": "card",
+      "brand": "Mastercard",
+      "last4": "1094",
+      "date": "2026-08-27T20:31:13.889Z",
+      "amount": 3583
+    },
+    {
+      "id": "txn1789679209129",
+      "invoiceId": "inv_u1_4",
+      "studentId": "u1",
+      "amount": 4617,
+      "date": "2026-09-17",
+      "method": "card",
+      "last4": "3232",
+      "brand": "Card",
+      "receiptId": "RCP1789679209129",
+      "status": "success"
+    }
+  ]
+}

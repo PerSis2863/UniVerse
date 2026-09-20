@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniVerse — University Management Platform</title>
+  <meta name="description" content="UniVerse: A comprehensive university platform for students, teachers, and administrators."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <style>
+    :root{--bg:#060a14;--surface:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--primary:#6366f1;--secondary:#06b6d4;--text:#f0f4ff;--muted:#8896b3;--green:#10b981;--amber:#f59e0b;--radius:16px;--surface-highlight:linear-gradient(135deg,#f0f4ff,#8896b3);}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+    /* Orbs */
+    .orbs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+    .orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:0.15;animation:float 25s ease-in-out infinite;}
+    .orb1{width:700px;height:700px;background:#6366f1;top:-200px;left:-200px;animation-delay:0s;}
+    .orb2{width:500px;height:500px;background:#06b6d4;bottom:-150px;right:-100px;animation-delay:-10s;}
+    .orb3{width:400px;height:400px;background:#8b5cf6;top:50%;left:55%;animation-delay:-5s;}
+    @keyframes float{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(40px,-40px) scale(1.1);}}
+    /* Nav */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 48px;display:flex;justify-content:space-between;align-items:center;backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+    .nav-logo{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;background:var(--surface-highlight);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .nav-links{display:flex;gap:32px;}
+    .nav-links a{color:var(--muted);text-decoration:none;font-size:14px;transition:color .2s;}
+    .nav-links a:hover{color:var(--text);}
+    .nav-cta{background:var(--surface-highlight);color:#fff;border:none;padding:10px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:transform .2s,box-shadow .2s;}
+    .nav-cta:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,0.4);}
+    /* Hero */
+    .hero{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:120px 24px 80px;text-align:center;}
+    .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:20px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);font-size:13px;color:#a5b4fc;margin-bottom:28px;animation:fadeDown .6s ease;}
+    .hero-dot{width:6px;height:6px;border-radius:50%;background:#6366f1;animation:pulse 2s infinite;}
+    @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(99,102,241,.4);}50%{opacity:.7;box-shadow:0 0 0 6px rgba(99,102,241,0);}}
+    h1{font-family:'Outfit',sans-serif;font-size:clamp(48px,7vw,96px);font-weight:900;line-height:1.02;letter-spacing:-2px;margin-bottom:24px;animation:fadeDown .7s ease .1s both;}
+    h1 .grad{background:var(--surface-highlight);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .hero-sub{font-size:18px;color:var(--muted);max-width:600px;line-height:1.7;margin-bottom:48px;animation:fadeDown .8s ease .2s both;}
+    @keyframes fadeDown{from{opacity:0;transform:translateY(-20px);}to{opacity:1;transform:translateY(0);}}
+    /* Role cards */
+    .role-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-bottom:64px;animation:fadeUp .9s ease .3s both;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+    .role-card{width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 20px;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;text-align:center;}
+    .role-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;}
+    .role-card.student::before{background:var(--surface-highlight),transparent);}
+    .role-card.teacher::before{background:var(--surface-highlight),transparent);}
+    .role-card.admin::before{background:var(--surface-highlight),transparent);}
+    .role-card:hover{transform:translateY(-6px);border-color:rgba(255,255,255,.15);}
+    .role-card:hover::before{opacity:1;}
+    .role-icon{font-size:40px;margin-bottom:14px;display:block;}
+    .role-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px;}
+    .role-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+    .role-arrow{position:absolute;top:50%;right:16px;transform:translateY(-50%);opacity:0;transition:all .3s;font-size:18px;}
+    .role-card:hover .role-arrow{opacity:1;right:12px;}
+    /* Login Modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(6,10,20,.8);backdrop-filter:blur(8px);z-index:200;display:none;align-items:center;justify-content:center;padding:24px;}
+    .modal-overlay.active{display:flex;animation:fadeIn .3s ease;}
+    @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+    .modal{background:#0d1424;border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:440px;position:relative;animation:slideUp .3s ease;}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+    .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:8px;transition:color .2s;}
+    .modal-close:hover{color:var(--text);}
+    .modal-role-icon{font-size:36px;text-align:center;margin-bottom:12px;}
+    .modal-title{font-family:'Outfit',sans-serif;font-size:24px;font-weight:700;text-align:center;margin-bottom:6px;}
+    .modal-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:28px;}
+    .form-group{margin-bottom:18px;}
+    .form-label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}
+    .form-input{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);padding:12px 16px;border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;}
+    .form-input:focus{border-color:rgba(99,102,241,.5);}
+    .form-input::placeholder{color:var(--muted);}
+    .submit-btn{width:100%;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:all .3s;margin-top:8px;background:var(--surface2);color:#ffffff;}
+    .submit-btn.student{background:#1e293b;}
+    .submit-btn.teacher{background:#1e293b;}
+    .submit-btn.admin{background:#1e293b;}
+    .submit-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3);background:#334155;}
+    .submit-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+    .error-msg{color:#fc8181;font-size:13px;text-align:center;margin-top:12px;display:none;}
+    .demo-creds{background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:10px;padding:14px;margin-top:16px;font-size:12px;color:var(--muted);}
+    .demo-creds strong{color:#a5b4fc;}
+    /* Features */
+    .features{position:relative;z-index:1;padding:80px 24px;max-width:1100px;margin:0 auto;}
+    .features-title{font-family:'Outfit',sans-serif;font-size:40px;font-weight:800;text-align:center;margin-bottom:12px;}
+    .features-sub{text-align:center;color:var(--muted);margin-bottom:56px;font-size:16px;}
+    .features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;}
+    .feat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;transition:all .3s;}
+    .feat-card:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);transform:translateY(-3px);}
+    .feat-icon{font-size:28px;margin-bottom:16px;}
+    .feat-title{font-family:'Outfit',sans-serif;font-size:17px;font-weight:700;margin-bottom:8px;}
+    .feat-desc{font-size:13.5px;color:var(--muted);line-height:1.6;}
+    /* Stats */
+    .stats{position:relative;z-index:1;padding:60px 24px;max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:24px;text-align:center;}
+    .stat-val{font-family:'Outfit',sans-serif;font-size:42px;font-weight:800;background:var(--surface-highlight);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .stat-label{font-size:13px;color:var(--muted);margin-top:4px;}
+    /* Footer */
+    footer{position:relative;z-index:1;text-align:center;padding:32px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;margin-top:60px;}
+  </style>
+</head>
+<body>
+  <div class="orbs"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+
+  <nav>
+    <div class="nav-logo">UniVerse</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#about">About</a>
+      <a href="#orgs">Organizations</a>
+    </div>
+    <button class="nav-cta" onclick="document.getElementById('roleSection').scrollIntoView({behavior:'smooth'})">Sign In</button>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge"><span class="hero-dot"></span> Next-Generation University Platform</div>
+    <h1>The Future of<br/><span class="grad">University Life</span></h1>
+    <p class="hero-sub">A unified platform connecting students, teachers, and administrators. Attendance, grades, collaboration, payments, and AI assistance — all in one place.</p>
+    <div class="role-cards" id="roleSection">
+      <div class="role-card student" onclick="openModal('student')">
+        <span class="role-icon">🎓</span>
+        <div class="role-title">Student</div>
+        <div class="role-desc">Access courses, attendance, grades, payments & collaboration</div>
+        <span class="role-arrow">→</span>
+      </div>
+      <div class="role-card teacher" onclick="openModal('teacher')">
+        <span class="role-icon">👨‍🏫</span>
+        <div class="role-title">Teacher</div>
+        <div class="role-desc">Mark attendance, manage courses, grades & student reports</div>
+        <span class="role-arrow">→</span>
+      </div>
+      <div class="role-card admin" onclick="openModal('admin')">
+        <span class="role-icon">🔐</span>
+        <div class="role-title">Admin</div>
+        <div class="role-desc">Institution-wide analytics, user management & finance</div>
+        <span class="role-arrow">→</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div><div class="stat-val">5000+</div><div class="stat-label">Students Enrolled</div></div>
+    <div><div class="stat-val">280+</div><div class="stat-label">Faculty Members</div></div>
+    <div><div class="stat-val">120+</div><div class="stat-label">Courses Available</div></div>
+    <div><div class="stat-val">6</div><div class="stat-label">Partner Organizations</div></div>
+  </div>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <h2 class="features-title">Everything You Need</h2>
+    <p class="features-sub">A complete university management ecosystem built for the modern age</p>
+    <div class="features-grid">
+      <div class="feat-card"><div class="feat-icon">📊</div><div class="feat-title">Smart Attendance</div><div class="feat-desc">Real-time attendance tracking with calendar heatmaps, subject-wise analytics, and automatic at-risk alerts.</div></div>
+      <div class="feat-card"><div class="feat-icon">📚</div><div class="feat-title">Course Management</div><div class="feat-desc">Upload materials, create assignments, track deadlines, and manage your entire course catalog in one place.</div></div>
+      <div class="feat-card"><div class="feat-icon">🏆</div><div class="feat-title">Grades & GPA</div><div class="feat-desc">Comprehensive grade tracking with GPA calculator, progress charts, and detailed assessment breakdowns.</div></div>
+      <div class="feat-card"><div class="feat-icon">🤝</div><div class="feat-title">Collaboration Hub</div><div class="feat-desc">Team project boards, peer groups, and cross-department collaboration with real-time updates.</div></div>
+      <div class="feat-card"><div class="feat-icon">🌱</div><div class="feat-title">Social Impact & NGOs</div><div class="feat-desc">Connect with NGOs, track volunteer hours, and contribute to meaningful social causes right from campus.</div></div>
+      <div class="feat-card"><div class="feat-icon">💳</div><div class="feat-title">Secure Payments</div><div class="feat-desc">Pay tuition fees, hostel charges, and exam fees securely. Download receipts and track payment history.</div></div>
+      <div class="feat-card"><div class="feat-icon">🤖</div><div class="feat-title">AI Chatbot</div><div class="feat-desc">Powered by Google Gemini, UniBot answers questions about your attendance, grades, deadlines, and more.</div></div>
+      <div class="feat-card"><div class="feat-icon">📅</div><div class="feat-title">Smart Timetable</div><div class="feat-desc">Beautiful weekly schedule views showing today's classes, room numbers, and upcoming sessions.</div></div>
+      <div class="feat-card"><div class="feat-icon">📢</div><div class="feat-title">Announcements</div><div class="feat-desc">Broadcast important notices from admin to all students and teachers instantly.</div></div>
+    </div>
+  </section>
+
+  <footer>© 2026 UniVerse University Platform · Built with ❤️ · Powered by Gemini AI</footer>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-role-icon" id="modalIcon"></div>
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-sub" id="modalSub"></div>
+      <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+        <button type="button" class="tab-btn active" onclick="switchModalTab('login')" id="tabLogin" style="flex:1; background:none; border:none; color:var(--text); font-weight:700; cursor:pointer;">Sign In</button>
+        <button type="button" class="tab-btn" onclick="switchModalTab('register')" id="tabRegister" style="flex:1; background:none; border:none; color:var(--muted); font-weight:700; cursor:pointer;">Create Account</button>
+      </div>
+
+      <form id="authForm" onsubmit="doAuth(event)">
+        <div class="form-group" id="nameGroup" style="display:none;">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" type="text" id="nameInput" placeholder="Jane Doe"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input class="form-input" type="email" id="emailInput" placeholder="your@university.edu" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" id="passwordInput" placeholder="••••••••" required/>
+        </div>
+        
+        <button type="submit" class="submit-btn" id="submitBtn">Sign In</button>
+        
+        <div id="demoActions" style="margin-top:10px;">
+
+          
+          <button type="button" class="btn-outline" style="width:100%; margin-top:10px; padding:14px; border-radius:12px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.1); transition:all 0.2s;" onclick="quickLogin()">⚡ Quick Login (Pre-existing)</button>
+        </div>
+
+        <div class="error-msg" id="errorMsg">Invalid credentials. Please try again.</div>
+        <div class="success-msg" id="successMsg" style="color:#34d399; font-size:13px; text-align:center; margin-top:12px; display:none;">Registration successful! Please sign in.</div>
+
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const ROLES = {
+      student: { icon:'🎓', title:'Student Portal', sub:'Sign in to access your academic dashboard', creds:'student1@universe.edu / student123', btnClass:'student' },
+      teacher: { icon:'👨‍🏫', title:'Teacher Portal', sub:'Manage your courses, students & attendance', creds:'teacher1@universe.edu / teacher123', btnClass:'teacher' },
+      admin:   { icon:'🔐', title:'Admin Panel', sub:'Institution-wide management & analytics', creds:'admin@universe.edu / admin123', btnClass:'admin' }
+    };
+    let currentRole = 'student';
+    function openModal(role) {
+      currentRole = role;
+      const r = ROLES[role];
+      document.getElementById('modalIcon').textContent = r.icon;
+      document.getElementById('modalTitle').textContent = r.title;
+      document.getElementById('modalSub').textContent = r.sub;
+      document.getElementById('submitBtn').className = `submit-btn ${r.btnClass}`;
+
+      document.getElementById('emailInput').value = '';
+      document.getElementById('passwordInput').value = '';
+      document.getElementById('nameInput').value = '';
+      switchModalTab('login');
+      document.getElementById('loginModal').classList.add('active');
+      setTimeout(() => document.getElementById('emailInput').focus(), 100);
+    }
+    
+    function quickLogin() {
+      const email = currentRole === 'admin' ? 'admin@universe.edu' : `${currentRole}1@universe.edu`;
+      const pass = `${currentRole}123`;
+      document.getElementById('emailInput').value = email;
+      document.getElementById('passwordInput').value = pass;
+      document.getElementById('submitBtn').click();
+    }
+
+    let currentTab = 'login';
+    function switchModalTab(tab) {
+      currentTab = tab;
+      document.getElementById('tabLogin').style.color = tab === 'login' ? 'var(--text)' : 'var(--muted)';
+      document.getElementById('tabRegister').style.color = tab === 'register' ? 'var(--text)' : 'var(--muted)';
+      document.getElementById('nameGroup').style.display = tab === 'register' ? 'block' : 'none';
+      document.getElementById('demoActions').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('submitBtn').textContent = tab === 'login' ? 'Sign In' : 'Register Account';
+      document.getElementById('errorMsg').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'none';
+    }
+
+    function closeModal() {
+      document.getElementById('loginModal').classList.remove('active');
+      document.getElementById('errorMsg').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'none';
+    }
+    
+    document.getElementById('loginModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+    async function doAuth(e, demoVerify = false) {
+      if(e) e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true; btn.textContent = 'Processing...';
+      document.getElementById('errorMsg').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'none';
+      
+      try {
+        if (currentTab === 'register') {
+          const res = await fetch('/api/auth/register', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ 
+              name: document.getElementById('nameInput').value,
+              email: document.getElementById('emailInput').value, 
+              password: document.getElementById('passwordInput').value,
+              role: currentRole
+            }) 
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) { 
+            document.getElementById('errorMsg').textContent = data.error || 'Registration failed.';
+            document.getElementById('errorMsg').style.display='block'; 
+          } else {
+            document.getElementById('successMsg').style.display = 'block';
+            switchModalTab('login');
+          }
+          btn.disabled=false; btn.textContent = currentTab === 'login' ? 'Sign In' : 'Register Account';
+          return;
+        }
+
+        // Login
+        const res = await fetch('/api/auth/login', { 
+          method:'POST', 
+          headers:{'Content-Type':'application/json'}, 
+          body: JSON.stringify({ 
+            email: document.getElementById('emailInput').value, 
+            password: document.getElementById('passwordInput').value,
+            demoVerify
+          }) 
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) { 
+          document.getElementById('errorMsg').textContent = data.error || 'Invalid credentials.';
+          document.getElementById('errorMsg').style.display='block'; 
+          btn.disabled=false; btn.textContent='Sign In'; 
+          return; 
+        }
+        localStorage.setItem('universe_token', data.token);
+        localStorage.setItem('universe_user', JSON.stringify(data.user));
+        btn.textContent = 'Redirecting...';
+        window.location.href = `/${data.user.role}`;
+      } catch(err) { 
+        document.getElementById('errorMsg').textContent = 'Network error.';
+        document.getElementById('errorMsg').style.display='block'; 
+        btn.disabled=false; btn.textContent=currentTab === 'login' ? 'Sign In' : 'Register Account'; 
+      }
+    }
+    // Check if already logged in
+    const token = localStorage.getItem('universe_token');
+    const user = localStorage.getItem('universe_user');
+    if(token && user) { try { const u = JSON.parse(user); /* Don't auto-redirect on landing */ } catch {} }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+          console.log('SW registered:', reg.scope);
+        }).catch(err => console.log('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,964 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "email": "student1@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 1",
+      "avatar": "S1",
+      "studentId": "STU2026001",
+      "department": "Data Science",
+      "year": 1,
+      "semester": 7,
+      "gpa": "7.0",
+      "phone": "+33 6 12 34 56 01",
+      "address": "1 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c21",
+        "c25",
+        "c17",
+        "c22",
+        "c11"
+      ],
+      "notifications": 3,
+      "joinedOrgs": [
+        "org19",
+        "org8"
+      ]
+    },
+    {
+      "id": "u2",
+      "email": "student2@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 2",
+      "avatar": "S2",
+      "studentId": "STU2026002",
+      "department": "Physics",
+      "year": 1,
+      "semester": 6,
+      "gpa": "9.1",
+      "phone": "+33 6 12 34 56 02",
+      "address": "2 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c16",
+        "c6",
+        "c7",
+        "c22",
+        "c13"
+      ],
+      "notifications": 4,
+      "joinedOrgs": [
+        "org16",
+        "org16"
+      ]
+    },
+    {
+      "id": "u3",
+      "email": "student3@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 3",
+      "avatar": "S3",
+      "studentId": "STU2026003",
+      "department": "Mathematics",
+      "year": 1,
+      "semester": 8,
+      "gpa": "8.4",
+      "phone": "+33 6 12 34 56 03",
+      "address": "3 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c25",
+        "c15",
+        "c5",
+        "c21",
+        "c11"
+      ],
+      "notifications": 3,
+      "joinedOrgs": [
+        "org27",
+        "org12"
+      ]
+    },
+    {
+      "id": "u4",
+      "email": "student4@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 4",
+      "avatar": "S4",
+      "studentId": "STU2026004",
+      "department": "Physics",
+      "year": 3,
+      "semester": 2,
+      "gpa": "6.5",
+      "phone": "+33 6 12 34 56 04",
+      "address": "4 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c15",
+        "c13",
+        "c22",
+        "c5",
+        "c7"
+      ],
+      "notifications": 4,
+      "joinedOrgs": [
+        "org25",
+        "org15"
+      ]
+    },
+    {
+      "id": "u5",
+      "email": "student5@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 5",
+      "avatar": "S5",
+      "studentId": "STU2026005",
+      "department": "Mathematics",
+      "year": 4,
+      "semester": 5,
+      "gpa": "9.7",
+      "phone": "+33 6 12 34 56 05",
+      "address": "5 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c24",
+        "c12",
+        "c17",
+        "c25",
+        "c23"
+      ],
+      "notifications": 4,
+      "joinedOrgs": [
+        "org13",
+        "org22"
+      ]
+    },
+    {
+      "id": "u6",
+      "email": "student6@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 6",
+      "avatar": "S6",
+      "studentId": "STU2026006",
+      "department": "Biology",
+      "year": 1,
+      "semester": 4,
+      "gpa": "9.6",
+      "phone": "+33 6 12 34 56 06",
+      "address": "6 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c16",
+        "c9",
+        "c22",
+        "c2",
+        "c20"
+      ],
+      "notifications": 2,
+      "joinedOrgs": [
+        "org25",
+        "org14"
+      ]
+    },
+    {
+      "id": "u7",
+      "email": "student7@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 7",
+      "avatar": "S7",
+      "studentId": "STU2026007",
+      "department": "Computer Science",
+      "year": 2,
+      "semester": 2,
+      "gpa": "9.3",
+      "phone": "+33 6 12 34 56 07",
+      "address": "7 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c17",
+        "c10",
+        "c7",
+        "c6",
+        "c4"
+      ],
+      "notifications": 1,
+      "joinedOrgs": [
+        "org30",
+        "org1"
+      ]
+    },
+    {
+      "id": "u8",
+      "email": "student8@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 8",
+      "avatar": "S8",
+      "studentId": "STU2026008",
+      "department": "Physics",
+      "year": 1,
+      "semester": 3,
+      "gpa": "8.1",
+      "phone": "+33 6 12 34 56 08",
+      "address": "8 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c8",
+        "c18",
+        "c24",
+        "c3",
+        "c13"
+      ],
+      "notifications": 4,
+      "joinedOrgs": [
+        "org6",
+        "org10"
+      ]
+    },
+    {
+      "id": "u9",
+      "email": "student9@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 9",
+      "avatar": "S9",
+      "studentId": "STU2026009",
+      "department": "Data Science",
+      "year": 2,
+      "semester": 2,
+      "gpa": "6.0",
+      "phone": "+33 6 12 34 56 09",
+      "address": "9 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c10",
+        "c13",
+        "c21",
+        "c3",
+        "c8"
+      ],
+      "notifications": 2,
+      "joinedOrgs": [
+        "org15",
+        "org21"
+      ]
+    },
+    {
+      "id": "u10",
+      "email": "student10@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 10",
+      "avatar": "S10",
+      "studentId": "STU20260010",
+      "department": "Computer Science",
+      "year": 3,
+      "semester": 5,
+      "gpa": "9.4",
+      "phone": "+33 6 12 34 56 10",
+      "address": "10 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c21",
+        "c17",
+        "c5",
+        "c4",
+        "c16"
+      ],
+      "notifications": 5,
+      "joinedOrgs": [
+        "org17",
+        "org25"
+      ]
+    },
+    {
+      "id": "u11",
+      "email": "student11@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 11",
+      "avatar": "S11",
+      "studentId": "STU20260011",
+      "department": "Mathematics",
+      "year": 1,
+      "semester": 2,
+      "gpa": "9.0",
+      "phone": "+33 6 12 34 56 11",
+      "address": "11 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c5",
+        "c18",
+        "c4",
+        "c15",
+        "c25"
+      ],
+      "notifications": 4,
+      "joinedOrgs": [
+        "org14",
+        "org19"
+      ]
+    },
+    {
+      "id": "u12",
+      "email": "student12@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 12",
+      "avatar": "S12",
+      "studentId": "STU20260012",
+      "department": "Mathematics",
+      "year": 4,
+      "semester": 4,
+      "gpa": "6.5",
+      "phone": "+33 6 12 34 56 12",
+      "address": "12 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c6",
+        "c22",
+        "c3",
+        "c20",
+        "c8"
+      ],
+      "notifications": 1,
+      "joinedOrgs": [
+        "org28",
+        "org18"
+      ]
+    },
+    {
+      "id": "u13",
+      "email": "student13@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 13",
+      "avatar": "S13",
+      "studentId": "STU20260013",
+      "department": "Biology",
+      "year": 4,
+      "semester": 3,
+      "gpa": "8.0",
+      "phone": "+33 6 12 34 56 13",
+      "address": "13 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c22",
+        "c16",
+        "c7",
+        "c4",
+        "c8"
+      ],
+      "notifications": 4,
+      "joinedOrgs": [
+        "org11",
+        "org17"
+      ]
+    },
+    {
+      "id": "u14",
+      "email": "student14@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 14",
+      "avatar": "S14",
+      "studentId": "STU20260014",
+      "department": "Biology",
+      "year": 1,
+      "semester": 5,
+      "gpa": "8.2",
+      "phone": "+33 6 12 34 56 14",
+      "address": "14 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c2",
+        "c16",
+        "c11",
+        "c4",
+        "c15"
+      ],
+      "notifications": 3,
+      "joinedOrgs": [
+        "org9",
+        "org28"
+      ]
+    },
+    {
+      "id": "u15",
+      "email": "student15@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 15",
+      "avatar": "S15",
+      "studentId": "STU20260015",
+      "department": "Computer Science",
+      "year": 1,
+      "semester": 5,
+      "gpa": "9.8",
+      "phone": "+33 6 12 34 56 15",
+      "address": "15 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c17",
+        "c4",
+        "c1",
+        "c23",
+        "c18"
+      ],
+      "notifications": 2,
+      "joinedOrgs": [
+        "org23",
+        "org28"
+      ]
+    },
+    {
+      "id": "u16",
+      "email": "student16@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 16",
+      "avatar": "S16",
+      "studentId": "STU20260016",
+      "department": "Computer Science",
+      "year": 1,
+      "semester": 7,
+      "gpa": "7.0",
+      "phone": "+33 6 12 34 56 16",
+      "address": "16 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c15",
+        "c12",
+        "c22",
+        "c10",
+        "c16"
+      ],
+      "notifications": 5,
+      "joinedOrgs": [
+        "org15",
+        "org12"
+      ]
+    },
+    {
+      "id": "u17",
+      "email": "student17@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 17",
+      "avatar": "S17",
+      "studentId": "STU20260017",
+      "department": "Mathematics",
+      "year": 1,
+      "semester": 1,
+      "gpa": "6.0",
+      "phone": "+33 6 12 34 56 17",
+      "address": "17 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c11",
+        "c1",
+        "c24",
+        "c6",
+        "c4"
+      ],
+      "notifications": 4,
+      "joinedOrgs": [
+        "org13",
+        "org11"
+      ]
+    },
+    {
+      "id": "u18",
+      "email": "student18@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 18",
+      "avatar": "S18",
+      "studentId": "STU20260018",
+      "department": "Mathematics",
+      "year": 2,
+      "semester": 8,
+      "gpa": "6.5",
+      "phone": "+33 6 12 34 56 18",
+      "address": "18 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c12",
+        "c18",
+        "c2",
+        "c9",
+        "c15"
+      ],
+      "notifications": 1,
+      "joinedOrgs": [
+        "org5",
+        "org29"
+      ]
+    },
+    {
+      "id": "u19",
+      "email": "student19@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 19",
+      "avatar": "S19",
+      "studentId": "STU20260019",
+      "department": "Computer Science",
+      "year": 1,
+      "semester": 8,
+      "gpa": "9.2",
+      "phone": "+33 6 12 34 56 19",
+      "address": "19 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c14",
+        "c11",
+        "c16",
+        "c21",
+        "c8"
+      ],
+      "notifications": 5,
+      "joinedOrgs": [
+        "org9",
+        "org25"
+      ]
+    },
+    {
+      "id": "u20",
+      "email": "student20@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 20",
+      "avatar": "S20",
+      "studentId": "STU20260020",
+      "department": "Physics",
+      "year": 1,
+      "semester": 8,
+      "gpa": "7.7",
+      "phone": "+33 6 12 34 56 20",
+      "address": "20 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c16",
+        "c14",
+        "c2",
+        "c10",
+        "c5"
+      ],
+      "notifications": 1,
+      "joinedOrgs": [
+        "org30",
+        "org5"
+      ]
+    },
+    {
+      "id": "u21",
+      "email": "student21@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 21",
+      "avatar": "S21",
+      "studentId": "STU20260021",
+      "department": "Computer Science",
+      "year": 3,
+      "semester": 2,
+      "gpa": "6.3",
+      "phone": "+33 6 12 34 56 21",
+      "address": "21 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c16",
+        "c7",
+        "c17",
+        "c1",
+        "c6"
+      ],
+      "notifications": 1,
+      "joinedOrgs": [
+        "org28",
+        "org26"
+      ]
+    },
+    {
+      "id": "u22",
+      "email": "student22@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 22",
+      "avatar": "S22",
+      "studentId": "STU20260022",
+      "department": "Physics",
+      "year": 4,
+      "semester": 2,
+      "gpa": "7.0",
+      "phone": "+33 6 12 34 56 22",
+      "address": "22 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c1",
+        "c4",
+        "c3",
+        "c17",
+        "c10"
+      ],
+      "notifications": 0,
+      "joinedOrgs": [
+        "org15",
+        "org4"
+      ]
+    },
+    {
+      "id": "u23",
+      "email": "student23@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 23",
+      "avatar": "S23",
+      "studentId": "STU20260023",
+      "department": "Mathematics",
+      "year": 4,
+      "semester": 3,
+      "gpa": "7.9",
+      "phone": "+33 6 12 34 56 23",
+      "address": "23 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c4",
+        "c24",
+        "c19",
+        "c3",
+        "c6"
+      ],
+      "notifications": 5,
+      "joinedOrgs": [
+        "org8",
+        "org11"
+      ]
+    },
+    {
+      "id": "u24",
+      "email": "student24@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 24",
+      "avatar": "S24",
+      "studentId": "STU20260024",
+      "department": "Computer Science",
+      "year": 1,
+      "semester": 5,
+      "gpa": "6.1",
+      "phone": "+33 6 12 34 56 24",
+      "address": "24 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c25",
+        "c10",
+        "c12",
+        "c21",
+        "c5"
+      ],
+      "notifications": 2,
+      "joinedOrgs": [
+        "org20",
+        "org18"
+      ]
+    },
+    {
+      "id": "u25",
+      "email": "student25@universe.edu",
+      "password": "student123",
+      "role": "student",
+      "name": "Student Name 25",
+      "avatar": "S25",
+      "studentId": "STU20260025",
+      "department": "Mathematics",
+      "year": 3,
+      "semester": 6,
+      "gpa": "9.9",
+      "phone": "+33 6 12 34 56 25",
+      "address": "25 Rue de la Paix, Paris",
+      "enrolledCourses": [
+        "c23",
+        "c11",
+        "c20",
+        "c15",
+        "c12"
+      ],
+      "notifications": 5,
+      "joinedOrgs": [
+        "org17",
+        "org14"
+      ]
+    },
+    {
+      "id": "t1",
+      "email": "teacher1@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 1",
+      "avatar": "T1",
+      "teacherId": "TCH2024001",
+      "department": "Computer Science",
+      "designation": "Lecturer",
+      "phone": "+33 6 34 56 78 01",
+      "coursesTaught": [
+        "c5",
+        "c9",
+        "c11",
+        "c15",
+        "c16",
+        "c18"
+      ],
+      "notifications": 5
+    },
+    {
+      "id": "t2",
+      "email": "teacher2@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 2",
+      "avatar": "T2",
+      "teacherId": "TCH2024002",
+      "department": "Computer Science",
+      "designation": "Associate Professor",
+      "phone": "+33 6 34 56 78 02",
+      "coursesTaught": [
+        "c2",
+        "c4",
+        "c14",
+        "c15",
+        "c22"
+      ],
+      "notifications": 3
+    },
+    {
+      "id": "t3",
+      "email": "teacher3@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 3",
+      "avatar": "T3",
+      "teacherId": "TCH2024003",
+      "department": "Physics",
+      "designation": "Associate Professor",
+      "phone": "+33 6 34 56 78 03",
+      "coursesTaught": [
+        "c1",
+        "c22"
+      ],
+      "notifications": 1
+    },
+    {
+      "id": "t4",
+      "email": "teacher4@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 4",
+      "avatar": "T4",
+      "teacherId": "TCH2024004",
+      "department": "Data Science",
+      "designation": "Lecturer",
+      "phone": "+33 6 34 56 78 04",
+      "coursesTaught": [
+        "c13",
+        "c18"
+      ],
+      "notifications": 1
+    },
+    {
+      "id": "t5",
+      "email": "teacher5@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 5",
+      "avatar": "T5",
+      "teacherId": "TCH2024005",
+      "department": "Biology",
+      "designation": "Professor",
+      "phone": "+33 6 34 56 78 05",
+      "coursesTaught": [
+        "c6",
+        "c19",
+        "c20",
+        "c23"
+      ],
+      "notifications": 5
+    },
+    {
+      "id": "t6",
+      "email": "teacher6@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 6",
+      "avatar": "T6",
+      "teacherId": "TCH2024006",
+      "department": "Biology",
+      "designation": "Associate Professor",
+      "phone": "+33 6 34 56 78 06",
+      "coursesTaught": [
+        "c5",
+        "c8",
+        "c10"
+      ],
+      "notifications": 3
+    },
+    {
+      "id": "t7",
+      "email": "teacher7@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 7",
+      "avatar": "T7",
+      "teacherId": "TCH2024007",
+      "department": "Mathematics",
+      "designation": "Professor",
+      "phone": "+33 6 34 56 78 07",
+      "coursesTaught": [],
+      "notifications": 3
+    },
+    {
+      "id": "t8",
+      "email": "teacher8@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 8",
+      "avatar": "T8",
+      "teacherId": "TCH2024008",
+      "department": "Data Science",
+      "designation": "Lecturer",
+      "phone": "+33 6 34 56 78 08",
+      "coursesTaught": [
+        "c2",
+        "c6",
+        "c13",
+        "c14"
+      ],
+      "notifications": 1
+    },
+    {
+      "id": "t9",
+      "email": "teacher9@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 9",
+      "avatar": "T9",
+      "teacherId": "TCH2024009",
+      "department": "Data Science",
+      "designation": "Lecturer",
+      "phone": "+33 6 34 56 78 09",
+      "coursesTaught": [
+        "c8",
+        "c20"
+      ],
+      "notifications": 1
+    },
+    {
+      "id": "t10",
+      "email": "teacher10@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 10",
+      "avatar": "T10",
+      "teacherId": "TCH20240010",
+      "department": "Data Science",
+      "designation": "Associate Professor",
+      "phone": "+33 6 34 56 78 10",
+      "coursesTaught": [
+        "c3",
+        "c4",
+        "c12",
+        "c16",
+        "c19",
+        "c21",
+        "c23",
+        "c25"
+      ],
+      "notifications": 3
+    },
+    {
+      "id": "t11",
+      "email": "teacher11@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 11",
+      "avatar": "T11",
+      "teacherId": "TCH20240011",
+      "department": "Computer Science",
+      "designation": "Associate Professor",
+      "phone": "+33 6 34 56 78 11",
+      "coursesTaught": [
+        "c7",
+        "c12",
+        "c17"
+      ],
+      "notifications": 3
+    },
+    {
+      "id": "t12",
+      "email": "teacher12@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 12",
+      "avatar": "T12",
+      "teacherId": "TCH20240012",
+      "department": "Data Science",
+      "designation": "Lecturer",
+      "phone": "+33 6 34 56 78 12",
+      "coursesTaught": [
+        "c1",
+        "c25"
+      ],
+      "notifications": 5
+    },
+    {
+      "id": "t13",
+      "email": "teacher13@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 13",
+      "avatar": "T13",
+      "teacherId": "TCH20240013",
+      "department": "Mathematics",
+      "designation": "Lecturer",
+      "phone": "+33 6 34 56 78 13",
+      "coursesTaught": [
+        "c10"
+      ],
+      "notifications": 1
+    },
+    {
+      "id": "t14",
+      "email": "teacher14@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 14",
+      "avatar": "T14",
+      "teacherId": "TCH20240014",
+      "department": "Biology",
+      "designation": "Professor",
+      "phone": "+33 6 34 56 78 14",
+      "coursesTaught": [
+        "c24"
+      ],
+      "notifications": 5
+    },
+    {
+      "id": "t15",
+      "email": "teacher15@universe.edu",
+      "password": "teacher123",
+      "role": "teacher",
+      "name": "Prof. Teacher Name 15",
+      "avatar": "T15",
+      "teacherId": "TCH20240015",
+      "department": "Mathematics",
+      "designation": "Associate Professor",
+      "phone": "+33 6 34 56 78 15",
+      "coursesTaught": [
+        "c3",
+        "c9",
+        "c11",
+        "c17",
+        "c21",
+        "c24"
+      ],
+      "notifications": 2
+    },
+    {
+      "id": "a1",
+      "email": "admin@universe.edu",
+      "password": "admin123",
+      "role": "admin",
+      "name": "Dr. Sophie Bernard",
+      "avatar": "SB",
+      "adminId": "ADM2024001",
+      "designation": "University Registrar",
+      "phone": "+33 6 56 78 90 12",
+      "notifications": 15
+    }
+  ]
+}

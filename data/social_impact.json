@@ -1,0 +1,61 @@
+{
+  "initiatives": [
+    {
+      "id": "g1",
+      "title": "Campus Reforestation",
+      "ngo": "Green Earth",
+      "goal": "Plant 500 trees",
+      "status": "In Progress"
+    },
+    {
+      "id": "g2",
+      "title": "Digital Literacy Camp",
+      "ngo": "Tech for All",
+      "goal": "Tutor 200 kids",
+      "status": "Active"
+    },
+    {
+      "id": "g3",
+      "title": "Zero Waste Cafeteria",
+      "ngo": "EcoCampus",
+      "goal": "Reduce waste by 50%",
+      "status": "Active"
+    }
+  ],
+  "studentLogs": [
+    {
+      "studentId": "u1",
+      "type": "volunteer",
+      "initiativeId": "g2",
+      "hours": 15,
+      "date": "2026-09-10"
+    },
+    {
+      "studentId": "u1",
+      "type": "donation",
+      "initiativeId": "g1",
+      "amount": 25.5,
+      "date": "2026-09-12"
+    },
+    {
+      "studentId": "u2",
+      "type": "volunteer",
+      "initiativeId": "g3",
+      "hours": 8,
+      "date": "2026-09-14"
+    },
+    {
+      "studentId": "u1",
+      "type": "donation",
+      "initiativeId": "g2",
+      "amount": 5,
+      "date": "2026-09-17"
+    }
+  ],
+  "campusStats": {
+    "carbonSavedKg": 12450,
+    "paperSavedPages": 85000,
+    "totalDonations": 14505,
+    "totalVolunteerHours": 3200
+  }
+}

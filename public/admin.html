@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniVerse — Admin Panel</title>
+  <link rel="manifest" href="/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/dashboard.css?v=1789728701757"/>
+</head>
+<body>
+  <!-- NOTIFICATION PANEL -->
+  <div class="notif-overlay" id="notifOverlay" onclick="closeNotifPanel()"></div>
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-panel-hdr">
+      <h3>Notifications</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-text" onclick="markAllRead()">Mark all read</button>
+        <button class="notif-close" onclick="closeNotifPanel()">✕</button>
+      </div>
+    </div>
+    <div class="notif-list" id="notifList">
+      <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05)"><strong>New Impact Report</strong><div style="font-size:12px;color:var(--muted)">Review the latest global impact metrics.</div><div style="font-size:10px;color:var(--muted);margin-top:4px">Just now</div></div>
+    </div>
+  </div>
+
+  <div class="bg-orbs"><div class="orb o1" style="background:#f59e0b"></div><div class="orb o2" style="background:#6366f1"></div></div>
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo" style="background:var(--surface-highlight)">🔐</div>
+      <div><div class="brand-name">UniVerse</div><div class="brand-role" style="color:#fde68a">Admin Panel</div></div>
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item active" data-sec="home"><span class="ni">⬡</span><span>Overview</span></li>
+      <li class="nav-item" data-sec="users"><span class="ni">👥</span><span>User Management</span></li>
+      <li class="nav-item" data-sec="attendance"><span class="ni">📊</span><span>Attendance Logs</span></li>
+      <li class="nav-item" data-sec="finance"><span class="ni">💰</span><span>Finance</span></li>
+      <li class="nav-item" data-sec="courses"><span class="ni">📚</span><span>Courses</span></li>
+      <li class="nav-item" data-sec="impact-monitor"><span class="ni">🌱</span><span>Campus Impact</span></li>
+      <li class="nav-item" data-sec="collab-monitor"><span class="ni">🤝</span><span>Collab Monitor</span></li>
+      <li class="nav-item" data-sec="wifi-monitor"><span class="ni">📡</span><span>WiFi & Presence</span></li>
+      <li class="nav-item" data-sec="content-monitor"><span class="ni">📑</span><span>Content Tracking</span></li>
+      <li class="nav-item" data-sec="knowledge-manage"><span class="ni">🧠</span><span>Knowledge Hub</span></li>
+      <li class="nav-item" data-sec="alumni-manage"><span class="ni">🎓</span><span>Alumni Network</span></li>
+      <li class="nav-item" data-sec="career-manage"><span class="ni">💼</span><span>Career Center</span></li>
+      <li class="nav-item" data-sec="inbox-manage"><span class="ni">✉️</span><span>Inbox & Incidents</span></li>
+    </ul>
+    <div class="sidebar-footer">
+      <div class="user-mini" id="sidebarUser"></div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+  <main class="main">
+    <header class="top-bar">
+      <div><h1 class="page-title" id="pageTitle" style="background:var(--surface-highlight);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">University Overview</h1><p class="page-sub" id="pageSub"></p></div>
+      <div class="header-right"><button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()">🔔<span class="notif-badge" id="notifBadge">5</span></button><div class="avatar-chip" id="avatarChip" style="background:var(--surface-highlight)"></div></div>
+    </header>
+    <!-- HOME -->
+    <section class="sec active" id="sec-home">
+      <div class="kpi-row" id="adminKpis" style="grid-template-columns:repeat(4,1fr)"></div>
+      <div class="two-col" style="margin-top:20px">
+        <div class="card"><div class="card-hdr"><h3>Revenue Overview</h3></div><div style="height:220px"><canvas id="revenueChart"></canvas></div></div>
+        <div class="card"><div class="card-hdr"><h3>User Distribution</h3></div><div style="height:220px"><canvas id="userPieChart"></canvas></div></div>
+      </div>
+      <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>Recent Users</h3></div><div id="recentUsers"></div></div>
+    </section>
+    <!-- USERS -->
+    <section class="sec" id="sec-users">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-hdr"><h3>Pending Verifications</h3></div>
+        <div id="verificationsTable"></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><h3>All Users</h3><button class="btn-primary" style="background:var(--surface-highlight)" onclick="openAddUser()">+ Add User</button></div>
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <input id="userSearch" class="form-input" placeholder="Search users..." style="max-width:280px" oninput="filterUsers()"/>
+          <select id="roleFilter" class="form-input" style="max-width:160px" onchange="filterUsers()"><option value="">All roles</option><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select>
+        </div>
+        <div id="usersTable"></div>
+      </div>
+    </section>
+    <!-- ATTENDANCE -->
+    <section class="sec" id="sec-attendance">
+      <div class="kpi-row" id="attKpis" style="grid-template-columns:repeat(3,1fr)"></div>
+      <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>Absence Justifications</h3></div><div id="justifTable"></div></div>
+      <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>Attendance Log</h3></div><div id="attTable"></div></div>
+    </section>
+    <!-- FINANCE -->
+    <section class="sec" id="sec-finance">
+      <div class="kpi-row" id="finKpis" style="grid-template-columns:repeat(3,1fr)"></div>
+      <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>Invoice Overview</h3></div><div id="finTable"></div></div>
+    </section>
+    <!-- COURSES -->
+    <section class="sec" id="sec-courses">
+      <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>All Courses</h3><button class="btn-primary" style="padding:6px 12px;font-size:12px">+ New Course</button></div><div class="courses-grid" id="adminCourses"></div></div>
+    </section>
+    <!-- IMPACT MONITOR -->
+    <section class="sec" id="sec-impact-monitor">
+      <div class="kpi-row" id="impactKpis" style="grid-template-columns:repeat(4,1fr)"></div>
+      <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>Initiatives Monitor</h3></div><div id="impactInitiatives"></div></div>
+    </section>
+    <!-- ANNOUNCEMENTS -->
+    <section class="sec" id="sec-announcements">
+      <div class="card"><div class="card-hdr"><h3>Post Announcement</h3></div>
+        <div class="form-group"><label class="form-label">Title</label><input id="annTitle" class="form-input" placeholder="Announcement title"/></div>
+        <div class="form-group"><label class="form-label">Message</label><textarea id="annMsg" class="form-input" rows="4" placeholder="Write your announcement..." style="resize:vertical"></textarea></div>
+        <div class="form-group"><label class="form-label">Target Audience</label><select id="annTarget" class="form-input"><option value="all">All Users</option><option value="student">Students Only</option><option value="teacher">Teachers Only</option></select></div>
+        <button class="btn-primary" style="background:var(--surface-highlight)" onclick="postAnnouncement()">📢 Post Announcement</button>
+      </div>
+      <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>Recent Announcements</h3></div><div id="annList"></div></div>
+    </section>
+    <!-- ORGS -->
+    <section class="sec" id="sec-orgs"><div class="orgs-grid" id="adminOrgs"></div></section>
+    
+    <!-- COLLAB MONITOR -->
+    <section class="sec" id="sec-collab-monitor">
+      <div class="card"><div class="card-hdr"><h3>Collaboration Monitoring</h3></div><div id="collabMonitorTable"></div></div>
+    </section>
+    
+    <!-- WIFI MONITOR -->
+    <section class="sec" id="sec-wifi-monitor">
+      <div class="card"><div class="card-hdr"><h3>Student WiFi & Presence Log</h3></div><div id="wifiMonitorTable"></div></div>
+    </section>
+
+    <!-- CONTENT MONITOR -->
+    <section class="sec" id="sec-content-monitor">
+      <div class="card"><div class="card-hdr"><h3>Educational Content Tracking</h3></div><div id="contentMonitorTable"></div></div>
+    </section>
+
+    <!-- KNOWLEDGE HUB MANAGE -->
+    <section class="sec" id="sec-knowledge-manage">
+      <div class="card"><div class="card-hdr"><h3>Manage Knowledge Hub</h3><button class="btn-primary" style="background:var(--surface-highlight)" onclick="alert('Open upload modal')">+ Upload Material</button></div>
+        <div id="adminKnowledgeGrid" class="materials-grid" style="margin-top:20px"></div>
+      </div>
+    </section>
+
+    <!-- ALUMNI MANAGE -->
+    <section class="sec" id="sec-alumni-manage">
+      <div class="card"><div class="card-hdr"><h3>Manage Alumni Network</h3><button class="btn-primary" style="background:var(--surface-highlight)" onclick="alert('Open Add Alumni Modal')">+ Add Alumni</button></div>
+        <div id="adminAlumniGrid" class="courses-grid" style="margin-top:20px"></div>
+      </div>
+    </section>
+
+    <!-- CAREER CENTER MANAGE -->
+    <section class="sec" id="sec-career-manage">
+      <div class="card"><div class="card-hdr"><h3>Manage Career Center</h3><button class="btn-primary" style="background:var(--surface-highlight)" onclick="alert('Open Post Job Modal')">+ Post Job</button></div>
+        <div id="adminCareerGrid" class="courses-grid" style="margin-top:20px"></div>
+      </div>
+    </section>
+
+    <!-- INBOX & INCIDENTS -->
+    <section class="sec" id="sec-inbox-manage">
+      <div class="card"><div class="card-hdr"><h3>Messages & Incident Reports</h3></div>
+        <div style="display:flex;gap:20px;height:500px;overflow:hidden;margin-top:20px">
+          <div style="width:250px;border-right:1px solid rgba(255,255,255,0.05);overflow-y:auto;padding-right:16px" id="adminInboxSidebar">
+            <div id="adminInboxList"></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;overflow-y:auto" id="adminInboxDetail">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted)">Select a report or message</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <!-- Add User Modal -->
+  <div class="modal-overlay" id="addUserModal">
+    <div class="modal" style="max-width:460px">
+      <button class="modal-close" onclick="document.getElementById('addUserModal').classList.remove('active')">✕</button>
+      <h2 style="font-family:'Outfit',sans-serif;margin-bottom:20px">Add New User</h2>
+      <div class="form-group"><label class="form-label">Full Name</label><input id="nu_name" class="form-input" placeholder="Full name"/></div>
+      <div class="form-group"><label class="form-label">Email</label><input id="nu_email" class="form-input" type="email" placeholder="user@universe.edu"/></div>
+      <div class="form-group"><label class="form-label">Password</label><input id="nu_pass" class="form-input" type="password" placeholder="Temporary password"/></div>
+      <div class="form-group"><label class="form-label">Role</label><select id="nu_role" class="form-input"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
+      <div class="form-group"><label class="form-label">Department</label><input id="nu_dept" class="form-input" placeholder="e.g. Computer Science"/></div>
+      <button class="btn-primary" style="width:100%;padding:13px;background:var(--surface-highlight)" onclick="addUser()">Create User</button>
+    </div>
+  </div>
+  <div class="chatbot-fab" id="chatFab" style="background:var(--surface-highlight)" onclick="toggleChat()">🤖</div>
+  <div class="chatbot-window" id="chatWindow">
+    <div class="chat-header"><span>🤖 UniBot</span><span style="font-size:11px;color:#68d391">● Online</span><button onclick="toggleChat()" style="background:none;border:none;color:#8896b3;cursor:pointer;font-size:18px">✕</button></div>
+    <div class="chat-messages" id="chatMessages"><div class="chat-msg bot">👋 Hi Admin! I can provide insights about enrollment stats, financial summaries, attendance trends, and platform health. What would you like to know?</div></div>
+    <div class="chat-input-row"><input id="chatInput" class="chat-input" placeholder="Ask anything..." onkeydown="if(event.key==='Enter')sendChat()"/><button class="chat-send" onclick="sendChat()" style="background:var(--surface-highlight)">↑</button></div>
+  </div>
+  <script>
+    const API=''; const token=()=>localStorage.getItem('universe_token'); const user=()=>{try{return JSON.parse(localStorage.getItem('universe_user'));}catch{return null;}};
+    async function api(p,o={}){const r=await fetch(API+p,{headers:{'Authorization':'Bearer '+token(),'Content-Type':'application/json'},...o});if(r.status===401){logout();return null;}return r.json();}
+    function logout(){localStorage.clear();window.location.href='/';}
+    const META={home:{title:'University Overview',sub:'Institution-wide analytics and metrics'},users:{title:'User Management',sub:'Manage students, teachers, and admins'},attendance:{title:'Attendance Logs',sub:'Institution-wide attendance records'},finance:{title:'Finance',sub:'Revenue tracking and fee management'},courses:{title:'All Courses',sub:'University course catalog'},impact_monitor:{title:'Campus Impact',sub:'University social impact and ESG metrics'},collab_monitor:{title:'Collaboration Monitor',sub:'Track active inter-organizational projects'},wifi_monitor:{title:'WiFi & Presence',sub:'Real-time campus network logs'},content_monitor:{title:'Content Tracking',sub:'Monitor student engagement with educational materials'},knowledge_manage:{title:'Knowledge Hub Management',sub:'Manage university resources'},alumni_manage:{title:'Alumni Network',sub:'Manage alumni connections'},career_manage:{title:'Career Center',sub:'Manage job postings'},inbox_manage:{title:'Messages & Incidents',sub:'Review system reports and announcements'}};
+    function switchSection(id){document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.getElementById('sec-'+id).classList.add('active');document.querySelector('[data-sec="'+id+'"]').classList.add('active');const m=META[id.replace('-','_')]||{title:'Dashboard',sub:''};document.getElementById('pageTitle').textContent=m.title;document.getElementById('pageSub').textContent=m.sub;if(loaders[id.replace('-','_')])loaders[id.replace('-','_')]();}
+    const loaders={home:loadHome,users:loadUsers,attendance:loadAttendance,finance:loadFinance,courses:loadCourses,impact_monitor:loadImpactMonitor,collab_monitor:loadCollabMonitor,wifi_monitor:loadWifiMonitor,content_monitor:loadContentMonitor,knowledge_manage:loadAdminKnowledge,alumni_manage:loadAdminAlumni,career_manage:loadAdminCareer,inbox_manage:loadAdminInbox};
+    let adminData=null; let allUsers=[];
+    window.addEventListener('DOMContentLoaded',async()=>{const u=user();if(!u||u.role!=='admin'){window.location.href='/';return;}document.getElementById('sidebarUser').innerHTML=`<div class="user-av" style="background:var(--surface-highlight)">${u.avatar||'SB'}</div><div class="user-info"><div class="user-name">${u.name}</div><div class="user-id">${u.adminId||''}</div></div>`;document.getElementById('avatarChip').textContent=u.avatar||'SB';document.querySelectorAll('.nav-item').forEach(item=>item.addEventListener('click',()=>switchSection(item.dataset.sec)));await loadHome();});
+    async function loadHome(){adminData=await api('/api/admin/stats');if(!adminData)return;const s=adminData.stats;document.getElementById('adminKpis').innerHTML=[['🎓','Total Students',s.totalStudents,'var(--surface-highlight)'],['👨‍🏫','Faculty',s.totalTeachers,'var(--surface-highlight)'],['📊','Attendance',s.overallAttendance+'%','var(--surface-highlight)'],['💰','Revenue','€'+s.totalRevenue.toLocaleString(),'var(--surface-highlight)']].map(([ic,l,v,g])=>`<div class="kpi" style="--kpi-grad:${g}"><div class="kpi-icon">${ic}</div><div class="kpi-lbl">${l}</div><div class="kpi-val">${v}</div></div>`).join('');
+    // Revenue chart
+    const months=['Mar','Apr','May','Jun','Jul','Aug','Sep'];const revenue=[3800,4200,3600,5100,4800,4100,s.totalRevenue];
+    const ctx1=document.getElementById('revenueChart').getContext('2d');new Chart(ctx1,{type:'line',data:{labels:months,datasets:[{label:'Revenue (€)',data:revenue,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:.4,borderWidth:2,pointBackgroundColor:'#f59e0b',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b3',font:{family:'Inter',size:12}}}},scales:{x:{ticks:{color:'#4a5578'},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#4a5578',callback:v=>'€'+v},grid:{color:'rgba(255,255,255,.04)'}}}}});
+    // Pie chart
+    const ctx2=document.getElementById('userPieChart').getContext('2d');new Chart(ctx2,{type:'doughnut',data:{labels:['Students','Teachers','Admins'],datasets:[{data:[s.totalStudents,s.totalTeachers,1],backgroundColor:['rgba(99,102,241,.8)','rgba(6,182,212,.8)','rgba(245,158,11,.8)'],borderColor:'rgba(6,10,20,.8)',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{color:'#8896b3',font:{family:'Inter',size:12},boxWidth:12}}}}});
+    // Recent users
+    document.getElementById('recentUsers').innerHTML=`<table style="width:100%;border-collapse:collapse">${adminData.recentUsers.map(u=>`<tr><td style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:12px"><div class="user-av" style="width:34px;height:34px;font-size:12px;${u.role==='teacher'?'background:var(--surface-highlight)':u.role==='admin'?'background:var(--surface-highlight)':''}">${u.avatar||'AB'}</div><div><div style="font-size:14px;font-weight:600">${u.name}</div><div style="font-size:12px;color:var(--muted)">${u.email}</div></div></div></td><td style="padding:10px 0;border-bottom:1px solid var(--border);text-align:right"><span class="badge-pill ${u.role==='teacher'?'badge-green':u.role==='admin'?'badge-amber':''}">${u.role}</span></td></tr>`).join('')}</table>`;}
+    async function loadUsers(){const data=await api('/api/admin/users');if(!data)return;allUsers=data.users;renderUsers(allUsers);await loadVerifications();}
+    async function loadVerifications(){const data=await api('/api/admin/verifications');if(!data)return;document.getElementById('verificationsTable').innerHTML=data.pendingVerifications.length?`<table style="width:100%;border-collapse:collapse"><thead><tr>${['Name','Email','Role','Department','Action'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px">${h}</th>`).join('')}</tr></thead><tbody>${data.pendingVerifications.map(u=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><div style="display:flex;align-items:center;gap:10px"><div class="user-av" style="width:30px;height:30px;font-size:11px;background:var(--surface)">${u.name?u.name.substring(0,2).toUpperCase():'AB'}</div><div style="font-size:13px;font-weight:600">${u.name||'Pending'}</div></div></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${u.email}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><span class="badge-pill badge-amber">${u.role}</span></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${u.department||'-'}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><button onclick="reviewVerification('${u.email}','approve')" style="background:rgba(16,185,129,.1);color:#10b981;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;margin-right:8px;font-size:12px;">Approve</button><button onclick="reviewVerification('${u.email}','reject')" style="background:rgba(244,63,94,.1);color:var(--rose);border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;">Reject</button></td></tr>`).join('')}</tbody></table>`:'<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No pending verifications.</div>';}
+    async function reviewVerification(email,action){if(!confirm(`Are you sure you want to ${action} this signup?`))return;const res=await api('/api/admin/verifications/review',{method:'POST',body:JSON.stringify({email,action})});if(res?.success){alert(`Successfully ${action}d!`);loadUsers();}}
+    function filterUsers(){const s=document.getElementById('userSearch').value.toLowerCase();const r=document.getElementById('roleFilter').value;renderUsers(allUsers.filter(u=>(u.name.toLowerCase().includes(s)||u.email.toLowerCase().includes(s))&&(!r||u.role===r)));}
+    function renderUsers(users){document.getElementById('usersTable').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr>${['Name','Email','Role','Department','Action'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px">${h}</th>`).join('')}</tr></thead><tbody>${users.map(u=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><div style="display:flex;align-items:center;gap:10px"><div class="user-av" style="width:30px;height:30px;font-size:11px;${u.role==='teacher'?'background:var(--surface-highlight)':u.role==='admin'?'background:var(--surface-highlight)':''}">${u.avatar||'AB'}</div><div style="font-size:13px;font-weight:600">${u.name}</div></div></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${u.email}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><span class="badge-pill ${u.role==='teacher'?'badge-green':u.role==='admin'?'badge-amber':''}">${u.role}</span></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${u.department||'-'}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><button onclick="deleteUser('${u.id}','${u.name}')" style="background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.2);color:var(--rose);padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer">Remove</button></td></tr>`).join('')}</tbody></table>`;}
+    function openAddUser(){document.getElementById('addUserModal').classList.add('active');}
+    async function addUser(){const body={name:document.getElementById('nu_name').value,email:document.getElementById('nu_email').value,password:document.getElementById('nu_pass').value,role:document.getElementById('nu_role').value,department:document.getElementById('nu_dept').value,avatar:document.getElementById('nu_name').value.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()};if(!body.name||!body.email||!body.password){alert('Fill required fields.');return;}const res=await api('/api/admin/users',{method:'POST',body:JSON.stringify(body)});if(res?.success){document.getElementById('addUserModal').classList.remove('active');alert('✅ User created!');loadUsers();}}
+    async function deleteUser(id,name){if(!confirm(`Remove user "${name}"?`))return;await api('/api/admin/users/'+id,{method:'DELETE'});loadUsers();}
+    async function loadAttendance(){const data=await api('/api/admin/attendance');if(!data)return;document.getElementById('attKpis').innerHTML=[['👥','Total Records',data.total,'var(--surface-highlight)'],['✅','Present',data.present,'var(--surface-highlight)'],['❌','Absent',data.absent,'var(--surface-highlight)']].map(([ic,l,v,g])=>`<div class="kpi" style="--kpi-grad:${g}"><div class="kpi-icon">${ic}</div><div class="kpi-lbl">${l}</div><div class="kpi-val">${v}</div></div>`).join('');document.getElementById('attTable').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr>${['Student','Course','Date','Status'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px">${h}</th>`).join('')}</tr></thead><tbody>${data.records.slice(0,20).map(r=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;font-weight:600">${r.studentName||r.studentId}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${r.courseName||r.courseId}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${r.date}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><span class="badge-pill ${r.status==='present'?'badge-green':'badge-red'}">${r.status}</span></td></tr>`).join('')}</tbody></table>`; loadJustifications(); }
+    async function loadJustifications(){const data=await api('/api/admin/justifications');if(!data)return;document.getElementById('justifTable').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr>${['Student','Course','Date','Reason','Details','Status','Action'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px">${h}</th>`).join('')}</tr></thead><tbody>${data.justifications.map(j=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;font-weight:600">${j.studentName}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${j.courseName}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${j.date}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;font-weight:600">${j.reason}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${j.details}">${j.details}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><span class="badge-pill ${j.status==='approved'?'badge-green':j.status==='rejected'?'badge-red':'badge-amber'}">${j.status}</span></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)">${j.status==='pending'?`<button onclick="reviewJustification('${j.id}','approved')" style="background:rgba(16,185,129,.1);color:#10b981;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;margin-right:4px">Approve</button><button onclick="reviewJustification('${j.id}','rejected')" style="background:rgba(244,63,94,.1);color:#f43f5e;border:none;padding:4px 8px;border-radius:4px;cursor:pointer">Reject</button>`:''}</td></tr>`).join('')}</tbody></table>`;}
+    async function reviewJustification(id, status){if(!confirm(`Mark this justification as ${status}?`))return;const res=await api('/api/admin/justifications/review',{method:'POST',body:JSON.stringify({id,status})});if(res?.success){alert('Justification updated!');loadJustifications();}}
+    async function loadFinance(){const data=await api('/api/admin/finance');if(!data)return;document.getElementById('finKpis').innerHTML=[['💰','Total Invoiced','€'+data.summary.total.toLocaleString(),'var(--surface-highlight)'],['✅','Collected','€'+data.summary.collected.toLocaleString(),'var(--surface-highlight)'],['⏳','Pending','€'+data.summary.pending.toLocaleString(),'var(--surface-highlight)']].map(([ic,l,v,g])=>`<div class="kpi" style="--kpi-grad:${g}"><div class="kpi-icon">${ic}</div><div class="kpi-lbl">${l}</div><div class="kpi-val">${v}</div></div>`).join('');document.getElementById('finTable').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr>${['Student','Invoice','Amount','Due Date','Status'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px">${h}</th>`).join('')}</tr></thead><tbody>${data.invoices.map(i=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;font-weight:600">${i.studentName||i.studentId}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${i.title}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-family:'Outfit',sans-serif;font-size:15px;font-weight:700">€${i.amount.toLocaleString()}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${i.dueDate}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><span class="badge-pill ${i.status==='paid'?'badge-green':'badge-amber'}">${i.status}</span></td></tr>`).join('')}</tbody></table>`;}
+    async function loadCourses(){const data=await api('/api/admin/courses');if(!data)return;document.getElementById('adminCourses').innerHTML=data.courses.map(c=>`<div class="course-card"><div class="course-card-top" style="--c-color:${c.color}"><div class="course-code">${c.code}</div><div class="course-name">${c.name}</div><div class="course-teacher">👨‍🏫 ${c.professors?.[0]?.name || 'Staff'}</div><div style="margin-top:10px"><span class="badge-pill">${c.credits} Credits</span><span class="badge-pill" style="margin-left:6px">${c.students.length} Students</span></div></div><div class="course-card-body">${c.schedule.map(s=>`<div class="assignment-row"><span>${s.day} · ${s.time}</span><span style="color:var(--muted)">${s.room}</span></div>`).join('')}</div></div>`).join('');}
+    
+    async function loadImpactMonitor() {
+      const data = await api('/api/admin/impact');
+      if (!data) return;
+      document.getElementById('impactKpis').innerHTML = [
+        ['🌱', 'Carbon Saved', data.campusStats.carbonSavedKg.toLocaleString()+'kg', 'var(--surface-highlight)'],
+        ['📄', 'Paper Saved', data.campusStats.paperSavedPages.toLocaleString(), 'var(--surface-highlight)'],
+        ['💰', 'Donations', '€'+data.campusStats.totalDonations.toLocaleString(), 'var(--surface-highlight)'],
+        ['🕐', 'Volunteer Hrs', data.campusStats.totalVolunteerHours.toLocaleString(), 'var(--surface-highlight)']
+      ].map(([ic, l, v, g]) => `<div class="kpi" style="--kpi-grad:${g}"><div class="kpi-icon">${ic}</div><div class="kpi-lbl">${l}</div><div class="kpi-val">${v}</div></div>`).join('');
+
+      document.getElementById('impactInitiatives').innerHTML = `<table style="width:100%;border-collapse:collapse"><thead><tr>${['Initiative','NGO','Goal','Status'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase">${h}</th>`).join('')}</tr></thead><tbody>${data.initiatives.map(i=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><div style="font-size:13px;font-weight:600">${i.title}</div></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${i.ngo}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${i.goal}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><span class="badge-pill">${i.status}</span></td></tr>`).join('')}</tbody></table>`;
+    }
+
+    async function loadOrgs(){const data=await api('/api/organizations');if(!data)return;document.getElementById('adminOrgs').innerHTML=data.organizations.map(o=>`<div class="org-card"><div class="org-type">${o.type}</div><div class="org-name">${o.name}</div><div class="org-desc">${o.desc||o.description}</div><div class="org-stats"><div class="org-stat"><strong>${o.members.toLocaleString()}</strong> Members</div><div class="org-stat"><strong>${o.volunteerHours.toLocaleString()}h</strong> Vol. Hours</div></div><div class="org-tags">${o.tags.map(t=>`<span class="org-tag">#${t}</span>`).join('')}</div></div>`).join('');}
+    let announcements=[{title:'Exam Schedule Released',msg:'The final examination schedule for Semester 6 has been published.',target:'all',date:'2026-09-15'},{title:'Library Extended Hours',msg:'Library will be open 24/7 during exam week (Oct 12-19).',target:'student',date:'2026-09-10'}];
+    function loadAnnouncements(){document.getElementById('annList').innerHTML=announcements.map(a=>`<div class="team-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px"><div class="team-name">${a.title}</div><span class="badge-pill">${a.target}</span></div><p style="font-size:13px;color:var(--muted);line-height:1.5">${a.msg}</p><div style="font-size:11px;color:var(--dim);margin-top:8px">📅 ${a.date}</div></div>`).join('');}
+    function postAnnouncement(){const t=document.getElementById('annTitle').value;const m=document.getElementById('annMsg').value;const tg=document.getElementById('annTarget').value;if(!t||!m){alert('Fill title and message.');return;}announcements.unshift({title:t,msg:m,target:tg,date:new Date().toISOString().split('T')[0]});document.getElementById('annTitle').value='';document.getElementById('annMsg').value='';alert('✅ Announcement posted!');loadAnnouncements();}
+
+    async function loadCollabMonitor() {
+      const data = await api('/api/admin/collaboration-monitor');
+      if (!data) return;
+      document.getElementById('collabMonitorTable').innerHTML = `<table style="width:100%;border-collapse:collapse"><thead><tr>${['Project','Lead Org','Members','Status'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase">${h}</th>`).join('')}</tr></thead><tbody>${data.projects.map(p=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><div style="font-size:13px;font-weight:600">${p.name}</div></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${p.leadOrg}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${p.members}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><span class="badge-pill">${p.status}</span></td></tr>`).join('')}</tbody></table>`;
+    }
+
+    async function loadWifiMonitor() {
+      const data = await api('/api/admin/wifi');
+      if (!data) return;
+      document.getElementById('wifiMonitorTable').innerHTML = `<table style="width:100%;border-collapse:collapse"><thead><tr>${['Student','Location','Connected At','Disconnected At'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase">${h}</th>`).join('')}</tr></thead><tbody>${data.logs.map(l=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><div style="font-size:13px;font-weight:600">${l.studentName}</div><div style="font-size:11px;color:var(--muted)">${l.studentId}</div></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">📍 ${l.apId}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${new Date(l.connectedAt).toLocaleString()}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${l.disconnectedAt ? new Date(l.disconnectedAt).toLocaleString() : '<span class="badge-pill badge-green">Online</span>'}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    async function loadContentMonitor() {
+      const data = await api('/api/admin/materials-tracking');
+      if (!data) return;
+      document.getElementById('contentMonitorTable').innerHTML = `<table style="width:100%;border-collapse:collapse"><thead><tr>${['Material','Course','Views','Action'].map(h=>`<th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase">${h}</th>`).join('')}</tr></thead><tbody>${data.materials.map(m=>`<tr><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><div style="font-size:13px;font-weight:600">${m.title}</div><div style="font-size:11px;color:var(--muted)">Type: ${m.type}</div></td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${m.courseId}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:var(--muted)">${m.views?.length || 0}</td><td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.04)"><button class="btn-outline" onclick="alert('Student views detailed log would open here')">Details</button></td></tr>`).join('')}</tbody></table>`;
+    }
+
+    let chatHistory=[];function toggleChat(){document.getElementById('chatWindow').classList.toggle('open');}
+    async function sendChat(){const input=document.getElementById('chatInput');const msg=input.value.trim();if(!msg)return;input.value='';const msgs=document.getElementById('chatMessages');msgs.innerHTML+=`<div class="chat-msg user">${msg}</div>`;msgs.innerHTML+=`<div class="chat-msg loading" id="chatLoading">⋯ Thinking...</div>`;msgs.scrollTop=msgs.scrollHeight;chatHistory.push({role:'user',content:msg});try{const res=await api('/api/chatbot',{method:'POST',body:JSON.stringify({message:msg,history:chatHistory.slice(-6),context:{role:'admin',name:user()?.name}})});document.getElementById('chatLoading')?.remove();if(res?.reply){msgs.innerHTML+=`<div class="chat-msg bot">${res.reply}</div>`;chatHistory.push({role:'model',content:res.reply});}}catch{document.getElementById('chatLoading')?.remove();msgs.innerHTML+=`<div class="chat-msg bot">Sorry, I couldn't connect.</div>`;}msgs.scrollTop=msgs.scrollHeight;}
+    
+    async function loadAdminKnowledge() {
+      const data = await api('/api/student/knowledge');
+      if (!data) return;
+      const icons = { 'PDF': '📄', 'DOCX': '📝', 'VIDEO': '🎥' };
+      document.getElementById('adminKnowledgeGrid').innerHTML = data.materials.map(m => `
+        <div class="material-card" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:16px;">
+          <div style="font-size:32px">${icons[m.type]||'🗂'}</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:#f59e0b;font-weight:700">${m.course}</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;margin:4px 0">${m.title}</div>
+            <div style="font-size:12px;color:var(--muted)">${new Date(m.date).toLocaleDateString()} · ${m.size}</div>
+          </div>
+          <div>
+            <button class="btn-outline" style="padding:6px 12px;font-size:12px">Edit</button>
+            <button class="btn-outline" style="padding:6px 12px;font-size:12px;color:var(--rose);border-color:rgba(244,63,94,0.2)">Delete</button>
+          </div>
+        </div>
+      `).join('') || '<div class="empty-state">No materials found.</div>';
+    }
+
+    async function loadAdminAlumni() {
+      const data = await api('/api/student/alumni');
+      if (!data) return;
+      document.getElementById('adminAlumniGrid').innerHTML = data.alumni.map(a => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center">
+          <div style="width:64px;height:64px;border-radius:32px;background:var(--surface-highlight);color:#fff;font-size:24px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">${a.name.charAt(0)}</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700">${a.name}</div>
+          <div style="font-size:12px;color:#f59e0b;margin-bottom:8px">Class of ${a.gradYear}</div>
+          <div style="font-size:14px;color:var(--muted)">${a.role} at ${a.company}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">📍 ${a.location}</div>
+          <button class="btn-outline" style="width:100%;margin-top:16px;">Manage Profile</button>
+        </div>
+      `).join('');
+    }
+
+    async function loadAdminCareer() {
+      const data = await api('/api/student/career');
+      if (!data) return;
+      document.getElementById('adminCareerGrid').innerHTML = data.jobs.map(j => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700">${j.title}</div>
+            <span class="badge-pill badge-green" style="font-size:10px">${j.type}</span>
+          </div>
+          <div style="font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px">🏢 ${j.company}</div>
+          <div style="font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px">📍 ${j.location}</div>
+          <div style="font-size:11px;color:#f59e0b;margin-top:auto;padding-top:12px;border-top:1px dashed rgba(255,255,255,0.1)">Posted: ${j.posted}</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-outline" style="flex:1">Edit</button>
+            <button class="btn-outline" style="flex:1;color:var(--rose);border-color:rgba(244,63,94,0.2)">Remove</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    let adminInboxData = [];
+    async function loadAdminInbox() {
+      const repData = await api('/api/student/inbox'); // Reusing mock for reports
+      const annData = await api('/api/announcements');
+      
+      const reports = (repData?.reports || []).map(r => ({...r, _type: 'report'}));
+      const anns = (annData?.announcements || []).map(a => ({
+        id: a.id,
+        subject: a.title,
+        body: a.msg,
+        sender: a.sender,
+        status: a.target, // Reusing status space for target
+        date: a.date.split('T')[0],
+        _type: 'announcement',
+        raw: a
+      }));
+      
+      adminInboxData = [...reports, ...anns];
+      
+      document.getElementById('adminInboxList').innerHTML = adminInboxData.map(item => `
+        <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:8px;cursor:pointer;border:1px solid transparent;transition:0.2s" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'" onclick="viewAdminMessage('${item.id}')">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <div style="font-weight:600;font-size:13px;color:${item._type==='announcement'?'#06b6d4':(item.status==='Pending'?'var(--amber)':'var(--green)')}">${item._type==='announcement'?'📢 '+item.status:item.status}</div>
+            <div style="font-size:11px;color:var(--muted)">${item.date}</div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.subject}</div>
+        </div>
+      `).join('') || '<div style="font-size:13px;color:var(--muted);text-align:center">No reports or announcements</div>';
+    }
+
+    function viewAdminMessage(id) {
+      const item = adminInboxData.find(x => x.id === id);
+      if(!item) return;
+      
+      if (item._type === 'announcement') {
+        const a = item.raw;
+        document.getElementById('adminInboxDetail').innerHTML = `
+          <div style="padding:24px;border-bottom:1px solid rgba(255,255,255,0.05)">
+            <h2 style="font-family:'Outfit',sans-serif">Edit Announcement</h2>
+            <div style="margin-top:8px;color:var(--muted);font-size:13px">Sent by ${a.sender} on ${item.date}</div>
+          </div>
+          <div style="padding:24px;display:flex;flex-direction:column;gap:16px;flex:1;overflow-y:auto">
+            <div class="form-group"><label class="form-label">Title</label><input type="text" id="editAnnTitle" class="form-input" value="${a.title.replace(/"/g, '&quot;')}" /></div>
+            <div class="form-group"><label class="form-label">Target</label><input type="text" id="editAnnTarget" class="form-input" value="${a.target.replace(/"/g, '&quot;')}" /></div>
+            <div class="form-group"><label class="form-label">Message</label><textarea id="editAnnMsg" class="form-input" style="min-height:150px;resize:vertical">${a.msg}</textarea></div>
+          </div>
+          <div style="padding:24px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:flex-end;gap:10px">
+            <button class="btn-outline" style="color:var(--red);border-color:rgba(239,68,68,0.2)" onclick="deleteAdminAnnouncement('${a.id}')">Delete</button>
+            <button class="btn-primary" style="background:var(--surface-highlight)" onclick="saveAdminAnnouncement('${a.id}')">Save Changes</button>
+          </div>
+        `;
+      } else {
+        document.getElementById('adminInboxDetail').innerHTML = `
+          <div style="padding:24px;border-bottom:1px solid rgba(255,255,255,0.05)">
+            <h2 style="font-family:'Outfit',sans-serif">${item.subject}</h2>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;color:var(--muted);font-size:13px">
+              <div>Status: <span style="color:${item.status==='Pending'?'var(--amber)':'var(--green)'}">${item.status}</span></div>
+              <div>${item.date}</div>
+            </div>
+          </div>
+          <div style="padding:24px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#e2e8f0;flex:1;overflow-y:auto">
+            ${item.body || 'No description provided.'}
+          </div>
+          ${item.status === 'Pending' ? `
+          <div style="padding:24px;border-top:1px solid rgba(255,255,255,0.05);text-align:right">
+            <button class="btn-primary" style="background:var(--surface-highlight)" onclick="showToast('Resolved','Issue marked as resolved','success')">Mark Resolved</button>
+          </div>` : ''}
+        `;
+      }
+    }
+    
+    async function saveAdminAnnouncement(id) {
+      const title = document.getElementById('editAnnTitle').value;
+      const target = document.getElementById('editAnnTarget').value;
+      const msg = document.getElementById('editAnnMsg').value;
+      const res = await api('/api/announcements/' + id, {
+        method: 'PUT',
+        body: JSON.stringify({ title, target, msg })
+      });
+      if (res?.success) {
+        showToast('Saved', 'Announcement updated.', 'success');
+        document.getElementById('adminInboxDetail').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted)">Select a report or message</div>';
+        loadAdminInbox();
+      }
+    }
+    
+    async function deleteAdminAnnouncement(id) {
+      if(!confirm('Delete this announcement?')) return;
+      const res = await api('/api/announcements/' + id, { method: 'DELETE' });
+      if (res?.success) {
+        showToast('Deleted', 'Announcement removed.', 'success');
+        document.getElementById('adminInboxDetail').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted)">Select a report or message</div>';
+        loadAdminInbox();
+      }
+    }
+
+    loadAnnouncements();
+  </script>
+</body>
+</html>

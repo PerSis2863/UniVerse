@@ -1,0 +1,1354 @@
+{
+  "courses": [
+    {
+      "id": "c1",
+      "code": "Phys257",
+      "name": "Course Phys 1",
+      "department": "Phys",
+      "credits": 3,
+      "color": "#a78bfa",
+      "professors": [
+        {
+          "id": "t3",
+          "name": "Prof. Teacher Name 3",
+          "role": "Instructor",
+          "avatar": "T3",
+          "email": "teacher3@universe.edu",
+          "office": "Room 170"
+        },
+        {
+          "id": "t12",
+          "name": "Prof. Teacher Name 12",
+          "role": "Instructor",
+          "avatar": "T12",
+          "email": "teacher12@universe.edu",
+          "office": "Room 270"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "12:00",
+          "room": "Room 252"
+        },
+        {
+          "day": "Thu",
+          "time": "09:00",
+          "room": "Room 129"
+        }
+      ],
+      "students": [
+        "u15",
+        "u17",
+        "u21",
+        "u22"
+      ],
+      "progress": 26,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c2",
+      "code": "DS108",
+      "name": "Course DS 2",
+      "department": "DS",
+      "credits": 4,
+      "color": "#10b981",
+      "professors": [
+        {
+          "id": "t2",
+          "name": "Prof. Teacher Name 2",
+          "role": "Instructor",
+          "avatar": "T2",
+          "email": "teacher2@universe.edu",
+          "office": "Room 226"
+        },
+        {
+          "id": "t8",
+          "name": "Prof. Teacher Name 8",
+          "role": "Instructor",
+          "avatar": "T8",
+          "email": "teacher8@universe.edu",
+          "office": "Room 219"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Mon",
+          "time": "08:00",
+          "room": "Room 128"
+        },
+        {
+          "day": "Mon",
+          "time": "09:00",
+          "room": "Room 226"
+        }
+      ],
+      "students": [
+        "u6",
+        "u14",
+        "u18",
+        "u20"
+      ],
+      "progress": 52,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c3",
+      "code": "Bio458",
+      "name": "Course Bio 3",
+      "department": "Bio",
+      "credits": 4,
+      "color": "#10b981",
+      "professors": [
+        {
+          "id": "t10",
+          "name": "Prof. Teacher Name 10",
+          "role": "Instructor",
+          "avatar": "T10",
+          "email": "teacher10@universe.edu",
+          "office": "Room 278"
+        },
+        {
+          "id": "t15",
+          "name": "Prof. Teacher Name 15",
+          "role": "Instructor",
+          "avatar": "T15",
+          "email": "teacher15@universe.edu",
+          "office": "Room 140"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Thu",
+          "time": "12:00",
+          "room": "Room 280"
+        },
+        {
+          "day": "Fri",
+          "time": "09:00",
+          "room": "Room 298"
+        }
+      ],
+      "students": [
+        "u8",
+        "u9",
+        "u12",
+        "u22",
+        "u23"
+      ],
+      "progress": 32,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c4",
+      "code": "Bio409",
+      "name": "Course Bio 4",
+      "department": "Bio",
+      "credits": 3,
+      "color": "#f59e0b",
+      "professors": [
+        {
+          "id": "t10",
+          "name": "Prof. Teacher Name 10",
+          "role": "Instructor",
+          "avatar": "T10",
+          "email": "teacher10@universe.edu",
+          "office": "Room 243"
+        },
+        {
+          "id": "t2",
+          "name": "Prof. Teacher Name 2",
+          "role": "Instructor",
+          "avatar": "T2",
+          "email": "teacher2@universe.edu",
+          "office": "Room 284"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Wed",
+          "time": "14:00",
+          "room": "Room 193"
+        },
+        {
+          "day": "Mon",
+          "time": "12:00",
+          "room": "Room 282"
+        }
+      ],
+      "students": [
+        "u7",
+        "u10",
+        "u11",
+        "u13",
+        "u14",
+        "u15",
+        "u17",
+        "u22",
+        "u23"
+      ],
+      "progress": 73,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c5",
+      "code": "Bio173",
+      "name": "Course Bio 5",
+      "department": "Bio",
+      "credits": 4,
+      "color": "#8b5cf6",
+      "professors": [
+        {
+          "id": "t1",
+          "name": "Prof. Teacher Name 1",
+          "role": "Instructor",
+          "avatar": "T1",
+          "email": "teacher1@universe.edu",
+          "office": "Room 138"
+        },
+        {
+          "id": "t6",
+          "name": "Prof. Teacher Name 6",
+          "role": "Instructor",
+          "avatar": "T6",
+          "email": "teacher6@universe.edu",
+          "office": "Room 102"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Thu",
+          "time": "10:00",
+          "room": "Room 118"
+        },
+        {
+          "day": "Thu",
+          "time": "12:00",
+          "room": "Room 238"
+        }
+      ],
+      "students": [
+        "u3",
+        "u4",
+        "u10",
+        "u11",
+        "u20",
+        "u24"
+      ],
+      "progress": 28,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c6",
+      "code": "Bio244",
+      "name": "Course Bio 6",
+      "department": "Bio",
+      "credits": 3,
+      "color": "#10b981",
+      "professors": [
+        {
+          "id": "t8",
+          "name": "Prof. Teacher Name 8",
+          "role": "Instructor",
+          "avatar": "T8",
+          "email": "teacher8@universe.edu",
+          "office": "Room 103"
+        },
+        {
+          "id": "t5",
+          "name": "Prof. Teacher Name 5",
+          "role": "Instructor",
+          "avatar": "T5",
+          "email": "teacher5@universe.edu",
+          "office": "Room 255"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Mon",
+          "time": "11:00",
+          "room": "Room 126"
+        },
+        {
+          "day": "Wed",
+          "time": "12:00",
+          "room": "Room 130"
+        }
+      ],
+      "students": [
+        "u2",
+        "u7",
+        "u12",
+        "u17",
+        "u21",
+        "u23"
+      ],
+      "progress": 80,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c7",
+      "code": "CS109",
+      "name": "Course CS 7",
+      "department": "CS",
+      "credits": 2,
+      "color": "#a78bfa",
+      "professors": [
+        {
+          "id": "t11",
+          "name": "Prof. Teacher Name 11",
+          "role": "Instructor",
+          "avatar": "T11",
+          "email": "teacher11@universe.edu",
+          "office": "Room 287"
+        },
+        {
+          "id": "t11",
+          "name": "Prof. Teacher Name 11",
+          "role": "Instructor",
+          "avatar": "T11",
+          "email": "teacher11@universe.edu",
+          "office": "Room 264"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Wed",
+          "time": "14:00",
+          "room": "Room 116"
+        },
+        {
+          "day": "Tue",
+          "time": "12:00",
+          "room": "Room 191"
+        }
+      ],
+      "students": [
+        "u2",
+        "u4",
+        "u7",
+        "u13",
+        "u21"
+      ],
+      "progress": 61,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c8",
+      "code": "CS328",
+      "name": "Course CS 8",
+      "department": "CS",
+      "credits": 3,
+      "color": "#a78bfa",
+      "professors": [
+        {
+          "id": "t6",
+          "name": "Prof. Teacher Name 6",
+          "role": "Instructor",
+          "avatar": "T6",
+          "email": "teacher6@universe.edu",
+          "office": "Room 288"
+        },
+        {
+          "id": "t9",
+          "name": "Prof. Teacher Name 9",
+          "role": "Instructor",
+          "avatar": "T9",
+          "email": "teacher9@universe.edu",
+          "office": "Room 204"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Wed",
+          "time": "15:00",
+          "room": "Room 203"
+        },
+        {
+          "day": "Thu",
+          "time": "14:00",
+          "room": "Room 132"
+        }
+      ],
+      "students": [
+        "u8",
+        "u9",
+        "u12",
+        "u13",
+        "u19"
+      ],
+      "progress": 65,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c9",
+      "code": "Phys384",
+      "name": "Course Phys 9",
+      "department": "Phys",
+      "credits": 4,
+      "color": "#f97316",
+      "professors": [
+        {
+          "id": "t1",
+          "name": "Prof. Teacher Name 1",
+          "role": "Instructor",
+          "avatar": "T1",
+          "email": "teacher1@universe.edu",
+          "office": "Room 232"
+        },
+        {
+          "id": "t15",
+          "name": "Prof. Teacher Name 15",
+          "role": "Instructor",
+          "avatar": "T15",
+          "email": "teacher15@universe.edu",
+          "office": "Room 186"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "08:00",
+          "room": "Room 276"
+        },
+        {
+          "day": "Tue",
+          "time": "15:00",
+          "room": "Room 120"
+        }
+      ],
+      "students": [
+        "u6",
+        "u18"
+      ],
+      "progress": 80,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c10",
+      "code": "DS423",
+      "name": "Course DS 10",
+      "department": "DS",
+      "credits": 3,
+      "color": "#f59e0b",
+      "professors": [
+        {
+          "id": "t6",
+          "name": "Prof. Teacher Name 6",
+          "role": "Instructor",
+          "avatar": "T6",
+          "email": "teacher6@universe.edu",
+          "office": "Room 270"
+        },
+        {
+          "id": "t13",
+          "name": "Prof. Teacher Name 13",
+          "role": "Instructor",
+          "avatar": "T13",
+          "email": "teacher13@universe.edu",
+          "office": "Room 156"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Wed",
+          "time": "08:00",
+          "room": "Room 164"
+        },
+        {
+          "day": "Mon",
+          "time": "09:00",
+          "room": "Room 218"
+        }
+      ],
+      "students": [
+        "u7",
+        "u9",
+        "u16",
+        "u20",
+        "u22",
+        "u24"
+      ],
+      "progress": 37,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c11",
+      "code": "CS186",
+      "name": "Course CS 11",
+      "department": "CS",
+      "credits": 3,
+      "color": "#6366f1",
+      "professors": [
+        {
+          "id": "t15",
+          "name": "Prof. Teacher Name 15",
+          "role": "Instructor",
+          "avatar": "T15",
+          "email": "teacher15@universe.edu",
+          "office": "Room 177"
+        },
+        {
+          "id": "t1",
+          "name": "Prof. Teacher Name 1",
+          "role": "Instructor",
+          "avatar": "T1",
+          "email": "teacher1@universe.edu",
+          "office": "Room 174"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Tue",
+          "time": "15:00",
+          "room": "Room 203"
+        },
+        {
+          "day": "Fri",
+          "time": "08:00",
+          "room": "Room 252"
+        }
+      ],
+      "students": [
+        "u1",
+        "u3",
+        "u14",
+        "u17",
+        "u19",
+        "u25"
+      ],
+      "progress": 89,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c12",
+      "code": "DS453",
+      "name": "Course DS 12",
+      "department": "DS",
+      "credits": 3,
+      "color": "#ec4899",
+      "professors": [
+        {
+          "id": "t11",
+          "name": "Prof. Teacher Name 11",
+          "role": "Instructor",
+          "avatar": "T11",
+          "email": "teacher11@universe.edu",
+          "office": "Room 166"
+        },
+        {
+          "id": "t10",
+          "name": "Prof. Teacher Name 10",
+          "role": "Instructor",
+          "avatar": "T10",
+          "email": "teacher10@universe.edu",
+          "office": "Room 150"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Thu",
+          "time": "08:00",
+          "room": "Room 133"
+        },
+        {
+          "day": "Tue",
+          "time": "15:00",
+          "room": "Room 269"
+        }
+      ],
+      "students": [
+        "u5",
+        "u16",
+        "u18",
+        "u24",
+        "u25"
+      ],
+      "progress": 26,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c13",
+      "code": "Bio239",
+      "name": "Course Bio 13",
+      "department": "Bio",
+      "credits": 4,
+      "color": "#f97316",
+      "professors": [
+        {
+          "id": "t4",
+          "name": "Prof. Teacher Name 4",
+          "role": "Instructor",
+          "avatar": "T4",
+          "email": "teacher4@universe.edu",
+          "office": "Room 277"
+        },
+        {
+          "id": "t8",
+          "name": "Prof. Teacher Name 8",
+          "role": "Instructor",
+          "avatar": "T8",
+          "email": "teacher8@universe.edu",
+          "office": "Room 206"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "16:00",
+          "room": "Room 195"
+        },
+        {
+          "day": "Fri",
+          "time": "12:00",
+          "room": "Room 161"
+        }
+      ],
+      "students": [
+        "u2",
+        "u4",
+        "u8",
+        "u9"
+      ],
+      "progress": 81,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c14",
+      "code": "Phys259",
+      "name": "Course Phys 14",
+      "department": "Phys",
+      "credits": 2,
+      "color": "#f59e0b",
+      "professors": [
+        {
+          "id": "t8",
+          "name": "Prof. Teacher Name 8",
+          "role": "Instructor",
+          "avatar": "T8",
+          "email": "teacher8@universe.edu",
+          "office": "Room 178"
+        },
+        {
+          "id": "t2",
+          "name": "Prof. Teacher Name 2",
+          "role": "Instructor",
+          "avatar": "T2",
+          "email": "teacher2@universe.edu",
+          "office": "Room 123"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "10:00",
+          "room": "Room 243"
+        },
+        {
+          "day": "Thu",
+          "time": "16:00",
+          "room": "Room 179"
+        }
+      ],
+      "students": [
+        "u19",
+        "u20"
+      ],
+      "progress": 78,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c15",
+      "code": "Phys335",
+      "name": "Course Phys 15",
+      "department": "Phys",
+      "credits": 2,
+      "color": "#6366f1",
+      "professors": [
+        {
+          "id": "t1",
+          "name": "Prof. Teacher Name 1",
+          "role": "Instructor",
+          "avatar": "T1",
+          "email": "teacher1@universe.edu",
+          "office": "Room 219"
+        },
+        {
+          "id": "t2",
+          "name": "Prof. Teacher Name 2",
+          "role": "Instructor",
+          "avatar": "T2",
+          "email": "teacher2@universe.edu",
+          "office": "Room 170"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Thu",
+          "time": "14:00",
+          "room": "Room 248"
+        },
+        {
+          "day": "Mon",
+          "time": "15:00",
+          "room": "Room 215"
+        }
+      ],
+      "students": [
+        "u3",
+        "u4",
+        "u11",
+        "u14",
+        "u16",
+        "u18",
+        "u25"
+      ],
+      "progress": 46,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c16",
+      "code": "Math146",
+      "name": "Course Math 16",
+      "department": "Math",
+      "credits": 4,
+      "color": "#a78bfa",
+      "professors": [
+        {
+          "id": "t10",
+          "name": "Prof. Teacher Name 10",
+          "role": "Instructor",
+          "avatar": "T10",
+          "email": "teacher10@universe.edu",
+          "office": "Room 143"
+        },
+        {
+          "id": "t1",
+          "name": "Prof. Teacher Name 1",
+          "role": "Instructor",
+          "avatar": "T1",
+          "email": "teacher1@universe.edu",
+          "office": "Room 249"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Wed",
+          "time": "16:00",
+          "room": "Room 122"
+        },
+        {
+          "day": "Fri",
+          "time": "16:00",
+          "room": "Room 164"
+        }
+      ],
+      "students": [
+        "u2",
+        "u6",
+        "u10",
+        "u13",
+        "u14",
+        "u16",
+        "u19",
+        "u20",
+        "u21"
+      ],
+      "progress": 88,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c17",
+      "code": "Bio300",
+      "name": "Course Bio 17",
+      "department": "Bio",
+      "credits": 4,
+      "color": "#f97316",
+      "professors": [
+        {
+          "id": "t11",
+          "name": "Prof. Teacher Name 11",
+          "role": "Instructor",
+          "avatar": "T11",
+          "email": "teacher11@universe.edu",
+          "office": "Room 198"
+        },
+        {
+          "id": "t15",
+          "name": "Prof. Teacher Name 15",
+          "role": "Instructor",
+          "avatar": "T15",
+          "email": "teacher15@universe.edu",
+          "office": "Room 150"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "08:00",
+          "room": "Room 242"
+        },
+        {
+          "day": "Thu",
+          "time": "09:00",
+          "room": "Room 201"
+        }
+      ],
+      "students": [
+        "u1",
+        "u5",
+        "u7",
+        "u10",
+        "u15",
+        "u21",
+        "u22"
+      ],
+      "progress": 57,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c18",
+      "code": "CS421",
+      "name": "Course CS 18",
+      "department": "CS",
+      "credits": 3,
+      "color": "#06b6d4",
+      "professors": [
+        {
+          "id": "t1",
+          "name": "Prof. Teacher Name 1",
+          "role": "Instructor",
+          "avatar": "T1",
+          "email": "teacher1@universe.edu",
+          "office": "Room 113"
+        },
+        {
+          "id": "t4",
+          "name": "Prof. Teacher Name 4",
+          "role": "Instructor",
+          "avatar": "T4",
+          "email": "teacher4@universe.edu",
+          "office": "Room 166"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Tue",
+          "time": "09:00",
+          "room": "Room 121"
+        },
+        {
+          "day": "Tue",
+          "time": "12:00",
+          "room": "Room 280"
+        }
+      ],
+      "students": [
+        "u8",
+        "u11",
+        "u15",
+        "u18"
+      ],
+      "progress": 35,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c19",
+      "code": "Phys484",
+      "name": "Course Phys 19",
+      "department": "Phys",
+      "credits": 4,
+      "color": "#6366f1",
+      "professors": [
+        {
+          "id": "t10",
+          "name": "Prof. Teacher Name 10",
+          "role": "Instructor",
+          "avatar": "T10",
+          "email": "teacher10@universe.edu",
+          "office": "Room 238"
+        },
+        {
+          "id": "t5",
+          "name": "Prof. Teacher Name 5",
+          "role": "Instructor",
+          "avatar": "T5",
+          "email": "teacher5@universe.edu",
+          "office": "Room 258"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Thu",
+          "time": "12:00",
+          "room": "Room 291"
+        },
+        {
+          "day": "Thu",
+          "time": "12:00",
+          "room": "Room 261"
+        }
+      ],
+      "students": [
+        "u23"
+      ],
+      "progress": 56,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c20",
+      "code": "Phys419",
+      "name": "Course Phys 20",
+      "department": "Phys",
+      "credits": 3,
+      "color": "#a78bfa",
+      "professors": [
+        {
+          "id": "t5",
+          "name": "Prof. Teacher Name 5",
+          "role": "Instructor",
+          "avatar": "T5",
+          "email": "teacher5@universe.edu",
+          "office": "Room 128"
+        },
+        {
+          "id": "t9",
+          "name": "Prof. Teacher Name 9",
+          "role": "Instructor",
+          "avatar": "T9",
+          "email": "teacher9@universe.edu",
+          "office": "Room 115"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "16:00",
+          "room": "Room 241"
+        },
+        {
+          "day": "Thu",
+          "time": "13:00",
+          "room": "Room 156"
+        }
+      ],
+      "students": [
+        "u6",
+        "u12",
+        "u25"
+      ],
+      "progress": 80,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c21",
+      "code": "CS498",
+      "name": "Course CS 21",
+      "department": "CS",
+      "credits": 2,
+      "color": "#6366f1",
+      "professors": [
+        {
+          "id": "t15",
+          "name": "Prof. Teacher Name 15",
+          "role": "Instructor",
+          "avatar": "T15",
+          "email": "teacher15@universe.edu",
+          "office": "Room 227"
+        },
+        {
+          "id": "t10",
+          "name": "Prof. Teacher Name 10",
+          "role": "Instructor",
+          "avatar": "T10",
+          "email": "teacher10@universe.edu",
+          "office": "Room 280"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "11:00",
+          "room": "Room 207"
+        },
+        {
+          "day": "Fri",
+          "time": "13:00",
+          "room": "Room 205"
+        }
+      ],
+      "students": [
+        "u1",
+        "u3",
+        "u9",
+        "u10",
+        "u19",
+        "u24"
+      ],
+      "progress": 16,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c22",
+      "code": "Phys242",
+      "name": "Course Phys 22",
+      "department": "Phys",
+      "credits": 2,
+      "color": "#10b981",
+      "professors": [
+        {
+          "id": "t3",
+          "name": "Prof. Teacher Name 3",
+          "role": "Instructor",
+          "avatar": "T3",
+          "email": "teacher3@universe.edu",
+          "office": "Room 154"
+        },
+        {
+          "id": "t2",
+          "name": "Prof. Teacher Name 2",
+          "role": "Instructor",
+          "avatar": "T2",
+          "email": "teacher2@universe.edu",
+          "office": "Room 254"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "14:00",
+          "room": "Room 282"
+        },
+        {
+          "day": "Tue",
+          "time": "12:00",
+          "room": "Room 250"
+        }
+      ],
+      "students": [
+        "u1",
+        "u2",
+        "u4",
+        "u6",
+        "u12",
+        "u13",
+        "u16"
+      ],
+      "progress": 64,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c23",
+      "code": "Bio329",
+      "name": "Course Bio 23",
+      "department": "Bio",
+      "credits": 4,
+      "color": "#ec4899",
+      "professors": [
+        {
+          "id": "t5",
+          "name": "Prof. Teacher Name 5",
+          "role": "Instructor",
+          "avatar": "T5",
+          "email": "teacher5@universe.edu",
+          "office": "Room 154"
+        },
+        {
+          "id": "t10",
+          "name": "Prof. Teacher Name 10",
+          "role": "Instructor",
+          "avatar": "T10",
+          "email": "teacher10@universe.edu",
+          "office": "Room 136"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Fri",
+          "time": "14:00",
+          "room": "Room 299"
+        },
+        {
+          "day": "Tue",
+          "time": "10:00",
+          "room": "Room 211"
+        }
+      ],
+      "students": [
+        "u5",
+        "u15",
+        "u25"
+      ],
+      "progress": 26,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c24",
+      "code": "Bio390",
+      "name": "Course Bio 24",
+      "department": "Bio",
+      "credits": 4,
+      "color": "#8b5cf6",
+      "professors": [
+        {
+          "id": "t14",
+          "name": "Prof. Teacher Name 14",
+          "role": "Instructor",
+          "avatar": "T14",
+          "email": "teacher14@universe.edu",
+          "office": "Room 234"
+        },
+        {
+          "id": "t15",
+          "name": "Prof. Teacher Name 15",
+          "role": "Instructor",
+          "avatar": "T15",
+          "email": "teacher15@universe.edu",
+          "office": "Room 209"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Mon",
+          "time": "12:00",
+          "room": "Room 270"
+        },
+        {
+          "day": "Wed",
+          "time": "13:00",
+          "room": "Room 200"
+        }
+      ],
+      "students": [
+        "u5",
+        "u8",
+        "u17",
+        "u23"
+      ],
+      "progress": 37,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    },
+    {
+      "id": "c25",
+      "code": "DS238",
+      "name": "Course DS 25",
+      "department": "DS",
+      "credits": 3,
+      "color": "#a78bfa",
+      "professors": [
+        {
+          "id": "t12",
+          "name": "Prof. Teacher Name 12",
+          "role": "Instructor",
+          "avatar": "T12",
+          "email": "teacher12@universe.edu",
+          "office": "Room 258"
+        },
+        {
+          "id": "t10",
+          "name": "Prof. Teacher Name 10",
+          "role": "Instructor",
+          "avatar": "T10",
+          "email": "teacher10@universe.edu",
+          "office": "Room 199"
+        }
+      ],
+      "schedule": [
+        {
+          "day": "Wed",
+          "time": "12:00",
+          "room": "Room 281"
+        },
+        {
+          "day": "Thu",
+          "time": "13:00",
+          "room": "Room 152"
+        }
+      ],
+      "students": [
+        "u1",
+        "u3",
+        "u5",
+        "u11",
+        "u24"
+      ],
+      "progress": 42,
+      "syllabus": [
+        "Topic 1",
+        "Topic 2",
+        "Topic 3",
+        "Topic 4",
+        "Topic 5",
+        "Topic 6"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6198 @@
+{
+  "assignments": [
+    {
+      "id": "a_u1_c21_1",
+      "studentId": "u1",
+      "courseId": "c21",
+      "title": "Assignment 1",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c21_2",
+      "studentId": "u1",
+      "courseId": "c21",
+      "title": "Assignment 2",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c21_3",
+      "studentId": "u1",
+      "courseId": "c21",
+      "title": "Assignment 3",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c21_4",
+      "studentId": "u1",
+      "courseId": "c21",
+      "title": "Assignment 4",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c25_1",
+      "studentId": "u1",
+      "courseId": "c25",
+      "title": "Assignment 1",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c25_2",
+      "studentId": "u1",
+      "courseId": "c25",
+      "title": "Assignment 2",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c25_3",
+      "studentId": "u1",
+      "courseId": "c25",
+      "title": "Assignment 3",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c25_4",
+      "studentId": "u1",
+      "courseId": "c25",
+      "title": "Assignment 4",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c17_1",
+      "studentId": "u1",
+      "courseId": "c17",
+      "title": "Assignment 1",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c17_2",
+      "studentId": "u1",
+      "courseId": "c17",
+      "title": "Assignment 2",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c17_3",
+      "studentId": "u1",
+      "courseId": "c17",
+      "title": "Assignment 3",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c17_4",
+      "studentId": "u1",
+      "courseId": "c17",
+      "title": "Assignment 4",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c22_1",
+      "studentId": "u1",
+      "courseId": "c22",
+      "title": "Assignment 1",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c22_2",
+      "studentId": "u1",
+      "courseId": "c22",
+      "title": "Assignment 2",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c22_3",
+      "studentId": "u1",
+      "courseId": "c22",
+      "title": "Assignment 3",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c22_4",
+      "studentId": "u1",
+      "courseId": "c22",
+      "title": "Assignment 4",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c11_1",
+      "studentId": "u1",
+      "courseId": "c11",
+      "title": "Assignment 1",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c11_2",
+      "studentId": "u1",
+      "courseId": "c11",
+      "title": "Assignment 2",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c11_3",
+      "studentId": "u1",
+      "courseId": "c11",
+      "title": "Assignment 3",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u1_c11_4",
+      "studentId": "u1",
+      "courseId": "c11",
+      "title": "Assignment 4",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c16_1",
+      "studentId": "u2",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c16_2",
+      "studentId": "u2",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c16_3",
+      "studentId": "u2",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c16_4",
+      "studentId": "u2",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c6_1",
+      "studentId": "u2",
+      "courseId": "c6",
+      "title": "Assignment 1",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c6_2",
+      "studentId": "u2",
+      "courseId": "c6",
+      "title": "Assignment 2",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c6_3",
+      "studentId": "u2",
+      "courseId": "c6",
+      "title": "Assignment 3",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c6_4",
+      "studentId": "u2",
+      "courseId": "c6",
+      "title": "Assignment 4",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c7_1",
+      "studentId": "u2",
+      "courseId": "c7",
+      "title": "Assignment 1",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c7_2",
+      "studentId": "u2",
+      "courseId": "c7",
+      "title": "Assignment 2",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c7_3",
+      "studentId": "u2",
+      "courseId": "c7",
+      "title": "Assignment 3",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c7_4",
+      "studentId": "u2",
+      "courseId": "c7",
+      "title": "Assignment 4",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c22_1",
+      "studentId": "u2",
+      "courseId": "c22",
+      "title": "Assignment 1",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c22_2",
+      "studentId": "u2",
+      "courseId": "c22",
+      "title": "Assignment 2",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c22_3",
+      "studentId": "u2",
+      "courseId": "c22",
+      "title": "Assignment 3",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c22_4",
+      "studentId": "u2",
+      "courseId": "c22",
+      "title": "Assignment 4",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c13_1",
+      "studentId": "u2",
+      "courseId": "c13",
+      "title": "Assignment 1",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c13_2",
+      "studentId": "u2",
+      "courseId": "c13",
+      "title": "Assignment 2",
+      "score": 71,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c13_3",
+      "studentId": "u2",
+      "courseId": "c13",
+      "title": "Assignment 3",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u2_c13_4",
+      "studentId": "u2",
+      "courseId": "c13",
+      "title": "Assignment 4",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c25_1",
+      "studentId": "u3",
+      "courseId": "c25",
+      "title": "Assignment 1",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c25_2",
+      "studentId": "u3",
+      "courseId": "c25",
+      "title": "Assignment 2",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c25_3",
+      "studentId": "u3",
+      "courseId": "c25",
+      "title": "Assignment 3",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c25_4",
+      "studentId": "u3",
+      "courseId": "c25",
+      "title": "Assignment 4",
+      "score": 80,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c15_1",
+      "studentId": "u3",
+      "courseId": "c15",
+      "title": "Assignment 1",
+      "score": 89,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c15_2",
+      "studentId": "u3",
+      "courseId": "c15",
+      "title": "Assignment 2",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c15_3",
+      "studentId": "u3",
+      "courseId": "c15",
+      "title": "Assignment 3",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c15_4",
+      "studentId": "u3",
+      "courseId": "c15",
+      "title": "Assignment 4",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c5_1",
+      "studentId": "u3",
+      "courseId": "c5",
+      "title": "Assignment 1",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c5_2",
+      "studentId": "u3",
+      "courseId": "c5",
+      "title": "Assignment 2",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c5_3",
+      "studentId": "u3",
+      "courseId": "c5",
+      "title": "Assignment 3",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c5_4",
+      "studentId": "u3",
+      "courseId": "c5",
+      "title": "Assignment 4",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c21_1",
+      "studentId": "u3",
+      "courseId": "c21",
+      "title": "Assignment 1",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c21_2",
+      "studentId": "u3",
+      "courseId": "c21",
+      "title": "Assignment 2",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c21_3",
+      "studentId": "u3",
+      "courseId": "c21",
+      "title": "Assignment 3",
+      "score": 71,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c21_4",
+      "studentId": "u3",
+      "courseId": "c21",
+      "title": "Assignment 4",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c11_1",
+      "studentId": "u3",
+      "courseId": "c11",
+      "title": "Assignment 1",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c11_2",
+      "studentId": "u3",
+      "courseId": "c11",
+      "title": "Assignment 2",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c11_3",
+      "studentId": "u3",
+      "courseId": "c11",
+      "title": "Assignment 3",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u3_c11_4",
+      "studentId": "u3",
+      "courseId": "c11",
+      "title": "Assignment 4",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c15_1",
+      "studentId": "u4",
+      "courseId": "c15",
+      "title": "Assignment 1",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c15_2",
+      "studentId": "u4",
+      "courseId": "c15",
+      "title": "Assignment 2",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c15_3",
+      "studentId": "u4",
+      "courseId": "c15",
+      "title": "Assignment 3",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c15_4",
+      "studentId": "u4",
+      "courseId": "c15",
+      "title": "Assignment 4",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c13_1",
+      "studentId": "u4",
+      "courseId": "c13",
+      "title": "Assignment 1",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c13_2",
+      "studentId": "u4",
+      "courseId": "c13",
+      "title": "Assignment 2",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c13_3",
+      "studentId": "u4",
+      "courseId": "c13",
+      "title": "Assignment 3",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c13_4",
+      "studentId": "u4",
+      "courseId": "c13",
+      "title": "Assignment 4",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c22_1",
+      "studentId": "u4",
+      "courseId": "c22",
+      "title": "Assignment 1",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c22_2",
+      "studentId": "u4",
+      "courseId": "c22",
+      "title": "Assignment 2",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c22_3",
+      "studentId": "u4",
+      "courseId": "c22",
+      "title": "Assignment 3",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c22_4",
+      "studentId": "u4",
+      "courseId": "c22",
+      "title": "Assignment 4",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c5_1",
+      "studentId": "u4",
+      "courseId": "c5",
+      "title": "Assignment 1",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c5_2",
+      "studentId": "u4",
+      "courseId": "c5",
+      "title": "Assignment 2",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c5_3",
+      "studentId": "u4",
+      "courseId": "c5",
+      "title": "Assignment 3",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c5_4",
+      "studentId": "u4",
+      "courseId": "c5",
+      "title": "Assignment 4",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c7_1",
+      "studentId": "u4",
+      "courseId": "c7",
+      "title": "Assignment 1",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c7_2",
+      "studentId": "u4",
+      "courseId": "c7",
+      "title": "Assignment 2",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c7_3",
+      "studentId": "u4",
+      "courseId": "c7",
+      "title": "Assignment 3",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u4_c7_4",
+      "studentId": "u4",
+      "courseId": "c7",
+      "title": "Assignment 4",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c24_1",
+      "studentId": "u5",
+      "courseId": "c24",
+      "title": "Assignment 1",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c24_2",
+      "studentId": "u5",
+      "courseId": "c24",
+      "title": "Assignment 2",
+      "score": 89,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c24_3",
+      "studentId": "u5",
+      "courseId": "c24",
+      "title": "Assignment 3",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c24_4",
+      "studentId": "u5",
+      "courseId": "c24",
+      "title": "Assignment 4",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c12_1",
+      "studentId": "u5",
+      "courseId": "c12",
+      "title": "Assignment 1",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c12_2",
+      "studentId": "u5",
+      "courseId": "c12",
+      "title": "Assignment 2",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c12_3",
+      "studentId": "u5",
+      "courseId": "c12",
+      "title": "Assignment 3",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c12_4",
+      "studentId": "u5",
+      "courseId": "c12",
+      "title": "Assignment 4",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c17_1",
+      "studentId": "u5",
+      "courseId": "c17",
+      "title": "Assignment 1",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c17_2",
+      "studentId": "u5",
+      "courseId": "c17",
+      "title": "Assignment 2",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c17_3",
+      "studentId": "u5",
+      "courseId": "c17",
+      "title": "Assignment 3",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c17_4",
+      "studentId": "u5",
+      "courseId": "c17",
+      "title": "Assignment 4",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c25_1",
+      "studentId": "u5",
+      "courseId": "c25",
+      "title": "Assignment 1",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c25_2",
+      "studentId": "u5",
+      "courseId": "c25",
+      "title": "Assignment 2",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c25_3",
+      "studentId": "u5",
+      "courseId": "c25",
+      "title": "Assignment 3",
+      "score": 71,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c25_4",
+      "studentId": "u5",
+      "courseId": "c25",
+      "title": "Assignment 4",
+      "score": 89,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c23_1",
+      "studentId": "u5",
+      "courseId": "c23",
+      "title": "Assignment 1",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c23_2",
+      "studentId": "u5",
+      "courseId": "c23",
+      "title": "Assignment 2",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c23_3",
+      "studentId": "u5",
+      "courseId": "c23",
+      "title": "Assignment 3",
+      "score": 94,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u5_c23_4",
+      "studentId": "u5",
+      "courseId": "c23",
+      "title": "Assignment 4",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c16_1",
+      "studentId": "u6",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c16_2",
+      "studentId": "u6",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c16_3",
+      "studentId": "u6",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c16_4",
+      "studentId": "u6",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c9_1",
+      "studentId": "u6",
+      "courseId": "c9",
+      "title": "Assignment 1",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c9_2",
+      "studentId": "u6",
+      "courseId": "c9",
+      "title": "Assignment 2",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c9_3",
+      "studentId": "u6",
+      "courseId": "c9",
+      "title": "Assignment 3",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c9_4",
+      "studentId": "u6",
+      "courseId": "c9",
+      "title": "Assignment 4",
+      "score": 94,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c22_1",
+      "studentId": "u6",
+      "courseId": "c22",
+      "title": "Assignment 1",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c22_2",
+      "studentId": "u6",
+      "courseId": "c22",
+      "title": "Assignment 2",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c22_3",
+      "studentId": "u6",
+      "courseId": "c22",
+      "title": "Assignment 3",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c22_4",
+      "studentId": "u6",
+      "courseId": "c22",
+      "title": "Assignment 4",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c2_1",
+      "studentId": "u6",
+      "courseId": "c2",
+      "title": "Assignment 1",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c2_2",
+      "studentId": "u6",
+      "courseId": "c2",
+      "title": "Assignment 2",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c2_3",
+      "studentId": "u6",
+      "courseId": "c2",
+      "title": "Assignment 3",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c2_4",
+      "studentId": "u6",
+      "courseId": "c2",
+      "title": "Assignment 4",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c20_1",
+      "studentId": "u6",
+      "courseId": "c20",
+      "title": "Assignment 1",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c20_2",
+      "studentId": "u6",
+      "courseId": "c20",
+      "title": "Assignment 2",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c20_3",
+      "studentId": "u6",
+      "courseId": "c20",
+      "title": "Assignment 3",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u6_c20_4",
+      "studentId": "u6",
+      "courseId": "c20",
+      "title": "Assignment 4",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c17_1",
+      "studentId": "u7",
+      "courseId": "c17",
+      "title": "Assignment 1",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c17_2",
+      "studentId": "u7",
+      "courseId": "c17",
+      "title": "Assignment 2",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c17_3",
+      "studentId": "u7",
+      "courseId": "c17",
+      "title": "Assignment 3",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c17_4",
+      "studentId": "u7",
+      "courseId": "c17",
+      "title": "Assignment 4",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c10_1",
+      "studentId": "u7",
+      "courseId": "c10",
+      "title": "Assignment 1",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c10_2",
+      "studentId": "u7",
+      "courseId": "c10",
+      "title": "Assignment 2",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c10_3",
+      "studentId": "u7",
+      "courseId": "c10",
+      "title": "Assignment 3",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c10_4",
+      "studentId": "u7",
+      "courseId": "c10",
+      "title": "Assignment 4",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c7_1",
+      "studentId": "u7",
+      "courseId": "c7",
+      "title": "Assignment 1",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c7_2",
+      "studentId": "u7",
+      "courseId": "c7",
+      "title": "Assignment 2",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c7_3",
+      "studentId": "u7",
+      "courseId": "c7",
+      "title": "Assignment 3",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c7_4",
+      "studentId": "u7",
+      "courseId": "c7",
+      "title": "Assignment 4",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c6_1",
+      "studentId": "u7",
+      "courseId": "c6",
+      "title": "Assignment 1",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c6_2",
+      "studentId": "u7",
+      "courseId": "c6",
+      "title": "Assignment 2",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c6_3",
+      "studentId": "u7",
+      "courseId": "c6",
+      "title": "Assignment 3",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c6_4",
+      "studentId": "u7",
+      "courseId": "c6",
+      "title": "Assignment 4",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c4_1",
+      "studentId": "u7",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c4_2",
+      "studentId": "u7",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c4_3",
+      "studentId": "u7",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u7_c4_4",
+      "studentId": "u7",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c8_1",
+      "studentId": "u8",
+      "courseId": "c8",
+      "title": "Assignment 1",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c8_2",
+      "studentId": "u8",
+      "courseId": "c8",
+      "title": "Assignment 2",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c8_3",
+      "studentId": "u8",
+      "courseId": "c8",
+      "title": "Assignment 3",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c8_4",
+      "studentId": "u8",
+      "courseId": "c8",
+      "title": "Assignment 4",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c18_1",
+      "studentId": "u8",
+      "courseId": "c18",
+      "title": "Assignment 1",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c18_2",
+      "studentId": "u8",
+      "courseId": "c18",
+      "title": "Assignment 2",
+      "score": 80,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c18_3",
+      "studentId": "u8",
+      "courseId": "c18",
+      "title": "Assignment 3",
+      "score": 94,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c18_4",
+      "studentId": "u8",
+      "courseId": "c18",
+      "title": "Assignment 4",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c24_1",
+      "studentId": "u8",
+      "courseId": "c24",
+      "title": "Assignment 1",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c24_2",
+      "studentId": "u8",
+      "courseId": "c24",
+      "title": "Assignment 2",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c24_3",
+      "studentId": "u8",
+      "courseId": "c24",
+      "title": "Assignment 3",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c24_4",
+      "studentId": "u8",
+      "courseId": "c24",
+      "title": "Assignment 4",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c3_1",
+      "studentId": "u8",
+      "courseId": "c3",
+      "title": "Assignment 1",
+      "score": 80,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c3_2",
+      "studentId": "u8",
+      "courseId": "c3",
+      "title": "Assignment 2",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c3_3",
+      "studentId": "u8",
+      "courseId": "c3",
+      "title": "Assignment 3",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c3_4",
+      "studentId": "u8",
+      "courseId": "c3",
+      "title": "Assignment 4",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c13_1",
+      "studentId": "u8",
+      "courseId": "c13",
+      "title": "Assignment 1",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c13_2",
+      "studentId": "u8",
+      "courseId": "c13",
+      "title": "Assignment 2",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c13_3",
+      "studentId": "u8",
+      "courseId": "c13",
+      "title": "Assignment 3",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u8_c13_4",
+      "studentId": "u8",
+      "courseId": "c13",
+      "title": "Assignment 4",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c10_1",
+      "studentId": "u9",
+      "courseId": "c10",
+      "title": "Assignment 1",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c10_2",
+      "studentId": "u9",
+      "courseId": "c10",
+      "title": "Assignment 2",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c10_3",
+      "studentId": "u9",
+      "courseId": "c10",
+      "title": "Assignment 3",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c10_4",
+      "studentId": "u9",
+      "courseId": "c10",
+      "title": "Assignment 4",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c13_1",
+      "studentId": "u9",
+      "courseId": "c13",
+      "title": "Assignment 1",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c13_2",
+      "studentId": "u9",
+      "courseId": "c13",
+      "title": "Assignment 2",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c13_3",
+      "studentId": "u9",
+      "courseId": "c13",
+      "title": "Assignment 3",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c13_4",
+      "studentId": "u9",
+      "courseId": "c13",
+      "title": "Assignment 4",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c21_1",
+      "studentId": "u9",
+      "courseId": "c21",
+      "title": "Assignment 1",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c21_2",
+      "studentId": "u9",
+      "courseId": "c21",
+      "title": "Assignment 2",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c21_3",
+      "studentId": "u9",
+      "courseId": "c21",
+      "title": "Assignment 3",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c21_4",
+      "studentId": "u9",
+      "courseId": "c21",
+      "title": "Assignment 4",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c3_1",
+      "studentId": "u9",
+      "courseId": "c3",
+      "title": "Assignment 1",
+      "score": 71,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c3_2",
+      "studentId": "u9",
+      "courseId": "c3",
+      "title": "Assignment 2",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c3_3",
+      "studentId": "u9",
+      "courseId": "c3",
+      "title": "Assignment 3",
+      "score": 94,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c3_4",
+      "studentId": "u9",
+      "courseId": "c3",
+      "title": "Assignment 4",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c8_1",
+      "studentId": "u9",
+      "courseId": "c8",
+      "title": "Assignment 1",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c8_2",
+      "studentId": "u9",
+      "courseId": "c8",
+      "title": "Assignment 2",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c8_3",
+      "studentId": "u9",
+      "courseId": "c8",
+      "title": "Assignment 3",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u9_c8_4",
+      "studentId": "u9",
+      "courseId": "c8",
+      "title": "Assignment 4",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c21_1",
+      "studentId": "u10",
+      "courseId": "c21",
+      "title": "Assignment 1",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c21_2",
+      "studentId": "u10",
+      "courseId": "c21",
+      "title": "Assignment 2",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c21_3",
+      "studentId": "u10",
+      "courseId": "c21",
+      "title": "Assignment 3",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c21_4",
+      "studentId": "u10",
+      "courseId": "c21",
+      "title": "Assignment 4",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c17_1",
+      "studentId": "u10",
+      "courseId": "c17",
+      "title": "Assignment 1",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c17_2",
+      "studentId": "u10",
+      "courseId": "c17",
+      "title": "Assignment 2",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c17_3",
+      "studentId": "u10",
+      "courseId": "c17",
+      "title": "Assignment 3",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c17_4",
+      "studentId": "u10",
+      "courseId": "c17",
+      "title": "Assignment 4",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c5_1",
+      "studentId": "u10",
+      "courseId": "c5",
+      "title": "Assignment 1",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c5_2",
+      "studentId": "u10",
+      "courseId": "c5",
+      "title": "Assignment 2",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c5_3",
+      "studentId": "u10",
+      "courseId": "c5",
+      "title": "Assignment 3",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c5_4",
+      "studentId": "u10",
+      "courseId": "c5",
+      "title": "Assignment 4",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c4_1",
+      "studentId": "u10",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c4_2",
+      "studentId": "u10",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 89,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c4_3",
+      "studentId": "u10",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c4_4",
+      "studentId": "u10",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c16_1",
+      "studentId": "u10",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c16_2",
+      "studentId": "u10",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c16_3",
+      "studentId": "u10",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u10_c16_4",
+      "studentId": "u10",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c5_1",
+      "studentId": "u11",
+      "courseId": "c5",
+      "title": "Assignment 1",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c5_2",
+      "studentId": "u11",
+      "courseId": "c5",
+      "title": "Assignment 2",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c5_3",
+      "studentId": "u11",
+      "courseId": "c5",
+      "title": "Assignment 3",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c5_4",
+      "studentId": "u11",
+      "courseId": "c5",
+      "title": "Assignment 4",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c18_1",
+      "studentId": "u11",
+      "courseId": "c18",
+      "title": "Assignment 1",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c18_2",
+      "studentId": "u11",
+      "courseId": "c18",
+      "title": "Assignment 2",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c18_3",
+      "studentId": "u11",
+      "courseId": "c18",
+      "title": "Assignment 3",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c18_4",
+      "studentId": "u11",
+      "courseId": "c18",
+      "title": "Assignment 4",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c4_1",
+      "studentId": "u11",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c4_2",
+      "studentId": "u11",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c4_3",
+      "studentId": "u11",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c4_4",
+      "studentId": "u11",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c15_1",
+      "studentId": "u11",
+      "courseId": "c15",
+      "title": "Assignment 1",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c15_2",
+      "studentId": "u11",
+      "courseId": "c15",
+      "title": "Assignment 2",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c15_3",
+      "studentId": "u11",
+      "courseId": "c15",
+      "title": "Assignment 3",
+      "score": 80,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c15_4",
+      "studentId": "u11",
+      "courseId": "c15",
+      "title": "Assignment 4",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c25_1",
+      "studentId": "u11",
+      "courseId": "c25",
+      "title": "Assignment 1",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c25_2",
+      "studentId": "u11",
+      "courseId": "c25",
+      "title": "Assignment 2",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c25_3",
+      "studentId": "u11",
+      "courseId": "c25",
+      "title": "Assignment 3",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u11_c25_4",
+      "studentId": "u11",
+      "courseId": "c25",
+      "title": "Assignment 4",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c6_1",
+      "studentId": "u12",
+      "courseId": "c6",
+      "title": "Assignment 1",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c6_2",
+      "studentId": "u12",
+      "courseId": "c6",
+      "title": "Assignment 2",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c6_3",
+      "studentId": "u12",
+      "courseId": "c6",
+      "title": "Assignment 3",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c6_4",
+      "studentId": "u12",
+      "courseId": "c6",
+      "title": "Assignment 4",
+      "score": 80,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c22_1",
+      "studentId": "u12",
+      "courseId": "c22",
+      "title": "Assignment 1",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c22_2",
+      "studentId": "u12",
+      "courseId": "c22",
+      "title": "Assignment 2",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c22_3",
+      "studentId": "u12",
+      "courseId": "c22",
+      "title": "Assignment 3",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c22_4",
+      "studentId": "u12",
+      "courseId": "c22",
+      "title": "Assignment 4",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c3_1",
+      "studentId": "u12",
+      "courseId": "c3",
+      "title": "Assignment 1",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c3_2",
+      "studentId": "u12",
+      "courseId": "c3",
+      "title": "Assignment 2",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c3_3",
+      "studentId": "u12",
+      "courseId": "c3",
+      "title": "Assignment 3",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c3_4",
+      "studentId": "u12",
+      "courseId": "c3",
+      "title": "Assignment 4",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c20_1",
+      "studentId": "u12",
+      "courseId": "c20",
+      "title": "Assignment 1",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c20_2",
+      "studentId": "u12",
+      "courseId": "c20",
+      "title": "Assignment 2",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c20_3",
+      "studentId": "u12",
+      "courseId": "c20",
+      "title": "Assignment 3",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c20_4",
+      "studentId": "u12",
+      "courseId": "c20",
+      "title": "Assignment 4",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c8_1",
+      "studentId": "u12",
+      "courseId": "c8",
+      "title": "Assignment 1",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c8_2",
+      "studentId": "u12",
+      "courseId": "c8",
+      "title": "Assignment 2",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c8_3",
+      "studentId": "u12",
+      "courseId": "c8",
+      "title": "Assignment 3",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u12_c8_4",
+      "studentId": "u12",
+      "courseId": "c8",
+      "title": "Assignment 4",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c22_1",
+      "studentId": "u13",
+      "courseId": "c22",
+      "title": "Assignment 1",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c22_2",
+      "studentId": "u13",
+      "courseId": "c22",
+      "title": "Assignment 2",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c22_3",
+      "studentId": "u13",
+      "courseId": "c22",
+      "title": "Assignment 3",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c22_4",
+      "studentId": "u13",
+      "courseId": "c22",
+      "title": "Assignment 4",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c16_1",
+      "studentId": "u13",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 94,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c16_2",
+      "studentId": "u13",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c16_3",
+      "studentId": "u13",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c16_4",
+      "studentId": "u13",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c7_1",
+      "studentId": "u13",
+      "courseId": "c7",
+      "title": "Assignment 1",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c7_2",
+      "studentId": "u13",
+      "courseId": "c7",
+      "title": "Assignment 2",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c7_3",
+      "studentId": "u13",
+      "courseId": "c7",
+      "title": "Assignment 3",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c7_4",
+      "studentId": "u13",
+      "courseId": "c7",
+      "title": "Assignment 4",
+      "score": 71,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c4_1",
+      "studentId": "u13",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c4_2",
+      "studentId": "u13",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c4_3",
+      "studentId": "u13",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 89,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c4_4",
+      "studentId": "u13",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c8_1",
+      "studentId": "u13",
+      "courseId": "c8",
+      "title": "Assignment 1",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c8_2",
+      "studentId": "u13",
+      "courseId": "c8",
+      "title": "Assignment 2",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c8_3",
+      "studentId": "u13",
+      "courseId": "c8",
+      "title": "Assignment 3",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u13_c8_4",
+      "studentId": "u13",
+      "courseId": "c8",
+      "title": "Assignment 4",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c2_1",
+      "studentId": "u14",
+      "courseId": "c2",
+      "title": "Assignment 1",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c2_2",
+      "studentId": "u14",
+      "courseId": "c2",
+      "title": "Assignment 2",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c2_3",
+      "studentId": "u14",
+      "courseId": "c2",
+      "title": "Assignment 3",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c2_4",
+      "studentId": "u14",
+      "courseId": "c2",
+      "title": "Assignment 4",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c16_1",
+      "studentId": "u14",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c16_2",
+      "studentId": "u14",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 80,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c16_3",
+      "studentId": "u14",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c16_4",
+      "studentId": "u14",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c11_1",
+      "studentId": "u14",
+      "courseId": "c11",
+      "title": "Assignment 1",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c11_2",
+      "studentId": "u14",
+      "courseId": "c11",
+      "title": "Assignment 2",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c11_3",
+      "studentId": "u14",
+      "courseId": "c11",
+      "title": "Assignment 3",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c11_4",
+      "studentId": "u14",
+      "courseId": "c11",
+      "title": "Assignment 4",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c4_1",
+      "studentId": "u14",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c4_2",
+      "studentId": "u14",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c4_3",
+      "studentId": "u14",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c4_4",
+      "studentId": "u14",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c15_1",
+      "studentId": "u14",
+      "courseId": "c15",
+      "title": "Assignment 1",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c15_2",
+      "studentId": "u14",
+      "courseId": "c15",
+      "title": "Assignment 2",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c15_3",
+      "studentId": "u14",
+      "courseId": "c15",
+      "title": "Assignment 3",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u14_c15_4",
+      "studentId": "u14",
+      "courseId": "c15",
+      "title": "Assignment 4",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c17_1",
+      "studentId": "u15",
+      "courseId": "c17",
+      "title": "Assignment 1",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c17_2",
+      "studentId": "u15",
+      "courseId": "c17",
+      "title": "Assignment 2",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c17_3",
+      "studentId": "u15",
+      "courseId": "c17",
+      "title": "Assignment 3",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c17_4",
+      "studentId": "u15",
+      "courseId": "c17",
+      "title": "Assignment 4",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c4_1",
+      "studentId": "u15",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c4_2",
+      "studentId": "u15",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c4_3",
+      "studentId": "u15",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c4_4",
+      "studentId": "u15",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c1_1",
+      "studentId": "u15",
+      "courseId": "c1",
+      "title": "Assignment 1",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c1_2",
+      "studentId": "u15",
+      "courseId": "c1",
+      "title": "Assignment 2",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c1_3",
+      "studentId": "u15",
+      "courseId": "c1",
+      "title": "Assignment 3",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c1_4",
+      "studentId": "u15",
+      "courseId": "c1",
+      "title": "Assignment 4",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c23_1",
+      "studentId": "u15",
+      "courseId": "c23",
+      "title": "Assignment 1",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c23_2",
+      "studentId": "u15",
+      "courseId": "c23",
+      "title": "Assignment 2",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c23_3",
+      "studentId": "u15",
+      "courseId": "c23",
+      "title": "Assignment 3",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c23_4",
+      "studentId": "u15",
+      "courseId": "c23",
+      "title": "Assignment 4",
+      "score": 89,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c18_1",
+      "studentId": "u15",
+      "courseId": "c18",
+      "title": "Assignment 1",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c18_2",
+      "studentId": "u15",
+      "courseId": "c18",
+      "title": "Assignment 2",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c18_3",
+      "studentId": "u15",
+      "courseId": "c18",
+      "title": "Assignment 3",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u15_c18_4",
+      "studentId": "u15",
+      "courseId": "c18",
+      "title": "Assignment 4",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c15_1",
+      "studentId": "u16",
+      "courseId": "c15",
+      "title": "Assignment 1",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c15_2",
+      "studentId": "u16",
+      "courseId": "c15",
+      "title": "Assignment 2",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c15_3",
+      "studentId": "u16",
+      "courseId": "c15",
+      "title": "Assignment 3",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c15_4",
+      "studentId": "u16",
+      "courseId": "c15",
+      "title": "Assignment 4",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c12_1",
+      "studentId": "u16",
+      "courseId": "c12",
+      "title": "Assignment 1",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c12_2",
+      "studentId": "u16",
+      "courseId": "c12",
+      "title": "Assignment 2",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c12_3",
+      "studentId": "u16",
+      "courseId": "c12",
+      "title": "Assignment 3",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c12_4",
+      "studentId": "u16",
+      "courseId": "c12",
+      "title": "Assignment 4",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c22_1",
+      "studentId": "u16",
+      "courseId": "c22",
+      "title": "Assignment 1",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c22_2",
+      "studentId": "u16",
+      "courseId": "c22",
+      "title": "Assignment 2",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c22_3",
+      "studentId": "u16",
+      "courseId": "c22",
+      "title": "Assignment 3",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c22_4",
+      "studentId": "u16",
+      "courseId": "c22",
+      "title": "Assignment 4",
+      "score": 89,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c10_1",
+      "studentId": "u16",
+      "courseId": "c10",
+      "title": "Assignment 1",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c10_2",
+      "studentId": "u16",
+      "courseId": "c10",
+      "title": "Assignment 2",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c10_3",
+      "studentId": "u16",
+      "courseId": "c10",
+      "title": "Assignment 3",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c10_4",
+      "studentId": "u16",
+      "courseId": "c10",
+      "title": "Assignment 4",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c16_1",
+      "studentId": "u16",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c16_2",
+      "studentId": "u16",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c16_3",
+      "studentId": "u16",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u16_c16_4",
+      "studentId": "u16",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c11_1",
+      "studentId": "u17",
+      "courseId": "c11",
+      "title": "Assignment 1",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c11_2",
+      "studentId": "u17",
+      "courseId": "c11",
+      "title": "Assignment 2",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c11_3",
+      "studentId": "u17",
+      "courseId": "c11",
+      "title": "Assignment 3",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c11_4",
+      "studentId": "u17",
+      "courseId": "c11",
+      "title": "Assignment 4",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c1_1",
+      "studentId": "u17",
+      "courseId": "c1",
+      "title": "Assignment 1",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c1_2",
+      "studentId": "u17",
+      "courseId": "c1",
+      "title": "Assignment 2",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c1_3",
+      "studentId": "u17",
+      "courseId": "c1",
+      "title": "Assignment 3",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c1_4",
+      "studentId": "u17",
+      "courseId": "c1",
+      "title": "Assignment 4",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c24_1",
+      "studentId": "u17",
+      "courseId": "c24",
+      "title": "Assignment 1",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c24_2",
+      "studentId": "u17",
+      "courseId": "c24",
+      "title": "Assignment 2",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c24_3",
+      "studentId": "u17",
+      "courseId": "c24",
+      "title": "Assignment 3",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c24_4",
+      "studentId": "u17",
+      "courseId": "c24",
+      "title": "Assignment 4",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c6_1",
+      "studentId": "u17",
+      "courseId": "c6",
+      "title": "Assignment 1",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c6_2",
+      "studentId": "u17",
+      "courseId": "c6",
+      "title": "Assignment 2",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c6_3",
+      "studentId": "u17",
+      "courseId": "c6",
+      "title": "Assignment 3",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c6_4",
+      "studentId": "u17",
+      "courseId": "c6",
+      "title": "Assignment 4",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c4_1",
+      "studentId": "u17",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c4_2",
+      "studentId": "u17",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c4_3",
+      "studentId": "u17",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u17_c4_4",
+      "studentId": "u17",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c12_1",
+      "studentId": "u18",
+      "courseId": "c12",
+      "title": "Assignment 1",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c12_2",
+      "studentId": "u18",
+      "courseId": "c12",
+      "title": "Assignment 2",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c12_3",
+      "studentId": "u18",
+      "courseId": "c12",
+      "title": "Assignment 3",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c12_4",
+      "studentId": "u18",
+      "courseId": "c12",
+      "title": "Assignment 4",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c18_1",
+      "studentId": "u18",
+      "courseId": "c18",
+      "title": "Assignment 1",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c18_2",
+      "studentId": "u18",
+      "courseId": "c18",
+      "title": "Assignment 2",
+      "score": 94,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c18_3",
+      "studentId": "u18",
+      "courseId": "c18",
+      "title": "Assignment 3",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c18_4",
+      "studentId": "u18",
+      "courseId": "c18",
+      "title": "Assignment 4",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c2_1",
+      "studentId": "u18",
+      "courseId": "c2",
+      "title": "Assignment 1",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c2_2",
+      "studentId": "u18",
+      "courseId": "c2",
+      "title": "Assignment 2",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c2_3",
+      "studentId": "u18",
+      "courseId": "c2",
+      "title": "Assignment 3",
+      "score": 91,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c2_4",
+      "studentId": "u18",
+      "courseId": "c2",
+      "title": "Assignment 4",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c9_1",
+      "studentId": "u18",
+      "courseId": "c9",
+      "title": "Assignment 1",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c9_2",
+      "studentId": "u18",
+      "courseId": "c9",
+      "title": "Assignment 2",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c9_3",
+      "studentId": "u18",
+      "courseId": "c9",
+      "title": "Assignment 3",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c9_4",
+      "studentId": "u18",
+      "courseId": "c9",
+      "title": "Assignment 4",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c15_1",
+      "studentId": "u18",
+      "courseId": "c15",
+      "title": "Assignment 1",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c15_2",
+      "studentId": "u18",
+      "courseId": "c15",
+      "title": "Assignment 2",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c15_3",
+      "studentId": "u18",
+      "courseId": "c15",
+      "title": "Assignment 3",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u18_c15_4",
+      "studentId": "u18",
+      "courseId": "c15",
+      "title": "Assignment 4",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c14_1",
+      "studentId": "u19",
+      "courseId": "c14",
+      "title": "Assignment 1",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c14_2",
+      "studentId": "u19",
+      "courseId": "c14",
+      "title": "Assignment 2",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c14_3",
+      "studentId": "u19",
+      "courseId": "c14",
+      "title": "Assignment 3",
+      "score": 80,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c14_4",
+      "studentId": "u19",
+      "courseId": "c14",
+      "title": "Assignment 4",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c11_1",
+      "studentId": "u19",
+      "courseId": "c11",
+      "title": "Assignment 1",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c11_2",
+      "studentId": "u19",
+      "courseId": "c11",
+      "title": "Assignment 2",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c11_3",
+      "studentId": "u19",
+      "courseId": "c11",
+      "title": "Assignment 3",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c11_4",
+      "studentId": "u19",
+      "courseId": "c11",
+      "title": "Assignment 4",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c16_1",
+      "studentId": "u19",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c16_2",
+      "studentId": "u19",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c16_3",
+      "studentId": "u19",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c16_4",
+      "studentId": "u19",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c21_1",
+      "studentId": "u19",
+      "courseId": "c21",
+      "title": "Assignment 1",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c21_2",
+      "studentId": "u19",
+      "courseId": "c21",
+      "title": "Assignment 2",
+      "score": 71,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c21_3",
+      "studentId": "u19",
+      "courseId": "c21",
+      "title": "Assignment 3",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c21_4",
+      "studentId": "u19",
+      "courseId": "c21",
+      "title": "Assignment 4",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c8_1",
+      "studentId": "u19",
+      "courseId": "c8",
+      "title": "Assignment 1",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c8_2",
+      "studentId": "u19",
+      "courseId": "c8",
+      "title": "Assignment 2",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c8_3",
+      "studentId": "u19",
+      "courseId": "c8",
+      "title": "Assignment 3",
+      "score": 100,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u19_c8_4",
+      "studentId": "u19",
+      "courseId": "c8",
+      "title": "Assignment 4",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c16_1",
+      "studentId": "u20",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c16_2",
+      "studentId": "u20",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c16_3",
+      "studentId": "u20",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c16_4",
+      "studentId": "u20",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c14_1",
+      "studentId": "u20",
+      "courseId": "c14",
+      "title": "Assignment 1",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c14_2",
+      "studentId": "u20",
+      "courseId": "c14",
+      "title": "Assignment 2",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c14_3",
+      "studentId": "u20",
+      "courseId": "c14",
+      "title": "Assignment 3",
+      "score": 80,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c14_4",
+      "studentId": "u20",
+      "courseId": "c14",
+      "title": "Assignment 4",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c2_1",
+      "studentId": "u20",
+      "courseId": "c2",
+      "title": "Assignment 1",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c2_2",
+      "studentId": "u20",
+      "courseId": "c2",
+      "title": "Assignment 2",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c2_3",
+      "studentId": "u20",
+      "courseId": "c2",
+      "title": "Assignment 3",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c2_4",
+      "studentId": "u20",
+      "courseId": "c2",
+      "title": "Assignment 4",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c10_1",
+      "studentId": "u20",
+      "courseId": "c10",
+      "title": "Assignment 1",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c10_2",
+      "studentId": "u20",
+      "courseId": "c10",
+      "title": "Assignment 2",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c10_3",
+      "studentId": "u20",
+      "courseId": "c10",
+      "title": "Assignment 3",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c10_4",
+      "studentId": "u20",
+      "courseId": "c10",
+      "title": "Assignment 4",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c5_1",
+      "studentId": "u20",
+      "courseId": "c5",
+      "title": "Assignment 1",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c5_2",
+      "studentId": "u20",
+      "courseId": "c5",
+      "title": "Assignment 2",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c5_3",
+      "studentId": "u20",
+      "courseId": "c5",
+      "title": "Assignment 3",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u20_c5_4",
+      "studentId": "u20",
+      "courseId": "c5",
+      "title": "Assignment 4",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c16_1",
+      "studentId": "u21",
+      "courseId": "c16",
+      "title": "Assignment 1",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c16_2",
+      "studentId": "u21",
+      "courseId": "c16",
+      "title": "Assignment 2",
+      "score": 94,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c16_3",
+      "studentId": "u21",
+      "courseId": "c16",
+      "title": "Assignment 3",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c16_4",
+      "studentId": "u21",
+      "courseId": "c16",
+      "title": "Assignment 4",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c7_1",
+      "studentId": "u21",
+      "courseId": "c7",
+      "title": "Assignment 1",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c7_2",
+      "studentId": "u21",
+      "courseId": "c7",
+      "title": "Assignment 2",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c7_3",
+      "studentId": "u21",
+      "courseId": "c7",
+      "title": "Assignment 3",
+      "score": 71,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c7_4",
+      "studentId": "u21",
+      "courseId": "c7",
+      "title": "Assignment 4",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c17_1",
+      "studentId": "u21",
+      "courseId": "c17",
+      "title": "Assignment 1",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c17_2",
+      "studentId": "u21",
+      "courseId": "c17",
+      "title": "Assignment 2",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c17_3",
+      "studentId": "u21",
+      "courseId": "c17",
+      "title": "Assignment 3",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c17_4",
+      "studentId": "u21",
+      "courseId": "c17",
+      "title": "Assignment 4",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c1_1",
+      "studentId": "u21",
+      "courseId": "c1",
+      "title": "Assignment 1",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c1_2",
+      "studentId": "u21",
+      "courseId": "c1",
+      "title": "Assignment 2",
+      "score": 98,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c1_3",
+      "studentId": "u21",
+      "courseId": "c1",
+      "title": "Assignment 3",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c1_4",
+      "studentId": "u21",
+      "courseId": "c1",
+      "title": "Assignment 4",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c6_1",
+      "studentId": "u21",
+      "courseId": "c6",
+      "title": "Assignment 1",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c6_2",
+      "studentId": "u21",
+      "courseId": "c6",
+      "title": "Assignment 2",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c6_3",
+      "studentId": "u21",
+      "courseId": "c6",
+      "title": "Assignment 3",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u21_c6_4",
+      "studentId": "u21",
+      "courseId": "c6",
+      "title": "Assignment 4",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c1_1",
+      "studentId": "u22",
+      "courseId": "c1",
+      "title": "Assignment 1",
+      "score": 72,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c1_2",
+      "studentId": "u22",
+      "courseId": "c1",
+      "title": "Assignment 2",
+      "score": 79,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c1_3",
+      "studentId": "u22",
+      "courseId": "c1",
+      "title": "Assignment 3",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c1_4",
+      "studentId": "u22",
+      "courseId": "c1",
+      "title": "Assignment 4",
+      "score": 87,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c4_1",
+      "studentId": "u22",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c4_2",
+      "studentId": "u22",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c4_3",
+      "studentId": "u22",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 70,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c4_4",
+      "studentId": "u22",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c3_1",
+      "studentId": "u22",
+      "courseId": "c3",
+      "title": "Assignment 1",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c3_2",
+      "studentId": "u22",
+      "courseId": "c3",
+      "title": "Assignment 2",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c3_3",
+      "studentId": "u22",
+      "courseId": "c3",
+      "title": "Assignment 3",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c3_4",
+      "studentId": "u22",
+      "courseId": "c3",
+      "title": "Assignment 4",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c17_1",
+      "studentId": "u22",
+      "courseId": "c17",
+      "title": "Assignment 1",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c17_2",
+      "studentId": "u22",
+      "courseId": "c17",
+      "title": "Assignment 2",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c17_3",
+      "studentId": "u22",
+      "courseId": "c17",
+      "title": "Assignment 3",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c17_4",
+      "studentId": "u22",
+      "courseId": "c17",
+      "title": "Assignment 4",
+      "score": 60,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c10_1",
+      "studentId": "u22",
+      "courseId": "c10",
+      "title": "Assignment 1",
+      "score": 78,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c10_2",
+      "studentId": "u22",
+      "courseId": "c10",
+      "title": "Assignment 2",
+      "score": 96,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c10_3",
+      "studentId": "u22",
+      "courseId": "c10",
+      "title": "Assignment 3",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u22_c10_4",
+      "studentId": "u22",
+      "courseId": "c10",
+      "title": "Assignment 4",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c4_1",
+      "studentId": "u23",
+      "courseId": "c4",
+      "title": "Assignment 1",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c4_2",
+      "studentId": "u23",
+      "courseId": "c4",
+      "title": "Assignment 2",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c4_3",
+      "studentId": "u23",
+      "courseId": "c4",
+      "title": "Assignment 3",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c4_4",
+      "studentId": "u23",
+      "courseId": "c4",
+      "title": "Assignment 4",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c24_1",
+      "studentId": "u23",
+      "courseId": "c24",
+      "title": "Assignment 1",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c24_2",
+      "studentId": "u23",
+      "courseId": "c24",
+      "title": "Assignment 2",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c24_3",
+      "studentId": "u23",
+      "courseId": "c24",
+      "title": "Assignment 3",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c24_4",
+      "studentId": "u23",
+      "courseId": "c24",
+      "title": "Assignment 4",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c19_1",
+      "studentId": "u23",
+      "courseId": "c19",
+      "title": "Assignment 1",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c19_2",
+      "studentId": "u23",
+      "courseId": "c19",
+      "title": "Assignment 2",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c19_3",
+      "studentId": "u23",
+      "courseId": "c19",
+      "title": "Assignment 3",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c19_4",
+      "studentId": "u23",
+      "courseId": "c19",
+      "title": "Assignment 4",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c3_1",
+      "studentId": "u23",
+      "courseId": "c3",
+      "title": "Assignment 1",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c3_2",
+      "studentId": "u23",
+      "courseId": "c3",
+      "title": "Assignment 2",
+      "score": 64,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c3_3",
+      "studentId": "u23",
+      "courseId": "c3",
+      "title": "Assignment 3",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c3_4",
+      "studentId": "u23",
+      "courseId": "c3",
+      "title": "Assignment 4",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c6_1",
+      "studentId": "u23",
+      "courseId": "c6",
+      "title": "Assignment 1",
+      "score": 69,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c6_2",
+      "studentId": "u23",
+      "courseId": "c6",
+      "title": "Assignment 2",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c6_3",
+      "studentId": "u23",
+      "courseId": "c6",
+      "title": "Assignment 3",
+      "score": 68,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u23_c6_4",
+      "studentId": "u23",
+      "courseId": "c6",
+      "title": "Assignment 4",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c25_1",
+      "studentId": "u24",
+      "courseId": "c25",
+      "title": "Assignment 1",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c25_2",
+      "studentId": "u24",
+      "courseId": "c25",
+      "title": "Assignment 2",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c25_3",
+      "studentId": "u24",
+      "courseId": "c25",
+      "title": "Assignment 3",
+      "score": 89,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c25_4",
+      "studentId": "u24",
+      "courseId": "c25",
+      "title": "Assignment 4",
+      "score": 88,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c10_1",
+      "studentId": "u24",
+      "courseId": "c10",
+      "title": "Assignment 1",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c10_2",
+      "studentId": "u24",
+      "courseId": "c10",
+      "title": "Assignment 2",
+      "score": 93,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c10_3",
+      "studentId": "u24",
+      "courseId": "c10",
+      "title": "Assignment 3",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c10_4",
+      "studentId": "u24",
+      "courseId": "c10",
+      "title": "Assignment 4",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c12_1",
+      "studentId": "u24",
+      "courseId": "c12",
+      "title": "Assignment 1",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c12_2",
+      "studentId": "u24",
+      "courseId": "c12",
+      "title": "Assignment 2",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c12_3",
+      "studentId": "u24",
+      "courseId": "c12",
+      "title": "Assignment 3",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c12_4",
+      "studentId": "u24",
+      "courseId": "c12",
+      "title": "Assignment 4",
+      "score": 76,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c21_1",
+      "studentId": "u24",
+      "courseId": "c21",
+      "title": "Assignment 1",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c21_2",
+      "studentId": "u24",
+      "courseId": "c21",
+      "title": "Assignment 2",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c21_3",
+      "studentId": "u24",
+      "courseId": "c21",
+      "title": "Assignment 3",
+      "score": 63,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c21_4",
+      "studentId": "u24",
+      "courseId": "c21",
+      "title": "Assignment 4",
+      "score": 77,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c5_1",
+      "studentId": "u24",
+      "courseId": "c5",
+      "title": "Assignment 1",
+      "score": 92,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c5_2",
+      "studentId": "u24",
+      "courseId": "c5",
+      "title": "Assignment 2",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c5_3",
+      "studentId": "u24",
+      "courseId": "c5",
+      "title": "Assignment 3",
+      "score": 97,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u24_c5_4",
+      "studentId": "u24",
+      "courseId": "c5",
+      "title": "Assignment 4",
+      "score": 99,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c23_1",
+      "studentId": "u25",
+      "courseId": "c23",
+      "title": "Assignment 1",
+      "score": 66,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c23_2",
+      "studentId": "u25",
+      "courseId": "c23",
+      "title": "Assignment 2",
+      "score": 82,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c23_3",
+      "studentId": "u25",
+      "courseId": "c23",
+      "title": "Assignment 3",
+      "score": 74,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c23_4",
+      "studentId": "u25",
+      "courseId": "c23",
+      "title": "Assignment 4",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c11_1",
+      "studentId": "u25",
+      "courseId": "c11",
+      "title": "Assignment 1",
+      "score": 95,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c11_2",
+      "studentId": "u25",
+      "courseId": "c11",
+      "title": "Assignment 2",
+      "score": 65,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c11_3",
+      "studentId": "u25",
+      "courseId": "c11",
+      "title": "Assignment 3",
+      "score": 81,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c11_4",
+      "studentId": "u25",
+      "courseId": "c11",
+      "title": "Assignment 4",
+      "score": 94,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c20_1",
+      "studentId": "u25",
+      "courseId": "c20",
+      "title": "Assignment 1",
+      "score": 85,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c20_2",
+      "studentId": "u25",
+      "courseId": "c20",
+      "title": "Assignment 2",
+      "score": 84,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c20_3",
+      "studentId": "u25",
+      "courseId": "c20",
+      "title": "Assignment 3",
+      "score": 90,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c20_4",
+      "studentId": "u25",
+      "courseId": "c20",
+      "title": "Assignment 4",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c15_1",
+      "studentId": "u25",
+      "courseId": "c15",
+      "title": "Assignment 1",
+      "score": 75,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c15_2",
+      "studentId": "u25",
+      "courseId": "c15",
+      "title": "Assignment 2",
+      "score": 61,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c15_3",
+      "studentId": "u25",
+      "courseId": "c15",
+      "title": "Assignment 3",
+      "score": 67,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c15_4",
+      "studentId": "u25",
+      "courseId": "c15",
+      "title": "Assignment 4",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c12_1",
+      "studentId": "u25",
+      "courseId": "c12",
+      "title": "Assignment 1",
+      "score": 83,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c12_2",
+      "studentId": "u25",
+      "courseId": "c12",
+      "title": "Assignment 2",
+      "score": 73,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c12_3",
+      "studentId": "u25",
+      "courseId": "c12",
+      "title": "Assignment 3",
+      "score": 86,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    },
+    {
+      "id": "a_u25_c12_4",
+      "studentId": "u25",
+      "courseId": "c12",
+      "title": "Assignment 4",
+      "score": 62,
+      "max": 100,
+      "dueDate": "2026-09-17T20:31:13.887Z"
+    }
+  ],
+  "grades": [
+    {
+      "studentId": "u1",
+      "courseId": "c21",
+      "grade": "C",
+      "gradePoint": 6.6,
+      "classRank": {
+        "percentile": 40,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u1",
+      "courseId": "c25",
+      "grade": "A",
+      "gradePoint": 9.3,
+      "classRank": {
+        "percentile": 80,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u1",
+      "courseId": "c17",
+      "grade": "C",
+      "gradePoint": 7.4,
+      "classRank": {
+        "percentile": 53,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u1",
+      "courseId": "c22",
+      "grade": "B",
+      "gradePoint": 8.8,
+      "classRank": {
+        "percentile": 67,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u1",
+      "courseId": "c11",
+      "grade": "A",
+      "gradePoint": 9.9,
+      "classRank": {
+        "percentile": 2,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u2",
+      "courseId": "c16",
+      "grade": "C",
+      "gradePoint": 7,
+      "classRank": {
+        "percentile": 77,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u2",
+      "courseId": "c6",
+      "grade": "A",
+      "gradePoint": 9.9,
+      "classRank": {
+        "percentile": 36,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u2",
+      "courseId": "c7",
+      "grade": "B",
+      "gradePoint": 9,
+      "classRank": {
+        "percentile": 69,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u2",
+      "courseId": "c22",
+      "grade": "C",
+      "gradePoint": 7.2,
+      "classRank": {
+        "percentile": 89,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u2",
+      "courseId": "c13",
+      "grade": "C",
+      "gradePoint": 7.8,
+      "classRank": {
+        "percentile": 67,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u3",
+      "courseId": "c25",
+      "grade": "C",
+      "gradePoint": 6,
+      "classRank": {
+        "percentile": 96,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u3",
+      "courseId": "c15",
+      "grade": "C",
+      "gradePoint": 6.4,
+      "classRank": {
+        "percentile": 54,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u3",
+      "courseId": "c5",
+      "grade": "C",
+      "gradePoint": 6,
+      "classRank": {
+        "percentile": 81,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u3",
+      "courseId": "c21",
+      "grade": "B",
+      "gradePoint": 8.2,
+      "classRank": {
+        "percentile": 7,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u3",
+      "courseId": "c11",
+      "grade": "A",
+      "gradePoint": 9.4,
+      "classRank": {
+        "percentile": 74,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u4",
+      "courseId": "c15",
+      "grade": "C",
+      "gradePoint": 7.6,
+      "classRank": {
+        "percentile": 45,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u4",
+      "courseId": "c13",
+      "grade": "B",
+      "gradePoint": 8.7,
+      "classRank": {
+        "percentile": 94,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u4",
+      "courseId": "c22",
+      "grade": "A",
+      "gradePoint": 9.6,
+      "classRank": {
+        "percentile": 10,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u4",
+      "courseId": "c5",
+      "grade": "A",
+      "gradePoint": 9.4,
+      "classRank": {
+        "percentile": 23,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u4",
+      "courseId": "c7",
+      "grade": "C",
+      "gradePoint": 7.1,
+      "classRank": {
+        "percentile": 53,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u5",
+      "courseId": "c24",
+      "grade": "A",
+      "gradePoint": 9.7,
+      "classRank": {
+        "percentile": 65,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u5",
+      "courseId": "c12",
+      "grade": "A",
+      "gradePoint": 9.9,
+      "classRank": {
+        "percentile": 24,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u5",
+      "courseId": "c17",
+      "grade": "A",
+      "gradePoint": 10,
+      "classRank": {
+        "percentile": 69,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u5",
+      "courseId": "c25",
+      "grade": "B",
+      "gradePoint": 8.1,
+      "classRank": {
+        "percentile": 2,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u5",
+      "courseId": "c23",
+      "grade": "C",
+      "gradePoint": 6.1,
+      "classRank": {
+        "percentile": 14,
+        "totalStudents": 3
+      }
+    },
+    {
+      "studentId": "u6",
+      "courseId": "c16",
+      "grade": "B",
+      "gradePoint": 8.9,
+      "classRank": {
+        "percentile": 49,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u6",
+      "courseId": "c9",
+      "grade": "C",
+      "gradePoint": 7.6,
+      "classRank": {
+        "percentile": 58,
+        "totalStudents": 2
+      }
+    },
+    {
+      "studentId": "u6",
+      "courseId": "c22",
+      "grade": "C",
+      "gradePoint": 7.9,
+      "classRank": {
+        "percentile": 72,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u6",
+      "courseId": "c2",
+      "grade": "B",
+      "gradePoint": 8.1,
+      "classRank": {
+        "percentile": 34,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u6",
+      "courseId": "c20",
+      "grade": "B",
+      "gradePoint": 8.5,
+      "classRank": {
+        "percentile": 36,
+        "totalStudents": 3
+      }
+    },
+    {
+      "studentId": "u7",
+      "courseId": "c17",
+      "grade": "C",
+      "gradePoint": 8,
+      "classRank": {
+        "percentile": 2,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u7",
+      "courseId": "c10",
+      "grade": "C",
+      "gradePoint": 7.8,
+      "classRank": {
+        "percentile": 70,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u7",
+      "courseId": "c7",
+      "grade": "C",
+      "gradePoint": 6.1,
+      "classRank": {
+        "percentile": 34,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u7",
+      "courseId": "c6",
+      "grade": "A",
+      "gradePoint": 9.3,
+      "classRank": {
+        "percentile": 32,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u7",
+      "courseId": "c4",
+      "grade": "B",
+      "gradePoint": 8.1,
+      "classRank": {
+        "percentile": 21,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u8",
+      "courseId": "c8",
+      "grade": "B",
+      "gradePoint": 8.6,
+      "classRank": {
+        "percentile": 27,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u8",
+      "courseId": "c18",
+      "grade": "C",
+      "gradePoint": 6,
+      "classRank": {
+        "percentile": 69,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u8",
+      "courseId": "c24",
+      "grade": "C",
+      "gradePoint": 7.2,
+      "classRank": {
+        "percentile": 64,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u8",
+      "courseId": "c3",
+      "grade": "C",
+      "gradePoint": 7.5,
+      "classRank": {
+        "percentile": 18,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u8",
+      "courseId": "c13",
+      "grade": "A",
+      "gradePoint": 9.1,
+      "classRank": {
+        "percentile": 65,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u9",
+      "courseId": "c10",
+      "grade": "C",
+      "gradePoint": 6.7,
+      "classRank": {
+        "percentile": 9,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u9",
+      "courseId": "c13",
+      "grade": "B",
+      "gradePoint": 8.8,
+      "classRank": {
+        "percentile": 46,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u9",
+      "courseId": "c21",
+      "grade": "B",
+      "gradePoint": 8.6,
+      "classRank": {
+        "percentile": 39,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u9",
+      "courseId": "c3",
+      "grade": "C",
+      "gradePoint": 7.6,
+      "classRank": {
+        "percentile": 84,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u9",
+      "courseId": "c8",
+      "grade": "C",
+      "gradePoint": 7.8,
+      "classRank": {
+        "percentile": 67,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u10",
+      "courseId": "c21",
+      "grade": "B",
+      "gradePoint": 8.3,
+      "classRank": {
+        "percentile": 64,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u10",
+      "courseId": "c17",
+      "grade": "C",
+      "gradePoint": 6.8,
+      "classRank": {
+        "percentile": 46,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u10",
+      "courseId": "c5",
+      "grade": "B",
+      "gradePoint": 8.2,
+      "classRank": {
+        "percentile": 47,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u10",
+      "courseId": "c4",
+      "grade": "B",
+      "gradePoint": 8.9,
+      "classRank": {
+        "percentile": 61,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u10",
+      "courseId": "c16",
+      "grade": "B",
+      "gradePoint": 8.3,
+      "classRank": {
+        "percentile": 16,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u11",
+      "courseId": "c5",
+      "grade": "C",
+      "gradePoint": 7.1,
+      "classRank": {
+        "percentile": 36,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u11",
+      "courseId": "c18",
+      "grade": "C",
+      "gradePoint": 7.1,
+      "classRank": {
+        "percentile": 78,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u11",
+      "courseId": "c4",
+      "grade": "C",
+      "gradePoint": 6.5,
+      "classRank": {
+        "percentile": 29,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u11",
+      "courseId": "c15",
+      "grade": "A",
+      "gradePoint": 9.8,
+      "classRank": {
+        "percentile": 37,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u11",
+      "courseId": "c25",
+      "grade": "A",
+      "gradePoint": 9.5,
+      "classRank": {
+        "percentile": 23,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u12",
+      "courseId": "c6",
+      "grade": "C",
+      "gradePoint": 6.9,
+      "classRank": {
+        "percentile": 69,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u12",
+      "courseId": "c22",
+      "grade": "A",
+      "gradePoint": 9.2,
+      "classRank": {
+        "percentile": 82,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u12",
+      "courseId": "c3",
+      "grade": "A",
+      "gradePoint": 9.9,
+      "classRank": {
+        "percentile": 72,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u12",
+      "courseId": "c20",
+      "grade": "C",
+      "gradePoint": 7.3,
+      "classRank": {
+        "percentile": 29,
+        "totalStudents": 3
+      }
+    },
+    {
+      "studentId": "u12",
+      "courseId": "c8",
+      "grade": "C",
+      "gradePoint": 6.7,
+      "classRank": {
+        "percentile": 62,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u13",
+      "courseId": "c22",
+      "grade": "B",
+      "gradePoint": 8.6,
+      "classRank": {
+        "percentile": 64,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u13",
+      "courseId": "c16",
+      "grade": "C",
+      "gradePoint": 6.9,
+      "classRank": {
+        "percentile": 50,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u13",
+      "courseId": "c7",
+      "grade": "B",
+      "gradePoint": 8.3,
+      "classRank": {
+        "percentile": 61,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u13",
+      "courseId": "c4",
+      "grade": "C",
+      "gradePoint": 6.4,
+      "classRank": {
+        "percentile": 51,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u13",
+      "courseId": "c8",
+      "grade": "C",
+      "gradePoint": 7.7,
+      "classRank": {
+        "percentile": 27,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u14",
+      "courseId": "c2",
+      "grade": "C",
+      "gradePoint": 7.7,
+      "classRank": {
+        "percentile": 89,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u14",
+      "courseId": "c16",
+      "grade": "B",
+      "gradePoint": 9,
+      "classRank": {
+        "percentile": 15,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u14",
+      "courseId": "c11",
+      "grade": "A",
+      "gradePoint": 10,
+      "classRank": {
+        "percentile": 9,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u14",
+      "courseId": "c4",
+      "grade": "C",
+      "gradePoint": 7.5,
+      "classRank": {
+        "percentile": 8,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u14",
+      "courseId": "c15",
+      "grade": "B",
+      "gradePoint": 8.2,
+      "classRank": {
+        "percentile": 27,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u15",
+      "courseId": "c17",
+      "grade": "B",
+      "gradePoint": 8.4,
+      "classRank": {
+        "percentile": 51,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u15",
+      "courseId": "c4",
+      "grade": "C",
+      "gradePoint": 8,
+      "classRank": {
+        "percentile": 97,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u15",
+      "courseId": "c1",
+      "grade": "A",
+      "gradePoint": 9.8,
+      "classRank": {
+        "percentile": 58,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u15",
+      "courseId": "c23",
+      "grade": "C",
+      "gradePoint": 7.3,
+      "classRank": {
+        "percentile": 84,
+        "totalStudents": 3
+      }
+    },
+    {
+      "studentId": "u15",
+      "courseId": "c18",
+      "grade": "C",
+      "gradePoint": 7.5,
+      "classRank": {
+        "percentile": 15,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u16",
+      "courseId": "c15",
+      "grade": "C",
+      "gradePoint": 7.7,
+      "classRank": {
+        "percentile": 71,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u16",
+      "courseId": "c12",
+      "grade": "A",
+      "gradePoint": 9.7,
+      "classRank": {
+        "percentile": 13,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u16",
+      "courseId": "c22",
+      "grade": "B",
+      "gradePoint": 8.8,
+      "classRank": {
+        "percentile": 48,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u16",
+      "courseId": "c10",
+      "grade": "C",
+      "gradePoint": 7,
+      "classRank": {
+        "percentile": 19,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u16",
+      "courseId": "c16",
+      "grade": "C",
+      "gradePoint": 6.6,
+      "classRank": {
+        "percentile": 98,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u17",
+      "courseId": "c11",
+      "grade": "C",
+      "gradePoint": 7.5,
+      "classRank": {
+        "percentile": 86,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u17",
+      "courseId": "c1",
+      "grade": "A",
+      "gradePoint": 9.4,
+      "classRank": {
+        "percentile": 4,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u17",
+      "courseId": "c24",
+      "grade": "A",
+      "gradePoint": 9.7,
+      "classRank": {
+        "percentile": 49,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u17",
+      "courseId": "c6",
+      "grade": "B",
+      "gradePoint": 8.9,
+      "classRank": {
+        "percentile": 88,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u17",
+      "courseId": "c4",
+      "grade": "A",
+      "gradePoint": 9.7,
+      "classRank": {
+        "percentile": 39,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u18",
+      "courseId": "c12",
+      "grade": "C",
+      "gradePoint": 7.5,
+      "classRank": {
+        "percentile": 2,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u18",
+      "courseId": "c18",
+      "grade": "A",
+      "gradePoint": 9.3,
+      "classRank": {
+        "percentile": 69,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u18",
+      "courseId": "c2",
+      "grade": "A",
+      "gradePoint": 9.5,
+      "classRank": {
+        "percentile": 15,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u18",
+      "courseId": "c9",
+      "grade": "B",
+      "gradePoint": 8.6,
+      "classRank": {
+        "percentile": 50,
+        "totalStudents": 2
+      }
+    },
+    {
+      "studentId": "u18",
+      "courseId": "c15",
+      "grade": "B",
+      "gradePoint": 8.8,
+      "classRank": {
+        "percentile": 90,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u19",
+      "courseId": "c14",
+      "grade": "C",
+      "gradePoint": 7.5,
+      "classRank": {
+        "percentile": 60,
+        "totalStudents": 2
+      }
+    },
+    {
+      "studentId": "u19",
+      "courseId": "c11",
+      "grade": "B",
+      "gradePoint": 8.5,
+      "classRank": {
+        "percentile": 72,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u19",
+      "courseId": "c16",
+      "grade": "C",
+      "gradePoint": 7.5,
+      "classRank": {
+        "percentile": 71,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u19",
+      "courseId": "c21",
+      "grade": "C",
+      "gradePoint": 6.3,
+      "classRank": {
+        "percentile": 77,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u19",
+      "courseId": "c8",
+      "grade": "B",
+      "gradePoint": 8.2,
+      "classRank": {
+        "percentile": 89,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u20",
+      "courseId": "c16",
+      "grade": "C",
+      "gradePoint": 6.6,
+      "classRank": {
+        "percentile": 7,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u20",
+      "courseId": "c14",
+      "grade": "C",
+      "gradePoint": 6.7,
+      "classRank": {
+        "percentile": 64,
+        "totalStudents": 2
+      }
+    },
+    {
+      "studentId": "u20",
+      "courseId": "c2",
+      "grade": "C",
+      "gradePoint": 6.2,
+      "classRank": {
+        "percentile": 5,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u20",
+      "courseId": "c10",
+      "grade": "C",
+      "gradePoint": 6.8,
+      "classRank": {
+        "percentile": 83,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u20",
+      "courseId": "c5",
+      "grade": "B",
+      "gradePoint": 8.5,
+      "classRank": {
+        "percentile": 33,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u21",
+      "courseId": "c16",
+      "grade": "B",
+      "gradePoint": 8.4,
+      "classRank": {
+        "percentile": 43,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u21",
+      "courseId": "c7",
+      "grade": "C",
+      "gradePoint": 7.2,
+      "classRank": {
+        "percentile": 81,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u21",
+      "courseId": "c17",
+      "grade": "A",
+      "gradePoint": 9.8,
+      "classRank": {
+        "percentile": 84,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u21",
+      "courseId": "c1",
+      "grade": "C",
+      "gradePoint": 7.5,
+      "classRank": {
+        "percentile": 80,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u21",
+      "courseId": "c6",
+      "grade": "B",
+      "gradePoint": 8.7,
+      "classRank": {
+        "percentile": 68,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u22",
+      "courseId": "c1",
+      "grade": "C",
+      "gradePoint": 7.2,
+      "classRank": {
+        "percentile": 42,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u22",
+      "courseId": "c4",
+      "grade": "B",
+      "gradePoint": 8.6,
+      "classRank": {
+        "percentile": 70,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u22",
+      "courseId": "c3",
+      "grade": "C",
+      "gradePoint": 7.4,
+      "classRank": {
+        "percentile": 80,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u22",
+      "courseId": "c17",
+      "grade": "C",
+      "gradePoint": 6.6,
+      "classRank": {
+        "percentile": 83,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u22",
+      "courseId": "c10",
+      "grade": "B",
+      "gradePoint": 8.6,
+      "classRank": {
+        "percentile": 10,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u23",
+      "courseId": "c4",
+      "grade": "C",
+      "gradePoint": 8,
+      "classRank": {
+        "percentile": 2,
+        "totalStudents": 9
+      }
+    },
+    {
+      "studentId": "u23",
+      "courseId": "c24",
+      "grade": "C",
+      "gradePoint": 7.7,
+      "classRank": {
+        "percentile": 34,
+        "totalStudents": 4
+      }
+    },
+    {
+      "studentId": "u23",
+      "courseId": "c19",
+      "grade": "A",
+      "gradePoint": 9.8,
+      "classRank": {
+        "percentile": 32,
+        "totalStudents": 1
+      }
+    },
+    {
+      "studentId": "u23",
+      "courseId": "c3",
+      "grade": "C",
+      "gradePoint": 6.9,
+      "classRank": {
+        "percentile": 72,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u23",
+      "courseId": "c6",
+      "grade": "C",
+      "gradePoint": 8,
+      "classRank": {
+        "percentile": 28,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u24",
+      "courseId": "c25",
+      "grade": "C",
+      "gradePoint": 8,
+      "classRank": {
+        "percentile": 85,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u24",
+      "courseId": "c10",
+      "grade": "B",
+      "gradePoint": 8.8,
+      "classRank": {
+        "percentile": 30,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u24",
+      "courseId": "c12",
+      "grade": "A",
+      "gradePoint": 9.4,
+      "classRank": {
+        "percentile": 34,
+        "totalStudents": 5
+      }
+    },
+    {
+      "studentId": "u24",
+      "courseId": "c21",
+      "grade": "C",
+      "gradePoint": 6,
+      "classRank": {
+        "percentile": 69,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u24",
+      "courseId": "c5",
+      "grade": "C",
+      "gradePoint": 6.2,
+      "classRank": {
+        "percentile": 20,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u25",
+      "courseId": "c23",
+      "grade": "C",
+      "gradePoint": 6.2,
+      "classRank": {
+        "percentile": 47,
+        "totalStudents": 3
+      }
+    },
+    {
+      "studentId": "u25",
+      "courseId": "c11",
+      "grade": "B",
+      "gradePoint": 8.7,
+      "classRank": {
+        "percentile": 29,
+        "totalStudents": 6
+      }
+    },
+    {
+      "studentId": "u25",
+      "courseId": "c20",
+      "grade": "A",
+      "gradePoint": 9.1,
+      "classRank": {
+        "percentile": 61,
+        "totalStudents": 3
+      }
+    },
+    {
+      "studentId": "u25",
+      "courseId": "c15",
+      "grade": "A",
+      "gradePoint": 9.4,
+      "classRank": {
+        "percentile": 41,
+        "totalStudents": 7
+      }
+    },
+    {
+      "studentId": "u25",
+      "courseId": "c12",
+      "grade": "A",
+      "gradePoint": 9.1,
+      "classRank": {
+        "percentile": 47,
+        "totalStudents": 5
+      }
+    }
+  ],
+  "semesterHistory": [
+    {
+      "studentId": "u1",
+      "semester": "Sem 1",
+      "gpa": "10.0"
+    },
+    {
+      "studentId": "u1",
+      "semester": "Sem 2",
+      "gpa": "9.3"
+    },
+    {
+      "studentId": "u1",
+      "semester": "Sem 3",
+      "gpa": "9.7"
+    },
+    {
+      "studentId": "u1",
+      "semester": "Sem 4",
+      "gpa": "7.0"
+    },
+    {
+      "studentId": "u1",
+      "semester": "Sem 5",
+      "gpa": "7.1"
+    },
+    {
+      "studentId": "u1",
+      "semester": "Sem 6",
+      "gpa": "7.9"
+    },
+    {
+      "studentId": "u2",
+      "semester": "Sem 1",
+      "gpa": "9.3"
+    },
+    {
+      "studentId": "u2",
+      "semester": "Sem 2",
+      "gpa": "8.1"
+    },
+    {
+      "studentId": "u2",
+      "semester": "Sem 3",
+      "gpa": "7.5"
+    },
+    {
+      "studentId": "u2",
+      "semester": "Sem 4",
+      "gpa": "7.2"
+    },
+    {
+      "studentId": "u2",
+      "semester": "Sem 5",
+      "gpa": "7.7"
+    },
+    {
+      "studentId": "u3",
+      "semester": "Sem 1",
+      "gpa": "7.2"
+    },
+    {
+      "studentId": "u3",
+      "semester": "Sem 2",
+      "gpa": "9.7"
+    },
+    {
+      "studentId": "u3",
+      "semester": "Sem 3",
+      "gpa": "7.9"
+    },
+    {
+      "studentId": "u3",
+      "semester": "Sem 4",
+      "gpa": "7.0"
+    },
+    {
+      "studentId": "u3",
+      "semester": "Sem 5",
+      "gpa": "9.4"
+    },
+    {
+      "studentId": "u3",
+      "semester": "Sem 6",
+      "gpa": "9.3"
+    },
+    {
+      "studentId": "u3",
+      "semester": "Sem 7",
+      "gpa": "9.8"
+    },
+    {
+      "studentId": "u4",
+      "semester": "Sem 1",
+      "gpa": "10.0"
+    },
+    {
+      "studentId": "u5",
+      "semester": "Sem 1",
+      "gpa": "9.8"
+    },
+    {
+      "studentId": "u5",
+      "semester": "Sem 2",
+      "gpa": "8.5"
+    },
+    {
+      "studentId": "u5",
+      "semester": "Sem 3",
+      "gpa": "9.4"
+    },
+    {
+      "studentId": "u5",
+      "semester": "Sem 4",
+      "gpa": "9.1"
+    },
+    {
+      "studentId": "u6",
+      "semester": "Sem 1",
+      "gpa": "9.2"
+    },
+    {
+      "studentId": "u6",
+      "semester": "Sem 2",
+      "gpa": "9.7"
+    },
+    {
+      "studentId": "u6",
+      "semester": "Sem 3",
+      "gpa": "7.9"
+    },
+    {
+      "studentId": "u7",
+      "semester": "Sem 1",
+      "gpa": "8.5"
+    },
+    {
+      "studentId": "u8",
+      "semester": "Sem 1",
+      "gpa": "9.6"
+    },
+    {
+      "studentId": "u8",
+      "semester": "Sem 2",
+      "gpa": "9.1"
+    },
+    {
+      "studentId": "u9",
+      "semester": "Sem 1",
+      "gpa": "9.9"
+    },
+    {
+      "studentId": "u10",
+      "semester": "Sem 1",
+      "gpa": "7.4"
+    },
+    {
+      "studentId": "u10",
+      "semester": "Sem 2",
+      "gpa": "8.1"
+    },
+    {
+      "studentId": "u10",
+      "semester": "Sem 3",
+      "gpa": "7.4"
+    },
+    {
+      "studentId": "u10",
+      "semester": "Sem 4",
+      "gpa": "7.9"
+    },
+    {
+      "studentId": "u11",
+      "semester": "Sem 1",
+      "gpa": "9.7"
+    },
+    {
+      "studentId": "u12",
+      "semester": "Sem 1",
+      "gpa": "8.1"
+    },
+    {
+      "studentId": "u12",
+      "semester": "Sem 2",
+      "gpa": "7.8"
+    },
+    {
+      "studentId": "u12",
+      "semester": "Sem 3",
+      "gpa": "8.7"
+    },
+    {
+      "studentId": "u13",
+      "semester": "Sem 1",
+      "gpa": "7.8"
+    },
+    {
+      "studentId": "u13",
+      "semester": "Sem 2",
+      "gpa": "7.7"
+    },
+    {
+      "studentId": "u14",
+      "semester": "Sem 1",
+      "gpa": "9.8"
+    },
+    {
+      "studentId": "u14",
+      "semester": "Sem 2",
+      "gpa": "7.1"
+    },
+    {
+      "studentId": "u14",
+      "semester": "Sem 3",
+      "gpa": "8.6"
+    },
+    {
+      "studentId": "u14",
+      "semester": "Sem 4",
+      "gpa": "7.8"
+    },
+    {
+      "studentId": "u15",
+      "semester": "Sem 1",
+      "gpa": "7.7"
+    },
+    {
+      "studentId": "u15",
+      "semester": "Sem 2",
+      "gpa": "9.2"
+    },
+    {
+      "studentId": "u15",
+      "semester": "Sem 3",
+      "gpa": "9.5"
+    },
+    {
+      "studentId": "u15",
+      "semester": "Sem 4",
+      "gpa": "7.9"
+    },
+    {
+      "studentId": "u16",
+      "semester": "Sem 1",
+      "gpa": "7.3"
+    },
+    {
+      "studentId": "u16",
+      "semester": "Sem 2",
+      "gpa": "7.5"
+    },
+    {
+      "studentId": "u16",
+      "semester": "Sem 3",
+      "gpa": "7.6"
+    },
+    {
+      "studentId": "u16",
+      "semester": "Sem 4",
+      "gpa": "9.5"
+    },
+    {
+      "studentId": "u16",
+      "semester": "Sem 5",
+      "gpa": "7.1"
+    },
+    {
+      "studentId": "u16",
+      "semester": "Sem 6",
+      "gpa": "8.8"
+    },
+    {
+      "studentId": "u18",
+      "semester": "Sem 1",
+      "gpa": "9.7"
+    },
+    {
+      "studentId": "u18",
+      "semester": "Sem 2",
+      "gpa": "8.7"
+    },
+    {
+      "studentId": "u18",
+      "semester": "Sem 3",
+      "gpa": "8.0"
+    },
+    {
+      "studentId": "u18",
+      "semester": "Sem 4",
+      "gpa": "9.0"
+    },
+    {
+      "studentId": "u18",
+      "semester": "Sem 5",
+      "gpa": "9.1"
+    },
+    {
+      "studentId": "u18",
+      "semester": "Sem 6",
+      "gpa": "8.6"
+    },
+    {
+      "studentId": "u18",
+      "semester": "Sem 7",
+      "gpa": "7.4"
+    },
+    {
+      "studentId": "u19",
+      "semester": "Sem 1",
+      "gpa": "9.4"
+    },
+    {
+      "studentId": "u19",
+      "semester": "Sem 2",
+      "gpa": "8.5"
+    },
+    {
+      "studentId": "u19",
+      "semester": "Sem 3",
+      "gpa": "9.1"
+    },
+    {
+      "studentId": "u19",
+      "semester": "Sem 4",
+      "gpa": "8.8"
+    },
+    {
+      "studentId": "u19",
+      "semester": "Sem 5",
+      "gpa": "9.3"
+    },
+    {
+      "studentId": "u19",
+      "semester": "Sem 6",
+      "gpa": "7.3"
+    },
+    {
+      "studentId": "u19",
+      "semester": "Sem 7",
+      "gpa": "8.7"
+    },
+    {
+      "studentId": "u20",
+      "semester": "Sem 1",
+      "gpa": "8.7"
+    },
+    {
+      "studentId": "u20",
+      "semester": "Sem 2",
+      "gpa": "8.7"
+    },
+    {
+      "studentId": "u20",
+      "semester": "Sem 3",
+      "gpa": "8.3"
+    },
+    {
+      "studentId": "u20",
+      "semester": "Sem 4",
+      "gpa": "8.5"
+    },
+    {
+      "studentId": "u20",
+      "semester": "Sem 5",
+      "gpa": "9.0"
+    },
+    {
+      "studentId": "u20",
+      "semester": "Sem 6",
+      "gpa": "8.8"
+    },
+    {
+      "studentId": "u20",
+      "semester": "Sem 7",
+      "gpa": "10.0"
+    },
+    {
+      "studentId": "u21",
+      "semester": "Sem 1",
+      "gpa": "8.7"
+    },
+    {
+      "studentId": "u22",
+      "semester": "Sem 1",
+      "gpa": "8.1"
+    },
+    {
+      "studentId": "u23",
+      "semester": "Sem 1",
+      "gpa": "7.8"
+    },
+    {
+      "studentId": "u23",
+      "semester": "Sem 2",
+      "gpa": "9.1"
+    },
+    {
+      "studentId": "u24",
+      "semester": "Sem 1",
+      "gpa": "9.3"
+    },
+    {
+      "studentId": "u24",
+      "semester": "Sem 2",
+      "gpa": "7.9"
+    },
+    {
+      "studentId": "u24",
+      "semester": "Sem 3",
+      "gpa": "8.8"
+    },
+    {
+      "studentId": "u24",
+      "semester": "Sem 4",
+      "gpa": "9.9"
+    },
+    {
+      "studentId": "u25",
+      "semester": "Sem 1",
+      "gpa": "9.3"
+    },
+    {
+      "studentId": "u25",
+      "semester": "Sem 2",
+      "gpa": "8.1"
+    },
+    {
+      "studentId": "u25",
+      "semester": "Sem 3",
+      "gpa": "8.0"
+    },
+    {
+      "studentId": "u25",
+      "semester": "Sem 4",
+      "gpa": "10.0"
+    },
+    {
+      "studentId": "u25",
+      "semester": "Sem 5",
+      "gpa": "9.0"
+    }
+  ]
+}

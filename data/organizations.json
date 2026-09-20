@@ -1,0 +1,454 @@
+{
+  "organizations": [
+    {
+      "id": "org1",
+      "name": "Global Tech",
+      "type": "university",
+      "description": "This is a comprehensive description for Global Tech. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 6177,
+      "volunteerHours": 38444,
+      "location": "Tokyo",
+      "tags": [
+        "Health",
+        "Advocacy"
+      ],
+      "contact": "contact@globaltech.org",
+      "featured": false
+    },
+    {
+      "id": "org2",
+      "name": "Green Earth",
+      "type": "university",
+      "description": "This is a comprehensive description for Green Earth. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 5105,
+      "volunteerHours": 25099,
+      "location": "Tokyo",
+      "tags": [
+        "Education",
+        "Development"
+      ],
+      "contact": "contact@greenearth.org",
+      "featured": false
+    },
+    {
+      "id": "org3",
+      "name": "AI Ethics Board",
+      "type": "university",
+      "description": "This is a comprehensive description for AI Ethics Board. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 8514,
+      "volunteerHours": 6184,
+      "location": "Remote",
+      "tags": [
+        "AI",
+        "Research"
+      ],
+      "contact": "contact@aiethicsboard.org",
+      "featured": false
+    },
+    {
+      "id": "org4",
+      "name": "Future Innovators",
+      "type": "university",
+      "description": "This is a comprehensive description for Future Innovators. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 5764,
+      "volunteerHours": 9690,
+      "location": "Berlin",
+      "tags": [
+        "Education",
+        "Development"
+      ],
+      "contact": "contact@futureinnovators.org",
+      "featured": false
+    },
+    {
+      "id": "org5",
+      "name": "Quantum Corp",
+      "type": "business",
+      "description": "This is a comprehensive description for Quantum Corp. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 8752,
+      "volunteerHours": 48902,
+      "location": "Global",
+      "tags": [
+        "Sustainability",
+        "Research"
+      ],
+      "contact": "contact@quantumcorp.org",
+      "featured": false
+    },
+    {
+      "id": "org6",
+      "name": "EduCare",
+      "type": "ngo",
+      "description": "This is a comprehensive description for EduCare. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 5407,
+      "volunteerHours": 32429,
+      "location": "San Francisco",
+      "tags": [
+        "AI",
+        "Research"
+      ],
+      "contact": "contact@educare.org",
+      "featured": false
+    },
+    {
+      "id": "org7",
+      "name": "HealthPlus",
+      "type": "business",
+      "description": "This is a comprehensive description for HealthPlus. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 1882,
+      "volunteerHours": 5791,
+      "location": "New York",
+      "tags": [
+        "Finance",
+        "Community"
+      ],
+      "contact": "contact@healthplus.org",
+      "featured": false
+    },
+    {
+      "id": "org8",
+      "name": "Smart City Initiative",
+      "type": "business",
+      "description": "This is a comprehensive description for Smart City Initiative. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 1756,
+      "volunteerHours": 14814,
+      "location": "London",
+      "tags": [
+        "AI",
+        "Development"
+      ],
+      "contact": "contact@smartcityinitiative.org",
+      "featured": false
+    },
+    {
+      "id": "org9",
+      "name": "Data4Good",
+      "type": "university",
+      "description": "This is a comprehensive description for Data4Good. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 3179,
+      "volunteerHours": 10334,
+      "location": "San Francisco",
+      "tags": [
+        "Finance",
+        "Advocacy"
+      ],
+      "contact": "contact@data4good.org",
+      "featured": false
+    },
+    {
+      "id": "org10",
+      "name": "CyberDefenders",
+      "type": "ngo",
+      "description": "This is a comprehensive description for CyberDefenders. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 6188,
+      "volunteerHours": 40341,
+      "location": "Global",
+      "tags": [
+        "Health",
+        "Community"
+      ],
+      "contact": "contact@cyberdefenders.org",
+      "featured": false
+    },
+    {
+      "id": "org11",
+      "name": "OpenSource Alliance",
+      "type": "it",
+      "description": "This is a comprehensive description for OpenSource Alliance. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 4136,
+      "volunteerHours": 8533,
+      "location": "Global",
+      "tags": [
+        "Education",
+        "Research"
+      ],
+      "contact": "contact@opensourcealliance.org",
+      "featured": false
+    },
+    {
+      "id": "org12",
+      "name": "Women in Tech",
+      "type": "it",
+      "description": "This is a comprehensive description for Women in Tech. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 2253,
+      "volunteerHours": 25526,
+      "location": "London",
+      "tags": [
+        "Health",
+        "Research"
+      ],
+      "contact": "contact@womenintech.org",
+      "featured": false
+    },
+    {
+      "id": "org13",
+      "name": "Startup Incubator",
+      "type": "business",
+      "description": "This is a comprehensive description for Startup Incubator. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 2477,
+      "volunteerHours": 21682,
+      "location": "Global",
+      "tags": [
+        "Health",
+        "Research"
+      ],
+      "contact": "contact@startupincubator.org",
+      "featured": false
+    },
+    {
+      "id": "org14",
+      "name": "Cloud Native Foundation",
+      "type": "university",
+      "description": "This is a comprehensive description for Cloud Native Foundation. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 6080,
+      "volunteerHours": 44525,
+      "location": "Tokyo",
+      "tags": [
+        "Sustainability",
+        "Research"
+      ],
+      "contact": "contact@cloudnativefoundation.org",
+      "featured": false
+    },
+    {
+      "id": "org15",
+      "name": "FinTech Solutions",
+      "type": "ngo",
+      "description": "This is a comprehensive description for FinTech Solutions. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 704,
+      "volunteerHours": 31149,
+      "location": "London",
+      "tags": [
+        "AI",
+        "Development"
+      ],
+      "contact": "contact@fintechsolutions.org",
+      "featured": false
+    },
+    {
+      "id": "org16",
+      "name": "AgriTech Network",
+      "type": "it",
+      "description": "This is a comprehensive description for AgriTech Network. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 3402,
+      "volunteerHours": 44822,
+      "location": "New York",
+      "tags": [
+        "Sustainability",
+        "Advocacy"
+      ],
+      "contact": "contact@agritechnetwork.org",
+      "featured": false
+    },
+    {
+      "id": "org17",
+      "name": "Space Exploration Org",
+      "type": "university",
+      "description": "This is a comprehensive description for Space Exploration Org. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 8905,
+      "volunteerHours": 14386,
+      "location": "San Francisco",
+      "tags": [
+        "AI",
+        "Community"
+      ],
+      "contact": "contact@spaceexplorationorg.org",
+      "featured": false
+    },
+    {
+      "id": "org18",
+      "name": "BioTech Innovations",
+      "type": "ngo",
+      "description": "This is a comprehensive description for BioTech Innovations. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 6559,
+      "volunteerHours": 21465,
+      "location": "Berlin",
+      "tags": [
+        "Finance",
+        "Advocacy"
+      ],
+      "contact": "contact@biotechinnovations.org",
+      "featured": false
+    },
+    {
+      "id": "org19",
+      "name": "Clean Energy Coalition",
+      "type": "business",
+      "description": "This is a comprehensive description for Clean Energy Coalition. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 7070,
+      "volunteerHours": 39908,
+      "location": "San Francisco",
+      "tags": [
+        "AI",
+        "Research"
+      ],
+      "contact": "contact@cleanenergycoalition.org",
+      "featured": false
+    },
+    {
+      "id": "org20",
+      "name": "Robotics Society",
+      "type": "ngo",
+      "description": "This is a comprehensive description for Robotics Society. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 8565,
+      "volunteerHours": 34649,
+      "location": "San Francisco",
+      "tags": [
+        "Sustainability",
+        "Development"
+      ],
+      "contact": "contact@roboticssociety.org",
+      "featured": false
+    },
+    {
+      "id": "org21",
+      "name": "VR/AR Pioneers",
+      "type": "university",
+      "description": "This is a comprehensive description for VR/AR Pioneers. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 8785,
+      "volunteerHours": 14541,
+      "location": "Berlin",
+      "tags": [
+        "Education",
+        "Development"
+      ],
+      "contact": "contact@vr/arpioneers.org",
+      "featured": false
+    },
+    {
+      "id": "org22",
+      "name": "Blockchain Consortium",
+      "type": "university",
+      "description": "This is a comprehensive description for Blockchain Consortium. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 2807,
+      "volunteerHours": 24811,
+      "location": "Tokyo",
+      "tags": [
+        "Health",
+        "Advocacy"
+      ],
+      "contact": "contact@blockchainconsortium.org",
+      "featured": false
+    },
+    {
+      "id": "org23",
+      "name": "EdTech Ventures",
+      "type": "it",
+      "description": "This is a comprehensive description for EdTech Ventures. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 3338,
+      "volunteerHours": 9270,
+      "location": "Tokyo",
+      "tags": [
+        "Sustainability",
+        "Development"
+      ],
+      "contact": "contact@edtechventures.org",
+      "featured": false
+    },
+    {
+      "id": "org24",
+      "name": "MedTech Solutions",
+      "type": "university",
+      "description": "This is a comprehensive description for MedTech Solutions. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 8694,
+      "volunteerHours": 14229,
+      "location": "New York",
+      "tags": [
+        "Finance",
+        "Research"
+      ],
+      "contact": "contact@medtechsolutions.org",
+      "featured": false
+    },
+    {
+      "id": "org25",
+      "name": "GovTech Initiative",
+      "type": "business",
+      "description": "This is a comprehensive description for GovTech Initiative. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 3606,
+      "volunteerHours": 48437,
+      "location": "Tokyo",
+      "tags": [
+        "Health",
+        "Community"
+      ],
+      "contact": "contact@govtechinitiative.org",
+      "featured": false
+    },
+    {
+      "id": "org26",
+      "name": "Creative Arts Network",
+      "type": "ngo",
+      "description": "This is a comprehensive description for Creative Arts Network. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 5138,
+      "volunteerHours": 5693,
+      "location": "Paris",
+      "tags": [
+        "AI",
+        "Research"
+      ],
+      "contact": "contact@creativeartsnetwork.org",
+      "featured": false
+    },
+    {
+      "id": "org27",
+      "name": "Social Impact Hub",
+      "type": "university",
+      "description": "This is a comprehensive description for Social Impact Hub. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 1425,
+      "volunteerHours": 36740,
+      "location": "Tokyo",
+      "tags": [
+        "Health",
+        "Development"
+      ],
+      "contact": "contact@socialimpacthub.org",
+      "featured": false
+    },
+    {
+      "id": "org28",
+      "name": "Sustainable Future",
+      "type": "business",
+      "description": "This is a comprehensive description for Sustainable Future. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 2703,
+      "volunteerHours": 33803,
+      "location": "New York",
+      "tags": [
+        "Education",
+        "Development"
+      ],
+      "contact": "contact@sustainablefuture.org",
+      "featured": true
+    },
+    {
+      "id": "org29",
+      "name": "Urban Mobility Org",
+      "type": "university",
+      "description": "This is a comprehensive description for Urban Mobility Org. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 6748,
+      "volunteerHours": 26374,
+      "location": "New York",
+      "tags": [
+        "Education",
+        "Development"
+      ],
+      "contact": "contact@urbanmobilityorg.org",
+      "featured": false
+    },
+    {
+      "id": "org30",
+      "name": "Digital Inclusion",
+      "type": "business",
+      "description": "This is a comprehensive description for Digital Inclusion. They focus on advancing their field through research, collaboration, and community engagement. Their projects span multiple continents and involve thousands of volunteers and professionals.",
+      "members": 6260,
+      "volunteerHours": 4997,
+      "location": "Remote",
+      "tags": [
+        "Health",
+        "Development"
+      ],
+      "contact": "contact@digitalinclusion.org",
+      "featured": false
+    }
+  ]
+}

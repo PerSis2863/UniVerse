@@ -1,0 +1,1486 @@
+{
+  "projects": [
+    {
+      "id": "collab1",
+      "name": "Smart Campus Initiative",
+      "category": "IT",
+      "status": "completed",
+      "description": "A collaborative project focusing on Smart Campus Initiative. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Jones",
+        "org": "Women in Tech",
+        "avatar": "👤"
+      },
+      "members": 95,
+      "discussions": 27,
+      "tags": [
+        "Development",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "AI Ethics Board",
+        "Women in Tech"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ],
+      "userJoined": false
+    },
+    {
+      "id": "collab2",
+      "name": "AI for Climate Change",
+      "category": "Business",
+      "status": "recruiting",
+      "description": "A collaborative project focusing on AI for Climate Change. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Johnson",
+        "org": "Creative Arts Network",
+        "avatar": "👤"
+      },
+      "members": 28,
+      "discussions": 27,
+      "tags": [
+        "Development",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "FinTech Solutions",
+        "HealthPlus"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab3",
+      "name": "NextGen E-Learning",
+      "category": "University",
+      "status": "recruiting",
+      "description": "A collaborative project focusing on NextGen E-Learning. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Jones",
+        "org": "FinTech Solutions",
+        "avatar": "👤"
+      },
+      "members": 32,
+      "discussions": 8,
+      "tags": [
+        "Innovation",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "MedTech Solutions",
+        "Blockchain Consortium"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab4",
+      "name": "Urban Traffic Optimization",
+      "category": "University",
+      "status": "active",
+      "description": "A collaborative project focusing on Urban Traffic Optimization. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Smith",
+        "org": "Social Impact Hub",
+        "avatar": "👤"
+      },
+      "members": 29,
+      "discussions": 8,
+      "tags": [
+        "Development",
+        "Society"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Execution"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Global Tech",
+        "EduCare"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab5",
+      "name": "Blockchain Voting System",
+      "category": "University",
+      "status": "active",
+      "description": "A collaborative project focusing on Blockchain Voting System. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Jones",
+        "org": "Robotics Society",
+        "avatar": "👤"
+      },
+      "members": 89,
+      "discussions": 35,
+      "tags": [
+        "Research",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Execution"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Sustainable Future",
+        "GovTech Initiative"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab6",
+      "name": "Telemedicine Platform",
+      "category": "Business",
+      "status": "completed",
+      "description": "A collaborative project focusing on Telemedicine Platform. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Johnson",
+        "org": "Creative Arts Network",
+        "avatar": "👤"
+      },
+      "members": 88,
+      "discussions": 29,
+      "tags": [
+        "Innovation",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Review"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "EdTech Ventures",
+        "FinTech Solutions"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab7",
+      "name": "Precision Agriculture",
+      "category": "University",
+      "status": "active",
+      "description": "A collaborative project focusing on Precision Agriculture. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Smith",
+        "org": "GovTech Initiative",
+        "avatar": "👤"
+      },
+      "members": 49,
+      "discussions": 11,
+      "tags": [
+        "Development",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Review"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Sustainable Future",
+        "Robotics Society"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab8",
+      "name": "Renewable Energy Grid",
+      "category": "Business",
+      "status": "active",
+      "description": "A collaborative project focusing on Renewable Energy Grid. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Johnson",
+        "org": "VR/AR Pioneers",
+        "avatar": "👤"
+      },
+      "members": 64,
+      "discussions": 21,
+      "tags": [
+        "Development",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Urban Mobility Org",
+        "Women in Tech"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab9",
+      "name": "Robotic Waste Management",
+      "category": "Business",
+      "status": "completed",
+      "description": "A collaborative project focusing on Robotic Waste Management. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Williams",
+        "org": "Robotics Society",
+        "avatar": "👤"
+      },
+      "members": 94,
+      "discussions": 38,
+      "tags": [
+        "Development",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Review"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "GovTech Initiative",
+        "EdTech Ventures"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab10",
+      "name": "VR Medical Training",
+      "category": "Business",
+      "status": "completed",
+      "description": "A collaborative project focusing on VR Medical Training. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Johnson",
+        "org": "Future Innovators",
+        "avatar": "👤"
+      },
+      "members": 56,
+      "discussions": 9,
+      "tags": [
+        "Innovation",
+        "Society"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Execution"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Space Exploration Org",
+        "Future Innovators"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab11",
+      "name": "Cybersecurity Threat Intelligence",
+      "category": "NGO",
+      "status": "recruiting",
+      "description": "A collaborative project focusing on Cybersecurity Threat Intelligence. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Brown",
+        "org": "HealthPlus",
+        "avatar": "👤"
+      },
+      "members": 55,
+      "discussions": 20,
+      "tags": [
+        "Innovation",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Green Earth",
+        "Digital Inclusion"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab12",
+      "name": "Quantum Cryptography",
+      "category": "University",
+      "status": "active",
+      "description": "A collaborative project focusing on Quantum Cryptography. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Jones",
+        "org": "Data4Good",
+        "avatar": "👤"
+      },
+      "members": 94,
+      "discussions": 48,
+      "tags": [
+        "Development",
+        "Society"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Space Exploration Org",
+        "Digital Inclusion"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab13",
+      "name": "Natural Disaster Prediction",
+      "category": "IT",
+      "status": "active",
+      "description": "A collaborative project focusing on Natural Disaster Prediction. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Jones",
+        "org": "HealthPlus",
+        "avatar": "👤"
+      },
+      "members": 80,
+      "discussions": 11,
+      "tags": [
+        "Development",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Quantum Corp",
+        "EdTech Ventures"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab14",
+      "name": "Personalized Learning Paths",
+      "category": "NGO",
+      "status": "completed",
+      "description": "A collaborative project focusing on Personalized Learning Paths. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Smith",
+        "org": "Digital Inclusion",
+        "avatar": "👤"
+      },
+      "members": 14,
+      "discussions": 29,
+      "tags": [
+        "Development",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Review"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "BioTech Innovations",
+        "Future Innovators"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab15",
+      "name": "Elderly Care Robotics",
+      "category": "IT",
+      "status": "active",
+      "description": "A collaborative project focusing on Elderly Care Robotics. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Smith",
+        "org": "Quantum Corp",
+        "avatar": "👤"
+      },
+      "members": 58,
+      "discussions": 34,
+      "tags": [
+        "Innovation",
+        "Society"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Future Innovators",
+        "Cloud Native Foundation"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab16",
+      "name": "Smart Water Management",
+      "category": "NGO",
+      "status": "recruiting",
+      "description": "A collaborative project focusing on Smart Water Management. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Jones",
+        "org": "Green Earth",
+        "avatar": "👤"
+      },
+      "members": 68,
+      "discussions": 31,
+      "tags": [
+        "Development",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Execution"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Smart City Initiative",
+        "OpenSource Alliance"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab17",
+      "name": "Air Quality Monitoring",
+      "category": "University",
+      "status": "completed",
+      "description": "A collaborative project focusing on Air Quality Monitoring. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Brown",
+        "org": "MedTech Solutions",
+        "avatar": "👤"
+      },
+      "members": 54,
+      "discussions": 45,
+      "tags": [
+        "Innovation",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Execution"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "AgriTech Network",
+        "HealthPlus"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab18",
+      "name": "Autonomous Delivery Drones",
+      "category": "University",
+      "status": "recruiting",
+      "description": "A collaborative project focusing on Autonomous Delivery Drones. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Johnson",
+        "org": "Cloud Native Foundation",
+        "avatar": "👤"
+      },
+      "members": 37,
+      "discussions": 5,
+      "tags": [
+        "Research",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Digital Inclusion",
+        "Social Impact Hub"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab19",
+      "name": "FinTech Microloans",
+      "category": "Business",
+      "status": "recruiting",
+      "description": "A collaborative project focusing on FinTech Microloans. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Brown",
+        "org": "Urban Mobility Org",
+        "avatar": "👤"
+      },
+      "members": 36,
+      "discussions": 28,
+      "tags": [
+        "Innovation",
+        "Tech"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Execution"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Smart City Initiative",
+        "Social Impact Hub"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab20",
+      "name": "AgriTech Supply Chain",
+      "category": "IT",
+      "status": "completed",
+      "description": "A collaborative project focusing on AgriTech Supply Chain. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Brown",
+        "org": "Cloud Native Foundation",
+        "avatar": "👤"
+      },
+      "members": 24,
+      "discussions": 40,
+      "tags": [
+        "Research",
+        "Society"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Review"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Sustainable Future",
+        "Sustainable Future"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab21",
+      "name": "EdTech Gamification",
+      "category": "Business",
+      "status": "completed",
+      "description": "A collaborative project focusing on EdTech Gamification. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Jones",
+        "org": "Robotics Society",
+        "avatar": "👤"
+      },
+      "members": 82,
+      "discussions": 21,
+      "tags": [
+        "Development",
+        "Society"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Review"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Smart City Initiative",
+        "Startup Incubator"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab22",
+      "name": "MedTech Wearables",
+      "category": "University",
+      "status": "recruiting",
+      "description": "A collaborative project focusing on MedTech Wearables. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Williams",
+        "org": "Digital Inclusion",
+        "avatar": "👤"
+      },
+      "members": 73,
+      "discussions": 37,
+      "tags": [
+        "Innovation",
+        "Society"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Planning"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Digital Inclusion",
+        "Data4Good"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab23",
+      "name": "GovTech E-Services",
+      "category": "University",
+      "status": "recruiting",
+      "description": "A collaborative project focusing on GovTech E-Services. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Williams",
+        "org": "Social Impact Hub",
+        "avatar": "👤"
+      },
+      "members": 10,
+      "discussions": 12,
+      "tags": [
+        "Development",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Review"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "VR/AR Pioneers",
+        "GovTech Initiative"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab24",
+      "name": "Creative Arts VR Gallery",
+      "category": "University",
+      "status": "completed",
+      "description": "A collaborative project focusing on Creative Arts VR Gallery. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Brown",
+        "org": "FinTech Solutions",
+        "avatar": "👤"
+      },
+      "members": 20,
+      "discussions": 16,
+      "tags": [
+        "Research",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Execution"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "AI Ethics Board",
+        "Space Exploration Org"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    },
+    {
+      "id": "collab25",
+      "name": "Social Impact Micro-volunteering",
+      "category": "University",
+      "status": "completed",
+      "description": "A collaborative project focusing on Social Impact Micro-volunteering. This initiative brings together experts from various fields to tackle complex challenges and create innovative solutions.",
+      "leadPerson": {
+        "name": "Dr. Brown",
+        "org": "Startup Incubator",
+        "avatar": "👤"
+      },
+      "members": 93,
+      "discussions": 12,
+      "tags": [
+        "Development",
+        "Environment"
+      ],
+      "goals": [
+        "Phase 1: Research",
+        "Phase 2: Prototype",
+        "Phase 3: Deployment"
+      ],
+      "timeline": {
+        "start": "Jan 2026",
+        "end": "Dec 2026",
+        "phase": "Review"
+      },
+      "tasks": [
+        {
+          "title": "Initial Planning",
+          "assignee": "Team A",
+          "status": "done"
+        },
+        {
+          "title": "Development",
+          "assignee": "Team B",
+          "status": "in-progress"
+        },
+        {
+          "title": "Testing",
+          "assignee": "Team C",
+          "status": "pending"
+        }
+      ],
+      "universities": [
+        "UniVerse",
+        "Tech Institute",
+        "Global University"
+      ],
+      "orgs": [
+        "Urban Mobility Org",
+        "AI Ethics Board"
+      ],
+      "files": [
+        "Project_Proposal.pdf",
+        "Architecture_Diagram.png",
+        "Meeting_Notes.md"
+      ]
+    }
+  ],
+  "stats": {
+    "totalProjects": 25,
+    "joined": 5,
+    "active": 7,
+    "members": 1422
+  }
+}

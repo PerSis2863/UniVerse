@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniVerse — Student Dashboard</title>
+  <link rel="manifest" href="/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/dashboard.css?v=1789728701758"/>
+  <link rel="stylesheet" href="css/student.css?v=1789728701758"/>
+</head>
+<body>
+  <div class="bg-orbs"><div class="orb o1"></div><div class="orb o2"></div></div>
+
+  <!-- NOTIFICATION PANEL -->
+  <div class="notif-overlay" id="notifOverlay" onclick="closeNotifPanel()"></div>
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-panel-hdr">
+      <h3>Notifications</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-text" onclick="markAllRead()">Mark all read</button>
+        <button class="notif-close" onclick="closeNotifPanel()">✕</button>
+      </div>
+    </div>
+    <div class="notif-list" id="notifList"></div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">🎓</div>
+      <div><div class="brand-name">UniVerse</div><div class="brand-role" style="color:#a5b4fc">Student Portal</div></div>
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item active" data-sec="home"><span class="ni">⬡</span><span>Home</span></li>
+      <li class="nav-item" data-sec="attendance"><span class="ni">📊</span><span>Attendance</span></li>
+      <li class="nav-item" data-sec="courses"><span class="ni">📚</span><span>Courses</span></li>
+      <li class="nav-item" data-sec="grades"><span class="ni">🏆</span><span>Grades & GPA</span></li>
+      <li class="nav-item" data-sec="timetable"><span class="ni">📅</span><span>Timetable</span></li>
+      <li class="nav-item" data-sec="knowledge"><span class="ni">🧠</span><span>Knowledge Hub</span></li>
+      <li class="nav-item" data-sec="quizzes"><span class="ni">📝</span><span>Quizzes</span></li>
+      <li class="nav-item" data-sec="career"><span class="ni">💼</span><span>Career Center</span></li>
+      <li class="nav-item" data-sec="alumni"><span class="ni">🌍</span><span>Alumni Network</span></li>
+      <li class="nav-item" data-sec="collab"><span class="ni">🤝</span><span>Collaboration</span></li>
+      <li class="nav-item" data-sec="impact"><span class="ni">🌱</span><span>Social Impact</span></li>
+      <li class="nav-item" data-sec="documents"><span class="ni">📄</span><span>Official Docs</span></li>
+      <li class="nav-item" data-sec="inbox"><span class="ni">✉️</span><span>Inbox & Reports</span></li>
+      <li class="nav-item" data-sec="payments"><span class="ni">💳</span><span>Payments</span></li>
+    </ul>
+    <div class="sidebar-footer">
+      <div class="user-mini" id="sidebarUser"></div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main" id="mainContent">
+    <header class="top-bar">
+      <div><h1 class="page-title" id="pageTitle">Dashboard</h1><p class="page-sub" id="pageSub"></p></div>
+      <div class="header-right">
+        <button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()">🔔<span class="notif-badge" id="notifBadge" style="display:none">0</span></button>
+        <div class="avatar-chip" id="avatarChip"></div>
+      </div>
+    </header>
+
+    <!-- ── HOME ─────────────────────────────── -->
+    <section class="sec active" id="sec-home">
+      <div class="welcome-banner" id="welcomeBanner"></div>
+      
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-hdr"><h3>Student Profile</h3></div>
+        <div class="card-body" id="studentProfileInfo"></div>
+      </div>
+      
+      <div class="kpi-row" id="homeKpis"></div>
+      <div class="home-grid">
+        <div class="card">
+          <div class="card-hdr"><h3>Today's Schedule</h3><span id="todayLabel" class="badge-pill">Live</span></div>
+          <div id="todayClasses"><div class="empty-state">🎉 No classes today!</div></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><h3>Upcoming Deadlines</h3><span class="badge-pill">Assignments</span></div>
+          <div id="upcomingDeadlines"></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><h3>Recent Activity</h3></div>
+          <div id="recentActivity"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-hdr"><h3>Attendance Overview</h3><span class="badge-pill">This Semester</span></div>
+        <div style="height:240px"><canvas id="homeAttChart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ── ATTENDANCE ─────────────────────── -->
+    <section class="sec" id="sec-attendance">
+      <div class="att-tabs">
+        <button class="att-tab active" data-tab="overview" onclick="switchAttTab(this,'overview')">Overview</button>
+        <button class="att-tab" data-tab="calendar" onclick="switchAttTab(this,'calendar')">Calendar</button>
+        <button class="att-tab" data-tab="justify" onclick="switchAttTab(this,'justify')">Justify Absence <span id="pendingJustBadge" class="badge-pill badge-amber" style="margin-left:6px;display:none">!</span></button>
+      </div>
+      <div id="att-overview" class="att-tab-content active">
+        <div class="att-overall-card" id="attOverallCard"></div>
+        <div class="att-course-grid" id="attByCourse"></div>
+      </div>
+      <div id="att-calendar" class="att-tab-content">
+        <div class="card"><div class="card-hdr"><h3>Attendance Calendar</h3><div style="display:flex;gap:10px;font-size:12px;color:var(--muted)"><span>🟩 Present</span><span>🟥 Absent</span><span>🟦 Justified</span></div></div><div id="attCalendar" style="padding:4px"></div></div>
+      </div>
+      <div id="att-justify" class="att-tab-content">
+        <div class="card"><div class="card-hdr"><h3>Submit Absence Justification</h3><span class="badge-pill badge-amber">Sent to University Registrar</span></div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Select an absent session below and provide justification with supporting documents. Your request will be reviewed by the University Registrar (not the teacher).</p>
+          <div class="form-group"><label class="form-label">Select Absent Date & Course</label><select id="justifyCourseDate" class="form-input"><option value="">— Select —</option></select></div>
+          <div class="form-group"><label class="form-label">Reason for Absence</label>
+            <select id="justifyReason" class="form-input">
+              <option value="Medical">🏥 Medical (illness, hospital visit)</option>
+              <option value="Family">👨‍👩‍👧 Family Emergency</option>
+              <option value="Transport">🚆 Transport Issue</option>
+              <option value="Personal">🧍 Personal Reasons</option>
+              <option value="Other">📋 Other (specify in description)</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Detailed Description</label><textarea id="justifyDesc" class="form-input" rows="4" placeholder="Provide a detailed explanation of your absence. Include date, circumstances, and any relevant context..." style="resize:vertical"></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Supporting Documents (Photo/Certificate)</label>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+              <div class="upload-icon">📎</div>
+              <div style="font-size:14px;font-weight:600">Click to upload or drag & drop</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">Medical certificates, photos, screenshots — max 5MB</div>
+              <input type="file" id="fileInput" accept="image/*,.pdf" style="display:none" onchange="handleFileUpload(this)"/>
+            </div>
+            <div id="filePreview" style="margin-top:12px;display:none"></div>
+          </div>
+          <button class="btn-primary" style="width:100%;padding:13px" onclick="submitJustification()">📤 Submit to University Registrar</button>
+        </div>
+        <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>My Justification History</h3></div><div id="justifHistory"></div></div>
+      </div>
+    </section>
+
+    <!-- ── COURSES ─────────────────────────── -->
+    <section class="sec" id="sec-courses">
+      <div class="course-filter-bar">
+        <button class="filter-btn active" onclick="filterCourses(this,'all')">All Courses</button>
+        <button class="filter-btn" onclick="filterCourses(this,'CS')">Computer Science</button>
+        <button class="filter-btn" onclick="filterCourses(this,'Math')">Mathematics</button>
+        <button class="filter-btn" onclick="filterCourses(this,'DS')">Data Science</button>
+        <button class="filter-btn" onclick="filterCourses(this,'Humanities')">Humanities</button>
+      </div>
+      <div class="courses-grid" id="coursesGrid"></div>
+    </section>
+
+    <!-- ── GRADES ─────────────────────────── -->
+    <section class="sec" id="sec-grades">
+      <div class="grades-top-row">
+        <div class="gpa-hero-card" id="gpaHeroCard"></div>
+        <div class="card" style="flex:1;min-width:0"><div class="card-hdr"><h3>GPA Trend</h3><span class="badge-pill badge-green">Improving</span></div><div style="height:180px"><canvas id="gpaTrendChart"></canvas></div></div>
+        <div class="card" style="width:220px;flex-shrink:0"><div class="card-hdr"><h3>Skills Radar</h3></div><div style="height:180px"><canvas id="skillRadar"></canvas></div></div>
+      </div>
+      <div id="gradesCards"></div>
+    </section>
+
+    <section class="sec" id="sec-timetable">
+      <div class="tt-controls">
+        <div style="display:flex;gap:8px">
+          <button class="filter-btn active" id="ttViewWeek" onclick="switchTTView('week')">📅 Week View</button>
+          <button class="filter-btn" id="ttViewMonth" onclick="switchTTView('month')">🗓 Month View</button>
+          <button class="filter-btn" id="ttViewSemester" onclick="switchTTView('semester')">📆 Full Semester</button>
+        </div>
+        <button class="btn-primary" onclick="jumpToToday()">Jump to Today</button>
+      </div>
+      <div id="ttWeekView" class="tt-view active"></div>
+      <div id="ttMonthView" class="tt-view"></div>
+      <div id="ttSemesterView" class="tt-view"></div>
+    </section>
+
+    <!-- ── KNOWLEDGE HUB ──────────────────── -->
+    <section class="sec" id="sec-knowledge">
+      <div class="card"><div class="card-hdr"><h3>🧠 Knowledge Hub</h3></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Access library resources, study materials, and research databases.</p>
+        <div id="knowledgeGrid" class="materials-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── QUIZZES ────────────────────────── -->
+    <section class="sec" id="sec-quizzes">
+      <div class="card"><div class="card-hdr"><h3>My Quizzes</h3></div>
+        <div id="quizzesGrid"></div>
+      </div>
+    </section>
+
+    <!-- ── CAREER CENTER ──────────────────── -->
+    <section class="sec" id="sec-career">
+      <div class="card"><div class="card-hdr"><h3>💼 Career Center</h3></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Browse and apply for internships and apprenticeships.</p>
+        <div id="careerGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>
+      </div>
+    </section>
+
+    <!-- ── ALUMNI NETWORK ─────────────────── -->
+    <section class="sec" id="sec-alumni">
+      <div class="card"><div class="card-hdr"><h3>🌍 Alumni Network (Together)</h3></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Connect with graduated students and find mentors.</p>
+        <div id="alumniGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));gap:16px;"></div>
+      </div>
+    </section>
+
+    <!-- ── OFFICIAL DOCS ──────────────────── -->
+    <section class="sec" id="sec-documents">
+      <div class="card"><div class="card-hdr"><h3>📄 Official Documents</h3></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Download transcripts, enrollment certificates, and enter your CVEC number.</p>
+        <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center;">
+          <input type="text" id="cvecInput" class="form-input" placeholder="Enter CVEC Number (e.g. CVEC-1234)" style="width:300px"/>
+          <button class="btn-primary" onclick="saveCVEC()">Save CVEC</button>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center;">
+          <input type="file" id="docUpload" class="form-input" style="width:300px"/>
+          <button class="btn-primary" onclick="uploadDocument()">Upload Document</button>
+        </div>
+        <div id="docsGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:16px;"></div>
+      </div>
+    </section>
+
+    <!-- ── INBOX & REPORTS ────────────────── -->
+    <section class="sec" id="sec-inbox">
+      <div class="card" style="height:600px;display:flex;flex-direction:column">
+        <div class="card-hdr"><h3>✉️ Inbox & Reports</h3></div>
+        <div style="display:flex;gap:20px;flex:1;overflow:hidden">
+          <div style="width:250px;border-right:1px solid rgba(255,255,255,0.05);overflow-y:auto;padding-right:16px" id="inboxSidebar">
+            <button class="btn-primary" style="width:100%;margin-bottom:16px" onclick="composeMessage()">Compose Message</button>
+            <button class="filter-btn active" style="width:100%;text-align:left;margin-bottom:8px" onclick="filterInbox('messages')">Messages</button>
+            <button class="filter-btn" style="width:100%;text-align:left;margin-bottom:8px" onclick="filterInbox('reports')">Incident Reports</button>
+            <div id="inboxList" style="margin-top:16px"></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column" id="inboxDetail">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted)">Select a conversation</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── COLLABORATION ──────────────────── -->
+    <section class="sec" id="sec-collab">
+      <div class="collab-filter-bar">
+        <button class="filter-btn active" onclick="filterCollab(this,'all')">All</button>
+        <button class="filter-btn" onclick="filterCollab(this,'IT')">💻 IT</button>
+        <button class="filter-btn" onclick="filterCollab(this,'NGO')">🌍 NGO</button>
+        <button class="filter-btn" onclick="filterCollab(this,'University')">🎓 University</button>
+        <button class="filter-btn" onclick="filterCollab(this,'Business')">💼 Business</button>
+      </div>
+      <div class="collab-stats" id="collabStats"></div>
+      <div class="collab-grid" id="collabGrid"></div>
+    </section>
+
+    <!-- ── SOCIAL IMPACT ──────────────────── -->
+    <section class="sec" id="sec-impact">
+      <div class="impact-personal-card" id="impactPersonal"></div>
+      <div class="sdg-bar" id="sdgBar"></div>
+      <h3 style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700;margin:24px 0 16px">Partner Organizations</h3>
+      <div class="orgs-grid" id="orgsGrid"></div>
+    </section>
+
+    <!-- ── PAYMENTS ───────────────────────── -->
+    <section class="sec" id="sec-payments">
+      <div class="pay-dashboard" id="payDashboard"></div>
+      <div class="two-col" style="margin-top:20px">
+        <div>
+          <h3 style="font-family:'Outfit',sans-serif;margin-bottom:14px">Pending Invoices</h3>
+          <div id="pendingInvoices"></div>
+        </div>
+        <div>
+          <h3 style="font-family:'Outfit',sans-serif;margin-bottom:14px">Payment History</h3>
+          <div id="payHistory"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── MODALS ─────────────────────────────── -->
+  <!-- Course Detail Modal -->
+  <div class="modal-overlay" id="courseModal">
+    <div class="modal modal-large"><button class="modal-close" onclick="closeMod('courseModal')">✕</button><div id="courseModalContent"></div></div>
+  </div>
+
+  <!-- Collaboration Detail Modal -->
+  <div class="modal-overlay" id="collabModal">
+    <div class="modal modal-large"><button class="modal-close" onclick="closeMod('collabModal')">✕</button><div id="collabModalContent"></div></div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div class="modal-overlay" id="payModal">
+    <div class="modal pay-modal"><button class="modal-close" onclick="closeMod('payModal')">✕</button><div id="payModalContent"></div></div>
+  </div>
+
+  <!-- Receipt Modal -->
+  <div class="modal-overlay" id="receiptModal">
+    <div class="modal" style="max-width:460px"><button class="modal-close" onclick="closeMod('receiptModal')">✕</button><div id="receiptContent"></div></div>
+  </div>
+
+  <!-- Org Detail Modal -->
+  <div class="modal-overlay" id="orgModal">
+    <div class="modal modal-large"><button class="modal-close" onclick="closeMod('orgModal')">✕</button><div id="orgModalContent"></div></div>
+  </div>
+
+  <!-- Quiz Modal -->
+  <div class="modal-overlay" id="quizModal">
+    <div class="modal modal-large"><button class="modal-close" onclick="closeMod('quizModal')">✕</button><div id="quizModalContent"></div></div>
+  </div>
+
+  <!-- Donate Modal -->
+  <div class="modal-overlay" id="donateModal">
+    <div class="modal" style="max-width:400px;text-align:center">
+      <button class="modal-close" onclick="document.getElementById('donateModal').classList.remove('active')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;position:absolute;top:20px;right:20px;">✕</button>
+      <h2 style="font-family:'Outfit',sans-serif;margin-bottom:8px;font-size:22px">Make a Donation 💖</h2>
+      <p id="donateSubtitle" style="font-size:13px;color:var(--muted);margin-bottom:20px">Support the initiative.</p>
+      <div class="form-group">
+        <label class="form-label" style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:block">Donation Amount (€)</label>
+        <input id="donateAmount" class="form-input" type="number" step="0.01" value="5.00" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:16px"/>
+      </div>
+      <input type="hidden" id="donateInitiativeId"/>
+      <button class="btn-primary" style="width:100%;padding:14px;background:var(--surface-highlight);border:none;border-radius:8px;color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:10px" onclick="confirmDonate()">Donate Now</button>
+    </div>
+  </div>
+
+  <!-- Chatbot -->
+  <div class="chatbot-fab" onclick="toggleChat()">🤖</div>
+  <div class="chatbot-window" id="chatWindow">
+    <div class="chat-header">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:22px">🤖</span><div><div style="font-family:'Outfit',sans-serif;font-weight:700">UniBot</div><div style="font-size:11px;color:#68d391">● Powered by Gemini AI</div></div></div>
+      <button onclick="toggleChat()" style="background:none;border:none;color:#8896b3;cursor:pointer;font-size:18px">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg bot">👋 Hi! I'm UniBot. Ask me about your attendance, grades, payments, assignments, or anything about UniVerse!</div>
+    </div>
+    <div class="chat-suggestions" id="chatSuggestions">
+      <button class="suggestion-chip" onclick="quickAsk('What is my attendance?')">📊 My attendance</button>
+      <button class="suggestion-chip" onclick="quickAsk('What assignments are due soon?')">📚 Due soon</button>
+      <button class="suggestion-chip" onclick="quickAsk('How much fees do I owe?')">💳 Fees</button>
+    </div>
+    <div class="chat-input-row"><input id="chatInput" class="chat-input" placeholder="Ask anything..." onkeydown="if(event.key==='Enter')sendChat()"/><button class="chat-send" onclick="sendChat()">↑</button></div>
+  </div>
+
+  <script src="js/student.js?v=1789728701758"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+  </script>
+</body>
+</html>

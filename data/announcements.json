@@ -1,0 +1,49 @@
+{
+  "announcements": [
+    {
+      "id": "ann_1789729935758",
+      "title": "subject",
+      "msg": "hi",
+      "target": "c15",
+      "sender": "Prof. Teacher Name 1",
+      "senderRole": "teacher",
+      "date": "2026-09-18T11:12:15.758Z"
+    },
+    {
+      "id": "ann_1789729935541",
+      "title": "subject",
+      "msg": "hi",
+      "target": "c15",
+      "sender": "Prof. Teacher Name 1",
+      "senderRole": "teacher",
+      "date": "2026-09-18T11:12:15.541Z"
+    },
+    {
+      "id": "ann_1789729935258",
+      "title": "subject",
+      "msg": "hi",
+      "target": "c15",
+      "sender": "Prof. Teacher Name 1",
+      "senderRole": "teacher",
+      "date": "2026-09-18T11:12:15.258Z"
+    },
+    {
+      "id": "ann_1789729934725",
+      "title": "subject",
+      "msg": "hi",
+      "target": "c15",
+      "sender": "Prof. Teacher Name 1",
+      "senderRole": "teacher",
+      "date": "2026-09-18T11:12:14.725Z"
+    },
+    {
+      "id": "ann_1789729932326",
+      "title": "subject",
+      "msg": "hi",
+      "target": "c15",
+      "sender": "Prof. Teacher Name 1",
+      "senderRole": "teacher",
+      "date": "2026-09-18T11:12:12.326Z"
+    }
+  ]
+}

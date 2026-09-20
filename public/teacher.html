@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniVerse — Teacher Portal</title>
+  <link rel="manifest" href="/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/dashboard.css?v=1789728701759"/>
+  <style>.teacher-color{color:#06b6d4!important}.teacher-grad{background:var(--surface-highlight)!important}</style>
+</head>
+<body>
+  <!-- NOTIFICATION PANEL -->
+  <div class="notif-overlay" id="notifOverlay" onclick="closeNotifPanel()"></div>
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-panel-hdr">
+      <h3>Notifications</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-text" onclick="markAllRead()">Mark all read</button>
+        <button class="notif-close" onclick="closeNotifPanel()">✕</button>
+      </div>
+    </div>
+    <div class="notif-list" id="notifList">
+      <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,0.05)"><strong>New Assignment Submission</strong><div style="font-size:12px;color:var(--muted)">A student submitted an assignment.</div><div style="font-size:10px;color:var(--muted);margin-top:4px">Just now</div></div>
+    </div>
+  </div>
+
+  <div class="bg-orbs"><div class="orb o1" style="background:#06b6d4"></div><div class="orb o2" style="background:#6366f1"></div></div>
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo" style="background:var(--surface-highlight)">👨‍🏫</div>
+      <div><div class="brand-name">UniVerse</div><div class="brand-role" style="color:#67e8f9">Teacher Portal</div></div>
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item active" data-sec="home"><span class="ni">⬡</span><span>Home</span></li>
+      <li class="nav-item" data-sec="attendance"><span class="ni">📊</span><span>Mark Attendance</span></li>
+      <li class="nav-item" data-sec="courses"><span class="ni">📚</span><span>My Courses</span></li>
+      <li class="nav-item" data-sec="grades"><span class="ni">🏆</span><span>Grading</span></li>
+      <li class="nav-item" data-sec="students"><span class="ni">👥</span><span>Students</span></li>
+      <li class="nav-item" data-sec="timetable"><span class="ni">📅</span><span>Schedule</span></li>
+      <li class="nav-item" data-sec="knowledge"><span class="ni">🧠</span><span>Knowledge Hub</span></li>
+      <li class="nav-item" data-sec="quizzes"><span class="ni">📝</span><span>Quizzes</span></li>
+      <li class="nav-item" data-sec="collab"><span class="ni">🤝</span><span>Collaboration</span></li>
+      <li class="nav-item" data-sec="inbox"><span class="ni">✉️</span><span>Messages</span></li>
+    </ul>
+    <div class="sidebar-footer">
+      <div class="user-mini" id="sidebarUser"></div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+  <main class="main">
+    <header class="top-bar">
+      <div><h1 class="page-title" id="pageTitle" style="background:var(--surface-highlight);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">Dashboard</h1><p class="page-sub" id="pageSub"></p></div>
+      <div class="header-right"><button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()">🔔<span class="notif-badge" id="notifBadge">2</span></button><div class="avatar-chip" id="avatarChip" style="background:var(--surface-highlight)"></div></div>
+    </header>
+    <section class="sec active" id="sec-home"><div class="kpi-row" id="homeKpis"></div><div class="two-col"><div class="card"><div class="card-hdr"><h3>Today's Classes</h3></div><div id="todayClasses"></div></div><div class="card"><div class="card-hdr"><h3>Course Attendance</h3></div><div id="courseAtt"></div></div></div><div class="card" style="margin-top:20px"><div class="card-hdr"><h3>Attendance by Course</h3></div><div style="height:220px"><canvas id="teacherAttChart"></canvas></div></div></section>
+    <section class="sec" id="sec-attendance">
+      <div class="card"><div class="card-hdr"><h3>Mark Attendance</h3><span class="badge-pill" style="background:rgba(6,182,212,.1);color:#67e8f9;border-color:rgba(6,182,212,.2)">Select Course</span></div>
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+          <select id="attCourseSelect" class="form-input" style="max-width:280px" onchange="loadStudentsForAtt()"><option value="">Select a course...</option></select>
+          <input type="date" id="attDate" class="form-input" style="max-width:200px" value="${new Date().toISOString().split('T')[0]}"/>
+        </div>
+        <div id="studentAttList"></div>
+        <button class="btn-primary" style="margin-top:16px;background:var(--surface-highlight)" onclick="submitAttendance()">Save Attendance</button>
+      </div>
+    </section>
+    <section class="sec" id="sec-courses"><div class="courses-grid" id="teacherCourses"></div></section>
+    <section class="sec" id="sec-grades">
+      <div class="card"><div class="card-hdr"><h3>Submit Grade</h3></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px">
+          <div class="form-group"><label class="form-label">Course</label><select id="gradeCourse" class="form-input"><option value="">Select...</option></select></div>
+          <div class="form-group"><label class="form-label">Student</label><select id="gradeStudent" class="form-input"><option value="">Select...</option></select></div>
+          <div class="form-group"><label class="form-label">Assignment</label><input id="gradeAsgn" class="form-input" placeholder="Assignment name"/></div>
+          <div class="form-group"><label class="form-label">Score</label><input id="gradeScore" class="form-input" type="number" placeholder="e.g. 85"/></div>
+          <div class="form-group"><label class="form-label">Max Score</label><input id="gradeMax" class="form-input" type="number" placeholder="100" value="100"/></div>
+        </div>
+        <button class="btn-primary" style="background:var(--surface-highlight)" onclick="submitGrade()">Submit Grade</button>
+        <div id="gradeMsg" style="margin-top:12px;font-size:13px;color:var(--green)"></div>
+      </div>
+      <div class="card" style="margin-top:20px"><div class="card-hdr"><h3>Recent Grades</h3></div><div id="recentGrades"><p style="color:var(--muted);font-size:13px">Submit a grade above to see it here.</p></div></div>
+    </section>
+    <section class="sec" id="sec-students">
+      <div class="card"><div class="card-hdr"><h3>Students Overview</h3><select id="studentCourseFilter" class="form-input" style="max-width:220px" onchange="filterStudents()"><option value="">All courses</option></select></div><div id="studentsTable"></div></div>
+    </section>
+    <section class="sec" id="sec-timetable">
+      <div class="card">
+        <div class="card-hdr">
+          <h3>Schedule Overview</h3>
+          <div style="display:flex;gap:10px;">
+             <button class="btn-primary" style="padding:4px 10px;font-size:12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2)" onclick="renderTTView('day')">Day</button>
+             <button class="btn-primary" style="padding:4px 10px;font-size:12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2)" onclick="renderTTView('week')">Week</button>
+             <button class="btn-primary" style="padding:4px 10px;font-size:12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2)" onclick="renderTTView('month')">Month</button>
+             <button class="btn-primary" style="padding:4px 10px;font-size:12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2)" onclick="renderTTView('semester')">Semester</button>
+          </div>
+        </div>
+        <div id="teacherTT"></div>
+      </div>
+    </section>
+    
+    <section class="sec" id="sec-quizzes">
+      <div class="card">
+        <div class="card-hdr"><h3>Manage Quizzes</h3></div>
+        <div style="display:flex;gap:12px;margin-bottom:20px;">
+          <button class="btn-primary" style="background:var(--surface-highlight)" onclick="document.getElementById('quizModal').classList.add('active')">+ Create New Quiz</button>
+        </div>
+        <div id="teacherQuizzes"></div>
+      </div>
+    </section>
+
+    <section class="sec" id="sec-collab">
+      <div class="card">
+        <div class="card-hdr"><h3>Department Collaboration & Projects</h3></div>
+        <div id="teacherCollab"></div>
+      </div>
+    </section>
+
+    <!-- ── KNOWLEDGE HUB ──────────────────── -->
+    <section class="sec" id="sec-knowledge">
+      <div class="card"><div class="card-hdr"><h3>🧠 Knowledge Hub</h3></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Manage course materials, research databases, and class resources.</p>
+        <button class="btn-primary" style="margin-bottom:20px" onclick="document.getElementById('uploadKnowledgeModal').classList.add('active')">+ Upload Material</button>
+        <div id="knowledgeGrid" class="materials-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── MESSAGES ──────────────────── -->
+    <section class="sec" id="sec-inbox">
+      <div class="card" style="height:600px;display:flex;flex-direction:column">
+        <div class="card-hdr"><h3>✉️ Messages & Announcements</h3></div>
+        <div style="display:flex;gap:20px;flex:1;overflow:hidden">
+          <div style="width:250px;border-right:1px solid rgba(255,255,255,0.05);overflow-y:auto;padding-right:16px" id="inboxSidebar">
+            <button class="btn-primary" style="width:100%;margin-bottom:16px" onclick="composeTeacherMessage()">+ Send Announcement</button>
+            <div id="teacherInboxList" style="margin-top:16px"></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column" id="teacherInboxDetail">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted)">Select a conversation</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div class="chatbot-fab" id="chatFab" style="background:var(--surface-highlight)" onclick="toggleChat()">🤖</div>
+  <div class="chatbot-window" id="chatWindow">
+    <div class="chat-header"><span>🤖 UniBot</span><span style="font-size:11px;color:#68d391">● Online</span><button onclick="toggleChat()" style="background:none;border:none;color:#8896b3;cursor:pointer;font-size:18px">✕</button></div>
+    <div class="chat-messages" id="chatMessages"><div class="chat-msg bot">👋 Hi Prof! I can help you with student attendance records, grade management, and class schedules. What do you need?</div></div>
+    <div class="chat-input-row"><input id="chatInput" class="chat-input" placeholder="Ask anything..." onkeydown="if(event.key==='Enter')sendChat()"/><button class="chat-send" onclick="sendChat()" style="background:var(--surface-highlight)">↑</button></div>
+  </div>
+  
+  <div class="modal-overlay" id="quizModal">
+    <div class="modal">
+      <h3 style="margin-bottom:15px;color:#fff">Create New Quiz</h3>
+      <div class="form-group"><label class="form-label">Course</label><select id="quizCourse" class="form-input"></select></div>
+      <div class="form-group"><label class="form-label">Title</label><input id="quizTitle" class="form-input" placeholder="e.g. Midterm 1" /></div>
+      <div class="form-group"><label class="form-label">Due Date</label><input id="quizDueDate" type="date" class="form-input" /></div>
+      <div id="quizQuestions">
+        <div class="form-group">
+          <label class="form-label">Question 1</label>
+          <input class="form-input q-text" placeholder="Question text..." style="margin-bottom:8px" />
+          <input class="form-input q-opt" placeholder="Option A" style="margin-bottom:4px" />
+          <input class="form-input q-opt" placeholder="Option B" style="margin-bottom:4px" />
+          <input class="form-input q-opt" placeholder="Option C" style="margin-bottom:4px" />
+          <input class="form-input q-opt" placeholder="Option D" style="margin-bottom:4px" />
+          <input class="form-input q-ans" placeholder="Correct Option Index (0-3)" type="number" min="0" max="3" />
+        </div>
+      </div>
+      <button class="btn-outline" style="width:100%;margin-bottom:15px" onclick="addQuizQuestion()">+ Add Question</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-outline" onclick="document.getElementById('quizModal').classList.remove('active')">Cancel</button>
+        <button class="btn-primary" style="background:var(--surface-highlight)" onclick="submitQuiz()">Create Quiz</button>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="uploadKnowledgeModal">
+    <div class="modal">
+      <h3 style="margin-bottom:15px;color:#fff">Upload Material</h3>
+      <div class="form-group"><label class="form-label">Title</label><input id="uploadKnowledgeTitle" class="form-input" placeholder="e.g. Lecture 1 Notes" /></div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="uploadKnowledgeType" class="form-input">
+          <option value="PDF">PDF</option>
+          <option value="DOCX">DOCX</option>
+          <option value="VIDEO">VIDEO</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">File</label>
+        <input type="file" id="uploadKnowledgeFile" class="form-input" style="padding: 10px;" />
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-outline" onclick="document.getElementById('uploadKnowledgeModal').classList.remove('active')">Cancel</button>
+        <button class="btn-primary" style="background:var(--surface-highlight)" onclick="submitUploadKnowledge()">Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="manageKnowledgeModal">
+    <div class="modal">
+      <h3 style="margin-bottom:15px;color:#fff">Manage Material</h3>
+      <input type="hidden" id="manageKnowledgeId" />
+      <div class="form-group"><label class="form-label">Title</label><input id="manageKnowledgeTitle" class="form-input" /></div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="manageKnowledgeType" class="form-input">
+          <option value="PDF">PDF</option>
+          <option value="DOCX">DOCX</option>
+          <option value="VIDEO">VIDEO</option>
+          <option value="link">Link</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-outline" onclick="document.getElementById('manageKnowledgeModal').classList.remove('active')">Cancel</button>
+        <button class="btn-primary" style="background:var(--surface-highlight)" onclick="saveKnowledgeMaterial()">Save</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal-overlay" id="quizResultsModal">
+    <div class="modal" style="max-width:600px;width:95%">
+      <h3 style="margin-bottom:15px;color:#fff">Quiz Details & Results</h3>
+      <input type="hidden" id="manageQuizId" />
+      <div style="display:flex; gap:10px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px">
+        <button class="btn-outline" style="border:none" onclick="document.getElementById('qrTabs-results').style.display='block';document.getElementById('qrTabs-edit').style.display='none'">Results</button>
+        <button class="btn-outline" style="border:none" onclick="document.getElementById('qrTabs-results').style.display='none';document.getElementById('qrTabs-edit').style.display='block'">Edit Quiz</button>
+      </div>
+      
+      <div id="qrTabs-results">
+        <div id="quizSubmissionsList" style="max-height:300px;overflow-y:auto;color:#fff">
+          <!-- Submissions will go here -->
+        </div>
+      </div>
+
+      <div id="qrTabs-edit" style="display:none">
+        <div class="form-group"><label class="form-label">Title</label><input id="manageQuizTitle" class="form-input" /></div>
+        <div class="form-group"><label class="form-label">Due Date</label><input id="manageQuizDueDate" type="date" class="form-input" /></div>
+        <div id="manageQuizQuestions"></div>
+        <button class="btn-outline" style="width:100%;margin-bottom:15px" onclick="addManageQuizQuestion()">+ Add Question</button>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn-primary" style="background:var(--surface-highlight)" onclick="saveQuizEdits()">Save Edits</button>
+        </div>
+      </div>
+      
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:15px">
+        <button class="btn-outline" onclick="document.getElementById('quizResultsModal').classList.remove('active')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+  </script>
+  <script>
+    const API=''; const token=()=>localStorage.getItem('universe_token'); const user=()=>{try{return JSON.parse(localStorage.getItem('universe_user'));}catch{return null;}};
+    async function api(p,o={}){const r=await fetch(API+p,{headers:{'Authorization':'Bearer '+token(),'Content-Type':'application/json'},...o});if(r.status===401){logout();return null;}return r.json();}
+    function logout(){localStorage.clear();window.location.href='/';}
+    const META={home:{title:'Teacher Dashboard',sub:'Welcome back, Professor'},attendance:{title:'Mark Attendance',sub:'Record student presence for your classes'},courses:{title:'My Courses',sub:'Manage course content and assignments'},grades:{title:'Grading',sub:'Submit and manage student grades'},students:{title:'Students',sub:'View all your students and their progress'},timetable:{title:'Schedule',sub:'Your weekly teaching schedule'},quizzes:{title:'Quizzes',sub:'Manage quizzes and view results'},collab:{title:'Collaboration',sub:'Department and cross-institutional projects'},knowledge:{title:'Knowledge Hub',sub:'Course materials and university resources'},inbox:{title:'Messages',sub:'Inbox and Announcements'}};
+    function switchSection(id){document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.getElementById('sec-'+id).classList.add('active');document.querySelector('[data-sec="'+id+'"]').classList.add('active');const m=META[id];document.getElementById('pageTitle').textContent=m.title;document.getElementById('pageSub').textContent=m.sub;if(loaders[id])loaders[id]();}
+    const loaders={home:loadHome,attendance:loadAttendanceSec,courses:loadCourses,grades:loadGrades,students:loadStudents,timetable:loadTimetable,quizzes:loadQuizzes,collab:loadTeacherCollab,knowledge:loadKnowledge,inbox:loadTeacherInbox};
+    let teacherData=null;
+    window.addEventListener('DOMContentLoaded',async()=>{const u=user();if(!u||u.role!=='teacher'){window.location.href='/';return;}document.getElementById('sidebarUser').innerHTML=`<div class="user-av" style="background:var(--surface-highlight)">${u.avatar||'JM'}</div><div class="user-info"><div class="user-name">${u.name}</div><div class="user-id">${u.teacherId||''}</div></div>`;document.getElementById('avatarChip').textContent=u.avatar||'JM';document.querySelectorAll('.nav-item').forEach(item=>item.addEventListener('click',()=>switchSection(item.dataset.sec)));await loadHome();});
+    async function loadHome(){teacherData=await api('/api/teacher/dashboard');if(!teacherData)return;const s=teacherData.stats;document.getElementById('homeKpis').innerHTML=[['📚','Courses Taught',s.totalCourses,'','var(--surface-highlight)'],['👥','Total Students',s.totalStudents,'','var(--surface-highlight)'],['📊','Avg Attendance',s.avgAttendance+'%','','var(--surface-highlight)']].map(([ic,l,v,m,g])=>`<div class="kpi" style="--kpi-grad:${g}"><div class="kpi-icon">${ic}</div><div class="kpi-lbl">${l}</div><div class="kpi-val">${v}</div><div class="kpi-meta">${m}</div></div>`).join('');
+    document.getElementById('todayClasses').innerHTML=teacherData.courses.map(c=>`<div class="class-item"><div class="class-color" style="background:${c.color}"></div><div class="class-info"><div class="class-name">${c.name}</div><div class="class-meta">${c.code} · ${c.studentCount} students</div></div></div>`).join('')||'<p style="color:var(--muted);font-size:13px;padding:20px 0">No classes today</p>';
+    document.getElementById('courseAtt').innerHTML=teacherData.courseAttendance.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px;font-weight:600">${c.name}</span><span style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;color:${c.avgAttendance>=75?'var(--green)':'var(--amber)'}">${c.avgAttendance}%</span></div>`).join('');
+    const ctx=document.getElementById('teacherAttChart').getContext('2d');
+    new Chart(ctx,{type:'bar',data:{labels:teacherData.courses.map(c=>c.code),datasets:[{label:'Avg Attendance %',data:teacherData.courseAttendance.map(c=>c.avgAttendance),backgroundColor:teacherData.courses.map(c=>c.color+'cc'),borderColor:teacherData.courses.map(c=>c.color),borderWidth:2,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896b3',font:{family:'Inter',size:12}}}},scales:{x:{ticks:{color:'#4a5578'},grid:{color:'rgba(255,255,255,.04)'}},y:{max:100,ticks:{color:'#4a5578',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.04)'}}}}});}
+    async function loadAttendanceSec(){if(!teacherData)teacherData=await api('/api/teacher/dashboard');const sel=document.getElementById('attCourseSelect');sel.innerHTML='<option value="">Select a course...</option>'+teacherData.courses.map(c=>`<option value="${c.id}">${c.name} (${c.code})</option>`).join('');}
+    let currentStudents=[];
+    async function loadStudentsForAtt(){const cid=document.getElementById('attCourseSelect').value;if(!cid){document.getElementById('studentAttList').innerHTML='';return;}const data=await api('/api/teacher/students/'+cid);if(!data)return;currentStudents=data.students;document.getElementById('studentAttList').innerHTML=`<table style="width:100%;border-collapse:collapse">${data.students.map(s=>`<tr><td style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:14px;font-weight:600">${s.name}</div><div style="font-size:12px;color:var(--muted)">${s.studentId} · Att: ${s.attendancePct}%</div></td><td style="text-align:right;padding:10px 0;border-bottom:1px solid var(--border)"><label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="att-${s.id}" value="present" checked style="accent-color:#10b981"> Present</label>&nbsp;<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="att-${s.id}" value="absent" style="accent-color:#f43f5e"> Absent</label></td></tr>`).join('')}</table>`;}
+    async function submitAttendance(){const cid=document.getElementById('attCourseSelect').value;const date=document.getElementById('attDate').value;if(!cid||!date){alert('Select a course and date.');return;}const records=currentStudents.map(s=>({studentId:s.id,status:document.querySelector(`[name="att-${s.id}"]:checked`)?.value||'absent'}));const res=await api('/api/teacher/attendance',{method:'POST',body:JSON.stringify({courseId:cid,date,records})});if(res?.success){alert(`✅ Attendance saved for ${res.saved} students!`);}}
+    async function loadCourses(){if(!teacherData)teacherData=await api('/api/teacher/dashboard');document.getElementById('teacherCourses').innerHTML=teacherData.courses.map(c=>`<div class="course-card"><div class="course-card-top" style="--c-color:${c.color}"><div class="course-code">${c.code}</div><div class="course-name">${c.name}</div><div class="course-teacher">👥 ${c.studentCount} Students</div><div style="margin-top:10px"><span class="badge-pill">${c.credits||3} Credits</span></div></div><div class="course-card-body">${c.schedule.map(s=>`<div class="assignment-row"><span>${s.day} · ${s.time}</span><span style="color:var(--muted)">${s.room}</span></div>`).join('')}</div></div>`).join('');}
+    async function loadGrades(){if(!teacherData)teacherData=await api('/api/teacher/dashboard');const cs=document.getElementById('gradeCourse');cs.innerHTML='<option value="">Select...</option>'+teacherData.courses.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');cs.onchange=async()=>{const data=await api('/api/teacher/students/'+cs.value);const ss=document.getElementById('gradeStudent');ss.innerHTML='<option>Select...</option>'+(data?.students?.map(s=>`<option value="${s.id}">${s.name}</option>`)||[]).join('');};}
+    async function submitGrade(){const cs=document.getElementById('gradeCourse');const ss=document.getElementById('gradeStudent');const body={courseId:cs.value,studentId:ss.value,assignmentName:document.getElementById('gradeAsgn').value,score:+document.getElementById('gradeScore').value,maxScore:+document.getElementById('gradeMax').value};if(!body.courseId||!body.studentId||!body.assignmentName){alert('Fill all fields.');return;}const res=await api('/api/teacher/grades',{method:'POST',body:JSON.stringify(body)});if(res?.success){document.getElementById('gradeMsg').textContent='✅ Grade submitted successfully!';setTimeout(()=>document.getElementById('gradeMsg').textContent='',3000);const cname=cs.options[cs.selectedIndex].text;const sname=ss.options[ss.selectedIndex].text;const rec=document.getElementById('recentGrades');if(rec.innerHTML.includes('Submit a grade'))rec.innerHTML='';rec.innerHTML=`<div style="padding:10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600">${sname}</div><div style="font-size:12px;color:var(--muted)">${cname} · ${body.assignmentName}</div></div><div style="font-family:'Outfit',sans-serif;font-weight:700;color:var(--green)">${body.score}/${body.maxScore}</div></div>`+rec.innerHTML;document.getElementById('gradeAsgn').value='';document.getElementById('gradeScore').value='';}}
+    async function loadStudents(){if(!teacherData)teacherData=await api('/api/teacher/dashboard');const sel=document.getElementById('studentCourseFilter');sel.innerHTML='<option value="">All courses</option>'+teacherData.courses.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');filterStudents();}
+    async function filterStudents(){const cid=document.getElementById('studentCourseFilter').value;if(!cid){document.getElementById('studentsTable').innerHTML='<p style="color:var(--muted);font-size:13px;padding:16px 0">Select a course to view students.</p>';return;}const data=await api('/api/teacher/students/'+cid);if(!data)return;document.getElementById('studentsTable').innerHTML=`<table style="width:100%;border-collapse:collapse">${data.students.map(s=>`<tr><td style="padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:12px"><div class="user-av" style="width:36px;height:36px;font-size:13px">${s.avatar||'AB'}</div><div><div style="font-size:14px;font-weight:600">${s.name}</div><div style="font-size:12px;color:var(--muted)">${s.studentId} · ${s.department}</div></div></div></td><td style="padding:12px 0;border-bottom:1px solid var(--border);text-align:right"><span style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;color:${s.attendancePct>=75?'var(--green)':'var(--rose)'}">${s.attendancePct}%</span><div style="font-size:11px;color:var(--muted)">${s.totalClasses} classes</div></td></tr>`).join('')}</table>`;}
+    let currentTTView = 'week';
+    function renderTTView(view) { currentTTView = view; loadTimetable(); }
+    function loadTimetable(){
+      if(!teacherData)return;
+      const slotMap={}; 
+      teacherData.courses.forEach(c=>c.schedule?.forEach(s=>{ slotMap[s.day+'-'+s.time]={name:c.name,code:c.code,room:s.room,color:c.color}; }));
+      
+      const el = document.getElementById('teacherTT');
+      if (currentTTView === 'week') {
+        const days=['Mon','Tue','Wed','Thu','Fri','Sat'];const times=['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'];
+        el.innerHTML=`<div class="tt-grid"><table class="tt-table"><thead><tr><th>Time</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>${times.map(t=>`<tr><td style="color:var(--muted);font-size:12px">${t}</td>${days.map(d=>{const s=slotMap[d+'-'+t];return s?`<td><div class="tt-cell" style="--c:${s.color}"><div class="tt-cell-name">${s.name}</div><div class="tt-cell-room">📍 ${s.room}</div></div></td>`:`<td></td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;
+      } else if (currentTTView === 'day') {
+        const today = new Date().toLocaleDateString('en-US',{weekday:'short'});
+        const todaySlots = Object.keys(slotMap).filter(k=>k.startsWith(today)).sort((a,b)=>a.localeCompare(b));
+        if (todaySlots.length===0) el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">No classes scheduled for today.</div>';
+        else el.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">${todaySlots.map(k=>{ const s=slotMap[k]; const t=k.split('-')[1]; return `<div style="display:flex;align-items:center;background:rgba(255,255,255,0.03);padding:15px;border-radius:12px;border-left:4px solid ${s.color}"><div style="font-weight:700;font-size:18px;width:100px">${t}</div><div><div style="font-size:15px;font-weight:600">${s.name}</div><div style="font-size:13px;color:var(--muted)">${s.code} · Room ${s.room}</div></div></div>`;}).join('')}</div>`;
+      } else if (currentTTView === 'month') {
+        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px;">'+Array.from({length:30}).map((_,i)=>{
+           const d = new Date(2026, 9, i+1); const w = d.toLocaleDateString('en-US',{weekday:'short'});
+           const daySlots = Object.keys(slotMap).filter(k=>k.startsWith(w));
+           return `<div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:8px;min-height:80px;border:1px solid var(--border)"><div style="font-size:12px;color:var(--muted);margin-bottom:6px">${i+1} ${w}</div>${daySlots.map(k=>{const s=slotMap[k]; return `<div style="font-size:10px;background:${s.color};color:#000;padding:2px 4px;border-radius:4px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>`}).join('')}</div>`
+        }).join('')+'</div>';
+      } else if (currentTTView === 'semester') {
+        el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)"><h3 style="color:#fff;margin-bottom:10px">Fall Semester 2026</h3><p>Weeks 1 - 16</p><div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;justify-content:center">'+Array.from({length:16}).map((_,i)=>`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:15px;width:120px"><h4>Week ${i+1}</h4><div style="font-size:12px;color:var(--muted);margin-top:5px">${teacherData.courses.length} Active Courses</div></div>`).join('')+'</div></div>';
+      }
+    }
+
+    async function loadQuizzes() {
+      if(!teacherData)teacherData=await api('/api/teacher/dashboard');
+      const cs=document.getElementById('quizCourse');
+      cs.innerHTML='<option value="">Select...</option>'+teacherData.courses.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      const data = await api('/api/teacher/quizzes');
+      if (!data) return;
+      document.getElementById('teacherQuizzes').innerHTML = data.quizzes.map(q => `
+        <div style="padding:16px; border:1px solid var(--border); border-radius:8px; margin-bottom:12px; background:var(--card-bg)">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <h4 style="margin:0; font-size:16px">${q.title} <span style="font-size:12px;color:var(--muted);margin-left:8px">${q.courseId}</span></h4>
+              <p style="margin:4px 0 0; font-size:13px; color:var(--muted)">${q.questions.length} Questions · ${q.submissions?.length || 0} Submissions</p>
+            </div>
+            <button class="btn-outline" onclick="openQuizResults('${q.id}')">View Results</button>
+          </div>
+        </div>
+      `).join('') || '<p style="color:var(--muted)">No quizzes created.</p>';
+    }
+
+    function addQuizQuestion(){const div=document.createElement('div');div.className='form-group';div.innerHTML=`<label class="form-label">New Question</label><input class="form-input q-text" placeholder="Question text..." style="margin-bottom:8px" /><input class="form-input q-opt" placeholder="Option A" style="margin-bottom:4px" /><input class="form-input q-opt" placeholder="Option B" style="margin-bottom:4px" /><input class="form-input q-opt" placeholder="Option C" style="margin-bottom:4px" /><input class="form-input q-opt" placeholder="Option D" style="margin-bottom:4px" /><input class="form-input q-ans" placeholder="Correct Option Index (0-3)" type="number" min="0" max="3" />`;document.getElementById('quizQuestions').appendChild(div);}
+    async function submitQuiz(){const courseId=document.getElementById('quizCourse').value;const title=document.getElementById('quizTitle').value;const dueDate=document.getElementById('quizDueDate').value;if(!courseId||!title){alert('Fill course and title.');return;}const qs=Array.from(document.getElementById('quizQuestions').children).map(g=>{const opts = Array.from(g.querySelectorAll('.q-opt')).map(i=>i.value).filter(v=>v); return {question:g.querySelector('.q-text').value,options:opts,answer:opts[+g.querySelector('.q-ans').value]};});if(qs.length===0||!qs[0].question){alert('Add at least one valid question.');return;}const res=await api('/api/teacher/quizzes',{method:'POST',body:JSON.stringify({courseId,title,dueDate,questions:qs})});if(res?.success){document.getElementById('quizModal').classList.remove('active');loadQuizzes();}}
+
+    async function loadTeacherCollab() {
+      const data = await api('/api/collaboration');
+      if (!data) return;
+      document.getElementById('teacherCollab').innerHTML = data.projects.map(p => `
+        <div class="team-card" style="margin-bottom:12px">
+          <div style="display:flex; justify-content:space-between;">
+            <div class="team-name">${p.name}</div>
+            <span class="badge-pill">${p.status}</span>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin:8px 0">${p.description}</p>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+            <div style="font-size:12px; color:#06b6d4">Lead: ${p.leadOrg}</div>
+            <div class="team-members">
+              <div class="member-av">👤</div>
+              <span style="font-size:12px; margin-left:8px">${p.members} active students</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    let chatHistory=[];    function toggleChat() {
+      const cw = document.getElementById('chatWindow');
+      cw.classList.toggle('active');
+    }
+
+    async function loadKnowledge() {
+      const data = await api('/api/student/knowledge');
+      if (!data) return;
+      const icons = { 'PDF': '📄', 'DOCX': '📝', 'VIDEO': '🎥' };
+      document.getElementById('knowledgeGrid').innerHTML = data.materials.map(m => `
+        <div class="material-card" onclick="window.open('/assets/dummy.pdf', '_blank')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;display:flex;align-items:center;gap:16px;transition:0.2s">
+          <div style="font-size:32px">${icons[m.type]||'🗂'}</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:#06b6d4;font-weight:700">${m.course}</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;margin:4px 0">${m.title}</div>
+            <div style="font-size:12px;color:var(--muted)">${new Date(m.date).toLocaleDateString()} · ${m.size}</div>
+          </div>
+          <div><button class="btn-primary" style="padding:8px 16px;font-size:12px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);color:#06b6d4" onclick="event.stopPropagation(); openManageKnowledge('${m.id}', '${m.title.replace(/'/g, "\\'")}', '${m.type}')">Manage</button></div>
+        </div>
+      `).join('') || '<div class="empty-state">No materials found.</div>';
+    }
+
+    let teacherInboxData = [];
+    async function loadTeacherInbox() {
+      const data = await api('/api/student/inbox'); // Can reuse this mock for now
+      if (!data) return;
+      teacherInboxData = data.messages;
+      document.getElementById('teacherInboxList').innerHTML = teacherInboxData.map(item => `
+        <div style="padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:8px;cursor:pointer;border:1px solid transparent;transition:0.2s" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'" onclick="viewTeacherMessage('${item.id}')">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <div style="font-weight:600;font-size:13px">${item.sender}</div>
+            <div style="font-size:11px;color:var(--muted)">${item.date}</div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.subject}</div>
+        </div>
+      `).join('') || '<div style="font-size:13px;color:var(--muted);text-align:center">No messages</div>';
+    }
+
+    function viewTeacherMessage(id) {
+      const item = teacherInboxData.find(x => x.id === id);
+      if(!item) return;
+      document.getElementById('teacherInboxDetail').innerHTML = `
+        <div style="padding:24px;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <h2 style="font-family:'Outfit',sans-serif">${item.subject}</h2>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;color:var(--muted);font-size:13px">
+            <div>From: ${item.sender}</div>
+            <div>${item.date}</div>
+          </div>
+        </div>
+        <div style="padding:24px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#e2e8f0;flex:1;overflow-y:auto">
+          ${item.body || 'No description provided.'}
+        </div>
+      `;
+    }
+
+    async function composeTeacherMessage() {
+      if(!teacherData) teacherData = await api('/api/teacher/dashboard');
+      const targets = `<option value="All Students">All Students</option>` + teacherData.courses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      document.getElementById('teacherInboxDetail').innerHTML = `
+        <div style="padding:24px;display:flex;flex-direction:column;height:100%;gap:16px">
+          <h2 style="font-family:'Outfit',sans-serif">New Announcement</h2>
+          <select id="annTarget" class="form-input">${targets}</select>
+          <input type="text" id="annTitle" class="form-input" placeholder="Subject" />
+          <textarea id="annMsg" class="form-input" placeholder="Message body..." style="flex:1;resize:none"></textarea>
+          <div style="text-align:right">
+            <button class="btn-primary" onclick="postTeacherAnnouncement()">Send Announcement</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function openManageKnowledge(id, title, type) {
+      document.getElementById('manageKnowledgeId').value = id;
+      document.getElementById('manageKnowledgeTitle').value = title;
+      document.getElementById('manageKnowledgeType').value = type;
+      document.getElementById('manageKnowledgeModal').classList.add('active');
+    }
+    
+    async function saveKnowledgeMaterial() {
+      const id = document.getElementById('manageKnowledgeId').value;
+      const title = document.getElementById('manageKnowledgeTitle').value;
+      const type = document.getElementById('manageKnowledgeType').value;
+      const res = await api('/api/teacher/knowledge/' + id, {
+        method: 'PUT',
+        body: JSON.stringify({ title, type })
+      });
+      if (res?.success) {
+        document.getElementById('manageKnowledgeModal').classList.remove('active');
+        showToast('Saved', 'Material updated successfully.', 'success');
+        loadKnowledge();
+      }
+    }
+
+    async function openQuizResults(id) {
+      const data = await api('/api/teacher/quizzes');
+      const quiz = data.quizzes.find(q => q.id === id);
+      if (!quiz) return;
+      document.getElementById('manageQuizId').value = quiz.id;
+      document.getElementById('manageQuizTitle').value = quiz.title;
+      document.getElementById('manageQuizDueDate').value = quiz.dueDate || '';
+      
+      const submissionsHtml = quiz.attempts && quiz.attempts.length > 0 ? 
+        quiz.attempts.map(s => `<div style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.1)">Student: ${s.studentId} | Score: ${s.score}/${s.maxScore}</div>`).join('') :
+        '<div style="padding:10px">No submissions yet.</div>';
+      document.getElementById('quizSubmissionsList').innerHTML = submissionsHtml;
+
+      const qHtml = quiz.questions.map((q, i) => {
+        const qText = q.text || q.question || '';
+        const opt0 = (q.options[0]||'').replace(/"/g, '&quot;');
+        const opt1 = (q.options[1]||'').replace(/"/g, '&quot;');
+        const opt2 = (q.options[2]||'').replace(/"/g, '&quot;');
+        const opt3 = (q.options[3]||'').replace(/"/g, '&quot;');
+        let correctIdx = q.correctOption;
+        if (correctIdx === undefined && q.answer) {
+          correctIdx = q.options.indexOf(q.answer);
+        }
+        return `
+        <div class="form-group mq-group" style="padding:10px; border:1px solid rgba(255,255,255,0.1); border-radius:8px">
+          <label class="form-label">Question ${i+1}</label>
+          <input class="form-input q-text" value="${qText.replace(/"/g, '&quot;')}" style="margin-bottom:8px" />
+          <input class="form-input q-opt" value="${opt0}" style="margin-bottom:4px" />
+          <input class="form-input q-opt" value="${opt1}" style="margin-bottom:4px" />
+          <input class="form-input q-opt" value="${opt2}" style="margin-bottom:4px" />
+          <input class="form-input q-opt" value="${opt3}" style="margin-bottom:4px" />
+          <input class="form-input q-ans" value="${Math.max(0, correctIdx||0)}" type="number" min="0" max="3" />
+        </div>
+        `;
+      }).join('');
+      document.getElementById('manageQuizQuestions').innerHTML = qHtml;
+
+      document.getElementById('qrTabs-results').style.display = 'block';
+      document.getElementById('qrTabs-edit').style.display = 'none';
+      document.getElementById('quizResultsModal').classList.add('active');
+    }
+    
+    function addManageQuizQuestion() {
+      const div = document.createElement('div');
+      div.className = 'form-group mq-group';
+      div.style.cssText = 'padding:10px; border:1px solid rgba(255,255,255,0.1); border-radius:8px';
+      div.innerHTML = `<label class="form-label">New Question</label><input class="form-input q-text" placeholder="Question text..." style="margin-bottom:8px" /><input class="form-input q-opt" placeholder="Option A" style="margin-bottom:4px" /><input class="form-input q-opt" placeholder="Option B" style="margin-bottom:4px" /><input class="form-input q-opt" placeholder="Option C" style="margin-bottom:4px" /><input class="form-input q-opt" placeholder="Option D" style="margin-bottom:4px" /><input class="form-input q-ans" placeholder="Correct Option Index (0-3)" type="number" min="0" max="3" />`;
+      document.getElementById('manageQuizQuestions').appendChild(div);
+    }
+    
+    async function saveQuizEdits() {
+      const id = document.getElementById('manageQuizId').value;
+      const title = document.getElementById('manageQuizTitle').value;
+      const dueDate = document.getElementById('manageQuizDueDate').value;
+      const qs = Array.from(document.getElementById('manageQuizQuestions').children).map(g => {
+        const opts = Array.from(g.querySelectorAll('.q-opt')).map(i => i.value).filter(v => v);
+        return {
+          question: g.querySelector('.q-text').value,
+          options: opts,
+          answer: opts[+g.querySelector('.q-ans').value]
+        };
+      });
+      if (qs.length === 0 || !qs[0].question) {
+        alert('Add at least one valid question.');
+        return;
+      }
+      const res = await api('/api/teacher/quizzes/' + id, {
+        method: 'PUT',
+        body: JSON.stringify({ title, dueDate, questions: qs })
+      });
+      if (res?.success) {
+        document.getElementById('quizResultsModal').classList.remove('active');
+        showToast('Saved', 'Quiz updated successfully.', 'success');
+        loadQuizzes();
+      }
+    }
+
+    async function postTeacherAnnouncement() {
+      const title = document.getElementById('annTitle').value;
+      const msg = document.getElementById('annMsg').value;
+      const target = document.getElementById('annTarget').value;
+      if (!title || !msg) { alert('Fill subject and message.'); return; }
+      const res = await api('/api/announcements', {
+        method: 'POST',
+        body: JSON.stringify({ title, msg, target })
+      });
+      if (res?.success) {
+        showToast('Sent!', 'Announcement has been sent.', 'success');
+        loadTeacherInbox();
+      }
+    }async function sendChat(){const input=document.getElementById('chatInput');const msg=input.value.trim();if(!msg)return;input.value='';const msgs=document.getElementById('chatMessages');msgs.innerHTML+=`<div class="chat-msg user">${msg}</div>`;msgs.innerHTML+=`<div class="chat-msg loading" id="chatLoading">⋯ Thinking...</div>`;msgs.scrollTop=msgs.scrollHeight;chatHistory.push({role:'user',content:msg});try{const res=await api('/api/chatbot',{method:'POST',body:JSON.stringify({message:msg,history:chatHistory.slice(-6),context:{role:'teacher',name:user()?.name}})});document.getElementById('chatLoading')?.remove();if(res?.reply){msgs.innerHTML+=`<div class="chat-msg bot">${res.reply}</div>`;chatHistory.push({role:'model',content:res.reply});}}catch{document.getElementById('chatLoading')?.remove();msgs.innerHTML+=`<div class="chat-msg bot">Sorry, I couldn't connect.</div>`;}msgs.scrollTop=msgs.scrollHeight;}
+    async function submitUploadKnowledge() {
+      const title = document.getElementById('uploadKnowledgeTitle').value;
+      const type = document.getElementById('uploadKnowledgeType').value;
+      const fileInput = document.getElementById('uploadKnowledgeFile');
+      if (!title || fileInput.files.length === 0) {
+        alert('Please provide a title and select a file.');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      
+      // Upload file first
+      try {
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+          body: formData
+        }).then(res => res.json());
+        
+        if (!uploadRes.success) throw new Error(uploadRes.error);
+        
+        // Save to knowledge.json
+        const res = await api('/api/teacher/knowledge', {
+          method: 'POST',
+          body: JSON.stringify({
+            title,
+            type,
+            size: (fileInput.files[0].size / 1024 / 1024).toFixed(1) + ' MB',
+            link: uploadRes.url
+          })
+        });
+        
+        if (res?.success) {
+          document.getElementById('uploadKnowledgeModal').classList.remove('active');
+          showToast('Success', 'Material uploaded successfully', 'success');
+          loadKnowledge();
+        }
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

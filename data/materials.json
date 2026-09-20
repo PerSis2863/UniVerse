@@ -1,0 +1,3380 @@
+{
+  "materials": [
+    {
+      "id": "m_c1_1",
+      "courseId": "c1",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.882Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c1_2",
+      "courseId": "c1",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.883Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c1_3",
+      "courseId": "c1",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.883Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c1_4",
+      "courseId": "c1",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-06T20:31:13.883Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c1_5",
+      "courseId": "c1",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.883Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c1_6",
+      "courseId": "c1",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.883Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c1_7",
+      "courseId": "c1",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c1_8",
+      "courseId": "c1",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.883Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c1_9",
+      "courseId": "c1",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.883Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c1_10",
+      "courseId": "c1",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c1_11",
+      "courseId": "c1",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c1_12",
+      "courseId": "c1",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.883Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c1_13",
+      "courseId": "c1",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.883Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c1_14",
+      "courseId": "c1",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.883Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c1_15",
+      "courseId": "c1",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.883Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c2_1",
+      "courseId": "c2",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.883Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c2_2",
+      "courseId": "c2",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c2_3",
+      "courseId": "c2",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.883Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c2_4",
+      "courseId": "c2",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c2_5",
+      "courseId": "c2",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c2_6",
+      "courseId": "c2",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c2_7",
+      "courseId": "c2",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.883Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c2_8",
+      "courseId": "c2",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.883Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c2_9",
+      "courseId": "c2",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.883Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c2_10",
+      "courseId": "c2",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.883Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c2_11",
+      "courseId": "c2",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.883Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c2_12",
+      "courseId": "c2",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c2_13",
+      "courseId": "c2",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-16T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c2_14",
+      "courseId": "c2",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.883Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c2_15",
+      "courseId": "c2",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.883Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c3_1",
+      "courseId": "c3",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.883Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c3_2",
+      "courseId": "c3",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.883Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c3_3",
+      "courseId": "c3",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.883Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c3_4",
+      "courseId": "c3",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.883Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c3_5",
+      "courseId": "c3",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-29T20:31:13.883Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c3_6",
+      "courseId": "c3",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.883Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c3_7",
+      "courseId": "c3",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.883Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c3_8",
+      "courseId": "c3",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.883Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c3_9",
+      "courseId": "c3",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c3_10",
+      "courseId": "c3",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c3_11",
+      "courseId": "c3",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c3_12",
+      "courseId": "c3",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.883Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c3_13",
+      "courseId": "c3",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.883Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c3_14",
+      "courseId": "c3",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c3_15",
+      "courseId": "c3",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.883Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c4_1",
+      "courseId": "c4",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-29T20:31:13.883Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c4_2",
+      "courseId": "c4",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c4_3",
+      "courseId": "c4",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.883Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c4_4",
+      "courseId": "c4",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.883Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c4_5",
+      "courseId": "c4",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.883Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c4_6",
+      "courseId": "c4",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.883Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c4_7",
+      "courseId": "c4",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c4_8",
+      "courseId": "c4",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.883Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c4_9",
+      "courseId": "c4",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-06T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c4_10",
+      "courseId": "c4",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c4_11",
+      "courseId": "c4",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.883Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c4_12",
+      "courseId": "c4",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.883Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c4_13",
+      "courseId": "c4",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c4_14",
+      "courseId": "c4",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.883Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c4_15",
+      "courseId": "c4",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c5_1",
+      "courseId": "c5",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.883Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c5_2",
+      "courseId": "c5",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.883Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c5_3",
+      "courseId": "c5",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c5_4",
+      "courseId": "c5",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.883Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c5_5",
+      "courseId": "c5",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c5_6",
+      "courseId": "c5",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c5_7",
+      "courseId": "c5",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c5_8",
+      "courseId": "c5",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.883Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c5_9",
+      "courseId": "c5",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c5_10",
+      "courseId": "c5",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.883Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c5_11",
+      "courseId": "c5",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c5_12",
+      "courseId": "c5",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c5_13",
+      "courseId": "c5",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.883Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c5_14",
+      "courseId": "c5",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.883Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c5_15",
+      "courseId": "c5",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c6_1",
+      "courseId": "c6",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c6_2",
+      "courseId": "c6",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c6_3",
+      "courseId": "c6",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.883Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c6_4",
+      "courseId": "c6",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.883Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c6_5",
+      "courseId": "c6",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.883Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c6_6",
+      "courseId": "c6",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.883Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c6_7",
+      "courseId": "c6",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.883Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c6_8",
+      "courseId": "c6",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.883Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c6_9",
+      "courseId": "c6",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.883Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c6_10",
+      "courseId": "c6",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.883Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c6_11",
+      "courseId": "c6",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.883Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c6_12",
+      "courseId": "c6",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.883Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c6_13",
+      "courseId": "c6",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.883Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c6_14",
+      "courseId": "c6",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.883Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c6_15",
+      "courseId": "c6",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.883Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c7_1",
+      "courseId": "c7",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-16T20:31:13.883Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c7_2",
+      "courseId": "c7",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.883Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c7_3",
+      "courseId": "c7",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.883Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c7_4",
+      "courseId": "c7",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-29T20:31:13.883Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c7_5",
+      "courseId": "c7",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.883Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c7_6",
+      "courseId": "c7",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.883Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c7_7",
+      "courseId": "c7",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.883Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c7_8",
+      "courseId": "c7",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.883Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c7_9",
+      "courseId": "c7",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.883Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c7_10",
+      "courseId": "c7",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.883Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c7_11",
+      "courseId": "c7",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.883Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c7_12",
+      "courseId": "c7",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c7_13",
+      "courseId": "c7",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c7_14",
+      "courseId": "c7",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c7_15",
+      "courseId": "c7",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c8_1",
+      "courseId": "c8",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c8_2",
+      "courseId": "c8",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c8_3",
+      "courseId": "c8",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c8_4",
+      "courseId": "c8",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c8_5",
+      "courseId": "c8",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c8_6",
+      "courseId": "c8",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c8_7",
+      "courseId": "c8",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c8_8",
+      "courseId": "c8",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c8_9",
+      "courseId": "c8",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c8_10",
+      "courseId": "c8",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c8_11",
+      "courseId": "c8",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c8_12",
+      "courseId": "c8",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c8_13",
+      "courseId": "c8",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c8_14",
+      "courseId": "c8",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c8_15",
+      "courseId": "c8",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c9_1",
+      "courseId": "c9",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c9_2",
+      "courseId": "c9",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c9_3",
+      "courseId": "c9",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c9_4",
+      "courseId": "c9",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c9_5",
+      "courseId": "c9",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c9_6",
+      "courseId": "c9",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c9_7",
+      "courseId": "c9",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c9_8",
+      "courseId": "c9",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c9_9",
+      "courseId": "c9",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c9_10",
+      "courseId": "c9",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c9_11",
+      "courseId": "c9",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c9_12",
+      "courseId": "c9",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c9_13",
+      "courseId": "c9",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c9_14",
+      "courseId": "c9",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c9_15",
+      "courseId": "c9",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c10_1",
+      "courseId": "c10",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c10_2",
+      "courseId": "c10",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c10_3",
+      "courseId": "c10",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c10_4",
+      "courseId": "c10",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c10_5",
+      "courseId": "c10",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c10_6",
+      "courseId": "c10",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c10_7",
+      "courseId": "c10",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c10_8",
+      "courseId": "c10",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-16T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c10_9",
+      "courseId": "c10",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c10_10",
+      "courseId": "c10",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c10_11",
+      "courseId": "c10",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c10_12",
+      "courseId": "c10",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c10_13",
+      "courseId": "c10",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c10_14",
+      "courseId": "c10",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c10_15",
+      "courseId": "c10",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c11_1",
+      "courseId": "c11",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c11_2",
+      "courseId": "c11",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c11_3",
+      "courseId": "c11",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-06T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c11_4",
+      "courseId": "c11",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-29T20:31:13.884Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c11_5",
+      "courseId": "c11",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c11_6",
+      "courseId": "c11",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c11_7",
+      "courseId": "c11",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c11_8",
+      "courseId": "c11",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c11_9",
+      "courseId": "c11",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c11_10",
+      "courseId": "c11",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c11_11",
+      "courseId": "c11",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c11_12",
+      "courseId": "c11",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c11_13",
+      "courseId": "c11",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c11_14",
+      "courseId": "c11",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c11_15",
+      "courseId": "c11",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c12_1",
+      "courseId": "c12",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c12_2",
+      "courseId": "c12",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c12_3",
+      "courseId": "c12",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c12_4",
+      "courseId": "c12",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c12_5",
+      "courseId": "c12",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c12_6",
+      "courseId": "c12",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c12_7",
+      "courseId": "c12",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c12_8",
+      "courseId": "c12",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c12_9",
+      "courseId": "c12",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c12_10",
+      "courseId": "c12",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c12_11",
+      "courseId": "c12",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c12_12",
+      "courseId": "c12",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c12_13",
+      "courseId": "c12",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c12_14",
+      "courseId": "c12",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c12_15",
+      "courseId": "c12",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c13_1",
+      "courseId": "c13",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-16T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c13_2",
+      "courseId": "c13",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c13_3",
+      "courseId": "c13",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c13_4",
+      "courseId": "c13",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c13_5",
+      "courseId": "c13",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c13_6",
+      "courseId": "c13",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c13_7",
+      "courseId": "c13",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c13_8",
+      "courseId": "c13",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c13_9",
+      "courseId": "c13",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c13_10",
+      "courseId": "c13",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-06T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c13_11",
+      "courseId": "c13",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-29T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c13_12",
+      "courseId": "c13",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c13_13",
+      "courseId": "c13",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c13_14",
+      "courseId": "c13",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c13_15",
+      "courseId": "c13",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c14_1",
+      "courseId": "c14",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c14_2",
+      "courseId": "c14",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-16T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c14_3",
+      "courseId": "c14",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c14_4",
+      "courseId": "c14",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c14_5",
+      "courseId": "c14",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c14_6",
+      "courseId": "c14",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c14_7",
+      "courseId": "c14",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c14_8",
+      "courseId": "c14",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c14_9",
+      "courseId": "c14",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c14_10",
+      "courseId": "c14",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c14_11",
+      "courseId": "c14",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c14_12",
+      "courseId": "c14",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c14_13",
+      "courseId": "c14",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c14_14",
+      "courseId": "c14",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c14_15",
+      "courseId": "c14",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c15_1",
+      "courseId": "c15",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c15_2",
+      "courseId": "c15",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c15_3",
+      "courseId": "c15",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.884Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c15_4",
+      "courseId": "c15",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c15_5",
+      "courseId": "c15",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c15_6",
+      "courseId": "c15",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c15_7",
+      "courseId": "c15",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c15_8",
+      "courseId": "c15",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c15_9",
+      "courseId": "c15",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c15_10",
+      "courseId": "c15",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c15_11",
+      "courseId": "c15",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c15_12",
+      "courseId": "c15",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c15_13",
+      "courseId": "c15",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c15_14",
+      "courseId": "c15",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c15_15",
+      "courseId": "c15",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c16_1",
+      "courseId": "c16",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c16_2",
+      "courseId": "c16",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c16_3",
+      "courseId": "c16",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c16_4",
+      "courseId": "c16",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c16_5",
+      "courseId": "c16",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c16_6",
+      "courseId": "c16",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c16_7",
+      "courseId": "c16",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c16_8",
+      "courseId": "c16",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-29T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c16_9",
+      "courseId": "c16",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c16_10",
+      "courseId": "c16",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c16_11",
+      "courseId": "c16",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c16_12",
+      "courseId": "c16",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c16_13",
+      "courseId": "c16",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c16_14",
+      "courseId": "c16",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c16_15",
+      "courseId": "c16",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c17_1",
+      "courseId": "c17",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-19T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c17_2",
+      "courseId": "c17",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c17_3",
+      "courseId": "c17",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c17_4",
+      "courseId": "c17",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c17_5",
+      "courseId": "c17",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c17_6",
+      "courseId": "c17",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c17_7",
+      "courseId": "c17",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c17_8",
+      "courseId": "c17",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c17_9",
+      "courseId": "c17",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c17_10",
+      "courseId": "c17",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c17_11",
+      "courseId": "c17",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c17_12",
+      "courseId": "c17",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c17_13",
+      "courseId": "c17",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c17_14",
+      "courseId": "c17",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c17_15",
+      "courseId": "c17",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c18_1",
+      "courseId": "c18",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c18_2",
+      "courseId": "c18",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c18_3",
+      "courseId": "c18",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c18_4",
+      "courseId": "c18",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c18_5",
+      "courseId": "c18",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c18_6",
+      "courseId": "c18",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c18_7",
+      "courseId": "c18",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c18_8",
+      "courseId": "c18",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c18_9",
+      "courseId": "c18",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c18_10",
+      "courseId": "c18",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c18_11",
+      "courseId": "c18",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c18_12",
+      "courseId": "c18",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c18_13",
+      "courseId": "c18",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c18_14",
+      "courseId": "c18",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c18_15",
+      "courseId": "c18",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c19_1",
+      "courseId": "c19",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c19_2",
+      "courseId": "c19",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c19_3",
+      "courseId": "c19",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c19_4",
+      "courseId": "c19",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c19_5",
+      "courseId": "c19",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c19_6",
+      "courseId": "c19",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c19_7",
+      "courseId": "c19",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c19_8",
+      "courseId": "c19",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c19_9",
+      "courseId": "c19",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c19_10",
+      "courseId": "c19",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c19_11",
+      "courseId": "c19",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c19_12",
+      "courseId": "c19",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c19_13",
+      "courseId": "c19",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c19_14",
+      "courseId": "c19",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c19_15",
+      "courseId": "c19",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c20_1",
+      "courseId": "c20",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c20_2",
+      "courseId": "c20",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c20_3",
+      "courseId": "c20",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c20_4",
+      "courseId": "c20",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c20_5",
+      "courseId": "c20",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c20_6",
+      "courseId": "c20",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c20_7",
+      "courseId": "c20",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c20_8",
+      "courseId": "c20",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c20_9",
+      "courseId": "c20",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c20_10",
+      "courseId": "c20",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c20_11",
+      "courseId": "c20",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c20_12",
+      "courseId": "c20",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-26T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c20_13",
+      "courseId": "c20",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c20_14",
+      "courseId": "c20",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c20_15",
+      "courseId": "c20",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c21_1",
+      "courseId": "c21",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c21_2",
+      "courseId": "c21",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c21_3",
+      "courseId": "c21",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c21_4",
+      "courseId": "c21",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c21_5",
+      "courseId": "c21",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c21_6",
+      "courseId": "c21",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-27T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c21_7",
+      "courseId": "c21",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-07T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c21_8",
+      "courseId": "c21",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c21_9",
+      "courseId": "c21",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c21_10",
+      "courseId": "c21",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c21_11",
+      "courseId": "c21",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c21_12",
+      "courseId": "c21",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c21_13",
+      "courseId": "c21",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-01T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c21_14",
+      "courseId": "c21",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c21_15",
+      "courseId": "c21",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c22_1",
+      "courseId": "c22",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-24T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c22_2",
+      "courseId": "c22",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "2 MB"
+    },
+    {
+      "id": "m_c22_3",
+      "courseId": "c22",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c22_4",
+      "courseId": "c22",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c22_5",
+      "courseId": "c22",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c22_6",
+      "courseId": "c22",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c22_7",
+      "courseId": "c22",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c22_8",
+      "courseId": "c22",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c22_9",
+      "courseId": "c22",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c22_10",
+      "courseId": "c22",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c22_11",
+      "courseId": "c22",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c22_12",
+      "courseId": "c22",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c22_13",
+      "courseId": "c22",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c22_14",
+      "courseId": "c22",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "8 MB"
+    },
+    {
+      "id": "m_c22_15",
+      "courseId": "c22",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c23_1",
+      "courseId": "c23",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-29T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c23_2",
+      "courseId": "c23",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c23_3",
+      "courseId": "c23",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-05T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c23_4",
+      "courseId": "c23",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-08T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c23_5",
+      "courseId": "c23",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c23_6",
+      "courseId": "c23",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-06T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c23_7",
+      "courseId": "c23",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c23_8",
+      "courseId": "c23",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-16T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c23_9",
+      "courseId": "c23",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c23_10",
+      "courseId": "c23",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c23_11",
+      "courseId": "c23",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c23_12",
+      "courseId": "c23",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-04T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c23_13",
+      "courseId": "c23",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c23_14",
+      "courseId": "c23",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c23_15",
+      "courseId": "c23",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c24_1",
+      "courseId": "c24",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c24_2",
+      "courseId": "c24",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-06T20:31:13.884Z",
+      "size": "15 MB"
+    },
+    {
+      "id": "m_c24_3",
+      "courseId": "c24",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-09T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c24_4",
+      "courseId": "c24",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c24_5",
+      "courseId": "c24",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c24_6",
+      "courseId": "c24",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "13 MB"
+    },
+    {
+      "id": "m_c24_7",
+      "courseId": "c24",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c24_8",
+      "courseId": "c24",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "9 MB"
+    },
+    {
+      "id": "m_c24_9",
+      "courseId": "c24",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c24_10",
+      "courseId": "c24",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-25T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c24_11",
+      "courseId": "c24",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-31T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c24_12",
+      "courseId": "c24",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-08-28T20:31:13.884Z",
+      "size": "1 MB"
+    },
+    {
+      "id": "m_c24_13",
+      "courseId": "c24",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-10T20:31:13.884Z",
+      "size": "5 MB"
+    },
+    {
+      "id": "m_c24_14",
+      "courseId": "c24",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "12 MB"
+    },
+    {
+      "id": "m_c24_15",
+      "courseId": "c24",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "10 MB"
+    },
+    {
+      "id": "m_c25_1",
+      "courseId": "c25",
+      "title": "Lecture 1 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-18T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c25_2",
+      "courseId": "c25",
+      "title": "Lecture 2 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c25_3",
+      "courseId": "c25",
+      "title": "Lecture 3 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-20T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c25_4",
+      "courseId": "c25",
+      "title": "Lecture 4 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-12T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c25_5",
+      "courseId": "c25",
+      "title": "Lecture 5 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-08-21T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c25_6",
+      "courseId": "c25",
+      "title": "Lecture 6 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-13T20:31:13.884Z",
+      "size": "4 MB"
+    },
+    {
+      "id": "m_c25_7",
+      "courseId": "c25",
+      "title": "Lecture 7 Slides - Comprehensive Overview",
+      "type": "doc",
+      "url": "#",
+      "uploadDate": "2026-08-23T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c25_8",
+      "courseId": "c25",
+      "title": "Lecture 8 Slides - Comprehensive Overview",
+      "type": "link",
+      "url": "#",
+      "uploadDate": "2026-09-15T20:31:13.884Z",
+      "size": "14 MB"
+    },
+    {
+      "id": "m_c25_9",
+      "courseId": "c25",
+      "title": "Lecture 9 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-03T20:31:13.884Z",
+      "size": "7 MB"
+    },
+    {
+      "id": "m_c25_10",
+      "courseId": "c25",
+      "title": "Lecture 10 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-30T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c25_11",
+      "courseId": "c25",
+      "title": "Lecture 11 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-06T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c25_12",
+      "courseId": "c25",
+      "title": "Lecture 12 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-08-22T20:31:13.884Z",
+      "size": "6 MB"
+    },
+    {
+      "id": "m_c25_13",
+      "courseId": "c25",
+      "title": "Lecture 13 Slides - Comprehensive Overview",
+      "type": "ppt",
+      "url": "#",
+      "uploadDate": "2026-09-02T20:31:13.884Z",
+      "size": "11 MB"
+    },
+    {
+      "id": "m_c25_14",
+      "courseId": "c25",
+      "title": "Lecture 14 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-14T20:31:13.884Z",
+      "size": "3 MB"
+    },
+    {
+      "id": "m_c25_15",
+      "courseId": "c25",
+      "title": "Lecture 15 Slides - Comprehensive Overview",
+      "type": "pdf",
+      "url": "#",
+      "uploadDate": "2026-09-11T20:31:13.884Z",
+      "size": "12 MB"
+    }
+  ],
+  "views": []
+}

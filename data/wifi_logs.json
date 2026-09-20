@@ -1,0 +1,2004 @@
+{
+  "logs": [
+    {
+      "id": "w_u1_1",
+      "studentId": "u1",
+      "timestamp": "2026-09-15T00:31:13.891Z",
+      "apId": "AP-Sports-8",
+      "deviceMac": "00:1A:2B:3C:4D:16",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u1_2",
+      "studentId": "u1",
+      "timestamp": "2026-09-17T01:31:13.891Z",
+      "apId": "AP-Main-Gate-6",
+      "deviceMac": "00:1A:2B:3C:4D:24",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u1_3",
+      "studentId": "u1",
+      "timestamp": "2026-09-15T13:31:13.891Z",
+      "apId": "AP-Hostel-2",
+      "deviceMac": "00:1A:2B:3C:4D:42",
+      "signalStrength": -76
+    },
+    {
+      "id": "w_u1_4",
+      "studentId": "u1",
+      "timestamp": "2026-09-13T17:31:13.891Z",
+      "apId": "AP-Main-Gate-3",
+      "deviceMac": "00:1A:2B:3C:4D:45",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u1_5",
+      "studentId": "u1",
+      "timestamp": "2026-09-17T17:31:13.891Z",
+      "apId": "AP-Cafeteria-5",
+      "deviceMac": "00:1A:2B:3C:4D:60",
+      "signalStrength": -87
+    },
+    {
+      "id": "w_u1_6",
+      "studentId": "u1",
+      "timestamp": "2026-09-16T15:31:13.891Z",
+      "apId": "AP-Math-Block-3",
+      "deviceMac": "00:1A:2B:3C:4D:89",
+      "signalStrength": -54
+    },
+    {
+      "id": "w_u1_7",
+      "studentId": "u1",
+      "timestamp": "2026-09-15T15:31:13.891Z",
+      "apId": "AP-Admin-7",
+      "deviceMac": "00:1A:2B:3C:4D:83",
+      "signalStrength": -60
+    },
+    {
+      "id": "w_u1_8",
+      "studentId": "u1",
+      "timestamp": "2026-09-14T17:31:13.891Z",
+      "apId": "AP-Main-Gate-10",
+      "deviceMac": "00:1A:2B:3C:4D:13",
+      "signalStrength": -42
+    },
+    {
+      "id": "w_u1_9",
+      "studentId": "u1",
+      "timestamp": "2026-09-16T11:31:13.891Z",
+      "apId": "AP-Cafeteria-10",
+      "deviceMac": "00:1A:2B:3C:4D:21",
+      "signalStrength": -74
+    },
+    {
+      "id": "w_u1_10",
+      "studentId": "u1",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Library-4",
+      "deviceMac": "00:1A:2B:3C:4D:36",
+      "signalStrength": -80
+    },
+    {
+      "id": "w_u2_1",
+      "studentId": "u2",
+      "timestamp": "2026-09-14T17:31:13.891Z",
+      "apId": "AP-Main-Gate-1",
+      "deviceMac": "00:1A:2B:3C:4D:91",
+      "signalStrength": -48
+    },
+    {
+      "id": "w_u2_2",
+      "studentId": "u2",
+      "timestamp": "2026-09-16T12:31:13.891Z",
+      "apId": "AP-Math-Block-5",
+      "deviceMac": "00:1A:2B:3C:4D:25",
+      "signalStrength": -53
+    },
+    {
+      "id": "w_u2_3",
+      "studentId": "u2",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Main-Gate-9",
+      "deviceMac": "00:1A:2B:3C:4D:36",
+      "signalStrength": -46
+    },
+    {
+      "id": "w_u2_4",
+      "studentId": "u2",
+      "timestamp": "2026-09-17T07:31:13.891Z",
+      "apId": "AP-CS-Block-5",
+      "deviceMac": "00:1A:2B:3C:4D:29",
+      "signalStrength": -47
+    },
+    {
+      "id": "w_u2_5",
+      "studentId": "u2",
+      "timestamp": "2026-09-17T11:31:13.891Z",
+      "apId": "AP-Cafeteria-9",
+      "deviceMac": "00:1A:2B:3C:4D:53",
+      "signalStrength": -65
+    },
+    {
+      "id": "w_u2_6",
+      "studentId": "u2",
+      "timestamp": "2026-09-14T02:31:13.891Z",
+      "apId": "AP-Admin-9",
+      "deviceMac": "00:1A:2B:3C:4D:92",
+      "signalStrength": -68
+    },
+    {
+      "id": "w_u2_7",
+      "studentId": "u2",
+      "timestamp": "2026-09-17T06:31:13.891Z",
+      "apId": "AP-Math-Block-9",
+      "deviceMac": "00:1A:2B:3C:4D:54",
+      "signalStrength": -63
+    },
+    {
+      "id": "w_u2_8",
+      "studentId": "u2",
+      "timestamp": "2026-09-17T04:31:13.891Z",
+      "apId": "AP-Math-Block-7",
+      "deviceMac": "00:1A:2B:3C:4D:53",
+      "signalStrength": -49
+    },
+    {
+      "id": "w_u2_9",
+      "studentId": "u2",
+      "timestamp": "2026-09-15T15:31:13.891Z",
+      "apId": "AP-Math-Block-1",
+      "deviceMac": "00:1A:2B:3C:4D:56",
+      "signalStrength": -78
+    },
+    {
+      "id": "w_u2_10",
+      "studentId": "u2",
+      "timestamp": "2026-09-16T07:31:13.891Z",
+      "apId": "AP-Library-4",
+      "deviceMac": "00:1A:2B:3C:4D:89",
+      "signalStrength": -58
+    },
+    {
+      "id": "w_u3_1",
+      "studentId": "u3",
+      "timestamp": "2026-09-17T06:31:13.891Z",
+      "apId": "AP-Admin-4",
+      "deviceMac": "00:1A:2B:3C:4D:62",
+      "signalStrength": -42
+    },
+    {
+      "id": "w_u3_2",
+      "studentId": "u3",
+      "timestamp": "2026-09-15T05:31:13.891Z",
+      "apId": "AP-Hostel-4",
+      "deviceMac": "00:1A:2B:3C:4D:24",
+      "signalStrength": -68
+    },
+    {
+      "id": "w_u3_3",
+      "studentId": "u3",
+      "timestamp": "2026-09-14T08:31:13.891Z",
+      "apId": "AP-Admin-2",
+      "deviceMac": "00:1A:2B:3C:4D:98",
+      "signalStrength": -52
+    },
+    {
+      "id": "w_u3_4",
+      "studentId": "u3",
+      "timestamp": "2026-09-17T08:31:13.891Z",
+      "apId": "AP-Admin-5",
+      "deviceMac": "00:1A:2B:3C:4D:58",
+      "signalStrength": -59
+    },
+    {
+      "id": "w_u3_5",
+      "studentId": "u3",
+      "timestamp": "2026-09-17T02:31:13.891Z",
+      "apId": "AP-Sports-3",
+      "deviceMac": "00:1A:2B:3C:4D:86",
+      "signalStrength": -88
+    },
+    {
+      "id": "w_u3_6",
+      "studentId": "u3",
+      "timestamp": "2026-09-16T08:31:13.891Z",
+      "apId": "AP-Sports-9",
+      "deviceMac": "00:1A:2B:3C:4D:13",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u3_7",
+      "studentId": "u3",
+      "timestamp": "2026-09-17T19:31:13.891Z",
+      "apId": "AP-Hostel-8",
+      "deviceMac": "00:1A:2B:3C:4D:45",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u3_8",
+      "studentId": "u3",
+      "timestamp": "2026-09-17T12:31:13.891Z",
+      "apId": "AP-Hostel-3",
+      "deviceMac": "00:1A:2B:3C:4D:40",
+      "signalStrength": -82
+    },
+    {
+      "id": "w_u3_9",
+      "studentId": "u3",
+      "timestamp": "2026-09-17T03:31:13.891Z",
+      "apId": "AP-Sports-5",
+      "deviceMac": "00:1A:2B:3C:4D:26",
+      "signalStrength": -79
+    },
+    {
+      "id": "w_u3_10",
+      "studentId": "u3",
+      "timestamp": "2026-09-17T08:31:13.891Z",
+      "apId": "AP-Sports-1",
+      "deviceMac": "00:1A:2B:3C:4D:73",
+      "signalStrength": -81
+    },
+    {
+      "id": "w_u4_1",
+      "studentId": "u4",
+      "timestamp": "2026-09-13T19:31:13.891Z",
+      "apId": "AP-Library-4",
+      "deviceMac": "00:1A:2B:3C:4D:75",
+      "signalStrength": -72
+    },
+    {
+      "id": "w_u4_2",
+      "studentId": "u4",
+      "timestamp": "2026-09-15T12:31:13.891Z",
+      "apId": "AP-CS-Block-10",
+      "deviceMac": "00:1A:2B:3C:4D:13",
+      "signalStrength": -60
+    },
+    {
+      "id": "w_u4_3",
+      "studentId": "u4",
+      "timestamp": "2026-09-17T02:31:13.891Z",
+      "apId": "AP-Math-Block-9",
+      "deviceMac": "00:1A:2B:3C:4D:36",
+      "signalStrength": -43
+    },
+    {
+      "id": "w_u4_4",
+      "studentId": "u4",
+      "timestamp": "2026-09-17T03:31:13.891Z",
+      "apId": "AP-Admin-7",
+      "deviceMac": "00:1A:2B:3C:4D:51",
+      "signalStrength": -65
+    },
+    {
+      "id": "w_u4_5",
+      "studentId": "u4",
+      "timestamp": "2026-09-15T16:31:13.891Z",
+      "apId": "AP-Cafeteria-10",
+      "deviceMac": "00:1A:2B:3C:4D:66",
+      "signalStrength": -88
+    },
+    {
+      "id": "w_u4_6",
+      "studentId": "u4",
+      "timestamp": "2026-09-14T23:31:13.891Z",
+      "apId": "AP-Cafeteria-9",
+      "deviceMac": "00:1A:2B:3C:4D:37",
+      "signalStrength": -54
+    },
+    {
+      "id": "w_u4_7",
+      "studentId": "u4",
+      "timestamp": "2026-09-14T09:31:13.891Z",
+      "apId": "AP-Main-Gate-2",
+      "deviceMac": "00:1A:2B:3C:4D:15",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u4_8",
+      "studentId": "u4",
+      "timestamp": "2026-09-16T01:31:13.891Z",
+      "apId": "AP-Library-10",
+      "deviceMac": "00:1A:2B:3C:4D:85",
+      "signalStrength": -71
+    },
+    {
+      "id": "w_u4_9",
+      "studentId": "u4",
+      "timestamp": "2026-09-17T09:31:13.891Z",
+      "apId": "AP-Sports-3",
+      "deviceMac": "00:1A:2B:3C:4D:32",
+      "signalStrength": -53
+    },
+    {
+      "id": "w_u4_10",
+      "studentId": "u4",
+      "timestamp": "2026-09-17T00:31:13.891Z",
+      "apId": "AP-Math-Block-3",
+      "deviceMac": "00:1A:2B:3C:4D:55",
+      "signalStrength": -71
+    },
+    {
+      "id": "w_u5_1",
+      "studentId": "u5",
+      "timestamp": "2026-09-16T12:31:13.891Z",
+      "apId": "AP-Math-Block-3",
+      "deviceMac": "00:1A:2B:3C:4D:63",
+      "signalStrength": -80
+    },
+    {
+      "id": "w_u5_2",
+      "studentId": "u5",
+      "timestamp": "2026-09-13T16:31:13.891Z",
+      "apId": "AP-Sports-6",
+      "deviceMac": "00:1A:2B:3C:4D:76",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u5_3",
+      "studentId": "u5",
+      "timestamp": "2026-09-15T14:31:13.891Z",
+      "apId": "AP-Admin-1",
+      "deviceMac": "00:1A:2B:3C:4D:25",
+      "signalStrength": -57
+    },
+    {
+      "id": "w_u5_4",
+      "studentId": "u5",
+      "timestamp": "2026-09-15T08:31:13.891Z",
+      "apId": "AP-Hostel-8",
+      "deviceMac": "00:1A:2B:3C:4D:31",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u5_5",
+      "studentId": "u5",
+      "timestamp": "2026-09-17T05:31:13.891Z",
+      "apId": "AP-Admin-8",
+      "deviceMac": "00:1A:2B:3C:4D:50",
+      "signalStrength": -43
+    },
+    {
+      "id": "w_u5_6",
+      "studentId": "u5",
+      "timestamp": "2026-09-16T04:31:13.891Z",
+      "apId": "AP-CS-Block-5",
+      "deviceMac": "00:1A:2B:3C:4D:83",
+      "signalStrength": -60
+    },
+    {
+      "id": "w_u5_7",
+      "studentId": "u5",
+      "timestamp": "2026-09-17T05:31:13.891Z",
+      "apId": "AP-Admin-9",
+      "deviceMac": "00:1A:2B:3C:4D:30",
+      "signalStrength": -50
+    },
+    {
+      "id": "w_u5_8",
+      "studentId": "u5",
+      "timestamp": "2026-09-16T18:31:13.891Z",
+      "apId": "AP-Hostel-10",
+      "deviceMac": "00:1A:2B:3C:4D:10",
+      "signalStrength": -85
+    },
+    {
+      "id": "w_u5_9",
+      "studentId": "u5",
+      "timestamp": "2026-09-17T03:31:13.891Z",
+      "apId": "AP-Library-1",
+      "deviceMac": "00:1A:2B:3C:4D:67",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u5_10",
+      "studentId": "u5",
+      "timestamp": "2026-09-17T16:31:13.891Z",
+      "apId": "AP-Hostel-9",
+      "deviceMac": "00:1A:2B:3C:4D:15",
+      "signalStrength": -69
+    },
+    {
+      "id": "w_u6_1",
+      "studentId": "u6",
+      "timestamp": "2026-09-16T22:31:13.891Z",
+      "apId": "AP-Main-Gate-8",
+      "deviceMac": "00:1A:2B:3C:4D:96",
+      "signalStrength": -77
+    },
+    {
+      "id": "w_u6_2",
+      "studentId": "u6",
+      "timestamp": "2026-09-17T09:31:13.891Z",
+      "apId": "AP-Sports-3",
+      "deviceMac": "00:1A:2B:3C:4D:53",
+      "signalStrength": -57
+    },
+    {
+      "id": "w_u6_3",
+      "studentId": "u6",
+      "timestamp": "2026-09-15T02:31:13.891Z",
+      "apId": "AP-Math-Block-5",
+      "deviceMac": "00:1A:2B:3C:4D:49",
+      "signalStrength": -52
+    },
+    {
+      "id": "w_u6_4",
+      "studentId": "u6",
+      "timestamp": "2026-09-15T04:31:13.891Z",
+      "apId": "AP-Math-Block-2",
+      "deviceMac": "00:1A:2B:3C:4D:68",
+      "signalStrength": -52
+    },
+    {
+      "id": "w_u6_5",
+      "studentId": "u6",
+      "timestamp": "2026-09-16T04:31:13.891Z",
+      "apId": "AP-Admin-7",
+      "deviceMac": "00:1A:2B:3C:4D:41",
+      "signalStrength": -67
+    },
+    {
+      "id": "w_u6_6",
+      "studentId": "u6",
+      "timestamp": "2026-09-14T01:31:13.891Z",
+      "apId": "AP-Math-Block-10",
+      "deviceMac": "00:1A:2B:3C:4D:28",
+      "signalStrength": -74
+    },
+    {
+      "id": "w_u6_7",
+      "studentId": "u6",
+      "timestamp": "2026-09-16T00:31:13.891Z",
+      "apId": "AP-Admin-8",
+      "deviceMac": "00:1A:2B:3C:4D:31",
+      "signalStrength": -57
+    },
+    {
+      "id": "w_u6_8",
+      "studentId": "u6",
+      "timestamp": "2026-09-17T09:31:13.891Z",
+      "apId": "AP-Hostel-5",
+      "deviceMac": "00:1A:2B:3C:4D:74",
+      "signalStrength": -68
+    },
+    {
+      "id": "w_u6_9",
+      "studentId": "u6",
+      "timestamp": "2026-09-16T00:31:13.891Z",
+      "apId": "AP-Cafeteria-10",
+      "deviceMac": "00:1A:2B:3C:4D:93",
+      "signalStrength": -85
+    },
+    {
+      "id": "w_u6_10",
+      "studentId": "u6",
+      "timestamp": "2026-09-14T20:31:13.891Z",
+      "apId": "AP-Math-Block-2",
+      "deviceMac": "00:1A:2B:3C:4D:36",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u7_1",
+      "studentId": "u7",
+      "timestamp": "2026-09-17T09:31:13.891Z",
+      "apId": "AP-Hostel-1",
+      "deviceMac": "00:1A:2B:3C:4D:45",
+      "signalStrength": -88
+    },
+    {
+      "id": "w_u7_2",
+      "studentId": "u7",
+      "timestamp": "2026-09-16T06:31:13.891Z",
+      "apId": "AP-Hostel-3",
+      "deviceMac": "00:1A:2B:3C:4D:81",
+      "signalStrength": -55
+    },
+    {
+      "id": "w_u7_3",
+      "studentId": "u7",
+      "timestamp": "2026-09-13T17:31:13.891Z",
+      "apId": "AP-Admin-4",
+      "deviceMac": "00:1A:2B:3C:4D:38",
+      "signalStrength": -47
+    },
+    {
+      "id": "w_u7_4",
+      "studentId": "u7",
+      "timestamp": "2026-09-17T18:31:13.891Z",
+      "apId": "AP-Hostel-9",
+      "deviceMac": "00:1A:2B:3C:4D:18",
+      "signalStrength": -80
+    },
+    {
+      "id": "w_u7_5",
+      "studentId": "u7",
+      "timestamp": "2026-09-17T16:31:13.891Z",
+      "apId": "AP-Library-2",
+      "deviceMac": "00:1A:2B:3C:4D:32",
+      "signalStrength": -70
+    },
+    {
+      "id": "w_u7_6",
+      "studentId": "u7",
+      "timestamp": "2026-09-17T06:31:13.891Z",
+      "apId": "AP-Main-Gate-7",
+      "deviceMac": "00:1A:2B:3C:4D:12",
+      "signalStrength": -87
+    },
+    {
+      "id": "w_u7_7",
+      "studentId": "u7",
+      "timestamp": "2026-09-16T01:31:13.891Z",
+      "apId": "AP-Library-4",
+      "deviceMac": "00:1A:2B:3C:4D:84",
+      "signalStrength": -67
+    },
+    {
+      "id": "w_u7_8",
+      "studentId": "u7",
+      "timestamp": "2026-09-16T07:31:13.891Z",
+      "apId": "AP-Main-Gate-1",
+      "deviceMac": "00:1A:2B:3C:4D:90",
+      "signalStrength": -44
+    },
+    {
+      "id": "w_u7_9",
+      "studentId": "u7",
+      "timestamp": "2026-09-15T18:31:13.891Z",
+      "apId": "AP-Admin-2",
+      "deviceMac": "00:1A:2B:3C:4D:15",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u7_10",
+      "studentId": "u7",
+      "timestamp": "2026-09-14T12:31:13.891Z",
+      "apId": "AP-CS-Block-3",
+      "deviceMac": "00:1A:2B:3C:4D:19",
+      "signalStrength": -89
+    },
+    {
+      "id": "w_u8_1",
+      "studentId": "u8",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Hostel-3",
+      "deviceMac": "00:1A:2B:3C:4D:83",
+      "signalStrength": -44
+    },
+    {
+      "id": "w_u8_2",
+      "studentId": "u8",
+      "timestamp": "2026-09-13T18:31:13.891Z",
+      "apId": "AP-Admin-9",
+      "deviceMac": "00:1A:2B:3C:4D:64",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u8_3",
+      "studentId": "u8",
+      "timestamp": "2026-09-15T14:31:13.891Z",
+      "apId": "AP-Sports-3",
+      "deviceMac": "00:1A:2B:3C:4D:81",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u8_4",
+      "studentId": "u8",
+      "timestamp": "2026-09-14T08:31:13.891Z",
+      "apId": "AP-Main-Gate-3",
+      "deviceMac": "00:1A:2B:3C:4D:17",
+      "signalStrength": -72
+    },
+    {
+      "id": "w_u8_5",
+      "studentId": "u8",
+      "timestamp": "2026-09-13T23:31:13.891Z",
+      "apId": "AP-Cafeteria-10",
+      "deviceMac": "00:1A:2B:3C:4D:15",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u8_6",
+      "studentId": "u8",
+      "timestamp": "2026-09-16T15:31:13.891Z",
+      "apId": "AP-Cafeteria-6",
+      "deviceMac": "00:1A:2B:3C:4D:29",
+      "signalStrength": -49
+    },
+    {
+      "id": "w_u8_7",
+      "studentId": "u8",
+      "timestamp": "2026-09-17T05:31:13.891Z",
+      "apId": "AP-Cafeteria-4",
+      "deviceMac": "00:1A:2B:3C:4D:39",
+      "signalStrength": -85
+    },
+    {
+      "id": "w_u8_8",
+      "studentId": "u8",
+      "timestamp": "2026-09-16T10:31:13.891Z",
+      "apId": "AP-Hostel-1",
+      "deviceMac": "00:1A:2B:3C:4D:70",
+      "signalStrength": -81
+    },
+    {
+      "id": "w_u8_9",
+      "studentId": "u8",
+      "timestamp": "2026-09-14T07:31:13.891Z",
+      "apId": "AP-Hostel-8",
+      "deviceMac": "00:1A:2B:3C:4D:87",
+      "signalStrength": -74
+    },
+    {
+      "id": "w_u8_10",
+      "studentId": "u8",
+      "timestamp": "2026-09-14T17:31:13.891Z",
+      "apId": "AP-Main-Gate-3",
+      "deviceMac": "00:1A:2B:3C:4D:50",
+      "signalStrength": -71
+    },
+    {
+      "id": "w_u9_1",
+      "studentId": "u9",
+      "timestamp": "2026-09-15T20:31:13.891Z",
+      "apId": "AP-CS-Block-9",
+      "deviceMac": "00:1A:2B:3C:4D:93",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u9_2",
+      "studentId": "u9",
+      "timestamp": "2026-09-17T09:31:13.891Z",
+      "apId": "AP-Hostel-7",
+      "deviceMac": "00:1A:2B:3C:4D:65",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u9_3",
+      "studentId": "u9",
+      "timestamp": "2026-09-14T11:31:13.891Z",
+      "apId": "AP-Admin-7",
+      "deviceMac": "00:1A:2B:3C:4D:19",
+      "signalStrength": -89
+    },
+    {
+      "id": "w_u9_4",
+      "studentId": "u9",
+      "timestamp": "2026-09-17T05:31:13.891Z",
+      "apId": "AP-Cafeteria-5",
+      "deviceMac": "00:1A:2B:3C:4D:35",
+      "signalStrength": -75
+    },
+    {
+      "id": "w_u9_5",
+      "studentId": "u9",
+      "timestamp": "2026-09-14T16:31:13.891Z",
+      "apId": "AP-Sports-10",
+      "deviceMac": "00:1A:2B:3C:4D:27",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u9_6",
+      "studentId": "u9",
+      "timestamp": "2026-09-13T17:31:13.891Z",
+      "apId": "AP-Sports-8",
+      "deviceMac": "00:1A:2B:3C:4D:65",
+      "signalStrength": -43
+    },
+    {
+      "id": "w_u9_7",
+      "studentId": "u9",
+      "timestamp": "2026-09-16T16:31:13.891Z",
+      "apId": "AP-Sports-3",
+      "deviceMac": "00:1A:2B:3C:4D:82",
+      "signalStrength": -47
+    },
+    {
+      "id": "w_u9_8",
+      "studentId": "u9",
+      "timestamp": "2026-09-13T18:31:13.891Z",
+      "apId": "AP-Admin-10",
+      "deviceMac": "00:1A:2B:3C:4D:24",
+      "signalStrength": -62
+    },
+    {
+      "id": "w_u9_9",
+      "studentId": "u9",
+      "timestamp": "2026-09-15T02:31:13.891Z",
+      "apId": "AP-Library-4",
+      "deviceMac": "00:1A:2B:3C:4D:50",
+      "signalStrength": -52
+    },
+    {
+      "id": "w_u9_10",
+      "studentId": "u9",
+      "timestamp": "2026-09-16T01:31:13.891Z",
+      "apId": "AP-Library-8",
+      "deviceMac": "00:1A:2B:3C:4D:50",
+      "signalStrength": -62
+    },
+    {
+      "id": "w_u10_1",
+      "studentId": "u10",
+      "timestamp": "2026-09-14T10:31:13.891Z",
+      "apId": "AP-Math-Block-10",
+      "deviceMac": "00:1A:2B:3C:4D:77",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u10_2",
+      "studentId": "u10",
+      "timestamp": "2026-09-16T06:31:13.891Z",
+      "apId": "AP-Hostel-9",
+      "deviceMac": "00:1A:2B:3C:4D:57",
+      "signalStrength": -70
+    },
+    {
+      "id": "w_u10_3",
+      "studentId": "u10",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Math-Block-2",
+      "deviceMac": "00:1A:2B:3C:4D:56",
+      "signalStrength": -47
+    },
+    {
+      "id": "w_u10_4",
+      "studentId": "u10",
+      "timestamp": "2026-09-15T09:31:13.891Z",
+      "apId": "AP-Admin-2",
+      "deviceMac": "00:1A:2B:3C:4D:16",
+      "signalStrength": -67
+    },
+    {
+      "id": "w_u10_5",
+      "studentId": "u10",
+      "timestamp": "2026-09-14T06:31:13.891Z",
+      "apId": "AP-Math-Block-4",
+      "deviceMac": "00:1A:2B:3C:4D:21",
+      "signalStrength": -80
+    },
+    {
+      "id": "w_u10_6",
+      "studentId": "u10",
+      "timestamp": "2026-09-16T08:31:13.891Z",
+      "apId": "AP-CS-Block-4",
+      "deviceMac": "00:1A:2B:3C:4D:94",
+      "signalStrength": -49
+    },
+    {
+      "id": "w_u10_7",
+      "studentId": "u10",
+      "timestamp": "2026-09-17T15:31:13.891Z",
+      "apId": "AP-CS-Block-10",
+      "deviceMac": "00:1A:2B:3C:4D:24",
+      "signalStrength": -76
+    },
+    {
+      "id": "w_u10_8",
+      "studentId": "u10",
+      "timestamp": "2026-09-16T08:31:13.891Z",
+      "apId": "AP-CS-Block-8",
+      "deviceMac": "00:1A:2B:3C:4D:14",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u10_9",
+      "studentId": "u10",
+      "timestamp": "2026-09-16T13:31:13.891Z",
+      "apId": "AP-Library-10",
+      "deviceMac": "00:1A:2B:3C:4D:51",
+      "signalStrength": -44
+    },
+    {
+      "id": "w_u10_10",
+      "studentId": "u10",
+      "timestamp": "2026-09-14T16:31:13.891Z",
+      "apId": "AP-Math-Block-7",
+      "deviceMac": "00:1A:2B:3C:4D:74",
+      "signalStrength": -49
+    },
+    {
+      "id": "w_u11_1",
+      "studentId": "u11",
+      "timestamp": "2026-09-14T16:31:13.891Z",
+      "apId": "AP-Cafeteria-10",
+      "deviceMac": "00:1A:2B:3C:4D:68",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u11_2",
+      "studentId": "u11",
+      "timestamp": "2026-09-14T11:31:13.891Z",
+      "apId": "AP-Main-Gate-7",
+      "deviceMac": "00:1A:2B:3C:4D:51",
+      "signalStrength": -58
+    },
+    {
+      "id": "w_u11_3",
+      "studentId": "u11",
+      "timestamp": "2026-09-15T01:31:13.891Z",
+      "apId": "AP-Sports-6",
+      "deviceMac": "00:1A:2B:3C:4D:36",
+      "signalStrength": -68
+    },
+    {
+      "id": "w_u11_4",
+      "studentId": "u11",
+      "timestamp": "2026-09-15T16:31:13.891Z",
+      "apId": "AP-Math-Block-4",
+      "deviceMac": "00:1A:2B:3C:4D:20",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u11_5",
+      "studentId": "u11",
+      "timestamp": "2026-09-15T18:31:13.891Z",
+      "apId": "AP-Math-Block-8",
+      "deviceMac": "00:1A:2B:3C:4D:33",
+      "signalStrength": -59
+    },
+    {
+      "id": "w_u11_6",
+      "studentId": "u11",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Cafeteria-6",
+      "deviceMac": "00:1A:2B:3C:4D:78",
+      "signalStrength": -79
+    },
+    {
+      "id": "w_u11_7",
+      "studentId": "u11",
+      "timestamp": "2026-09-14T08:31:13.891Z",
+      "apId": "AP-CS-Block-4",
+      "deviceMac": "00:1A:2B:3C:4D:73",
+      "signalStrength": -55
+    },
+    {
+      "id": "w_u11_8",
+      "studentId": "u11",
+      "timestamp": "2026-09-15T16:31:13.891Z",
+      "apId": "AP-CS-Block-9",
+      "deviceMac": "00:1A:2B:3C:4D:35",
+      "signalStrength": -65
+    },
+    {
+      "id": "w_u11_9",
+      "studentId": "u11",
+      "timestamp": "2026-09-14T19:31:13.891Z",
+      "apId": "AP-Math-Block-5",
+      "deviceMac": "00:1A:2B:3C:4D:75",
+      "signalStrength": -55
+    },
+    {
+      "id": "w_u11_10",
+      "studentId": "u11",
+      "timestamp": "2026-09-15T05:31:13.891Z",
+      "apId": "AP-Math-Block-8",
+      "deviceMac": "00:1A:2B:3C:4D:43",
+      "signalStrength": -65
+    },
+    {
+      "id": "w_u12_1",
+      "studentId": "u12",
+      "timestamp": "2026-09-14T21:31:13.891Z",
+      "apId": "AP-CS-Block-7",
+      "deviceMac": "00:1A:2B:3C:4D:51",
+      "signalStrength": -51
+    },
+    {
+      "id": "w_u12_2",
+      "studentId": "u12",
+      "timestamp": "2026-09-16T05:31:13.891Z",
+      "apId": "AP-CS-Block-6",
+      "deviceMac": "00:1A:2B:3C:4D:39",
+      "signalStrength": -64
+    },
+    {
+      "id": "w_u12_3",
+      "studentId": "u12",
+      "timestamp": "2026-09-16T17:31:13.891Z",
+      "apId": "AP-CS-Block-2",
+      "deviceMac": "00:1A:2B:3C:4D:68",
+      "signalStrength": -46
+    },
+    {
+      "id": "w_u12_4",
+      "studentId": "u12",
+      "timestamp": "2026-09-15T21:31:13.891Z",
+      "apId": "AP-Main-Gate-6",
+      "deviceMac": "00:1A:2B:3C:4D:22",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u12_5",
+      "studentId": "u12",
+      "timestamp": "2026-09-15T03:31:13.891Z",
+      "apId": "AP-Hostel-4",
+      "deviceMac": "00:1A:2B:3C:4D:63",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u12_6",
+      "studentId": "u12",
+      "timestamp": "2026-09-17T10:31:13.891Z",
+      "apId": "AP-Cafeteria-7",
+      "deviceMac": "00:1A:2B:3C:4D:27",
+      "signalStrength": -54
+    },
+    {
+      "id": "w_u12_7",
+      "studentId": "u12",
+      "timestamp": "2026-09-15T14:31:13.891Z",
+      "apId": "AP-Main-Gate-3",
+      "deviceMac": "00:1A:2B:3C:4D:10",
+      "signalStrength": -54
+    },
+    {
+      "id": "w_u12_8",
+      "studentId": "u12",
+      "timestamp": "2026-09-17T17:31:13.891Z",
+      "apId": "AP-CS-Block-2",
+      "deviceMac": "00:1A:2B:3C:4D:93",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u12_9",
+      "studentId": "u12",
+      "timestamp": "2026-09-14T02:31:13.891Z",
+      "apId": "AP-Sports-8",
+      "deviceMac": "00:1A:2B:3C:4D:70",
+      "signalStrength": -87
+    },
+    {
+      "id": "w_u12_10",
+      "studentId": "u12",
+      "timestamp": "2026-09-15T19:31:13.891Z",
+      "apId": "AP-Hostel-7",
+      "deviceMac": "00:1A:2B:3C:4D:61",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u13_1",
+      "studentId": "u13",
+      "timestamp": "2026-09-14T23:31:13.891Z",
+      "apId": "AP-Sports-7",
+      "deviceMac": "00:1A:2B:3C:4D:11",
+      "signalStrength": -83
+    },
+    {
+      "id": "w_u13_2",
+      "studentId": "u13",
+      "timestamp": "2026-09-16T03:31:13.891Z",
+      "apId": "AP-Sports-1",
+      "deviceMac": "00:1A:2B:3C:4D:82",
+      "signalStrength": -70
+    },
+    {
+      "id": "w_u13_3",
+      "studentId": "u13",
+      "timestamp": "2026-09-15T01:31:13.891Z",
+      "apId": "AP-Sports-5",
+      "deviceMac": "00:1A:2B:3C:4D:67",
+      "signalStrength": -62
+    },
+    {
+      "id": "w_u13_4",
+      "studentId": "u13",
+      "timestamp": "2026-09-16T12:31:13.891Z",
+      "apId": "AP-CS-Block-4",
+      "deviceMac": "00:1A:2B:3C:4D:61",
+      "signalStrength": -70
+    },
+    {
+      "id": "w_u13_5",
+      "studentId": "u13",
+      "timestamp": "2026-09-15T15:31:13.891Z",
+      "apId": "AP-Sports-9",
+      "deviceMac": "00:1A:2B:3C:4D:28",
+      "signalStrength": -83
+    },
+    {
+      "id": "w_u13_6",
+      "studentId": "u13",
+      "timestamp": "2026-09-16T00:31:13.891Z",
+      "apId": "AP-CS-Block-2",
+      "deviceMac": "00:1A:2B:3C:4D:57",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u13_7",
+      "studentId": "u13",
+      "timestamp": "2026-09-14T11:31:13.891Z",
+      "apId": "AP-Math-Block-7",
+      "deviceMac": "00:1A:2B:3C:4D:24",
+      "signalStrength": -60
+    },
+    {
+      "id": "w_u13_8",
+      "studentId": "u13",
+      "timestamp": "2026-09-14T08:31:13.891Z",
+      "apId": "AP-Library-8",
+      "deviceMac": "00:1A:2B:3C:4D:39",
+      "signalStrength": -63
+    },
+    {
+      "id": "w_u13_9",
+      "studentId": "u13",
+      "timestamp": "2026-09-14T03:31:13.891Z",
+      "apId": "AP-Cafeteria-10",
+      "deviceMac": "00:1A:2B:3C:4D:44",
+      "signalStrength": -50
+    },
+    {
+      "id": "w_u13_10",
+      "studentId": "u13",
+      "timestamp": "2026-09-16T16:31:13.891Z",
+      "apId": "AP-Main-Gate-6",
+      "deviceMac": "00:1A:2B:3C:4D:95",
+      "signalStrength": -77
+    },
+    {
+      "id": "w_u14_1",
+      "studentId": "u14",
+      "timestamp": "2026-09-14T16:31:13.891Z",
+      "apId": "AP-Sports-4",
+      "deviceMac": "00:1A:2B:3C:4D:86",
+      "signalStrength": -48
+    },
+    {
+      "id": "w_u14_2",
+      "studentId": "u14",
+      "timestamp": "2026-09-16T04:31:13.891Z",
+      "apId": "AP-Main-Gate-10",
+      "deviceMac": "00:1A:2B:3C:4D:14",
+      "signalStrength": -78
+    },
+    {
+      "id": "w_u14_3",
+      "studentId": "u14",
+      "timestamp": "2026-09-15T21:31:13.891Z",
+      "apId": "AP-Sports-10",
+      "deviceMac": "00:1A:2B:3C:4D:10",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u14_4",
+      "studentId": "u14",
+      "timestamp": "2026-09-14T23:31:13.891Z",
+      "apId": "AP-Sports-4",
+      "deviceMac": "00:1A:2B:3C:4D:25",
+      "signalStrength": -62
+    },
+    {
+      "id": "w_u14_5",
+      "studentId": "u14",
+      "timestamp": "2026-09-17T02:31:13.891Z",
+      "apId": "AP-Main-Gate-9",
+      "deviceMac": "00:1A:2B:3C:4D:68",
+      "signalStrength": -69
+    },
+    {
+      "id": "w_u14_6",
+      "studentId": "u14",
+      "timestamp": "2026-09-14T11:31:13.891Z",
+      "apId": "AP-Sports-1",
+      "deviceMac": "00:1A:2B:3C:4D:67",
+      "signalStrength": -79
+    },
+    {
+      "id": "w_u14_7",
+      "studentId": "u14",
+      "timestamp": "2026-09-16T10:31:13.891Z",
+      "apId": "AP-Hostel-1",
+      "deviceMac": "00:1A:2B:3C:4D:25",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u14_8",
+      "studentId": "u14",
+      "timestamp": "2026-09-15T19:31:13.891Z",
+      "apId": "AP-Library-2",
+      "deviceMac": "00:1A:2B:3C:4D:18",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u14_9",
+      "studentId": "u14",
+      "timestamp": "2026-09-15T22:31:13.891Z",
+      "apId": "AP-Admin-5",
+      "deviceMac": "00:1A:2B:3C:4D:80",
+      "signalStrength": -57
+    },
+    {
+      "id": "w_u14_10",
+      "studentId": "u14",
+      "timestamp": "2026-09-17T16:31:13.891Z",
+      "apId": "AP-Admin-10",
+      "deviceMac": "00:1A:2B:3C:4D:21",
+      "signalStrength": -45
+    },
+    {
+      "id": "w_u15_1",
+      "studentId": "u15",
+      "timestamp": "2026-09-17T07:31:13.891Z",
+      "apId": "AP-Hostel-7",
+      "deviceMac": "00:1A:2B:3C:4D:19",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u15_2",
+      "studentId": "u15",
+      "timestamp": "2026-09-14T16:31:13.891Z",
+      "apId": "AP-Hostel-2",
+      "deviceMac": "00:1A:2B:3C:4D:81",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u15_3",
+      "studentId": "u15",
+      "timestamp": "2026-09-14T06:31:13.891Z",
+      "apId": "AP-Admin-10",
+      "deviceMac": "00:1A:2B:3C:4D:55",
+      "signalStrength": -58
+    },
+    {
+      "id": "w_u15_4",
+      "studentId": "u15",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Main-Gate-10",
+      "deviceMac": "00:1A:2B:3C:4D:60",
+      "signalStrength": -84
+    },
+    {
+      "id": "w_u15_5",
+      "studentId": "u15",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Library-8",
+      "deviceMac": "00:1A:2B:3C:4D:90",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u15_6",
+      "studentId": "u15",
+      "timestamp": "2026-09-17T08:31:13.891Z",
+      "apId": "AP-Main-Gate-3",
+      "deviceMac": "00:1A:2B:3C:4D:32",
+      "signalStrength": -79
+    },
+    {
+      "id": "w_u15_7",
+      "studentId": "u15",
+      "timestamp": "2026-09-16T19:31:13.891Z",
+      "apId": "AP-Cafeteria-3",
+      "deviceMac": "00:1A:2B:3C:4D:19",
+      "signalStrength": -40
+    },
+    {
+      "id": "w_u15_8",
+      "studentId": "u15",
+      "timestamp": "2026-09-16T10:31:13.891Z",
+      "apId": "AP-Hostel-8",
+      "deviceMac": "00:1A:2B:3C:4D:80",
+      "signalStrength": -59
+    },
+    {
+      "id": "w_u15_9",
+      "studentId": "u15",
+      "timestamp": "2026-09-16T06:31:13.891Z",
+      "apId": "AP-Hostel-6",
+      "deviceMac": "00:1A:2B:3C:4D:67",
+      "signalStrength": -78
+    },
+    {
+      "id": "w_u15_10",
+      "studentId": "u15",
+      "timestamp": "2026-09-16T04:31:13.891Z",
+      "apId": "AP-Library-6",
+      "deviceMac": "00:1A:2B:3C:4D:87",
+      "signalStrength": -54
+    },
+    {
+      "id": "w_u16_1",
+      "studentId": "u16",
+      "timestamp": "2026-09-16T15:31:13.891Z",
+      "apId": "AP-Math-Block-2",
+      "deviceMac": "00:1A:2B:3C:4D:65",
+      "signalStrength": -68
+    },
+    {
+      "id": "w_u16_2",
+      "studentId": "u16",
+      "timestamp": "2026-09-15T17:31:13.891Z",
+      "apId": "AP-Library-2",
+      "deviceMac": "00:1A:2B:3C:4D:47",
+      "signalStrength": -89
+    },
+    {
+      "id": "w_u16_3",
+      "studentId": "u16",
+      "timestamp": "2026-09-13T17:31:13.891Z",
+      "apId": "AP-Cafeteria-9",
+      "deviceMac": "00:1A:2B:3C:4D:53",
+      "signalStrength": -69
+    },
+    {
+      "id": "w_u16_4",
+      "studentId": "u16",
+      "timestamp": "2026-09-17T06:31:13.891Z",
+      "apId": "AP-Admin-2",
+      "deviceMac": "00:1A:2B:3C:4D:60",
+      "signalStrength": -44
+    },
+    {
+      "id": "w_u16_5",
+      "studentId": "u16",
+      "timestamp": "2026-09-17T06:31:13.891Z",
+      "apId": "AP-Main-Gate-8",
+      "deviceMac": "00:1A:2B:3C:4D:31",
+      "signalStrength": -51
+    },
+    {
+      "id": "w_u16_6",
+      "studentId": "u16",
+      "timestamp": "2026-09-15T07:31:13.891Z",
+      "apId": "AP-CS-Block-4",
+      "deviceMac": "00:1A:2B:3C:4D:89",
+      "signalStrength": -68
+    },
+    {
+      "id": "w_u16_7",
+      "studentId": "u16",
+      "timestamp": "2026-09-14T12:31:13.891Z",
+      "apId": "AP-Hostel-7",
+      "deviceMac": "00:1A:2B:3C:4D:83",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u16_8",
+      "studentId": "u16",
+      "timestamp": "2026-09-17T07:31:13.891Z",
+      "apId": "AP-Library-7",
+      "deviceMac": "00:1A:2B:3C:4D:85",
+      "signalStrength": -67
+    },
+    {
+      "id": "w_u16_9",
+      "studentId": "u16",
+      "timestamp": "2026-09-16T20:31:13.891Z",
+      "apId": "AP-Admin-1",
+      "deviceMac": "00:1A:2B:3C:4D:59",
+      "signalStrength": -82
+    },
+    {
+      "id": "w_u16_10",
+      "studentId": "u16",
+      "timestamp": "2026-09-16T04:31:13.891Z",
+      "apId": "AP-Library-6",
+      "deviceMac": "00:1A:2B:3C:4D:39",
+      "signalStrength": -79
+    },
+    {
+      "id": "w_u17_1",
+      "studentId": "u17",
+      "timestamp": "2026-09-17T03:31:13.891Z",
+      "apId": "AP-Library-6",
+      "deviceMac": "00:1A:2B:3C:4D:21",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u17_2",
+      "studentId": "u17",
+      "timestamp": "2026-09-16T18:31:13.891Z",
+      "apId": "AP-Hostel-1",
+      "deviceMac": "00:1A:2B:3C:4D:16",
+      "signalStrength": -45
+    },
+    {
+      "id": "w_u17_3",
+      "studentId": "u17",
+      "timestamp": "2026-09-15T22:31:13.891Z",
+      "apId": "AP-Cafeteria-7",
+      "deviceMac": "00:1A:2B:3C:4D:98",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u17_4",
+      "studentId": "u17",
+      "timestamp": "2026-09-14T13:31:13.891Z",
+      "apId": "AP-Library-10",
+      "deviceMac": "00:1A:2B:3C:4D:74",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u17_5",
+      "studentId": "u17",
+      "timestamp": "2026-09-15T17:31:13.891Z",
+      "apId": "AP-CS-Block-3",
+      "deviceMac": "00:1A:2B:3C:4D:56",
+      "signalStrength": -52
+    },
+    {
+      "id": "w_u17_6",
+      "studentId": "u17",
+      "timestamp": "2026-09-13T22:31:13.891Z",
+      "apId": "AP-Cafeteria-4",
+      "deviceMac": "00:1A:2B:3C:4D:90",
+      "signalStrength": -51
+    },
+    {
+      "id": "w_u17_7",
+      "studentId": "u17",
+      "timestamp": "2026-09-15T17:31:13.891Z",
+      "apId": "AP-CS-Block-7",
+      "deviceMac": "00:1A:2B:3C:4D:83",
+      "signalStrength": -87
+    },
+    {
+      "id": "w_u17_8",
+      "studentId": "u17",
+      "timestamp": "2026-09-17T03:31:13.891Z",
+      "apId": "AP-Admin-2",
+      "deviceMac": "00:1A:2B:3C:4D:47",
+      "signalStrength": -77
+    },
+    {
+      "id": "w_u17_9",
+      "studentId": "u17",
+      "timestamp": "2026-09-14T01:31:13.891Z",
+      "apId": "AP-Math-Block-2",
+      "deviceMac": "00:1A:2B:3C:4D:76",
+      "signalStrength": -71
+    },
+    {
+      "id": "w_u17_10",
+      "studentId": "u17",
+      "timestamp": "2026-09-16T18:31:13.891Z",
+      "apId": "AP-Math-Block-9",
+      "deviceMac": "00:1A:2B:3C:4D:24",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u18_1",
+      "studentId": "u18",
+      "timestamp": "2026-09-15T22:31:13.891Z",
+      "apId": "AP-Main-Gate-5",
+      "deviceMac": "00:1A:2B:3C:4D:82",
+      "signalStrength": -77
+    },
+    {
+      "id": "w_u18_2",
+      "studentId": "u18",
+      "timestamp": "2026-09-17T08:31:13.891Z",
+      "apId": "AP-Main-Gate-6",
+      "deviceMac": "00:1A:2B:3C:4D:12",
+      "signalStrength": -80
+    },
+    {
+      "id": "w_u18_3",
+      "studentId": "u18",
+      "timestamp": "2026-09-16T12:31:13.891Z",
+      "apId": "AP-Hostel-10",
+      "deviceMac": "00:1A:2B:3C:4D:46",
+      "signalStrength": -62
+    },
+    {
+      "id": "w_u18_4",
+      "studentId": "u18",
+      "timestamp": "2026-09-16T19:31:13.891Z",
+      "apId": "AP-Cafeteria-4",
+      "deviceMac": "00:1A:2B:3C:4D:27",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u18_5",
+      "studentId": "u18",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Admin-1",
+      "deviceMac": "00:1A:2B:3C:4D:76",
+      "signalStrength": -89
+    },
+    {
+      "id": "w_u18_6",
+      "studentId": "u18",
+      "timestamp": "2026-09-15T17:31:13.891Z",
+      "apId": "AP-Library-5",
+      "deviceMac": "00:1A:2B:3C:4D:60",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u18_7",
+      "studentId": "u18",
+      "timestamp": "2026-09-16T05:31:13.891Z",
+      "apId": "AP-Cafeteria-9",
+      "deviceMac": "00:1A:2B:3C:4D:82",
+      "signalStrength": -70
+    },
+    {
+      "id": "w_u18_8",
+      "studentId": "u18",
+      "timestamp": "2026-09-14T18:31:13.891Z",
+      "apId": "AP-Hostel-3",
+      "deviceMac": "00:1A:2B:3C:4D:80",
+      "signalStrength": -79
+    },
+    {
+      "id": "w_u18_9",
+      "studentId": "u18",
+      "timestamp": "2026-09-16T12:31:13.891Z",
+      "apId": "AP-Sports-9",
+      "deviceMac": "00:1A:2B:3C:4D:15",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u18_10",
+      "studentId": "u18",
+      "timestamp": "2026-09-17T02:31:13.891Z",
+      "apId": "AP-CS-Block-7",
+      "deviceMac": "00:1A:2B:3C:4D:31",
+      "signalStrength": -75
+    },
+    {
+      "id": "w_u19_1",
+      "studentId": "u19",
+      "timestamp": "2026-09-14T20:31:13.891Z",
+      "apId": "AP-Cafeteria-1",
+      "deviceMac": "00:1A:2B:3C:4D:72",
+      "signalStrength": -60
+    },
+    {
+      "id": "w_u19_2",
+      "studentId": "u19",
+      "timestamp": "2026-09-17T00:31:13.891Z",
+      "apId": "AP-CS-Block-6",
+      "deviceMac": "00:1A:2B:3C:4D:31",
+      "signalStrength": -87
+    },
+    {
+      "id": "w_u19_3",
+      "studentId": "u19",
+      "timestamp": "2026-09-14T19:31:13.891Z",
+      "apId": "AP-Math-Block-6",
+      "deviceMac": "00:1A:2B:3C:4D:55",
+      "signalStrength": -85
+    },
+    {
+      "id": "w_u19_4",
+      "studentId": "u19",
+      "timestamp": "2026-09-14T13:31:13.891Z",
+      "apId": "AP-Main-Gate-2",
+      "deviceMac": "00:1A:2B:3C:4D:25",
+      "signalStrength": -87
+    },
+    {
+      "id": "w_u19_5",
+      "studentId": "u19",
+      "timestamp": "2026-09-14T18:31:13.891Z",
+      "apId": "AP-Main-Gate-10",
+      "deviceMac": "00:1A:2B:3C:4D:18",
+      "signalStrength": -58
+    },
+    {
+      "id": "w_u19_6",
+      "studentId": "u19",
+      "timestamp": "2026-09-17T06:31:13.891Z",
+      "apId": "AP-Sports-1",
+      "deviceMac": "00:1A:2B:3C:4D:35",
+      "signalStrength": -55
+    },
+    {
+      "id": "w_u19_7",
+      "studentId": "u19",
+      "timestamp": "2026-09-16T00:31:13.891Z",
+      "apId": "AP-Admin-10",
+      "deviceMac": "00:1A:2B:3C:4D:47",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u19_8",
+      "studentId": "u19",
+      "timestamp": "2026-09-17T09:31:13.891Z",
+      "apId": "AP-Main-Gate-7",
+      "deviceMac": "00:1A:2B:3C:4D:37",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u19_9",
+      "studentId": "u19",
+      "timestamp": "2026-09-15T06:31:13.891Z",
+      "apId": "AP-Cafeteria-1",
+      "deviceMac": "00:1A:2B:3C:4D:89",
+      "signalStrength": -42
+    },
+    {
+      "id": "w_u19_10",
+      "studentId": "u19",
+      "timestamp": "2026-09-14T15:31:13.891Z",
+      "apId": "AP-Math-Block-9",
+      "deviceMac": "00:1A:2B:3C:4D:24",
+      "signalStrength": -82
+    },
+    {
+      "id": "w_u20_1",
+      "studentId": "u20",
+      "timestamp": "2026-09-17T15:31:13.891Z",
+      "apId": "AP-Sports-5",
+      "deviceMac": "00:1A:2B:3C:4D:35",
+      "signalStrength": -68
+    },
+    {
+      "id": "w_u20_2",
+      "studentId": "u20",
+      "timestamp": "2026-09-15T07:31:13.891Z",
+      "apId": "AP-Cafeteria-8",
+      "deviceMac": "00:1A:2B:3C:4D:23",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u20_3",
+      "studentId": "u20",
+      "timestamp": "2026-09-14T15:31:13.891Z",
+      "apId": "AP-Main-Gate-8",
+      "deviceMac": "00:1A:2B:3C:4D:87",
+      "signalStrength": -88
+    },
+    {
+      "id": "w_u20_4",
+      "studentId": "u20",
+      "timestamp": "2026-09-16T03:31:13.891Z",
+      "apId": "AP-Hostel-1",
+      "deviceMac": "00:1A:2B:3C:4D:38",
+      "signalStrength": -79
+    },
+    {
+      "id": "w_u20_5",
+      "studentId": "u20",
+      "timestamp": "2026-09-16T07:31:13.891Z",
+      "apId": "AP-Admin-1",
+      "deviceMac": "00:1A:2B:3C:4D:39",
+      "signalStrength": -55
+    },
+    {
+      "id": "w_u20_6",
+      "studentId": "u20",
+      "timestamp": "2026-09-14T01:31:13.891Z",
+      "apId": "AP-CS-Block-10",
+      "deviceMac": "00:1A:2B:3C:4D:20",
+      "signalStrength": -45
+    },
+    {
+      "id": "w_u20_7",
+      "studentId": "u20",
+      "timestamp": "2026-09-17T04:31:13.891Z",
+      "apId": "AP-Math-Block-6",
+      "deviceMac": "00:1A:2B:3C:4D:70",
+      "signalStrength": -47
+    },
+    {
+      "id": "w_u20_8",
+      "studentId": "u20",
+      "timestamp": "2026-09-16T13:31:13.891Z",
+      "apId": "AP-Hostel-1",
+      "deviceMac": "00:1A:2B:3C:4D:44",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u20_9",
+      "studentId": "u20",
+      "timestamp": "2026-09-15T17:31:13.891Z",
+      "apId": "AP-CS-Block-1",
+      "deviceMac": "00:1A:2B:3C:4D:56",
+      "signalStrength": -86
+    },
+    {
+      "id": "w_u20_10",
+      "studentId": "u20",
+      "timestamp": "2026-09-16T22:31:13.891Z",
+      "apId": "AP-Math-Block-4",
+      "deviceMac": "00:1A:2B:3C:4D:88",
+      "signalStrength": -66
+    },
+    {
+      "id": "w_u21_1",
+      "studentId": "u21",
+      "timestamp": "2026-09-16T15:31:13.891Z",
+      "apId": "AP-Math-Block-7",
+      "deviceMac": "00:1A:2B:3C:4D:72",
+      "signalStrength": -54
+    },
+    {
+      "id": "w_u21_2",
+      "studentId": "u21",
+      "timestamp": "2026-09-14T09:31:13.891Z",
+      "apId": "AP-Main-Gate-4",
+      "deviceMac": "00:1A:2B:3C:4D:33",
+      "signalStrength": -73
+    },
+    {
+      "id": "w_u21_3",
+      "studentId": "u21",
+      "timestamp": "2026-09-16T11:31:13.891Z",
+      "apId": "AP-Main-Gate-4",
+      "deviceMac": "00:1A:2B:3C:4D:63",
+      "signalStrength": -51
+    },
+    {
+      "id": "w_u21_4",
+      "studentId": "u21",
+      "timestamp": "2026-09-13T20:31:13.891Z",
+      "apId": "AP-Library-2",
+      "deviceMac": "00:1A:2B:3C:4D:95",
+      "signalStrength": -65
+    },
+    {
+      "id": "w_u21_5",
+      "studentId": "u21",
+      "timestamp": "2026-09-14T11:31:13.891Z",
+      "apId": "AP-Cafeteria-9",
+      "deviceMac": "00:1A:2B:3C:4D:96",
+      "signalStrength": -63
+    },
+    {
+      "id": "w_u21_6",
+      "studentId": "u21",
+      "timestamp": "2026-09-17T16:31:13.891Z",
+      "apId": "AP-Sports-10",
+      "deviceMac": "00:1A:2B:3C:4D:47",
+      "signalStrength": -57
+    },
+    {
+      "id": "w_u21_7",
+      "studentId": "u21",
+      "timestamp": "2026-09-15T14:31:13.891Z",
+      "apId": "AP-Cafeteria-8",
+      "deviceMac": "00:1A:2B:3C:4D:93",
+      "signalStrength": -40
+    },
+    {
+      "id": "w_u21_8",
+      "studentId": "u21",
+      "timestamp": "2026-09-14T11:31:13.891Z",
+      "apId": "AP-CS-Block-10",
+      "deviceMac": "00:1A:2B:3C:4D:58",
+      "signalStrength": -64
+    },
+    {
+      "id": "w_u21_9",
+      "studentId": "u21",
+      "timestamp": "2026-09-17T10:31:13.891Z",
+      "apId": "AP-Math-Block-8",
+      "deviceMac": "00:1A:2B:3C:4D:25",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u21_10",
+      "studentId": "u21",
+      "timestamp": "2026-09-16T17:31:13.891Z",
+      "apId": "AP-Admin-10",
+      "deviceMac": "00:1A:2B:3C:4D:96",
+      "signalStrength": -45
+    },
+    {
+      "id": "w_u22_1",
+      "studentId": "u22",
+      "timestamp": "2026-09-17T16:31:13.891Z",
+      "apId": "AP-Cafeteria-3",
+      "deviceMac": "00:1A:2B:3C:4D:38",
+      "signalStrength": -57
+    },
+    {
+      "id": "w_u22_2",
+      "studentId": "u22",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Sports-3",
+      "deviceMac": "00:1A:2B:3C:4D:65",
+      "signalStrength": -89
+    },
+    {
+      "id": "w_u22_3",
+      "studentId": "u22",
+      "timestamp": "2026-09-15T10:31:13.891Z",
+      "apId": "AP-Cafeteria-6",
+      "deviceMac": "00:1A:2B:3C:4D:97",
+      "signalStrength": -43
+    },
+    {
+      "id": "w_u22_4",
+      "studentId": "u22",
+      "timestamp": "2026-09-15T00:31:13.891Z",
+      "apId": "AP-Main-Gate-5",
+      "deviceMac": "00:1A:2B:3C:4D:92",
+      "signalStrength": -70
+    },
+    {
+      "id": "w_u22_5",
+      "studentId": "u22",
+      "timestamp": "2026-09-16T06:31:13.891Z",
+      "apId": "AP-Library-7",
+      "deviceMac": "00:1A:2B:3C:4D:44",
+      "signalStrength": -52
+    },
+    {
+      "id": "w_u22_6",
+      "studentId": "u22",
+      "timestamp": "2026-09-16T14:31:13.891Z",
+      "apId": "AP-Library-8",
+      "deviceMac": "00:1A:2B:3C:4D:75",
+      "signalStrength": -82
+    },
+    {
+      "id": "w_u22_7",
+      "studentId": "u22",
+      "timestamp": "2026-09-14T12:31:13.891Z",
+      "apId": "AP-Library-5",
+      "deviceMac": "00:1A:2B:3C:4D:60",
+      "signalStrength": -70
+    },
+    {
+      "id": "w_u22_8",
+      "studentId": "u22",
+      "timestamp": "2026-09-16T19:31:13.891Z",
+      "apId": "AP-CS-Block-1",
+      "deviceMac": "00:1A:2B:3C:4D:14",
+      "signalStrength": -53
+    },
+    {
+      "id": "w_u22_9",
+      "studentId": "u22",
+      "timestamp": "2026-09-14T10:31:13.891Z",
+      "apId": "AP-Library-2",
+      "deviceMac": "00:1A:2B:3C:4D:21",
+      "signalStrength": -64
+    },
+    {
+      "id": "w_u22_10",
+      "studentId": "u22",
+      "timestamp": "2026-09-13T18:31:13.891Z",
+      "apId": "AP-Sports-2",
+      "deviceMac": "00:1A:2B:3C:4D:82",
+      "signalStrength": -44
+    },
+    {
+      "id": "w_u23_1",
+      "studentId": "u23",
+      "timestamp": "2026-09-15T05:31:13.891Z",
+      "apId": "AP-Sports-5",
+      "deviceMac": "00:1A:2B:3C:4D:79",
+      "signalStrength": -53
+    },
+    {
+      "id": "w_u23_2",
+      "studentId": "u23",
+      "timestamp": "2026-09-16T05:31:13.891Z",
+      "apId": "AP-Math-Block-8",
+      "deviceMac": "00:1A:2B:3C:4D:12",
+      "signalStrength": -74
+    },
+    {
+      "id": "w_u23_3",
+      "studentId": "u23",
+      "timestamp": "2026-09-13T19:31:13.891Z",
+      "apId": "AP-Sports-5",
+      "deviceMac": "00:1A:2B:3C:4D:29",
+      "signalStrength": -49
+    },
+    {
+      "id": "w_u23_4",
+      "studentId": "u23",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Math-Block-4",
+      "deviceMac": "00:1A:2B:3C:4D:82",
+      "signalStrength": -81
+    },
+    {
+      "id": "w_u23_5",
+      "studentId": "u23",
+      "timestamp": "2026-09-14T02:31:13.891Z",
+      "apId": "AP-Cafeteria-8",
+      "deviceMac": "00:1A:2B:3C:4D:94",
+      "signalStrength": -80
+    },
+    {
+      "id": "w_u23_6",
+      "studentId": "u23",
+      "timestamp": "2026-09-17T02:31:13.891Z",
+      "apId": "AP-Cafeteria-10",
+      "deviceMac": "00:1A:2B:3C:4D:24",
+      "signalStrength": -82
+    },
+    {
+      "id": "w_u23_7",
+      "studentId": "u23",
+      "timestamp": "2026-09-16T00:31:13.891Z",
+      "apId": "AP-Hostel-2",
+      "deviceMac": "00:1A:2B:3C:4D:15",
+      "signalStrength": -48
+    },
+    {
+      "id": "w_u23_8",
+      "studentId": "u23",
+      "timestamp": "2026-09-15T04:31:13.891Z",
+      "apId": "AP-Math-Block-10",
+      "deviceMac": "00:1A:2B:3C:4D:78",
+      "signalStrength": -56
+    },
+    {
+      "id": "w_u23_9",
+      "studentId": "u23",
+      "timestamp": "2026-09-15T08:31:13.891Z",
+      "apId": "AP-Sports-3",
+      "deviceMac": "00:1A:2B:3C:4D:95",
+      "signalStrength": -47
+    },
+    {
+      "id": "w_u23_10",
+      "studentId": "u23",
+      "timestamp": "2026-09-16T15:31:13.891Z",
+      "apId": "AP-Main-Gate-9",
+      "deviceMac": "00:1A:2B:3C:4D:18",
+      "signalStrength": -84
+    },
+    {
+      "id": "w_u24_1",
+      "studentId": "u24",
+      "timestamp": "2026-09-17T19:31:13.891Z",
+      "apId": "AP-Hostel-7",
+      "deviceMac": "00:1A:2B:3C:4D:61",
+      "signalStrength": -71
+    },
+    {
+      "id": "w_u24_2",
+      "studentId": "u24",
+      "timestamp": "2026-09-16T09:31:13.891Z",
+      "apId": "AP-Hostel-5",
+      "deviceMac": "00:1A:2B:3C:4D:56",
+      "signalStrength": -74
+    },
+    {
+      "id": "w_u24_3",
+      "studentId": "u24",
+      "timestamp": "2026-09-15T22:31:13.891Z",
+      "apId": "AP-Library-10",
+      "deviceMac": "00:1A:2B:3C:4D:72",
+      "signalStrength": -58
+    },
+    {
+      "id": "w_u24_4",
+      "studentId": "u24",
+      "timestamp": "2026-09-14T21:31:13.891Z",
+      "apId": "AP-Sports-2",
+      "deviceMac": "00:1A:2B:3C:4D:14",
+      "signalStrength": -62
+    },
+    {
+      "id": "w_u24_5",
+      "studentId": "u24",
+      "timestamp": "2026-09-14T17:31:13.891Z",
+      "apId": "AP-Main-Gate-3",
+      "deviceMac": "00:1A:2B:3C:4D:60",
+      "signalStrength": -49
+    },
+    {
+      "id": "w_u24_6",
+      "studentId": "u24",
+      "timestamp": "2026-09-14T01:31:13.891Z",
+      "apId": "AP-Admin-2",
+      "deviceMac": "00:1A:2B:3C:4D:94",
+      "signalStrength": -76
+    },
+    {
+      "id": "w_u24_7",
+      "studentId": "u24",
+      "timestamp": "2026-09-17T19:31:13.891Z",
+      "apId": "AP-Admin-5",
+      "deviceMac": "00:1A:2B:3C:4D:22",
+      "signalStrength": -75
+    },
+    {
+      "id": "w_u24_8",
+      "studentId": "u24",
+      "timestamp": "2026-09-14T04:31:13.891Z",
+      "apId": "AP-Main-Gate-7",
+      "deviceMac": "00:1A:2B:3C:4D:92",
+      "signalStrength": -58
+    },
+    {
+      "id": "w_u24_9",
+      "studentId": "u24",
+      "timestamp": "2026-09-15T10:31:13.891Z",
+      "apId": "AP-Main-Gate-7",
+      "deviceMac": "00:1A:2B:3C:4D:78",
+      "signalStrength": -48
+    },
+    {
+      "id": "w_u24_10",
+      "studentId": "u24",
+      "timestamp": "2026-09-16T03:31:13.891Z",
+      "apId": "AP-Cafeteria-9",
+      "deviceMac": "00:1A:2B:3C:4D:16",
+      "signalStrength": -41
+    },
+    {
+      "id": "w_u25_1",
+      "studentId": "u25",
+      "timestamp": "2026-09-16T15:31:13.891Z",
+      "apId": "AP-Cafeteria-6",
+      "deviceMac": "00:1A:2B:3C:4D:87",
+      "signalStrength": -45
+    },
+    {
+      "id": "w_u25_2",
+      "studentId": "u25",
+      "timestamp": "2026-09-16T04:31:13.891Z",
+      "apId": "AP-Main-Gate-1",
+      "deviceMac": "00:1A:2B:3C:4D:46",
+      "signalStrength": -58
+    },
+    {
+      "id": "w_u25_3",
+      "studentId": "u25",
+      "timestamp": "2026-09-15T23:31:13.891Z",
+      "apId": "AP-Admin-4",
+      "deviceMac": "00:1A:2B:3C:4D:90",
+      "signalStrength": -59
+    },
+    {
+      "id": "w_u25_4",
+      "studentId": "u25",
+      "timestamp": "2026-09-15T03:31:13.891Z",
+      "apId": "AP-Library-7",
+      "deviceMac": "00:1A:2B:3C:4D:15",
+      "signalStrength": -44
+    },
+    {
+      "id": "w_u25_5",
+      "studentId": "u25",
+      "timestamp": "2026-09-17T06:31:13.891Z",
+      "apId": "AP-Cafeteria-4",
+      "deviceMac": "00:1A:2B:3C:4D:12",
+      "signalStrength": -61
+    },
+    {
+      "id": "w_u25_6",
+      "studentId": "u25",
+      "timestamp": "2026-09-15T11:31:13.891Z",
+      "apId": "AP-CS-Block-10",
+      "deviceMac": "00:1A:2B:3C:4D:36",
+      "signalStrength": -74
+    },
+    {
+      "id": "w_u25_7",
+      "studentId": "u25",
+      "timestamp": "2026-09-15T01:31:13.891Z",
+      "apId": "AP-Hostel-9",
+      "deviceMac": "00:1A:2B:3C:4D:52",
+      "signalStrength": -52
+    },
+    {
+      "id": "w_u25_8",
+      "studentId": "u25",
+      "timestamp": "2026-09-14T18:31:13.891Z",
+      "apId": "AP-Cafeteria-3",
+      "deviceMac": "00:1A:2B:3C:4D:83",
+      "signalStrength": -65
+    },
+    {
+      "id": "w_u25_9",
+      "studentId": "u25",
+      "timestamp": "2026-09-14T14:31:13.891Z",
+      "apId": "AP-CS-Block-6",
+      "deviceMac": "00:1A:2B:3C:4D:76",
+      "signalStrength": -65
+    },
+    {
+      "id": "w_u25_10",
+      "studentId": "u25",
+      "timestamp": "2026-09-13T18:31:13.891Z",
+      "apId": "AP-Library-6",
+      "deviceMac": "00:1A:2B:3C:4D:30",
+      "signalStrength": -68
+    }
+  ]
+}
