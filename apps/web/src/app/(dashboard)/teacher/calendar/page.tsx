@@ -5,6 +5,8 @@ import { useState, useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const MOCK_SCHEDULE = [
   { day: 'Monday', time: '09:00', duration: '120', course: { name: 'Introduction to Computer Science', code: 'CS101', color: '#6366f1' } },
@@ -45,6 +47,11 @@ export default function TeacherCalendarPage() {
   const [officeDuration, setOfficeDuration] = useState('60');
   const [officeLocation, setOfficeLocation] = useState('Room 301');
   const [savingOffice, setSavingOffice] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSaveOfficeHours = async () => {
     setSavingOffice(true);
@@ -324,63 +331,66 @@ export default function TeacherCalendarPage() {
           </div>
         </div>
       </div>
-      <AnimatePresence>
-        {showOfficeModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={e => e.target === e.currentTarget && setShowOfficeModal(false)}
-          >
+      {mounted && createPortal(
+        <AnimatePresence>
+          {showOfficeModal && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={e => e.target === e.currentTarget && setShowOfficeModal(false)}
             >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="font-bold text-zinc-900 dark:text-white text-lg flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-indigo-500" /> Add Office Hours
-                </h3>
-                <button onClick={() => setShowOfficeModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Day</label>
-                  <select value={officeDay} onChange={e => setOfficeDay(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
-                    {['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => <option key={d}>{d}</option>)}
-                  </select>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-bold text-zinc-900 dark:text-white text-lg flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-indigo-500" /> Add Office Hours
+                  </h3>
+                  <button onClick={() => setShowOfficeModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Start Time</label>
-                    <input type="time" value={officeTime} onChange={e => setOfficeTime(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 [color-scheme:dark]" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Duration (mins)</label>
-                    <select value={officeDuration} onChange={e => setOfficeDuration(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
-                      {['30','60','90','120'].map(d => <option key={d}>{d}</option>)}
+                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Day</label>
+                    <select value={officeDay} onChange={e => setOfficeDay(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
+                      {['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => <option key={d}>{d}</option>)}
                     </select>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Start Time</label>
+                      <input type="time" value={officeTime} onChange={e => setOfficeTime(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 [color-scheme:dark]" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Duration (mins)</label>
+                      <select value={officeDuration} onChange={e => setOfficeDuration(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
+                        {['30','60','90','120'].map(d => <option key={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Location / Room</label>
+                    <input type="text" value={officeLocation} onChange={e => setOfficeLocation(e.target.value)} placeholder="e.g. Room 301 or Online" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Location / Room</label>
-                  <input type="text" value={officeLocation} onChange={e => setOfficeLocation(e.target.value)} placeholder="e.g. Room 301 or Online" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
+                <div className="flex gap-3 mt-6">
+                  <button onClick={() => setShowOfficeModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
+                  <button onClick={handleSaveOfficeHours} disabled={savingOffice} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
+                    {savingOffice ? (
+                      <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> Saving...</>
+                    ) : (
+                      <><Plus className="w-4 h-4" /> Add Office Hours</>
+                    )}
+                  </button>
                 </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowOfficeModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                <button onClick={handleSaveOfficeHours} disabled={savingOffice} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
-                  {savingOffice ? (
-                    <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> Saving...</>
-                  ) : (
-                    <><Plus className="w-4 h-4" /> Add Office Hours</>
-                  )}
-                </button>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }
