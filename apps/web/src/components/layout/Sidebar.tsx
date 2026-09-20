@@ -31,10 +31,10 @@ const navByRole: Record<string, NavItem[]> = {
       label: 'nav.schooling', icon: GraduationCap, 
       subItems: [
         { href: '/student/courses', label: 'nav.courses' },
-        { href: '/student/groups', label: 'Groups' },
-        { href: '/student/blackboard', label: 'Blackboard' },
-        { href: '/student/internships', label: 'Internships' },
-        { href: '/student/choices', label: 'My choices' },
+        { href: '/student/groups', label: 'nav.groups' },
+        { href: '/student/blackboard', label: 'nav.blackboard' },
+        { href: '/student/internships', label: 'nav.internships' },
+        { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/attendance', label: 'nav.attendance' },
         { href: '/student/grades', label: 'nav.grades' },
         { href: '/student/quizzes', label: 'nav.quizzes' },
@@ -43,13 +43,13 @@ const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { 
-      label: 'Administrative data', icon: Folder,
+      label: 'nav.administrative_data', icon: Folder,
       subItems: [
-        { href: '/student/administrative/personal', label: 'Personal data' },
-        { href: '/student/administrative/documents', label: 'School documents' },
-        { href: '/student/administrative/accounting', label: 'Accounting' },
-        { href: '/student/administrative/scholarships', label: 'Scholarships' },
-        { href: '/student/administrative/consents', label: 'My consents' },
+        { href: '/student/administrative/personal', label: 'nav.personal_data' },
+        { href: '/student/administrative/documents', label: 'nav.school_documents' },
+        { href: '/student/administrative/accounting', label: 'nav.accounting' },
+        { href: '/student/administrative/scholarships', label: 'nav.scholarships' },
+        { href: '/student/administrative/consents', label: 'nav.my_consents' },
       ]
     },
     {
@@ -63,34 +63,34 @@ const navByRole: Record<string, NavItem[]> = {
       ]
     },
     {
-      label: 'Student Life', icon: Coffee,
+      label: 'nav.student_life', icon: Coffee,
       subItems: [
-        { href: '/student/life/associations', label: 'Associations' },
-        { href: '/student/life/rooms', label: 'Room Reservation' },
-        { href: '/student/life/medical', label: 'Medical & Disability' },
-        { href: '/student/life/everyday', label: 'Everyday Life' },
-        { href: '/student/life/financing', label: 'Financing' },
-        { href: '/student/life/services', label: 'Using my services' },
+        { href: '/student/life/associations', label: 'nav.associations' },
+        { href: '/student/life/rooms', label: 'nav.room_reservation' },
+        { href: '/student/life/medical', label: 'nav.medical_disability' },
+        { href: '/student/life/everyday', label: 'nav.everyday_life' },
+        { href: '/student/life/financing', label: 'nav.financing' },
+        { href: '/student/life/services', label: 'nav.using_services' },
       ]
     },
     {
-      label: 'Search', icon: Search,
+      label: 'nav.search', icon: Search,
       subItems: [
-        { href: '/student/search/directory', label: 'Student directory' },
-        { href: '/student/search/internships', label: 'Internship history' },
+        { href: '/student/search/directory', label: 'nav.student_directory' },
+        { href: '/student/search/internships', label: 'nav.internship_history' },
       ]
     },
     {
-      label: 'Links', icon: LinkIcon,
+      label: 'nav.links', icon: LinkIcon,
       subItems: [
-        { href: '/student/links', label: 'Apps & Links' },
+        { href: '/student/links', label: 'nav.apps_links' },
       ]
     },
-    { href: '/student/knowledge-hub', label: 'Knowledge Hub', icon: Brain },
+    { href: '/student/knowledge-hub', label: 'nav.knowledge_hub', icon: Brain },
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
-    { href: '/student/community', label: 'Community', icon: Users },
-    { href: '/student/support', label: 'Support', icon: Settings },
-    { href: '/student/beesafe', label: 'BeeSafe Reporting', icon: AlertTriangle },
+    { href: '/student/community', label: 'nav.community', icon: Users },
+    { href: '/student/support', label: 'nav.support', icon: Settings },
+    { href: '/student/beesafe', label: 'nav.beesafe', icon: AlertTriangle },
     { href: '/student/settings?section=language', label: 'nav.settings', icon: Globe },
   ],
   TEACHER: [
