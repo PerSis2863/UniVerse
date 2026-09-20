@@ -22,6 +22,8 @@ model User {
   messagesSent     Message[]     @relation("Sender")
   messagesReceived Message[]     @relation("Receiver")
   announcements    Announcement[]
+  groupMembers     GroupMember[]
+  groupMessages    GroupMessage[]
 }
 
 model Course {
@@ -122,3 +124,53 @@ model Message {
   sender   User @relation("Sender", fields: [senderId], references: [id])
   receiver User @relation("Receiver", fields: [receiverId], references: [id])
 }
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   @default("Study Group")
+  course      String?
+  members     GroupMember[]
+  messages    GroupMessage[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  role      String   @default("MEMBER")
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+}
+
+model GroupMessage {
+  id          String   @id @default(cuid())
+  content     String
+  senderId    String
+  groupId     String
+  createdAt   DateTime @default(now())
+
+  sender      User     @relation(fields: [senderId], references: [id])
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  attachments FileAttachment[]
+}
+
+model FileAttachment {
+  id          String   @id @default(cuid())
+  messageId   String
+  url         String
+  fileName    String
+  fileType    String?
+  size        Int?
+  aiSummary   String?
+  createdAt   DateTime @default(now())
+
+  message     GroupMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+

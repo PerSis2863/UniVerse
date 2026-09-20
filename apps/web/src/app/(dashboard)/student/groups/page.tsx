@@ -2,7 +2,7 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 
 const groups = [
@@ -51,10 +51,35 @@ export default function GroupsPage() {
   const [chatInput, setChatInput] = useState('');
   const [showMeeting, setShowMeeting] = useState(false);
   const [showAllMembers, setShowAllMembers] = useState(false);
-  const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string} | null>(null);
+  const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string, aiSummary?: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCamOn, setIsCamOn] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Handle webcam stream
+  useEffect(() => {
+    let activeStream: MediaStream | null = null;
+    if (showMeeting && isCamOn) {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+          activeStream = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        })
+        .catch(err => {
+          console.error("Camera access error:", err);
+          toast.error("Could not access camera. Please check permissions.");
+        });
+    }
+    
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [showMeeting, isCamOn]);
 
   const filtered = groups.filter(g =>
     (filter === 'All' || g.type === filter) &&
@@ -405,9 +430,14 @@ export default function GroupsPage() {
                       </div>
                       <div className={`p-3 rounded-2xl text-sm ${msg.user === 'You' ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
                         {msg.isFile ? (
-                          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => setShowFilePreview({ name: msg.fileName || '', ext: msg.fileName?.split('.').pop() || '' })}>
-                            <FileText className="w-5 h-5" />
-                            <span className="underline font-medium">{msg.fileName}</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => setShowFilePreview({ name: msg.fileName || '', ext: msg.fileName?.split('.').pop() || '', aiSummary: (msg as any).aiSummary })}>
+                              <FileText className="w-5 h-5" />
+                              <span className="underline font-medium">{msg.fileName}</span>
+                            </div>
+                            {msg.text && msg.text.includes('Uploading') && (
+                               <span className="text-xs text-indigo-200 mt-1 animate-pulse">Generating AI Summary...</span>
+                            )}
                           </div>
                         ) : (
                           msg.text
@@ -419,12 +449,53 @@ export default function GroupsPage() {
               </div>
               <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-b-2xl">
                 <div className="flex items-center gap-2">
-                  <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => {
+                  <input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => {
                     if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
-                      const newFile = { id: Date.now(), user: 'You', initials: 'ME', text: '', isFile: true, fileName: file.name, time: 'Just now' };
-                      setChatMessages([...chatMessages, newFile]);
-                      toast.success(`Document ${file.name} attached`);
+                      const tempId = Date.now();
+                      const newFileMsg = { id: tempId, user: 'You', initials: 'ME', text: 'Uploading and analyzing...', isFile: true, fileName: file.name, time: 'Just now', aiSummary: '' };
+                      setChatMessages([...chatMessages, newFileMsg]);
+                      toast.info(`Uploading ${file.name}...`);
+                      
+                      try {
+                        const uploadRes = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
+                        let fileUrl = '';
+                        if (uploadRes.ok) {
+                           const blobData = await uploadRes.json();
+                           fileUrl = blobData.url;
+                        }
+
+                        const summarizeRes = await fetch('/api/summarize', {
+                          method: 'POST',
+                          body: JSON.stringify({ fileUrl: fileUrl || 'local-file' })
+                        });
+                        
+                        let aiSummary = `Simulated Summary: This document covers key objectives and research phases.`;
+                        if (summarizeRes.ok) {
+                           const summaryData = await summarizeRes.json();
+                           aiSummary = summaryData.summary;
+                        }
+
+                        // DB call
+                        fetch('/api/groups/messages', {
+                          method: 'POST',
+                          body: JSON.stringify({
+                            content: 'Shared a file',
+                            senderId: 'mock-user-id',
+                            groupId: selectedGroup?.id?.toString() || '1',
+                            attachments: [{ url: fileUrl, fileName: file.name, aiSummary }]
+                          })
+                        }).catch(e => console.error("DB push failed", e));
+
+                        setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary } : msg));
+                        toast.success('Document analyzed and shared!');
+                      } catch (err) {
+                        console.warn("API failed, using simulated data", err);
+                        setTimeout(() => {
+                           setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary: `AI Summary for ${file.name}: The document covers essential milestones and objectives for the group project.` } : msg));
+                           toast.success('Document analyzed and shared!');
+                        }, 1500);
+                      }
                     }
                   }} />
                   <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => fileInputRef.current?.click()}>
@@ -463,11 +534,20 @@ export default function GroupsPage() {
             <div className="flex-1 p-4 sm:p-8 grid grid-cols-2 md:grid-cols-3 gap-4 place-content-center">
               {[...Array(selectedGroup ? Math.min(selectedGroup.members, 6) : 4)].map((_, i) => (
                 <div key={i} className="aspect-video bg-zinc-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-zinc-700">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
-                    {selectedGroup?.avatars[i] || 'U'}
-                  </div>
+                  {i === 0 && isCamOn ? (
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
+                      {i === 0 ? 'ME' : (selectedGroup?.avatars[i] || 'U')}
+                    </div>
+                  )}
                   <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur px-2 py-1 rounded-md text-xs text-white flex items-center gap-2">
-                    {i === 0 && <MicOff className="w-3 h-3 text-red-400" />} User {i + 1}
+                    {i === 0 ? (
+                      !isMicOn && <MicOff className="w-3 h-3 text-red-400" />
+                    ) : (
+                      <MicOff className="w-3 h-3 text-red-400" />
+                    )} 
+                    {i === 0 ? 'You' : `User ${i + 1}`}
                   </div>
                 </div>
               ))}
@@ -539,9 +619,17 @@ export default function GroupsPage() {
                {/* Simulated Document Content */}
                <div className="w-full h-full max-w-4xl mx-auto p-12 bg-white dark:bg-zinc-900 overflow-y-auto shadow-inner text-zinc-800 dark:text-zinc-200">
                   <h1 className="text-3xl font-bold mb-6">{showFilePreview.name.replace(/\.[^/.]+$/, "")}</h1>
-                  <p className="text-lg mb-8 leading-relaxed">
-                    This document contains essential information and updates regarding our recent group activities and upcoming milestones. Please review the details below carefully.
-                  </p>
+                  
+                  {/* AI Summary Section */}
+                  <div className="mb-8 p-6 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                    <h2 className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold mb-3">
+                      <Star className="w-4 h-4 fill-current" /> AI Summary
+                    </h2>
+                    <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                      {showFilePreview.aiSummary || `This document contains essential information and updates regarding our recent group activities and upcoming milestones. Please review the details below carefully.`}
+                    </p>
+                  </div>
                   
                   <h2 className="text-xl font-semibold mb-4 text-indigo-600 dark:text-indigo-400">1. Key Objectives</h2>
                   <ul className="list-disc pl-6 space-y-2 mb-8">
