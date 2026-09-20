@@ -1,17 +1,16 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { User, MapPin, Phone, Mail, Edit3, Shield, Key, X } from 'lucide-react';
+import { User, MapPin, Phone, Mail, Edit3, Shield, Key, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+type ModalType = 'profile' | 'contact' | 'address' | 'add_contact' | 'add_parent' | null;
+
 export default function PersonalData() {
-  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [isEditContactOpen, setIsEditContactOpen] = useState(false);
-  const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
-  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
-  const [isAddParentOpen, setIsAddParentOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [parents, setParents] = useState([
     { name: 'John Doe', relation: 'Father', phone: '+1 (555) 111-2222', email: 'john.doe@email.com' }
@@ -20,17 +19,102 @@ export default function PersonalData() {
     { name: 'Jane Doe', relation: 'Mother', phone: '+1 (555) 987-6543', primary: true }
   ]);
 
-  const closeModals = () => {
-    setIsEditProfileOpen(false);
-    setIsEditContactOpen(false);
-    setIsEditAddressOpen(false);
-    setIsAddContactOpen(false);
-    setIsAddParentOpen(false);
+  const handleSave = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Information updated successfully');
+      setActiveModal(null);
+    }, 800);
   };
 
-  const handleSave = () => {
-    toast.success('Information updated successfully');
-    closeModals();
+  const renderModalContent = () => {
+    switch (activeModal) {
+      case 'profile':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Preferred Name</label>
+              <input type="text" defaultValue="Student Name" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Pronouns</label>
+              <select className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" style={{ colorScheme: 'dark' }}>
+                <option>They/Them</option>
+                <option>She/Her</option>
+                <option>He/Him</option>
+                <option>Other / Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+        );
+      case 'contact':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Personal Email</label>
+              <input type="email" defaultValue="student.personal@gmail.com" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Mobile Phone</label>
+              <input type="tel" defaultValue="+1 (555) 123-4567" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+            </div>
+          </div>
+        );
+      case 'address':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Street Address</label>
+              <input type="text" defaultValue="123 University Campus Drive" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Apt/Suite</label>
+                <input type="text" defaultValue="Room 402" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Zip Code</label>
+                <input type="text" defaultValue="90210" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+              </div>
+            </div>
+          </div>
+        );
+      case 'add_contact':
+      case 'add_parent':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Full Name</label>
+              <input type="text" placeholder="John Doe" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Relationship</label>
+              <input type="text" placeholder="e.g. Mother, Father, Aunt" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Phone Number</label>
+              <input type="tel" placeholder="+1 (555) 000-0000" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+            </div>
+            {activeModal === 'add_parent' && (
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Email Address</label>
+                <input type="email" placeholder="email@example.com" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+              </div>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const modalTitles = {
+    profile: 'Edit Profile',
+    contact: 'Edit Contact Information',
+    address: 'Edit Addresses',
+    add_contact: 'Add Emergency Contact',
+    add_parent: 'Add Parent Information'
   };
 
   return (
@@ -42,7 +126,7 @@ export default function PersonalData() {
           
           {/* Profile Header */}
           <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 flex flex-col md:flex-row items-center md:items-start gap-8 relative">
-            <button onClick={() => setIsEditProfileOpen(true)} className="absolute top-4 right-4 text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:text-white transition-colors">
+            <button onClick={() => setActiveModal('profile')} className="absolute top-4 right-4 text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:text-white transition-colors">
               <Edit3 className="w-5 h-5" />
             </button>
             
@@ -69,7 +153,7 @@ export default function PersonalData() {
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 space-y-6">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Contact Information</h3>
-                <button onClick={() => setIsEditContactOpen(true)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">Edit</button>
+                <button onClick={() => setActiveModal('contact')} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">Edit</button>
               </div>
               
               <div className="space-y-4">
@@ -101,7 +185,7 @@ export default function PersonalData() {
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 space-y-6">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Addresses</h3>
-                <button onClick={() => setIsEditAddressOpen(true)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">Edit</button>
+                <button onClick={() => setActiveModal('address')} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">Edit</button>
               </div>
               
               <div className="space-y-6">
@@ -134,7 +218,7 @@ export default function PersonalData() {
             <div className="md:col-span-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Emergency Contacts</h3>
-                <button onClick={() => setIsAddContactOpen(true)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">+ Add Contact</button>
+                <button onClick={() => setActiveModal('add_contact')} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">+ Add Contact</button>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -157,7 +241,7 @@ export default function PersonalData() {
             <div className="md:col-span-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Parents/Guardians Information</h3>
-                <button onClick={() => setIsAddParentOpen(true)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">+ Add Parent</button>
+                <button onClick={() => setActiveModal('add_parent')} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium">+ Add Parent</button>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -182,7 +266,7 @@ export default function PersonalData() {
 
       {/* Modals */}
       <AnimatePresence>
-        {(isEditProfileOpen || isEditContactOpen || isEditAddressOpen || isAddContactOpen || isAddParentOpen) && (
+        {activeModal && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -192,32 +276,27 @@ export default function PersonalData() {
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden p-6 relative"
             >
               <button 
-                onClick={closeModals}
+                onClick={() => setActiveModal(null)}
                 className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                disabled={isSaving}
               >
                 <X className="w-5 h-5" />
               </button>
               
               <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-6">
-                {isEditProfileOpen && 'Edit Profile'}
-                {isEditContactOpen && 'Edit Contact Information'}
-                {isEditAddressOpen && 'Edit Addresses'}
-                {isAddContactOpen && 'Add Emergency Contact'}
-                {isAddParentOpen && 'Add Parent Information'}
+                {modalTitles[activeModal]}
               </h3>
               
               <div className="space-y-4">
-                <input type="text" placeholder="Full Name or Primary Detail" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
-                <input type="text" placeholder="Secondary Detail (e.g. Phone, Address)" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
-                {(isAddContactOpen || isAddParentOpen) && (
-                  <input type="text" placeholder="Relationship (e.g. Mother, Father)" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
-                )}
+                {renderModalContent()}
                 
                 <button 
                   onClick={handleSave}
-                  className="w-full btn-primary py-3 rounded-xl mt-4"
+                  disabled={isSaving}
+                  className="w-full btn-primary py-3 rounded-xl mt-4 flex items-center justify-center gap-2"
                 >
-                  Save Changes
+                  {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </motion.div>

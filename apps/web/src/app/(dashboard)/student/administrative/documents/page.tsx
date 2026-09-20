@@ -1,11 +1,13 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2, X, FileSearch } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 
-const documents = [
+type Doc = { id: string, name: string, type: string, size: string, date: string, category: string };
+
+const documents: Doc[] = [
   { id: '1', name: 'Official Transcript 2025-2026', type: 'PDF', size: '2.4 MB', date: 'Sept 15, 2026', category: 'Academic' },
   { id: '2', name: 'Enrollment Certificate', type: 'PDF', size: '1.1 MB', date: 'Aug 20, 2026', category: 'Administrative' },
   { id: '3', name: 'Student ID Card (Digital)', type: 'JPG', size: '3.5 MB', date: 'Aug 10, 2026', category: 'Identity' },
@@ -14,23 +16,42 @@ const documents = [
 
 export default function DocumentsPage() {
   const [category, setCategory] = useState('All Categories');
+  const [activeModal, setActiveModal] = useState<'upload' | 'view' | null>(null);
+  const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredDocs = category === 'All Categories' ? documents : documents.filter(d => d.category === category);
 
-  const handleBrowseClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      toast.success(`File selected: ${e.target.files[0].name}`);
+      simulateUpload(e.target.files[0].name);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleView = (docName: string) => {
-    toast.info(`Opening ${docName} in viewer...`);
+  const simulateUpload = (fileName: string) => {
+    setUploadProgress(10);
+    const interval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          toast.success(`Successfully uploaded ${fileName}`);
+          setTimeout(() => {
+            setActiveModal(null);
+            setUploadProgress(0);
+          }, 500);
+          return 100;
+        }
+        return prev + 20;
+      });
+    }, 200);
+  };
+
+  const handleView = (doc: Doc) => {
+    setSelectedDoc(doc);
+    setActiveModal('view');
   };
 
   const handleDownload = (docName: string) => {
@@ -51,7 +72,7 @@ export default function DocumentsPage() {
       <Topbar 
         title="School Documents" 
         subtitle="Manage your official academic and administrative files." 
-        action={{ label: 'Upload Document', onClick: handleBrowseClick }}
+        action={{ label: 'Upload Document', onClick: () => setActiveModal('upload') }}
       />
       <div className="flex-1 p-8 space-y-8">
         
@@ -62,11 +83,10 @@ export default function DocumentsPage() {
           </div>
           <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Upload new documents</h3>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm max-w-sm mb-6">
-            Drag and drop your files here, or click to browse. Supported formats: PDF, JPG, PNG (Max 10MB).
+            Keep your profile up to date by uploading required files here. Supported formats: PDF, JPG, PNG (Max 10MB).
           </p>
-          <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" />
-          <button onClick={handleBrowseClick} className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Browse Files
+          <button onClick={() => setActiveModal('upload')} className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Open Uploader
           </button>
         </div>
 
@@ -80,7 +100,8 @@ export default function DocumentsPage() {
               <select 
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50"
+                className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50 text-zinc-900 dark:text-white"
+                style={{ colorScheme: 'dark' }}
               >
                 <option>All Categories</option>
                 <option>Academic</option>
@@ -119,7 +140,7 @@ export default function DocumentsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 pt-4 border-t border-zinc-200 dark:border-white/[0.06]">
-                  <button onClick={() => handleView(doc.name)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors">
+                  <button onClick={() => handleView(doc)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors">
                     <Eye className="w-3.5 h-3.5" /> View
                   </button>
                   <button onClick={() => handleDownload(doc.name)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors">
@@ -132,6 +153,88 @@ export default function DocumentsPage() {
         </div>
 
       </div>
+
+      {/* Modals */}
+      <AnimatePresence>
+        {activeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setActiveModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-zinc-800 flex justify-between items-start bg-zinc-900/50">
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-1">
+                    {activeModal === 'upload' ? 'Upload Document' : selectedDoc?.name}
+                  </h2>
+                  <div className="text-sm text-zinc-400">
+                    {activeModal === 'upload' ? 'Select a file to add to your records.' : `${selectedDoc?.type} • ${selectedDoc?.size} • Uploaded ${selectedDoc?.date}`}
+                  </div>
+                </div>
+                <button onClick={() => setActiveModal(null)} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto">
+                {activeModal === 'upload' && (
+                  <div className="space-y-6">
+                    <div className="border-2 border-dashed border-zinc-700 bg-white/[0.02] hover:bg-white/[0.04] transition-colors rounded-2xl p-12 flex flex-col items-center justify-center text-center cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                      <UploadCloud className="w-12 h-12 text-indigo-400 mb-4" />
+                      <div className="text-lg font-bold text-white mb-1">Click to browse or drag file here</div>
+                      <div className="text-sm text-zinc-400">Supported formats: PDF, JPG, PNG (Max 10MB)</div>
+                      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" />
+                    </div>
+
+                    {uploadProgress > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium text-white">Uploading...</span>
+                          <span className="text-zinc-400">{uploadProgress}%</span>
+                        </div>
+                        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-indigo-500 transition-all duration-200 ease-out"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeModal === 'view' && selectedDoc && (
+                  <div className="space-y-6">
+                    <div className="aspect-[1/1.4] w-full max-w-md mx-auto bg-white rounded-xl shadow-inner border border-zinc-200 flex flex-col items-center justify-center p-8 relative overflow-hidden">
+                      <div className="absolute inset-0 opacity-5 bg-[linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000_100%),linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000_100%)] bg-[length:20px_20px] bg-[position:0_0,10px_10px]" />
+                      <FileSearch className="w-20 h-20 text-zinc-300 mb-4" />
+                      <div className="text-center">
+                        <div className="font-bold text-zinc-400 text-lg">Preview not available</div>
+                        <div className="text-sm text-zinc-500 mt-2">Download the file to view its full contents.</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-center">
+                      <button onClick={() => handleDownload(selectedDoc.name)} className="btn-primary py-3 px-8 rounded-xl font-bold flex items-center gap-2">
+                        <Download className="w-5 h-5" /> Download {selectedDoc.type}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

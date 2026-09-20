@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
-import { Award, CheckCircle2, ChevronRight, GraduationCap, X } from 'lucide-react';
+import { Award, CheckCircle2, ChevronRight, GraduationCap, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -16,8 +16,31 @@ const ALL_SCHOLARSHIPS = [
 export default function Scholarships() {
   const [selectedScholarship, setSelectedScholarship] = useState<any>(null);
   const [showAll, setShowAll] = useState(false);
+  const [applicationStep, setApplicationStep] = useState<1 | 2 | 3>(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const displayedScholarships = showAll ? ALL_SCHOLARSHIPS : ALL_SCHOLARSHIPS.slice(0, 2);
+
+  const handleApply = () => {
+    setApplicationStep(2);
+  };
+
+  const handleSubmit = () => {
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setApplicationStep(3);
+      toast.success('Application submitted successfully!');
+    }, 1500);
+  };
+
+  const handleClose = () => {
+    setSelectedScholarship(null);
+    setTimeout(() => {
+      setApplicationStep(1);
+    }, 300);
+  };
+
   return (
     <>
       <Topbar title="Scholarships" subtitle="View and apply for financial aid and scholarships" />
@@ -126,60 +149,147 @@ export default function Scholarships() {
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden p-8 relative"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <button 
-                onClick={() => setSelectedScholarship(null)}
-                className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <GraduationCap className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+              <div className="p-6 border-b border-zinc-800 flex justify-between items-start bg-zinc-900/50 flex-shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl flex items-center justify-center">
+                    <GraduationCap className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{selectedScholarship.name}</h3>
+                    <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Step {applicationStep} of 3</div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{selectedScholarship.name}</h3>
-                  <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mt-1">{selectedScholarship.type}</div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-6 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                <div>
-                  <div className="text-xs text-zinc-500 mb-1">Award Amount</div>
-                  <div className="font-bold text-zinc-900 dark:text-white text-lg">{selectedScholarship.amount}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-zinc-500 mb-1">Deadline</div>
-                  <div className="font-bold text-zinc-900 dark:text-white text-lg">{selectedScholarship.deadline}</div>
-                </div>
+                <button 
+                  onClick={handleClose}
+                  className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-white/5 transition-colors"
+                  disabled={isSubmitting}
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="mb-8">
-                <h4 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Description & Requirements</h4>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  {selectedScholarship.description}
-                </p>
-              </div>
-              
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => setSelectedScholarship(null)}
-                  className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  Close
-                </button>
-                <button 
-                  onClick={() => {
-                    toast.success(`Application started for ${selectedScholarship.name}`);
-                    setSelectedScholarship(null);
-                  }}
-                  className="flex-1 btn-primary py-3 rounded-xl font-bold text-sm"
-                >
-                  Apply Now
-                </button>
+              <div className="p-8 overflow-y-auto">
+                <AnimatePresence mode="wait">
+                  {applicationStep === 1 && (
+                    <motion.div
+                      key="step1"
+                      initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                      className="space-y-6"
+                    >
+                      <div className="grid grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-800/30 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                        <div>
+                          <div className="text-xs text-zinc-500 mb-1">Award Amount</div>
+                          <div className="font-bold text-zinc-900 dark:text-white text-xl">{selectedScholarship.amount}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-zinc-500 mb-1">Deadline</div>
+                          <div className="font-bold text-zinc-900 dark:text-white text-xl">{selectedScholarship.deadline}</div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Description & Requirements</h4>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                          {selectedScholarship.description}
+                        </p>
+                      </div>
+
+                      <div className="pt-4 flex gap-4">
+                        <button 
+                          onClick={handleClose}
+                          className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-zinc-900 dark:text-white"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={handleApply}
+                          className="flex-1 btn-primary py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                        >
+                          Start Application <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {applicationStep === 2 && (
+                    <motion.div
+                      key="step2"
+                      initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                      className="space-y-6"
+                    >
+                      <div>
+                        <h4 className="text-lg font-bold text-white mb-1">Questionnaire</h4>
+                        <p className="text-sm text-zinc-400">Please answer the following questions to complete your application.</p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">Why are you a good fit for this scholarship?</label>
+                          <textarea 
+                            rows={4} 
+                            placeholder="Write a brief statement..."
+                            className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">Are you currently receiving other financial aid?</label>
+                          <select className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" style={{ colorScheme: 'dark' }}>
+                            <option>Yes</option>
+                            <option>No</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 flex gap-4">
+                        <button 
+                          onClick={() => setApplicationStep(1)}
+                          className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-zinc-900 dark:text-white"
+                          disabled={isSubmitting}
+                        >
+                          Back
+                        </button>
+                        <button 
+                          onClick={handleSubmit}
+                          disabled={isSubmitting}
+                          className="flex-[2] btn-primary py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                        >
+                          {isSubmitting ? (
+                            <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
+                          ) : (
+                            'Submit Application'
+                          )}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {applicationStep === 3 && (
+                    <motion.div
+                      key="step3"
+                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                      className="flex flex-col items-center text-center space-y-6 py-8"
+                    >
+                      <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center">
+                        <CheckCircle2 className="w-10 h-10 text-green-400" />
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-2xl font-bold text-white mb-2">Application Submitted!</h4>
+                        <p className="text-zinc-400">Your application for the <strong>{selectedScholarship.name}</strong> has been successfully received. We will notify you of a decision within 2-4 weeks.</p>
+                      </div>
+
+                      <button 
+                        onClick={handleClose}
+                        className="btn-primary py-3 px-8 rounded-xl font-bold text-sm"
+                      >
+                        Return to Scholarships
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           </motion.div>
