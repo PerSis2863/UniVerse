@@ -66,22 +66,48 @@ export default function GroupsPage() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Handle webcam stream reliably
   useEffect(() => {
-    if (showMeeting && (isCamOn || isMicOn)) {
-      navigator.mediaDevices.getUserMedia({ video: isCamOn, audio: isMicOn })
-        .then(stream => {
+    let isSubscribed = true;
+
+    async function getMedia() {
+      if (!showMeeting) return;
+      if (!isCamOn && !isMicOn) {
+        setLocalStream(null);
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: isCamOn, audio: isMicOn });
+        if (isSubscribed) {
           setLocalStream(stream);
-        })
-        .catch(err => {
-          console.error("Media access error:", err);
-          toast.error("Could not access camera or mic. Please click the lock icon in your browser's URL bar and ensure permissions are allowed.");
-        });
-    } else if (!isCamOn && !isMicOn) {
-      setLocalStream(null);
+        } else {
+          stream.getTracks().forEach(track => track.stop());
+        }
+      } catch (err: any) {
+        console.error("Media access error:", err);
+        
+        let errorMessage = "Could not access camera or mic. Please check browser permissions.";
+        if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          errorMessage = "No camera or microphone found on your device.";
+        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          errorMessage = "Permission denied. (Check macOS System Settings > Privacy & Security if using a Mac!)";
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          errorMessage = "Camera or mic is already in use by another application.";
+        }
+        
+        if (isSubscribed) {
+          toast.error(`${errorMessage} (${err.name || 'Unknown Error'})`);
+          // Auto-toggle off to prevent infinite loops or locked UI state
+          if (isCamOn) setIsCamOn(false);
+          if (isMicOn) setIsMicOn(false);
+        }
+      }
     }
-    
+
+    getMedia();
+
     return () => {
+      isSubscribed = false;
       setLocalStream(prevStream => {
         if (prevStream) {
           prevStream.getTracks().forEach(track => track.stop());
