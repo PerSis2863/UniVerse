@@ -222,14 +222,33 @@ export default function GradesPage() {
   const handleDownload = async () => {
     setDownloading(true);
     await new Promise(r => setTimeout(r, 1500));
+    
+    const pdfBase64 = 'JVBERi0xLjAKMSAwIG9iaiA8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PiBlbmRvYmogMiAwIG9iaiA8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PiBlbmRvYmogMyAwIG9iaiA8PC9UeXBlL1BhZ2UvTWVkaWFCb3hbMCAwIDU5NSA4NDJdL1BhcmVudCAyIDAgUi9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNCAwIFI+Pj4+L0NvbnRlbnRzIDUgMCBSPj4gZW5kb2JqIDQgMCBvYmogPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4gZW5kb2JqIDUgMCBvYmogPDwvTGVuZ3RoIDUyPj5zdHJlYW0KQlQKL0YxIDI0IFRmCjEwMCA3MDAgVGQKKE9mZmljaWFsIFRyYW5zY3JpcHQpIFRqCkVUCmVuZHN0cmVhbSBlbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDEwIDAwMDAwIG4gCjAwMDAwMDAwNjAgMDAwMDAgbiAKMDAwMDAwMDExNyAwMDAwMCBuIAowMDAwMDAwMjIwIDAwMDAwIG4gCjAwMDAwMDAzMDggMDAwMDAgbiAKdHJhaWxlcjw8L1NpemUgNi9Sb290IDEgMCBSPj4Kc3RhcnR4cmVmCjQxMQolJUVPRgo=';
+    const byteCharacters = atob(pdfBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], {type: 'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Aditya_Bhatt_Transcript_${transcriptType}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
     setDownloading(false);
     setShowModal(false);
     toast.success('Transcript downloaded!', { description: 'Check your Downloads folder.' });
   };
 
   const handleRequestOfficial = () => {
-    toast.success('Request submitted!', {
-      description: 'Official transcript request sent to Registrar. Expected: 3-5 business days.',
+    toast.success('Request sent to Admin!', {
+      description: 'The admin team has been notified and will provide your official transcript shortly.',
     });
   };
 
@@ -374,11 +393,11 @@ export default function GradesPage() {
             </table>
           </div>
 
-          <div className="mt-6 flex flex-col sm:flex-row justify-end gap-2">
-            <button onClick={handleRequestOfficial} className="btn-secondary text-xs py-2 flex items-center justify-center gap-2">
+          <div className="mt-6 flex justify-end items-center gap-3">
+            <button onClick={handleRequestOfficial} className="btn-secondary text-sm h-10 px-4 flex items-center justify-center gap-2">
               <FileBadge className="w-4 h-4" /> Request Official Transcript
             </button>
-            <button onClick={() => setShowModal(true)} className="btn-primary text-xs py-2 flex items-center justify-center gap-2">
+            <button onClick={() => setShowModal(true)} className="btn-primary text-sm h-10 px-4 flex items-center justify-center gap-2">
               <Download className="w-4 h-4" /> Download PDF
             </button>
           </div>
