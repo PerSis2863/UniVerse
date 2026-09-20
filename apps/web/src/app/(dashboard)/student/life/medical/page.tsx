@@ -9,6 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function MedicalPage() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [step, setStep] = useState(1);
+  const [appointments, setAppointments] = useState<{date: string, time: string, type: string}[]>([]);
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('09:00 AM');
+  const [bookingType, setBookingType] = useState('General Checkup');
 
   const handleClose = () => {
     setActiveModal(null);
@@ -16,6 +20,7 @@ export default function MedicalPage() {
   };
 
   const handleBookingSubmit = () => {
+    setAppointments([...appointments, { date: bookingDate || 'TBD', time: bookingTime, type: bookingType }]);
     toast.success('Appointment booked successfully!');
     handleClose();
   };
@@ -66,9 +71,30 @@ export default function MedicalPage() {
 
           <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
             <h3 className="font-semibold text-zinc-900 dark:text-white mb-4">Upcoming Appointments</h3>
-            <div className="text-center py-8 text-zinc-500 dark:text-zinc-500 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
-              No upcoming appointments scheduled.
-            </div>
+            {appointments.length === 0 ? (
+              <div className="text-center py-8 text-zinc-500 dark:text-zinc-500 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
+                No upcoming appointments scheduled.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {appointments.map((apt, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] rounded-xl">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-pink-500/10 text-pink-500 rounded-xl">
+                        <CalendarPlus className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-zinc-900 dark:text-white">{apt.type}</div>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 flex items-center gap-2">
+                          <Clock className="w-4 h-4" /> {apt.date} at {apt.time}
+                        </div>
+                      </div>
+                    </div>
+                    <button className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium">Reschedule</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
@@ -101,7 +127,7 @@ export default function MedicalPage() {
                     <h3 className="text-lg font-medium text-white">What is the reason for your visit?</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {['General Checkup', 'Illness/Injury', 'Vaccination', 'Mental Health Consult'].map(reason => (
-                        <button key={reason} onClick={() => setStep(2)} className="p-4 rounded-xl border border-zinc-800 bg-white/[0.02] hover:bg-white/[0.05] hover:border-pink-500/50 text-left transition-all">
+                        <button key={reason} onClick={() => { setBookingType(reason); setStep(2); }} className="p-4 rounded-xl border border-zinc-800 bg-white/[0.02] hover:bg-white/[0.05] hover:border-pink-500/50 text-left transition-all">
                           <span className="font-medium text-zinc-200">{reason}</span>
                         </button>
                       ))}
@@ -115,11 +141,11 @@ export default function MedicalPage() {
                     <div className="flex gap-6">
                       <div className="flex-1 space-y-4">
                         <label className="text-sm text-zinc-400">Date</label>
-                        <input type="date" className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]" />
+                        <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]" />
                       </div>
                       <div className="flex-1 space-y-4">
                         <label className="text-sm text-zinc-400">Time</label>
-                        <select className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]">
+                        <select value={bookingTime} onChange={e => setBookingTime(e.target.value)} className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]">
                           <option>09:00 AM</option>
                           <option>10:30 AM</option>
                           <option>01:00 PM</option>
@@ -140,7 +166,7 @@ export default function MedicalPage() {
                       <CheckCircle2 className="w-10 h-10" />
                     </div>
                     <h3 className="text-2xl font-bold text-white">Confirm Appointment</h3>
-                    <p className="text-zinc-400 max-w-md mx-auto">You are about to book a General Checkup appointment on the selected date and time. An email confirmation will be sent to your student inbox.</p>
+                    <p className="text-zinc-400 max-w-md mx-auto">You are about to book a {bookingType} appointment on {bookingDate || 'the selected date'} at {bookingTime}. An email confirmation will be sent to your student inbox.</p>
                     <div className="pt-8">
                       <button onClick={handleBookingSubmit} className="px-8 py-3 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-lg transition-colors shadow-lg shadow-pink-500/20">
                         Confirm Booking
