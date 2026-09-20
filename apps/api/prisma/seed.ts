@@ -210,6 +210,48 @@ async function main() {
     });
   }
 
+  // Seed Knowledge Hub Resources
+  console.log('Seeding Knowledge Hub...');
+  const existingResources = await prisma.knowledgeHubResource.count();
+  if (existingResources === 0) {
+    await prisma.knowledgeHubResource.createMany({
+      data: [
+        {
+          title: 'Introduction to Machine Learning',
+          description: 'A comprehensive guide to ML basics including supervised and unsupervised learning.',
+          category: 'Computer Science',
+          url: 'https://example.com/ml-basics.pdf',
+          authorId: teacher.id,
+          isPublic: true,
+        },
+        {
+          title: 'Advanced Data Structures',
+          description: 'Detailed notes on Trees, Graphs, and Hash Tables.',
+          category: 'Computer Science',
+          url: '',
+          authorId: teacher.id,
+          isPublic: true,
+        },
+        {
+          title: 'Quantum Computing Fundamentals',
+          description: 'An overview of qubits, superposition, and quantum entanglement.',
+          category: 'Physics',
+          url: 'https://example.com/quantum.pdf',
+          authorId: teacher.id,
+          isPublic: true,
+        },
+        {
+          title: 'Design Patterns in TypeScript',
+          description: 'Common software design patterns implemented in TS.',
+          category: 'Software Engineering',
+          url: 'https://example.com/design-patterns',
+          authorId: teacher.id,
+          isPublic: true,
+        }
+      ]
+    });
+  }
+
   console.log('Demo accounts and messages seeded successfully!');
 }
 

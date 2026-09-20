@@ -68,7 +68,8 @@ export default function InboxPage() {
     fetchConversations();
 
     // Setup Socket
-    const newSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
+    const socketUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace('/api', '');
+    const newSocket = io(socketUrl, {
       auth: { token: `Bearer ${accessToken}` },
     });
 
