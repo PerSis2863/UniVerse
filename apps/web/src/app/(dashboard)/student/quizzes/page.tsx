@@ -8,17 +8,32 @@ import { toast } from 'sonner';
 
 const activeQuizzes = [
   {
-    id: 1, title: 'Network Protocols & OSI Model', course: 'Computer Networks', timeLimit: 45, due: 'Today, 11:59 PM', questions: [
+    id: 1, title: 'Network Protocols & OSI Model', course: 'Computer Networks', timeLimit: 30, due: 'Today, 11:59 PM', attempts: 2, questions: [
       { q: 'What does OSI stand for?', options: ['Open Systems Interconnection', 'Open Standard Interface', 'Optical Signal Interface', 'Ordered System Integration'], answer: 0 },
       { q: 'Which layer is responsible for routing?', options: ['Data Link', 'Network', 'Transport', 'Session'], answer: 1 },
       { q: 'What protocol operates at Layer 4?', options: ['IP', 'Ethernet', 'TCP', 'HTTP'], answer: 2 },
+      { q: 'Which layer is closest to the end user?', options: ['Network', 'Data Link', 'Application', 'Session'], answer: 2 },
+      { q: 'What is the PDU of the Transport layer?', options: ['Frame', 'Packet', 'Segment', 'Bit'], answer: 2 },
+      { q: 'Which protocol is used to translate IP addresses to MAC addresses?', options: ['DHCP', 'ARP', 'DNS', 'ICMP'], answer: 1 },
+      { q: 'What port does HTTPS use?', options: ['80', '21', '443', '25'], answer: 2 },
+      { q: 'Which of these is a distance-vector routing protocol?', options: ['OSPF', 'BGP', 'RIP', 'IS-IS'], answer: 2 },
+      { q: 'What is the standard length of an IPv4 address?', options: ['16 bits', '32 bits', '64 bits', '128 bits'], answer: 1 },
+      { q: 'Which layer establishes, maintains, and terminates connections?', options: ['Session', 'Presentation', 'Transport', 'Network'], answer: 0 },
     ],
     color: 'from-amber-500 to-orange-500'
   },
   {
-    id: 2, title: 'Process Synchronization', course: 'Operating Systems', timeLimit: 60, due: 'Tomorrow, 5:00 PM', questions: [
+    id: 2, title: 'Process Synchronization', course: 'Operating Systems', timeLimit: 20, due: 'Tomorrow, 5:00 PM', attempts: 2, questions: [
       { q: 'What is a deadlock?', options: ['A process waiting indefinitely', 'A circular wait among processes', 'CPU starvation', 'All of the above'], answer: 3 },
       { q: 'Which of these prevents deadlock?', options: ['Mutual exclusion', 'Hold and wait', 'Resource preemption', 'Circular wait'], answer: 2 },
+      { q: 'What is a semaphore?', options: ['A hardware instruction', 'An integer variable', 'A type of memory', 'A CPU register'], answer: 1 },
+      { q: 'Which algorithm is used for deadlock avoidance?', options: ['Bankers Algorithm', 'Round Robin', 'SJF', 'FIFO'], answer: 0 },
+      { q: 'What is a critical section?', options: ['Code that accesses shared variables', 'A section of memory', 'A hardware component', 'Code that executes first'], answer: 0 },
+      { q: 'What happens during a context switch?', options: ['Memory is erased', 'State of a process is saved', 'CPU is halted', 'Deadlock occurs'], answer: 1 },
+      { q: 'Which is a valid semaphore operation?', options: ['wait() and signal()', 'read() and write()', 'open() and close()', 'start() and stop()'], answer: 0 },
+      { q: 'What causes priority inversion?', options: ['High priority waits for low priority', 'Low priority preempts high priority', 'Equal priorities collide', 'CPU scheduler fails'], answer: 0 },
+      { q: 'What is a mutex?', options: ['Multiple threads executing', 'A mutual exclusion object', 'A type of deadlock', 'A memory location'], answer: 1 },
+      { q: 'What condition is necessary for deadlock?', options: ['Mutual exclusion', 'Hold and wait', 'No preemption', 'All of the above'], answer: 3 },
     ],
     color: 'from-fuchsia-500 to-pink-500'
   },
@@ -40,6 +55,7 @@ export default function QuizzesPage() {
   const [score, setScore] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [showAllResults, setShowAllResults] = useState(false);
 
   const startQuiz = (quiz: typeof activeQuizzes[0]) => {
     setActiveQuiz(quiz);
@@ -117,9 +133,10 @@ export default function QuizzesPage() {
                     </div>
                     <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">Due {quiz.due}</span>
                   </div>
-                  <div className="flex items-center gap-6 text-sm text-zinc-600 dark:text-zinc-400 mb-6 relative z-10">
+                  <div className="flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400 mb-6 relative z-10 flex-wrap">
                     <div className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {quiz.timeLimit} mins</div>
                     <div className="flex items-center gap-1.5"><Target className="w-4 h-4" /> {quiz.questions.length} Questions</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> {quiz.attempts} Attempts left</div>
                   </div>
                   <button onClick={() => startQuiz(quiz)} className="w-full btn-primary py-2.5 flex justify-center items-center gap-2 relative z-10">
                     Start Quiz <ChevronRight className="w-4 h-4" />
@@ -134,7 +151,7 @@ export default function QuizzesPage() {
               <CheckCircle2 className="w-6 h-6 text-emerald-500" /> Recent Results
             </h2>
             <div className="card space-y-2">
-              {completedQuizzes.map((quiz, i) => (
+              {(showAllResults ? [...completedQuizzes, { id: 6, title: 'CPU Scheduling', course: 'Operating Systems', score: 91, date: 'Aug 25, 2026' }, { id: 7, title: 'Trees & Graphs', course: 'Data Structures', score: 85, date: 'Aug 20, 2026' }] : completedQuizzes).map((quiz, i) => (
                 <motion.div
                   initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
                   key={quiz.id}
@@ -156,8 +173,8 @@ export default function QuizzesPage() {
                   </div>
                 </motion.div>
               ))}
-              <button className="w-full mt-4 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex justify-center items-center gap-1" onClick={() => toast.info('Loading full results history...')}>
-                View all results <ChevronRight className="w-4 h-4" />
+              <button className="w-full mt-4 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex justify-center items-center gap-1 transition-all" onClick={() => setShowAllResults(!showAllResults)}>
+                {showAllResults ? 'Hide results' : 'View all results'} <ChevronRight className={`w-4 h-4 transition-transform ${showAllResults ? 'rotate-90' : ''}`} />
               </button>
             </div>
           </div>
@@ -236,11 +253,8 @@ export default function QuizzesPage() {
                       </button>
                     ))}
                   </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => setActiveQuiz(null)} className="btn-secondary py-2.5 text-sm flex items-center gap-2">
-                      <X className="w-4 h-4" /> Exit
-                    </button>
-                    <button onClick={nextQuestion} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
+                  <div className="flex gap-3 mt-8">
+                    <button onClick={nextQuestion} className="w-full btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
                       {currentQ < activeQuiz.questions.length - 1 ? 'Next Question' : 'Finish'} <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
