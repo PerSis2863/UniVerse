@@ -1,8 +1,16 @@
+'use client';
+
 import { Topbar } from '@/components/layout/Topbar';
+import { motion } from 'framer-motion';
 
 export default function Loading() {
   return (
-    <>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="flex flex-col h-full"
+    >
       <Topbar title="Loading..." subtitle="Getting things ready" />
       <div className="flex-1 flex flex-col overflow-hidden animate-pulse">
         <div className="border-b border-zinc-200 dark:border-zinc-800 px-4 sm:px-8 py-3 flex gap-2">
@@ -37,6 +45,6 @@ export default function Loading() {
           </div>
         </div>
       </div>
-    </>
+    </motion.div>
   );
 }

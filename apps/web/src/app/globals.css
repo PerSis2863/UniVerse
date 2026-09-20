@@ -324,6 +324,15 @@
   .universe-n-beam { animation: nLineDash 2.4s ease-in-out infinite; animation-delay: 0.6s; }
   .universe-node-pulse { animation: pingNode 3s ease-in-out infinite; }
   @keyframes pingNode { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+  /* Apple-like tap effects */
+  button:active:not(:disabled), 
+  a:active, 
+  .card-hover:active, 
+  .sidebar-item:active {
+    transform: scale(0.97) !important;
+    transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  }
 }
 
 
