@@ -19,6 +19,14 @@ export default function MedicalPage() {
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('09:00 AM');
 
+  // Accommodations state
+  const [accommodations, setAccommodations] = useState<{title: string, description: string}[]>([
+    { title: '1.5x Time on Written Exams', description: 'Approved for Fall 2026 Semester' }
+  ]);
+  const [accType, setAccType] = useState('Academic (Testing, Note-taking)');
+  const [accDetails, setAccDetails] = useState('');
+  const [accFileName, setAccFileName] = useState('');
+
   const handleClose = () => {
     setActiveModal(null);
     setTimeout(() => setStep(1), 300); // reset step after animation
@@ -44,6 +52,22 @@ export default function MedicalPage() {
   };
 
   const handleAccommodationSubmit = () => {
+    if (!accDetails.trim()) {
+      toast.error('Please provide some details for your request.');
+      return;
+    }
+    
+    setAccommodations([
+      ...accommodations, 
+      { 
+        title: accType, 
+        description: `Pending Review - ${accFileName ? 'With documentation' : 'No documentation'}` 
+      }
+    ]);
+    
+    setAccType('Academic (Testing, Note-taking)');
+    setAccDetails('');
+    setAccFileName('');
     toast.success('Accommodation request submitted!');
     handleClose();
   };
@@ -230,15 +254,23 @@ export default function MedicalPage() {
               <div className="p-8 overflow-y-auto space-y-8">
                 <div>
                   <h3 className="text-lg font-bold text-white mb-4">Active Accommodations</h3>
-                  <div className="bg-white/[0.02] border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg"><CheckCircle2 className="w-5 h-5" /></div>
-                      <div>
-                        <div className="font-medium text-zinc-200">1.5x Time on Written Exams</div>
-                        <div className="text-sm text-zinc-500">Approved for Fall 2026 Semester</div>
+                  <div className="space-y-3">
+                    {accommodations.map((acc, i) => (
+                      <div key={i} className="bg-white/[0.02] border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-2 rounded-lg ${acc.description.includes('Pending') ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                            {acc.description.includes('Pending') ? <Clock className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+                          </div>
+                          <div>
+                            <div className="font-medium text-zinc-200">{acc.title}</div>
+                            <div className="text-sm text-zinc-500">{acc.description}</div>
+                          </div>
+                        </div>
+                        <button className="text-sm text-purple-400 hover:text-purple-300 font-medium">
+                          {acc.description.includes('Pending') ? 'Cancel Request' : 'View Letter'}
+                        </button>
                       </div>
-                    </div>
-                    <button className="text-sm text-purple-400 hover:text-purple-300 font-medium">View Letter</button>
+                    ))}
                   </div>
                 </div>
 
@@ -247,21 +279,51 @@ export default function MedicalPage() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="text-sm text-zinc-400">Accommodation Type</label>
-                      <select className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]">
+                      <select 
+                        value={accType}
+                        onChange={(e) => setAccType(e.target.value)}
+                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]"
+                      >
                         <option>Academic (Testing, Note-taking)</option>
                         <option>Housing (Accessible room, emotional support animal)</option>
                         <option>Dietary (Allergy accommodations)</option>
                         <option>Assistive Technology</option>
                       </select>
                     </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm text-zinc-400">Request Details</label>
+                      <textarea 
+                        value={accDetails}
+                        onChange={(e) => setAccDetails(e.target.value)}
+                        placeholder="Please provide specific details about the accommodation you are requesting..."
+                        rows={4}
+                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500 [color-scheme:dark] resize-none"
+                      />
+                    </div>
+
                     <div className="space-y-2">
                       <label className="text-sm text-zinc-400">Supporting Documentation</label>
-                      <div className="border-2 border-dashed border-zinc-700 rounded-xl p-8 text-center bg-white/[0.01]">
-                        <FileText className="w-8 h-8 text-zinc-500 mx-auto mb-2" />
-                        <p className="text-zinc-400 text-sm">Drag and drop medical documents here, or click to browse</p>
-                      </div>
+                      <label className="block border-2 border-dashed border-zinc-700 rounded-xl p-8 text-center bg-white/[0.01] hover:bg-white/[0.03] hover:border-purple-500/50 transition-colors cursor-pointer group">
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              setAccFileName(e.target.files[0].name);
+                            }
+                          }}
+                        />
+                        <FileText className={`w-8 h-8 mx-auto mb-2 transition-colors ${accFileName ? 'text-purple-400' : 'text-zinc-500 group-hover:text-purple-400'}`} />
+                        {accFileName ? (
+                          <div className="text-purple-400 font-medium">{accFileName} selected</div>
+                        ) : (
+                          <p className="text-zinc-400 text-sm">Drag and drop medical documents here, or click to browse</p>
+                        )}
+                      </label>
                     </div>
-                    <button onClick={handleAccommodationSubmit} className="w-full py-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg transition-colors mt-4">
+                    
+                    <button onClick={handleAccommodationSubmit} className="w-full py-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg transition-colors mt-4 shadow-lg shadow-purple-500/20">
                       Submit Request for Review
                     </button>
                   </div>
