@@ -14,6 +14,11 @@ export default function MedicalPage() {
   const [bookingTime, setBookingTime] = useState('09:00 AM');
   const [bookingType, setBookingType] = useState('General Checkup');
 
+  // Reschedule state
+  const [rescheduleIndex, setRescheduleIndex] = useState<number | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('09:00 AM');
+
   const handleClose = () => {
     setActiveModal(null);
     setTimeout(() => setStep(1), 300); // reset step after animation
@@ -22,6 +27,19 @@ export default function MedicalPage() {
   const handleBookingSubmit = () => {
     setAppointments([...appointments, { date: bookingDate || 'TBD', time: bookingTime, type: bookingType }]);
     toast.success('Appointment booked successfully!');
+    handleClose();
+  };
+
+  const handleRescheduleSubmit = () => {
+    if (rescheduleIndex === null) return;
+    const newAppointments = [...appointments];
+    newAppointments[rescheduleIndex] = {
+      ...newAppointments[rescheduleIndex],
+      date: rescheduleDate || 'TBD',
+      time: rescheduleTime
+    };
+    setAppointments(newAppointments);
+    toast.success('Appointment rescheduled successfully!');
     handleClose();
   };
 
@@ -90,7 +108,17 @@ export default function MedicalPage() {
                         </div>
                       </div>
                     </div>
-                    <button className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium">Reschedule</button>
+                    <button 
+                      onClick={() => {
+                        setRescheduleIndex(i);
+                        setRescheduleDate(apt.date !== 'TBD' ? apt.date : '');
+                        setRescheduleTime(apt.time);
+                        setActiveModal('reschedule');
+                      }}
+                      className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium"
+                    >
+                      Reschedule
+                    </button>
                   </div>
                 ))}
               </div>
@@ -236,6 +264,71 @@ export default function MedicalPage() {
                     <button onClick={handleAccommodationSubmit} className="w-full py-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg transition-colors mt-4">
                       Submit Request for Review
                     </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {activeModal === 'reschedule' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-[#0d1117] border border-zinc-800 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/20 text-blue-400 rounded-lg">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">Reschedule Appointment</h2>
+                </div>
+                <button onClick={handleClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-8">
+                <div className="space-y-6">
+                  {rescheduleIndex !== null && (
+                    <div className="bg-white/[0.03] border border-zinc-800 rounded-xl p-4 mb-4">
+                      <div className="text-sm text-zinc-400 mb-1">Current Appointment</div>
+                      <div className="font-medium text-white">{appointments[rescheduleIndex]?.type}</div>
+                      <div className="text-sm text-zinc-300">{appointments[rescheduleIndex]?.date} at {appointments[rescheduleIndex]?.time}</div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-6">
+                    <div className="flex-1 space-y-4">
+                      <label className="text-sm text-zinc-400">New Date</label>
+                      <input 
+                        type="date" 
+                        value={rescheduleDate} 
+                        onChange={e => setRescheduleDate(e.target.value)} 
+                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500 [color-scheme:dark]" 
+                      />
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <label className="text-sm text-zinc-400">New Time</label>
+                      <select 
+                        value={rescheduleTime} 
+                        onChange={e => setRescheduleTime(e.target.value)} 
+                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500 [color-scheme:dark]"
+                      >
+                        <option>09:00 AM</option>
+                        <option>10:30 AM</option>
+                        <option>01:00 PM</option>
+                        <option>03:45 PM</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 flex justify-end gap-3">
+                    <button onClick={handleClose} className="px-6 py-2 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors">Cancel</button>
+                    <button onClick={handleRescheduleSubmit} className="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors">Save Changes</button>
                   </div>
                 </div>
               </div>
