@@ -36,28 +36,52 @@ export function AIStudyAssistant() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSend = (text: string = inputValue) => {
+  const handleSend = async (text: string = inputValue) => {
     if (!text.trim()) return;
 
-    // Add user message
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      let aiResponse = "I'm a simulated AI assistant. In a real environment, I would connect to the Gemini API to answer your question!";
-      
-      if (text.toLowerCase().includes("due") || text.toLowerCase().includes("assignment")) {
-        aiResponse = "Your next assignment, 'Assignment 3: Graph Traversal', is due on October 5th. You have 15 days left to complete it.";
-      } else if (text.toLowerCase().includes("summarize") || text.toLowerCase().includes("notes")) {
-        aiResponse = "Here's a quick summary of Week 3: We covered Trees and Graphs, specifically focusing on Depth-First Search (DFS) and Breadth-First Search (BFS) algorithms. Do you want me to quiz you on this?";
+    // Add a placeholder for streaming
+    const aiMsgId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: '' }]);
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: messages.slice(-8), // last 8 messages for context
+        }),
+      });
+
+      if (!res.ok || !res.body) throw new Error('API error');
+
+      setIsTyping(false);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: accumulated } : m));
       }
 
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: aiResponse }]);
+      if (!accumulated.trim()) {
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: "I couldn't generate a response. Please try again." } : m));
+      }
+    } catch {
       setIsTyping(false);
-    }, 1500);
+      setMessages(prev => prev.map(m => m.id === aiMsgId
+        ? { ...m, content: "Sorry, I'm having trouble connecting right now. Please try again." }
+        : m
+      ));
+    }
   };
 
   return (

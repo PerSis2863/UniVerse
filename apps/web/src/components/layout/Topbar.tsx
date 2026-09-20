@@ -60,6 +60,22 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
       </div>
       <div className="flex items-center gap-3 self-end md:self-auto w-full md:w-auto overflow-visible pb-1 md:pb-0 flex-wrap">
         {rightNode}
+
+        {/* Command Palette Trigger */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true });
+            document.dispatchEvent(event);
+          }}
+          className="hidden sm:flex items-center gap-2 bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.07] border border-zinc-200 dark:border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 transition-colors"
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span>Search...</span>
+          <kbd className="ml-1 px-1.5 py-0.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded text-[10px] font-mono">⌘K</kbd>
+        </motion.button>
+
         <ThemeToggle />
         
         <div>
