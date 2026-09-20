@@ -70,7 +70,6 @@ const navByRole: Record<string, NavItem[]> = {
         { href: '/student/life/medical', label: 'nav.medical_disability' },
         { href: '/student/life/everyday', label: 'nav.everyday_life' },
         { href: '/student/life/financing', label: 'nav.financing' },
-        { href: '/student/life/services', label: 'nav.using_services' },
       ]
     },
     {

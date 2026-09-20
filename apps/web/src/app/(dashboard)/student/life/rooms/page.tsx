@@ -244,11 +244,17 @@ export default function RoomReservationPage() {
                       <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Booking ID</div>
                       <div className="text-lg font-mono font-bold text-indigo-400 mb-4">{bookingId}</div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
                           <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Room</div>
                           <div className="text-sm text-white font-medium">{selectedRoom.name}</div>
                         </div>
+                        <div>
+                          <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Date</div>
+                          <div className="text-sm text-white font-medium">{date || 'Today'}</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Time</div>
                           <div className="text-sm text-white font-medium">{time} ({duration} hr{duration !== '1' ? 's' : ''})</div>
