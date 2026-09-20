@@ -11,7 +11,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    origin: [process.env.NEXTAUTH_URL ?? 'http://localhost:3000'],
+    origin: true,
     credentials: true,
   });
 
