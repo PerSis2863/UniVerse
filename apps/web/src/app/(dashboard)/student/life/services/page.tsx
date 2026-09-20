@@ -4,17 +4,12 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Laptop, Wifi, Book, HelpCircle, ChevronRight, X, Send, MessageSquare, Bot, User, CheckCircle2, Search, FileText, Phone, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ServicesPage() {
+  const router = useRouter();
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  
-  // Chat state
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    { role: 'bot', text: 'Hi there! I am the IT Support virtual assistant. How can I help you today?' }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
 
   // Ticket state
   const [ticketCategory, setTicketCategory] = useState('');
@@ -62,23 +57,7 @@ export default function ServicesPage() {
     }
   ];
 
-  const handleSendChat = () => {
-    if (!chatMessage.trim()) return;
-    
-    // Add user message
-    setChatHistory(prev => [...prev, { role: 'user', text: chatMessage }]);
-    setChatMessage('');
-    setIsTyping(true);
 
-    // Simulate bot response
-    setTimeout(() => {
-      setChatHistory(prev => [...prev, { 
-        role: 'bot', 
-        text: 'I understand you are having an issue. Let me transfer you to a live support agent who can assist you further. Please hold on for a moment.' 
-      }]);
-      setIsTyping(false);
-    }, 1500);
-  };
 
   const handleSubmitTicket = () => {
     if (!ticketCategory || !ticketProblem.trim()) {
@@ -115,7 +94,6 @@ export default function ServicesPage() {
       setContactSubject('');
       setContactMessage('');
       setContactSubmitted(false);
-      setChatHistory([{ role: 'bot', text: 'Hi there! I am the IT Support virtual assistant. How can I help you today?' }]);
     }, 300);
   };
 
@@ -142,7 +120,7 @@ export default function ServicesPage() {
                 Call IT Support
               </button>
               <button 
-                onClick={() => setActiveModal('chat')} 
+                onClick={() => router.push('/student/inbox?chatWith=IT%20Support')} 
                 className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
               >
                 <MessageSquare className="w-4 h-4" /> Live Chat
@@ -173,85 +151,7 @@ export default function ServicesPage() {
       </div>
 
       <AnimatePresence>
-        {activeModal === 'chat' && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#0d1117] border border-zinc-800 w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[600px]"
-            >
-              {/* Chat Header */}
-              <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
-                      <MessageSquare className="w-5 h-5" />
-                    </div>
-                    <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#0d1117] rounded-full"></span>
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-white">IT Support Live Chat</h2>
-                    <p className="text-xs text-zinc-400">Usually replies in a few minutes</p>
-                  </div>
-                </div>
-                <button onClick={handleCloseModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {chatHistory.map((msg, idx) => (
-                  <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-indigo-400'}`}>
-                      {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                    </div>
-                    <div className={`px-4 py-2.5 rounded-2xl max-w-[75%] text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-zinc-800/50 border border-zinc-700/50 text-zinc-200 rounded-tl-sm'}`}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-                
-                {isTyping && (
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-zinc-800 text-indigo-400">
-                      <Bot className="w-4 h-4" />
-                    </div>
-                    <div className="px-4 py-3 rounded-2xl bg-zinc-800/50 border border-zinc-700/50 rounded-tl-sm flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                      <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                      <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce"></div>
-                    </div>
-                  </div>
-                )}
-              </div>
 
-              {/* Chat Input */}
-              <div className="p-4 border-t border-zinc-800 bg-zinc-900/30 shrink-0">
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendChat(); }}
-                  className="flex gap-2 relative"
-                >
-                  <input
-                    type="text"
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder="Type your message..."
-                    className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-4 pr-12 text-white focus:outline-none focus:border-indigo-500 text-sm"
-                  />
-                  <button 
-                    type="submit"
-                    disabled={!chatMessage.trim() || isTyping}
-                    className="absolute right-2 top-1.5 p-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-lg transition-colors flex items-center justify-center"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-              </div>
-            </motion.div>
-          </div>
-        )}
 
         {activeModal === 'ticket' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">

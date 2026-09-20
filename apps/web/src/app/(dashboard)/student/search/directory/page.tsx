@@ -1,9 +1,9 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { Search, Mail, Filter, Building2, MapPin, X, Send } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import { toast } from 'sonner';
+import { Search, Mail, Filter, Building2, MapPin, X } from 'lucide-react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MOCK_DIRECTORY = [
@@ -16,47 +16,13 @@ const MOCK_DIRECTORY = [
 ];
 
 export default function StudentDirectory() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeModal, setActiveModal] = useState<'filter' | 'chat' | null>(null);
+  const [activeModal, setActiveModal] = useState<'filter' | null>(null);
   
   // Filters
   const [filterYear, setFilterYear] = useState('');
   const [filterLocation, setFilterLocation] = useState('');
-
-  // Chat
-  const [activeStudent, setActiveStudent] = useState<typeof MOCK_DIRECTORY[0] | null>(null);
-  const [chatHistory, setChatHistory] = useState<{sender: 'me' | 'peer', text: string}[]>([]);
-  const [currentMessage, setCurrentMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const chatScrollRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll chat
-  useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
-  }, [chatHistory, isTyping]);
-
-  const handleSendMessage = () => {
-    if (!currentMessage.trim()) return;
-    
-    setChatHistory(prev => [...prev, { sender: 'me', text: currentMessage }]);
-    setCurrentMessage('');
-    setIsTyping(true);
-
-    setTimeout(() => {
-      setIsTyping(false);
-      const responses = [
-        "Hey! Great to hear from you.",
-        "Yes, I'm taking that class too!",
-        "I'm currently at the library, what's up?",
-        "Sure, I'd love to collaborate on that.",
-        "Let me check my schedule and get back to you."
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      setChatHistory(prev => [...prev, { sender: 'peer', text: randomResponse }]);
-    }, 1500);
-  };
 
   const filteredStudents = MOCK_DIRECTORY.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -113,7 +79,7 @@ export default function StudentDirectory() {
                   </div>
                 </div>
 
-                <button onClick={() => { setActiveStudent(student); setChatHistory([]); setActiveModal('chat'); }} className="w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                <button onClick={() => router.push(`/student/inbox?chatWith=${encodeURIComponent(student.name)}`)} className="w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
                   <Mail className="w-4 h-4" /> Message
                 </button>
               </div>
@@ -181,74 +147,7 @@ export default function StudentDirectory() {
           </div>
         )}
 
-        {activeModal === 'chat' && activeStudent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setActiveModal(null)}
-            />
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-              className="relative w-full max-w-lg h-[600px] bg-[#0d1117] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            >
-              <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-white/[0.02]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold">
-                    {activeStudent.avatar}
-                  </div>
-                  <div>
-                    <div className="font-bold text-white">{activeStudent.name}</div>
-                    <div className="text-xs text-indigo-400">{activeStudent.major}</div>
-                  </div>
-                </div>
-                <button onClick={() => setActiveModal(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-zinc-400">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div ref={chatScrollRef} className="flex-1 p-4 overflow-y-auto space-y-4">
-                <div className="text-center text-xs text-zinc-500 mb-6">This is the beginning of your conversation with {activeStudent.name}</div>
-                {chatHistory.map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${msg.sender === 'me' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-zinc-800 text-zinc-200 rounded-bl-none'}`}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-                {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="bg-zinc-800 text-zinc-400 rounded-2xl rounded-bl-none px-4 py-2 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-4 border-t border-zinc-800 bg-white/[0.01]">
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="text"
-                    value={currentMessage}
-                    onChange={(e) => setCurrentMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Type a message..."
-                    className="flex-1 bg-white/[0.05] border border-zinc-700 rounded-full px-4 py-2 text-white focus:outline-none focus:border-indigo-500"
-                  />
-                  <button 
-                    onClick={handleSendMessage}
-                    disabled={!currentMessage.trim()}
-                    className="p-2 rounded-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white transition-colors"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
+
       </AnimatePresence>
     </>
   );
