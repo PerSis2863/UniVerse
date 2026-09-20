@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { motion } from 'framer-motion';
+import { useLanguageStore } from '@/store/language';
 
 type NavItem = {
   href?: string;
@@ -24,21 +25,21 @@ type NavItem = {
 
 const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
-    { href: '/student', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/student/information', label: 'Information', icon: Info },
+    { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard },
+    { href: '/student/information', label: 'nav.information', icon: Info },
     { 
-      label: 'Schooling', icon: GraduationCap, 
+      label: 'nav.schooling', icon: GraduationCap, 
       subItems: [
-        { href: '/student/courses', label: 'Courses' },
+        { href: '/student/courses', label: 'nav.courses' },
         { href: '/student/groups', label: 'Groups' },
         { href: '/student/blackboard', label: 'Blackboard' },
         { href: '/student/internships', label: 'Internships' },
         { href: '/student/choices', label: 'My choices' },
-        { href: '/student/attendance', label: 'Attendance' },
-        { href: '/student/grades', label: 'Grades' },
-        { href: '/student/quizzes', label: 'Quizzes' },
-        { href: '/student/calendar', label: 'Timetable' },
-        { href: '/student/skills', label: 'Skills' },
+        { href: '/student/attendance', label: 'nav.attendance' },
+        { href: '/student/grades', label: 'nav.grades' },
+        { href: '/student/quizzes', label: 'nav.quizzes' },
+        { href: '/student/calendar', label: 'nav.calendar' },
+        { href: '/student/skills', label: 'nav.skills' },
       ]
     },
     { 
@@ -52,13 +53,13 @@ const navByRole: Record<string, NavItem[]> = {
       ]
     },
     {
-      label: 'Global Impact', icon: Globe2,
+      label: 'nav.global_impact', icon: Globe2,
       subItems: [
-        { href: '/student/impact/startups', label: 'Startup Incubator' },
-        { href: '/student/impact/ngo-marketplace', label: 'NGO Marketplace' },
-        { href: '/student/impact/edu-society', label: 'Educational Society' },
-        { href: '/student/impact/companies', label: 'Corporate Partners' },
-        { href: '/student/impact/leaderboard', label: 'Impact Leaderboard' },
+        { href: '/student/impact/startups', label: 'nav.startups' },
+        { href: '/student/impact/ngo-marketplace', label: 'nav.ngo_marketplace' },
+        { href: '/student/impact/edu-society', label: 'nav.edu_society' },
+        { href: '/student/impact/companies', label: 'nav.companies' },
+        { href: '/student/impact/leaderboard', label: 'nav.leaderboard' },
       ]
     },
     {
@@ -86,11 +87,11 @@ const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { href: '/student/knowledge-hub', label: 'Knowledge Hub', icon: Brain },
-    { href: '/student/inbox', label: 'Messages', icon: MessageSquare },
+    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
     { href: '/student/community', label: 'Community', icon: Users },
     { href: '/student/support', label: 'Support', icon: Settings },
     { href: '/student/beesafe', label: 'BeeSafe Reporting', icon: AlertTriangle },
-    { href: '/student/settings?section=language', label: 'Change language', icon: Globe },
+    { href: '/student/settings?section=language', label: 'nav.settings', icon: Globe },
   ],
   TEACHER: [
     { href: '/teacher', label: 'Dashboard', icon: LayoutDashboard },
@@ -174,6 +175,7 @@ function NavItemComponent({
   isOpen: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useLanguageStore();
   const hasActiveChild = item.subItems?.some(sub => pathname === sub.href || pathname.startsWith(sub.href + '/'));
   const active = pathname === item.href || (item.href && item.href !== '/' && pathname.startsWith(item.href)) || hasActiveChild;
 
@@ -188,7 +190,7 @@ function NavItemComponent({
         >
           <div className="flex items-center gap-3">
             <item.icon className="w-4 h-4 flex-shrink-0" />
-            <span>{item.label}</span>
+            <span>{t(item.label)}</span>
           </div>
           {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </motion.button>
@@ -199,7 +201,7 @@ function NavItemComponent({
                 <motion.a 
                   whileHover={{ x: 4 }}
                   className={cn('sidebar-item block text-sm py-1.5', pathname === sub.href && 'active text-indigo-400')}>
-                  <span>{sub.label}</span>
+                  <span>{t(sub.label)}</span>
                 </motion.a>
               </Link>
             ))}
@@ -216,7 +218,7 @@ function NavItemComponent({
         whileTap={{ scale: 0.98 }}
         className="sidebar-item w-full justify-start text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white">
         <item.icon className="w-4 h-4 flex-shrink-0" />
-        <span>{item.label}</span>
+        <span>{t(item.label)}</span>
       </motion.button>
     );
   }
@@ -231,7 +233,7 @@ function NavItemComponent({
         >
           <div className="flex items-center gap-3">
             <item.icon className="w-4 h-4 flex-shrink-0" />
-            <span>{item.label}</span>
+            <span>{t(item.label)}</span>
           </div>
         </motion.a>
       </Link>
@@ -319,7 +321,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-zinc-500 dark:text-zinc-500 hover:text-rose-400 hover:bg-rose-900/20 transition-all text-sm">
           <LogOut className="w-4 h-4" />
-          <span>Sign out</span>
+          <span>{t('nav.logout')}</span>
         </button>
       </div>
     </aside>

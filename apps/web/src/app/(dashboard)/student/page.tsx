@@ -11,6 +11,7 @@ const GamificationWidget = dynamic(
   }
 );
 import { useAuthStore } from '@/store/auth';
+import { useLanguageStore } from '@/store/language';
 import { BookOpen, ClipboardList, BarChart3, Trophy, TrendingUp, Clock, CheckCircle2, FileText, Globe2, ArrowUpRight, Sparkles, HeartHandshake, AlertCircle, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -39,12 +40,13 @@ const courseProgress = [
 
 export default function StudentDashboard() {
   const { user } = useAuthStore();
+  const { t } = useLanguageStore();
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
 
   return (
     <>
-      <Topbar title="Dashboard" subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Student'}! 👋`} />
+      <Topbar title={t('nav.dashboard')} subtitle={`${t(greeting)}, ${user?.name?.split(' ')[0] ?? 'Student'}! 👋`} />
       <div className="flex-1 p-8 space-y-8">
 
         {/* Global Impact Banner */}

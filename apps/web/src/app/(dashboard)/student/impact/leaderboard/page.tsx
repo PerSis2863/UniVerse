@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { useLanguageStore } from '@/store/language';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Trophy, Medal, Star, TrendingUp, Users, ArrowUp, ArrowDown, Minus, Search } from 'lucide-react';
@@ -62,7 +63,7 @@ export default function LeaderboardPage() {
   return (
     <>
       <Topbar 
-        title="🏆 Impact Leaderboard" 
+        title={`🏆 ${t('impact.leaderboard')}`} 
         subtitle="See how you rank among your peers in driving social change." 
       />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
