@@ -65,6 +65,28 @@ export default function GroupsPage() {
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string, aiSummary?: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleInsertMockAttachment = (type: string) => {
+    setShowAttachmentMenu(false);
+    let text = '';
+    let isFile = false;
+    let fileName = '';
+    
+    if (type === 'Poll') {
+      text = '📊 Poll: When should we schedule our next meeting?';
+    } else if (type === 'Contact') {
+      text = '👤 Contact Shared: Prof. Rao';
+    } else if (type === 'AI Images') {
+      text = '✨ Generated AI Image';
+      isFile = true;
+      fileName = 'ai_generated_concept.png';
+    }
+    
+    const newId = Date.now();
+    setChatMessages(prev => [...prev, { id: newId, user: 'You', initials: 'ME', text, isFile, fileName, time: 'Just now' }]);
+    toast.success(`${type} added to chat`);
+  };
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCamOn, setIsCamOn] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -702,7 +724,7 @@ export default function GroupsPage() {
                         transition={{ duration: 0.15 }}
                         className="absolute bottom-full left-0 mb-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-2xl p-2 flex flex-col gap-1 w-48 z-50 origin-bottom-left"
                       >
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); toast.success('Photo option clicked'); }}>
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); imageInputRef.current?.click(); }}>
                           <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
                             <ImageIcon className="w-4 h-4 text-blue-500" />
                           </div>
@@ -714,19 +736,19 @@ export default function GroupsPage() {
                           </div>
                           Document
                         </button>
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); toast.success('Poll option clicked'); }}>
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => handleInsertMockAttachment('Poll')}>
                           <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
                             <BarChart2 className="w-4 h-4 text-emerald-500" />
                           </div>
                           Poll
                         </button>
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); toast.success('Contact option clicked'); }}>
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => handleInsertMockAttachment('Contact')}>
                           <div className="w-8 h-8 rounded-full bg-fuchsia-500/10 flex items-center justify-center shrink-0">
                             <Contact className="w-4 h-4 text-fuchsia-500" />
                           </div>
                           Contact
                         </button>
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); toast.success('AI Images option clicked'); }}>
+                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => handleInsertMockAttachment('AI Images')}>
                           <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
                             <Sparkles className="w-4 h-4 text-amber-500" />
                           </div>
@@ -975,6 +997,16 @@ export default function GroupsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <input type="file" ref={imageInputRef} accept="image/*,video/*" className="hidden" onChange={async (e) => {
+        if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          const tempId = Date.now();
+          const newFileMsg = { id: tempId, user: 'You', initials: 'ME', text: 'Uploading media...', isFile: true, fileName: file.name, time: 'Just now', aiSummary: '' };
+          setChatMessages(prev => [...prev, newFileMsg]);
+          toast.info(`Uploading media ${file.name}...`);
+        }
+      }} />
 
       <input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => {
         if (e.target.files && e.target.files[0]) {
