@@ -68,16 +68,16 @@ export default function GroupsPage() {
 
   // Handle webcam stream reliably
   useEffect(() => {
-    if (showMeeting && isCamOn) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    if (showMeeting && (isCamOn || isMicOn)) {
+      navigator.mediaDevices.getUserMedia({ video: isCamOn, audio: isMicOn })
         .then(stream => {
           setLocalStream(stream);
         })
         .catch(err => {
-          console.error("Camera access error:", err);
+          console.error("Media access error:", err);
           toast.error("Could not access camera or mic. Please click the lock icon in your browser's URL bar and ensure permissions are allowed.");
         });
-    } else {
+    } else if (!isCamOn && !isMicOn) {
       setLocalStream(null);
     }
     
@@ -89,7 +89,7 @@ export default function GroupsPage() {
         return null;
       });
     };
-  }, [showMeeting, isCamOn]);
+  }, [showMeeting, isCamOn, isMicOn]);
 
   // Bind the stream to the video element whenever it changes or the video mounts
   useEffect(() => {
