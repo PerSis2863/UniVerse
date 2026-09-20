@@ -7,9 +7,11 @@ import { useState } from 'react';
 
 export default function RoomReservationPage() {
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleSearch = () => {
     setIsSearching(true);
+    setHasSearched(false);
     toast.promise(
       new Promise((resolve) => setTimeout(resolve, 1500)),
       {
@@ -18,7 +20,10 @@ export default function RoomReservationPage() {
         error: 'Error searching for rooms',
       }
     );
-    setTimeout(() => setIsSearching(false), 1500);
+    setTimeout(() => {
+      setIsSearching(false);
+      setHasSearched(true);
+    }, 1500);
   };
 
   return (
@@ -108,6 +113,40 @@ export default function RoomReservationPage() {
               {isSearching ? 'Searching...' : 'Search Availability'}
             </button>
           </motion.div>
+
+          {/* Results */}
+          {hasSearched && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <h3 className="text-lg font-bold text-white mb-4">Available Rooms</h3>
+              {[
+                { name: 'Library Study Room 4A', capacity: 4, type: 'Study Room', features: ['Whiteboard', 'Monitor'] },
+                { name: 'Media Lab B', capacity: 2, type: 'Media Lab', features: ['Mac Studio', 'Dual Monitors'] },
+                { name: 'Innovation Hub 1', capacity: 6, type: 'Collaboration', features: ['Smart Board', 'Video Conf'] },
+              ].map((room, i) => (
+                <div key={i} className="bg-[#0d1117] border border-white/[0.08] rounded-2xl p-6 flex flex-col sm:flex-row gap-6 justify-between items-center hover:bg-white/[0.02] transition-colors shadow-lg">
+                  <div>
+                    <h4 className="font-bold text-white text-lg">{room.name}</h4>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-zinc-400">
+                      <span className="flex items-center gap-1"><Users className="w-4 h-4" /> Up to {room.capacity}</span>
+                      <span className="flex items-center gap-1"><Map className="w-4 h-4" /> {room.type}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {room.features.map(f => (
+                        <span key={f} className="px-2.5 py-1 rounded-md bg-white/[0.05] text-xs font-medium text-zinc-300">{f}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={() => toast.success(`Booked ${room.name}!`)} className="px-6 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold transition-colors shrink-0 border border-indigo-500/20 hover:border-indigo-500/40 w-full sm:w-auto">
+                    Book Now
+                  </button>
+                </div>
+              ))}
+            </motion.div>
+          )}
 
         </div>
       </div>
