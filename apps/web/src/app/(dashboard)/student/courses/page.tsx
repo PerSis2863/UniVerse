@@ -7,10 +7,16 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const courses = [
-  { id: 1, title: 'Data Structures & Algorithms', professor: 'Dr. Sarah Chen', progress: 65, nextClass: 'Today, 2:00 PM', color: 'from-blue-500 to-indigo-500', bg: 'bg-blue-500/10', text: 'text-blue-500' },
-  { id: 2, title: 'Operating Systems', professor: 'Prof. Alan Turing', progress: 42, nextClass: 'Tomorrow, 10:00 AM', color: 'from-fuchsia-500 to-pink-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-500' },
-  { id: 3, title: 'Database Management', professor: 'Dr. Edgar Codd', progress: 88, nextClass: 'Wed, 1:00 PM', color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-500/10', text: 'text-emerald-500' },
-  { id: 4, title: 'Computer Networks', professor: 'Vint Cerf', progress: 15, nextClass: 'Thu, 9:00 AM', color: 'from-amber-500 to-orange-500', bg: 'bg-amber-500/10', text: 'text-amber-500' },
+  { id: 1, title: 'Strategic Management', professor: 'Dr. Michael Porter', progress: 65, nextClass: 'Today, 2:00 PM', color: 'from-blue-500 to-indigo-500', bg: 'bg-blue-500/10', text: 'text-blue-500' },
+  { id: 2, title: 'Corporate Finance', professor: 'Prof. Aswath Damodaran', progress: 42, nextClass: 'Tomorrow, 10:00 AM', color: 'from-fuchsia-500 to-pink-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-500' },
+  { id: 3, title: 'Marketing Analytics', professor: 'Dr. Philip Kotler', progress: 88, nextClass: 'Wed, 1:00 PM', color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-500/10', text: 'text-emerald-500' },
+  { id: 4, title: 'Organizational Behavior', professor: 'Prof. Adam Grant', progress: 15, nextClass: 'Thu, 9:00 AM', color: 'from-amber-500 to-orange-500', bg: 'bg-amber-500/10', text: 'text-amber-500' },
+];
+
+const pastCourses = [
+  { id: 5, title: 'Introduction to Microeconomics', professor: 'Dr. Paul Krugman', grade: 'A', completed: 'Spring 2025', color: 'from-purple-500 to-violet-500', bg: 'bg-purple-500/10', text: 'text-purple-500' },
+  { id: 6, title: 'Financial Accounting', professor: 'Prof. Mary Barth', grade: 'A-', completed: 'Fall 2024', color: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-500/10', text: 'text-cyan-500' },
+  { id: 7, title: 'Business Ethics', professor: 'Dr. R. Edward Freeman', grade: 'B+', completed: 'Fall 2024', color: 'from-rose-500 to-red-500', bg: 'bg-rose-500/10', text: 'text-rose-500' },
 ];
 
 export default function CoursesPage() {
@@ -34,14 +40,14 @@ export default function CoursesPage() {
               <PlayCircle className="w-3.5 h-3.5" /> Continue Learning
             </div>
             <h2 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-white">
-              Data Structures & Algorithms
+              Strategic Management
             </h2>
             <p className="text-zinc-600 dark:text-zinc-400">
-              Module 4: Graph Traversals (BFS and DFS). You're almost done with this section!
+              Module 4: Competitive Advantage. You're almost done with this section!
             </p>
             <div className="pt-2">
               <button 
-                onClick={() => toast.success('Resuming Module 4: Graph Traversals')}
+                onClick={() => toast.success('Resuming Module 4: Competitive Advantage')}
                 className="btn-primary"
               >
                 Resume Module
@@ -144,19 +150,44 @@ export default function CoursesPage() {
             ))}
           </div>
         ) : (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-20 px-4 border border-dashed border-zinc-200 dark:border-white/[0.1] rounded-2xl"
-          >
-            <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800/50 flex items-center justify-center mb-4">
-              <BookOpen className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
-            </div>
-            <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-2">No Past Courses</h3>
-            <p className="text-zinc-500 dark:text-zinc-400 text-center max-w-sm">
-              You haven't completed any courses yet. Check back here at the end of the semester!
-            </p>
-          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {pastCourses.map((course, i) => (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.1 }}
+                key={course.id}
+                className="card-hover group cursor-pointer"
+              >
+                <div className="flex justify-between items-start mb-6">
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", course.bg, course.text)}>
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-400 transition-colors">
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+                  {course.title}
+                </h3>
+                <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                  <GraduationCap className="w-4 h-4" /> {course.professor}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/[0.06]">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      <Clock className="w-3.5 h-3.5" /> Completed: {course.completed}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm font-bold text-zinc-900 dark:text-white">
+                      Grade: <span className={course.text}>{course.grade}</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         )}
 
       </div>
