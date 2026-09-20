@@ -41,6 +41,10 @@ export default function GroupsPage() {
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('Study');
   
+  const [inviteInput, setInviteInput] = useState('');
+  const [inviteMembers, setInviteMembers] = useState<string[]>([]);
+  const [generatedLink, setGeneratedLink] = useState('');
+  
   // New Modals State
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -377,10 +381,70 @@ export default function GroupsPage() {
                     ))}
                   </div>
                 </div>
+                <div>
+                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Invite Members</label>
+                  <div className="flex gap-2 mb-2">
+                    <input 
+                      value={inviteInput} 
+                      onChange={e => setInviteInput(e.target.value)} 
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && inviteInput.trim()) {
+                          setInviteMembers([...inviteMembers, inviteInput.trim()]);
+                          setInviteInput('');
+                        }
+                      }}
+                      placeholder="Email or username..." 
+                      className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" 
+                    />
+                    <button 
+                      onClick={() => {
+                        if (inviteInput.trim()) {
+                          setInviteMembers([...inviteMembers, inviteInput.trim()]);
+                          setInviteInput('');
+                        }
+                      }}
+                      className="px-4 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/80 dark:text-indigo-300 rounded-xl text-sm font-medium transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {inviteMembers.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {inviteMembers.map((member, i) => (
+                        <div key={i} className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                          <span>{member}</span>
+                          <button onClick={() => setInviteMembers(inviteMembers.filter((_, idx) => idx !== i))} className="hover:text-red-500 transition-colors">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Share Link</label>
+                   {generatedLink ? (
+                      <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2">
+                        <span className="text-xs font-mono text-green-700 dark:text-green-300 flex-1 truncate">{generatedLink}</span>
+                        <button onClick={() => { navigator.clipboard.writeText(generatedLink); toast.success("Link copied!"); }} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium text-sm px-2">Copy</button>
+                      </div>
+                   ) : (
+                      <button onClick={() => setGeneratedLink(`https://universe.app/join/${Math.random().toString(36).substring(7)}`)} className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
+                        Generate Invite Link
+                      </button>
+                   )}
+                </div>
               </div>
               <div className="flex gap-2 mt-6">
-                <button onClick={() => setShowNewGroup(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                <button onClick={() => { setShowNewGroup(false); toast.success(`"${newGroupName || 'New Group'}" created!`); setNewGroupName(''); }} className="flex-1 btn-primary py-2.5 text-sm">Create Group</button>
+                <button onClick={() => { setShowNewGroup(false); setInviteMembers([]); setGeneratedLink(''); setInviteInput(''); setNewGroupName(''); }} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
+                <button onClick={() => { 
+                  setShowNewGroup(false); 
+                  toast.success(`"${newGroupName || 'New Group'}" created with ${inviteMembers.length} members!`); 
+                  setNewGroupName(''); 
+                  setInviteMembers([]);
+                  setGeneratedLink('');
+                }} className="flex-1 btn-primary py-2.5 text-sm">Create Group</button>
               </div>
             </motion.div>
           </motion.div>
