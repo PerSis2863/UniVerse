@@ -94,71 +94,71 @@ const navByRole: Record<string, NavItem[]> = {
     { href: '/student/settings?section=language', label: 'nav.settings', icon: Globe },
   ],
   TEACHER: [
-    { href: '/teacher', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/teacher', label: 'nav.dashboard', icon: LayoutDashboard },
     {
-      label: 'Global Collaborations', icon: Globe2,
+      label: 'nav.global_collab', icon: Globe2,
       subItems: [
-        { href: '/teacher/collaborations', label: 'Inter-Uni Research' },
-        { href: '/teacher/collaborations/projects', label: 'NGO Mentorship' },
-        { href: '/teacher/mentorship', label: 'Volunteer & Mentor Portal' },
+        { href: '/teacher/collaborations', label: 'nav.inter_uni_research' },
+        { href: '/teacher/collaborations/projects', label: 'nav.ngo_mentorship' },
+        { href: '/teacher/mentorship', label: 'nav.volunteer_mentor' },
       ]
     },
     {
-      label: 'Schooling', icon: GraduationCap,
+      label: 'nav.schooling', icon: GraduationCap,
       subItems: [
-        { href: '/teacher/courses', label: 'My Courses' },
-        { href: '/teacher/blackboard', label: 'Blackboard' },
-        { href: '/teacher/students', label: 'Students' },
-        { href: '/teacher/attendance', label: 'Attendance' },
-        { href: '/teacher/grades', label: 'Grades' },
-        { href: '/teacher/quizzes', label: 'Quizzes' },
-        { href: '/teacher/calendar', label: 'Timetable' },
+        { href: '/teacher/courses', label: 'nav.my_courses' },
+        { href: '/teacher/blackboard', label: 'nav.blackboard' },
+        { href: '/teacher/students', label: 'nav.students' },
+        { href: '/teacher/attendance', label: 'nav.attendance' },
+        { href: '/teacher/grades', label: 'nav.grades' },
+        { href: '/teacher/quizzes', label: 'nav.quizzes' },
+        { href: '/teacher/calendar', label: 'nav.timetable' },
       ]
     },
     {
-      label: 'Campus Services', icon: Map,
+      label: 'nav.campus_services', icon: Map,
       subItems: [
-        { href: '/teacher/services/rooms', label: 'Room Reservation' },
+        { href: '/teacher/services/rooms', label: 'nav.room_reservation' },
       ]
     },
-    { href: '/teacher/knowledge', label: 'Knowledge Hub', icon: Brain },
-    { href: '/teacher/inbox', label: 'Messages', icon: MessageSquare },
+    { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
+    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
   ],
   ADMIN: [
-    { href: '/admin', label: 'Overview', icon: LayoutDashboard },
+    { href: '/admin', label: 'nav.overview', icon: LayoutDashboard },
     {
-      label: 'Global Impact', icon: Globe2,
+      label: 'nav.global_impact', icon: Globe2,
       subItems: [
-        { href: '/admin/partnerships', label: 'Partner Institutions' },
-        { href: '/admin/partners', label: 'Sponsor Portal' },
-        { href: '/admin/impact-metrics', label: 'Impact Analytics' },
+        { href: '/admin/partnerships', label: 'nav.partner_institutions' },
+        { href: '/admin/partners', label: 'nav.sponsor_portal' },
+        { href: '/admin/impact-metrics', label: 'nav.impact_analytics' },
       ]
     },
     {
-      label: 'Management', icon: Settings,
+      label: 'nav.management', icon: Settings,
       subItems: [
-        { href: '/admin/users', label: 'Users' },
-        { href: '/admin/courses', label: 'Courses' },
-        { href: '/admin/administrative', label: 'Administrative' },
-        { href: '/admin/internships', label: 'Internships' },
-        { href: '/admin/attendance', label: 'Attendance' },
-        { href: '/admin/finances', label: 'Finances' },
-        { href: '/admin/quizzes', label: 'Quizzes' },
-        { href: '/admin/knowledge-hub', label: 'Knowledge Hub' },
-        { href: '/admin/student-life', label: 'Student Life' },
+        { href: '/admin/users', label: 'nav.users' },
+        { href: '/admin/courses', label: 'nav.courses' },
+        { href: '/admin/administrative', label: 'nav.administrative' },
+        { href: '/admin/internships', label: 'nav.internships' },
+        { href: '/admin/attendance', label: 'nav.attendance' },
+        { href: '/admin/finances', label: 'nav.finances' },
+        { href: '/admin/quizzes', label: 'nav.quizzes' },
+        { href: '/admin/knowledge-hub', label: 'nav.knowledge_hub' },
+        { href: '/admin/student-life', label: 'nav.student_life' },
       ]
     },
     {
-      label: 'Campus Monitoring', icon: Shield,
+      label: 'nav.campus_monitoring', icon: Shield,
       subItems: [
-        { href: '/admin/monitoring/rooms', label: 'Room Bookings' },
-        { href: '/admin/monitoring/associations', label: 'Associations' },
-        { href: '/admin/timetable', label: 'Timetable Management' },
+        { href: '/admin/monitoring/rooms', label: 'nav.room_bookings' },
+        { href: '/admin/monitoring/associations', label: 'nav.associations' },
+        { href: '/admin/timetable', label: 'nav.timetable_management' },
       ]
     },
-    { href: '/admin/announcements', label: 'Announcements', icon: Bell },
-    { href: '/admin/inbox', label: 'Messages', icon: MessageSquare },
-    { href: '/admin/settings', label: 'Settings', icon: Settings },
+    { href: '/admin/announcements', label: 'nav.announcements', icon: Bell },
+    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare },
+    { href: '/admin/settings', label: 'nav.settings', icon: Settings },
   ],
 };
 

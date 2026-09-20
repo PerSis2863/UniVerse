@@ -26,8 +26,10 @@ const departments = [
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useLanguageStore } from '@/store/language';
 
 export default function AdminDashboard() {
+  const { t } = useLanguageStore();
   const [pendingUsers, setPendingUsers] = useState([
     { id: 1, name: 'Dr. Kavya Reddy', role: 'Teacher', dept: 'Computer Science', applied: '2 hours ago' },
     { id: 2, name: 'Mohammed Ali', role: 'Teacher', dept: 'Mathematics', applied: '5 hours ago' },
@@ -50,21 +52,21 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <Topbar title="Admin Overview" subtitle="System health and key metrics" action={{ label: 'Send Announcement', onClick: handleSendAnnouncement }} />
+      <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} action={{ label: t('admin.send_announcement'), onClick: handleSendAnnouncement }} />
       <div className="flex-1 p-8 space-y-8">
 
         {/* KPIs */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard title="Total Students" value="1,375" icon={Users} change={12} color="indigo" />
-          <KpiCard title="Active Courses" value="48" icon={BookOpen} change={4} color="cyan" />
-          <KpiCard title="Revenue (Month)" value={formatCurrency(87500)} icon={DollarSign} change={8} color="green" />
-          <KpiCard title="System Uptime" value="99.9%" icon={Activity} change={0} color="amber" />
+          <KpiCard title={t('admin.total_students')} value="1,375" icon={Users} change={12} color="indigo" />
+          <KpiCard title={t('admin.active_courses')} value="48" icon={BookOpen} change={4} color="cyan" />
+          <KpiCard title={t('admin.revenue')} value={formatCurrency(87500)} icon={DollarSign} change={8} color="green" />
+          <KpiCard title={t('admin.uptime')} value="99.9%" icon={Activity} change={0} color="amber" />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Departments */}
           <div className="xl:col-span-2 card">
-            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Departments</h2>
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">{t('admin.departments')}</h2>
             <div className="space-y-4">
               {departments.map((d, i) => (
                 <div key={i} className="flex items-center gap-4">
@@ -90,7 +92,7 @@ export default function AdminDashboard() {
             {/* Revenue chart placeholder */}
             <div className="mt-6 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Revenue Overview</h3>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('admin.revenue_overview')}</h3>
                 <span className="badge-green">+8% this month</span>
               </div>
               {/* Simple bar chart */}
@@ -115,7 +117,7 @@ export default function AdminDashboard() {
 
           {/* Recent Payments */}
           <div className="card">
-            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Recent Payments</h2>
+            <h2 className="font-bold text-zinc-900 dark:text-white mb-5">{t('admin.recent_payments')}</h2>
             <div className="space-y-3">
               {recentPayments.map((p, i) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
@@ -136,14 +138,14 @@ export default function AdminDashboard() {
             <button 
               onClick={() => toast.info('Loading all payments...')}
               className="w-full mt-4 btn-secondary text-sm py-2">
-              View all payments
+              {t('admin.view_all_payments')}
             </button>
           </div>
         </div>
 
         {/* Pending Approvals */}
         <div className="card">
-          <h2 className="font-bold text-zinc-900 dark:text-white mb-5">Pending User Approvals</h2>
+          <h2 className="font-bold text-zinc-900 dark:text-white mb-5">{t('admin.pending_approvals')}</h2>
           <div className="space-y-2">
             {pendingUsers.length === 0 ? (
               <div className="text-sm text-zinc-500 dark:text-zinc-500 py-4 text-center">No pending approvals.</div>
@@ -161,12 +163,12 @@ export default function AdminDashboard() {
                     <button 
                       onClick={() => handleApprove(u.id, u.name)}
                       className="px-3 py-1.5 rounded-lg bg-green-900/30 text-green-400 border border-green-700/30 text-xs font-semibold hover:bg-green-900/50 transition-colors">
-                      Approve
+                      {t('admin.approve')}
                     </button>
                     <button 
                       onClick={() => handleReject(u.id, u.name)}
                       className="px-3 py-1.5 rounded-lg bg-rose-900/30 text-rose-400 border border-rose-700/30 text-xs font-semibold hover:bg-rose-900/50 transition-colors">
-                      Reject
+                      {t('admin.reject')}
                     </button>
                   </div>
                 </div>

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { useLanguageStore } from '@/store/language';
 
 const recentStudents = [
   { name: 'Aditya Bhatt', course: 'Data Structures', score: 94, status: 'excellent' },
@@ -38,8 +39,9 @@ const performanceTrendData = [
 
 export default function TeacherDashboard() {
   const { user } = useAuthStore();
+  const { t } = useLanguageStore();
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const greeting = hour < 12 ? t('dashboard.greeting_morning') : hour < 18 ? t('dashboard.greeting_afternoon') : t('dashboard.greeting_evening');
   
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [courseName, setCourseName] = useState('');
@@ -64,23 +66,23 @@ export default function TeacherDashboard() {
   return (
     <>
       <Topbar
-        title="Teacher Dashboard"
+        title={t('teacher.title')}
         subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`}
-        action={{ label: 'New Course', onClick: () => setShowCourseModal(true) }}
+        action={{ label: t('teacher.new_course'), onClick: () => setShowCourseModal(true) }}
       />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard title="Total Students" value="135" icon={Users} change={8} color="indigo" />
-          <KpiCard title="Active Courses" value="3" icon={BookOpen} change={0} color="cyan" />
-          <KpiCard title="Pending Grades" value="12" icon={FileText} change={-25} color="amber" />
-          <KpiCard title="Avg. Class Score" value="84.2%" icon={BarChart3} change={3} color="green" />
+          <KpiCard title={t('teacher.total_students')} value="135" icon={Users} change={8} color="indigo" />
+          <KpiCard title={t('teacher.active_courses')} value="3" icon={BookOpen} change={0} color="cyan" />
+          <KpiCard title={t('teacher.pending_grades')} value="12" icon={FileText} change={-25} color="amber" />
+          <KpiCard title={t('teacher.avg_class_score')} value="84.2%" icon={BarChart3} change={3} color="green" />
         </div>
 
         {/* Analytics Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="card">
             <h2 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-indigo-500" /> Grade Distribution
+              <BarChart3 className="w-4 h-4 text-indigo-500" /> {t('teacher.grade_distribution')}
             </h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -99,7 +101,7 @@ export default function TeacherDashboard() {
           </div>
           <div className="card">
             <h2 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-500" /> Performance Trend
+              <TrendingUp className="w-4 h-4 text-emerald-500" /> {t('teacher.performance_trend')}
             </h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -121,9 +123,9 @@ export default function TeacherDashboard() {
           {/* My Courses */}
           <div className="xl:col-span-2 card">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-zinc-900 dark:text-white">My Courses</h2>
+              <h2 className="font-bold text-zinc-900 dark:text-white">{t('teacher.add_course')}</h2>
               <button onClick={() => setShowCourseModal(true)} className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
-                <Plus className="w-3.5 h-3.5" /> Add Course
+                <Plus className="w-3.5 h-3.5" /> {t('teacher.add_course')}
               </button>
             </div>
             <div className="space-y-4">
@@ -165,8 +167,8 @@ export default function TeacherDashboard() {
           {/* Recent Students */}
           <div className="card">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-zinc-900 dark:text-white">Recent Students</h2>
-              <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium" onClick={() => toast.info('Opening student list...')}>View all</button>
+              <h2 className="font-bold text-zinc-900 dark:text-white">{t('teacher.recent_students')}</h2>
+              <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium" onClick={() => toast.info('Opening student list...')}>{t('dashboard.view_all')}</button>
             </div>
             <div className="space-y-3">
               {recentStudents.map((s, i) => (
