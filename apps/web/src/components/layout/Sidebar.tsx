@@ -54,11 +54,11 @@ const navByRole: Record<string, NavItem[]> = {
     {
       label: 'Global Impact', icon: Globe2,
       subItems: [
-        { href: '/student/impact/projects', label: 'Collaborative Projects' },
-        { href: '/student/impact/needs', label: 'Needs & Support Board' },
-        { href: '/student/impact/partners', label: 'Universities & Partners' },
-        { href: '/student/impact/dashboard', label: 'My Social Impact' },
-        { href: '/student/impact/summits', label: 'Global Summits' },
+        { href: '/student/impact/startups', label: 'Startup Incubator' },
+        { href: '/student/impact/ngo-marketplace', label: 'NGO Marketplace' },
+        { href: '/student/impact/edu-society', label: 'Educational Society' },
+        { href: '/student/impact/companies', label: 'Corporate Partners' },
+        { href: '/student/impact/leaderboard', label: 'Impact Leaderboard' },
       ]
     },
     {
