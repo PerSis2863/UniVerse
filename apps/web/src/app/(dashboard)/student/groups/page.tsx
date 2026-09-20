@@ -1,6 +1,6 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink, Edit2, Trash2, Check } from 'lucide-react';
+import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink, Edit2, Trash2, Check, Image as ImageIcon, BarChart2, Contact, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -647,21 +647,19 @@ export default function GroupsPage() {
                         <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{msg.user}</span>
                         <span className="text-[10px] text-zinc-400">{msg.time} {msg.isEdited && '(edited)'}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {msg.user === 'You' && (
-                          <div className="opacity-0 group-hover/message:opacity-100 flex items-center gap-1 transition-opacity">
-                            <button onClick={() => { setEditingMessageId(msg.id); setEditingMessageText(msg.text); }} className="p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded">
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                            <button onClick={() => {
-                              // Optimistic delete
-                              setChatMessages(prev => prev.filter(m => m.id !== msg.id));
-                              fetch(`/api/groups/messages?id=${msg.id}`, { method: 'DELETE' }).catch(e => console.error("Failed to delete", e));
-                            }} className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
+                      <div className={`flex items-center gap-2 ${msg.user === 'You' ? 'flex-row-reverse' : ''}`}>
+                        <div className="opacity-0 group-hover/message:opacity-100 flex items-center gap-1 transition-opacity">
+                          <button onClick={() => { setEditingMessageId(msg.id); setEditingMessageText(msg.text); }} className="p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded">
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => {
+                            // Optimistic delete
+                            setChatMessages(prev => prev.filter(m => m.id !== msg.id));
+                            fetch(`/api/groups/messages?id=${msg.id}`, { method: 'DELETE' }).catch(e => console.error("Failed to delete", e));
+                          }} className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                         <div className={`p-3 rounded-2xl text-sm ${msg.user === 'You' ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
                           {msg.isFile ? (
                             <div className="flex flex-col">
@@ -689,9 +687,20 @@ export default function GroupsPage() {
                     <button onClick={() => { setEditingMessageId(null); setEditingMessageText(''); setChatInput(''); }} className="hover:text-zinc-900 dark:hover:text-white"><X className="w-3 h-3" /></button>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-
-                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => fileInputRef.current?.click()}>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors hidden sm:block" title="Upload Photo" onClick={() => toast.success('Photo option clicked')}>
+                    <ImageIcon className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors hidden sm:block" title="Create Poll" onClick={() => toast.success('Poll option clicked')}>
+                    <BarChart2 className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors hidden sm:block" title="Share Contact" onClick={() => toast.success('Contact option clicked')}>
+                    <Contact className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors hidden sm:block" title="Generate AI Image" onClick={() => toast.success('AI Images option clicked')}>
+                    <Sparkles className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" title="Attach File" onClick={() => fileInputRef.current?.click()}>
                     <Paperclip className="w-5 h-5" />
                   </button>
                   <input 
