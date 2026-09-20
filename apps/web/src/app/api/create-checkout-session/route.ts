@@ -10,6 +10,9 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { amount, description } = body;
 
+    const reqUrl = new URL(req.url);
+    const origin = reqUrl.origin;
+
     // Create Checkout Sessions from body params.
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -26,8 +29,8 @@ export async function POST(req: Request) {
         },
       ],
       mode: 'payment',
-      success_url: `${req.headers.get('origin')}/student/administrative/accounting?success=true`,
-      cancel_url: `${req.headers.get('origin')}/student/administrative/accounting?canceled=true`,
+      success_url: `${origin}/student/administrative/accounting?success=true`,
+      cancel_url: `${origin}/student/administrative/accounting?canceled=true`,
     });
 
     return NextResponse.json({ id: session.id, url: session.url });
