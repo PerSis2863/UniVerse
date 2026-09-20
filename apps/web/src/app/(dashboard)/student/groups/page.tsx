@@ -58,7 +58,7 @@ export default function GroupsPage() {
   const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string, aiSummary?: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMicOn, setIsMicOn] = useState(true);
-  const [isCamOn, setIsCamOn] = useState(true);
+  const [isCamOn, setIsCamOn] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -71,7 +71,7 @@ export default function GroupsPage() {
         })
         .catch(err => {
           console.error("Camera access error:", err);
-          toast.error("Could not access camera. Please check permissions.");
+          toast.error("Could not access camera or mic. Please click the lock icon in your browser's URL bar and ensure permissions are allowed.");
         });
     } else {
       setLocalStream(null);
@@ -289,23 +289,20 @@ export default function GroupsPage() {
                 </div>
               </div>
               <div className="p-5 space-y-5">
-                <div className="flex gap-2">
-                  <button className="flex-1 btn-primary py-2 text-sm" onClick={() => setShowChat(true)}>
-                    <MessageSquare className="w-4 h-4 inline mr-1" /> Chat
+                <div className="flex gap-2 w-full">
+                  <button className="flex-1 btn-primary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => setShowChat(true)}>
+                    <MessageSquare className="w-4 h-4 mr-1" /> Chat
                   </button>
-                  <button className="flex-1 btn-secondary py-2 text-sm" onClick={() => {
-                    const newFile = { id: Date.now(), user: 'You', initials: 'ME', text: '', isFile: true, fileName: 'New_Upload.pdf', time: 'Just now' };
-                    setChatMessages([...chatMessages, newFile]);
-                    setShowChat(true);
-                    toast.success('File shared in chat');
+                  <button className="flex-1 btn-secondary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => {
+                    fileInputRef.current?.click();
                   }}>
-                    <Upload className="w-4 h-4 inline mr-1" /> Files
+                    <Upload className="w-4 h-4 mr-1" /> Files
                   </button>
                   <button 
-                    className={`flex-1 py-2 text-sm ${selectedGroup.isMeetingActive ? 'bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/30' : 'btn-secondary'}`} 
+                    className={`flex-1 py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap ${selectedGroup.isMeetingActive ? 'bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/30' : 'btn-secondary'}`} 
                     onClick={() => setShowMeeting(true)}
                   >
-                    <Video className="w-4 h-4 inline mr-1" /> {selectedGroup.isMeetingActive ? 'Join Meeting' : 'Meet'}
+                    <Video className="w-4 h-4 mr-1" /> {selectedGroup.isMeetingActive ? 'Join Meeting' : 'Meet'}
                   </button>
                 </div>
 
@@ -446,7 +443,7 @@ export default function GroupsPage() {
                         <span className="text-[10px] text-zinc-400">{msg.time} {msg.isEdited && '(edited)'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {msg.user === 'You' && !msg.isFile && (
+                        {msg.user === 'You' && (
                           <div className="opacity-0 group-hover/message:opacity-100 flex items-center gap-1 transition-opacity">
                             <button onClick={() => { setEditingMessageId(msg.id); setEditingMessageText(msg.text); }} className="p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded">
                               <Edit2 className="w-3 h-3" />
@@ -488,55 +485,7 @@ export default function GroupsPage() {
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  <input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      const file = e.target.files[0];
-                      const tempId = Date.now();
-                      const newFileMsg = { id: tempId, user: 'You', initials: 'ME', text: 'Uploading and analyzing...', isFile: true, fileName: file.name, time: 'Just now', aiSummary: '' };
-                      setChatMessages([...chatMessages, newFileMsg]);
-                      toast.info(`Uploading ${file.name}...`);
-                      
-                      try {
-                        const uploadRes = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
-                        let fileUrl = '';
-                        if (uploadRes.ok) {
-                           const blobData = await uploadRes.json();
-                           fileUrl = blobData.url;
-                        }
 
-                        const summarizeRes = await fetch('/api/summarize', {
-                          method: 'POST',
-                          body: JSON.stringify({ fileUrl: fileUrl || 'local-file' })
-                        });
-                        
-                        let aiSummary = `Simulated Summary: This document covers key objectives and research phases.`;
-                        if (summarizeRes.ok) {
-                           const summaryData = await summarizeRes.json();
-                           aiSummary = summaryData.summary;
-                        }
-
-                        // DB call
-                        fetch('/api/groups/messages', {
-                          method: 'POST',
-                          body: JSON.stringify({
-                            content: 'Shared a file',
-                            senderId: 'mock-user-id',
-                            groupId: selectedGroup?.id?.toString() || '1',
-                            attachments: [{ url: fileUrl, fileName: file.name, aiSummary }]
-                          })
-                        }).catch(e => console.error("DB push failed", e));
-
-                        setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary } : msg));
-                        toast.success('Document analyzed and shared!');
-                      } catch (err) {
-                        console.warn("API failed, using simulated data", err);
-                        setTimeout(() => {
-                           setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary: `AI Summary for ${file.name}: The document covers essential milestones and objectives for the group project.` } : msg));
-                           toast.success('Document analyzed and shared!');
-                        }, 1500);
-                      }
-                    }
-                  }} />
                   <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => fileInputRef.current?.click()}>
                     <Paperclip className="w-5 h-5" />
                   </button>
@@ -780,6 +729,56 @@ export default function GroupsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => {
+        if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          const tempId = Date.now();
+          const newFileMsg = { id: tempId, user: 'You', initials: 'ME', text: 'Uploading and analyzing...', isFile: true, fileName: file.name, time: 'Just now', aiSummary: '' };
+          setChatMessages([...chatMessages, newFileMsg]);
+          toast.info(`Uploading ${file.name}...`);
+          
+          try {
+            const uploadRes = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
+            let fileUrl = '';
+            if (uploadRes.ok) {
+               const blobData = await uploadRes.json();
+               fileUrl = blobData.url;
+            }
+
+            const summarizeRes = await fetch('/api/summarize', {
+              method: 'POST',
+              body: JSON.stringify({ fileUrl: fileUrl || 'local-file' })
+            });
+            
+            let aiSummary = `Simulated Summary: This document covers key objectives and research phases.`;
+            if (summarizeRes.ok) {
+               const summaryData = await summarizeRes.json();
+               aiSummary = summaryData.summary;
+            }
+
+            // DB call
+            fetch('/api/groups/messages', {
+              method: 'POST',
+              body: JSON.stringify({
+                content: 'Shared a file',
+                senderId: 'mock-user-id',
+                groupId: selectedGroup?.id?.toString() || '1',
+                attachments: [{ url: fileUrl, fileName: file.name, aiSummary }]
+              })
+            }).catch(e => console.error("DB push failed", e));
+
+            setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary } : msg));
+            toast.success('Document analyzed and shared!');
+          } catch (err) {
+            console.warn("API failed, using simulated data", err);
+            setTimeout(() => {
+               setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary: `AI Summary for ${file.name}: The document covers essential milestones and objectives for the group project.` } : msg));
+               toast.success('Document analyzed and shared!');
+            }, 1500);
+          }
+        }
+      }} />
     </>
   );
 }
