@@ -2,6 +2,8 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { Search, Users, ExternalLink, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 const associations = [
   { id: 1, name: 'Computer Science Society', category: 'Academic', members: 342, description: 'The official student chapter for CS majors. We host hackathons, tech talks, and networking events.', color: 'from-blue-500 to-indigo-600', icon: '💻' },
@@ -13,6 +15,15 @@ const associations = [
 ];
 
 export default function AssociationsPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  const filteredAssociations = associations.filter(club => {
+    const matchesSearch = club.name.toLowerCase().includes(searchQuery.toLowerCase()) || club.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = activeCategory === 'All' || club.category === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <>
       <Topbar 
@@ -31,10 +42,15 @@ export default function AssociationsPage() {
               </div>
               <input 
                 type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search associations..." 
                 className="w-full bg-transparent border-none text-white focus:ring-0 placeholder:text-zinc-600 py-3"
               />
-              <button className="px-6 py-2 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform ml-2 shrink-0">
+              <button 
+                onClick={() => toast.success('Search results updated')}
+                className="px-6 py-2 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform ml-2 shrink-0"
+              >
                 Search
               </button>
             </div>
@@ -42,11 +58,12 @@ export default function AssociationsPage() {
 
           {/* Categories */}
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {['All', 'Academic', 'Cultural', 'Engineering', 'Sustainability', 'Arts & Humanities', 'Business'].map((cat, i) => (
+            {['All', 'Academic', 'Cultural', 'Engineering', 'Sustainability', 'Arts & Humanities', 'Business'].map((cat) => (
               <button 
                 key={cat}
+                onClick={() => setActiveCategory(cat)}
                 className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  i === 0 
+                  activeCategory === cat 
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 border border-indigo-500/50' 
                     : 'bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:bg-white/[0.06] hover:text-white'
                 }`}
@@ -58,7 +75,7 @@ export default function AssociationsPage() {
 
           {/* Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-4">
-            {associations.map((club, i) => (
+            {filteredAssociations.map((club, i) => (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -91,12 +108,21 @@ export default function AssociationsPage() {
                     <Users className="w-4 h-4" />
                     <span>{club.members}</span>
                   </div>
-                  <button className="flex items-center gap-1.5 text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors">
+                  <button 
+                    onClick={() => toast.success(`Requested to join ${club.name}!`)}
+                    className="flex items-center gap-1.5 text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors"
+                  >
                     Join <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </motion.div>
             ))}
+            
+            {filteredAssociations.length === 0 && (
+              <div className="col-span-full py-12 text-center text-zinc-500">
+                No associations found matching your criteria.
+              </div>
+            )}
           </div>
 
         </div>

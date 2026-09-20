@@ -2,8 +2,25 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { Map, Calendar as CalendarIcon, Clock, Users, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
+import { useState } from 'react';
 
 export default function RoomReservationPage() {
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearch = () => {
+    setIsSearching(true);
+    toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 1500)),
+      {
+        loading: 'Searching for available rooms...',
+        success: 'Found 3 available rooms!',
+        error: 'Error searching for rooms',
+      }
+    );
+    setTimeout(() => setIsSearching(false), 1500);
+  };
+
   return (
     <>
       <Topbar 
@@ -48,7 +65,7 @@ export default function RoomReservationPage() {
                   </div>
                   <input 
                     type="date" 
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 [color-scheme:dark]"
                   />
                 </div>
               </div>
@@ -59,7 +76,7 @@ export default function RoomReservationPage() {
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
                     <Clock className="w-4 h-4" />
                   </div>
-                  <select className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none">
+                  <select className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]">
                     <option value="1">1 Hour</option>
                     <option value="2">2 Hours</option>
                     <option value="3">3 Hours</option>
@@ -73,7 +90,7 @@ export default function RoomReservationPage() {
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
                     <Users className="w-4 h-4" />
                   </div>
-                  <select className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none">
+                  <select className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]">
                     <option value="individual">Individual (1)</option>
                     <option value="small">Small Group (2-4)</option>
                     <option value="large">Large Group (5-10)</option>
@@ -82,8 +99,13 @@ export default function RoomReservationPage() {
               </div>
             </div>
 
-            <button className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
-              <Search className="w-5 h-5" /> Search Availability
+            <button 
+              onClick={handleSearch}
+              disabled={isSearching}
+              className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Search className={`w-5 h-5 ${isSearching ? 'animate-spin' : ''}`} /> 
+              {isSearching ? 'Searching...' : 'Search Availability'}
             </button>
           </motion.div>
 
