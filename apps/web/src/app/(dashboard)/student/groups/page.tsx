@@ -418,7 +418,7 @@ export default function GroupsPage() {
                         <button onClick={() => { navigator.clipboard.writeText(generatedLink); toast.success("Link copied!"); }} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium text-sm px-2">Copy</button>
                       </div>
                    ) : (
-                      <button onClick={() => setGeneratedLink(`https://universe.app/join/${Math.random().toString(36).substring(7)}`)} className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
+                      <button onClick={() => setGeneratedLink(`${window.location.origin}/join/${Math.random().toString(36).substring(7)}`)} className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
                         Generate Invite Link
                       </button>
                    )}
