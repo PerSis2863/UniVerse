@@ -20,8 +20,25 @@ const INITIAL_TRANSACTIONS = [
   { id: 'TRX-1025', date: '2026-10-22', type: 'Course Purchase', amount: 149.00, status: 'Completed', user: 'Diana Prince' },
 ];
 
+import { createTransaction, getTransactions } from '@/app/actions/transaction';
+
 export default function AdminFinances() {
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const data = await getTransactions();
+        setTransactions(data);
+      } catch (e) {
+        console.error('Failed to load transactions', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTransactions();
+  }, []);
   const [isExporting, setIsExporting] = useState(false);
   
   // Modal states
@@ -42,19 +59,25 @@ export default function AdminFinances() {
     }, 2000);
   };
 
-  const handleAddTransaction = (e: React.FormEvent) => {
+  const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newTrx = {
-      id: `TRX-${1030 + transactions.length}`,
-      date: new Date().toISOString().split('T')[0],
-      type: formData.type,
-      amount: formData.amount,
-      status: formData.status,
-      user: formData.user
-    };
-    setTransactions([newTrx, ...transactions]);
-    setIsAddTrxModalOpen(false);
-    toast.success('Transaction added manually.');
+    try {
+      const newTrx = await createTransaction({
+        amount: formData.type === 'Teacher Payout' || formData.type === 'Refund' ? -Math.abs(formData.amount) : Math.abs(formData.amount),
+        description: formData.type,
+        status: formData.status.toUpperCase(),
+        userEmail: formData.user // Note: using the input as email for now
+      });
+      
+      toast.success('Transaction added manually.');
+      setIsAddTrxModalOpen(false);
+      
+      // Refresh list
+      const data = await getTransactions();
+      setTransactions(data);
+    } catch (e: any) {
+      toast.error(`Error: ${e.message}`);
+    }
   };
 
   return (
@@ -102,8 +125,8 @@ export default function AdminFinances() {
             </div>
             <form onSubmit={handleAddTransaction} className="p-6 space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">User / Client</label>
-                <input required value={formData.user} onChange={e => setFormData({...formData, user: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500" placeholder="e.g. John Doe" />
+                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">User Email</label>
+                <input required value={formData.user} onChange={e => setFormData({...formData, user: e.target.value})} type="email" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500" placeholder="e.g. student@universe.edu" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Transaction Type</label>
@@ -260,17 +283,17 @@ export default function AdminFinances() {
                 <tbody className="divide-y divide-zinc-800/30">
                   {transactions.map((trx, i) => (
                     <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
-                      <td className="p-4 font-mono text-xs font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-300">{trx.id}</td>
-                      <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400">{trx.date}</td>
-                      <td className="p-4 text-sm font-medium text-zinc-900 dark:text-white">{trx.type}</td>
-                      <td className="p-4 text-sm text-zinc-300">{trx.user}</td>
+                      <td className="p-4 font-mono text-xs font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-300">{trx.id.substring(0,8)}...</td>
+                      <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400">{new Date(trx.createdAt).toISOString().split('T')[0]}</td>
+                      <td className="p-4 text-sm font-medium text-zinc-900 dark:text-white">{trx.description}</td>
+                      <td className="p-4 text-sm text-zinc-300">{trx.user?.name || trx.user?.email || 'Unknown'}</td>
                       <td className={`p-4 text-sm font-semibold ${trx.amount > 0 ? 'text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
                         {trx.amount > 0 ? '+' : ''}${Math.abs(trx.amount).toFixed(2)}
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          trx.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                          trx.status === 'Processing' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                          trx.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                          trx.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                           'bg-red-500/10 text-red-400 border border-red-500/20'
                         }`}>
                           {trx.status}

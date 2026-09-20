@@ -8,16 +8,27 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 
-const transactions = [
-  { id: 'TXN-001', date: 'Sept 01, 2026', description: 'Fall Semester Tuition Fee', amount: '$4,500.00', status: 'Paid', method: 'Credit Card' },
-  { id: 'TXN-002', date: 'Aug 15, 2026', description: 'Lab Equipment Fee', amount: '$150.00', status: 'Paid', method: 'Bank Transfer' },
-  { id: 'TXN-003', date: 'Jul 30, 2026', description: 'Library Late Fee', amount: '$15.00', status: 'Pending', method: '-' },
-  { id: 'TXN-004', date: 'Jan 10, 2026', description: 'Spring Semester Tuition Fee', amount: '$4,200.00', status: 'Paid', method: 'Scholarship' },
-];
+import { getUserTransactions } from '@/app/actions/transaction';
+
+// We'll use a hardcoded email for this prototype
+const USER_EMAIL = 'student@universe.edu';
 
 export default function AccountingPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const fetchTrx = async () => {
+      try {
+        const data = await getUserTransactions(USER_EMAIL);
+        setTransactions(data);
+      } catch (e) {
+        console.error('Failed to load transactions', e);
+      }
+    };
+    fetchTrx();
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('success')) {
@@ -133,19 +144,19 @@ export default function AccountingPage() {
                   >
                     <td className="py-4 px-4">
                       <div className="font-medium text-zinc-900 dark:text-white text-sm">
-                        {record.date}
+                        {new Date(record.createdAt).toISOString().split('T')[0]}
                       </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-mono">{record.id}</div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-mono">{record.id.substring(0, 8)}...</div>
                     </td>
                     <td className="py-4 px-4 text-sm text-zinc-700 dark:text-zinc-300 font-medium">
                       {record.description}
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 font-normal mt-0.5">Via {record.method}</div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 font-normal mt-0.5">Via Stripe</div>
                     </td>
                     <td className="py-4 px-4">
-                      <span className="font-bold text-zinc-900 dark:text-white">{record.amount}</span>
+                      <span className="font-bold text-zinc-900 dark:text-white">${Math.abs(record.amount).toFixed(2)}</span>
                     </td>
                     <td className="py-4 px-4">
-                      {record.status === 'Paid' ? (
+                      {record.status === 'PAID' ? (
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Paid
                         </div>
@@ -156,7 +167,7 @@ export default function AccountingPage() {
                       )}
                     </td>
                     <td className="py-4 px-4 text-right">
-                      {record.status === 'Paid' && (
+                      {record.status === 'PAID' && (
                         <button onClick={() => toast.success(`Downloading receipt for ${record.id}...`)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-500/20 text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                           <Download className="w-4 h-4" />
                         </button>

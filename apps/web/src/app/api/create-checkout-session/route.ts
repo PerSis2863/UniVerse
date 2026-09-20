@@ -8,7 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { amount, description } = body;
+    const { amount, description, transactionId } = body;
 
     const reqUrl = new URL(req.url);
     const origin = reqUrl.origin;
@@ -31,6 +31,10 @@ export async function POST(req: Request) {
       mode: 'payment',
       success_url: `${origin}/student/administrative/accounting?success=true`,
       cancel_url: `${origin}/student/administrative/accounting?canceled=true`,
+      client_reference_id: transactionId,
+      metadata: {
+        transactionId: transactionId || null,
+      },
     });
 
     return NextResponse.json({ id: session.id, url: session.url });
