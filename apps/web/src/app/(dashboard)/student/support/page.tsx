@@ -34,7 +34,8 @@ export default function StudentSupport() {
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      toast.success('Ticket submitted successfully! We will contact you soon.');
+      const ticketId = `TKT-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      toast.success(`Ticket submitted successfully! Your Ticket ID is ${ticketId}. We will contact you soon.`);
       setTicketSubject('');
       setTicketDescription('');
     }, 1500);
@@ -257,23 +258,28 @@ export default function StudentSupport() {
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 text-lg shadow-lg"
                     placeholder="Search books, articles, journals, and more..."
                   />
-                  <button className="absolute inset-y-2 right-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl font-medium transition-colors">
+                  <button 
+                    onClick={() => toast.success('Search results loaded.')}
+                    className="absolute inset-y-2 right-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl font-medium transition-colors">
                     Search
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8">
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
+                  <div onClick={() => toast.success('Loading your active loans...')} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
                     <Book className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
                     <h3 className="font-semibold text-white mb-1">My Loans</h3>
                     <p className="text-sm text-zinc-400">View and renew borrowed items.</p>
                   </div>
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
+                  <div onClick={() => toast.success('Connecting to academic databases...')} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
                     <Laptop className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
                     <h3 className="font-semibold text-white mb-1">Databases</h3>
                     <p className="text-sm text-zinc-400">Access academic research databases.</p>
                   </div>
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
+                  <div onClick={() => {
+                    handleCloseModal();
+                    router.push('/student/inbox?chatWith=Librarian');
+                  }} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
                     <HelpCircle className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
                     <h3 className="font-semibold text-white mb-1">Ask a Librarian</h3>
                     <p className="text-sm text-zinc-400">Get research help from library staff.</p>
