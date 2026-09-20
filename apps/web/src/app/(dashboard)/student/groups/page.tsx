@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 
-const groups = [
+const INITIAL_GROUPS = [
   { id: 1, name: 'OS Study Group', type: 'Study', members: 12, latestActivity: 'Alex shared Chapter_4_Notes.pdf', time: '10m ago', unread: 3, color: 'from-blue-500 to-indigo-600', initials: 'OS', completion: 68, avatars: ['AK','BL','CR','DM'], isMeetingActive: false },
   { id: 2, name: 'Web App Hackathon', type: 'Project', members: 4, latestActivity: 'Sarah pushed to main branch', time: '1h ago', unread: 0, color: 'from-fuchsia-500 to-pink-600', initials: 'WH', completion: 42, avatars: ['SK','JP','RM','TN'], isMeetingActive: true },
   { id: 3, name: 'Clean Water Initiative', type: 'Impact', members: 28, latestActivity: 'Dr. Evans: Meeting at 5PM today', time: '2h ago', unread: 12, color: 'from-emerald-500 to-teal-600', initials: 'CW', completion: 81, avatars: ['DE','LF','GM','HO'], isMeetingActive: false },
@@ -34,9 +34,10 @@ const itemIcons: Record<string, any> = {
 const TABS = ['All', 'Study', 'Project', 'Impact', 'Research'];
 
 export default function GroupsPage() {
+  const [groupsList, setGroupsList] = useState(INITIAL_GROUPS);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState<typeof groups[0] | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<typeof INITIAL_GROUPS[0] | null>(null);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('Study');
@@ -135,7 +136,7 @@ export default function GroupsPage() {
   }, [isMicOn, localStream]);
 
 
-  const filtered = groups.filter(g =>
+  const filtered = groupsList.filter(g =>
     (filter === 'All' || g.type === filter) &&
     g.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -453,8 +454,26 @@ export default function GroupsPage() {
               <div className="flex gap-2 mt-6">
                 <button onClick={() => { setShowNewGroup(false); setInviteMembers([]); setGeneratedLink(''); setInviteInput(''); setNewGroupName(''); }} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
                 <button onClick={() => { 
+                  if (!newGroupName.trim()) return toast.error("Group name is required");
+                  
+                  const newGroup = {
+                    id: Date.now(),
+                    name: newGroupName,
+                    type: newGroupType,
+                    members: 1 + inviteMembers.length,
+                    latestActivity: 'Group created',
+                    time: 'Just now',
+                    unread: 0,
+                    color: 'from-indigo-500 to-purple-600',
+                    initials: newGroupName.substring(0, 2).toUpperCase(),
+                    completion: 0,
+                    avatars: ['ME'],
+                    isMeetingActive: false
+                  };
+                  
+                  setGroupsList([newGroup, ...groupsList]);
                   setShowNewGroup(false); 
-                  toast.success(`"${newGroupName || 'New Group'}" created with ${inviteMembers.length} members!`); 
+                  toast.success(`"${newGroupName}" created with ${inviteMembers.length} members!`); 
                   setNewGroupName(''); 
                   setInviteMembers([]);
                   setGeneratedLink('');
