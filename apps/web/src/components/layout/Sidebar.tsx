@@ -248,6 +248,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const pathname = usePathname();
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const { t } = useLanguageStore();
 
   if (!user) return null;
 
