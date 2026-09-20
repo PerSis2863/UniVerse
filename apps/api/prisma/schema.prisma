@@ -76,6 +76,19 @@ enum FileType {
   OTHER
 }
 
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 // ─── MODELS ────────────────────────────────────────────────────────────────
 
 model User {
@@ -114,6 +127,7 @@ model User {
   knowledgeHubResources KnowledgeHubResource[]
   associationMemberships AssociationMembership[]
   roomReservations RoomReservation[]
+  tickets          Ticket[]
 
   @@map("users")
 }
@@ -403,6 +417,21 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@map("refresh_tokens")
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  subject     String
+  description String
+  category    String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  authorId    String
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("tickets")
 }
 
 // ─── STUDENT LIFE ──────────────────────────────────────────────────────────

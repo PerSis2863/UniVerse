@@ -1,11 +1,12 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { LifeBuoy, FileText, MessageCircle, Phone, ChevronRight, Search, Send, Book, Wifi, Laptop, X, CheckCircle2, HelpCircle } from 'lucide-react';
-import { useState } from 'react';
+import { LifeBuoy, FileText, MessageCircle, ChevronRight, Search, Send, Book, Wifi, Laptop, X, HelpCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '@/lib/api';
 
 const FAQS = [
   { q: "How do I access my course materials?", a: "Navigate to the 'My Courses' tab, select your course, and click on the 'Materials' section." },
@@ -14,10 +15,24 @@ const FAQS = [
   { q: "Where can I find my official transcript?", a: "Transcripts can be requested through the 'Grades' tab. Click the 'Request Official Transcript' button at the top right." }
 ];
 
+type Ticket = {
+  id: string;
+  subject: string;
+  description: string;
+  category: string;
+  status: string;
+  priority: string;
+  createdAt: string;
+};
+
 export default function StudentSupport() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  // Ticket list state
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
 
   // Ticket form state
   const [ticketCategory, setTicketCategory] = useState('Technical Issue');
@@ -25,24 +40,64 @@ export default function StudentSupport() {
   const [ticketDescription, setTicketDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmitTicket = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+  const fetchTickets = async () => {
+    try {
+      setIsLoadingTickets(true);
+      const res = await api.get('/tickets');
+      setTickets(res.data);
+    } catch (error) {
+      console.error('Failed to fetch tickets:', error);
+      toast.error('Failed to load tickets.');
+    } finally {
+      setIsLoadingTickets(false);
+    }
+  };
+
+  const handleSubmitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticketSubject.trim() || !ticketDescription.trim()) {
       toast.error('Please fill out all fields before submitting.');
       return;
     }
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const ticketId = `TKT-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-      toast.success(`Ticket submitted successfully! Your Ticket ID is ${ticketId}. We will contact you soon.`);
+    
+    try {
+      setIsSubmitting(true);
+      const res = await api.post('/tickets', {
+        subject: ticketSubject,
+        description: ticketDescription,
+        category: ticketCategory
+      });
+      
+      toast.success(`Ticket submitted successfully! We will contact you soon.`);
       setTicketSubject('');
       setTicketDescription('');
-    }, 1500);
+      
+      // Add to list
+      setTickets([res.data, ...tickets]);
+    } catch (error) {
+      console.error('Failed to submit ticket:', error);
+      toast.error('Failed to submit ticket. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCloseModal = () => {
     setActiveModal(null);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'OPEN': return 'text-amber-500 bg-amber-500/10';
+      case 'IN_PROGRESS': return 'text-blue-500 bg-blue-500/10';
+      case 'RESOLVED': return 'text-emerald-500 bg-emerald-500/10';
+      case 'CLOSED': return 'text-zinc-500 bg-zinc-500/10';
+      default: return 'text-zinc-500 bg-zinc-500/10';
+    }
   };
 
   return (
@@ -104,72 +159,107 @@ export default function StudentSupport() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             
-            {/* FAQs */}
-            <div>
-              <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
-                <LifeBuoy className="w-5 h-5 text-indigo-400" /> Frequently Asked Questions
-              </h3>
-              <div className="space-y-4">
-                {FAQS.map((faq, i) => (
-                  <div key={i} className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-lg p-5">
-                    <h4 className="font-medium text-zinc-200 mb-2">{faq.q}</h4>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{faq.a}</p>
-                  </div>
-                ))}
+            {/* Left Column: FAQs and My Tickets */}
+            <div className="space-y-12">
+              <div>
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
+                  <LifeBuoy className="w-5 h-5 text-indigo-400" /> Frequently Asked Questions
+                </h3>
+                <div className="space-y-4">
+                  {FAQS.map((faq, i) => (
+                    <div key={i} className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-lg p-5">
+                      <h4 className="font-medium text-zinc-200 mb-2">{faq.q}</h4>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{faq.a}</p>
+                    </div>
+                  ))}
+                </div>
+                <button className="mt-4 text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
+                  View all FAQs <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
-              <button className="mt-4 text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
-                View all FAQs <ChevronRight className="w-4 h-4" />
-              </button>
+
+              <div>
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-indigo-400" /> My Recent Tickets
+                </h3>
+                {isLoadingTickets ? (
+                  <div className="text-zinc-500 text-sm">Loading tickets...</div>
+                ) : tickets.length === 0 ? (
+                  <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-lg p-5 text-center text-zinc-500">
+                    You have no active or past tickets.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {tickets.map(ticket => (
+                      <div key={ticket.id} className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-lg p-5 hover:border-indigo-500/30 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium text-zinc-200">{ticket.subject}</h4>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                            {ticket.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed mb-3 line-clamp-2">{ticket.description}</p>
+                        <div className="flex justify-between text-xs text-zinc-500">
+                          <span>{ticket.category}</span>
+                          <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Contact Form */}
-            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8">
-              <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-6">Submit a Ticket (IT Helpdesk)</h3>
-              <form className="space-y-4" onSubmit={handleSubmitTicket}>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Issue Category</label>
-                  <select 
-                    value={ticketCategory}
-                    onChange={(e) => setTicketCategory(e.target.value)}
-                    className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none"
-                  >
-                    <option>Technical Issue</option>
-                    <option>Network & Wi-Fi</option>
-                    <option>Account / Billing</option>
-                    <option>Course Material Missing</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Subject</label>
-                  <input 
-                    type="text" 
-                    placeholder="Brief description of the issue" 
-                    value={ticketSubject}
-                    onChange={(e) => setTicketSubject(e.target.value)}
-                    className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" 
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Description</label>
-                  <textarea 
-                    rows={4} 
-                    placeholder="Please provide as much detail as possible..." 
-                    value={ticketDescription}
-                    onChange={(e) => setTicketDescription(e.target.value)}
-                    className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                  ></textarea>
-                </div>
+            {/* Right Column: Contact Form */}
+            <div>
+              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 sticky top-8">
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-6">Submit a Ticket (IT Helpdesk)</h3>
+                <form className="space-y-4" onSubmit={handleSubmitTicket}>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Issue Category</label>
+                    <select 
+                      value={ticketCategory}
+                      onChange={(e) => setTicketCategory(e.target.value)}
+                      className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none"
+                    >
+                      <option>Technical Issue</option>
+                      <option>Network & Wi-Fi</option>
+                      <option>Account / Billing</option>
+                      <option>Course Material Missing</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Subject</label>
+                    <input 
+                      type="text" 
+                      placeholder="Brief description of the issue" 
+                      value={ticketSubject}
+                      onChange={(e) => setTicketSubject(e.target.value)}
+                      className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors" 
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Description</label>
+                    <textarea 
+                      rows={4} 
+                      placeholder="Please provide as much detail as possible..." 
+                      value={ticketDescription}
+                      onChange={(e) => setTicketDescription(e.target.value)}
+                      className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                    ></textarea>
+                  </div>
 
-                <button 
-                  disabled={isSubmitting}
-                  className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-zinc-900 dark:text-white px-6 py-3 rounded-lg font-medium transition-colors mt-2"
-                >
-                  {isSubmitting ? 'Submitting...' : <><Send className="w-4 h-4" /> Send Ticket</>}
-                </button>
-              </form>
+                  <button 
+                    disabled={isSubmitting}
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-zinc-900 dark:text-white px-6 py-3 rounded-lg font-medium transition-colors mt-2"
+                  >
+                    {isSubmitting ? 'Submitting...' : <><Send className="w-4 h-4" /> Send Ticket</>}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
 
