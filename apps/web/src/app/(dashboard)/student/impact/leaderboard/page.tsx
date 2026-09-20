@@ -5,7 +5,6 @@ import { useLanguageStore } from '@/store/language';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Trophy, Medal, Star, TrendingUp, Users, ArrowUp, ArrowDown, Minus, Search } from 'lucide-react';
-import { useLanguageStore } from '@/store/language';
 
 interface LeaderboardEntry {
   rank: number;
