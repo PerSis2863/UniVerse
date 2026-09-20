@@ -77,6 +77,33 @@ async function main() {
     },
   });
 
+  // More Students
+  const alice = await prisma.user.upsert({
+    where: { email: 'alice@student.com' },
+    update: {},
+    create: {
+      email: 'alice@student.com',
+      password: passwordHashStudent,
+      name: 'Alice Johnson',
+      role: Role.STUDENT,
+      status: UserStatus.ACTIVE,
+      avatar: 'A',
+    },
+  });
+
+  const bob = await prisma.user.upsert({
+    where: { email: 'bob@student.com' },
+    update: {},
+    create: {
+      email: 'bob@student.com',
+      password: passwordHashStudent,
+      name: 'Bob Smith',
+      role: Role.STUDENT,
+      status: UserStatus.ACTIVE,
+      avatar: 'B',
+    },
+  });
+
   // Seed conversation if not exists
   const existingConv = await prisma.conversation.findFirst({
     where: {
@@ -101,6 +128,80 @@ async function main() {
             {
               senderId: itSupport.id,
               body: 'Hello! How can we help you today?',
+              read: false
+            }
+          ]
+        }
+      }
+    });
+  }
+
+  // Conversation with Teacher
+  const teacherConv = await prisma.conversation.findFirst({
+    where: {
+      AND: [
+        { participants: { some: { userId: student.id } } },
+        { participants: { some: { userId: teacher.id } } }
+      ]
+    }
+  });
+
+  if (!teacherConv) {
+    await prisma.conversation.create({
+      data: {
+        participants: {
+          create: [
+            { userId: student.id },
+            { userId: teacher.id }
+          ]
+        },
+        messages: {
+          create: [
+            {
+              senderId: teacher.id,
+              body: 'Don\'t forget about the upcoming assignment for Intro to CS.',
+              read: false
+            }
+          ]
+        }
+      }
+    });
+  }
+
+  // Conversation with Alice
+  const aliceConv = await prisma.conversation.findFirst({
+    where: {
+      AND: [
+        { participants: { some: { userId: student.id } } },
+        { participants: { some: { userId: alice.id } } }
+      ]
+    }
+  });
+
+  if (!aliceConv) {
+    await prisma.conversation.create({
+      data: {
+        participants: {
+          create: [
+            { userId: student.id },
+            { userId: alice.id }
+          ]
+        },
+        messages: {
+          create: [
+            {
+              senderId: alice.id,
+              body: 'Hey, do you want to study together for the midterms?',
+              read: false
+            },
+            {
+              senderId: student.id,
+              body: 'Sure! Meet at the library at 5 PM?',
+              read: true
+            },
+            {
+              senderId: alice.id,
+              body: 'Sounds good! See you then.',
               read: false
             }
           ]
