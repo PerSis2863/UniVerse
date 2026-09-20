@@ -112,7 +112,7 @@ export default function StudentDashboard() {
                     <Clock className="w-3 h-3" />
                     {cls.time}
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
