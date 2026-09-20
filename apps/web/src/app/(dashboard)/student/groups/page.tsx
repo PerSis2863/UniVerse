@@ -69,7 +69,7 @@ export default function GroupsPage() {
   // Handle webcam stream reliably
   useEffect(() => {
     if (showMeeting && isCamOn) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then(stream => {
           setLocalStream(stream);
         })
@@ -95,8 +95,18 @@ export default function GroupsPage() {
   useEffect(() => {
     if (videoRef.current && localStream) {
       videoRef.current.srcObject = localStream;
+      videoRef.current.play().catch(e => console.error("Video play failed:", e));
     }
-  }, [localStream, videoRef.current, showMeeting]);
+  }, [localStream, showMeeting, isCamOn]);
+
+  // Toggle mic track when isMicOn changes
+  useEffect(() => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = isMicOn;
+      });
+    }
+  }, [isMicOn, localStream]);
 
 
   const filtered = groups.filter(g =>
