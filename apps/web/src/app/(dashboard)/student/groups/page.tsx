@@ -2,7 +2,7 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 
 const groups = [
@@ -52,6 +52,9 @@ export default function GroupsPage() {
   const [showMeeting, setShowMeeting] = useState(false);
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string} | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isCamOn, setIsCamOn] = useState(true);
 
   const filtered = groups.filter(g =>
     (filter === 'All' || g.type === filter) &&
@@ -416,11 +419,15 @@ export default function GroupsPage() {
               </div>
               <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-b-2xl">
                 <div className="flex items-center gap-2">
-                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => {
-                    const newFile = { id: Date.now(), user: 'You', initials: 'ME', text: '', isFile: true, fileName: 'Attached_Document.pdf', time: 'Just now' };
-                    setChatMessages([...chatMessages, newFile]);
-                    toast.success('Document attached');
-                  }}>
+                  <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      const newFile = { id: Date.now(), user: 'You', initials: 'ME', text: '', isFile: true, fileName: file.name, time: 'Just now' };
+                      setChatMessages([...chatMessages, newFile]);
+                      toast.success(`Document ${file.name} attached`);
+                    }
+                  }} />
+                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => fileInputRef.current?.click()}>
                     <Paperclip className="w-5 h-5" />
                   </button>
                   <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => {
@@ -466,9 +473,13 @@ export default function GroupsPage() {
               ))}
             </div>
             <div className="p-6 bg-zinc-900/80 backdrop-blur-lg flex justify-center items-center gap-4 border-t border-zinc-800">
-              <button className="w-12 h-12 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white transition-colors" onClick={() => toast.success('Microphone toggled')}><Mic className="w-5 h-5" /></button>
-              <button className="w-12 h-12 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white transition-colors" onClick={() => toast.success('Camera toggled')}><VideoOff className="w-5 h-5" /></button>
-              <button className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors shadow-lg" onClick={() => setShowMeeting(false)}><PhoneOff className="w-6 h-6" /></button>
+              <button className={`w-12 h-12 rounded-full ${isMicOn ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-red-500 hover:bg-red-600'} flex items-center justify-center text-white transition-colors`} onClick={() => setIsMicOn(!isMicOn)}>
+                {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+              </button>
+              <button className={`w-12 h-12 rounded-full ${isCamOn ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-red-500 hover:bg-red-600'} flex items-center justify-center text-white transition-colors`} onClick={() => setIsCamOn(!isCamOn)}>
+                {isCamOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+              </button>
+              <button className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors shadow-lg" onClick={() => { setShowMeeting(false); toast.info('You left the meeting'); }}><PhoneOff className="w-6 h-6" /></button>
               <button className="w-12 h-12 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white transition-colors" onClick={() => { setShowMeeting(false); setShowChat(true); }}><MessageSquare className="w-5 h-5" /></button>
             </div>
           </motion.div>
@@ -512,31 +523,47 @@ export default function GroupsPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors"><Download className="w-5 h-5" /></button>
-                <button className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors"><ExternalLink className="w-5 h-5" /></button>
+                <button className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors" onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = '#';
+                  link.download = showFilePreview.name;
+                  link.click();
+                  toast.success(`Downloaded ${showFilePreview.name} to your device`);
+                }}><Download className="w-5 h-5" /></button>
+                <button className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors" onClick={() => toast.success('Link copied to clipboard!')}><ExternalLink className="w-5 h-5" /></button>
                 <button onClick={() => setShowFilePreview(null)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors ml-4"><X className="w-5 h-5" /></button>
               </div>
             </div>
             
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex-1 bg-white dark:bg-zinc-950 rounded-2xl overflow-hidden flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-2xl relative">
                {/* Simulated Document Content */}
-               <div className="w-full h-full max-w-4xl mx-auto p-12 bg-white dark:bg-zinc-900 overflow-y-auto shadow-inner">
-                  <div className="h-8 w-3/4 bg-zinc-200 dark:bg-zinc-800 rounded-md mb-8 animate-pulse" />
-                  <div className="space-y-4 mb-12">
-                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
-                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
-                    <div className="h-4 w-5/6 bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
-                    <div className="h-4 w-11/12 bg-zinc-100 dark:bg-zinc-800 rounded" />
-                  </div>
+               <div className="w-full h-full max-w-4xl mx-auto p-12 bg-white dark:bg-zinc-900 overflow-y-auto shadow-inner text-zinc-800 dark:text-zinc-200">
+                  <h1 className="text-3xl font-bold mb-6">{showFilePreview.name.replace(/\.[^/.]+$/, "")}</h1>
+                  <p className="text-lg mb-8 leading-relaxed">
+                    This document contains essential information and updates regarding our recent group activities and upcoming milestones. Please review the details below carefully.
+                  </p>
                   
-                  <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl mb-12 flex items-center justify-center">
-                    <Video className="w-12 h-12 text-zinc-300 dark:text-zinc-700" />
-                  </div>
+                  <h2 className="text-xl font-semibold mb-4 text-indigo-600 dark:text-indigo-400">1. Key Objectives</h2>
+                  <ul className="list-disc pl-6 space-y-2 mb-8">
+                    <li>Complete the primary research phase by end of this week.</li>
+                    <li>Draft the initial findings report and share with the team.</li>
+                    <li>Prepare presentation slides for the next sync meeting.</li>
+                  </ul>
 
-                  <div className="space-y-4">
-                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
-                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-2" />
-                    <div className="h-4 w-4/6 bg-zinc-100 dark:bg-zinc-800 rounded" />
+                  {showFilePreview.ext === 'pdf' || showFilePreview.ext === 'fig' ? (
+                    <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl mb-12 flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-700">
+                      <FileText className="w-16 h-16 text-zinc-400 dark:text-zinc-500 mb-4" />
+                      <span className="text-zinc-500 dark:text-zinc-400 font-medium">{showFilePreview.name} Visual Preview</span>
+                    </div>
+                  ) : null}
+
+                  <h2 className="text-xl font-semibold mb-4 text-indigo-600 dark:text-indigo-400">2. Next Steps</h2>
+                  <p className="leading-relaxed mb-6">
+                    Ensure all assignments are submitted through the portal before the deadline. We will discuss these points in detail during our next scheduled call.
+                  </p>
+                  
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg">
+                    <p className="text-amber-800 dark:text-amber-200 text-sm font-medium">Note: This is a simulated document view. You can download the actual file using the button in the top right corner.</p>
                   </div>
                </div>
             </motion.div>
