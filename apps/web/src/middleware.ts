@@ -26,11 +26,11 @@ export default clerkMiddleware(async (auth, req) => {
 function applySecurityHeaders(res: NextResponse) {
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://clerk.dev;
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https://images.unsplash.com https://img.clerk.com https://ui-avatars.com;
-    font-src 'self';
-    connect-src 'self' https://api.clerk.dev wss://ws.clerk.dev https://vitals.vercel-insights.com;
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    img-src 'self' blob: data: https://images.unsplash.com https://img.clerk.com https://*.clerk.com https://ui-avatars.com;
+    font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
+    connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://api.clerk.dev wss://*.clerk.accounts.dev https://vitals.vercel-insights.com;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
