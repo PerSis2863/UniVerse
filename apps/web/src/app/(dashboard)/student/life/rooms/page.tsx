@@ -1,13 +1,25 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Map, Calendar as CalendarIcon, Clock, Users, Search } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Map, Calendar as CalendarIcon, Clock, Users, Search, X, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useState } from 'react';
+
+type Room = { name: string, capacity: number, type: string, features: string[] };
 
 export default function RoomReservationPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Form states
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('10:00 AM');
+  const [duration, setDuration] = useState('1');
+
+  // Booking modal states
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [bookingStatus, setBookingStatus] = useState<'confirm' | 'loading' | 'success'>('confirm');
+  const [bookingId, setBookingId] = useState('');
 
   const handleSearch = () => {
     setIsSearching(true);
@@ -24,6 +36,28 @@ export default function RoomReservationPage() {
       setIsSearching(false);
       setHasSearched(true);
     }, 1500);
+  };
+
+  const handleBookClick = (room: Room) => {
+    setSelectedRoom(room);
+    setBookingStatus('confirm');
+  };
+
+  const confirmBooking = () => {
+    setBookingStatus('loading');
+    setTimeout(() => {
+      const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      setBookingId(randomId);
+      setBookingStatus('success');
+    }, 1500);
+  };
+
+  const closeBookingModal = () => {
+    setSelectedRoom(null);
+    setTimeout(() => {
+      setBookingStatus('confirm');
+      setBookingId('');
+    }, 300);
   };
 
   return (
@@ -61,7 +95,7 @@ export default function RoomReservationPage() {
           >
             <h3 className="text-lg font-bold text-white mb-6">Find a Space</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-400">Date</label>
                 <div className="relative">
@@ -70,8 +104,31 @@ export default function RoomReservationPage() {
                   </div>
                   <input 
                     type="date" 
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
                     className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 [color-scheme:dark]"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-400">Time</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <select 
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]"
+                  >
+                    <option value="09:00 AM">09:00 AM</option>
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="11:00 AM">11:00 AM</option>
+                    <option value="01:00 PM">01:00 PM</option>
+                    <option value="02:00 PM">02:00 PM</option>
+                    <option value="03:00 PM">03:00 PM</option>
+                  </select>
                 </div>
               </div>
 
@@ -81,7 +138,11 @@ export default function RoomReservationPage() {
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
                     <Clock className="w-4 h-4" />
                   </div>
-                  <select className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]">
+                  <select 
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]"
+                  >
                     <option value="1">1 Hour</option>
                     <option value="2">2 Hours</option>
                     <option value="3">3 Hours</option>
@@ -140,7 +201,10 @@ export default function RoomReservationPage() {
                       ))}
                     </div>
                   </div>
-                  <button onClick={() => toast.success(`Booked ${room.name}!`)} className="px-6 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold transition-colors shrink-0 border border-indigo-500/20 hover:border-indigo-500/40 w-full sm:w-auto">
+                  <button 
+                    onClick={() => handleBookClick(room)} 
+                    className="px-6 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold transition-colors shrink-0 border border-indigo-500/20 hover:border-indigo-500/40 w-full sm:w-auto"
+                  >
                     Book Now
                   </button>
                 </div>
@@ -150,6 +214,104 @@ export default function RoomReservationPage() {
 
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedRoom && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-[#0d1117] border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
+                <h2 className="text-xl font-bold text-white">Booking Confirmation</h2>
+                <button onClick={closeBookingModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-8">
+                {bookingStatus === 'success' ? (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-4">
+                    <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Booking Confirmed!</h3>
+                    <p className="text-zinc-400 text-sm mb-6">Your room has been successfully reserved.</p>
+                    
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 mb-6 text-left">
+                      <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Booking ID</div>
+                      <div className="text-lg font-mono font-bold text-indigo-400 mb-4">{bookingId}</div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Room</div>
+                          <div className="text-sm text-white font-medium">{selectedRoom.name}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Time</div>
+                          <div className="text-sm text-white font-medium">{time} ({duration} hr{duration !== '1' ? 's' : ''})</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button onClick={closeBookingModal} className="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-xl font-medium transition-colors w-full">
+                      Close
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                    <p className="text-zinc-300 mb-6 text-center">Are you sure you want to book this room?</p>
+                    
+                    <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-5 mb-8">
+                      <h4 className="font-bold text-lg text-white mb-4">{selectedRoom.name}</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400 text-sm">Date</span>
+                          <span className="text-white text-sm font-medium">{date || 'Today'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400 text-sm">Time</span>
+                          <span className="text-white text-sm font-medium">{time}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400 text-sm">Duration</span>
+                          <span className="text-white text-sm font-medium">{duration} Hour{duration !== '1' ? 's' : ''}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={closeBookingModal}
+                        disabled={bookingStatus === 'loading'}
+                        className="flex-1 py-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium transition-colors disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={confirmBooking}
+                        disabled={bookingStatus === 'loading'}
+                        className="flex-1 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-70"
+                      >
+                        {bookingStatus === 'loading' ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            Confirming...
+                          </>
+                        ) : (
+                          'Confirm Booking'
+                        )}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
