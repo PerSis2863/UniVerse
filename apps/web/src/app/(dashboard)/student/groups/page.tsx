@@ -1,15 +1,15 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink } from 'lucide-react';
+import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink, Edit2, Trash2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 
 const groups = [
-  { id: 1, name: 'OS Study Group', type: 'Study', members: 12, latestActivity: 'Alex shared Chapter_4_Notes.pdf', time: '10m ago', unread: 3, color: 'from-blue-500 to-indigo-600', initials: 'OS', completion: 68, avatars: ['AK','BL','CR','DM'] },
-  { id: 2, name: 'Web App Hackathon', type: 'Project', members: 4, latestActivity: 'Sarah pushed to main branch', time: '1h ago', unread: 0, color: 'from-fuchsia-500 to-pink-600', initials: 'WH', completion: 42, avatars: ['SK','JP','RM','TN'] },
-  { id: 3, name: 'Clean Water Initiative', type: 'Impact', members: 28, latestActivity: 'Dr. Evans: Meeting at 5PM today', time: '2h ago', unread: 12, color: 'from-emerald-500 to-teal-600', initials: 'CW', completion: 81, avatars: ['DE','LF','GM','HO'] },
-  { id: 4, name: 'AI Research Collective', type: 'Research', members: 9, latestActivity: 'New paper shared: LLM Reasoning', time: '4h ago', unread: 2, color: 'from-amber-500 to-orange-600', initials: 'AI', completion: 55, avatars: ['PA','QB','RC','SD'] },
+  { id: 1, name: 'OS Study Group', type: 'Study', members: 12, latestActivity: 'Alex shared Chapter_4_Notes.pdf', time: '10m ago', unread: 3, color: 'from-blue-500 to-indigo-600', initials: 'OS', completion: 68, avatars: ['AK','BL','CR','DM'], isMeetingActive: false },
+  { id: 2, name: 'Web App Hackathon', type: 'Project', members: 4, latestActivity: 'Sarah pushed to main branch', time: '1h ago', unread: 0, color: 'from-fuchsia-500 to-pink-600', initials: 'WH', completion: 42, avatars: ['SK','JP','RM','TN'], isMeetingActive: true },
+  { id: 3, name: 'Clean Water Initiative', type: 'Impact', members: 28, latestActivity: 'Dr. Evans: Meeting at 5PM today', time: '2h ago', unread: 12, color: 'from-emerald-500 to-teal-600', initials: 'CW', completion: 81, avatars: ['DE','LF','GM','HO'], isMeetingActive: false },
+  { id: 4, name: 'AI Research Collective', type: 'Research', members: 9, latestActivity: 'New paper shared: LLM Reasoning', time: '4h ago', unread: 2, color: 'from-amber-500 to-orange-600', initials: 'AI', completion: 55, avatars: ['PA','QB','RC','SD'], isMeetingActive: false },
 ];
 
 const feed = [
@@ -44,42 +44,56 @@ export default function GroupsPage() {
   // New Modals State
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{ id: number, user: string, initials: string, text: string, time: string, isFile?: boolean, fileName?: string }>>([
+  const [chatMessages, setChatMessages] = useState<Array<{ id: number | string, user: string, initials: string, text: string, time: string, isFile?: boolean, fileName?: string, isEdited?: boolean }>>([
     { id: 1, user: 'Alex Chen', initials: 'AC', text: 'Hey guys, I uploaded the notes for Chapter 4.', time: '10:00 AM' },
     { id: 2, user: 'Sarah Kim', initials: 'SK', text: 'Thanks! I will review them tonight.', time: '10:05 AM' }
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<number | string | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState('');
+  
   const [showMeeting, setShowMeeting] = useState(false);
+  const [showMeetingChat, setShowMeetingChat] = useState(false); // In-meeting chat panel
   const [showAllMembers, setShowAllMembers] = useState(false);
   const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string, aiSummary?: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCamOn, setIsCamOn] = useState(true);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Handle webcam stream
+  // Handle webcam stream reliably
   useEffect(() => {
-    let activeStream: MediaStream | null = null;
     if (showMeeting && isCamOn) {
       navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         .then(stream => {
-          activeStream = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
+          setLocalStream(stream);
         })
         .catch(err => {
           console.error("Camera access error:", err);
           toast.error("Could not access camera. Please check permissions.");
         });
+    } else {
+      setLocalStream(null);
     }
     
     return () => {
-      if (activeStream) {
-        activeStream.getTracks().forEach(track => track.stop());
-      }
+      setLocalStream(prevStream => {
+        if (prevStream) {
+          prevStream.getTracks().forEach(track => track.stop());
+        }
+        return null;
+      });
     };
   }, [showMeeting, isCamOn]);
+
+  // Bind the stream to the video element whenever it changes or the video mounts
+  useEffect(() => {
+    if (videoRef.current && localStream) {
+      videoRef.current.srcObject = localStream;
+    }
+  }, [localStream, videoRef.current, showMeeting]);
+
 
   const filtered = groups.filter(g =>
     (filter === 'All' || g.type === filter) &&
@@ -287,8 +301,11 @@ export default function GroupsPage() {
                   }}>
                     <Upload className="w-4 h-4 inline mr-1" /> Files
                   </button>
-                  <button className="flex-1 btn-secondary py-2 text-sm" onClick={() => setShowMeeting(true)}>
-                    <Video className="w-4 h-4 inline mr-1" /> Meet
+                  <button 
+                    className={`flex-1 py-2 text-sm ${selectedGroup.isMeetingActive ? 'bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/30' : 'btn-secondary'}`} 
+                    onClick={() => setShowMeeting(true)}
+                  >
+                    <Video className="w-4 h-4 inline mr-1" /> {selectedGroup.isMeetingActive ? 'Join Meeting' : 'Meet'}
                   </button>
                 </div>
 
@@ -421,33 +438,55 @@ export default function GroupsPage() {
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50/50 dark:bg-zinc-900/50">
                 {chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex gap-3 ${msg.user === 'You' ? 'flex-row-reverse' : ''}`}>
+                  <div key={i} className={`flex gap-3 ${msg.user === 'You' ? 'flex-row-reverse' : ''} group/message`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${msg.user === 'You' ? 'bg-indigo-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'}`}>{msg.initials}</div>
                     <div className={`max-w-[75%] ${msg.user === 'You' ? 'items-end' : 'items-start'} flex flex-col`}>
                       <div className="flex items-baseline gap-2 mb-1 px-1">
                         <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{msg.user}</span>
-                        <span className="text-[10px] text-zinc-400">{msg.time}</span>
+                        <span className="text-[10px] text-zinc-400">{msg.time} {msg.isEdited && '(edited)'}</span>
                       </div>
-                      <div className={`p-3 rounded-2xl text-sm ${msg.user === 'You' ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
-                        {msg.isFile ? (
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => setShowFilePreview({ name: msg.fileName || '', ext: msg.fileName?.split('.').pop() || '', aiSummary: (msg as any).aiSummary })}>
-                              <FileText className="w-5 h-5" />
-                              <span className="underline font-medium">{msg.fileName}</span>
-                            </div>
-                            {msg.text && msg.text.includes('Uploading') && (
-                               <span className="text-xs text-indigo-200 mt-1 animate-pulse">Generating AI Summary...</span>
-                            )}
+                      <div className="flex items-center gap-2">
+                        {msg.user === 'You' && !msg.isFile && (
+                          <div className="opacity-0 group-hover/message:opacity-100 flex items-center gap-1 transition-opacity">
+                            <button onClick={() => { setEditingMessageId(msg.id); setEditingMessageText(msg.text); }} className="p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded">
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => {
+                              // Optimistic delete
+                              setChatMessages(prev => prev.filter(m => m.id !== msg.id));
+                              fetch(`/api/groups/messages?id=${msg.id}`, { method: 'DELETE' }).catch(e => console.error("Failed to delete", e));
+                            }} className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
                           </div>
-                        ) : (
-                          msg.text
                         )}
+                        <div className={`p-3 rounded-2xl text-sm ${msg.user === 'You' ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
+                          {msg.isFile ? (
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => setShowFilePreview({ name: msg.fileName || '', ext: msg.fileName?.split('.').pop() || '', aiSummary: (msg as any).aiSummary })}>
+                                <FileText className="w-5 h-5" />
+                                <span className="underline font-medium">{msg.fileName}</span>
+                              </div>
+                              {msg.text && msg.text.includes('Uploading') && (
+                                <span className="text-xs text-indigo-200 mt-1 animate-pulse">Generating AI Summary...</span>
+                              )}
+                            </div>
+                          ) : (
+                            msg.text
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-b-2xl">
+                {editingMessageId && (
+                  <div className="flex justify-between items-center mb-2 px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs text-zinc-600 dark:text-zinc-300">
+                    <span>Editing message</span>
+                    <button onClick={() => { setEditingMessageId(null); setEditingMessageText(''); setChatInput(''); }} className="hover:text-zinc-900 dark:hover:text-white"><X className="w-3 h-3" /></button>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => {
                     if (e.target.files && e.target.files[0]) {
@@ -501,19 +540,54 @@ export default function GroupsPage() {
                   <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => fileInputRef.current?.click()}>
                     <Paperclip className="w-5 h-5" />
                   </button>
-                  <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => {
-                    if (e.key === 'Enter' && chatInput.trim()) {
-                      setChatMessages([...chatMessages, { id: Date.now(), user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
-                      setChatInput('');
-                    }
-                  }} placeholder="Type a message..." className="flex-1 bg-zinc-100 dark:bg-zinc-800 border-none rounded-full px-4 py-2 text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <input 
+                    value={editingMessageId ? editingMessageText : chatInput} 
+                    onChange={e => editingMessageId ? setEditingMessageText(e.target.value) : setChatInput(e.target.value)} 
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        if (editingMessageId && editingMessageText.trim()) {
+                          // Optimistic edit
+                          setChatMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, text: editingMessageText, isEdited: true } : m));
+                          fetch('/api/groups/messages', {
+                            method: 'PATCH',
+                            body: JSON.stringify({ messageId: editingMessageId, content: editingMessageText })
+                          }).catch(err => console.error("Failed to edit", err));
+                          setEditingMessageId(null);
+                          setEditingMessageText('');
+                        } else if (!editingMessageId && chatInput.trim()) {
+                          const newId = Date.now();
+                          setChatMessages([...chatMessages, { id: newId, user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
+                          fetch('/api/groups/messages', {
+                            method: 'POST',
+                            body: JSON.stringify({ content: chatInput, senderId: 'mock-user-id', groupId: selectedGroup?.id?.toString() || '1' })
+                          }).catch(err => console.error("Failed to send", err));
+                          setChatInput('');
+                        }
+                      }
+                    }} 
+                    placeholder={editingMessageId ? "Edit your message..." : "Type your message..."} 
+                    className="flex-1 bg-zinc-100 dark:bg-zinc-800 border-none rounded-full px-4 py-2 text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                  />
                   <button className="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition-colors" onClick={() => {
-                    if (chatInput.trim()) {
-                      setChatMessages([...chatMessages, { id: Date.now(), user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
+                    if (editingMessageId && editingMessageText.trim()) {
+                      setChatMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, text: editingMessageText, isEdited: true } : m));
+                      fetch('/api/groups/messages', {
+                        method: 'PATCH',
+                        body: JSON.stringify({ messageId: editingMessageId, content: editingMessageText })
+                      }).catch(err => console.error("Failed to edit", err));
+                      setEditingMessageId(null);
+                      setEditingMessageText('');
+                    } else if (!editingMessageId && chatInput.trim()) {
+                      const newId = Date.now();
+                      setChatMessages([...chatMessages, { id: newId, user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
+                      fetch('/api/groups/messages', {
+                        method: 'POST',
+                        body: JSON.stringify({ content: chatInput, senderId: 'mock-user-id', groupId: selectedGroup?.id?.toString() || '1' })
+                      }).catch(err => console.error("Failed to send", err));
                       setChatInput('');
                     }
                   }}>
-                    <Send className="w-4 h-4" />
+                    {editingMessageId ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -523,45 +597,93 @@ export default function GroupsPage() {
 
         {/* Video Meeting Simulation */}
         {showMeeting && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-zinc-950 z-[70] flex flex-col">
-            <div className="p-4 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-white font-semibold">Meeting: {selectedGroup?.name}</span>
-                <span className="text-zinc-400 text-sm pl-4 border-l border-zinc-700">04:23</span>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-zinc-950 z-[70] flex flex-row">
+            <div className="flex-1 flex flex-col h-full relative">
+              <div className="p-4 flex justify-between items-center absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-zinc-950/80 to-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-white font-semibold">Meeting: {selectedGroup?.name}</span>
+                  <span className="text-zinc-400 text-sm pl-4 border-l border-zinc-700">04:23</span>
+                </div>
+              </div>
+              <div className="flex-1 p-4 sm:p-8 grid grid-cols-2 md:grid-cols-3 gap-4 place-content-center mt-12">
+                {[...Array(selectedGroup ? Math.min(selectedGroup.members, 6) : 4)].map((_, i) => (
+                  <div key={i} className="aspect-video bg-zinc-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-zinc-700">
+                    {i === 0 && isCamOn ? (
+                      <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
+                        {i === 0 ? 'ME' : (selectedGroup?.avatars[i] || 'U')}
+                      </div>
+                    )}
+                    <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur px-2 py-1 rounded-md text-xs text-white flex items-center gap-2">
+                      {i === 0 ? (
+                        !isMicOn && <MicOff className="w-3 h-3 text-red-400" />
+                      ) : (
+                        <MicOff className="w-3 h-3 text-red-400" />
+                      )} 
+                      {i === 0 ? 'You' : `User ${i + 1}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-6 bg-zinc-900/80 backdrop-blur-lg flex justify-center items-center gap-4 border-t border-zinc-800">
+                <button className={`w-12 h-12 rounded-full ${isMicOn ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-red-500 hover:bg-red-600'} flex items-center justify-center text-white transition-colors`} onClick={() => setIsMicOn(!isMicOn)}>
+                  {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                </button>
+                <button className={`w-12 h-12 rounded-full ${isCamOn ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-red-500 hover:bg-red-600'} flex items-center justify-center text-white transition-colors`} onClick={() => setIsCamOn(!isCamOn)}>
+                  {isCamOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+                </button>
+                <button className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors shadow-lg" onClick={() => { setShowMeeting(false); setShowMeetingChat(false); toast.info('You left the meeting'); }}><PhoneOff className="w-6 h-6" /></button>
+                <button className={`w-12 h-12 rounded-full ${showMeetingChat ? 'bg-indigo-500 hover:bg-indigo-600 text-white' : 'bg-zinc-700 hover:bg-zinc-600 text-white'} flex items-center justify-center transition-colors`} onClick={() => setShowMeetingChat(!showMeetingChat)}>
+                  <MessageSquare className="w-5 h-5" />
+                </button>
               </div>
             </div>
-            <div className="flex-1 p-4 sm:p-8 grid grid-cols-2 md:grid-cols-3 gap-4 place-content-center">
-              {[...Array(selectedGroup ? Math.min(selectedGroup.members, 6) : 4)].map((_, i) => (
-                <div key={i} className="aspect-video bg-zinc-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-zinc-700">
-                  {i === 0 && isCamOn ? (
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
-                      {i === 0 ? 'ME' : (selectedGroup?.avatars[i] || 'U')}
-                    </div>
-                  )}
-                  <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur px-2 py-1 rounded-md text-xs text-white flex items-center gap-2">
-                    {i === 0 ? (
-                      !isMicOn && <MicOff className="w-3 h-3 text-red-400" />
-                    ) : (
-                      <MicOff className="w-3 h-3 text-red-400" />
-                    )} 
-                    {i === 0 ? 'You' : `User ${i + 1}`}
+
+            {/* In-Meeting Side Chat */}
+            <AnimatePresence>
+              {showMeetingChat && (
+                <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 350, opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full">
+                  <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">Meeting Chat</h3>
+                    <button onClick={() => setShowMeetingChat(false)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
                   </div>
-                </div>
-              ))}
-            </div>
-            <div className="p-6 bg-zinc-900/80 backdrop-blur-lg flex justify-center items-center gap-4 border-t border-zinc-800">
-              <button className={`w-12 h-12 rounded-full ${isMicOn ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-red-500 hover:bg-red-600'} flex items-center justify-center text-white transition-colors`} onClick={() => setIsMicOn(!isMicOn)}>
-                {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-              </button>
-              <button className={`w-12 h-12 rounded-full ${isCamOn ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-red-500 hover:bg-red-600'} flex items-center justify-center text-white transition-colors`} onClick={() => setIsCamOn(!isCamOn)}>
-                {isCamOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-              </button>
-              <button className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors shadow-lg" onClick={() => { setShowMeeting(false); toast.info('You left the meeting'); }}><PhoneOff className="w-6 h-6" /></button>
-              <button className="w-12 h-12 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white transition-colors" onClick={() => { setShowMeeting(false); setShowChat(true); }}><MessageSquare className="w-5 h-5" /></button>
-            </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50/50 dark:bg-zinc-900/50">
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className={`flex gap-3 ${msg.user === 'You' ? 'flex-row-reverse' : ''}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${msg.user === 'You' ? 'bg-indigo-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'}`}>{msg.initials}</div>
+                        <div className={`max-w-[85%] ${msg.user === 'You' ? 'items-end' : 'items-start'} flex flex-col`}>
+                          <div className="flex items-baseline gap-2 mb-1 px-1">
+                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{msg.user}</span>
+                            <span className="text-[10px] text-zinc-400">{msg.time}</span>
+                          </div>
+                          <div className={`p-3 rounded-2xl text-sm ${msg.user === 'You' ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
+                            {msg.text}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                    <div className="flex items-center gap-2">
+                      <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => {
+                        if (e.key === 'Enter' && chatInput.trim()) {
+                          setChatMessages([...chatMessages, { id: Date.now(), user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
+                          setChatInput('');
+                        }
+                      }} placeholder="Send a message..." className="flex-1 bg-zinc-100 dark:bg-zinc-800 border-none rounded-full px-4 py-2 text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                      <button className="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition-colors" onClick={() => {
+                        if (chatInput.trim()) {
+                          setChatMessages([...chatMessages, { id: Date.now(), user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
+                          setChatInput('');
+                        }
+                      }}><Send className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
 

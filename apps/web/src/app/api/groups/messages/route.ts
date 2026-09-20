@@ -58,3 +58,46 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create message' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const { id, content } = await request.json();
+    
+    if (!id || !content) {
+      return NextResponse.json({ error: 'id and content are required' }, { status: 400 });
+    }
+
+    const message = await prisma.groupMessage.update({
+      where: { id },
+      data: { 
+        content,
+        isEdited: true 
+      }
+    });
+
+    return NextResponse.json(message);
+  } catch (error) {
+    console.error('Error updating message:', error);
+    return NextResponse.json({ error: 'Failed to update message' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    }
+
+    await prisma.groupMessage.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    return NextResponse.json({ error: 'Failed to delete message' }, { status: 500 });
+  }
+}

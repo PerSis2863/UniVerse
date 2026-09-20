@@ -154,7 +154,9 @@ model GroupMessage {
   content     String
   senderId    String
   groupId     String
+  isEdited    Boolean  @default(false)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   sender      User     @relation(fields: [senderId], references: [id])
   group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
