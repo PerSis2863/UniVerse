@@ -1,5 +1,7 @@
 'use client';
+import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { toast } from 'sonner';
 import { BookOpen, Clock, PlayCircle, MoreHorizontal, GraduationCap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -12,6 +14,8 @@ const courses = [
 ];
 
 export default function CoursesPage() {
+  const [activeTab, setActiveTab] = useState<'current' | 'past'>('current');
+
   return (
     <>
       <Topbar title="My Courses" subtitle="Manage your current semester classes and materials." />
@@ -36,7 +40,10 @@ export default function CoursesPage() {
               Module 4: Graph Traversals (BFS and DFS). You're almost done with this section!
             </p>
             <div className="pt-2">
-              <button className="btn-primary">
+              <button 
+                onClick={() => toast.success('Resuming Module 4: Graph Traversals')}
+                className="btn-primary"
+              >
                 Resume Module
               </button>
             </div>
@@ -60,65 +67,97 @@ export default function CoursesPage() {
 
         {/* Tabs */}
         <div className="flex items-center gap-4 border-b border-zinc-200 dark:border-white/[0.06] pb-px">
-          <button className="px-4 py-2 border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
+          <button 
+            onClick={() => setActiveTab('current')}
+            className={cn(
+              "px-4 py-2 border-b-2 font-semibold text-sm transition-colors",
+              activeTab === 'current' 
+                ? "border-indigo-500 text-indigo-600 dark:text-indigo-400" 
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            )}
+          >
             Current Semester
           </button>
-          <button className="px-4 py-2 border-b-2 border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-medium text-sm transition-colors">
+          <button 
+            onClick={() => setActiveTab('past')}
+            className={cn(
+              "px-4 py-2 border-b-2 font-semibold text-sm transition-colors",
+              activeTab === 'past' 
+                ? "border-indigo-500 text-indigo-600 dark:text-indigo-400" 
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            )}
+          >
             Past Courses
           </button>
         </div>
 
         {/* Course Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {courses.map((course, i) => (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.1 }}
-              key={course.id}
-              className="card-hover group cursor-pointer"
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", course.bg, course.text)}>
-                  <BookOpen className="w-6 h-6" />
+        {activeTab === 'current' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {courses.map((course, i) => (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.1 }}
+                key={course.id}
+                className="card-hover group cursor-pointer"
+              >
+                <div className="flex justify-between items-start mb-6">
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", course.bg, course.text)}>
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-400 transition-colors">
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
                 </div>
-                <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-400 transition-colors">
-                  <MoreHorizontal className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
-                {course.title}
-              </h3>
-              <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                <GraduationCap className="w-4 h-4" /> {course.professor}
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">Progress</span>
-                    <span className="font-semibold text-zinc-900 dark:text-white">{course.progress}%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-zinc-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${course.progress}%` }}
-                      transition={{ duration: 1, delay: i * 0.1 }}
-                      className={cn("h-full rounded-full bg-gradient-to-r", course.color)}
-                    />
-                  </div>
+                
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+                  {course.title}
+                </h3>
+                <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                  <GraduationCap className="w-4 h-4" /> {course.professor}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/[0.06]">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                    <Clock className="w-3.5 h-3.5" /> Next: {course.nextClass}
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">Progress</span>
+                      <span className="font-semibold text-zinc-900 dark:text-white">{course.progress}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-zinc-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${course.progress}%` }}
+                        transition={{ duration: 1, delay: i * 0.1 }}
+                        className={cn("h-full rounded-full bg-gradient-to-r", course.color)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/[0.06]">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      <Clock className="w-3.5 h-3.5" /> Next: {course.nextClass}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-20 px-4 border border-dashed border-zinc-200 dark:border-white/[0.1] rounded-2xl"
+          >
+            <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800/50 flex items-center justify-center mb-4">
+              <BookOpen className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
+            </div>
+            <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-2">No Past Courses</h3>
+            <p className="text-zinc-500 dark:text-zinc-400 text-center max-w-sm">
+              You haven't completed any courses yet. Check back here at the end of the semester!
+            </p>
+          </motion.div>
+        )}
 
       </div>
     </>
