@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "prisma generate --schema=../api/prisma/schema.prisma && next build --webpack",
-    "postinstall": "prisma generate --schema=../api/prisma/schema.prisma",
+    "build": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate --schema=../api/prisma/schema.prisma && next build --webpack",
+    "postinstall": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate --schema=../api/prisma/schema.prisma",
     "start": "next start",
     "lint": "eslint"
   },
