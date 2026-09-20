@@ -38,6 +38,8 @@ export default function GroupsPage() {
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<typeof INITIAL_GROUPS[0] | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<number | string | null>(null);
+  const [inviteGroup, setInviteGroup] = useState<typeof INITIAL_GROUPS[0] | null>(null);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('Study');
@@ -201,9 +203,21 @@ export default function GroupsPage() {
                           {group.unread}
                         </span>
                       )}
-                      <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); toast.info('Group options'); }}>
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
+                      <div className="relative">
+                        <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === group.id ? null : group.id); }}>
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                        {activeMenuId === group.id && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg z-50 py-1 overflow-hidden" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => { setInviteGroup(group); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2">
+                               <Users className="w-4 h-4" /> Add people
+                            </button>
+                            <button onClick={() => { setGroupsList(groupsList.filter(g => g.id !== group.id)); setActiveMenuId(null); toast.success("Group deleted"); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                               <Trash2 className="w-4 h-4" /> Delete group
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -308,7 +322,22 @@ export default function GroupsPage() {
               className="fixed right-0 top-0 h-full w-full sm:w-[420px] bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl z-50 overflow-y-auto"
             >
               <div className={`h-28 bg-gradient-to-br ${selectedGroup.color} relative flex items-end p-5`}>
-                <button onClick={() => setSelectedGroup(null)} className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
+                <div className="absolute top-4 right-14">
+                  <button onClick={() => setActiveMenuId(activeMenuId === 'detail' ? null : 'detail')} className="p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                  {activeMenuId === 'detail' && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                      <button onClick={() => { setInviteGroup(selectedGroup); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2">
+                         <Users className="w-4 h-4" /> Add people
+                      </button>
+                      <button onClick={() => { setGroupsList(groupsList.filter(g => g.id !== selectedGroup.id)); setSelectedGroup(null); setActiveMenuId(null); toast.success("Group deleted"); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                         <Trash2 className="w-4 h-4" /> Delete group
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setSelectedGroup(null)} className="absolute top-4 right-4 p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
                   <X className="w-4 h-4" />
                 </button>
                 <div>
@@ -484,6 +513,85 @@ export default function GroupsPage() {
         )}
       </AnimatePresence>
       {/* Modals for new functionality */}
+      <AnimatePresence>
+        {inviteGroup && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.target === e.currentTarget && setInviteGroup(null)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-md shadow-2xl p-6 relative">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Invite to {inviteGroup.name}</h3>
+                <button onClick={() => { setInviteGroup(null); setGeneratedLink(''); setInviteInput(''); setInviteMembers([]); }} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Invite Members</label>
+                  <div className="flex gap-2 mb-2">
+                    <input 
+                      value={inviteInput} 
+                      onChange={e => setInviteInput(e.target.value)} 
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && inviteInput.trim()) {
+                          setInviteMembers([...inviteMembers, inviteInput.trim()]);
+                          setInviteInput('');
+                        }
+                      }}
+                      placeholder="Email or username..." 
+                      className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" 
+                    />
+                    <button 
+                      onClick={() => {
+                        if (inviteInput.trim()) {
+                          setInviteMembers([...inviteMembers, inviteInput.trim()]);
+                          setInviteInput('');
+                        }
+                      }}
+                      className="px-4 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/80 dark:text-indigo-300 rounded-xl text-sm font-medium transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {inviteMembers.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {inviteMembers.map((member, i) => (
+                        <div key={i} className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                          <span>{member}</span>
+                          <button onClick={() => setInviteMembers(inviteMembers.filter((_, idx) => idx !== i))} className="hover:text-red-500 transition-colors">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Share Link</label>
+                   {generatedLink ? (
+                      <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2">
+                        <span className="text-xs font-mono text-green-700 dark:text-green-300 flex-1 truncate">{generatedLink}</span>
+                        <button onClick={() => { navigator.clipboard.writeText(generatedLink); toast.success("Link copied!"); }} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium text-sm px-2">Copy</button>
+                      </div>
+                   ) : (
+                      <button onClick={() => setGeneratedLink(`${window.location.origin}/join/${Math.random().toString(36).substring(7)}`)} className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
+                        Generate Invite Link
+                      </button>
+                   )}
+                </div>
+              </div>
+              <div className="flex gap-2 mt-6">
+                <button onClick={() => { 
+                  setInviteGroup(null); 
+                  if (inviteMembers.length > 0) {
+                     toast.success(`Invited ${inviteMembers.length} members to ${inviteGroup.name}`);
+                  }
+                  setInviteMembers([]);
+                  setGeneratedLink('');
+                  setInviteInput('');
+                }} className="flex-1 btn-primary py-2.5 text-sm">Done</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {/* Full Activity Feed */}
         {showAllActivity && (
