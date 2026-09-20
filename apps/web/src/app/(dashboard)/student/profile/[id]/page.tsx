@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Mail, Book, MapPin, Building2, Download, ExternalLink, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 type Resource = {
   id: string;

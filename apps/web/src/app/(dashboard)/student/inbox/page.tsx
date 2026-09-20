@@ -4,9 +4,9 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Search, Send, Phone, Video, MoreVertical, Paperclip, Smile, Check, CheckCheck, Mic, X, FileText, Image as ImageIcon, Contact, BarChart } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
-import { useAuth } from '@/store/auth';
+import { useAuthStore } from '@/store/auth';
 import { io, Socket } from 'socket.io-client';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 type UserInfo = {
   id: string;
@@ -21,6 +21,7 @@ type Message = {
   body: string;
   createdAt: string;
   read: boolean;
+  conversationId: string;
 };
 
 type Conversation = {
@@ -32,7 +33,7 @@ type Conversation = {
 };
 
 export default function InboxPage() {
-  const { user, accessToken } = useAuth();
+  const { user, accessToken } = useAuthStore();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);

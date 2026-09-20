@@ -19,21 +19,22 @@ export async function createTransaction(data: {
     throw new Error('User not found');
   }
 
-  const transaction = await prisma.transaction.create({
+  const payment = await prisma.payment.create({
     data: {
       amount: data.amount,
       description: data.description,
-      status: data.status,
+      status: data.status === 'PAID' ? 'COMPLETED' : 'PENDING',
+      type: 'OTHER',
       userId: user.id,
     },
   });
 
   revalidatePath('/admin/finances');
-  return transaction;
+  return payment;
 }
 
 export async function getTransactions() {
-  return await prisma.transaction.findMany({
+  return await prisma.payment.findMany({
     include: {
       user: true,
     },
@@ -52,7 +53,7 @@ export async function getUserTransactions(userEmail: string) {
     throw new Error('User not found');
   }
 
-  return await prisma.transaction.findMany({
+  return await prisma.payment.findMany({
     where: { userId: user.id },
     orderBy: {
       createdAt: 'desc',

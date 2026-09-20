@@ -34,10 +34,10 @@ export async function POST(req: Request) {
     if (transactionId) {
       // Update transaction status
       try {
-        const transaction = await prisma.transaction.update({
+        const transaction = await prisma.payment.update({
           where: { id: transactionId },
           data: { 
-            status: 'PAID',
+            status: 'COMPLETED',
             stripeSessionId: session.id
           },
           include: { user: true }

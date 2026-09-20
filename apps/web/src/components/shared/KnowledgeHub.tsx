@@ -3,7 +3,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, Copy } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
@@ -14,6 +14,9 @@ type Resource = {
   type: string;
   category: string;
   isPublic?: boolean;
+  url?: string;
+  size?: string;
+  date?: string;
 };
 
 export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'admin' }) {
@@ -24,6 +27,9 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareSearchTerm, setShareSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({ title: '', type: 'Document', category: 'General', url: '' });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { user } = useAuthStore();
 

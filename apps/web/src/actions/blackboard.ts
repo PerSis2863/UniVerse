@@ -27,10 +27,7 @@ export async function getUserMessages(userId: string) {
   try {
     const messages = await prisma.message.findMany({
       where: {
-        OR: [
-          { senderId: userId },
-          { receiverId: userId }
-        ]
+        senderId: userId
       },
       orderBy: { createdAt: 'desc' }
     });
