@@ -40,7 +40,7 @@ export default function AccountingPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        toast.error('Failed to create payment session.');
+        toast.error(data.error || 'Failed to create payment session.');
       }
     } catch (e) {
       toast.error('An error occurred. Please try again.');
