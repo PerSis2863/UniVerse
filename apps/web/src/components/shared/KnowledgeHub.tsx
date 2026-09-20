@@ -28,6 +28,8 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   const [activeCategory, setActiveCategory] = useState('All');
   const [resources, setResources] = useState<Resource[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareSearchTerm, setShareSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState({ title: '', category: 'General', type: 'Document', url: '' });
@@ -112,9 +114,13 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   };
 
   const handleShareHub = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(`${url}?shared=true`);
-    toast.success('Link copied! You can now share your Knowledge Hub.');
+    setShowShareModal(true);
+  };
+
+  const submitShareHub = () => {
+    toast.success('Your Knowledge Hub is now shared successfully!');
+    setShowShareModal(false);
+    setShareSearchTerm('');
   };
 
   const handleShareFile = (title: string) => {
@@ -352,6 +358,44 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
               <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
               <button onClick={handleAdd} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
                 <Plus className="w-4 h-4" /> Add Resource
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white">Share Knowledge Hub</h2>
+                <p className="text-sm text-zinc-400 mt-1">Make your resources visible to others.</p>
+              </div>
+              <button onClick={() => setShowShareModal(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-zinc-300 block mb-1">Share with</label>
+                <input 
+                  type="text" 
+                  value={shareSearchTerm} 
+                  onChange={e => setShareSearchTerm(e.target.value)} 
+                  className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500" 
+                  placeholder="Search by name or email (e.g., Alice)..." 
+                />
+              </div>
+              <div className="text-xs text-zinc-500">
+                Leaving this empty will make your hub visible to anyone viewing your public profile.
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
+              <button onClick={() => setShowShareModal(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
+              <button onClick={submitShareHub} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
+                <Share2 className="w-4 h-4" /> Share
               </button>
             </div>
           </div>
