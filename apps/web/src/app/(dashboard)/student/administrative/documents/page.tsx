@@ -2,6 +2,8 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 
 const documents = [
   { id: '1', name: 'Official Transcript 2025-2026', type: 'PDF', size: '2.4 MB', date: 'Sept 15, 2026', category: 'Academic' },
@@ -11,12 +13,45 @@ const documents = [
 ];
 
 export default function DocumentsPage() {
+  const [category, setCategory] = useState('All Categories');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredDocs = category === 'All Categories' ? documents : documents.filter(d => d.category === category);
+
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      toast.success(`File selected: ${e.target.files[0].name}`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleView = (docName: string) => {
+    toast.info(`Opening ${docName} in viewer...`);
+  };
+
+  const handleDownload = (docName: string) => {
+    toast.success(`Downloading ${docName}...`);
+    const blob = new Blob(["This is a dummy document content."], { type: "application/pdf" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <Topbar 
         title="School Documents" 
         subtitle="Manage your official academic and administrative files." 
-        action={{ label: 'Upload Document', onClick: () => console.log('Upload clicked') }}
+        action={{ label: 'Upload Document', onClick: handleBrowseClick }}
       />
       <div className="flex-1 p-8 space-y-8">
         
@@ -29,7 +64,8 @@ export default function DocumentsPage() {
           <p className="text-zinc-600 dark:text-zinc-400 text-sm max-w-sm mb-6">
             Drag and drop your files here, or click to browse. Supported formats: PDF, JPG, PNG (Max 10MB).
           </p>
-          <button className="btn-primary flex items-center gap-2">
+          <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" />
+          <button onClick={handleBrowseClick} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> Browse Files
           </button>
         </div>
@@ -41,7 +77,11 @@ export default function DocumentsPage() {
               <FileBadge2 className="w-5 h-5 text-indigo-500" /> My Documents
             </h2>
             <div className="flex gap-2">
-              <select className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50">
+              <select 
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50"
+              >
                 <option>All Categories</option>
                 <option>Academic</option>
                 <option>Administrative</option>
@@ -52,7 +92,7 @@ export default function DocumentsPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {documents.map((doc, i) => (
+            {filteredDocs.map((doc, i) => (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -79,10 +119,10 @@ export default function DocumentsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 pt-4 border-t border-zinc-200 dark:border-white/[0.06]">
-                  <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors">
+                  <button onClick={() => handleView(doc.name)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors">
                     <Eye className="w-3.5 h-3.5" /> View
                   </button>
-                  <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors">
+                  <button onClick={() => handleDownload(doc.name)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors">
                     <Download className="w-3.5 h-3.5" /> Download
                   </button>
                 </div>
