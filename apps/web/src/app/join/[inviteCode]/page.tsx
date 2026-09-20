@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Users, CheckCircle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function JoinGroupPage({ params }: { params: { inviteCode: string } }) {
+export default function JoinGroupPage() {
   const router = useRouter();
+  const params = useParams();
+  const inviteCode = params.inviteCode as string;
   const [isJoining, setIsJoining] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -58,7 +60,7 @@ export default function JoinGroupPage({ params }: { params: { inviteCode: string
           <div className="bg-zinc-50 dark:bg-zinc-950/50 rounded-xl p-4 mb-8 border border-zinc-100 dark:border-zinc-800/50">
             <div className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">Invite Code</div>
             <div className="font-mono text-zinc-800 dark:text-zinc-300 tracking-wider">
-              {params.inviteCode}
+              {inviteCode}
             </div>
           </div>
 
