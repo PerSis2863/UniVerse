@@ -44,7 +44,7 @@ export default function GroupsPage() {
   // New Modals State
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
+  const [chatMessages, setChatMessages] = useState<Array<{ id: number, user: string, initials: string, text: string, time: string, isFile?: boolean, fileName?: string }>>([
     { id: 1, user: 'Alex Chen', initials: 'AC', text: 'Hey guys, I uploaded the notes for Chapter 4.', time: '10:00 AM' },
     { id: 2, user: 'Sarah Kim', initials: 'SK', text: 'Thanks! I will review them tonight.', time: '10:05 AM' }
   ]);
