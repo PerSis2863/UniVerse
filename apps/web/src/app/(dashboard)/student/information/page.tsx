@@ -40,20 +40,20 @@ export default function StudentInformation() {
                 <FileText className="w-5 h-5 text-indigo-400" /> Important Resources
               </h3>
               
-              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl divide-y divide-zinc-800">
-                <a href="#" onClick={(e) => handleLinkClick(e, 'Student Handbook')} className="block p-4 hover:bg-zinc-100 dark:bg-zinc-800/50 transition-colors">
+              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl divide-y divide-zinc-200 dark:divide-zinc-800">
+                <a href="#" onClick={(e) => handleLinkClick(e, 'Student Handbook')} className="block p-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
                   <div className="font-medium text-zinc-900 dark:text-white mb-1">Student Handbook 2026-2027</div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">Rules, policies, and code of conduct.</div>
                 </a>
-                <a href="#" onClick={(e) => handleLinkClick(e, 'Academic Calendar')} className="block p-4 hover:bg-zinc-100 dark:bg-zinc-800/50 transition-colors">
+                <a href="#" onClick={(e) => handleLinkClick(e, 'Academic Calendar')} className="block p-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
                   <div className="font-medium text-zinc-900 dark:text-white mb-1">Academic Calendar</div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">Term dates, holidays, and exam schedules.</div>
                 </a>
-                <a href="#" onClick={(e) => handleLinkClick(e, 'Campus Map')} className="block p-4 hover:bg-zinc-100 dark:bg-zinc-800/50 transition-colors">
+                <a href="#" onClick={(e) => handleLinkClick(e, 'Campus Map')} className="block p-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
                   <div className="font-medium text-zinc-900 dark:text-white mb-1">Campus Map</div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">Interactive map for buildings and facilities.</div>
                 </a>
-                <a href="#" onClick={(e) => handleLinkClick(e, 'Health & Wellness Center')} className="block p-4 hover:bg-zinc-100 dark:bg-zinc-800/50 transition-colors">
+                <a href="#" onClick={(e) => handleLinkClick(e, 'Health & Wellness Center')} className="block p-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
                   <div className="font-medium text-zinc-900 dark:text-white mb-1">Health & Wellness Center</div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">Medical services, counseling, and emergencies.</div>
                 </a>
@@ -67,8 +67,8 @@ export default function StudentInformation() {
               </h3>
               
               <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 space-y-5">
-                <div className="flex gap-4 cursor-pointer hover:bg-zinc-100 dark:bg-zinc-800/30 p-2 -mx-2 rounded-lg transition-colors" onClick={(e) => handleLinkClick(e, 'Career Fair Details')}>
-                  <div className="w-14 h-14 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex flex-col items-center justify-center flex-shrink-0 border border-zinc-700">
+                <div className="flex gap-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-2 -mx-2 rounded-lg transition-colors" onClick={(e) => handleLinkClick(e, 'Career Fair Details')}>
+                  <div className="w-14 h-14 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex flex-col items-center justify-center flex-shrink-0 border border-zinc-200 dark:border-zinc-700">
                     <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase">Oct</span>
                     <span className="text-xl font-bold text-zinc-900 dark:text-white">18</span>
                   </div>
@@ -79,8 +79,8 @@ export default function StudentInformation() {
                   </div>
                 </div>
 
-                <div className="flex gap-4 cursor-pointer hover:bg-zinc-100 dark:bg-zinc-800/30 p-2 -mx-2 rounded-lg transition-colors" onClick={(e) => handleLinkClick(e, 'Guest Lecture Details')}>
-                  <div className="w-14 h-14 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex flex-col items-center justify-center flex-shrink-0 border border-zinc-700">
+                <div className="flex gap-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-2 -mx-2 rounded-lg transition-colors" onClick={(e) => handleLinkClick(e, 'Guest Lecture Details')}>
+                  <div className="w-14 h-14 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex flex-col items-center justify-center flex-shrink-0 border border-zinc-200 dark:border-zinc-700">
                     <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase">Oct</span>
                     <span className="text-xl font-bold text-zinc-900 dark:text-white">25</span>
                   </div>
@@ -91,8 +91,8 @@ export default function StudentInformation() {
                   </div>
                 </div>
 
-                <div className="flex gap-4 cursor-pointer hover:bg-zinc-100 dark:bg-zinc-800/30 p-2 -mx-2 rounded-lg transition-colors" onClick={(e) => handleLinkClick(e, 'Workshop Details')}>
-                  <div className="w-14 h-14 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex flex-col items-center justify-center flex-shrink-0 border border-zinc-700">
+                <div className="flex gap-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50 p-2 -mx-2 rounded-lg transition-colors" onClick={(e) => handleLinkClick(e, 'Workshop Details')}>
+                  <div className="w-14 h-14 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex flex-col items-center justify-center flex-shrink-0 border border-zinc-200 dark:border-zinc-700">
                     <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase">Nov</span>
                     <span className="text-xl font-bold text-zinc-900 dark:text-white">02</span>
                   </div>
