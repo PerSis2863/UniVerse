@@ -30,7 +30,7 @@ function applySecurityHeaders(res: NextResponse) {
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: https://images.unsplash.com https://img.clerk.com https://*.clerk.com https://ui-avatars.com;
     font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
-    connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://api.clerk.dev wss://*.clerk.accounts.dev https://vitals.vercel-insights.com;
+    connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://api.clerk.dev wss://*.clerk.accounts.dev https://vitals.vercel-insights.com https://*.onrender.com http://localhost:*;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
