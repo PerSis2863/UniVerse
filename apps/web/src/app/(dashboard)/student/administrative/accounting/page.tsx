@@ -3,9 +3,10 @@ import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useSearchParams } from 'next/navigation';
 
 const transactions = [
   { id: 'TXN-001', date: 'Sept 01, 2026', description: 'Fall Semester Tuition Fee', amount: '$4,500.00', status: 'Paid', method: 'Credit Card' },
@@ -15,11 +16,37 @@ const transactions = [
 ];
 
 export default function AccountingPage() {
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const searchParams = useSearchParams();
 
-  const handlePayment = () => {
-    toast.success('Payment of $15.00 processed successfully!');
-    setIsPaymentModalOpen(false);
+  useEffect(() => {
+    if (searchParams.get('success')) {
+      toast.success('Payment completed successfully!');
+    }
+    if (searchParams.get('canceled')) {
+      toast.error('Payment was canceled.');
+    }
+  }, [searchParams]);
+
+  const handlePayment = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 15.00, description: 'Outstanding Balance' }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error('Failed to create payment session.');
+      }
+    } catch (e) {
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const downloadStatement = () => {
@@ -40,7 +67,7 @@ export default function AccountingPage() {
       <Topbar 
         title="Accounting & Billing" 
         subtitle="Manage your tuition, fees, and payment history." 
-        action={{ label: 'Make a Payment', onClick: () => setIsPaymentModalOpen(true) }}
+        action={{ label: 'Make a Payment', onClick: handlePayment }}
       />
       <div className="flex-1 p-8 space-y-8 overflow-y-auto">
         
@@ -59,8 +86,8 @@ export default function AccountingPage() {
               <div className="text-4xl font-black mb-2">$15.00</div>
               <p className="text-sm text-indigo-100/80 mb-6">Due by Sept 30, 2026</p>
               
-              <button onClick={() => setIsPaymentModalOpen(true)} className="px-5 py-2.5 rounded-xl bg-white text-indigo-600 font-bold text-sm shadow-md hover:bg-indigo-50 transition-colors flex items-center gap-2">
-                <CreditCard className="w-4 h-4" /> Pay Now
+              <button onClick={handlePayment} disabled={isLoading} className="px-5 py-2.5 rounded-xl bg-white text-indigo-600 font-bold text-sm shadow-md hover:bg-indigo-50 transition-colors flex items-center gap-2 disabled:opacity-50">
+                <CreditCard className="w-4 h-4" /> {isLoading ? 'Loading...' : 'Pay Now'}
               </button>
             </div>
           </motion.div>
@@ -149,51 +176,6 @@ export default function AccountingPage() {
         </div>
 
       </div>
-
-      {/* Payment Modal */}
-      <AnimatePresence>
-        {isPaymentModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden p-8 relative"
-            >
-              <button 
-                onClick={() => setIsPaymentModalOpen(false)}
-                className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-400">
-                  <CreditCard className="w-8 h-8" />
-                </div>
-                <h3 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Pay Balance</h3>
-                <p className="text-zinc-500 dark:text-zinc-400">Amount due: <span className="font-bold text-zinc-900 dark:text-white">$15.00</span></p>
-              </div>
-              
-              <div className="space-y-4">
-                <input type="text" placeholder="Card Number" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
-                <div className="flex gap-4">
-                  <input type="text" placeholder="MM/YY" className="w-1/2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
-                  <input type="text" placeholder="CVC" className="w-1/2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
-                </div>
-                
-                <button 
-                  onClick={handlePayment}
-                  className="w-full btn-primary py-3 rounded-xl mt-4 text-base font-bold"
-                >
-                  Confirm Payment of $15.00
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }
