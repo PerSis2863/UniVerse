@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Users, CheckCircle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function JoinGroupPage() {
+export default function JoinGroupPage(props: { params: Promise<{ inviteCode: string }> }) {
   const router = useRouter();
   const params = useParams();
   const inviteCode = params.inviteCode as string;
