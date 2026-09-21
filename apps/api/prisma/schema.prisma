@@ -106,33 +106,73 @@ model User {
 
   emailNotifications Boolean @default(true)
 
-  // Student profile
+  // Profiles
   studentProfile         StudentProfile?
-  // Teacher profile
   teacherProfile         TeacherProfile?
-  // Relations
+
+  // Core Academic
   enrollments            Enrollment[]
   attendance             Attendance[]
   submissions            QuizSubmission[]
-  sentMessages           Message[]                 @relation("MessageSender")
-  conversations          ConversationParticipant[]
-  notifications          Notification[]
-  payments               Payment[]
-  refreshTokens          RefreshToken[]
-  uploadedFiles          File[]
   grades                 Grade[]
   taughtCourses          Course[]
   materials              Material[]
   announcements          Announcement[]
   knowledgeHubResources  KnowledgeHubResource[]
+  electiveRequests       ElectiveRequest[]
+  majorChangeRequests    MajorChangeRequest[]
+  majorReviewed          MajorChangeRequest[]          @relation("MajorReviewer")
+  calendarEvents         CalendarEvent[]
+
+  // Messaging & Notifications
+  sentMessages           Message[]                    @relation("MessageSender")
+  conversations          ConversationParticipant[]
+  notifications          Notification[]
+
+  // Files & Payments
+  refreshTokens          RefreshToken[]
+  uploadedFiles          File[]
+  payments               Payment[]
+  invoices               Invoice[]
+  tickets                Ticket[]
+  studentDocuments       StudentDocument[]
+
+  // Student Life
   associationMemberships AssociationMembership[]
   roomReservations       RoomReservation[]
-  tickets                Ticket[]
+  groupMemberships       GroupMembership[]
+  groupPosts             GroupPost[]
+  createdGroups          Group[]                      @relation("GroupCreator")
+  studentConsents        StudentConsent[]
+  medicalRecord          MedicalRecord?
+  safetyAlerts           SafetyAlert[]                @relation("SafetyReporter")
+
+  // Career & Internships
+  careerProfile          CareerProfile?
+  skills                 StudentSkill[]
+  internshipApplications InternshipApplication[]
+  postedInternships      Internship[]                 @relation("InternshipPoster")
+  scholarshipApplications ScholarshipApplication[]
+
+  // Impact
+  impactPoints           ImpactPoint[]
+  ngoProjectApplications NGOProjectApplication[]
+  startupApplications    StartupApplication[]
+  summitRegistrations    SummitRegistration[]
+  foundedStartups        Startup[]                   @relation("StartupFounder")
+  createdSummits         Summit[]                    @relation("SummitCreator")
+
+  // Teacher Collaboration
+  mentorshipAsStudent    MentorshipRequest[]          @relation("MentorshipStudent")
+  mentorshipAsTeacher    MentorshipRequest[]          @relation("MentorshipTeacher")
+  initiatedCollaborations TeacherCollaboration[]      @relation("CollaborationInitiator")
+  partnerCollaborations  TeacherCollaboration[]       @relation("CollaborationPartner")
 
   @@index([role])
   @@index([status])
   @@map("users")
 }
+
 
 model StudentProfile {
   id         String   @id @default(cuid())
@@ -179,6 +219,7 @@ model Course {
   updatedAt   DateTime     @updatedAt
 
   enrollments           Enrollment[]
+  timetableSlots        TimetableSlot[]
   attendance            Attendance[]
   grades                Grade[]
   quizzes               Quiz[]
@@ -508,6 +549,7 @@ model Room {
   updatedAt DateTime @updatedAt
 
   reservations RoomReservation[]
+  timetableSlots TimetableSlot[]
 
   @@map("rooms")
 }
@@ -527,4 +569,668 @@ model RoomReservation {
   @@index([roomId])
   @@index([userId])
   @@map("room_reservations")
+}
+
+// ─── ENUMS (EXTENDED) ──────────────────────────────────────────────────────
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum DocumentType {
+  TRANSCRIPT
+  DIPLOMA
+  CERTIFICATE
+  ID_CARD
+  LETTER
+  OTHER
+}
+
+enum ConsentType {
+  MARKETING
+  ALUMNI
+  PHOTO
+  RESEARCH
+}
+
+enum MentorshipStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum InternshipType {
+  FULL_TIME
+  PART_TIME
+  REMOTE
+  HYBRID
+}
+
+enum CollaborationType {
+  RESEARCH
+  PROJECT
+  GRANT
+  PUBLICATION
+}
+
+// ─── ACADEMIC ──────────────────────────────────────────────────────────────
+
+model TimetableSlot {
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  dayOfWeek  Int // 0=Mon, 6=Sun
+  startTime  String // "09:00"
+  endTime    String // "10:30"
+  roomId     String?
+  room       Room?    @relation(fields: [roomId], references: [id])
+  type       String   @default("LECTURE") // LECTURE, LAB, TUTORIAL
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([roomId])
+  @@map("timetable_slots")
+}
+
+model ElectiveRequest {
+  id         String            @id @default(cuid())
+  studentId  String
+  student    User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status     ApplicationStatus @default(PENDING)
+  semesterId String? // e.g. "SPRING_2027"
+  note       String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([studentId, courseId, semesterId])
+  @@index([studentId])
+  @@index([courseId])
+  @@map("elective_requests")
+}
+
+model MajorChangeRequest {
+  id            String            @id @default(cuid())
+  studentId     String
+  student       User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requestType   String // "CHANGE_MAJOR", "ADD_MINOR", etc.
+  currentMajor  String?
+  requestedProgram String
+  reason        String
+  status        ApplicationStatus @default(PENDING)
+  reviewedById  String?
+  reviewedBy    User?             @relation("MajorReviewer", fields: [reviewedById], references: [id])
+  reviewNote    String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([studentId])
+  @@index([reviewedById])
+  @@map("major_change_requests")
+}
+
+// ─── CAREER & INTERNSHIPS ──────────────────────────────────────────────────
+
+model CareerProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline       String?
+  bio            String?
+  linkedinUrl    String?
+  portfolioUrl   String?
+  githubUrl      String?
+  targetRoles    String[] // array of target job titles
+  targetSectors  String[]
+  cvUrl          String?
+  isPublic       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@map("career_profiles")
+}
+
+model StudentSkill {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  category    String? // "Technical", "Soft Skill", "Language", etc.
+  level       SkillLevel @default(BEGINNER)
+  endorsements Int       @default(0)
+  createdAt   DateTime   @default(now())
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("student_skills")
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  sector      String?
+  description String?
+  logoUrl     String?
+  websiteUrl  String?
+  location    String?
+  size        String? // "1-10", "11-50", "50-200", "200+"
+  isPartner   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  internships  Internship[]
+  partnerships Partnership[]
+
+  @@map("companies")
+}
+
+model Internship {
+  id           String         @id @default(cuid())
+  companyId    String
+  company      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title        String
+  description  String
+  type         InternshipType @default(FULL_TIME)
+  location     String?
+  duration     String? // "3 months", "6 months"
+  isPaid       Boolean        @default(true)
+  salary       String?
+  openings     Int            @default(1)
+  skills       String[]
+  deadline     DateTime?
+  startDate    DateTime?
+  isActive     Boolean        @default(true)
+  postedById   String?
+  postedBy     User?          @relation("InternshipPoster", fields: [postedById], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  applications InternshipApplication[]
+
+  @@index([companyId])
+  @@index([postedById])
+  @@map("internships")
+}
+
+model InternshipApplication {
+  id           String            @id @default(cuid())
+  internshipId String
+  internship   Internship        @relation(fields: [internshipId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status       ApplicationStatus @default(PENDING)
+  coverLetter  String?
+  cvUrl        String?
+  appliedAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([internshipId, studentId])
+  @@index([internshipId])
+  @@index([studentId])
+  @@map("internship_applications")
+}
+
+// ─── COMMUNITY & GROUPS ────────────────────────────────────────────────────
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  avatarUrl   String?
+  isPublic    Boolean  @default(true)
+  createdById String
+  createdBy   User     @relation("GroupCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members GroupMembership[]
+  posts   GroupPost[]
+
+  @@index([createdById])
+  @@map("groups")
+}
+
+model GroupMembership {
+  id       String   @id @default(cuid())
+  groupId  String
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("MEMBER") // MEMBER, ADMIN, MODERATOR
+  joinedAt DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@map("group_memberships")
+}
+
+model GroupPost {
+  id        String   @id @default(cuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  imageUrl  String?
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId])
+  @@index([authorId])
+  @@map("group_posts")
+}
+
+// ─── IMPACT ────────────────────────────────────────────────────────────────
+
+model ImpactPoint {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points      Int
+  reason      String // e.g. "NGO Project completion"
+  sourceType  String // "NGO_PROJECT", "SUMMIT", "STARTUP", etc.
+  sourceId    String? // ID of the related record
+  awardedAt   DateTime @default(now())
+
+  @@index([userId])
+  @@map("impact_points")
+}
+
+model NGO {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  logoUrl     String?
+  websiteUrl  String?
+  sector      String? // "Education", "Health", etc.
+  sdgNumbers  Int[] // UN SDG goals e.g. [4, 13]
+  location    String?
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projects NGOProject[]
+
+  @@map("ngos")
+}
+
+model NGOProject {
+  id             String   @id @default(cuid())
+  ngoId          String
+  ngo            NGO      @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  name           String
+  description    String
+  type           String? // "Field", "Remote", "Hybrid"
+  location       String?
+  duration       String?
+  openings       Int      @default(1)
+  impactPoints   Int      @default(50)
+  skillsRequired String[]
+  sdgNumber      Int?
+  deadline       DateTime?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  applications NGOProjectApplication[]
+
+  @@index([ngoId])
+  @@map("ngo_projects")
+}
+
+model NGOProjectApplication {
+  id           String            @id @default(cuid())
+  projectId    String
+  project      NGOProject        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status       ApplicationStatus @default(PENDING)
+  motivation   String?
+  appliedAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([projectId, studentId])
+  @@index([projectId])
+  @@index([studentId])
+  @@map("ngo_project_applications")
+}
+
+model Startup {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  sector       String?
+  stage        String? // "Idea", "MVP", "Seed", "Growth"
+  logoUrl      String?
+  websiteUrl   String?
+  foundedById  String?
+  foundedBy    User?    @relation("StartupFounder", fields: [foundedById], references: [id])
+  impactPoints Int      @default(100)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  applications StartupApplication[]
+
+  @@index([foundedById])
+  @@map("startups")
+}
+
+model StartupApplication {
+  id         String            @id @default(cuid())
+  startupId  String
+  startup    Startup           @relation(fields: [startupId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       String? // role applied for
+  status     ApplicationStatus @default(PENDING)
+  motivation String?
+  appliedAt  DateTime          @default(now())
+
+  @@unique([startupId, userId])
+  @@index([startupId])
+  @@index([userId])
+  @@map("startup_applications")
+}
+
+model Summit {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  isVirtual   Boolean  @default(false)
+  startDate   DateTime
+  endDate     DateTime
+  capacity    Int?
+  impactPoints Int     @default(30)
+  coverUrl    String?
+  createdById String?
+  createdBy   User?    @relation("SummitCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  registrations SummitRegistration[]
+
+  @@index([createdById])
+  @@map("summits")
+}
+
+model SummitRegistration {
+  id           String   @id @default(cuid())
+  summitId     String
+  summit       Summit   @relation(fields: [summitId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  registeredAt DateTime @default(now())
+
+  @@unique([summitId, userId])
+  @@index([summitId])
+  @@index([userId])
+  @@map("summit_registrations")
+}
+
+// ─── PARTNERS & PARTNERSHIPS ───────────────────────────────────────────────
+
+model Partner {
+  id          String   @id @default(cuid())
+  name        String
+  type        String // "CORPORATE", "NGO", "ACADEMIC", "GOVERNMENT"
+  description String?
+  logoUrl     String?
+  websiteUrl  String?
+  country     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  partnerships Partnership[]
+
+  @@map("partners")
+}
+
+model Partnership {
+  id          String   @id @default(cuid())
+  partnerId   String
+  partner     Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  title       String
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([partnerId])
+  @@index([companyId])
+  @@map("partnerships")
+}
+
+// ─── ADMINISTRATIVE ────────────────────────────────────────────────────────
+
+model StudentDocument {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        DocumentType @default(OTHER)
+  title       String
+  fileUrl     String
+  issuedAt    DateTime?
+  expiresAt   DateTime?
+  isVerified  Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+
+  @@index([userId])
+  @@map("student_documents")
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  number      String        @unique
+  amount      Float
+  currency    String        @default("USD")
+  status      PaymentStatus @default(PENDING)
+  dueDate     DateTime?
+  paidAt      DateTime?
+  description String?
+  items       Json // [{label, amount}]
+  paymentId   String?       @unique
+  payment     Payment?      @relation(fields: [paymentId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId])
+  @@map("invoices")
+}
+
+model Scholarship {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  amount       Float?
+  currency     String   @default("USD")
+  provider     String? // "Internal", "Company name", etc.
+  deadline     DateTime?
+  requirements String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  applications ScholarshipApplication[]
+
+  @@map("scholarships")
+}
+
+model ScholarshipApplication {
+  id            String            @id @default(cuid())
+  scholarshipId String
+  scholarship   Scholarship       @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status        ApplicationStatus @default(PENDING)
+  essay         String?
+  appliedAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([scholarshipId, studentId])
+  @@index([scholarshipId])
+  @@index([studentId])
+  @@map("scholarship_applications")
+}
+
+model StudentConsent {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        ConsentType
+  granted     Boolean     @default(false)
+  grantedAt   DateTime?
+  revokedAt   DateTime?
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([userId, type])
+  @@index([userId])
+  @@map("student_consents")
+}
+
+// ─── WELLBEING & SAFETY ────────────────────────────────────────────────────
+
+model MedicalRecord {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorName   String?
+  doctorPhone  String?
+  bloodType    String?
+  allergies    String[]
+  conditions   String[]
+  medications  String[]
+  emergencyContact String?
+  emergencyPhone   String?
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@map("medical_records")
+}
+
+model SafetyAlert {
+  id          String        @id @default(cuid())
+  reporterId  String?
+  reporter    User?         @relation("SafetyReporter", fields: [reporterId], references: [id])
+  title       String
+  description String
+  location    String?
+  severity    AlertSeverity @default(MEDIUM)
+  isAnonymous Boolean       @default(false)
+  isResolved  Boolean       @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([reporterId])
+  @@map("safety_alerts")
+}
+
+// ─── COLLABORATION (TEACHER) ───────────────────────────────────────────────
+
+model MentorshipRequest {
+  id         String          @id @default(cuid())
+  studentId  String
+  student    User            @relation("MentorshipStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId  String
+  teacher    User            @relation("MentorshipTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  topic      String
+  message    String?
+  status     MentorshipStatus @default(PENDING)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  sessions MentorshipSession[]
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@map("mentorship_requests")
+}
+
+model MentorshipSession {
+  id           String            @id @default(cuid())
+  requestId    String
+  request      MentorshipRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  scheduledAt  DateTime
+  duration     Int // minutes
+  meetingUrl   String?
+  notes        String?
+  isCompleted  Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+
+  @@index([requestId])
+  @@map("mentorship_sessions")
+}
+
+model TeacherCollaboration {
+  id          String            @id @default(cuid())
+  initiatorId String
+  initiator   User              @relation("CollaborationInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  partnerId   String
+  partner     User              @relation("CollaborationPartner", fields: [partnerId], references: [id], onDelete: Cascade)
+  type        CollaborationType @default(PROJECT)
+  title       String
+  description String?
+  status      ApplicationStatus @default(PENDING)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([initiatorId])
+  @@index([partnerId])
+  @@map("teacher_collaborations")
+}
+
+// ─── CALENDAR ──────────────────────────────────────────────────────────────
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  color       String?
+  type        String   @default("PERSONAL") // PERSONAL, EXAM, DEADLINE, MEETING
+  courseId    String?
+  course      Course?  @relation(fields: [courseId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+  @@map("calendar_events")
 }
