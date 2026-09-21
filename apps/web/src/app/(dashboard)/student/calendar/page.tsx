@@ -11,15 +11,21 @@ const MOCK_SCHEDULE = [
   { id: '1', day: 'Monday', time: '09:00', duration: 2, subject: 'Computer Science 101', location: 'Room 302', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
   { id: '2', day: 'Monday', time: '13:30', duration: 1.5, subject: 'Advanced Calculus', location: 'Room 105', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { id: '10', day: 'Monday', time: '17:00', duration: 2, subject: 'Machine Learning', location: 'Room 305', type: 'Lecture', color: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
+  { id: 't1', day: 'Tuesday', time: '08:00', duration: 1.5, subject: 'Calculus II', location: 'Room 104', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { id: '3', day: 'Tuesday', time: '10:00', duration: 2, subject: 'Physics Lab', location: 'Lab 4B', type: 'Lab', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  { id: 't2', day: 'Tuesday', time: '13:00', duration: 1.5, subject: 'Operating Systems', location: 'Room 201', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
   { id: '11', day: 'Tuesday', time: '15:00', duration: 2, subject: 'Artificial Intelligence', location: 'Auditorium B', type: 'Lecture', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   { id: '4', day: 'Wednesday', time: '09:00', duration: 2, subject: 'Computer Science 101', location: 'Room 302', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+  { id: 'w1', day: 'Wednesday', time: '11:30', duration: 1.5, subject: 'Design Patterns', location: 'Room 205', type: 'Lecture', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
   { id: '5', day: 'Wednesday', time: '14:00', duration: 1.5, subject: 'World History', location: 'Auditorium A', type: 'Lecture', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
   { id: '12', day: 'Wednesday', time: '18:00', duration: 2, subject: 'Study Group', location: 'Library', type: 'Meeting', color: 'bg-zinc-500/20 text-zinc-600 dark:text-zinc-400 border-zinc-500/30' },
+  { id: 'th1', day: 'Thursday', time: '09:00', duration: 1.5, subject: 'Computer Networks', location: 'Room 304', type: 'Lecture', color: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
   { id: '6', day: 'Thursday', time: '11:00', duration: 1.5, subject: 'Advanced Calculus', location: 'Room 105', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  { id: 'th2', day: 'Thursday', time: '14:00', duration: 1.5, subject: 'Database Systems', location: 'Room 402', type: 'Lecture', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   { id: '7', day: 'Thursday', time: '16:00', duration: 2, subject: 'Data Structures', location: 'Room 401', type: 'Lecture', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   { id: '8', day: 'Friday', time: '10:00', duration: 3, subject: 'Software Engineering', location: 'Innovation Hub', type: 'Workshop', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
-  { id: '9', day: 'Friday', time: '15:00', duration: 2, subject: 'Web Development', location: 'Lab 2A', type: 'Lab', color: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
+  { id: 'f1', day: 'Friday', time: '13:30', duration: 1.5, subject: 'Cybersecurity Basics', location: 'Room 310', type: 'Lecture', color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' },
+  { id: '9', day: 'Friday', time: '15:30', duration: 2, subject: 'Web Development', location: 'Lab 2A', type: 'Lab', color: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
 ];
 
 const SPECIAL_EVENTS = [
