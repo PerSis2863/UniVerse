@@ -1,9 +1,41 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { AlertTriangle, ShieldAlert, Phone, Send, Info } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, Phone, Send, Info, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+const EMERGENCY_NUMBERS: Record<string, string> = {
+  US: '911', CA: '911', GB: '999', AU: '000', 
+  NZ: '111', IN: '112', CN: '110', JP: '119',
+  ZA: '10111', BR: '190', MX: '911', KR: '112'
+};
+
+const EU_COUNTRIES = ['FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'SE', 'DK', 'FI', 'NO', 'AT', 'CH', 'IE', 'PT', 'GR', 'PL', 'CZ', 'RO', 'HU'];
 
 export default function BeeSafeReporting() {
+  const [emergencyNumber, setEmergencyNumber] = useState('911');
+  const [countryName, setCountryName] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data.country_code) {
+          setCountryName(data.country_name);
+          if (EU_COUNTRIES.includes(data.country_code)) {
+            setEmergencyNumber('112');
+          } else {
+            setEmergencyNumber(EMERGENCY_NUMBERS[data.country_code] || '911 (or local emergency number)');
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback silently on error
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <>
       <Topbar title="BeeSafe Reporting" subtitle="Confidential platform for safety and incident reporting" />
@@ -17,7 +49,12 @@ export default function BeeSafeReporting() {
                 <AlertTriangle className="w-6 h-6 text-red-500" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-red-400 mb-1">In an emergency, call 911 immediately.</h3>
+                <h3 className="text-xl font-bold text-red-400 mb-1 flex items-center gap-2">
+                  In an emergency, call {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : emergencyNumber} immediately.
+                </h3>
+                {countryName && !loading && (
+                  <div className="text-xs text-red-300/80 mb-2">Detected region: {countryName}</div>
+                )}
                 <p className="text-sm text-red-300/80 max-w-xl">
                   This system is for non-emergency reporting. Reports submitted here are reviewed during regular business hours. For immediate on-campus assistance, contact Campus Security.
                 </p>
