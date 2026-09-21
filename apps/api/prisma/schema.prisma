@@ -92,96 +92,102 @@ enum TicketPriority {
 // ─── MODELS ────────────────────────────────────────────────────────────────
 
 model User {
-  id           String     @id @default(cuid())
-  name         String
-  email        String     @unique
-  password     String?
-  role         Role       @default(STUDENT)
-  status       UserStatus @default(PENDING)
-  avatar       String?
-  googleId     String?    @unique
-  phone        String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  password  String?
+  role      Role       @default(STUDENT)
+  status    UserStatus @default(PENDING)
+  avatar    String?
+  googleId  String?    @unique
+  phone     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
-  emailNotifications Boolean  @default(true)
+  emailNotifications Boolean @default(true)
 
   // Student profile
-  studentProfile   StudentProfile?
+  studentProfile         StudentProfile?
   // Teacher profile
-  teacherProfile   TeacherProfile?
+  teacherProfile         TeacherProfile?
   // Relations
-  enrollments      Enrollment[]
-  attendance       Attendance[]
-  submissions      QuizSubmission[]
-  sentMessages     Message[]        @relation("MessageSender")
-  conversations    ConversationParticipant[]
-  notifications    Notification[]
-  payments         Payment[]
-  refreshTokens    RefreshToken[]
-  uploadedFiles    File[]
-  grades           Grade[]
-  taughtCourses    Course[]
-  materials        Material[]
-  announcements    Announcement[]
-  knowledgeHubResources KnowledgeHubResource[]
+  enrollments            Enrollment[]
+  attendance             Attendance[]
+  submissions            QuizSubmission[]
+  sentMessages           Message[]                 @relation("MessageSender")
+  conversations          ConversationParticipant[]
+  notifications          Notification[]
+  payments               Payment[]
+  refreshTokens          RefreshToken[]
+  uploadedFiles          File[]
+  grades                 Grade[]
+  taughtCourses          Course[]
+  materials              Material[]
+  announcements          Announcement[]
+  knowledgeHubResources  KnowledgeHubResource[]
   associationMemberships AssociationMembership[]
-  roomReservations RoomReservation[]
-  tickets          Ticket[]
+  roomReservations       RoomReservation[]
+  tickets                Ticket[]
 
+  @@index([role])
+  @@index([status])
   @@map("users")
 }
 
 model StudentProfile {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studentId    String   @unique @default(cuid())
-  department   String?
-  year         Int      @default(1)
-  gpa          Float    @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId  String   @unique @default(cuid())
+  department String?
+  year       Int      @default(1)
+  gpa        Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
+  @@index([userId])
   @@map("student_profiles")
 }
 
 model TeacherProfile {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  employeeId   String   @unique @default(cuid())
-  department   String?
-  designation  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeId  String   @unique @default(cuid())
+  department  String?
+  designation String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  @@index([userId])
   @@map("teacher_profiles")
 }
 
 model Course {
-  id           String       @id @default(cuid())
-  code         String       @unique
-  name         String
-  description  String?
-  credits      Int          @default(3)
-  department   String?
-  status       CourseStatus @default(DRAFT)
-  teacherId    String
-  teacher      User         @relation(fields: [teacherId], references: [id])
-  color        String?
-  emoji        String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  description String?
+  credits     Int          @default(3)
+  department  String?
+  status      CourseStatus @default(DRAFT)
+  teacherId   String
+  teacher     User         @relation(fields: [teacherId], references: [id])
+  color       String?
+  emoji       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
-  enrollments  Enrollment[]
-  attendance   Attendance[]
-  grades       Grade[]
-  quizzes      Quiz[]
-  materials    Material[]
-  announcements Announcement[]
+  enrollments           Enrollment[]
+  attendance            Attendance[]
+  grades                Grade[]
+  quizzes               Quiz[]
+  materials             Material[]
+  announcements         Announcement[]
   knowledgeHubResources KnowledgeHubResource[]
 
+  @@index([teacherId])
+  @@index([status])
   @@map("courses")
 }
 
@@ -194,6 +200,8 @@ model Enrollment {
   enrolledAt DateTime @default(now())
 
   @@unique([studentId, courseId])
+  @@index([studentId])
+  @@index([courseId])
   @@map("enrollments")
 }
 
@@ -209,56 +217,63 @@ model Attendance {
   createdAt DateTime         @default(now())
 
   @@unique([studentId, courseId, date])
+  @@index([studentId])
+  @@index([courseId])
+  @@index([date])
   @@map("attendance")
 }
 
 model Grade {
-  id              String      @id @default(cuid())
-  studentId       String
-  student         User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  courseId        String
-  course          Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  assignmentName  String
-  score           Float
-  maxScore        Float       @default(100)
-  weight          Float       @default(1)
-  status          GradeStatus @default(GRADED)
-  feedback        String?
-  gradedAt        DateTime    @default(now())
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  studentId      String
+  student        User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignmentName String
+  score          Float
+  maxScore       Float       @default(100)
+  weight         Float       @default(1)
+  status         GradeStatus @default(GRADED)
+  feedback       String?
+  gradedAt       DateTime    @default(now())
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
+  @@index([studentId])
+  @@index([courseId])
   @@map("grades")
 }
 
 model Quiz {
-  id          String       @id @default(cuid())
+  id          String     @id @default(cuid())
   courseId    String
-  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course      Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
   title       String
   description String?
   dueDate     DateTime?
-  timeLimit   Int?         // minutes
-  status      QuizStatus   @default(DRAFT)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  timeLimit   Int? // minutes
+  status      QuizStatus @default(DRAFT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   questions   QuizQuestion[]
   submissions QuizSubmission[]
 
+  @@index([courseId])
   @@map("quizzes")
 }
 
 model QuizQuestion {
-  id            String   @id @default(cuid())
+  id            String @id @default(cuid())
   quizId        String
-  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quiz          Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
   question      String
-  options       Json     // string[]
+  options       Json // string[]
   correctAnswer String
-  points        Float    @default(1)
-  order         Int      @default(0)
+  points        Float  @default(1)
+  order         Int    @default(0)
 
+  @@index([quizId])
   @@map("quiz_questions")
 }
 
@@ -268,27 +283,31 @@ model QuizSubmission {
   quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
   studentId   String
   student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  answers     Json     // { questionId: answer }
+  answers     Json // { questionId: answer }
   score       Float?
   maxScore    Float?
   submittedAt DateTime @default(now())
 
   @@unique([quizId, studentId])
+  @@index([quizId])
+  @@index([studentId])
   @@map("quiz_submissions")
 }
 
 model Material {
-  id        String   @id @default(cuid())
-  courseId  String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title     String
-  type      FileType @default(OTHER)
-  fileUrl   String
-  size      String?
+  id           String   @id @default(cuid())
+  courseId     String
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title        String
+  type         FileType @default(OTHER)
+  fileUrl      String
+  size         String?
   uploadedById String
-  uploader  User     @relation(fields: [uploadedById], references: [id])
-  createdAt DateTime @default(now())
+  uploader     User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
 
+  @@index([courseId])
+  @@index([uploadedById])
   @@map("materials")
 }
 
@@ -299,13 +318,15 @@ model KnowledgeHubResource {
   category    String?
   url         String?
   courseId    String?
-  course      Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   authorId    String
   author      User     @relation(fields: [authorId], references: [id])
   isPublic    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([courseId])
+  @@index([authorId])
   @@map("knowledge_hub_resources")
 }
 
@@ -321,6 +342,7 @@ model File {
   uploader     User     @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime @default(now())
 
+  @@index([uploadedById])
   @@map("files")
 }
 
@@ -336,6 +358,8 @@ model Announcement {
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
 
+  @@index([courseId])
+  @@index([authorId])
   @@map("announcements")
 }
 
@@ -360,6 +384,8 @@ model ConversationParticipant {
   lastReadAt     DateTime?
 
   @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
   @@map("conversation_participants")
 }
 
@@ -373,6 +399,8 @@ model Message {
   read           Boolean      @default(false)
   createdAt      DateTime     @default(now())
 
+  @@index([conversationId])
+  @@index([senderId])
   @@map("messages")
 }
 
@@ -387,6 +415,7 @@ model Notification {
   link      String?
   createdAt DateTime @default(now())
 
+  @@index([userId])
   @@map("notifications")
 }
 
@@ -405,6 +434,7 @@ model Payment {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  @@index([userId])
   @@map("payments")
 }
 
@@ -416,6 +446,7 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
+  @@index([userId])
   @@map("refresh_tokens")
 }
 
@@ -431,6 +462,8 @@ model Ticket {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  @@index([authorId])
+  @@index([status])
   @@map("tickets")
 }
 
@@ -444,9 +477,9 @@ model Association {
   members     Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   memberships AssociationMembership[]
-  
+
   @@map("associations")
 }
 
@@ -458,36 +491,40 @@ model AssociationMembership {
   association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
   role          String      @default("MEMBER")
   joinedAt      DateTime    @default(now())
-  
+
   @@unique([userId, associationId])
+  @@index([userId])
+  @@index([associationId])
   @@map("association_memberships")
 }
 
 model Room {
-  id          String   @id @default(cuid())
-  name        String
-  capacity    Int
-  amenities   String
-  type        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id        String   @id @default(cuid())
+  name      String
+  capacity  Int
+  amenities String
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   reservations RoomReservation[]
-  
+
   @@map("rooms")
 }
 
 model RoomReservation {
-  id          String   @id @default(cuid())
-  roomId      String
-  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date        String
-  time        String
-  duration    String
-  createdAt   DateTime @default(now())
-  
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String
+  time      String
+  duration  String
+  createdAt DateTime @default(now())
+
   @@unique([roomId, date, time])
+  @@index([roomId])
+  @@index([userId])
   @@map("room_reservations")
 }
