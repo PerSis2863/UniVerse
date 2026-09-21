@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, UseGuards, Req } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Request } from 'express';
 
@@ -14,7 +14,7 @@ interface RequestWithUser extends Request {
 }
 
 @Controller('tickets')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ClerkAuthGuard)
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 

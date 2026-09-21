@@ -10,11 +10,6 @@ const isProtectedRoute = createRouteMatcher([
 import { NextResponse } from 'next/server';
 
 export default clerkMiddleware(async (auth, req) => {
-  // Demo Login Bypass
-  if (req.cookies.has('demo_token')) {
-    return applySecurityHeaders(NextResponse.next());
-  }
-
   // Real Auth Checking
   if (isProtectedRoute(req)) {
     await auth.protect();

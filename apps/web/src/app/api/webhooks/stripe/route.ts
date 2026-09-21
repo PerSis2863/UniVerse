@@ -32,13 +32,28 @@ export async function POST(req: Request) {
     const transactionId = session.metadata?.transactionId;
 
     if (transactionId) {
-      // Update transaction status
       try {
+        const existingTx = await prisma.payment.findUnique({
+          where: { id: transactionId },
+          include: { user: true }
+        });
+
+        if (!existingTx) {
+          console.error(`Transaction not found: ${transactionId}`);
+          return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+        }
+
+        if (existingTx.status === 'COMPLETED') {
+          console.log(`Transaction ${transactionId} already processed (idempotency).`);
+          return NextResponse.json({ received: true });
+        }
+
         const transaction = await prisma.payment.update({
           where: { id: transactionId },
           data: { 
             status: 'COMPLETED',
-            stripeSessionId: session.id
+            stripeSessionId: session.id,
+            // Assuming we could store stripeEventId if schema had it, but for now we rely on status.
           },
           include: { user: true }
         });

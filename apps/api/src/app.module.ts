@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CoursesModule } from './courses/courses.module';
@@ -34,6 +36,7 @@ import { SafetyModule } from './safety/safety.module';
 import { MentorshipModule } from './mentorship/mentorship.module';
 import { CollaborationsModule } from './collaborations/collaborations.module';
 import { CalendarModule } from './calendar/calendar.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -72,6 +75,17 @@ import { CalendarModule } from './calendar/calendar.module';
     MentorshipModule,
     CollaborationsModule,
     CalendarModule,
+    WebhooksModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
   ],
 })
 export class AppModule {}

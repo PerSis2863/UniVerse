@@ -1,10 +1,10 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('schedule')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ClerkAuthGuard)
 export class ScheduleController {
   constructor(private prisma: PrismaService) {}
 

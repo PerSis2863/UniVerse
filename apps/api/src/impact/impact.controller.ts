@@ -2,12 +2,15 @@ import { Controller, Get, Post, Param, Body, Query, UseGuards, Res } from '@nest
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ImpactService } from './impact.service';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '@prisma/client';
 
 @ApiTags('impact')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('impact')
 export class ImpactController {
   constructor(private readonly impactService: ImpactService) {}
@@ -15,7 +18,10 @@ export class ImpactController {
   @Get('leaderboard') leaderboard() { return this.impactService.getLeaderboard(); }
   @Get('dashboard/stats') dashboardStats(@CurrentUser() user: any) { return this.impactService.getDashboardStats(user.id); }
   @Get('my-points') myPoints(@CurrentUser() user: any) { return this.impactService.getMyPoints(user.id); }
-  @Post('award-points') award(@Body() body: any) { return this.impactService.awardPoints(body.userId, body); }
+  
+  @Post('award-points') 
+  @Roles(Role.ADMIN, Role.TEACHER)
+  award(@Body() body: any) { return this.impactService.awardPoints(body.userId, body); }
 
   @Get('ngos') getNGOs(@Query() q: any) { return this.impactService.getNGOs(q); }
   @Get('ngo-projects') getNGOProjects(@Query() q: any) { return this.impactService.getNGOProjects(q); }
@@ -41,11 +47,13 @@ export class ImpactController {
 
   // Admin routes for certificates
   @Get('certificates/pending')
+  @Roles(Role.ADMIN)
   getPendingCertificates() {
     return this.impactService.getPendingCertificateRequests();
   }
 
   @Post('certificates/:id/approve')
+  @Roles(Role.ADMIN)
   approveCertificate(@Param('id') id: string) {
     return this.impactService.approveCertificate(id);
   }

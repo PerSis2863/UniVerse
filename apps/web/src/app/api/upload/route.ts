@@ -1,13 +1,32 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get('filename');
 
     if (!filename) {
       return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
+    }
+
+    // Basic MIME type check from extension
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+    const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+    if (!allowedExtensions.includes(ext)) {
+      return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
+    }
+
+    // Size limit check (e.g., 5MB)
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File size exceeds 5MB limit' }, { status: 413 });
     }
 
     if (!request.body) {

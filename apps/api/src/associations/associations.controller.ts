@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { AssociationsService } from './associations.service';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 
 @Controller('associations')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ClerkAuthGuard)
 export class AssociationsController {
   constructor(private readonly associationsService: AssociationsService) {}
 

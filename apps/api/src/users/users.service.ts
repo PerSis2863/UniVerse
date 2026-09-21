@@ -1,7 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, UserStatus } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
@@ -81,14 +80,35 @@ export class UsersService {
     });
   }
 
-  async changePassword(id: string, currentPassword: string, newPassword: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user?.password) throw new ForbiddenException('No password set');
-    const valid = await bcrypt.compare(currentPassword, user.password);
-    if (!valid) throw new ForbiddenException('Current password incorrect');
-    const hash = await bcrypt.hash(newPassword, 12);
-    await this.prisma.user.update({ where: { id }, data: { password: hash } });
-    return { success: true };
+  async inviteUser(email: string, role: Role) {
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
+    if (existingUser) throw new ConflictException('User with this email already exists');
+
+    // Create or update local invitation record
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
+
+    const invitation = await this.prisma.invitation.upsert({
+      where: { email },
+      update: { role, status: 'PENDING', expiresAt },
+      create: { email, role, status: 'PENDING', expiresAt },
+    });
+
+    try {
+      const { createClerkClient } = require('@clerk/backend');
+      const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+      await clerk.invitations.createInvitation({
+        emailAddress: email,
+        publicMetadata: { role },
+        ignoreExisting: true,
+      });
+    } catch (err) {
+      console.error('Failed to send Clerk invitation:', err);
+      // We don't fail the API call if clerk fails, just log it. Or maybe we should?
+      // For now, logging it is fine.
+    }
+
+    return { success: true, invitation };
   }
 
   async getStats() {

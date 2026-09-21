@@ -1,9 +1,9 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('career')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ClerkAuthGuard)
 export class CareerController {
   constructor(private prisma: PrismaService) {}
 

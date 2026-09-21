@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -44,7 +44,14 @@ export class GroupsService {
     });
   }
 
-  async findOne(id: string) {
+  async checkMembership(groupId: string, userId: string) {
+    const mem = await this.prisma.groupMembership.findUnique({
+      where: { groupId_userId: { groupId, userId } }
+    });
+    if (!mem) throw new ForbiddenException('Not a member of this group');
+  }
+
+  async findOne(id: string, userId: string) {
     const g = await this.prisma.group.findUnique({
       where: { id },
       include: {
@@ -57,6 +64,9 @@ export class GroupsService {
       },
     });
     if (!g) throw new NotFoundException();
+    if (!g.isPublic) {
+      await this.checkMembership(id, userId);
+    }
     return g;
   }
 
@@ -86,6 +96,10 @@ export class GroupsService {
   }
 
   async join(groupId: string, userId: string) {
+    const g = await this.prisma.group.findUnique({ where: { id: groupId } });
+    if (!g) throw new NotFoundException();
+    if (!g.isPublic) throw new ForbiddenException('Cannot join private group directly');
+
     return this.prisma.groupMembership.upsert({
       where: { groupId_userId: { groupId, userId } },
       create: { groupId, userId },
@@ -100,12 +114,17 @@ export class GroupsService {
   }
 
   async createPost(groupId: string, authorId: string, data: any) {
+    await this.checkMembership(groupId, authorId);
     return this.prisma.groupPost.create({
       data: { groupId, authorId, body: data.text || data.content },
     });
   }
 
-  async getPosts(groupId: string) {
+  async getPosts(groupId: string, userId: string) {
+    const g = await this.prisma.group.findUnique({ where: { id: groupId } });
+    if (!g) throw new NotFoundException();
+    if (!g.isPublic) await this.checkMembership(groupId, userId);
+
     return this.prisma.groupPost.findMany({
       where: { groupId },
       include: { author: { select: { id: true, name: true, avatar: true } } },
@@ -113,7 +132,8 @@ export class GroupsService {
     });
   }
 
-  async inviteMembers(groupId: string, emails: string[]) {
+  async inviteMembers(groupId: string, userId: string, emails: string[]) {
+    await this.checkMembership(groupId, userId); // Only members can invite
     const users = await this.prisma.user.findMany({
       where: { email: { in: emails } }
     });
