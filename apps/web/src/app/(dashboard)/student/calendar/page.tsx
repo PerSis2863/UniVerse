@@ -195,14 +195,14 @@ export default function CalendarPage() {
           {/* Continuous Scroll View */}
           <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl flex [--hour-height:80px] sm:[--hour-height:96px]">
             {/* Sticky Time Column */}
-            <div className="w-16 sm:w-20 flex-shrink-0 sticky left-0 z-20 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 shadow-[2px_0_10px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
-              <div className="h-16 flex items-center justify-center border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80">
+            <div className="w-14 sm:w-20 flex-shrink-0 sticky left-0 z-30 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-r border-zinc-200 dark:border-zinc-800 shadow-[4px_0_12px_rgba(0,0,0,0.03)] dark:shadow-[4px_0_12px_rgba(0,0,0,0.2)]">
+              <div className="h-16 flex items-center justify-center border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-sm">
                 <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500" />
               </div>
               <div className="relative" style={{ height: `calc(${HOURS.length} * var(--hour-height))` }}>
                 {HOURS.map((hour, i) => (
                   <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/50 flex items-start justify-center pt-2" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}>
-                    <span className="text-[10px] sm:text-xs font-medium text-zinc-500 bg-white dark:bg-zinc-900 px-1">{hour}</span>
+                    <span className="text-[10px] sm:text-xs font-medium text-zinc-500 bg-transparent px-1">{hour}</span>
                   </div>
                 ))}
               </div>
@@ -210,19 +210,27 @@ export default function CalendarPage() {
 
             {/* Scrollable Days */}
             <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2 snap-x snap-mandatory">
-              <div className="flex [--col-width:calc(100vw-6rem)] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
+              <div className="flex [--col-width:calc(100vw-5rem)] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
                 {generatedDates.map((date, idx) => {
                   const scheduleForDate = getScheduleForDate(date);
                   const isToday = new Date().toDateString() === date.toDateString();
                   
+                  // Calculate current time offset
+                  const now = new Date();
+                  const currentHour = now.getHours();
+                  const currentMinute = now.getMinutes();
+                  const baseStart = 8;
+                  const currentTimeOffset = (currentHour - baseStart) + (currentMinute / 60);
+                  const showCurrentTimeLine = isToday && mounted && currentHour >= 8 && currentHour <= 20;
+                  
                   return (
                     <div key={idx} className="flex-1 w-[var(--col-width)] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0 snap-start">
                       {/* Day Header */}
-                      <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center sticky top-0 z-10 ${isToday ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'bg-white dark:bg-zinc-900/80'}`}>
-                        <h3 className={`font-semibold ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-900 dark:text-zinc-300'}`}>
+                      <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center sticky top-0 z-20 backdrop-blur-md ${isToday ? 'bg-indigo-50/90 dark:bg-indigo-500/20 border-b-indigo-200 dark:border-b-indigo-500/30' : 'bg-white/90 dark:bg-zinc-900/90'}`}>
+                        <h3 className={`font-bold ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-900 dark:text-zinc-300'}`}>
                           {date.toLocaleDateString('en-US', { weekday: 'short' })}
                         </h3>
-                        <span className={`text-xs ${isToday ? 'text-indigo-500/80' : 'text-zinc-500'}`}>
+                        <span className={`text-[10px] sm:text-xs font-medium ${isToday ? 'text-indigo-500/80 bg-indigo-100 dark:bg-indigo-500/20 px-2 py-0.5 rounded-full mt-0.5' : 'text-zinc-500 mt-1'}`}>
                           {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       </div>
@@ -231,11 +239,27 @@ export default function CalendarPage() {
                       <div className="relative bg-zinc-50/30 dark:bg-zinc-950/20" style={{ height: `calc(${HOURS.length} * var(--hour-height))` }}>
                         {/* Grid Lines */}
                         {HOURS.map((hour, i) => (
-                          <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/30 transition-colors" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}></div>
+                          <div key={hour} className="absolute left-0 right-0 border-t border-dashed border-zinc-200 dark:border-zinc-800/40 transition-colors" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}></div>
                         ))}
                         
+                        {/* Current Time Indicator */}
+                        {showCurrentTimeLine && (
+                          <div 
+                            className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                            style={{ top: `calc(${currentTimeOffset} * var(--hour-height))` }}
+                          >
+                            <div className="w-2 h-2 rounded-full bg-red-500 absolute -left-1 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
+                            <div className="flex-1 h-[2px] bg-red-500/50 shadow-[0_0_4px_rgba(239,68,68,0.4)]"></div>
+                          </div>
+                        )}
+                        
                         {/* Schedule Blocks */}
-                        {scheduleForDate.map(cls => {
+                        {scheduleForDate.length === 0 ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-30 pointer-events-none">
+                            <Clock className="w-8 h-8 mb-2 text-zinc-400" />
+                            <span className="text-xs font-medium text-zinc-500">No classes</span>
+                          </div>
+                        ) : scheduleForDate.map(cls => {
                           const startHour = parseInt(cls.time.split(':')[0]);
                           const startMin = parseInt(cls.time.split(':')[1]);
                           const baseStart = 8; // 08:00
@@ -245,19 +269,20 @@ export default function CalendarPage() {
                           return (
                             <div 
                               key={cls.id} 
-                              className={`absolute left-1 right-1 sm:left-2 sm:right-2 rounded-xl border p-2 sm:p-4 z-10 hover:z-20 transition-all cursor-pointer hover:shadow-lg overflow-hidden ${cls.color}`}
+                              className={`absolute left-1 right-1 sm:left-2 sm:right-2 rounded-xl border p-2 sm:p-3 z-10 hover:z-30 transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-[1.02] overflow-hidden backdrop-blur-md shadow-sm ${cls.color}`}
                               style={{ 
                                 top: `calc(${topOffsetHours} * var(--hour-height) + 4px)`, 
                                 height: `calc(${durationHours} * var(--hour-height) - 8px)` 
                               }}
                               onClick={() => setSelectedClass({ ...cls, dateObj: date })}
                             >
-                              <div className="font-bold text-xs sm:text-sm leading-tight mb-0.5 sm:mb-1 truncate">{cls.subject}</div>
-                              <div className="text-[10px] sm:text-xs opacity-80 flex items-center gap-1 mb-0.5 sm:mb-1 font-medium">
-                                <Clock className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{formatTimeRange(cls.time, cls.duration)}</span>
+                              <div className="absolute top-0 left-0 w-1 h-full bg-current opacity-20"></div>
+                              <div className="font-bold text-xs sm:text-sm leading-tight mb-1 truncate pl-1">{cls.subject}</div>
+                              <div className="text-[10px] sm:text-xs opacity-90 flex items-center gap-1.5 mb-1 font-medium pl-1">
+                                <Clock className="w-3 h-3 flex-shrink-0 opacity-70" /> <span className="truncate">{formatTimeRange(cls.time, cls.duration)}</span>
                               </div>
-                              <div className="text-[10px] sm:text-xs opacity-80 flex items-center gap-1">
-                                <MapPin className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{cls.location}</span>
+                              <div className="text-[10px] sm:text-xs opacity-90 flex items-center gap-1.5 pl-1">
+                                <MapPin className="w-3 h-3 flex-shrink-0 opacity-70" /> <span className="truncate">{cls.location}</span>
                               </div>
                             </div>
                           );
