@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import puppeteer from 'puppeteer';
+import { getCertificateHtml } from './certificate-template';
 
 @Injectable()
 export class ImpactService {
@@ -95,4 +97,74 @@ export class ImpactService {
   }
 
   async getMyRegistrations(userId: string) { return this.prisma.summitRegistration.findMany({ where: { userId }, include: { summit: true } }); }
+
+  // Certificates
+  async getCertificates(userId: string) {
+    return this.prisma.studentDocument.findMany({
+      where: { userId, type: 'CERTIFICATE' },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async getPendingCertificateRequests() {
+    return this.prisma.studentDocument.findMany({
+      where: { type: 'CERTIFICATE', isVerified: false },
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
+
+  async requestCertificate(userId: string, title: string) {
+    return this.prisma.studentDocument.create({
+      data: {
+        userId,
+        type: 'CERTIFICATE',
+        title,
+        isVerified: false,
+        fileUrl: ''
+      }
+    });
+  }
+
+  async approveCertificate(id: string) {
+    return this.prisma.studentDocument.update({
+      where: { id },
+      data: {
+        isVerified: true,
+        issuedAt: new Date()
+      }
+    });
+  }
+
+  async generateCertificatePdf(id: string) {
+    const doc = await this.prisma.studentDocument.findUnique({
+      where: { id },
+      include: { user: true }
+    });
+    
+    if (!doc || !doc.isVerified) {
+      throw new Error('Certificate not found or not verified');
+    }
+
+    const html = getCertificateHtml({
+      studentName: doc.user.name || 'Student',
+      certificateTitle: doc.title,
+      issuedAt: doc.issuedAt ? doc.issuedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString(),
+      id: doc.id
+    });
+
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    
+    const pdf = await page.pdf({
+      printBackground: true,
+      width: '1000px',
+      height: '700px',
+      margin: { top: 0, right: 0, bottom: 0, left: 0 }
+    });
+    
+    await browser.close();
+    return pdf;
+  }
 }

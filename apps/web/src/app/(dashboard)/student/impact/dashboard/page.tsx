@@ -8,9 +8,10 @@ import {
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { api } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 export default function MySocialImpactPage() {
-  const [showCertModal, setShowCertModal] = useState(false);
+  const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -53,10 +54,10 @@ export default function MySocialImpactPage() {
         subtitle="Track your verified humanitarian contributions, NGO research hours, and UN SDG credentials."
         rightNode={
           <button
-            onClick={() => setShowCertModal(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-zinc-900 dark:text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+            onClick={() => router.push('/student/impact/certifications')}
+            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
           >
-            <Download className="w-4 h-4" /> Download Certified Transcript
+            <Award className="w-4 h-4" /> Manage Certifications
           </button>
         }
       />
@@ -194,64 +195,7 @@ export default function MySocialImpactPage() {
             </div>
           </div>
 
-          {/* Certificate Modal */}
-          {showCertModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-xl rounded-2xl p-8 space-y-6 shadow-2xl relative">
-                
-                <div className="border-2 border-indigo-500/30 rounded-2xl p-6 bg-gradient-to-br from-indigo-950/20 via-zinc-950 to-zinc-950 space-y-6 text-center relative">
-                  <div className="flex justify-center">
-                    <UniverseLogo size="lg" animated={false} withGlow={true} />
-                  </div>
-                  
-                  <div>
-                    <span className="text-[10px] tracking-widest uppercase font-bold text-indigo-400">
-                      Official Certificate of Global Social Impact
-                    </span>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white mt-1">{data?.userName}</h2>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                      Has achieved Level 3 Distinction with {data?.verifiedHours || 0} hours of verified humanitarian research and technical contributions.
-                    </p>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4 py-4 border-y border-zinc-200 dark:border-zinc-800 text-xs text-left">
-                    <div>
-                      <div className="text-zinc-500 dark:text-zinc-500">Accreditation Body</div>
-                      <div className="font-semibold text-zinc-900 dark:text-white">UniVerse Academic Consortium</div>
-                    </div>
-                    <div>
-                      <div className="text-zinc-500 dark:text-zinc-500">UN SDG Alignments</div>
-                      <div className="font-semibold text-zinc-900 dark:text-white">SDG #3, #4, #6, #13, #17</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500 dark:text-zinc-500 font-mono">
-                    <span>Cert Hash: 0x99B4...F71E</span>
-                    <span>Date: Sep 18, 2026</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-3">
-                  <button
-                    onClick={() => setShowCertModal(false)}
-                    className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={() => {
-                      alert('Certified PDF transcript downloaded.');
-                      setShowCertModal(false);
-                    }}
-                    className="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white flex items-center gap-2 shadow-lg shadow-indigo-600/30"
-                  >
-                    <Download className="w-4 h-4" /> Download PDF Transcript
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          )}
 
         </div>
       </div>
