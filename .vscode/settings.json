@@ -1,0 +1,14 @@
+{
+  "dbclient.connections": [
+    {
+      "host": "localhost",
+      "port": 5432,
+      "user": "universe_user",
+      "password": "universe_pass",
+      "database": "universe_local",
+      "dbType": "PostgreSQL",
+      "name": "🗄️ UniVerse Local DB",
+      "timezone": "local"
+    }
+  ]
+}
