@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, UserStatus } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
@@ -47,9 +47,8 @@ export class UsersService {
         avatar: true,
         studentProfile: {
           select: {
-            major: true,
+            department: true,
             year: true,
-            residence: true
           }
         }
       },

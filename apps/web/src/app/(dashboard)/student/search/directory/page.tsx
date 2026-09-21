@@ -25,15 +25,13 @@ export default function StudentDirectory() {
   const [filterLocation, setFilterLocation] = useState('');
 
   const filteredStudents = students.filter((s: any) => {
-    const sMajor = s.studentProfile?.major || '';
+    const sDept = s.studentProfile?.department || '';
     const sYear = s.studentProfile?.year || '';
-    const sLocation = s.studentProfile?.residence || '';
 
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          sMajor.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesYear = filterYear ? sYear === filterYear : true;
-    const matchesLocation = filterLocation ? sLocation === filterLocation : true;
-    return matchesSearch && matchesYear && matchesLocation;
+                          sDept.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesYear = filterYear ? sYear.toString() === filterYear : true;
+    return matchesSearch && matchesYear;
   });
 
   return (
@@ -48,7 +46,7 @@ export default function StudentDirectory() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <input 
                 type="text" 
-                placeholder="Search by name, major, or year..." 
+                placeholder="Search by name, department, or year..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all shadow-sm"
@@ -72,18 +70,14 @@ export default function StudentDirectory() {
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-white truncate">{student.name}</h3>
-                    <div className="text-sm font-medium text-indigo-400 truncate">{student.studentProfile?.major || 'Undeclared'}</div>
+                    <div className="text-sm font-medium text-indigo-400 truncate">{student.studentProfile?.department || 'Undeclared'}</div>
                   </div>
                 </div>
 
                 <div className="space-y-2 mb-6">
                   <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                     <Building2 className="w-4 h-4 text-zinc-500 dark:text-zinc-500 flex-shrink-0" />
-                    <span>{student.studentProfile?.year || 'Unknown Year'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    <MapPin className="w-4 h-4 text-zinc-500 dark:text-zinc-500 flex-shrink-0" />
-                    <span>{student.studentProfile?.residence || 'Unknown Location'}</span>
+                    <span>Year {student.studentProfile?.year || 'Unknown'}</span>
                   </div>
                 </div>
 
@@ -135,21 +129,10 @@ export default function StudentDirectory() {
                     className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
                   >
                     <option value="">Any Year</option>
-                    <option value="Freshman">Freshman</option>
-                    <option value="Sophomore">Sophomore</option>
-                    <option value="Junior">Junior</option>
-                    <option value="Senior">Senior</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-400">Location</label>
-                  <select 
-                    value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
-                  >
-                    <option value="">Any Location</option>
-                    <option value="Campus Dorms">Campus Dorms</option>
-                    <option value="Off-Campus">Off-Campus</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
                   </select>
                 </div>
                 <button onClick={() => setActiveModal(null)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors">
