@@ -49,7 +49,7 @@ export class MentorshipService {
     return this.prisma.mentorshipBooking.findMany({
       where: { studentId: userId },
       include: {
-        mentor: { include: { user: { select: { name: true, avatar: true, email: true, company: true, jobTitle: true } } } },
+        mentor: { include: { user: { select: { name: true, avatar: true, email: true } } } },
       },
     });
   }
