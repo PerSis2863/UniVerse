@@ -1,45 +1,96 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Award, CheckCircle2, ChevronRight, GraduationCap, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const ALL_SCHOLARSHIPS = [
-  { name: 'STEM Excellence Grant', amount: '$2,500', deadline: 'Oct 31, 2026', type: 'Need-based', description: 'Awarded to undergraduate students pursuing degrees in Science, Technology, Engineering, or Mathematics with demonstrated financial need. Applicants must maintain a 3.0 GPA.' },
-  { name: 'Alumni Association Award', amount: '$1,000', deadline: 'Nov 15, 2026', type: 'Merit-based', description: 'Funded by the generous donations of our alumni network. This award recognizes students with exceptional leadership and community service records.' },
-  { name: 'Global Perspectives Scholarship', amount: '$3,000', deadline: 'Dec 01, 2026', type: 'Merit-based', description: 'Designed to support students planning to study abroad or participate in international exchange programs. Requires a brief essay on global citizenship.' },
-  { name: 'First-Generation Student Grant', amount: '$2,000', deadline: 'Jan 15, 2027', type: 'Need-based', description: 'Provides financial assistance to students who are the first in their immediate family to attend a four-year college or university.' }
-];
+import { api } from '@/lib/api';
 
 export default function Scholarships() {
+  const [scholarships, setScholarships] = useState<any[]>([]);
+  const [myApplications, setMyApplications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [selectedScholarship, setSelectedScholarship] = useState<any>(null);
   const [showAll, setShowAll] = useState(false);
   const [applicationStep, setApplicationStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [motivation, setMotivation] = useState('');
 
-  const displayedScholarships = showAll ? ALL_SCHOLARSHIPS : ALL_SCHOLARSHIPS.slice(0, 2);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [scholarshipsRes, appsRes] = await Promise.all([
+        api.get('/scholarships'),
+        api.get('/scholarships/my-applications')
+      ]);
+      setScholarships(scholarshipsRes.data);
+      setMyApplications(appsRes.data);
+    } catch (error) {
+      toast.error('Failed to load scholarships');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleApply = () => {
     setApplicationStep(2);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!motivation.trim()) {
+      toast.error('Please provide a statement.');
+      return;
+    }
+    
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await api.post(`/scholarships/${selectedScholarship.id}/apply`, {
+        motivation
+      });
+      await fetchData(); // Refresh data to hide from available list
       setApplicationStep(3);
       toast.success('Application submitted successfully!');
-    }, 1500);
+    } catch (error) {
+      toast.error('Failed to submit application');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setSelectedScholarship(null);
     setTimeout(() => {
       setApplicationStep(1);
+      setMotivation('');
     }, 300);
   };
+
+  const availableScholarships = scholarships.filter(
+    (s) => !myApplications.some((app) => app.scholarshipId === s.id)
+  );
+  
+  const displayedScholarships = showAll ? availableScholarships : availableScholarships.slice(0, 2);
+  
+  const activeAwardsCount = myApplications.filter(app => app.status === 'APPROVED').length;
+  const totalAwarded = myApplications
+    .filter(app => app.status === 'APPROVED')
+    .reduce((sum, app) => sum + (app.scholarship?.amount || 0), 0);
+
+  if (isLoading) {
+    return (
+      <>
+        <Topbar title="Scholarships" subtitle="View and apply for financial aid and scholarships" />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -55,88 +106,104 @@ export default function Scholarships() {
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-1">Active Scholarships</h2>
-                <div className="text-zinc-300">You currently have 1 active scholarship for the 2026-2027 academic year.</div>
+                <div className="text-zinc-300">
+                  You currently have {activeAwardsCount} active scholarship{activeAwardsCount !== 1 && 's'} for the academic year.
+                </div>
               </div>
             </div>
             <div className="text-center md:text-right">
               <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1">Total Awarded</div>
-              <div className="text-3xl font-bold text-zinc-900 dark:text-white">$5,000</div>
+              <div className="text-3xl font-bold text-zinc-900 dark:text-white">${totalAwarded.toLocaleString()}</div>
             </div>
           </div>
 
           <div className="space-y-6">
-            <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Your Awards</h3>
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Your Applications & Awards</h3>
             
-            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
-              <div className="flex justify-between items-start border-b border-zinc-200 dark:border-zinc-800/50 pb-6 mb-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="text-lg font-medium text-zinc-900 dark:text-white">University Merit Scholarship</h4>
-                    <span className="flex items-center gap-1 text-xs font-medium bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full">
-                      <CheckCircle2 className="w-3 h-3" /> Active
-                    </span>
+            {myApplications.length === 0 ? (
+              <div className="text-zinc-500 text-sm">You haven't applied for any scholarships yet.</div>
+            ) : (
+              <div className="space-y-4">
+                {myApplications.map((app) => (
+                  <div key={app.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+                    <div className="flex justify-between items-start border-b border-zinc-200 dark:border-zinc-800/50 pb-6 mb-6">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="text-lg font-medium text-zinc-900 dark:text-white">{app.scholarship?.name}</h4>
+                          <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${app.status === 'APPROVED' ? 'bg-green-500/10 text-green-400' : app.status === 'REJECTED' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                            {app.status === 'APPROVED' && <CheckCircle2 className="w-3 h-3" />}
+                            {app.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-2xl line-clamp-2">{app.scholarship?.description}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-xl font-bold text-zinc-900 dark:text-white">${app.scholarship?.amount?.toLocaleString()}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-500">Amount</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-500 mb-1">Applied Date</div>
+                        <div className="font-medium text-zinc-200">{new Date(app.appliedAt).toLocaleDateString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-500 mb-1">Provider</div>
+                        <div className="font-medium text-zinc-200">{app.scholarship?.provider || 'Internal'}</div>
+                      </div>
+                      <div>
+                        <div className="text-zinc-500 dark:text-zinc-500 mb-1">Status</div>
+                        <div className="font-medium text-zinc-200">{app.status}</div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-2xl">Awarded for outstanding academic achievement during the previous academic year. Must maintain a 3.5 GPA to renew.</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="text-xl font-bold text-zinc-900 dark:text-white">$5,000</div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-500">Per Academic Year</div>
-                </div>
+                ))}
               </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-500 mb-1">Award Date</div>
-                  <div className="font-medium text-zinc-200">May 15, 2026</div>
-                </div>
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-500 mb-1">Term Applied</div>
-                  <div className="font-medium text-zinc-200">Fall 2026 / Spring 2027</div>
-                </div>
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-500 mb-1">Requirement</div>
-                  <div className="font-medium text-zinc-200">3.5 GPA</div>
-                </div>
-                <div>
-                  <div className="text-zinc-500 dark:text-zinc-500 mb-1">Status</div>
-                  <div className="font-medium text-zinc-200">Disbursed</div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Available to Apply</h3>
-              <button onClick={() => setShowAll(!showAll)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
-                {showAll ? 'Show Less' : 'View All'} <ChevronRight className={`w-4 h-4 transition-transform ${showAll ? 'rotate-90' : ''}`} />
-              </button>
+              {availableScholarships.length > 2 && (
+                <button onClick={() => setShowAll(!showAll)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
+                  {showAll ? 'Show Less' : 'View All'} <ChevronRight className={`w-4 h-4 transition-transform ${showAll ? 'rotate-90' : ''}`} />
+                </button>
+              )}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {displayedScholarships.map((award, i) => (
-                <div key={i} onClick={() => setSelectedScholarship(award)} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group cursor-pointer">
-                  <div className="flex items-start gap-4 mb-4">
-                    <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <GraduationCap className="w-5 h-5 text-indigo-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-zinc-900 dark:text-white group-hover:text-indigo-400 transition-colors">{award.name}</h4>
-                      <div className="text-sm text-zinc-500 dark:text-zinc-500 mt-0.5">{award.type}</div>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-end">
+            {availableScholarships.length === 0 ? (
+              <div className="text-zinc-500 text-sm">No new scholarships available to apply for at this time.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {displayedScholarships.map((award: any) => (
+                  <div key={award.id} onClick={() => setSelectedScholarship(award)} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group cursor-pointer flex flex-col justify-between">
                     <div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-500 mb-1">Deadline</div>
-                      <div className="text-sm font-medium text-zinc-300">{award.deadline}</div>
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <GraduationCap className="w-5 h-5 text-indigo-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-zinc-900 dark:text-white group-hover:text-indigo-400 transition-colors line-clamp-1">{award.name}</h4>
+                          <div className="text-sm text-zinc-500 dark:text-zinc-500 mt-0.5">{award.provider || 'Internal'}</div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-zinc-400 line-clamp-2 mb-4">{award.description}</p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-zinc-900 dark:text-white">{award.amount}</div>
+                    <div className="flex justify-between items-end border-t border-zinc-800 pt-4">
+                      <div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-500 mb-1">Deadline</div>
+                        <div className="text-sm font-medium text-zinc-300">{award.deadline ? new Date(award.deadline).toLocaleDateString() : 'Rolling'}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-zinc-900 dark:text-white">${award.amount?.toLocaleString()}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
@@ -182,20 +249,29 @@ export default function Scholarships() {
                       <div className="grid grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-800/30 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
                         <div>
                           <div className="text-xs text-zinc-500 mb-1">Award Amount</div>
-                          <div className="font-bold text-zinc-900 dark:text-white text-xl">{selectedScholarship.amount}</div>
+                          <div className="font-bold text-zinc-900 dark:text-white text-xl">${selectedScholarship.amount?.toLocaleString()}</div>
                         </div>
                         <div>
                           <div className="text-xs text-zinc-500 mb-1">Deadline</div>
-                          <div className="font-bold text-zinc-900 dark:text-white text-xl">{selectedScholarship.deadline}</div>
+                          <div className="font-bold text-zinc-900 dark:text-white text-xl">{selectedScholarship.deadline ? new Date(selectedScholarship.deadline).toLocaleDateString() : 'Rolling'}</div>
                         </div>
                       </div>
 
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Description & Requirements</h4>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Description</h4>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap">
                           {selectedScholarship.description}
                         </p>
                       </div>
+
+                      {selectedScholarship.requirements && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Requirements</h4>
+                          <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed whitespace-pre-wrap">
+                            {selectedScholarship.requirements}
+                          </p>
+                        </div>
+                      )}
 
                       <div className="pt-4 flex gap-4">
                         <button 
@@ -230,6 +306,8 @@ export default function Scholarships() {
                           <label className="block text-sm font-medium text-zinc-300 mb-2">Why are you a good fit for this scholarship?</label>
                           <textarea 
                             rows={4} 
+                            value={motivation}
+                            onChange={(e) => setMotivation(e.target.value)}
                             placeholder="Write a brief statement..."
                             className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
                           />

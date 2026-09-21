@@ -1,107 +1,66 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Globe, Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin, Sparkles, Building, X } from 'lucide-react';
+import { Globe, Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin, Sparkles, Building, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
-
-interface NGOProject {
-  id: string;
-  name: string;
-  ngo: string;
-  description: string;
-  sdg: { num: number; name: string; color: string };
-  location: string;
-  duration: string;
-  type: 'Volunteer' | 'Internship' | 'Field Work';
-  skillsRequired: string[];
-  impactPoints: number;
-  openings: number;
-  gradient: string;
-}
-
-const PROJECTS: NGOProject[] = [
-  {
-    id: 'ngo-1',
-    name: 'Digital Literacy for Rural Women',
-    ngo: 'Pratham Education Foundation',
-    description: 'Teach basic digital literacy and online safety to women in rural communities. Training provided.',
-    sdg: { num: 4, name: 'Quality Education', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-    location: 'Remote & On-site',
-    duration: '3 Months (Part-time)',
-    type: 'Volunteer',
-    skillsRequired: ['Teaching', 'Communication', 'Basic IT'],
-    impactPoints: 500,
-    openings: 15,
-    gradient: 'from-blue-500 to-indigo-600',
-  },
-  {
-    id: 'ngo-2',
-    name: 'Coastal Cleanup Data Analyst',
-    ngo: 'Ocean Conservancy',
-    description: 'Analyze data collected from coastal cleanups to identify primary pollution sources and create visualizations.',
-    sdg: { num: 14, name: 'Life Below Water', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
-    location: 'Remote',
-    duration: '1 Month',
-    type: 'Internship',
-    skillsRequired: ['Data Analysis', 'Python', 'Data Viz'],
-    impactPoints: 800,
-    openings: 2,
-    gradient: 'from-sky-500 to-cyan-600',
-  },
-  {
-    id: 'ngo-3',
-    name: 'Solar Panel Setup Assistant',
-    ngo: 'Barefoot College',
-    description: 'Assist engineering teams in setting up solar micro-grids in off-grid villages.',
-    sdg: { num: 7, name: 'Clean Energy', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-    location: 'Field Work (Rajasthan)',
-    duration: '2 Weeks (Full-time)',
-    type: 'Field Work',
-    skillsRequired: ['Engineering', 'Physical Work', 'Hindi'],
-    impactPoints: 1200,
-    openings: 5,
-    gradient: 'from-emerald-500 to-teal-600',
-  },
-  {
-    id: 'ngo-4',
-    name: 'Food Distribution Logistics',
-    ngo: 'Akshaya Patra',
-    description: 'Help optimize delivery routes for the mid-day meal scheme reaching thousands of schools.',
-    sdg: { num: 2, name: 'Zero Hunger', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-    location: 'Hybrid (Bangalore)',
-    duration: '2 Months',
-    type: 'Internship',
-    skillsRequired: ['Logistics', 'Operations', 'Excel'],
-    impactPoints: 750,
-    openings: 3,
-    gradient: 'from-amber-500 to-orange-600',
-  }
-];
+import { api } from '@/lib/api';
 
 export default function NGOMarketplacePage() {
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
-  const [selected, setSelected] = useState<NGOProject | null>(null);
+  const [selected, setSelected] = useState<any | null>(null);
   const [applied, setApplied] = useState<string[]>([]);
   const { t } = useLanguageStore();
 
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/impact/ngo-projects');
+      setProjects(res.data);
+    } catch (error) {
+      console.error('Failed to fetch NGO projects:', error);
+      toast.error('Failed to load projects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const types = ['ALL', 'Volunteer', 'Internship', 'Field Work'];
-  const filtered = PROJECTS.filter(p => {
+  const filtered = projects.filter(p => {
     const q = search.toLowerCase();
-    const matchSearch = p.name.toLowerCase().includes(q) || p.ngo.toLowerCase().includes(q);
+    const matchSearch = p.name?.toLowerCase().includes(q) || p.ngo?.name?.toLowerCase().includes(q);
     const matchType = selectedType === 'ALL' || p.type === selectedType;
     return matchSearch && matchType;
   });
 
-  const handleApply = (p: NGOProject) => {
-    setApplied(prev => [...prev, p.id]);
-    toast.success(`Application sent to ${p.ngo}!`, {
-      description: `You will earn ${p.impactPoints} impact points upon completion.`
-    });
-    setSelected(null);
+  const handleApply = async (p: any) => {
+    setApplying(true);
+    try {
+      await api.post(`/impact/ngo-projects/${p.id}/apply`, {
+        status: 'PENDING'
+      });
+      setApplied(prev => [...prev, p.id]);
+      toast.success(`Application sent to ${p.ngo?.name || 'NGO'}!`, {
+        description: `You will earn ${p.impactPoints || 500} impact points upon completion.`
+      });
+      setSelected(null);
+    } catch (error) {
+      console.error('Failed to apply:', error);
+      toast.error('Failed to submit application');
+    } finally {
+      setApplying(false);
+    }
   };
 
   return (
@@ -110,7 +69,7 @@ export default function NGOMarketplacePage() {
         title="🌍 NGO Marketplace" 
         subtitle="Volunteer, intern, and work with verified NGOs to earn impact points." 
       />
-      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
+      <div className="flex-1 p-4 sm:p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Hero */}
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950/60 via-teal-950/50 to-zinc-950 border border-white/10 p-8 shadow-2xl">
@@ -145,58 +104,70 @@ export default function NGOMarketplacePage() {
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
-            {filtered.map((project, i) => {
-              const isApplied = applied.includes(project.id);
-              return (
-                <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/40 transition-all group flex flex-col justify-between">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${project.gradient} flex items-center justify-center text-white`}>
-                          <Building className="w-6 h-6" />
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+              <Building className="w-12 h-12 text-zinc-400 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">No projects found</h3>
+              <p className="text-zinc-500 mt-1">Try adjusting your filters.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
+              {filtered.map((project, i) => {
+                const isApplied = applied.includes(project.id);
+                return (
+                  <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                    className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/40 transition-all group flex flex-col justify-between">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white`}>
+                            <Building className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-zinc-900 dark:text-white group-hover:text-emerald-500 transition-colors">{project.name}</h3>
+                            <div className="text-xs text-zinc-500 font-medium">{project.ngo?.name || 'Partner NGO'}</div>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-bold text-zinc-900 dark:text-white group-hover:text-emerald-500 transition-colors">{project.name}</h3>
-                          <div className="text-xs text-zinc-500 font-medium">{project.ngo}</div>
-                        </div>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>SDG {project.sdg || 4}</span>
                       </div>
-                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", project.sdg.color)}>SDG {project.sdg.num}</span>
-                    </div>
-                    
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">{project.description}</p>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex items-center gap-1.5 text-zinc-500"><MapPin className="w-3.5 h-3.5 text-zinc-400" /> {project.location}</div>
-                      <div className="flex items-center gap-1.5 text-zinc-500"><Clock className="w-3.5 h-3.5 text-zinc-400" /> {project.duration}</div>
-                      <div className="flex items-center gap-1.5 text-zinc-500"><Users className="w-3.5 h-3.5 text-zinc-400" /> {project.openings} Openings</div>
-                      <div className="flex items-center gap-1.5 text-emerald-500 font-semibold"><Sparkles className="w-3.5 h-3.5" /> +{project.impactPoints} Impact Pts</div>
-                    </div>
+                      
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{project.description}</p>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-1.5 text-zinc-500"><MapPin className="w-3.5 h-3.5 text-zinc-400" /> {project.location || 'Remote'}</div>
+                        <div className="flex items-center gap-1.5 text-zinc-500"><Clock className="w-3.5 h-3.5 text-zinc-400" /> {project.duration || 'Flexible'}</div>
+                        <div className="flex items-center gap-1.5 text-zinc-500"><Users className="w-3.5 h-3.5 text-zinc-400" /> {project.openings || 5} Openings</div>
+                        <div className="flex items-center gap-1.5 text-emerald-500 font-semibold"><Sparkles className="w-3.5 h-3.5" /> +{project.impactPoints || 500} Impact Pts</div>
+                      </div>
 
-                    <div className="flex flex-wrap gap-1.5">
-                      {project.skillsRequired.map(skill => (
-                        <span key={skill} className="text-[10px] px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-                          {skill}
-                        </span>
-                      ))}
+                      <div className="flex flex-wrap gap-1.5">
+                        {(project.skillsRequired || ['Communication']).map((skill: string) => (
+                          <span key={skill} className="text-[10px] px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                    <button 
-                      onClick={() => !isApplied && setSelected(project)}
-                      disabled={isApplied}
-                      className={cn("w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2",
-                        isApplied ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
-                      )}>
-                      {isApplied ? <><CheckCircle2 className="w-4 h-4" /> Application Submitted</> : <>View Details & Apply <ArrowUpRight className="w-4 h-4" /></>}
-                    </button>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+                    
+                    <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                      <button 
+                        onClick={() => !isApplied && setSelected(project)}
+                        disabled={isApplied}
+                        className={cn("w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2",
+                          isApplied ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
+                        )}>
+                        {isApplied ? <><CheckCircle2 className="w-4 h-4" /> Application Submitted</> : <>View Details & Apply <ArrowUpRight className="w-4 h-4" /></>}
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -210,9 +181,9 @@ export default function NGOMarketplacePage() {
               <button onClick={() => setSelected(null)} className="absolute top-4 right-4 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
               
               <div className="mb-6">
-                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border mb-3 inline-block", selected.sdg.color)}>SDG {selected.sdg.num}: {selected.sdg.name}</span>
+                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border mb-3 inline-block bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>SDG {selected.sdg || 4}</span>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">{selected.name}</h2>
-                <p className="text-sm font-medium text-zinc-500">{selected.ngo}</p>
+                <p className="text-sm font-medium text-zinc-500">{selected.ngo?.name || 'Partner NGO'}</p>
               </div>
 
               <div className="space-y-4">
@@ -224,26 +195,26 @@ export default function NGOMarketplacePage() {
                 <div className="grid grid-cols-2 gap-3 p-4 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-sm">
                   <div>
                     <div className="text-zinc-500 text-xs mb-0.5">Location</div>
-                    <div className="font-medium text-zinc-900 dark:text-white">{selected.location}</div>
+                    <div className="font-medium text-zinc-900 dark:text-white">{selected.location || 'Remote'}</div>
                   </div>
                   <div>
                     <div className="text-zinc-500 text-xs mb-0.5">Duration</div>
-                    <div className="font-medium text-zinc-900 dark:text-white">{selected.duration}</div>
+                    <div className="font-medium text-zinc-900 dark:text-white">{selected.duration || 'Flexible'}</div>
                   </div>
                   <div>
                     <div className="text-zinc-500 text-xs mb-0.5">Type</div>
-                    <div className="font-medium text-zinc-900 dark:text-white">{selected.type}</div>
+                    <div className="font-medium text-zinc-900 dark:text-white">{selected.type || 'Volunteer'}</div>
                   </div>
                   <div>
                     <div className="text-emerald-500 text-xs mb-0.5 font-semibold">Impact</div>
-                    <div className="font-bold text-emerald-600 dark:text-emerald-400">+{selected.impactPoints} Points</div>
+                    <div className="font-bold text-emerald-600 dark:text-emerald-400">+{selected.impactPoints || 500} Points</div>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Required Skills</h4>
                   <div className="flex flex-wrap gap-2">
-                    {selected.skillsRequired.map(skill => (
+                    {(selected.skillsRequired || ['Communication']).map((skill: string) => (
                       <span key={skill} className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300">
                         {skill}
                       </span>
@@ -255,8 +226,9 @@ export default function NGOMarketplacePage() {
               <div className="mt-8">
                 <button 
                   onClick={() => handleApply(selected)}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" /> Submit Application
+                  disabled={applying}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                  {applying ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Submit Application</>}
                 </button>
               </div>
             </motion.div>

@@ -1,46 +1,13 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight, Video, Users, X, BookOpen, ExternalLink, Bell, FileText, ChevronRight as ChevronR } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 import { ClassDetailModal, ClassData } from '@/components/dashboard/ClassDetailModal';
-import { cn } from '@/lib/utils';
-
-const MOCK_SCHEDULE = [
-  { id: '1', day: 'Monday', time: '09:00', duration: 2, subject: 'Computer Science 101', location: 'Room 302', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
-  { id: '2', day: 'Monday', time: '13:30', duration: 1.5, subject: 'Advanced Calculus', location: 'Room 105', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  { id: '10', day: 'Monday', time: '17:00', duration: 2, subject: 'Machine Learning', location: 'Room 305', type: 'Lecture', color: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
-  { id: 't1', day: 'Tuesday', time: '08:00', duration: 1.5, subject: 'Calculus II', location: 'Room 104', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  { id: '3', day: 'Tuesday', time: '10:00', duration: 2, subject: 'Physics Lab', location: 'Lab 4B', type: 'Lab', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-  { id: 't2', day: 'Tuesday', time: '13:00', duration: 1.5, subject: 'Operating Systems', location: 'Room 201', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
-  { id: '11', day: 'Tuesday', time: '15:00', duration: 2, subject: 'Artificial Intelligence', location: 'Auditorium B', type: 'Lecture', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  { id: '4', day: 'Wednesday', time: '09:00', duration: 2, subject: 'Computer Science 101', location: 'Room 302', type: 'Lecture', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
-  { id: 'w1', day: 'Wednesday', time: '11:30', duration: 1.5, subject: 'Design Patterns', location: 'Room 205', type: 'Lecture', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  { id: '5', day: 'Wednesday', time: '14:00', duration: 1.5, subject: 'World History', location: 'Auditorium A', type: 'Lecture', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  { id: '12', day: 'Wednesday', time: '18:00', duration: 2, subject: 'Study Group', location: 'Library', type: 'Meeting', color: 'bg-zinc-500/20 text-zinc-600 dark:text-zinc-400 border-zinc-500/30' },
-  { id: 'th1', day: 'Thursday', time: '09:00', duration: 1.5, subject: 'Computer Networks', location: 'Room 304', type: 'Lecture', color: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
-  { id: '6', day: 'Thursday', time: '11:00', duration: 1.5, subject: 'Advanced Calculus', location: 'Room 105', type: 'Lecture', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  { id: 'th2', day: 'Thursday', time: '14:00', duration: 1.5, subject: 'Database Systems', location: 'Room 402', type: 'Lecture', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  { id: '7', day: 'Thursday', time: '16:00', duration: 2, subject: 'Data Structures', location: 'Room 401', type: 'Lecture', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
-  { id: '8', day: 'Friday', time: '10:00', duration: 3, subject: 'Software Engineering', location: 'Innovation Hub', type: 'Workshop', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
-  { id: 'f1', day: 'Friday', time: '13:30', duration: 1.5, subject: 'Cybersecurity Basics', location: 'Room 310', type: 'Lecture', color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' },
-  { id: '9', day: 'Friday', time: '15:30', duration: 2, subject: 'Web Development', location: 'Lab 2A', type: 'Lab', color: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
-];
-
-const SPECIAL_EVENTS = [
-  { id: 's1', day: 'Friday', time: '08:00', duration: 12, subject: 'Annual Sports Day', location: 'Main Stadium', type: 'Event', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', isSpecial: true },
-  { id: 's2', day: 'Monday', time: '08:00', duration: 12, subject: 'Public Holiday', location: 'Campus Closed', type: 'Holiday', color: 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-300 border-zinc-600', isSpecial: true },
-  { id: 's3', day: 'Wednesday', time: '08:00', duration: 12, subject: 'Tech Festival', location: 'Campus Wide', type: 'Festival', color: 'bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/30', isSpecial: true },
-  { id: 's4', day: 'Thursday', time: '08:00', duration: 12, subject: 'Thanksgiving Break', location: 'Campus Closed', type: 'Holiday', color: 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-300 border-zinc-600', isSpecial: true },
-  { id: 's5', day: 'Friday', time: '08:00', duration: 12, subject: 'Thanksgiving Break', location: 'Campus Closed', type: 'Holiday', color: 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-300 border-zinc-600', isSpecial: true },
-  { id: 's6', day: 'Tuesday', time: '09:00', duration: 3, subject: 'Midterm Exam: Adv Calculus', location: 'Main Hall', type: 'Exam', color: 'bg-red-500/20 text-red-500 border-red-500/30', isSpecial: true },
-  { id: 's7', day: 'Thursday', time: '14:00', duration: 3, subject: 'Midterm Exam: Machine Learning', location: 'Main Hall', type: 'Exam', color: 'bg-red-500/20 text-red-500 border-red-500/30', isSpecial: true },
-  { id: 's8', day: 'Monday', time: '09:00', duration: 3, subject: 'Final Exam: CS 101', location: 'Main Hall', type: 'Exam', color: 'bg-red-500/20 text-red-500 border-red-500/30', isSpecial: true },
-  { id: 's9', day: 'Wednesday', time: '13:00', duration: 3, subject: 'Final Exam: Physics', location: 'Main Hall', type: 'Exam', color: 'bg-red-500/20 text-red-500 border-red-500/30', isSpecial: true },
-];
 
 const HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const formatTimeRange = (startTime: string, durationHours: number) => {
   const [hours, minutes] = startTime.split(':').map(Number);
@@ -61,18 +28,86 @@ export default function CalendarPage() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [view, setView] = useState('Semester');
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const [timetableSlots, setTimetableSlots] = useState<any[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
   useEffect(() => {
     setMounted(true);
+    fetchData();
   }, []);
 
-  // Base date is Monday, Sep 14, 2026
-  const baseDate = new Date(2026, 8, 14);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [slotsRes, eventsRes] = await Promise.all([
+        api.get('/timetable/my'),
+        api.get('/calendar/my')
+      ]);
+      setTimetableSlots(slotsRes.data || []);
+      setCalendarEvents(eventsRes.data || []);
+    } catch (error) {
+      console.error('Failed to fetch schedule data:', error);
+      toast.error('Could not load schedule');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDuration = (start: string, end: string) => {
+    const [h1, m1] = start.split(':').map(Number);
+    const [h2, m2] = end.split(':').map(Number);
+    return (h2 + m2 / 60) - (h1 + m1 / 60);
+  };
+
+  const mappedTimetable = useMemo(() => {
+    return timetableSlots.map(slot => ({
+      id: slot.id,
+      day: DAYS[slot.dayOfWeek] || 'Monday',
+      time: slot.startTime,
+      duration: getDuration(slot.startTime, slot.endTime),
+      subject: slot.course?.name || 'Unknown Course',
+      location: slot.room?.name || 'TBD',
+      type: slot.type || 'Lecture',
+      color: slot.course?.color || 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
+    }));
+  }, [timetableSlots]);
+
+  const mappedEvents = useMemo(() => {
+    return calendarEvents.map(evt => {
+      const startObj = new Date(evt.startAt);
+      const endObj = new Date(evt.endAt);
+      const durationHours = (endObj.getTime() - startObj.getTime()) / (1000 * 60 * 60);
+      
+      const hh = startObj.getHours().toString().padStart(2, '0');
+      const mm = startObj.getMinutes().toString().padStart(2, '0');
+
+      return {
+        id: evt.id,
+        dateObj: startObj,
+        dateString: startObj.toDateString(),
+        time: `${hh}:${mm}`,
+        duration: durationHours || 1,
+        subject: evt.title,
+        location: evt.description || 'Virtual',
+        type: evt.type,
+        color: evt.color || 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+        isSpecial: true
+      };
+    });
+  }, [calendarEvents]);
+
+  // Base date is Monday of current week
+  const baseDate = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+    return new Date(d.setDate(diff));
+  }, []);
 
   const generatedDates = useMemo(() => {
-    let daysToGenerate = 70; // Semester (8 weeks)
+    let daysToGenerate = 70; // Semester (10 weeks)
     if (view === 'Day') daysToGenerate = 1;
     if (view === 'Week') daysToGenerate = 5;
     if (view === 'Month') daysToGenerate = 20;
@@ -87,7 +122,6 @@ export default function CalendarPage() {
         currentDate.setDate(currentDate.getDate() + 1);
       }
     } else {
-      // For Day view, skip weekends
       if (currentDate.getDay() === 0) currentDate.setDate(currentDate.getDate() + 1);
       if (currentDate.getDay() === 6) currentDate.setDate(currentDate.getDate() + 2);
     }
@@ -102,58 +136,19 @@ export default function CalendarPage() {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     return dates;
-  }, [currentWeekOffset, view]);
+  }, [currentWeekOffset, view, baseDate]);
 
   const getScheduleForDate = (date: Date) => {
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    const diffTime = date.getTime() - baseDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const weekOffset = Math.floor(diffDays / 7);
+    const dateStr = date.toDateString();
     
-    let schedule = [...MOCK_SCHEDULE].filter(s => s.day === dayName);
+    // Get recurring timetable classes for this day of week
+    const regularClasses = mappedTimetable.filter(s => s.day === dayName);
     
-    if (weekOffset === 10 && dayName === 'Thursday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[3]);
-    } else if (weekOffset === 10 && dayName === 'Friday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[4]);
-    } else if (weekOffset === 6 && dayName === 'Tuesday') {
-      schedule = schedule.filter(s => s.subject !== 'Physics Lab');
-      schedule.push(SPECIAL_EVENTS[5]);
-    } else if (weekOffset === 6 && dayName === 'Thursday') {
-      schedule = schedule.filter(s => s.subject !== 'Data Structures');
-      schedule.push(SPECIAL_EVENTS[6]);
-    } else if (weekOffset >= 13) {
-      schedule = []; // exam week
-      if (weekOffset === 13 && dayName === 'Monday') schedule.push(SPECIAL_EVENTS[7]);
-      if (weekOffset === 13 && dayName === 'Wednesday') schedule.push(SPECIAL_EVENTS[8]);
-    } else if (Math.abs(weekOffset) % 3 === 1 && dayName === 'Friday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[0]);
-    } else if (Math.abs(weekOffset) % 4 === 2 && dayName === 'Monday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[1]);
-    } else if (Math.abs(weekOffset) % 5 === 3 && dayName === 'Wednesday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[2]);
-    }
-
-    const shift = Math.abs(weekOffset);
+    // Get specific events for this date
+    const specificEvents = mappedEvents.filter(e => e.dateString === dateStr);
     
-    return schedule.filter((s, idx) => {
-      if ((s as any).isSpecial) return true;
-      return (idx + shift) % 4 !== 0; 
-    }).map((s, idx) => {
-      if (shift > 0 && !(s as any).isSpecial) {
-        const oldHour = parseInt(s.time.split(':')[0]);
-        let newHour = oldHour + (shift % 4) - 1;
-        if (newHour > 18) newHour -= 8;
-        if (newHour < 8) newHour += 4;
-        return { ...s, time: `${newHour < 10 ? '0' : ''}${newHour}:00` };
-      }
-      return s;
-    });
+    return [...regularClasses, ...specificEvents];
   };
 
   const currentRangeString = () => {
@@ -217,7 +212,11 @@ export default function CalendarPage() {
             {/* Scrollable Days */}
             <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2 snap-x snap-mandatory">
               <div className="flex [--col-width:calc(100vw-5rem)] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
-                {generatedDates.map((date, idx) => {
+                {loading ? (
+                  <div className="w-full h-64 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                  </div>
+                ) : generatedDates.map((date, idx) => {
                   const scheduleForDate = getScheduleForDate(date);
                   const isToday = new Date().toDateString() === date.toDateString();
                   

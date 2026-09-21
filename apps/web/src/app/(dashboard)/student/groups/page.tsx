@@ -1,11 +1,28 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink, Edit2, Trash2, Check, Image as ImageIcon, BarChart2, Contact, Sparkles } from 'lucide-react';
+import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink, Edit2, Trash2, Check, Image as ImageIcon, BarChart2, Contact, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 
-const INITIAL_GROUPS = [
+type GroupItem = {
+  id: string | number;
+  name: string;
+  type: string;
+  members: number;
+  latestActivity: string;
+  time: string;
+  unread: number;
+  color: string;
+  initials: string;
+  completion: number;
+  avatars: string[];
+  isMeetingActive: boolean;
+  isJoined?: boolean;
+};
+
+const INITIAL_GROUPS: GroupItem[] = [
   { id: 1, name: 'OS Study Group', type: 'Study', members: 12, latestActivity: 'Alex shared Chapter_4_Notes.pdf', time: '10m ago', unread: 3, color: 'from-blue-500 to-indigo-600', initials: 'OS', completion: 68, avatars: ['AK','BL','CR','DM'], isMeetingActive: false },
   { id: 2, name: 'Web App Hackathon', type: 'Project', members: 4, latestActivity: 'Sarah pushed to main branch', time: '1h ago', unread: 0, color: 'from-fuchsia-500 to-pink-600', initials: 'WH', completion: 42, avatars: ['SK','JP','RM','TN'], isMeetingActive: true },
   { id: 3, name: 'Clean Water Initiative', type: 'Impact', members: 28, latestActivity: 'Dr. Evans: Meeting at 5PM today', time: '2h ago', unread: 12, color: 'from-emerald-500 to-teal-600', initials: 'CW', completion: 81, avatars: ['DE','LF','GM','HO'], isMeetingActive: false },
@@ -27,6 +44,13 @@ const typeColors: Record<string, string> = {
   Research: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
 };
 
+const gradientColors: Record<string, string> = {
+  Study: 'from-blue-500 to-indigo-600',
+  Project: 'from-fuchsia-500 to-pink-600',
+  Impact: 'from-emerald-500 to-teal-600',
+  Research: 'from-amber-500 to-orange-600',
+};
+
 const itemIcons: Record<string, any> = {
   file: FileText, comment: MessageSquare, event: Calendar, research: BookOpen, quiz: Star
 };
@@ -34,12 +58,13 @@ const itemIcons: Record<string, any> = {
 const TABS = ['All', 'Study', 'Project', 'Impact', 'Research'];
 
 export default function GroupsPage() {
-  const [groupsList, setGroupsList] = useState(INITIAL_GROUPS);
+  const [groupsList, setGroupsList] = useState<any[]>(INITIAL_GROUPS);
+  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState<typeof INITIAL_GROUPS[0] | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<number | string | null>(null);
-  const [inviteGroup, setInviteGroup] = useState<typeof INITIAL_GROUPS[0] | null>(null);
+  const [inviteGroup, setInviteGroup] = useState<GroupItem | null>(null);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('Study');
@@ -47,6 +72,47 @@ export default function GroupsPage() {
   const [inviteInput, setInviteInput] = useState('');
   const [inviteMembers, setInviteMembers] = useState<string[]>([]);
   const [generatedLink, setGeneratedLink] = useState('');
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const [res, myRes] = await Promise.all([
+          api.get('/groups'),
+          api.get('/groups/my').catch(() => ({ data: [] }))
+        ]);
+        
+        const myGroupIds = new Set(myRes.data.map((m: any) => m.groupId));
+        
+        const formatted = res.data.map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          type: g.category || 'Study',
+          members: g._count?.members || 1,
+          latestActivity: g._count?.posts > 0 ? 'New posts available' : 'Group created',
+          time: new Date(g.createdAt).toLocaleDateString(),
+          unread: 0,
+          color: gradientColors[g.category || 'Study'] || 'from-indigo-500 to-purple-600',
+          initials: g.name.substring(0, 2).toUpperCase(),
+          completion: 0,
+          avatars: g.members?.map((m: any) => m.user?.avatarUrl ? m.user.avatarUrl : m.user?.name?.substring(0, 2).toUpperCase() || 'U') || ['U'],
+          isMeetingActive: false,
+          isJoined: myGroupIds.has(g.id)
+        }));
+        if (formatted.length > 0) {
+          setGroupsList(formatted);
+        } else {
+          setGroupsList(INITIAL_GROUPS);
+        }
+      } catch (error) {
+        console.error('Failed to fetch groups', error);
+        setGroupsList(INITIAL_GROUPS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchGroups();
+  }, []);
+
   
   // New Modals State
   const [showAllActivity, setShowAllActivity] = useState(false);
@@ -199,6 +265,12 @@ export default function GroupsPage() {
             </div>
 
             {/* Group Cards */}
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 bg-white/50 dark:bg-zinc-900/20 rounded-2xl border border-zinc-200 dark:border-white/[0.06]">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
+                <p className="text-sm text-zinc-500">Loading your groups...</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filtered.map((group, i) => (
                 <motion.div
@@ -247,7 +319,7 @@ export default function GroupsPage() {
                   {/* Members avatars */}
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex -space-x-2">
-                      {group.avatars.map((a, idx) => (
+                      {group.avatars.map((a: string, idx: number) => (
                         <div key={idx} className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[9px] text-white font-bold">{a}</div>
                       ))}
                     </div>
@@ -277,6 +349,7 @@ export default function GroupsPage() {
                 <p className="text-xs text-zinc-400 mt-1">Study, project, or impact team</p>
               </motion.button>
             </div>
+            )}
           </div>
 
           {/* Right — Activity Feed */}
@@ -370,20 +443,41 @@ export default function GroupsPage() {
               </div>
               <div className="p-5 space-y-5">
                 <div className="flex gap-2 w-full">
-                  <button className="flex-1 btn-primary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => setShowChat(true)}>
-                    <MessageSquare className="w-4 h-4 mr-1" /> Chat
-                  </button>
-                  <button className="flex-1 btn-secondary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => {
-                    fileInputRef.current?.click();
-                  }}>
-                    <Upload className="w-4 h-4 mr-1" /> Files
-                  </button>
-                  <button 
-                    className={`flex-1 py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap ${selectedGroup.isMeetingActive ? 'bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/30' : 'btn-secondary'}`} 
-                    onClick={() => setShowMeeting(true)}
-                  >
-                    <Video className="w-4 h-4 mr-1" /> {selectedGroup.isMeetingActive ? 'Join Meeting' : 'Meet'}
-                  </button>
+                  {!selectedGroup.isJoined ? (
+                    <button 
+                      className="flex-1 btn-primary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap"
+                      onClick={async () => {
+                        try {
+                          await api.post(`/groups/${selectedGroup.id}/join`);
+                          toast.success(`Joined ${selectedGroup.name}!`);
+                          const updatedGroup = { ...selectedGroup, isJoined: true, members: selectedGroup.members + 1 };
+                          setSelectedGroup(updatedGroup);
+                          setGroupsList(groupsList.map(g => g.id === selectedGroup.id ? updatedGroup : g));
+                        } catch (e) {
+                          toast.error('Failed to join group');
+                        }
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Join Group
+                    </button>
+                  ) : (
+                    <>
+                      <button className="flex-1 btn-primary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => setShowChat(true)}>
+                        <MessageSquare className="w-4 h-4 mr-1" /> Chat
+                      </button>
+                      <button className="flex-1 btn-secondary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => {
+                        fileInputRef.current?.click();
+                      }}>
+                        <Upload className="w-4 h-4 mr-1" /> Files
+                      </button>
+                      <button 
+                        className={`flex-1 py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap ${selectedGroup.isMeetingActive ? 'bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/30' : 'btn-secondary'}`} 
+                        onClick={() => setShowMeeting(true)}
+                      >
+                        <Video className="w-4 h-4 mr-1" /> {selectedGroup.isMeetingActive ? 'Join Meeting' : 'Meet'}
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 <div>
@@ -505,30 +599,50 @@ export default function GroupsPage() {
               </div>
               <div className="flex gap-2 mt-6">
                 <button onClick={() => { setShowNewGroup(false); setInviteMembers([]); setGeneratedLink(''); setInviteInput(''); setNewGroupName(''); }} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                <button onClick={() => { 
+                <button onClick={async () => { 
                   if (!newGroupName.trim()) return toast.error("Group name is required");
                   
-                  const newGroup = {
-                    id: Date.now(),
-                    name: newGroupName,
-                    type: newGroupType,
-                    members: 1 + inviteMembers.length,
-                    latestActivity: 'Group created',
-                    time: 'Just now',
-                    unread: 0,
-                    color: 'from-indigo-500 to-purple-600',
-                    initials: newGroupName.substring(0, 2).toUpperCase(),
-                    completion: 0,
-                    avatars: ['ME'],
-                    isMeetingActive: false
-                  };
-                  
-                  setGroupsList([newGroup, ...groupsList]);
-                  setShowNewGroup(false); 
-                  toast.success(`"${newGroupName}" created with ${inviteMembers.length} members!`); 
-                  setNewGroupName(''); 
-                  setInviteMembers([]);
-                  setGeneratedLink('');
+                  try {
+                    const res = await api.post('/groups', {
+                      name: newGroupName,
+                      type: newGroupType,
+                      isPublic: true
+                    });
+                    const g = res.data;
+                    const newGroup = {
+                      id: g.id,
+                      name: g.name,
+                      type: g.category || newGroupType,
+                      members: g._count?.members || 1,
+                      latestActivity: 'Group created',
+                      time: 'Just now',
+                      unread: 0,
+                      color: gradientColors[g.category || newGroupType] || 'from-indigo-500 to-purple-600',
+                      initials: g.name.substring(0, 2).toUpperCase(),
+                      completion: 0,
+                      avatars: ['ME'],
+                      isMeetingActive: false
+                    };
+                    
+                    setGroupsList([newGroup, ...groupsList]);
+                    setShowNewGroup(false); 
+                    toast.success(`"${newGroupName}" created!`); 
+                    
+                    if (inviteMembers.length > 0) {
+                      try {
+                        await api.post(`/groups/${g.id}/invite`, { emails: inviteMembers });
+                        toast.success(`Invited ${inviteMembers.length} members.`);
+                      } catch (err) {
+                        toast.error('Failed to invite members');
+                      }
+                    }
+                    
+                    setNewGroupName(''); 
+                    setInviteMembers([]);
+                    setGeneratedLink('');
+                  } catch (e) {
+                    toast.error('Failed to create group');
+                  }
                 }} className="flex-1 btn-primary py-2.5 text-sm">Create Group</button>
               </div>
             </motion.div>
@@ -601,11 +715,16 @@ export default function GroupsPage() {
                 </div>
               </div>
               <div className="flex gap-2 mt-6">
-                <button onClick={() => { 
-                  setInviteGroup(null); 
+                <button onClick={async () => { 
                   if (inviteMembers.length > 0) {
-                     toast.success(`Invited ${inviteMembers.length} members to ${inviteGroup.name}`);
+                    try {
+                      await api.post(`/groups/${inviteGroup.id}/invite`, { emails: inviteMembers });
+                      toast.success(`Invited ${inviteMembers.length} members to ${inviteGroup.name}`);
+                    } catch (e) {
+                      toast.error('Failed to invite members');
+                    }
                   }
+                  setInviteGroup(null); 
                   setInviteMembers([]);
                   setGeneratedLink('');
                   setInviteInput('');

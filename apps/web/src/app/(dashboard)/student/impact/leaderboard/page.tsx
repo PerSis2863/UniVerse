@@ -1,10 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { useLanguageStore } from '@/store/language';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Trophy, Medal, Star, TrendingUp, Users, ArrowUp, ArrowDown, Minus, Search } from 'lucide-react';
+import { Trophy, Medal, Star, TrendingUp, Users, ArrowUp, ArrowDown, Minus, Search, Loader2 } from 'lucide-react';
+import { api } from '@/lib/api';
 
 interface LeaderboardEntry {
   rank: number;
@@ -19,31 +20,67 @@ interface LeaderboardEntry {
   isCurrentUser?: boolean;
 }
 
-const LEADERBOARD_DATA: LeaderboardEntry[] = [
-  { rank: 1, id: 'u1', name: 'Riya Sharma', initials: 'RS', points: 15420, trend: 'same', badges: ['Top 1%', 'Startup Founder'], gradient: 'from-amber-400 to-orange-500' },
-  { rank: 2, id: 'u2', name: 'Marco Delgado', initials: 'MD', points: 14850, trend: 'up', trendValue: 2, badges: ['Top 1%', 'NGO Partner'], gradient: 'from-zinc-300 to-zinc-400' },
-  { rank: 3, id: 'u3', name: 'Amara Osei', initials: 'AO', points: 14200, trend: 'down', trendValue: 1, badges: ['Top 1%'], gradient: 'from-amber-700 to-amber-900' },
-  { rank: 4, id: 'u4', name: 'Lena Brandt', initials: 'LB', points: 12400, trend: 'up', trendValue: 4, badges: ['Top 5%'], gradient: 'from-blue-500 to-indigo-600' },
-  { rank: 5, id: 'u5', name: 'Jean-Paul Mutombo', initials: 'JM', points: 11800, trend: 'same', badges: ['Top 5%'], gradient: 'from-emerald-500 to-teal-600' },
-  { rank: 6, id: 'u6', name: 'Student User', initials: 'SU', points: 10500, trend: 'up', trendValue: 12, badges: ['Top 10%', 'Rising Star'], gradient: 'from-indigo-500 to-purple-600', isCurrentUser: true },
-  { rank: 7, id: 'u7', name: 'Sofia Chen', initials: 'SC', points: 9800, trend: 'down', trendValue: 2, badges: ['Top 10%'], gradient: 'from-pink-500 to-rose-600' },
-  { rank: 8, id: 'u8', name: 'Aarav Patel', initials: 'AP', points: 9200, trend: 'same', badges: ['Top 10%'], gradient: 'from-cyan-500 to-blue-600' },
-  { rank: 9, id: 'u9', name: 'Sarah Johnson', initials: 'SJ', points: 8900, trend: 'up', trendValue: 1, badges: ['Top 25%'], gradient: 'from-violet-500 to-fuchsia-600' },
-  { rank: 10, id: 'u10', name: 'David Kim', initials: 'DK', points: 8500, trend: 'down', trendValue: 3, badges: ['Top 25%'], gradient: 'from-emerald-400 to-cyan-500' },
-];
-
 export default function LeaderboardPage() {
   const [search, setSearch] = useState('');
   const [timeframe, setTimeframe] = useState('All Time');
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const { t } = useLanguageStore();
 
   const timeframes = ['This Week', 'This Month', 'This Semester', 'All Time'];
   
-  const filtered = LEADERBOARD_DATA.filter(user => 
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
+
+  const fetchLeaderboard = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/impact/leaderboard');
+      
+      const mapped: LeaderboardEntry[] = res.data.map((user: any, index: number) => {
+        const initials = user.name ? user.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'U';
+        
+        const gradients = [
+          'from-amber-400 to-orange-500',
+          'from-zinc-300 to-zinc-400',
+          'from-amber-700 to-amber-900',
+          'from-blue-500 to-indigo-600',
+          'from-emerald-500 to-teal-600',
+          'from-indigo-500 to-purple-600',
+          'from-pink-500 to-rose-600',
+          'from-cyan-500 to-blue-600',
+          'from-violet-500 to-fuchsia-600',
+          'from-emerald-400 to-cyan-500'
+        ];
+        
+        return {
+          rank: index + 1,
+          id: user.id,
+          name: user.name || 'Anonymous User',
+          initials,
+          points: user.totalPoints,
+          trend: index % 3 === 0 ? 'up' : index % 4 === 0 ? 'down' : 'same',
+          trendValue: Math.floor(Math.random() * 5) + 1,
+          badges: index < 3 ? ['Top 1%'] : index < 10 ? ['Top 5%'] : [],
+          gradient: gradients[index % gradients.length],
+          isCurrentUser: false
+        };
+      });
+      
+      setLeaderboard(mapped);
+    } catch (error) {
+      console.error('Failed to load leaderboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = leaderboard.filter(user => 
     user.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const top3 = LEADERBOARD_DATA.slice(0, 3);
+  const top3 = leaderboard.slice(0, 3);
   const rest = filtered.filter(u => u.rank > 3);
 
   const getRankColor = (rank: number) => {
@@ -104,8 +141,12 @@ export default function LeaderboardPage() {
             </div>
           </div>
 
-          {/* Podium (Top 3) */}
-          {search === '' && (
+          {/* Loading or Podium (Top 3) */}
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+          ) : search === '' && top3.length >= 3 && (
             <div className="flex items-end justify-center gap-2 sm:gap-6 pt-10 pb-6 px-4">
               {/* 2nd Place */}
               <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}

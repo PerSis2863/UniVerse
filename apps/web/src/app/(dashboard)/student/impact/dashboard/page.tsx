@@ -1,37 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   Award, HeartHandshake, Globe2, Sparkles, Download, CheckCircle2,
-  Clock, TrendingUp, ShieldCheck, FileCheck, ExternalLink, Share2
+  Clock, TrendingUp, ShieldCheck, FileCheck, ExternalLink, Share2, Loader2
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import { api } from '@/lib/api';
 
 export default function MySocialImpactPage() {
   const [showCertModal, setShowCertModal] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const stats = [
-    { label: 'Verified Impact Hours', val: '142 hrs', change: '+18 hrs this term', color: 'text-indigo-400' },
-    { label: 'NGO Projects Completed', val: '4 Projects', change: '2 in progress', color: 'text-emerald-400' },
-    { label: 'Social Venture Grants', val: '$2,400', change: 'Water.org fellowship', color: 'text-amber-400' },
-    { label: 'UN SDG Badges Earned', val: '5 Badges', change: 'Level 3 Fellow', color: 'text-pink-400' },
-  ];
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/impact/dashboard/stats');
+        setData(res.data);
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
 
-  const sdgBadges = [
-    { num: 6, name: 'Clean Water & Sanitation', hours: 48, partner: 'UNICEF East Africa', status: 'Completed', color: 'from-cyan-500 to-blue-600' },
-    { num: 3, name: 'Good Health & Well-Being', hours: 36, partner: 'Doctors Without Borders', status: 'In Progress', color: 'from-rose-500 to-red-600' },
-    { num: 13, name: 'Climate Action', hours: 30, partner: 'Greenpeace International', status: 'Completed', color: 'from-emerald-500 to-teal-600' },
-    { num: 4, name: 'Quality Education', hours: 18, partner: 'UNESCO Ed Coalition', status: 'Completed', color: 'from-amber-500 to-orange-600' },
-    { num: 17, name: 'Partnerships for the Goals', hours: 10, partner: 'UniVerse Inter-College', status: 'Active', color: 'from-purple-500 to-indigo-600' },
-  ];
+  const stats = data ? [
+    { label: 'Verified Impact Hours', val: `${data.verifiedHours} hrs`, change: '+18 hrs this term', color: 'text-indigo-400' },
+    { label: 'NGO Projects Completed', val: `${data.completedNGOs} Projects`, change: '2 in progress', color: 'text-emerald-400' },
+    { label: 'Social Venture Grants', val: `$${data.grants.toLocaleString()}`, change: 'Water.org fellowship', color: 'text-amber-400' },
+    { label: 'UN SDG Badges Earned', val: `${data.sdgBadges?.length || 0} Badges`, change: 'Level 3 Fellow', color: 'text-pink-400' },
+  ] : [];
 
-  const impactActivities = [
-    { date: 'Sep 14, 2026', title: 'Water Telemetry Edge IoT Testing', hours: '12 Hours Logged', ngo: 'Water.org & UNICEF', hash: '0x8f2a...91bc' },
-    { date: 'Aug 28, 2026', title: 'Multilingual Clinical Translation Validator', hours: '8 Hours Logged', ngo: 'Doctors Without Borders', hash: '0x3c19...45de' },
-    { date: 'Jul 15, 2026', title: 'Amazon Rainforest Radar Change Detection', hours: '25 Hours Logged', ngo: 'Greenpeace International', hash: '0x99a1...fa22' },
-    { date: 'Jun 02, 2026', title: 'Open-Source Math Simulator for Micro-Schools', hours: '15 Hours Logged', ngo: 'UNESCO Coalition', hash: '0x44b2...87ee' },
-  ];
+  const sdgBadges = data?.sdgBadges || [];
+  const impactActivities = data?.activities || [];
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -62,9 +75,9 @@ export default function MySocialImpactPage() {
                   Verified Humanitarian Credential • Level 3 Scholar
                 </div>
                 <h1 className="text-3xl font-black text-zinc-900 dark:text-white leading-tight">
-                  Alex Rivera’s Global Impact Score:{' '}
+                  {data?.userName}’s Global Impact Score:{' '}
                   <span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">
-                    885 / 1000
+                    {data?.totalPoints || 0} / 10000
                   </span>
                 </h1>
                 <p className="text-zinc-300 text-sm leading-relaxed">
@@ -72,9 +85,9 @@ export default function MySocialImpactPage() {
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                   <div className="w-48 bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-400 h-full rounded-full" style={{ width: '88.5%' }} />
+                    <div className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-400 h-full rounded-full" style={{ width: `${Math.min(100, (data?.totalPoints || 0) / 100)}%` }} />
                   </div>
-                  <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">88.5% towards Master Fellow</span>
+                  <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">{Math.min(100, (data?.totalPoints || 0) / 100).toFixed(1)}% towards Master Fellow</span>
                 </div>
               </div>
 
@@ -116,12 +129,12 @@ export default function MySocialImpactPage() {
                 </p>
               </div>
               <span className="text-xs text-indigo-400 font-medium bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
-                5 Badges Unlocked
+                {sdgBadges.length} Badges Unlocked
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {sdgBadges.map((badge, idx) => (
+              {sdgBadges.map((badge: any, idx: number) => (
                 <div
                   key={idx}
                   className="bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800/80 rounded-xl p-4 text-center space-y-3 relative overflow-hidden group hover:border-indigo-500/40 transition-colors"
@@ -134,7 +147,7 @@ export default function MySocialImpactPage() {
                     <span className="text-[10px] text-zinc-600 dark:text-zinc-400">{badge.partner}</span>
                   </div>
                   <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800/60 flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-500 dark:text-zinc-500">{badge.hours} hrs</span>
+                    <span className="text-zinc-500 dark:text-zinc-500">{badge.hours} pts</span>
                     <span className={`font-semibold ${badge.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'}`}>
                       {badge.status}
                     </span>
@@ -155,7 +168,7 @@ export default function MySocialImpactPage() {
             </div>
 
             <div className="divide-y divide-zinc-800/60">
-              {impactActivities.map((act, i) => (
+              {impactActivities.map((act: any, i: number) => (
                 <div key={i} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
@@ -195,9 +208,9 @@ export default function MySocialImpactPage() {
                     <span className="text-[10px] tracking-widest uppercase font-bold text-indigo-400">
                       Official Certificate of Global Social Impact
                     </span>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white mt-1">Alex Rivera</h2>
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white mt-1">{data?.userName}</h2>
                     <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                      Has achieved Level 3 Distinction with 142 hours of verified humanitarian research and technical contributions across Water.org, UNICEF, and MSF.
+                      Has achieved Level 3 Distinction with {data?.verifiedHours || 0} hours of verified humanitarian research and technical contributions.
                     </p>
                   </div>
 

@@ -13,6 +13,7 @@ enum Role {
   STUDENT
   TEACHER
   ADMIN
+  INDUSTRY_MENTOR
 }
 
 enum UserStatus {
@@ -167,6 +168,12 @@ model User {
   mentorshipAsTeacher     MentorshipRequest[]    @relation("MentorshipTeacher")
   initiatedCollaborations TeacherCollaboration[] @relation("CollaborationInitiator")
   partnerCollaborations   TeacherCollaboration[] @relation("CollaborationPartner")
+
+  // Phase 3: Mentorship & Collaborations
+  mentorProfile          MentorProfile?
+  studentBookings        MentorshipBooking[]     @relation("StudentBookings")
+  teacherProjects        CollaborationProject[]  @relation("TeacherProjects")
+  projectMemberships     CollaborationMember[]   @relation("ProjectMemberships")
 
   @@index([role])
   @@index([status])
@@ -900,6 +907,7 @@ model NGOProject {
   updatedAt      DateTime  @updatedAt
 
   applications NGOProjectApplication[]
+  collaborationProject CollaborationProject?
 
   @@index([ngoId])
   @@map("ngo_projects")
@@ -1235,4 +1243,94 @@ model CalendarEvent {
   @@index([userId])
   @@index([courseId])
   @@map("calendar_events")
+}
+
+// ─── PHASE 3: MENTORSHIP & COLLABORATIONS ──────────────────────────────────
+
+model MentorProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company        String?
+  jobTitle       String?
+  skills         String[]
+  hoursCommitted Int      @default(0)
+  isAvailable    Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  bookings MentorshipBooking[]
+
+  @@map("mentor_profiles")
+}
+
+model MentorshipBooking {
+  id        String   @id @default(cuid())
+  mentorId  String
+  mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime
+  time      String
+  topic     String?
+  status    String   @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mentorId])
+  @@index([studentId])
+  @@map("mentorship_bookings")
+}
+
+model CollaborationProject {
+  id                 String   @id @default(cuid())
+  title              String
+  description        String
+  partner            String?
+  status             String   @default("Recruiting") // Recruiting, Active, Completed
+  deadline           DateTime?
+  tags               String[]
+  contactEmail       String?
+  supervisingTeacherId String?
+  supervisingTeacher User?    @relation("TeacherProjects", fields: [supervisingTeacherId], references: [id])
+  ngoProjectId       String?  @unique
+  ngoProject         NGOProject? @relation(fields: [ngoProjectId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  milestones ProjectMilestone[]
+  members    CollaborationMember[]
+
+  @@index([supervisingTeacherId])
+  @@map("collaboration_projects")
+}
+
+model CollaborationMember {
+  id        String   @id @default(cuid())
+  projectId String
+  project   CollaborationProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("ProjectMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("STUDENT") // STUDENT, LEAD
+  joinedAt  DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("collaboration_members")
+}
+
+model ProjectMilestone {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     CollaborationProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@map("project_milestones")
 }

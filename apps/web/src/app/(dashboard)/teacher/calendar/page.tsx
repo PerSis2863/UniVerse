@@ -1,41 +1,15 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Calendar as CalendarIcon, Clock, Users, ChevronLeft, ChevronRight, Download, X, Plus } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { Calendar as CalendarIcon, Clock, Users, ChevronLeft, ChevronRight, Download, X, Plus, Loader2 } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-
-const MOCK_SCHEDULE = [
-  { day: 'Monday', time: '09:00', duration: '120', course: { name: 'Introduction to Computer Science', code: 'CS101', color: '#6366f1' } },
-  { day: 'Monday', time: '13:30', duration: '90', course: { name: 'Advanced Calculus', code: 'MATH201', color: '#10b981' } },
-  { day: 'Monday', time: '17:00', duration: '120', course: { name: 'Machine Learning', code: 'ML401', color: '#14b8a6' } },
-  { day: 'Tuesday', time: '10:00', duration: '120', course: { name: 'Physics Lab', code: 'PHY102', color: '#a855f7' } },
-  { day: 'Tuesday', time: '15:00', duration: '120', course: { name: 'Artificial Intelligence', code: 'AI402', color: '#3b82f6' } },
-  { day: 'Wednesday', time: '09:00', duration: '120', course: { name: 'Introduction to Computer Science', code: 'CS101', color: '#6366f1' } },
-  { day: 'Wednesday', time: '14:00', duration: '90', course: { name: 'World History', code: 'HIST101', color: '#f59e0b' } },
-  { day: 'Wednesday', time: '18:00', duration: '120', course: { name: 'Office Hours', code: 'OFFICE', color: '#71717a' } },
-  { day: 'Thursday', time: '11:00', duration: '90', course: { name: 'Advanced Calculus', code: 'MATH201', color: '#10b981' } },
-  { day: 'Thursday', time: '16:00', duration: '120', course: { name: 'Data Structures', code: 'CS201', color: '#06b6d4' } },
-  { day: 'Friday', time: '10:00', duration: '180', course: { name: 'Software Engineering', code: 'SE301', color: '#f43f5e' } },
-  { day: 'Friday', time: '15:00', duration: '120', course: { name: 'Web Development', code: 'WEB201', color: '#ec4899' } },
-];
-
-const SPECIAL_EVENTS = [
-  { day: 'Friday', time: '08:00', duration: '720', course: { name: 'Annual Sports Day', code: 'EVENT', color: '#f97316' }, isSpecial: true },
-  { day: 'Monday', time: '08:00', duration: '720', course: { name: 'Public Holiday', code: 'HOLIDAY', color: '#3f3f46' }, isSpecial: true },
-  { day: 'Wednesday', time: '08:00', duration: '720', course: { name: 'Tech Festival', code: 'FEST', color: '#d946ef' }, isSpecial: true },
-  { day: 'Thursday', time: '08:00', duration: '720', course: { name: 'Thanksgiving Break', code: 'HOLIDAY', color: '#3f3f46' }, isSpecial: true },
-  { day: 'Friday', time: '08:00', duration: '720', course: { name: 'Thanksgiving Break', code: 'HOLIDAY', color: '#3f3f46' }, isSpecial: true },
-  { day: 'Tuesday', time: '09:00', duration: '180', course: { name: 'Midterm Proct: Adv Calculus', code: 'EXAM', color: '#ef4444' }, isSpecial: true },
-  { day: 'Thursday', time: '14:00', duration: '180', course: { name: 'Midterm Proct: Machine Learning', code: 'EXAM', color: '#ef4444' }, isSpecial: true },
-  { day: 'Monday', time: '09:00', duration: '180', course: { name: 'Final Proct: CS 101', code: 'EXAM', color: '#ef4444' }, isSpecial: true },
-  { day: 'Wednesday', time: '13:00', duration: '180', course: { name: 'Final Proct: Physics', code: 'EXAM', color: '#ef4444' }, isSpecial: true },
-];
+import { api } from '@/lib/api';
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function TeacherCalendarPage() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
@@ -49,23 +23,116 @@ export default function TeacherCalendarPage() {
   const [savingOffice, setSavingOffice] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const [timetableSlots, setTimetableSlots] = useState<any[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     setMounted(true);
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [slotsRes, eventsRes] = await Promise.all([
+        api.get('/timetable/my'),
+        api.get('/calendar/my')
+      ]);
+      setTimetableSlots(slotsRes.data || []);
+      setCalendarEvents(eventsRes.data || []);
+    } catch (error) {
+      console.error('Failed to fetch schedule data:', error);
+      toast.error('Could not load schedule');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSaveOfficeHours = async () => {
     setSavingOffice(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setSavingOffice(false);
-    setShowOfficeModal(false);
-    toast.success('Office hours added!', { description: `${officeDay} at ${officeTime} for ${officeDuration} mins in ${officeLocation}` });
+    try {
+      // Find the next date that matches the officeDay
+      const dayIndex = DAYS.indexOf(officeDay);
+      let targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + ((dayIndex + 1 + 7 - targetDate.getDay()) % 7));
+      
+      const [hours, minutes] = officeTime.split(':').map(Number);
+      targetDate.setHours(hours, minutes, 0, 0);
+      
+      const endDate = new Date(targetDate.getTime() + parseInt(officeDuration) * 60000);
+
+      const res = await api.post('/calendar', {
+        title: 'Office Hours',
+        description: officeLocation,
+        startAt: targetDate.toISOString(),
+        endAt: endDate.toISOString(),
+        type: 'MEETING',
+        color: '#71717a'
+      });
+      
+      setCalendarEvents(prev => [...prev, res.data]);
+      setShowOfficeModal(false);
+      toast.success('Office hours added!', { description: `${officeDay} at ${officeTime} for ${officeDuration} mins in ${officeLocation}` });
+    } catch (error) {
+      console.error('Failed to add office hours:', error);
+      toast.error('Could not save office hours');
+    } finally {
+      setSavingOffice(false);
+    }
   };
 
-  // Base date is Monday, Sep 14, 2026
-  const baseDate = new Date(2026, 8, 14);
+  const getDurationMins = (start: string, end: string) => {
+    const [h1, m1] = start.split(':').map(Number);
+    const [h2, m2] = end.split(':').map(Number);
+    return (h2 * 60 + m2) - (h1 * 60 + m1);
+  };
+
+  const mappedTimetable = useMemo(() => {
+    return timetableSlots.map(slot => ({
+      day: DAYS[slot.dayOfWeek] || 'Monday',
+      time: slot.startTime,
+      duration: getDurationMins(slot.startTime, slot.endTime).toString(),
+      course: {
+        name: slot.course?.name || 'Unknown Course',
+        code: slot.course?.code || 'UNK101',
+        color: slot.course?.color || '#6366f1'
+      }
+    }));
+  }, [timetableSlots]);
+
+  const mappedEvents = useMemo(() => {
+    return calendarEvents.map(evt => {
+      const startObj = new Date(evt.startAt);
+      const endObj = new Date(evt.endAt);
+      const durationMins = (endObj.getTime() - startObj.getTime()) / 60000;
+      
+      const hh = startObj.getHours().toString().padStart(2, '0');
+      const mm = startObj.getMinutes().toString().padStart(2, '0');
+
+      return {
+        dateString: startObj.toDateString(),
+        time: `${hh}:${mm}`,
+        duration: durationMins.toString(),
+        course: {
+          name: evt.title,
+          code: evt.type,
+          color: evt.color || '#f97316'
+        },
+        isSpecial: true
+      };
+    });
+  }, [calendarEvents]);
+
+  // Base date is Monday of current week
+  const baseDate = useMemo(() => {
+    const d = new Date();
+    const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+    return new Date(d.setDate(diff));
+  }, []);
 
   const generatedDates = useMemo(() => {
-    let daysToGenerate = 70; // Semester (8 weeks)
+    let daysToGenerate = 70; // Semester (10 weeks)
     if (view === 'Day') daysToGenerate = 1;
     if (view === 'Week') daysToGenerate = 5;
     if (view === 'Month') daysToGenerate = 20;
@@ -93,58 +160,16 @@ export default function TeacherCalendarPage() {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     return dates;
-  }, [currentWeekOffset, view]);
+  }, [currentWeekOffset, view, baseDate]);
 
   const getScheduleForDate = (date: Date) => {
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    const diffTime = date.getTime() - baseDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const weekOffset = Math.floor(diffDays / 7);
+    const dateStr = date.toDateString();
     
-    let schedule = [...MOCK_SCHEDULE].filter(s => s.day === dayName);
+    const regularClasses = mappedTimetable.filter(s => s.day === dayName);
+    const specificEvents = mappedEvents.filter(e => e.dateString === dateStr);
     
-    if (weekOffset === 10 && dayName === 'Thursday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[3]);
-    } else if (weekOffset === 10 && dayName === 'Friday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[4]);
-    } else if (weekOffset === 6 && dayName === 'Tuesday') {
-      schedule = schedule.filter(s => s.course.name !== 'Physics Lab');
-      schedule.push(SPECIAL_EVENTS[5]);
-    } else if (weekOffset === 6 && dayName === 'Thursday') {
-      schedule = schedule.filter(s => s.course.name !== 'Data Structures');
-      schedule.push(SPECIAL_EVENTS[6]);
-    } else if (weekOffset >= 13) {
-      schedule = []; // exam week
-      if (weekOffset === 13 && dayName === 'Monday') schedule.push(SPECIAL_EVENTS[7]);
-      if (weekOffset === 13 && dayName === 'Wednesday') schedule.push(SPECIAL_EVENTS[8]);
-    } else if (Math.abs(weekOffset) % 3 === 1 && dayName === 'Friday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[0]);
-    } else if (Math.abs(weekOffset) % 4 === 2 && dayName === 'Monday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[1]);
-    } else if (Math.abs(weekOffset) % 5 === 3 && dayName === 'Wednesday') {
-      schedule = [];
-      schedule.push(SPECIAL_EVENTS[2]);
-    }
-
-    const shift = Math.abs(weekOffset);
-    
-    return schedule.filter((s, idx) => {
-      if ((s as any).isSpecial) return true;
-      return (idx + shift) % 4 !== 0; 
-    }).map((s, idx) => {
-      if (shift > 0 && !(s as any).isSpecial) {
-        const oldHour = parseInt(s.time.split(':')[0]);
-        let newHour = oldHour + (shift % 4) - 1;
-        if (newHour > 18) newHour -= 8;
-        if (newHour < 8) newHour += 4;
-        return { ...s, time: `${newHour < 10 ? '0' : ''}${newHour}:00` };
-      }
-      return s;
-    });
+    return [...regularClasses, ...specificEvents];
   };
 
   const parseTimeToMinutes = (timeStr: string) => {
@@ -259,7 +284,11 @@ export default function TeacherCalendarPage() {
             {/* Scrollable Days */}
             <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2">
               <div className="flex [--col-width:280px] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
-                {generatedDates.map((date, index) => {
+                {loading ? (
+                  <div className="w-full h-64 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                  </div>
+                ) : generatedDates.map((date, index) => {
                   const scheduleForDate = getScheduleForDate(date);
                   const isToday = isSameDay(date, new Date());
                   
@@ -317,7 +346,7 @@ export default function TeacherCalendarPage() {
                               </div>
                               <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
                                 <Users className="w-3 h-3" />
-                                32 Students
+                                -- Students
                               </div>
                             </div>
                           );
@@ -379,7 +408,7 @@ export default function TeacherCalendarPage() {
                   <button onClick={() => setShowOfficeModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
                   <button onClick={handleSaveOfficeHours} disabled={savingOffice} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
                     {savingOffice ? (
-                      <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> Saving...</>
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
                     ) : (
                       <><Plus className="w-4 h-4" /> Add Office Hours</>
                     )}

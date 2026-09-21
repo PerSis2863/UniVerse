@@ -1,61 +1,44 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   Search, Filter, Briefcase, Globe2, ArrowUpRight, Clock, Users, Building2,
   CheckCircle2, X, Send, ChevronDown, Edit, Trash2, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 
 const STATUSES = ['All', 'Active', 'Recruiting', 'Completed'];
 
-const INITIAL_PROJECTS = [
-  {
-    id: 1,
-    title: 'Water Quality Telemetry Sensor Array',
-    partner: 'UNICEF Innovation',
-    status: 'Active',
-    students: 4,
-    deadline: 'Dec 2026',
-    description: 'Mentoring 4 engineering students to deploy low-cost IoT water quality sensors in rural areas.',
-    tags: ['IoT', 'Hardware', 'Data Analytics'],
-    milestones: ['Prototype complete', 'Field test in 3 sites', 'Final deployment'],
-    contact: 'innovation@unicef.org',
-  },
-  {
-    id: 2,
-    title: 'Vaccine Cold-Chain Tracking App',
-    partner: 'Doctors Without Borders',
-    status: 'Recruiting',
-    students: 2,
-    deadline: 'Aug 2026',
-    description: 'Seeking student developers to build a robust offline-first tracking system for vaccine distribution.',
-    tags: ['Mobile', 'Offline-First', 'Healthcare'],
-    milestones: ['Requirements doc', 'MVP app build', 'Clinic pilot'],
-    contact: 'tech@msf.org',
-  },
-  {
-    id: 3,
-    title: 'Satellite Deforestation AI Model',
-    partner: 'Greenpeace International',
-    status: 'Active',
-    students: 6,
-    deadline: 'Mar 2027',
-    description: 'Leading a research group training computer vision models to detect illegal logging activities.',
-    tags: ['AI/ML', 'Computer Vision', 'Climate'],
-    milestones: ['Dataset curation', 'Model v1 baseline', 'Deployment to Greenpeace dashboard'],
-    contact: 'research@greenpeace.org',
-  },
-];
+type ProjectMilestone = {
+  id: string;
+  title: string;
+  status: string;
+};
+
+type CollaborationProject = {
+  id: string;
+  title: string;
+  partner: string | null;
+  status: string;
+  deadline: string | null;
+  description: string;
+  tags: string[];
+  contactEmail: string | null;
+  ngoProject: { id: string; name: string; ngo: { name: string } } | null;
+  _count: { members: number };
+  milestones?: ProjectMilestone[];
+};
 
 export default function NGOMentorshipPage() {
-  const [projects, setProjects] = useState(INITIAL_PROJECTS);
+  const [projects, setProjects] = useState<CollaborationProject[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [selectedProject, setSelectedProject] = useState<CollaborationProject | null>(null);
   const [showProposeModal, setShowProposeModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Propose form state
   const [proposeTitle, setProposeTitle] = useState('');
@@ -63,45 +46,65 @@ export default function NGOMentorshipPage() {
   const [proposeDesc, setProposeDesc] = useState('');
   const [proposeTags, setProposeTags] = useState('');
 
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const res = await api.get('/collaborations/projects');
+      setProjects(res.data);
+    } catch (error) {
+      toast.error('Failed to load projects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     return projects.filter(p => {
+      const partnerStr = p.partner || p.ngoProject?.ngo?.name || '';
       const matchSearch = p.title.toLowerCase().includes(search.toLowerCase()) ||
-        p.partner.toLowerCase().includes(search.toLowerCase()) ||
+        partnerStr.toLowerCase().includes(search.toLowerCase()) ||
         p.tags.some(t => t.toLowerCase().includes(search.toLowerCase()));
       const matchStatus = statusFilter === 'All' || p.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [projects, search, statusFilter]);
 
-  const handlePropose = () => {
+  const handlePropose = async () => {
     if (!proposeTitle || !proposeDesc) {
       toast.error('Please fill in the title and description.');
       return;
     }
-    const newProject = {
-      id: Date.now(),
-      title: proposeTitle,
-      partner: proposePartner,
-      status: 'Recruiting',
-      students: 0,
-      deadline: 'TBD',
-      description: proposeDesc,
-      tags: proposeTags.split(',').map(t => t.trim()).filter(Boolean),
-      milestones: ['Initial planning', 'Student recruitment', 'Project kickoff'],
-      contact: 'dean@universe.edu',
-    };
-    setProjects(prev => [newProject, ...prev]);
-    setShowProposeModal(false);
-    setProposeTitle('');
-    setProposeDesc('');
-    setProposeTags('');
-    toast.success('Project proposed! It has been submitted for consortium review.');
+    
+    try {
+      const data = {
+        title: proposeTitle,
+        description: proposeDesc,
+        partner: proposePartner,
+        tags: proposeTags.split(',').map(t => t.trim()).filter(Boolean),
+        status: 'Recruiting'
+      };
+      await api.post('/collaborations/projects', data);
+      toast.success('Project proposed! It has been submitted for consortium review.');
+      setShowProposeModal(false);
+      setProposeTitle('');
+      setProposeDesc('');
+      setProposeTags('');
+      fetchProjects();
+    } catch (error) {
+      toast.error('Failed to create project');
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
-    setSelectedProject(null);
-    toast.success('Project removed.');
+  const loadProjectDetails = async (id: string) => {
+    try {
+      const res = await api.get(`/collaborations/projects/${id}`);
+      setSelectedProject(res.data);
+    } catch (error) {
+      toast.error('Failed to load details');
+    }
   };
 
   return (
@@ -174,7 +177,11 @@ export default function NGOMentorshipPage() {
           )}
 
           {/* Projects Grid */}
-          {filtered.length === 0 ? (
+          {loading ? (
+             <div className="flex items-center justify-center py-16">
+               <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+             </div>
+          ) : filtered.length === 0 ? (
             <div className="text-center py-16 text-zinc-500 dark:text-zinc-500">
               <Globe2 className="w-12 h-12 mx-auto mb-4 opacity-30" />
               <p className="font-medium">No projects match your search.</p>
@@ -203,10 +210,10 @@ export default function NGOMentorshipPage() {
 
                   <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 mb-4">
                     <Building2 className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                    {project.partner}
+                    {project.partner || project.ngoProject?.ngo?.name || 'Consortium'}
                   </div>
 
-                  <p className="text-zinc-600 dark:text-zinc-400 text-sm mb-6 flex-1">
+                  <p className="text-zinc-600 dark:text-zinc-400 text-sm mb-6 flex-1 line-clamp-3">
                     {project.description}
                   </p>
 
@@ -221,15 +228,17 @@ export default function NGOMentorshipPage() {
                   <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between mt-auto">
                     <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-400">
                       <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5" /> {project.students}
+                        <Users className="w-3.5 h-3.5" /> {project._count?.members || 0}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" /> {project.deadline}
-                      </div>
+                      {project.deadline && (
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" /> {new Date(project.deadline).toLocaleDateString()}
+                        </div>
+                      )}
                     </div>
 
                     <button
-                      onClick={() => setSelectedProject(project)}
+                      onClick={() => loadProjectDetails(project.id)}
                       className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-sm font-medium transition-colors"
                     >
                       Manage <ArrowUpRight className="w-4 h-4" />
@@ -252,7 +261,7 @@ export default function NGOMentorshipPage() {
                   selectedProject.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
                 }`}>{selectedProject.status}</span>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{selectedProject.title}</h2>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{selectedProject.partner}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{selectedProject.partner || selectedProject.ngoProject?.ngo?.name}</p>
               </div>
               <button onClick={() => setSelectedProject(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
@@ -263,11 +272,11 @@ export default function NGOMentorshipPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="p-3 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl">
                   <div className="text-zinc-500 dark:text-zinc-500 text-xs mb-1">Students Assigned</div>
-                  <div className="font-bold text-zinc-900 dark:text-white text-lg">{selectedProject.students}</div>
+                  <div className="font-bold text-zinc-900 dark:text-white text-lg">{selectedProject._count?.members || 0}</div>
                 </div>
                 <div className="p-3 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl">
                   <div className="text-zinc-500 dark:text-zinc-500 text-xs mb-1">Deadline</div>
-                  <div className="font-bold text-zinc-900 dark:text-white">{selectedProject.deadline}</div>
+                  <div className="font-bold text-zinc-900 dark:text-white">{selectedProject.deadline ? new Date(selectedProject.deadline).toLocaleDateString() : 'N/A'}</div>
                 </div>
               </div>
 
@@ -279,26 +288,32 @@ export default function NGOMentorshipPage() {
               <div>
                 <div className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-2">Milestones</div>
                 <div className="space-y-2">
-                  {selectedProject.milestones.map((m: string, i: number) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-zinc-300">
-                      <CheckCircle2 className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                      {m}
+                  {selectedProject.milestones?.length ? selectedProject.milestones.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2 text-sm text-zinc-300">
+                      <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${m.status === 'COMPLETED' ? 'text-indigo-400' : 'text-zinc-500'}`} />
+                      {m.title}
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-sm text-zinc-500">No milestones yet.</div>
+                  )}
                 </div>
               </div>
 
-              <div className="p-3 bg-zinc-100 dark:bg-zinc-800/40 rounded-xl text-sm flex items-center justify-between">
-                <span className="text-zinc-600 dark:text-zinc-400">Contact:</span>
-                <a href={`mailto:${selectedProject.contact}`} className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-                  {selectedProject.contact}
-                </a>
-              </div>
+              {selectedProject.contactEmail && (
+                <div className="p-3 bg-zinc-100 dark:bg-zinc-800/40 rounded-xl text-sm flex items-center justify-between">
+                  <span className="text-zinc-600 dark:text-zinc-400">Contact:</span>
+                  <a href={`mailto:${selectedProject.contactEmail}`} className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+                    {selectedProject.contactEmail}
+                  </a>
+                </div>
+              )}
             </div>
 
             <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <button
-                onClick={() => handleDelete(selectedProject.id)}
+                onClick={() => {
+                   toast.info('Feature under construction (delete project).');
+                }}
                 className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
               >
                 <Trash2 className="w-4 h-4" /> Remove Project

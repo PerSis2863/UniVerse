@@ -1,18 +1,19 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2, X, FileSearch } from 'lucide-react';
+import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2, X, FileSearch, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 
-type Doc = { id: string, name: string, type: string, size: string, date: string, category: string };
-
-const documents: Doc[] = [
-  { id: '1', name: 'Official Transcript 2025-2026', type: 'PDF', size: '2.4 MB', date: 'Sept 15, 2026', category: 'Academic' },
-  { id: '2', name: 'Enrollment Certificate', type: 'PDF', size: '1.1 MB', date: 'Aug 20, 2026', category: 'Administrative' },
-  { id: '3', name: 'Student ID Card (Digital)', type: 'JPG', size: '3.5 MB', date: 'Aug 10, 2026', category: 'Identity' },
-  { id: '4', name: 'Tuition Receipt Q1', type: 'PDF', size: '840 KB', date: 'Jul 28, 2026', category: 'Financial' },
-];
+type Doc = {
+  id: string;
+  title: string;
+  type: string;
+  fileUrl: string;
+  createdAt: string;
+  isVerified: boolean;
+};
 
 export default function DocumentsPage() {
   const [category, setCategory] = useState('All Categories');
@@ -20,28 +21,43 @@ export default function DocumentsPage() {
   const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   
+  const [documents, setDocuments] = useState<Doc[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredDocs = category === 'All Categories' ? documents : documents.filter(d => d.category === category);
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const fetchDocuments = async () => {
+    try {
+      const res = await api.get('/documents/my');
+      setDocuments(res.data);
+    } catch (error) {
+      toast.error('Failed to load documents');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredDocs = category === 'All Categories' ? documents : documents.filter(d => d.type === category.toUpperCase() || (category === 'Other' && d.type === 'OTHER'));
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      simulateUpload(e.target.files[0].name);
+      const file = e.target.files[0];
+      simulateUpload(file.name);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const simulateUpload = (fileName: string) => {
     setUploadProgress(10);
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       setUploadProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          toast.success(`Successfully uploaded ${fileName}`);
-          setTimeout(() => {
-            setActiveModal(null);
-            setUploadProgress(0);
-          }, 500);
+          finishUpload(fileName);
           return 100;
         }
         return prev + 20;
@@ -49,23 +65,51 @@ export default function DocumentsPage() {
     }, 200);
   };
 
+  const finishUpload = async (fileName: string) => {
+    try {
+      await api.post('/documents', {
+        title: fileName,
+        fileUrl: `https://dummy.storage/${encodeURIComponent(fileName)}`,
+        type: 'OTHER'
+      });
+      toast.success(`Successfully uploaded ${fileName}`);
+      await fetchDocuments();
+      setActiveModal(null);
+      setUploadProgress(0);
+    } catch (error) {
+      toast.error('Failed to save document record');
+      setUploadProgress(0);
+    }
+  };
+
   const handleView = (doc: Doc) => {
     setSelectedDoc(doc);
     setActiveModal('view');
   };
 
-  const handleDownload = (docName: string) => {
-    toast.success(`Downloading ${docName}...`);
+  const handleDownload = (docTitle: string) => {
+    toast.success(`Downloading ${docTitle}...`);
     const blob = new Blob(["This is a dummy document content."], { type: "application/pdf" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${docName.replace(/\s+/g, "_")}.pdf`;
+    a.download = `${docTitle.replace(/\s+/g, "_")}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   };
+
+  if (isLoading) {
+    return (
+      <>
+        <Topbar title="School Documents" subtitle="Manage your official academic and administrative files." />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -74,7 +118,7 @@ export default function DocumentsPage() {
         subtitle="Manage your official academic and administrative files." 
         action={{ label: 'Upload Document', onClick: () => setActiveModal('upload') }}
       />
-      <div className="flex-1 p-8 space-y-8">
+      <div className="flex-1 p-8 space-y-8 overflow-y-auto">
         
         {/* Upload Banner */}
         <div className="relative overflow-hidden rounded-2xl border border-dashed border-indigo-500/30 bg-indigo-500/5 dark:bg-indigo-500/10 p-8 flex flex-col items-center justify-center text-center">
@@ -104,52 +148,57 @@ export default function DocumentsPage() {
                 style={{ colorScheme: 'dark' }}
               >
                 <option>All Categories</option>
-                <option>Academic</option>
-                <option>Administrative</option>
-                <option>Financial</option>
-                <option>Identity</option>
+                <option>Transcript</option>
+                <option>Diploma</option>
+                <option>Certificate</option>
+                <option>ID_Card</option>
+                <option>Other</option>
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDocs.map((doc, i) => (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.1 }}
-                key={doc.id} 
-                className="group relative p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-zinc-200 dark:bg-white/[0.06] flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:text-indigo-400 group-hover:bg-indigo-500/10 transition-colors">
-                    <FileText className="w-6 h-6" />
+          {filteredDocs.length === 0 ? (
+            <div className="text-zinc-500 text-sm">No documents found.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredDocs.map((doc, i) => (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.1 }}
+                  key={doc.id} 
+                  className="group relative p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-200 dark:bg-white/[0.06] flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:text-indigo-400 group-hover:bg-indigo-500/10 transition-colors">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                      {doc.type}
+                    </span>
                   </div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-                    {doc.type}
-                  </span>
-                </div>
-                
-                <h4 className="font-bold text-zinc-900 dark:text-white mb-1 line-clamp-1" title={doc.name}>
-                  {doc.name}
-                </h4>
-                <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400 mb-6">
-                  <span>{doc.size}</span>
-                  <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-                  <span>{doc.date}</span>
-                </div>
+                  
+                  <h4 className="font-bold text-zinc-900 dark:text-white mb-1 line-clamp-1" title={doc.title}>
+                    {doc.title}
+                  </h4>
+                  <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400 mb-6">
+                    <span>PDF</span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                    <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
+                  </div>
 
-                <div className="flex items-center gap-2 pt-4 border-t border-zinc-200 dark:border-white/[0.06]">
-                  <button onClick={() => handleView(doc)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors">
-                    <Eye className="w-3.5 h-3.5" /> View
-                  </button>
-                  <button onClick={() => handleDownload(doc.name)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors">
-                    <Download className="w-3.5 h-3.5" /> Download
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  <div className="flex items-center gap-2 pt-4 border-t border-zinc-200 dark:border-white/[0.06]">
+                    <button onClick={() => handleView(doc)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors">
+                      <Eye className="w-3.5 h-3.5" /> View
+                    </button>
+                    <button onClick={() => handleDownload(doc.title)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors">
+                      <Download className="w-3.5 h-3.5" /> Download
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
@@ -174,10 +223,10 @@ export default function DocumentsPage() {
               <div className="p-6 border-b border-zinc-800 flex justify-between items-start bg-zinc-900/50">
                 <div>
                   <h2 className="text-xl font-bold text-white mb-1">
-                    {activeModal === 'upload' ? 'Upload Document' : selectedDoc?.name}
+                    {activeModal === 'upload' ? 'Upload Document' : selectedDoc?.title}
                   </h2>
                   <div className="text-sm text-zinc-400">
-                    {activeModal === 'upload' ? 'Select a file to add to your records.' : `${selectedDoc?.type} • ${selectedDoc?.size} • Uploaded ${selectedDoc?.date}`}
+                    {activeModal === 'upload' ? 'Select a file to add to your records.' : `${selectedDoc?.type} • Uploaded ${new Date(selectedDoc?.createdAt || '').toLocaleDateString()}`}
                   </div>
                 </div>
                 <button onClick={() => setActiveModal(null)} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
@@ -224,7 +273,7 @@ export default function DocumentsPage() {
                     </div>
                     
                     <div className="flex justify-center">
-                      <button onClick={() => handleDownload(selectedDoc.name)} className="btn-primary py-3 px-8 rounded-xl font-bold flex items-center gap-2">
+                      <button onClick={() => handleDownload(selectedDoc.title)} className="btn-primary py-3 px-8 rounded-xl font-bold flex items-center gap-2">
                         <Download className="w-5 h-5" /> Download {selectedDoc.type}
                       </button>
                     </div>

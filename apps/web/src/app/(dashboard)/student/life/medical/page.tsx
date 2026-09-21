@@ -1,159 +1,194 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { HeartPulse, Stethoscope, CalendarPlus, Activity, X, FileText, CheckCircle2, Clock } from 'lucide-react';
+import { HeartPulse, Stethoscope, Activity, X, CheckCircle2, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '@/lib/api';
+
+type MedicalRecord = {
+  bloodType: string;
+  allergies: string[];
+  conditions: string[];
+  medications: string[];
+  doctorName: string;
+  doctorPhone: string;
+  emergencyContact: string;
+  emergencyPhone: string;
+};
 
 export default function MedicalPage() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [step, setStep] = useState(1);
-  const [appointments, setAppointments] = useState<{date: string, time: string, type: string}[]>([]);
-  const [bookingDate, setBookingDate] = useState('');
-  const [bookingTime, setBookingTime] = useState('09:00 AM');
-  const [bookingType, setBookingType] = useState('General Checkup');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [record, setRecord] = useState<MedicalRecord>({
+    bloodType: '',
+    allergies: [],
+    conditions: [],
+    medications: [],
+    doctorName: '',
+    doctorPhone: '',
+    emergencyContact: '',
+    emergencyPhone: ''
+  });
 
-  // Reschedule state
-  const [rescheduleIndex, setRescheduleIndex] = useState<number | null>(null);
-  const [rescheduleDate, setRescheduleDate] = useState('');
-  const [rescheduleTime, setRescheduleTime] = useState('09:00 AM');
+  // Local state for the form inputs
+  const [formData, setFormData] = useState<MedicalRecord>(record);
 
-  // Accommodations state
-  const [accommodations, setAccommodations] = useState<{title: string, description: string}[]>([
-    { title: '1.5x Time on Written Exams', description: 'Approved for Fall 2026 Semester' }
-  ]);
-  const [accType, setAccType] = useState('Academic (Testing, Note-taking)');
-  const [accDetails, setAccDetails] = useState('');
-  const [accFileName, setAccFileName] = useState('');
+  useEffect(() => {
+    fetchRecord();
+  }, []);
+
+  const fetchRecord = async () => {
+    try {
+      const res = await api.get('/medical/my');
+      if (res.data) {
+        setRecord({
+          bloodType: res.data.bloodType || '',
+          allergies: res.data.allergies || [],
+          conditions: res.data.conditions || [],
+          medications: res.data.medications || [],
+          doctorName: res.data.doctorName || '',
+          doctorPhone: res.data.doctorPhone || '',
+          emergencyContact: res.data.emergencyContact || '',
+          emergencyPhone: res.data.emergencyPhone || ''
+        });
+      }
+    } catch (error) {
+      toast.error('Failed to load medical record');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openModal = () => {
+    setFormData(record);
+    setActiveModal('profile');
+  };
 
   const handleClose = () => {
     setActiveModal(null);
-    setTimeout(() => setStep(1), 300); // reset step after animation
   };
 
-  const handleBookingSubmit = () => {
-    setAppointments([...appointments, { date: bookingDate || 'TBD', time: bookingTime, type: bookingType }]);
-    toast.success('Appointment booked successfully!');
-    handleClose();
-  };
-
-  const handleRescheduleSubmit = () => {
-    if (rescheduleIndex === null) return;
-    const newAppointments = [...appointments];
-    newAppointments[rescheduleIndex] = {
-      ...newAppointments[rescheduleIndex],
-      date: rescheduleDate || 'TBD',
-      time: rescheduleTime
-    };
-    setAppointments(newAppointments);
-    toast.success('Appointment rescheduled successfully!');
-    handleClose();
-  };
-
-  const handleAccommodationSubmit = () => {
-    if (!accDetails.trim()) {
-      toast.error('Please provide some details for your request.');
-      return;
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        ...formData,
+        allergies: typeof formData.allergies === 'string' ? (formData.allergies as string).split(',').map(s => s.trim()).filter(Boolean) : formData.allergies,
+        conditions: typeof formData.conditions === 'string' ? (formData.conditions as string).split(',').map(s => s.trim()).filter(Boolean) : formData.conditions,
+        medications: typeof formData.medications === 'string' ? (formData.medications as string).split(',').map(s => s.trim()).filter(Boolean) : formData.medications,
+      };
+      await api.post('/medical/my', payload);
+      setRecord(payload);
+      toast.success('Medical profile updated successfully');
+      handleClose();
+    } catch (error) {
+      toast.error('Failed to update medical profile');
+    } finally {
+      setIsSaving(false);
     }
-    
-    setAccommodations([
-      ...accommodations, 
-      { 
-        title: accType, 
-        description: `Pending Review - ${accFileName ? 'With documentation' : 'No documentation'}` 
-      }
-    ]);
-    
-    setAccType('Academic (Testing, Note-taking)');
-    setAccDetails('');
-    setAccFileName('');
-    toast.success('Accommodation request submitted!');
-    handleClose();
   };
+
+  const renderArray = (arr: string[] | string) => {
+    const list = Array.isArray(arr) ? arr : (arr as string).split(',').map(s => s.trim()).filter(Boolean);
+    if (!list || list.length === 0) return <span className="text-zinc-500 italic">None reported</span>;
+    return (
+      <div className="flex flex-wrap gap-2">
+        {list.map((item, i) => (
+          <span key={i} className="px-2 py-1 bg-white/[0.05] border border-white/[0.1] rounded text-sm text-zinc-300">
+            {item}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <Topbar title="Medical & Health Services" subtitle="Manage your health profile and emergency contacts" />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-      <Topbar title="Medical & Disability Services" subtitle="Manage appointments and health accommodations" />
+      <Topbar title="Medical & Health Services" subtitle="Manage your health profile and emergency contacts" />
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-8">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Health Center */}
+            {/* Medical Profile */}
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 relative overflow-hidden group hover:border-pink-500/30 transition-colors">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-pink-500/5 rounded-full blur-2xl group-hover:bg-pink-500/10 transition-colors" />
-              <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center mb-6">
-                <Stethoscope className="w-6 h-6 text-pink-400" />
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center">
+                  <Stethoscope className="w-6 h-6 text-pink-400" />
+                </div>
+                <button onClick={openModal} className="flex items-center gap-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 px-4 py-2 rounded-lg font-medium transition-colors text-sm">
+                  Update Profile
+                </button>
               </div>
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Campus Health Center</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">Book appointments for general medical care, vaccinations, and routine checkups.</p>
               
-              <button onClick={() => setActiveModal('booking')} className="flex items-center gap-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 px-4 py-2.5 rounded-lg font-medium transition-colors w-full justify-center">
-                <CalendarPlus className="w-4 h-4" /> Book Appointment
-              </button>
-            </div>
-
-            {/* Disability Services */}
-            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 relative overflow-hidden group hover:border-purple-500/30 transition-colors">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors" />
-              <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-6">
-                <HeartPulse className="w-6 h-6 text-purple-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Disability Support</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-6">Request academic accommodations, accessible housing, and assistive technology.</p>
+              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Medical Profile</h2>
               
-              <button onClick={() => setActiveModal('accommodations')} className="flex items-center gap-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 px-4 py-2.5 rounded-lg font-medium transition-colors w-full justify-center">
-                <Activity className="w-4 h-4" /> Manage Accommodations
-              </button>
-            </div>
-
-          </div>
-
-          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
-            <h3 className="font-semibold text-zinc-900 dark:text-white mb-4">Upcoming Appointments</h3>
-            {appointments.length === 0 ? (
-              <div className="text-center py-8 text-zinc-500 dark:text-zinc-500 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
-                No upcoming appointments scheduled.
-              </div>
-            ) : (
               <div className="space-y-4">
-                {appointments.map((apt, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] rounded-xl">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-pink-500/10 text-pink-500 rounded-xl">
-                        <CalendarPlus className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-zinc-900 dark:text-white">{apt.type}</div>
-                        <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 flex items-center gap-2">
-                          <Clock className="w-4 h-4" /> {apt.date} at {apt.time}
-                        </div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        setRescheduleIndex(i);
-                        setRescheduleDate(apt.date !== 'TBD' ? apt.date : '');
-                        setRescheduleTime(apt.time);
-                        setActiveModal('reschedule');
-                      }}
-                      className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 font-medium"
-                    >
-                      Reschedule
-                    </button>
-                  </div>
-                ))}
+                <div>
+                  <div className="text-sm text-zinc-500 mb-1">Blood Type</div>
+                  <div className="font-medium text-white">{record.bloodType || <span className="text-zinc-500 italic">Not specified</span>}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-zinc-500 mb-1">Allergies</div>
+                  {renderArray(record.allergies)}
+                </div>
+                <div>
+                  <div className="text-sm text-zinc-500 mb-1">Medical Conditions</div>
+                  {renderArray(record.conditions)}
+                </div>
+                <div>
+                  <div className="text-sm text-zinc-500 mb-1">Current Medications</div>
+                  {renderArray(record.medications)}
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Emergency Contacts */}
+            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 relative overflow-hidden group hover:border-red-500/30 transition-colors">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-colors" />
+              <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center mb-6">
+                <HeartPulse className="w-6 h-6 text-red-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">Contacts</h2>
+              
+              <div className="space-y-6">
+                <div className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl">
+                  <h3 className="text-sm text-zinc-400 mb-2 font-medium">Emergency Contact</h3>
+                  <div className="font-bold text-white mb-1">{record.emergencyContact || <span className="text-zinc-500 italic">Not specified</span>}</div>
+                  <div className="text-zinc-300 text-sm">{record.emergencyPhone || <span className="text-zinc-500 italic">Not specified</span>}</div>
+                </div>
+
+                <div className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl">
+                  <h3 className="text-sm text-zinc-400 mb-2 font-medium">Primary Care Physician</h3>
+                  <div className="font-bold text-white mb-1">{record.doctorName || <span className="text-zinc-500 italic">Not specified</span>}</div>
+                  <div className="text-zinc-300 text-sm">{record.doctorPhone || <span className="text-zinc-500 italic">Not specified</span>}</div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
       </div>
 
       <AnimatePresence>
-        {activeModal === 'booking' && (
+        {activeModal === 'profile' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -164,234 +199,121 @@ export default function MedicalPage() {
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-pink-500/20 text-pink-400 rounded-lg">
-                    <CalendarPlus className="w-5 h-5" />
+                    <Stethoscope className="w-5 h-5" />
                   </div>
-                  <h2 className="text-xl font-bold text-white">Book Medical Appointment</h2>
+                  <h2 className="text-xl font-bold text-white">Update Medical Profile</h2>
                 </div>
                 <button onClick={handleClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div className="p-8 overflow-y-auto">
-                {step === 1 && (
-                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <h3 className="text-lg font-medium text-white">What is the reason for your visit?</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {['General Checkup', 'Illness/Injury', 'Vaccination', 'Mental Health Consult'].map(reason => (
-                        <button key={reason} onClick={() => { setBookingType(reason); setStep(2); }} className="p-4 rounded-xl border border-zinc-800 bg-white/[0.02] hover:bg-white/[0.05] hover:border-pink-500/50 text-left transition-all">
-                          <span className="font-medium text-zinc-200">{reason}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
+              <div className="p-8 overflow-y-auto space-y-6">
                 
-                {step === 2 && (
-                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <h3 className="text-lg font-medium text-white">Select a Date & Time</h3>
-                    <div className="flex gap-6">
-                      <div className="flex-1 space-y-4">
-                        <label className="text-sm text-zinc-400">Date</label>
-                        <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]" />
-                      </div>
-                      <div className="flex-1 space-y-4">
-                        <label className="text-sm text-zinc-400">Time</label>
-                        <select value={bookingTime} onChange={e => setBookingTime(e.target.value)} className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]">
-                          <option>09:00 AM</option>
-                          <option>10:30 AM</option>
-                          <option>01:00 PM</option>
-                          <option>03:45 PM</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="pt-6 flex justify-end gap-3">
-                      <button onClick={() => setStep(1)} className="px-6 py-2 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors">Back</button>
-                      <button onClick={() => setStep(3)} className="px-6 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-medium transition-colors">Continue</button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {step === 3 && (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-center py-8">
-                    <div className="w-20 h-20 bg-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-pink-400">
-                      <CheckCircle2 className="w-10 h-10" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-white">Confirm Appointment</h3>
-                    <p className="text-zinc-400 max-w-md mx-auto">You are about to book a {bookingType} appointment on {bookingDate || 'the selected date'} at {bookingTime}. An email confirmation will be sent to your student inbox.</p>
-                    <div className="pt-8">
-                      <button onClick={handleBookingSubmit} className="px-8 py-3 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-lg transition-colors shadow-lg shadow-pink-500/20">
-                        Confirm Booking
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {activeModal === 'accommodations' && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#0d1117] border border-zinc-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
-            >
-              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-500/20 text-purple-400 rounded-lg">
-                    <Activity className="w-5 h-5" />
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Blood Type</label>
+                    <select 
+                      value={formData.bloodType}
+                      onChange={e => setFormData({...formData, bloodType: e.target.value})}
+                      className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]"
+                    >
+                      <option value="">Select Blood Type</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
                   </div>
-                  <h2 className="text-xl font-bold text-white">Manage Accommodations</h2>
-                </div>
-                <button onClick={handleClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="p-8 overflow-y-auto space-y-8">
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-4">Active Accommodations</h3>
-                  <div className="space-y-3">
-                    {accommodations.map((acc, i) => (
-                      <div key={i} className="bg-white/[0.02] border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-2 rounded-lg ${acc.description.includes('Pending') ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                            {acc.description.includes('Pending') ? <Clock className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-                          </div>
-                          <div>
-                            <div className="font-medium text-zinc-200">{acc.title}</div>
-                            <div className="text-sm text-zinc-500">{acc.description}</div>
-                          </div>
-                        </div>
-                        <button className="text-sm text-purple-400 hover:text-purple-300 font-medium">
-                          {acc.description.includes('Pending') ? 'Cancel Request' : 'View Letter'}
-                        </button>
-                      </div>
-                    ))}
+
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Allergies (comma separated)</label>
+                    <input 
+                      type="text" 
+                      value={Array.isArray(formData.allergies) ? formData.allergies.join(', ') : formData.allergies}
+                      onChange={e => setFormData({...formData, allergies: e.target.value as any})}
+                      placeholder="e.g. Peanuts, Penicillin"
+                      className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Medical Conditions (comma separated)</label>
+                    <input 
+                      type="text" 
+                      value={Array.isArray(formData.conditions) ? formData.conditions.join(', ') : formData.conditions}
+                      onChange={e => setFormData({...formData, conditions: e.target.value as any})}
+                      placeholder="e.g. Asthma, Type 1 Diabetes"
+                      className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Current Medications (comma separated)</label>
+                    <input 
+                      type="text" 
+                      value={Array.isArray(formData.medications) ? formData.medications.join(', ') : formData.medications}
+                      onChange={e => setFormData({...formData, medications: e.target.value as any})}
+                      placeholder="e.g. Albuterol, Insulin"
+                      className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
+                    />
                   </div>
                 </div>
 
-                <div className="border-t border-zinc-800 pt-8">
-                  <h3 className="text-lg font-bold text-white mb-4">Submit New Request</h3>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm text-zinc-400">Accommodation Type</label>
-                      <select 
-                        value={accType}
-                        onChange={(e) => setAccType(e.target.value)}
-                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]"
-                      >
-                        <option>Academic (Testing, Note-taking)</option>
-                        <option>Housing (Accessible room, emotional support animal)</option>
-                        <option>Dietary (Allergy accommodations)</option>
-                        <option>Assistive Technology</option>
-                      </select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm text-zinc-400">Request Details</label>
-                      <textarea 
-                        value={accDetails}
-                        onChange={(e) => setAccDetails(e.target.value)}
-                        placeholder="Please provide specific details about the accommodation you are requesting..."
-                        rows={4}
-                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-purple-500 [color-scheme:dark] resize-none"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm text-zinc-400">Supporting Documentation</label>
-                      <label className="block border-2 border-dashed border-zinc-700 rounded-xl p-8 text-center bg-white/[0.01] hover:bg-white/[0.03] hover:border-purple-500/50 transition-colors cursor-pointer group">
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              setAccFileName(e.target.files[0].name);
-                            }
-                          }}
-                        />
-                        <FileText className={`w-8 h-8 mx-auto mb-2 transition-colors ${accFileName ? 'text-purple-400' : 'text-zinc-500 group-hover:text-purple-400'}`} />
-                        {accFileName ? (
-                          <div className="text-purple-400 font-medium">{accFileName} selected</div>
-                        ) : (
-                          <p className="text-zinc-400 text-sm">Drag and drop medical documents here, or click to browse</p>
-                        )}
-                      </label>
-                    </div>
-                    
-                    <button onClick={handleAccommodationSubmit} className="w-full py-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg transition-colors mt-4 shadow-lg shadow-purple-500/20">
-                      Submit Request for Review
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {activeModal === 'reschedule' && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#0d1117] border border-zinc-800 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col"
-            >
-              <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/20 text-blue-400 rounded-lg">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-xl font-bold text-white">Reschedule Appointment</h2>
-                </div>
-                <button onClick={handleClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="p-8">
-                <div className="space-y-6">
-                  {rescheduleIndex !== null && (
-                    <div className="bg-white/[0.03] border border-zinc-800 rounded-xl p-4 mb-4">
-                      <div className="text-sm text-zinc-400 mb-1">Current Appointment</div>
-                      <div className="font-medium text-white">{appointments[rescheduleIndex]?.type}</div>
-                      <div className="text-sm text-zinc-300">{appointments[rescheduleIndex]?.date} at {appointments[rescheduleIndex]?.time}</div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-6">
-                    <div className="flex-1 space-y-4">
-                      <label className="text-sm text-zinc-400">New Date</label>
+                <div className="pt-6 border-t border-zinc-800 space-y-4">
+                  <h3 className="font-bold text-white">Contacts</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-zinc-400 mb-1">Emergency Contact Name</label>
                       <input 
-                        type="date" 
-                        value={rescheduleDate} 
-                        onChange={e => setRescheduleDate(e.target.value)} 
-                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500 [color-scheme:dark]" 
+                        type="text" 
+                        value={formData.emergencyContact}
+                        onChange={e => setFormData({...formData, emergencyContact: e.target.value})}
+                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
                       />
                     </div>
-                    <div className="flex-1 space-y-4">
-                      <label className="text-sm text-zinc-400">New Time</label>
-                      <select 
-                        value={rescheduleTime} 
-                        onChange={e => setRescheduleTime(e.target.value)} 
-                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500 [color-scheme:dark]"
-                      >
-                        <option>09:00 AM</option>
-                        <option>10:30 AM</option>
-                        <option>01:00 PM</option>
-                        <option>03:45 PM</option>
-                      </select>
+                    <div>
+                      <label className="block text-sm text-zinc-400 mb-1">Emergency Phone</label>
+                      <input 
+                        type="text" 
+                        value={formData.emergencyPhone}
+                        onChange={e => setFormData({...formData, emergencyPhone: e.target.value})}
+                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-zinc-400 mb-1">Doctor Name</label>
+                      <input 
+                        type="text" 
+                        value={formData.doctorName}
+                        onChange={e => setFormData({...formData, doctorName: e.target.value})}
+                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-zinc-400 mb-1">Doctor Phone</label>
+                      <input 
+                        type="text" 
+                        value={formData.doctorPhone}
+                        onChange={e => setFormData({...formData, doctorPhone: e.target.value})}
+                        className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
+                      />
                     </div>
                   </div>
+                </div>
 
-                  <div className="pt-4 flex justify-end gap-3">
-                    <button onClick={handleClose} className="px-6 py-2 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors">Cancel</button>
-                    <button onClick={handleRescheduleSubmit} className="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors">Save Changes</button>
-                  </div>
+                <div className="pt-6 flex justify-end gap-3">
+                  <button onClick={handleClose} className="px-6 py-2 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-medium transition-colors flex items-center gap-2">
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save Changes
+                  </button>
                 </div>
               </div>
             </motion.div>

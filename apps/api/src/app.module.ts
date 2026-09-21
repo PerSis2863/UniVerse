@@ -19,6 +19,21 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { AssociationsModule } from './associations/associations.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { TimetableModule } from './timetable/timetable.module';
+import { InternshipsModule } from './internships/internships.module';
+import { ElectivesModule } from './electives/electives.module';
+import { SkillsModule } from './skills/skills.module';
+import { GroupsModule } from './groups/groups.module';
+import { ImpactModule } from './impact/impact.module';
+import { PartnersModule } from './partners/partners.module';
+import { DocumentsModule } from './documents/documents.module';
+import { ScholarshipsModule } from './scholarships/scholarships.module';
+import { ConsentsModule } from './consents/consents.module';
+import { MedicalModule } from './medical/medical.module';
+import { SafetyModule } from './safety/safety.module';
+import { MentorshipModule } from './mentorship/mentorship.module';
+import { CollaborationsModule } from './collaborations/collaborations.module';
+import { CalendarModule } from './calendar/calendar.module';
 
 @Module({
   imports: [
@@ -42,6 +57,21 @@ import { TicketsModule } from './tickets/tickets.module';
     AssociationsModule,
     RoomsModule,
     TicketsModule,
+    TimetableModule,
+    InternshipsModule,
+    ElectivesModule,
+    SkillsModule,
+    GroupsModule,
+    ImpactModule,
+    PartnersModule,
+    DocumentsModule,
+    ScholarshipsModule,
+    ConsentsModule,
+    MedicalModule,
+    SafetyModule,
+    MentorshipModule,
+    CollaborationsModule,
+    CalendarModule,
   ],
 })
 export class AppModule {}

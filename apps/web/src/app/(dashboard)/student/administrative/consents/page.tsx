@@ -1,31 +1,32 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { ShieldCheck, ToggleRight, ToggleLeft, AlertCircle, X, ChevronRight, Info } from 'lucide-react';
-import { useState } from 'react';
+import { ShieldCheck, ToggleRight, ToggleLeft, AlertCircle, X, ChevronRight, Info, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 
 const CONSENT_DETAILS = {
-  marketing: {
+  MARKETING: {
     title: 'Marketing & Communications',
     shortDesc: 'Receive promotional emails about university events, merchandise, and third-party offers.',
     longDesc: 'By opting in, you allow the university to send you promotional materials. This includes early access to event tickets, discounts at the university store, and offers from affiliated third-party partners. We promise not to spam your inbox, typically sending no more than 2 emails per month.',
     lastUpdated: 'Aug 15, 2026'
   },
-  alumni: {
+  ALUMNI: {
     title: 'Alumni Network Directory',
     shortDesc: 'Allow your name, major, and graduation year to be visible in the alumni network directory after graduation.',
     longDesc: 'The Alumni Network Directory is an exclusive platform for graduates to connect, network, and find mentorship opportunities. Opting in makes your basic profile (Name, Major, Graduation Year, and LinkedIn link if provided) searchable by other verified alumni.',
     lastUpdated: 'Sept 01, 2025'
   },
-  photo: {
+  PHOTO: {
     title: 'Photo & Media Release',
     shortDesc: 'Consent to the university using photographs or video footage containing your likeness for promotional materials.',
     longDesc: 'This consent allows our marketing team to use photos or videos taken at public university events (like sports games, fairs, or commencement) in our official brochures, websites, and social media channels. It does not apply to private settings like classrooms.',
     lastUpdated: 'Never'
   },
-  research: {
+  RESEARCH: {
     title: 'Academic Research Data',
     shortDesc: 'Allow anonymized academic performance data to be used by university researchers for educational studies.',
     longDesc: 'Your academic data (grades, course selections, demographics) is strictly anonymized and aggregated. It is used by internal researchers to study trends in higher education, improve curriculum design, and publish academic papers. Your identity is never revealed.',
@@ -37,25 +38,67 @@ type ConsentKey = keyof typeof CONSENT_DETAILS;
 
 export default function StudentConsents() {
   const [consents, setConsents] = useState<Record<ConsentKey, boolean>>({
-    marketing: false,
-    alumni: true,
-    photo: false,
-    research: true,
+    MARKETING: false,
+    ALUMNI: false,
+    PHOTO: false,
+    RESEARCH: false,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   const [activeModal, setActiveModal] = useState<ConsentKey | null>(null);
 
-  const toggleConsent = (key: ConsentKey) => {
-    setConsents(prev => {
-      const newState = !prev[key];
+  useEffect(() => {
+    fetchConsents();
+  }, []);
+
+  const fetchConsents = async () => {
+    try {
+      const res = await api.get('/consents/my');
+      const data = res.data;
+      const newConsents: Record<string, boolean> = {
+        MARKETING: false,
+        ALUMNI: false,
+        PHOTO: false,
+        RESEARCH: false,
+      };
+      
+      data.forEach((consent: any) => {
+        newConsents[consent.type] = consent.isGranted;
+      });
+
+      setConsents(newConsents as Record<ConsentKey, boolean>);
+    } catch (error) {
+      toast.error('Failed to load consents');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleConsent = async (key: ConsentKey) => {
+    const newState = !consents[key];
+    try {
+      await api.post('/consents/upsert', { type: key, granted: newState });
+      setConsents(prev => ({ ...prev, [key]: newState }));
       if (newState) {
         toast.success(`Consent granted for ${CONSENT_DETAILS[key].title}`);
       } else {
         toast.info(`Consent revoked for ${CONSENT_DETAILS[key].title}`);
       }
-      return { ...prev, [key]: newState };
-    });
+    } catch (error) {
+      toast.error('Failed to update consent');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <>
+        <Topbar title="My Consents" subtitle="Manage your data privacy and sharing preferences" />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
