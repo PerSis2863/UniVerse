@@ -52,7 +52,7 @@ export default function TeacherCollaborationsPage() {
     studentsAssigned: p._count?.members || 0,
     funding: 'Pending Review',
     nextMilestone: 'Review by Global Dean Committee',
-  })) : proposals;
+  })) : [];
 
   const handleCreateProposal = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -448,7 +448,7 @@ model Message {
   read           Boolean      @default(false)
   createdAt      DateTime     @default(now())
 
-  @@index([conversationId])
+  @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@map("messages")
 }
@@ -464,7 +464,8 @@ model Notification {
   link      String?
   createdAt DateTime @default(now())
 
-  @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, read])
   @@map("notifications")
 }
 
@@ -1287,7 +1288,8 @@ model CollaborationProject {
   title              String
   description        String
   partner            String?
-  status             String   @default("Recruiting") // Recruiting, Active, Completed
+  ngo                String?
+  status             String   @default("PendingReview") // PendingReview, Recruiting, Active, Completed, Rejected
   deadline           DateTime?
   tags               String[]
   contactEmail       String?

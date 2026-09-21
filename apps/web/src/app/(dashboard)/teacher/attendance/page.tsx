@@ -114,7 +114,7 @@ export default function TeacherAttendance() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.05]">
-                {currentStudents.map((student) => {
+                {currentStudents.map((student: any) => {
                   
                   return (
                     <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
