@@ -5,9 +5,12 @@ import { Topbar } from '@/components/layout/Topbar';
 import { toast } from 'sonner';
 import {
   Globe2, Building2, HandHeart, CheckCircle2, AlertTriangle, ShieldCheck,
-  PlusCircle, Search, Filter, ExternalLink, ArrowUpRight, DollarSign, Users
+  PlusCircle, Search, Filter, ExternalLink, ArrowUpRight, DollarSign, Users,
+  CheckCircle, XCircle
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import useSWR from 'swr';
+import { api } from '@/lib/api';
 
 export default function AdminPartnershipsPage() {
   const [partners, setPartners] = useState([
@@ -61,9 +64,26 @@ export default function AdminPartnershipsPage() {
   const [newEntity, setNewEntity] = useState('');
   const [newCategory, setNewCategory] = useState('Academic Institution');
 
-  const handleApprove = (id: string) => {
+  const { data: projects, mutate } = useSWR('/collaborations/projects', async (url) => {
+    const res = await api.get(url);
+    return res.data;
+  });
+
+  const pendingProjects = projects ? projects.filter((p: any) => p.status === 'PendingReview') : [];
+
+  const handleApproveMou = (id: string) => {
     setPartners(partners.map(p => p.id === id ? { ...p, status: 'Active', validUntil: 'Sep 2029' } : p));
     toast.success('Agreement Ratified Successfully');
+  };
+
+  const handleReviewProject = async (id: string, status: string) => {
+    try {
+      await api.patch(`/collaborations/projects/${id}/review`, { status });
+      mutate();
+      toast.success(`Project ${status === 'Active' ? 'Approved' : 'Rejected'} successfully!`);
+    } catch (error) {
+      toast.error('Failed to update project status');
+    }
   };
 
   return (
@@ -154,7 +174,7 @@ export default function AdminPartnershipsPage() {
                   <div className="flex items-center gap-3 w-full md:w-auto justify-end">
                     {p.status === 'Pending Review' && (
                       <button
-                        onClick={() => handleApprove(p.id)}
+                        onClick={() => handleApproveMou(p.id)}
                         className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-zinc-900 dark:text-white shadow-md transition-all"
                       >
                         Ratify Agreement
@@ -164,6 +184,50 @@ export default function AdminPartnershipsPage() {
                       onClick={() => toast.info('Loading Charter PDF...')}
                       className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors">
                       View Charter PDF
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pending Project Proposals */}
+          <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl mt-8">
+            <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white">Pending Project Proposals</h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">Teacher-submitted joint research and NGO collaborations awaiting academic senate review.</p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
+              {pendingProjects.length === 0 ? (
+                <div className="p-8 text-center text-sm text-zinc-500">No pending projects to review.</div>
+              ) : pendingProjects.map((project: any) => (
+                <div key={project.id} className="p-6 hover:bg-zinc-100 dark:bg-zinc-800/20 dark:hover:bg-zinc-800/40 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div className="space-y-1 max-w-xl">
+                    <h4 className="text-base font-bold text-zinc-900 dark:text-white">{project.title}</h4>
+                    <div className="text-xs text-zinc-600 dark:text-zinc-400">{project.description || 'No description provided'}</div>
+
+                    <div className="flex flex-wrap gap-4 text-xs text-zinc-500 dark:text-zinc-500 pt-2">
+                      <span>Supervising Teacher: <strong className="text-zinc-300">{project.supervisingTeacher?.name || 'Unknown'}</strong></span>
+                      <span>Partner: <strong className="text-zinc-300">{project.partner}</strong></span>
+                      <span>NGO: <strong className="text-zinc-300">{project.ngo}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                    <button
+                      onClick={() => handleReviewProject(project.id, 'Rejected')}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600/10 text-red-600 dark:text-red-400 hover:bg-red-600/20 transition-colors flex items-center gap-1"
+                    >
+                      <XCircle className="w-4 h-4" /> Reject
+                    </button>
+                    <button
+                      onClick={() => handleReviewProject(project.id, 'Active')}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-zinc-900 dark:text-white shadow-md transition-all flex items-center gap-1"
+                    >
+                      <CheckCircle className="w-4 h-4" /> Approve
                     </button>
                   </div>
                 </div>

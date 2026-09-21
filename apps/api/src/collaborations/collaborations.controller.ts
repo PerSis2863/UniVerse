@@ -2,6 +2,8 @@ import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/co
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CollaborationsService } from './collaborations.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('collaborations')
@@ -40,6 +42,13 @@ export class CollaborationsController {
   @Post('projects/:id/join')
   joinProject(@CurrentUser() user: any, @Param('id') projectId: string, @Body('role') role: string) {
     return this.collaborationsService.joinProject(projectId, user.id, role);
+  }
+
+  @Patch('projects/:id/review')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  reviewProject(@Param('id') id: string, @Body('status') status: string) {
+    return this.collaborationsService.reviewProject(id, status);
   }
 
   @Post('projects/:id/milestones')

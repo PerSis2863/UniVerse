@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { Briefcase, Calendar, MapPin, Building, ChevronRight, Loader2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import Image from 'next/image';
 
 export default function CareerPage() {
   const [opportunities, setOpportunities] = useState<any[]>([]);
@@ -50,8 +51,8 @@ export default function CareerPage() {
                     <div className="p-6">
                       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start">
                         <div className="flex gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-                            <img src={job.logo} alt={job.company} className="w-8 h-8 object-contain" />
+                          <div className="w-12 h-12 relative rounded-xl bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                            <Image src={job.logo} alt={job.company} fill className="object-contain" />
                           </div>
                           <div>
                             <h3 className="font-semibold text-lg text-zinc-900 dark:text-white group-hover:text-indigo-400 transition-colors">

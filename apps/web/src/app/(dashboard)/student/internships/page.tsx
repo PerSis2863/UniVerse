@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import Image from 'next/image';
 
 export default function StudentInternships() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -140,9 +141,9 @@ export default function StudentInternships() {
                   <div key={job.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group flex flex-col">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-500 dark:text-indigo-400 overflow-hidden shrink-0">
+                        <div className="w-12 h-12 relative rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-500 dark:text-indigo-400 overflow-hidden shrink-0">
                           {job.company?.logoUrl ? (
-                            <img src={job.company.logoUrl} alt={job.company.name} className="w-full h-full object-cover" />
+                            <Image src={job.company.logoUrl} alt={job.company.name} fill className="object-cover" />
                           ) : (
                             job.company?.name?.substring(0, 2).toUpperCase() || 'C'
                           )}
@@ -332,9 +333,9 @@ export default function StudentInternships() {
                     <div key={app.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-indigo-500 shrink-0 overflow-hidden">
+                          <div className="w-10 h-10 relative rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-indigo-500 shrink-0 overflow-hidden">
                             {internship.company?.logoUrl ? (
-                              <img src={internship.company.logoUrl} alt={internship.company.name} className="w-full h-full object-cover" />
+                              <Image src={internship.company.logoUrl} alt={internship.company.name} fill className="object-cover" />
                             ) : (
                               internship.company?.name?.substring(0, 2).toUpperCase() || 'C'
                             )}

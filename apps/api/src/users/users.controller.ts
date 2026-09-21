@@ -21,6 +21,11 @@ export class UsersController {
     return this.usersService.findAll(query);
   }
 
+  @Get('directory')
+  findDirectory(@Query('search') search?: string) {
+    return this.usersService.findDirectory(search);
+  }
+
   @Get('stats')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)

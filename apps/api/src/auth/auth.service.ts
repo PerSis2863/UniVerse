@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { Role } from '@prisma/client';
 
@@ -26,7 +26,7 @@ export class AuthService {
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('Email already in use');
 
-    const hash = await bcrypt.hash(dto.password, 12);
+    const hash = await bcrypt.hash(dto.password, 10);
     const role = dto.role ?? Role.STUDENT;
 
     const user = await this.prisma.user.create({

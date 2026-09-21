@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Topbar } from '@/components/layout/Topbar';
 import { ArrowLeft, BookOpen, FileText, Loader2, Users } from 'lucide-react';
+import Image from 'next/image';
 
 export default function CourseDetail() {
   const params = useParams();
@@ -94,9 +95,9 @@ export default function CourseDetail() {
               <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
                 <h3 className="font-semibold text-zinc-900 dark:text-white mb-4">Instructor</h3>
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 relative rounded-full bg-indigo-500/20 flex items-center justify-center overflow-hidden">
                     {course.teacher?.avatar ? (
-                      <img src={course.teacher.avatar} alt="Teacher" className="w-full h-full object-cover" />
+                      <Image src={course.teacher.avatar} alt="Teacher" fill className="object-cover" />
                     ) : (
                       <span className="text-lg font-bold text-indigo-400">{course.teacher?.name?.charAt(0)}</span>
                     )}

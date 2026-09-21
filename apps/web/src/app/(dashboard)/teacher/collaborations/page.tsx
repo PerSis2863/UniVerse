@@ -7,6 +7,8 @@ import {
   BookOpen, HeartHandshake, Sparkles, FileText, Send, X, User, MessageSquare
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import useSWR from 'swr';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
 const SQUAD_DATA: Record<string, { students: string[]; milestones: { label: string; done: boolean }[] }> = {
@@ -36,49 +38,41 @@ export default function TeacherCollaborationsPage() {
   const [partnerUni, setPartnerUni] = useState('MIT');
   const [leadNgo, setLeadNgo] = useState('UNICEF');
 
-  const [proposals, setProposals] = useState([
-    {
-      id: 'prop-1',
-      title: 'Decentralized Microgrid Telemetry in Sub-Saharan Clinics',
-      status: 'Active Collaboration',
-      partner: 'MIT D-Lab & University of Nairobi',
-      ngo: 'Water.org / UNICEF',
-      studentsAssigned: 8,
-      funding: '$45,000 Joint Grant',
-      nextMilestone: 'Field Validation in Kenya (Nov 2026)',
-    },
-    {
-      id: 'prop-2',
-      title: 'Multimodal Clinical Decision Models for Remote First Responders',
-      status: 'Under Institutional Review',
-      partner: 'Oxford Medical & Sorbonne',
-      ngo: 'Doctors Without Borders (MSF)',
-      studentsAssigned: 6,
-      funding: '$60,000 Wellcome Trust Co-Fund',
-      nextMilestone: 'Ethics Committee Clearance (Oct 2026)',
-    },
-  ]);
+  const { data: realProposals, mutate } = useSWR('/collaborations/projects', async (url) => {
+    const res = await api.get(url);
+    return res.data;
+  });
 
-  const handleCreateProposal = (e: React.FormEvent) => {
+  const displayProposals = realProposals ? realProposals.map((p: any) => ({
+    id: p.id,
+    title: p.title,
+    status: p.status === 'PendingReview' ? 'Submitted for Consortium Approval' : p.status,
+    partner: p.partner || 'Unknown',
+    ngo: p.ngo || 'Unknown',
+    studentsAssigned: p._count?.members || 0,
+    funding: 'Pending Review',
+    nextMilestone: 'Review by Global Dean Committee',
+  })) : proposals;
+
+  const handleCreateProposal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!proposalTitle) return;
 
-    setProposals([
-      {
-        id: `prop-${Date.now()}`,
+    try {
+      await api.post('/collaborations/projects', {
         title: proposalTitle,
-        status: 'Submitted for Consortium Approval',
+        description: 'New collaboration project',
         partner: `${partnerUni} Consortium`,
         ngo: leadNgo,
-        studentsAssigned: 0,
-        funding: 'Pending Review',
-        nextMilestone: 'Review by Global Dean Committee',
-      },
-      ...proposals,
-    ]);
+      });
 
-    setShowNewProposalModal(false);
-    setProposalTitle('');
+      mutate();
+      setShowNewProposalModal(false);
+      setProposalTitle('');
+      toast.success('Proposal submitted to the Academic Senate!');
+    } catch (error) {
+      toast.error('Failed to submit proposal');
+    }
   };
 
   return (
@@ -103,7 +97,7 @@ export default function TeacherCollaborationsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl">
               <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">Active Joint Consortia</div>
-              <div className="text-3xl font-black text-zinc-900 dark:text-white">{proposals.length} Initiatives</div>
+              <div className="text-3xl font-black text-zinc-900 dark:text-white">{displayProposals.length} Initiatives</div>
               <div className="text-[11px] text-indigo-400 mt-2 flex items-center gap-1">
                 <Globe2 className="w-3.5 h-3.5" /> 5 Partner Institutions
               </div>
@@ -133,7 +127,7 @@ export default function TeacherCollaborationsPage() {
             </div>
 
             <div className="divide-y divide-zinc-800/60">
-              {proposals.map(prop => (
+              {displayProposals.map((prop: any) => (
                 <div key={prop.id} className="p-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors space-y-4">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                     <div>

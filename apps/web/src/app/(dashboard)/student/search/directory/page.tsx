@@ -5,30 +5,34 @@ import { Search, Mail, Filter, Building2, MapPin, X, User } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const MOCK_DIRECTORY = [
-  { id: 1, name: 'Alice Johnson', major: 'B.S. Computer Science', year: 'Junior', location: 'Campus Dorms', email: 'alice.j@universe.edu', avatar: 'A' },
-  { id: 2, name: 'Bob Smith', major: 'B.A. Business Admin', year: 'Senior', location: 'Off-Campus', email: 'bob.s@universe.edu', avatar: 'B' },
-  { id: 3, name: 'Charlie Davis', major: 'B.S. Engineering', year: 'Sophomore', location: 'Campus Dorms', email: 'charlie.d@universe.edu', avatar: 'C' },
-  { id: 4, name: 'Diana Prince', major: 'B.S. Physics', year: 'Freshman', location: 'Campus Dorms', email: 'diana.p@universe.edu', avatar: 'D' },
-  { id: 5, name: 'Evan Wright', major: 'B.A. Graphic Design', year: 'Junior', location: 'Off-Campus', email: 'evan.w@universe.edu', avatar: 'E' },
-  { id: 6, name: 'Fiona Gallagher', major: 'B.S. Mathematics', year: 'Senior', location: 'Off-Campus', email: 'fiona.g@universe.edu', avatar: 'F' },
-];
+import useSWR from 'swr';
+import { api } from '@/lib/api';
 
 export default function StudentDirectory() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeModal, setActiveModal] = useState<'filter' | null>(null);
+
+  const { data: directoryData } = useSWR('/users/directory', async (url) => {
+    const res = await api.get(url);
+    return res.data;
+  });
+
+  const students = directoryData || [];
   
   // Filters
   const [filterYear, setFilterYear] = useState('');
   const [filterLocation, setFilterLocation] = useState('');
 
-  const filteredStudents = MOCK_DIRECTORY.filter(s => {
+  const filteredStudents = students.filter((s: any) => {
+    const sMajor = s.studentProfile?.major || '';
+    const sYear = s.studentProfile?.year || '';
+    const sLocation = s.studentProfile?.residence || '';
+
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          s.major.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesYear = filterYear ? s.year === filterYear : true;
-    const matchesLocation = filterLocation ? s.location === filterLocation : true;
+                          sMajor.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesYear = filterYear ? sYear === filterYear : true;
+    const matchesLocation = filterLocation ? sLocation === filterLocation : true;
     return matchesSearch && matchesYear && matchesLocation;
   });
 
@@ -56,26 +60,30 @@ export default function StudentDirectory() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredStudents.map((student) => (
+            {filteredStudents.map((student: any) => (
               <div key={student.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-xl font-bold text-indigo-400 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
-                    {student.avatar}
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-xl font-bold text-indigo-400 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+                    {student.avatar ? (
+                      <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                      student.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-white truncate">{student.name}</h3>
-                    <div className="text-sm font-medium text-indigo-400 truncate">{student.major}</div>
+                    <div className="text-sm font-medium text-indigo-400 truncate">{student.studentProfile?.major || 'Undeclared'}</div>
                   </div>
                 </div>
 
                 <div className="space-y-2 mb-6">
                   <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                     <Building2 className="w-4 h-4 text-zinc-500 dark:text-zinc-500 flex-shrink-0" />
-                    <span>{student.year}</span>
+                    <span>{student.studentProfile?.year || 'Unknown Year'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                     <MapPin className="w-4 h-4 text-zinc-500 dark:text-zinc-500 flex-shrink-0" />
-                    <span>{student.location}</span>
+                    <span>{student.studentProfile?.residence || 'Unknown Location'}</span>
                   </div>
                 </div>
 

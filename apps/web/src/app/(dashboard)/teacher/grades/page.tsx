@@ -4,32 +4,66 @@ import { Search, Filter, Download, MoreVertical, GraduationCap, TrendingUp, Tren
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-const COURSES = [
-  { id: '1', code: 'CS101', name: 'Introduction to Computer Science' },
-  { id: '2', code: 'CS201', name: 'Data Structures and Algorithms' },
-  { id: '3', code: 'BUS101', name: 'Introduction to Business' },
-  { id: '4', code: 'FIN201', name: 'Corporate Finance' },
-  { id: '5', code: 'MKT301', name: 'Digital Marketing Strategy' }
-];
-
-const MOCK_GRADES = [
-  { id: '1', studentName: 'Alice Johnson', email: 'alice.j@universe.edu', assignments: '95', midterm: '92', final: '96', total: '94.3', status: 'Excellent', trend: 'up' },
-  { id: '2', studentName: 'Bob Smith', email: 'bob.s@universe.edu', assignments: '85', midterm: '78', final: '88', total: '83.6', status: 'Good', trend: 'up' },
-  { id: '3', studentName: 'Charlie Brown', email: 'charlie.b@universe.edu', assignments: '92', midterm: '90', final: '89', total: '90.3', status: 'Excellent', trend: 'down' },
-  { id: '4', studentName: 'Diana Prince', email: 'diana.p@universe.edu', assignments: '98', midterm: '100', final: '96', total: '98.0', status: 'Outstanding', trend: 'up' },
-  { id: '5', studentName: 'Evan Davis', email: 'evan.d@universe.edu', assignments: '75', midterm: '70', final: '82', total: '75.6', status: 'Average', trend: 'up' },
-  { id: '6', studentName: 'Fiona Gallagher', email: 'fiona.g@universe.edu', assignments: '88', midterm: '85', final: '89', total: '87.3', status: 'Good', trend: 'down' },
-  { id: '7', studentName: 'George Miller', email: 'george.m@universe.edu', assignments: '82', midterm: '79', final: '85', total: '82.0', status: 'Good', trend: 'up' },
-  { id: '8', studentName: 'Hannah Abbott', email: 'hannah.a@universe.edu', assignments: '100', midterm: '95', final: '98', total: '97.6', status: 'Outstanding', trend: 'down' },
-  { id: '9', studentName: 'Ian Wright', email: 'ian.w@universe.edu', assignments: '70', midterm: '65', final: '75', total: '70.0', status: 'Average', trend: 'up' },
-  { id: '10', studentName: 'Julia Roberts', email: 'julia.r@universe.edu', assignments: '89', midterm: '92', final: '88', total: '89.6', status: 'Good', trend: 'down' },
-];
+import useSWR from 'swr';
+import { api } from '@/lib/api';
 
 export default function TeacherGradesPage() {
-  const [selectedCourse, setSelectedCourse] = useState(COURSES[0].id);
+  const [selectedCourse, setSelectedCourse] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredGrades = MOCK_GRADES.filter(g => 
+  const { data: coursesData } = useSWR('/courses/my', async (url) => {
+    const res = await api.get(url);
+    return res.data;
+  });
+
+  const courses = coursesData || [];
+
+  if (courses.length > 0 && !selectedCourse) {
+    setSelectedCourse(courses[0].id);
+  }
+
+  const { data: gradesData } = useSWR(
+    selectedCourse ? `/grades/course/${selectedCourse}` : null,
+    async (url) => {
+      const res = await api.get(url);
+      return res.data;
+    }
+  );
+
+  const enrollments = gradesData?.enrollments || [];
+  const rawGrades = gradesData?.grades || [];
+
+  // Group grades by student
+  const studentGrades = enrollments.map((e: any) => {
+    const studentId = e.student.id;
+    const sGrades = rawGrades.filter((g: any) => g.studentId === studentId);
+    
+    // Simple average calculation for demo purposes
+    const totalScore = sGrades.reduce((sum: number, g: any) => sum + g.score, 0);
+    const totalMax = sGrades.reduce((sum: number, g: any) => sum + g.maxScore, 0);
+    const average = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
+    
+    let status = 'Pending';
+    if (totalMax > 0) {
+      if (average >= 95) status = 'Outstanding';
+      else if (average >= 90) status = 'Excellent';
+      else if (average >= 80) status = 'Good';
+      else if (average >= 70) status = 'Average';
+      else status = 'Needs Improvement';
+    }
+
+    return {
+      id: studentId,
+      studentName: e.student.name,
+      email: e.student.email,
+      total: totalMax > 0 ? average.toFixed(1) : '-',
+      status,
+      trend: average > 85 ? 'up' : 'down',
+      grades: sGrades
+    };
+  });
+
+  const filteredGrades = studentGrades.filter((g: any) => 
     g.studentName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     g.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -53,11 +87,11 @@ export default function TeacherGradesPage() {
         <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
           <div className="flex gap-4 items-center">
             <select 
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 font-medium"
+              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500"
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
             >
-              {COURSES.map(c => (
+              {courses.map((c: any) => (
                 <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
               ))}
             </select>
@@ -109,9 +143,15 @@ export default function TeacherGradesPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-center font-medium text-zinc-300">{grade.assignments}</td>
-                    <td className="p-4 text-center font-medium text-zinc-300">{grade.midterm}</td>
-                    <td className="p-4 text-center font-medium text-zinc-300">{grade.final}</td>
+                    <td className="p-4 text-center font-medium text-zinc-300">
+                      {grade.grades.find((g: any) => g.assignmentName.toLowerCase().includes('assignment'))?.score || '-'}
+                    </td>
+                    <td className="p-4 text-center font-medium text-zinc-300">
+                      {grade.grades.find((g: any) => g.assignmentName.toLowerCase().includes('midterm'))?.score || '-'}
+                    </td>
+                    <td className="p-4 text-center font-medium text-zinc-300">
+                      {grade.grades.find((g: any) => g.assignmentName.toLowerCase().includes('final'))?.score || '-'}
+                    </td>
                     <td className="p-4 text-center">
                       <div className="flex flex-col items-center justify-center gap-1">
                         <span className="font-bold text-zinc-900 dark:text-white text-lg">{grade.total}%</span>

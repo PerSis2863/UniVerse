@@ -4,56 +4,58 @@ import { Topbar } from '@/components/layout/Topbar';
 import { CheckCircle2, XCircle, Clock, Users, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
-const COURSES = [
-  { id: '1', code: 'CS101', name: 'Introduction to Computer Science' },
-  { id: '2', code: 'CS201', name: 'Data Structures and Algorithms' },
-  { id: '3', code: 'BUS101', name: 'Introduction to Business' },
-  { id: '4', code: 'FIN201', name: 'Corporate Finance' },
-  { id: '5', code: 'MKT301', name: 'Digital Marketing Strategy' }
-];
-
-const MOCK_STUDENTS = [
-  { id: 's1', name: 'Alice Johnson', email: 'alice@universe.edu' },
-  { id: 's2', name: 'Bob Smith', email: 'bob@universe.edu' },
-  { id: 's3', name: 'Diana Prince', email: 'diana@universe.edu' },
-  { id: 's4', name: 'Charlie Brown', email: 'charlie@universe.edu' },
-  { id: 's5', name: 'Evan Davis', email: 'evan@universe.edu' },
-  { id: 's6', name: 'Fiona Gallagher', email: 'fiona@universe.edu' },
-  { id: 's7', name: 'George Miller', email: 'george@universe.edu' },
-  { id: 's8', name: 'Hannah Abbott', email: 'hannah@universe.edu' },
-  { id: 's9', name: 'Ian Wright', email: 'ian@universe.edu' },
-  { id: 's10', name: 'Julia Roberts', email: 'julia@universe.edu' },
-];
-
-const STUDENTS: Record<string, { id: string, name: string, email: string }[]> = {
-  '1': MOCK_STUDENTS.slice(0, 5),
-  '2': MOCK_STUDENTS.slice(3, 8),
-  '3': MOCK_STUDENTS.slice(0, 10),
-  '4': MOCK_STUDENTS.slice(5, 10),
-  '5': MOCK_STUDENTS.slice(2, 7),
-};
+import useSWR from 'swr';
+import { api } from '@/lib/api';
 
 export default function TeacherAttendance() {
-  const [selectedCourse, setSelectedCourse] = useState<string>(COURSES[0].id);
-  const [attendance, setAttendance] = useState<Record<string, Record<string, string>>>({}); // courseId -> studentId -> status
+  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-  const currentStudents = STUDENTS[selectedCourse] || [];
-  const currentCourseAttendance = attendance[selectedCourse] || {};
+  const { data: coursesData } = useSWR('/courses/my', async (url) => {
+    const res = await api.get(url);
+    return res.data;
+  });
 
-  const handleMarkAttendance = (studentId: string, status: string) => {
-    setAttendance(prev => ({
-      ...prev,
-      [selectedCourse]: {
-        ...(prev[selectedCourse] || {}),
-        [studentId]: status
-      }
-    }));
-    toast.success('Attendance updated');
+  const courses = coursesData || [];
+
+  // Default to first course if none selected
+  if (courses.length > 0 && !selectedCourse) {
+    setSelectedCourse(courses[0].id);
+  }
+
+  const { data: attendanceData, mutate } = useSWR(
+    selectedCourse ? `/attendance/course/${selectedCourse}?date=${currentDate}` : null,
+    async (url) => {
+      const res = await api.get(url);
+      return res.data;
+    }
+  );
+
+  const currentStudents = attendanceData?.enrollments?.map((e: any) => e.student) || [];
+  
+  // Transform attendance array into a map for easy lookup
+  const currentCourseAttendance = (attendanceData?.attendance || []).reduce((acc: any, curr: any) => {
+    acc[curr.studentId] = curr.status;
+    return acc;
+  }, {});
+
+  const handleMarkAttendance = async (studentId: string, status: string) => {
+    try {
+      await api.post(`/attendance/course/${selectedCourse}`, {
+        date: currentDate,
+        studentId,
+        status
+      });
+      mutate();
+      toast.success('Attendance updated');
+    } catch (e) {
+      toast.error('Failed to update attendance');
+    }
   };
 
-  const presentCount = Object.values(currentCourseAttendance).filter(s => s === 'PRESENT').length;
-  const lateCount = Object.values(currentCourseAttendance).filter(s => s === 'LATE').length;
-  const absentCount = Object.values(currentCourseAttendance).filter(s => s === 'ABSENT').length;
+  const presentCount = Object.values(currentCourseAttendance).filter((s: any) => s === 'PRESENT').length;
+  const lateCount = Object.values(currentCourseAttendance).filter((s: any) => s === 'LATE').length;
+  const absentCount = Object.values(currentCourseAttendance).filter((s: any) => s === 'ABSENT').length;
   const totalStudents = currentStudents.length;
 
   return (
@@ -71,13 +73,16 @@ export default function TeacherAttendance() {
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
               >
-                {COURSES.map(c => (
+                {courses.map((c: any) => (
                   <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                 ))}
               </select>
               
-              <div className="mt-6 flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
-                <div className="flex items-center gap-2"><Calendar className="w-4 h-4"/> Today: {new Date().toLocaleDateString()}</div>
+              <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm text-zinc-600 dark:text-zinc-400 gap-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4"/> 
+                  <input type="date" value={currentDate} onChange={(e) => setCurrentDate(e.target.value)} className="bg-transparent border-none outline-none text-zinc-900 dark:text-white cursor-pointer" />
+                </div>
                 <div className="flex items-center gap-2"><Users className="w-4 h-4"/> {totalStudents} Students</div>
               </div>
             </div>
@@ -110,7 +115,6 @@ export default function TeacherAttendance() {
               </thead>
               <tbody className="divide-y divide-white/[0.05]">
                 {currentStudents.map((student) => {
-                  const status = currentCourseAttendance[student.id];
                   
                   return (
                     <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">

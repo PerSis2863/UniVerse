@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import Image from 'next/image';
 
 type Mentor = {
   id: string;
@@ -136,8 +137,8 @@ export default function MentorshipPage() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                        {mentor.user.avatar ? <img src={mentor.user.avatar} alt={mentor.user.name} className="w-full h-full rounded-full object-cover" /> : mentor.user.name.charAt(0)}
+                      <div className="w-12 h-12 relative rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg shadow-lg overflow-hidden">
+                        {mentor.user.avatar ? <Image src={mentor.user.avatar} alt={mentor.user.name} fill className="object-cover" /> : mentor.user.name.charAt(0)}
                       </div>
                       <div>
                         <h4 className="font-bold text-zinc-900 dark:text-white text-base group-hover:text-indigo-400 transition-colors">{mentor.user.name}</h4>

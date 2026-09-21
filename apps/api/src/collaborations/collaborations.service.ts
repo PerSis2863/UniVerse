@@ -37,8 +37,16 @@ export class CollaborationsService {
     return this.prisma.collaborationProject.create({
       data: {
         supervisingTeacherId,
+        status: 'PendingReview',
         ...data,
       },
+    });
+  }
+
+  reviewProject(id: string, status: string) {
+    return this.prisma.collaborationProject.update({
+      where: { id },
+      data: { status },
     });
   }
 
