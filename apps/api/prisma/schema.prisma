@@ -107,51 +107,51 @@ model User {
   emailNotifications Boolean @default(true)
 
   // Profiles
-  studentProfile         StudentProfile?
-  teacherProfile         TeacherProfile?
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
 
   // Core Academic
-  enrollments            Enrollment[]
-  attendance             Attendance[]
-  submissions            QuizSubmission[]
-  grades                 Grade[]
-  taughtCourses          Course[]
-  materials              Material[]
-  announcements          Announcement[]
-  knowledgeHubResources  KnowledgeHubResource[]
-  electiveRequests       ElectiveRequest[]
-  majorChangeRequests    MajorChangeRequest[]
-  majorReviewed          MajorChangeRequest[]          @relation("MajorReviewer")
-  calendarEvents         CalendarEvent[]
+  enrollments           Enrollment[]
+  attendance            Attendance[]
+  submissions           QuizSubmission[]
+  grades                Grade[]
+  taughtCourses         Course[]
+  materials             Material[]
+  announcements         Announcement[]
+  knowledgeHubResources KnowledgeHubResource[]
+  electiveRequests      ElectiveRequest[]
+  majorChangeRequests   MajorChangeRequest[]
+  majorReviewed         MajorChangeRequest[]   @relation("MajorReviewer")
+  calendarEvents        CalendarEvent[]
 
   // Messaging & Notifications
-  sentMessages           Message[]                    @relation("MessageSender")
-  conversations          ConversationParticipant[]
-  notifications          Notification[]
+  sentMessages  Message[]                 @relation("MessageSender")
+  conversations ConversationParticipant[]
+  notifications Notification[]
 
   // Files & Payments
-  refreshTokens          RefreshToken[]
-  uploadedFiles          File[]
-  payments               Payment[]
-  invoices               Invoice[]
-  tickets                Ticket[]
-  studentDocuments       StudentDocument[]
+  refreshTokens    RefreshToken[]
+  uploadedFiles    File[]
+  payments         Payment[]
+  invoices         Invoice[]
+  tickets          Ticket[]
+  studentDocuments StudentDocument[]
 
   // Student Life
   associationMemberships AssociationMembership[]
   roomReservations       RoomReservation[]
   groupMemberships       GroupMembership[]
   groupPosts             GroupPost[]
-  createdGroups          Group[]                      @relation("GroupCreator")
+  createdGroups          Group[]                 @relation("GroupCreator")
   studentConsents        StudentConsent[]
   medicalRecord          MedicalRecord?
-  safetyAlerts           SafetyAlert[]                @relation("SafetyReporter")
+  safetyAlerts           SafetyAlert[]           @relation("SafetyReporter")
 
   // Career & Internships
-  careerProfile          CareerProfile?
-  skills                 StudentSkill[]
-  internshipApplications InternshipApplication[]
-  postedInternships      Internship[]                 @relation("InternshipPoster")
+  careerProfile           CareerProfile?
+  skills                  StudentSkill[]
+  internshipApplications  InternshipApplication[]
+  postedInternships       Internship[]             @relation("InternshipPoster")
   scholarshipApplications ScholarshipApplication[]
 
   // Impact
@@ -159,20 +159,19 @@ model User {
   ngoProjectApplications NGOProjectApplication[]
   startupApplications    StartupApplication[]
   summitRegistrations    SummitRegistration[]
-  foundedStartups        Startup[]                   @relation("StartupFounder")
-  createdSummits         Summit[]                    @relation("SummitCreator")
+  foundedStartups        Startup[]               @relation("StartupFounder")
+  createdSummits         Summit[]                @relation("SummitCreator")
 
   // Teacher Collaboration
-  mentorshipAsStudent    MentorshipRequest[]          @relation("MentorshipStudent")
-  mentorshipAsTeacher    MentorshipRequest[]          @relation("MentorshipTeacher")
-  initiatedCollaborations TeacherCollaboration[]      @relation("CollaborationInitiator")
-  partnerCollaborations  TeacherCollaboration[]       @relation("CollaborationPartner")
+  mentorshipAsStudent     MentorshipRequest[]    @relation("MentorshipStudent")
+  mentorshipAsTeacher     MentorshipRequest[]    @relation("MentorshipTeacher")
+  initiatedCollaborations TeacherCollaboration[] @relation("CollaborationInitiator")
+  partnerCollaborations   TeacherCollaboration[] @relation("CollaborationPartner")
 
   @@index([role])
   @@index([status])
   @@map("users")
 }
-
 
 model StudentProfile {
   id         String   @id @default(cuid())
@@ -226,6 +225,8 @@ model Course {
   materials             Material[]
   announcements         Announcement[]
   knowledgeHubResources KnowledgeHubResource[]
+  electiveRequests      ElectiveRequest[]
+  calendarEvents        CalendarEvent[]
 
   @@index([teacherId])
   @@index([status])
@@ -474,6 +475,7 @@ model Payment {
   metadata        Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  invoice         Invoice?
 
   @@index([userId])
   @@map("payments")
@@ -548,7 +550,7 @@ model Room {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reservations RoomReservation[]
+  reservations   RoomReservation[]
   timetableSlots TimetableSlot[]
 
   @@map("rooms")
@@ -635,17 +637,17 @@ enum CollaborationType {
 // ─── ACADEMIC ──────────────────────────────────────────────────────────────
 
 model TimetableSlot {
-  id         String   @id @default(cuid())
-  courseId   String
-  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  dayOfWeek  Int // 0=Mon, 6=Sun
-  startTime  String // "09:00"
-  endTime    String // "10:30"
-  roomId     String?
-  room       Room?    @relation(fields: [roomId], references: [id])
-  type       String   @default("LECTURE") // LECTURE, LAB, TUTORIAL
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  dayOfWeek Int // 0=Mon, 6=Sun
+  startTime String // "09:00"
+  endTime   String // "10:30"
+  roomId    String?
+  room      Room?    @relation(fields: [roomId], references: [id])
+  type      String   @default("LECTURE") // LECTURE, LAB, TUTORIAL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([courseId])
   @@index([roomId])
@@ -671,19 +673,19 @@ model ElectiveRequest {
 }
 
 model MajorChangeRequest {
-  id            String            @id @default(cuid())
-  studentId     String
-  student       User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  requestType   String // "CHANGE_MAJOR", "ADD_MINOR", etc.
-  currentMajor  String?
+  id               String            @id @default(cuid())
+  studentId        String
+  student          User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requestType      String // "CHANGE_MAJOR", "ADD_MINOR", etc.
+  currentMajor     String?
   requestedProgram String
-  reason        String
-  status        ApplicationStatus @default(PENDING)
-  reviewedById  String?
-  reviewedBy    User?             @relation("MajorReviewer", fields: [reviewedById], references: [id])
-  reviewNote    String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  reason           String
+  status           ApplicationStatus @default(PENDING)
+  reviewedById     String?
+  reviewedBy       User?             @relation("MajorReviewer", fields: [reviewedById], references: [id])
+  reviewNote       String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([studentId])
   @@index([reviewedById])
@@ -693,34 +695,34 @@ model MajorChangeRequest {
 // ─── CAREER & INTERNSHIPS ──────────────────────────────────────────────────
 
 model CareerProfile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  headline       String?
-  bio            String?
-  linkedinUrl    String?
-  portfolioUrl   String?
-  githubUrl      String?
-  targetRoles    String[] // array of target job titles
-  targetSectors  String[]
-  cvUrl          String?
-  isPublic       Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline      String?
+  bio           String?
+  linkedinUrl   String?
+  portfolioUrl  String?
+  githubUrl     String?
+  targetRoles   String[] // array of target job titles
+  targetSectors String[]
+  cvUrl         String?
+  isPublic      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([userId])
   @@map("career_profiles")
 }
 
 model StudentSkill {
-  id          String     @id @default(cuid())
-  userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  category    String? // "Technical", "Soft Skill", "Language", etc.
-  level       SkillLevel @default(BEGINNER)
-  endorsements Int       @default(0)
-  createdAt   DateTime   @default(now())
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  category     String? // "Technical", "Soft Skill", "Language", etc.
+  level        SkillLevel @default(BEGINNER)
+  endorsements Int        @default(0)
+  createdAt    DateTime   @default(now())
 
   @@unique([userId, name])
   @@index([userId])
@@ -747,25 +749,25 @@ model Company {
 }
 
 model Internship {
-  id           String         @id @default(cuid())
-  companyId    String
-  company      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  title        String
-  description  String
-  type         InternshipType @default(FULL_TIME)
-  location     String?
-  duration     String? // "3 months", "6 months"
-  isPaid       Boolean        @default(true)
-  salary       String?
-  openings     Int            @default(1)
-  skills       String[]
-  deadline     DateTime?
-  startDate    DateTime?
-  isActive     Boolean        @default(true)
-  postedById   String?
-  postedBy     User?          @relation("InternshipPoster", fields: [postedById], references: [id])
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id          String         @id @default(cuid())
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  type        InternshipType @default(FULL_TIME)
+  location    String?
+  duration    String? // "3 months", "6 months"
+  isPaid      Boolean        @default(true)
+  salary      String?
+  openings    Int            @default(1)
+  skills      String[]
+  deadline    DateTime?
+  startDate   DateTime?
+  isActive    Boolean        @default(true)
+  postedById  String?
+  postedBy    User?          @relation("InternshipPoster", fields: [postedById], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   applications InternshipApplication[]
 
@@ -848,14 +850,14 @@ model GroupPost {
 // ─── IMPACT ────────────────────────────────────────────────────────────────
 
 model ImpactPoint {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  points      Int
-  reason      String // e.g. "NGO Project completion"
-  sourceType  String // "NGO_PROJECT", "SUMMIT", "STARTUP", etc.
-  sourceId    String? // ID of the related record
-  awardedAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points     Int
+  reason     String // e.g. "NGO Project completion"
+  sourceType String // "NGO_PROJECT", "SUMMIT", "STARTUP", etc.
+  sourceId   String? // ID of the related record
+  awardedAt  DateTime @default(now())
 
   @@index([userId])
   @@map("impact_points")
@@ -880,22 +882,22 @@ model NGO {
 }
 
 model NGOProject {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   ngoId          String
-  ngo            NGO      @relation(fields: [ngoId], references: [id], onDelete: Cascade)
+  ngo            NGO       @relation(fields: [ngoId], references: [id], onDelete: Cascade)
   name           String
   description    String
   type           String? // "Field", "Remote", "Hybrid"
   location       String?
   duration       String?
-  openings       Int      @default(1)
-  impactPoints   Int      @default(50)
+  openings       Int       @default(1)
+  impactPoints   Int       @default(50)
   skillsRequired String[]
   sdgNumber      Int?
   deadline       DateTime?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   applications NGOProjectApplication[]
 
@@ -904,15 +906,15 @@ model NGOProject {
 }
 
 model NGOProjectApplication {
-  id           String            @id @default(cuid())
-  projectId    String
-  project      NGOProject        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  studentId    String
-  student      User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  status       ApplicationStatus @default(PENDING)
-  motivation   String?
-  appliedAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id         String            @id @default(cuid())
+  projectId  String
+  project    NGOProject        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status     ApplicationStatus @default(PENDING)
+  motivation String?
+  appliedAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
   @@unique([projectId, studentId])
   @@index([projectId])
@@ -959,20 +961,20 @@ model StartupApplication {
 }
 
 model Summit {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  location    String?
-  isVirtual   Boolean  @default(false)
-  startDate   DateTime
-  endDate     DateTime
-  capacity    Int?
-  impactPoints Int     @default(30)
-  coverUrl    String?
-  createdById String?
-  createdBy   User?    @relation("SummitCreator", fields: [createdById], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  location     String?
+  isVirtual    Boolean  @default(false)
+  startDate    DateTime
+  endDate      DateTime
+  capacity     Int?
+  impactPoints Int      @default(30)
+  coverUrl     String?
+  createdById  String?
+  createdBy    User?    @relation("SummitCreator", fields: [createdById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   registrations SummitRegistration[]
 
@@ -1014,18 +1016,18 @@ model Partner {
 }
 
 model Partnership {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   partnerId   String
-  partner     Partner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  partner     Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   companyId   String?
-  company     Company? @relation(fields: [companyId], references: [id])
+  company     Company?  @relation(fields: [companyId], references: [id])
   title       String
   description String?
   startDate   DateTime?
   endDate     DateTime?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([partnerId])
   @@index([companyId])
@@ -1035,16 +1037,16 @@ model Partnership {
 // ─── ADMINISTRATIVE ────────────────────────────────────────────────────────
 
 model StudentDocument {
-  id          String       @id @default(cuid())
-  userId      String
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        DocumentType @default(OTHER)
-  title       String
-  fileUrl     String
-  issuedAt    DateTime?
-  expiresAt   DateTime?
-  isVerified  Boolean      @default(false)
-  createdAt   DateTime     @default(now())
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       DocumentType @default(OTHER)
+  title      String
+  fileUrl    String
+  issuedAt   DateTime?
+  expiresAt  DateTime?
+  isVerified Boolean      @default(false)
+  createdAt  DateTime     @default(now())
 
   @@index([userId])
   @@map("student_documents")
@@ -1072,17 +1074,17 @@ model Invoice {
 }
 
 model Scholarship {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   name         String
   description  String?
   amount       Float?
-  currency     String   @default("USD")
+  currency     String    @default("USD")
   provider     String? // "Internal", "Company name", etc.
   deadline     DateTime?
   requirements String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   applications ScholarshipApplication[]
 
@@ -1107,14 +1109,14 @@ model ScholarshipApplication {
 }
 
 model StudentConsent {
-  id          String      @id @default(cuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        ConsentType
-  granted     Boolean     @default(false)
-  grantedAt   DateTime?
-  revokedAt   DateTime?
-  updatedAt   DateTime    @updatedAt
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      ConsentType
+  granted   Boolean     @default(false)
+  grantedAt DateTime?
+  revokedAt DateTime?
+  updatedAt DateTime    @updatedAt
 
   @@unique([userId, type])
   @@index([userId])
@@ -1124,19 +1126,19 @@ model StudentConsent {
 // ─── WELLBEING & SAFETY ────────────────────────────────────────────────────
 
 model MedicalRecord {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  doctorName   String?
-  doctorPhone  String?
-  bloodType    String?
-  allergies    String[]
-  conditions   String[]
-  medications  String[]
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorName       String?
+  doctorPhone      String?
+  bloodType        String?
+  allergies        String[]
+  conditions       String[]
+  medications      String[]
   emergencyContact String?
   emergencyPhone   String?
-  updatedAt    DateTime @updatedAt
-  createdAt    DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
 
   @@index([userId])
   @@map("medical_records")
@@ -1162,16 +1164,16 @@ model SafetyAlert {
 // ─── COLLABORATION (TEACHER) ───────────────────────────────────────────────
 
 model MentorshipRequest {
-  id         String          @id @default(cuid())
-  studentId  String
-  student    User            @relation("MentorshipStudent", fields: [studentId], references: [id], onDelete: Cascade)
-  teacherId  String
-  teacher    User            @relation("MentorshipTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
-  topic      String
-  message    String?
-  status     MentorshipStatus @default(PENDING)
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  id        String           @id @default(cuid())
+  studentId String
+  student   User             @relation("MentorshipStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User             @relation("MentorshipTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  topic     String
+  message   String?
+  status    MentorshipStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   sessions MentorshipSession[]
 
@@ -1181,15 +1183,15 @@ model MentorshipRequest {
 }
 
 model MentorshipSession {
-  id           String            @id @default(cuid())
-  requestId    String
-  request      MentorshipRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  scheduledAt  DateTime
-  duration     Int // minutes
-  meetingUrl   String?
-  notes        String?
-  isCompleted  Boolean           @default(false)
-  createdAt    DateTime          @default(now())
+  id          String            @id @default(cuid())
+  requestId   String
+  request     MentorshipRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  scheduledAt DateTime
+  duration    Int // minutes
+  meetingUrl  String?
+  notes       String?
+  isCompleted Boolean           @default(false)
+  createdAt   DateTime          @default(now())
 
   @@index([requestId])
   @@map("mentorship_sessions")
