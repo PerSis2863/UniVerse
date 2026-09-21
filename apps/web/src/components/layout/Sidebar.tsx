@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/auth';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
-  GraduationCap, Brain, ClipboardList,
+  GraduationCap, Brain, ClipboardList, Calendar as CalendarIcon,
   Info, AlertTriangle, Globe, Folder, Search, Link as LinkIcon, ChevronDown, ChevronRight,
   Coffee, Shield, Map, Globe2, Layers
 } from 'lucide-react';
@@ -27,7 +27,7 @@ const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
     { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard },
     { href: '/student/information', label: 'nav.information', icon: Info },
-    { href: '/student/attendance', label: 'nav.attendance', icon: ClipboardList },
+    { href: '/student/calendar', label: 'nav.calendar', icon: CalendarIcon },
     { 
       label: 'nav.schooling', icon: GraduationCap, 
       subItems: [
@@ -36,9 +36,9 @@ const navByRole: Record<string, NavItem[]> = {
         { href: '/student/blackboard', label: 'nav.blackboard' },
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
+        { href: '/student/attendance', label: 'nav.attendance' },
         { href: '/student/grades', label: 'nav.grades' },
         { href: '/student/quizzes', label: 'nav.quizzes' },
-        { href: '/student/calendar', label: 'nav.calendar' },
         { href: '/student/skills', label: 'nav.skills' },
       ]
     },
