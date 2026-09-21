@@ -193,7 +193,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Continuous Scroll View */}
-          <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl flex [--hour-height:130px] sm:[--hour-height:96px]">
+          <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl flex [--hour-height:80px] sm:[--hour-height:96px]">
             {/* Sticky Time Column */}
             <div className="w-16 sm:w-20 flex-shrink-0 sticky left-0 z-20 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 shadow-[2px_0_10px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
               <div className="h-16 flex items-center justify-center border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80">
@@ -245,19 +245,19 @@ export default function CalendarPage() {
                           return (
                             <div 
                               key={cls.id} 
-                              className={`absolute left-2 right-2 rounded-xl border p-3 sm:p-4 z-10 hover:z-20 transition-all cursor-pointer hover:shadow-lg ${cls.color}`}
+                              className={`absolute left-1 right-1 sm:left-2 sm:right-2 rounded-xl border p-2 sm:p-4 z-10 hover:z-20 transition-all cursor-pointer hover:shadow-lg overflow-hidden ${cls.color}`}
                               style={{ 
                                 top: `calc(${topOffsetHours} * var(--hour-height) + 4px)`, 
                                 height: `calc(${durationHours} * var(--hour-height) - 8px)` 
                               }}
                               onClick={() => setSelectedClass({ ...cls, dateObj: date })}
                             >
-                              <div className="font-bold text-sm leading-tight mb-1 truncate">{cls.subject}</div>
-                              <div className="text-xs opacity-80 flex items-center gap-1 mb-1 font-medium">
-                                <Clock className="w-3 h-3" /> {formatTimeRange(cls.time, cls.duration)}
+                              <div className="font-bold text-xs sm:text-sm leading-tight mb-0.5 sm:mb-1 truncate">{cls.subject}</div>
+                              <div className="text-[10px] sm:text-xs opacity-80 flex items-center gap-1 mb-0.5 sm:mb-1 font-medium">
+                                <Clock className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{formatTimeRange(cls.time, cls.duration)}</span>
                               </div>
-                              <div className="text-xs opacity-80 flex items-center gap-1">
-                                <MapPin className="w-3 h-3" /> {cls.location}
+                              <div className="text-[10px] sm:text-xs opacity-80 flex items-center gap-1">
+                                <MapPin className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{cls.location}</span>
                               </div>
                             </div>
                           );
