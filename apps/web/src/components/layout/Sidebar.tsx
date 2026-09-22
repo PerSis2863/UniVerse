@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { motion } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
+import { useAuth } from '@clerk/nextjs';
 
 type NavItem = {
   href?: string;
