@@ -1,5 +1,5 @@
 'use client';
-import { useState, useOptimistic } from 'react';
+import { useState, useOptimistic, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   BookOpen, FileText, Plus, X, Upload, Pin, Bell, Users, Search,
@@ -45,7 +45,6 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
   const [selectedCourse, setSelectedCourse] = useState<any>(initialCourse || null);
   
   // Auto-select first course when loaded
-  import { useEffect } from 'react';
   useEffect(() => {
     if (!selectedCourse && courses.length > 0) {
       setSelectedCourse(courses[0]);
@@ -80,19 +79,8 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
   const announcements = blackboardData?.announcements || [];
   const events = blackboardData?.events || [];
   
-  // Mock data for messages and gradebook until API is ready
-  const GRADEBOOK_DATA = [
-    { name: 'Aditya Bhatt', avatar: 'AB', assignments: { a1: 92, a2: 88, a3: 95 }, midterm: 89, total: 91 },
-    { name: 'Priya Sharma', avatar: 'PS', assignments: { a1: 85, a2: 90, a3: 88 }, midterm: 92, total: 89 },
-  ];
-  const STUDENT_MSGS = [
-    { id: 1, name: 'Aditya Bhatt', avatar: 'AB', unread: true, thread: [{ id: 101, from: 'student', text: 'Professor, can you clarify?', time: '15m ago', read: false }] },
-  ];
-
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [eventTitle, setEventTitle] = useState('');
-  const [eventDate, setEventDate] = useState('');
-  const [eventType, setEventType] = useState('office');
+  const GRADEBOOK_DATA = blackboardData?.gradebook || [];
+  const STUDENT_MSGS = blackboardData?.messages || [];
 
 
   const handleAddEvent = async () => {
