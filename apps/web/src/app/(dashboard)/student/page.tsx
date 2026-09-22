@@ -29,7 +29,7 @@ export default function StudentDashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
 
-  const { data, error, isLoading } = useSWR('/api/dashboard/student', fetcher);
+  const { data, error, isLoading } = useSWR('/dashboard/student', fetcher);
 
   if (isLoading) return <div className="p-8 text-center text-zinc-500">Loading dashboard...</div>;
   if (error) return <div className="p-8 text-center text-rose-500">Failed to load dashboard</div>;
