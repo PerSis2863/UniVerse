@@ -23,16 +23,7 @@ export default function AttendancePage() {
     );
   }
 
-  if (error) {
-    return (
-      <>
-        <Topbar title="Attendance" subtitle="Track your class presence and absences." />
-        <div className="flex-1 p-8 text-center text-rose-500">
-          Failed to load attendance records.
-        </div>
-      </>
-    );
-  }
+
 
   const records = data?.records || [];
   const summary = data?.summary || [];

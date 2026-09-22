@@ -224,16 +224,7 @@ export default function GradesPage() {
     );
   }
 
-  if (error) {
-    return (
-      <>
-        <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
-        <div className="flex-1 p-8 text-center text-rose-500">
-          Failed to load grades.
-        </div>
-      </>
-    );
-  }
+
 
   // Group by Course or Date, but since we don't have semester, we'll just show all.
   const apiGrades = data?.grades || [];
