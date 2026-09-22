@@ -3,15 +3,12 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Plus, Edit2, Trash2, X, Briefcase, MapPin, Building, Calendar, DollarSign } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-const MOCK_INTERNSHIPS = [
-  { id: '1', title: 'Software Engineering Intern', company: 'Google', location: 'Mountain View, CA', type: 'Full-time', duration: '12 weeks', stipend: '$8,000/mo', deadline: '2026-11-01', status: 'Active' },
-  { id: '2', title: 'Data Science Co-op', company: 'Microsoft', location: 'Seattle, WA', type: 'Co-op', duration: '6 months', stipend: '$7,500/mo', deadline: '2026-10-15', status: 'Active' },
-  { id: '3', title: 'UX Research Intern', company: 'Apple', location: 'Cupertino, CA', type: 'Part-time', duration: '10 weeks', stipend: '$45/hr', deadline: '2026-09-30', status: 'Draft' },
-];
+import useSWR from 'swr';
+import { fetcher, api } from '@/lib/fetcher';
 
 export default function AdminInternshipsPage() {
-  const [internships, setInternships] = useState(MOCK_INTERNSHIPS);
+  const { data: internshipsData, mutate } = useSWR('/internships', fetcher);
+  const internships = internshipsData || [];
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -33,21 +30,31 @@ export default function AdminInternshipsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      setInternships(prev => prev.map(i => i.id === editingId ? { ...formData, id: editingId } : i));
-      toast.success('Internship updated successfully');
-    } else {
-      setInternships(prev => [...prev, { ...formData, id: Math.random().toString() }]);
-      toast.success('New internship added');
+    try {
+      if (editingId) {
+        // await api.patch(`/internships/${editingId}`, formData);
+        toast.success('Internship updated successfully (mock update)');
+      } else {
+        await api.post('/internships', formData);
+        toast.success('New internship added');
+      }
+      mutate();
+      setIsModalOpen(false);
+    } catch (error) {
+      toast.error('Failed to save internship');
     }
-    setIsModalOpen(false);
   };
   
-  const handleDelete = (id: string) => {
-    setInternships(prev => prev.filter(i => i.id !== id));
-    toast.success('Internship deleted');
+  const handleDelete = async (id: string) => {
+    try {
+      // await api.delete(`/internships/${id}`);
+      toast.success('Internship deleted (mock delete)');
+      mutate();
+    } catch (error) {
+      toast.error('Failed to delete internship');
+    }
   };
 
   return (
@@ -145,40 +152,39 @@ export default function AdminInternshipsPage() {
                       <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">{internship.title}</h3>
                       <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
                         <Building className="w-4 h-4" />
-                        <span>{internship.company}</span>
+                        <span>{internship.company?.name || internship.company}</span>
                       </div>
                     </div>
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${
-                      internship.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                      internship.status === 'Draft' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                      internship.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
                       'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20'
                     }`}>
-                      {internship.status}
+                      {internship.isActive ? 'Active' : 'Draft'}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="flex items-center gap-2 text-sm text-zinc-300">
                       <MapPin className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                      {internship.location}
+                      {internship.location || 'Remote'}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-zinc-300">
                       <Briefcase className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                      {internship.type}
+                      {internship.type || 'Internship'}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-zinc-300">
                       <Calendar className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                      {internship.duration}
+                      {internship.duration || 'N/A'}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-zinc-300">
                       <DollarSign className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                      {internship.stipend}
+                      {internship.salary || internship.stipend || 'Unpaid'}
                     </div>
                   </div>
 
                   <div className="mt-auto pt-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
                     <div className="text-xs text-zinc-500 dark:text-zinc-500">
-                      Deadline: <span className="text-zinc-300">{internship.deadline}</span>
+                      Deadline: <span className="text-zinc-300">{internship.deadline ? new Date(internship.deadline).toLocaleDateString() : 'N/A'}</span>
                     </div>
                     <div className="flex gap-2">
                       <button 

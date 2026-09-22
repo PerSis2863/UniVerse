@@ -8,10 +8,7 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 
-const MOCK_JUSTIFICATIONS = [
-  { id: 'J1', studentName: 'Charlie Brown', studentId: 'S003', course: 'BUS-101', date: '2026-10-24', reason: 'Medical emergency (doctor note attached)', status: 'PENDING' },
-  { id: 'J2', studentName: 'Fiona Gallagher', studentId: 'S006', course: 'FIN-202', date: '2026-10-23', reason: 'Family matters out of town', status: 'PENDING' },
-];
+const MOCK_JUSTIFICATIONS: any[] = [];
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
