@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { ClerkAuthGuard } from './clerk-auth.guard';
@@ -28,6 +28,6 @@ export class AuthController {
         };
       }
     }
-    throw new import('@nestjs/common').UnauthorizedException('Invalid credentials');
+    throw new UnauthorizedException('Invalid credentials');
   }
 }
