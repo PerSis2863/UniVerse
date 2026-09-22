@@ -60,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           borderRadius: '0.75rem',
         },
       }}
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_Y2xlcmsuY2xlcmsuY2xlcmsuY2xlcmsuY2xlcms"}
     >
       <html lang="en" suppressHydrationWarning>
         <head>
