@@ -75,7 +75,7 @@ export class WebhooksController {
       if (invitation) {
         await this.prisma.invitation.update({
           where: { email },
-          data: { status: 'ACCEPTED' },
+          data: { status: 'ACTIVE' },
         });
       }
     } else if (eventType === 'user.updated') {

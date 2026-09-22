@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 export default function AdminCoursesPage() {
   const { data: courses = [], mutate: mutateCourses } = useSWR('/courses/admin/all', fetcher);

@@ -96,7 +96,7 @@ model User {
   id        String     @id @default(cuid())
   name      String
   email     String     @unique
-  password  String?
+  clerkUserId String?  @unique
   role      Role       @default(STUDENT)
   status    UserStatus @default(PENDING)
   avatar    String?
@@ -131,7 +131,6 @@ model User {
   notifications Notification[]
 
   // Files & Payments
-  refreshTokens    RefreshToken[]
   uploadedFiles    File[]
   payments         Payment[]
   invoices         Invoice[]
@@ -489,16 +488,16 @@ model Payment {
   @@map("payments")
 }
 
-model RefreshToken {
+model Invitation {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
+  email     String   @unique
+  role      Role
+  status    UserStatus @default(PENDING)
   expiresAt DateTime
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([userId])
-  @@map("refresh_tokens")
+  @@map("invitations")
 }
 
 model Ticket {

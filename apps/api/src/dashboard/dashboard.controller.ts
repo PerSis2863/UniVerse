@@ -1,9 +1,9 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('dashboard')
@@ -20,7 +20,7 @@ export class DashboardController {
     });
     const coursesCount = enrollments.length;
 
-    const upcomingAssignments = await this.prisma.assignment.findMany({
+    const upcomingAssignments = await this.prisma.quiz.findMany({
       where: {
         course: { enrollments: { some: { studentId: user.id } } },
         dueDate: { gte: new Date() },
@@ -60,7 +60,7 @@ export class DashboardController {
 
     // Today's schedule - fetch from Timetable
     const today = new Date().getDay();
-    const schedule = await this.prisma.timetable.findMany({
+    const schedule = await this.prisma.timetableSlot.findMany({
       where: {
         dayOfWeek: today,
         course: { enrollments: { some: { studentId: user.id } } }
@@ -162,7 +162,7 @@ export class DashboardController {
   }
 
   @Get('admin')
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @Roles(Role.ADMIN)
   async getAdminDashboard() {
     const totalStudents = await this.prisma.user.count({ where: { role: Role.STUDENT } });
     const totalTeachers = await this.prisma.user.count({ where: { role: Role.TEACHER } });

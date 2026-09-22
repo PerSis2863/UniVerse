@@ -191,6 +191,7 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
             </button>
           </div>
         </div>
+        )}
 
         {/* Tabs */}
         <div className="flex overflow-x-auto scrollbar-none border-b border-zinc-200 dark:border-white/[0.06] bg-white/80 dark:bg-zinc-900/60 px-4 sm:px-8">

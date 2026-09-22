@@ -41,7 +41,7 @@ export class CoursesController {
 
   @Post()
   create(@CurrentUser() user: any, @Body() body: any) {
-    const teacherId = (user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN) && body.teacherId 
+    const teacherId = (user.role === Role.ADMIN) && body.teacherId 
       ? body.teacherId 
       : user.id;
     return this.coursesService.create(teacherId, body);

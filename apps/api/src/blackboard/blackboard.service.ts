@@ -23,7 +23,7 @@ export class BlackboardService {
         include: { quiz: { select: { title: true, _count: { select: { questions: true } } } } },
         orderBy: { submittedAt: 'desc' } 
       }),
-      this.prisma.calendarEvent.findMany({ where: { OR: [{ userId: studentId }, { courseId }] }, orderBy: { startTime: 'asc' } }),
+      this.prisma.calendarEvent.findMany({ where: { OR: [{ userId: studentId }, { courseId }] }, orderBy: { startAt: 'asc' } }),
     ]);
 
     return {
