@@ -29,12 +29,29 @@ export default function StudentDashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
 
-  const { data, error, isLoading } = useSWR('/dashboard/student', fetcher);
+  const { data, error, isLoading } = useSWR('/dashboard/student', fetcher, {
+    shouldRetryOnError: false,
+    errorRetryCount: 1,
+    dedupingInterval: 30000,
+  });
 
-  if (isLoading) return <div className="p-8 text-center text-zinc-500">Loading dashboard...</div>;
-  if (error) return <div className="p-8 text-center text-rose-500">Failed to load dashboard</div>;
-
+  // Show skeleton briefly then render with fallback data
+  // Never block the whole page on API failures
   const { kpis, courseProgress = [], deadlines = [], schedule = [] } = data || {};
+
+  if (isLoading) return (
+    <div className="flex-1 p-4 md:p-8">
+      <div className="space-y-4 animate-pulse">
+        <div className="h-32 rounded-2xl bg-white/[0.04]" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[...Array(5)].map((_, i) => <div key={i} className="h-24 rounded-2xl bg-white/[0.04]" />)}
+        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => <div key={i} className="h-64 rounded-2xl bg-white/[0.04]" />)}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
