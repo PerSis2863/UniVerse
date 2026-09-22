@@ -11,7 +11,7 @@ import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { setUser } = useAuthStore();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +20,7 @@ export default function LoginPage() {
 
   const handleDemoLogin = (token: string, role: string) => {
     localStorage.setItem('accessToken', token);
-    login({
+    setUser({
       id: token.replace('mock-token-', ''),
       name: `Demo ${role}`,
       email: token.replace('mock-token-', ''),
@@ -36,7 +36,7 @@ export default function LoginPage() {
       // Make API call to sync user data and get role
       const { data: user } = await api.get('/auth/me');
       
-      login({
+      setUser({
         id: user.id,
         name: user.name,
         email: user.email,
@@ -109,40 +109,6 @@ export default function LoginPage() {
                 You can still use the demo accounts below to explore without signing up.
               </p>
             </div>
-          </div>
-        </div>
-
-        <div className="mt-8 pt-8 border-t border-zinc-800">
-          <h2 className="text-sm font-semibold text-zinc-400 mb-4">Or test with demo accounts</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button 
-              onClick={() => handleDemoLogin('mock-token-demo@student.com', 'STUDENT')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
-            >
-              <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Student</div>
-              <div className="text-zinc-500 text-xs mt-1">Full access to student dashboard</div>
-            </button>
-            <button 
-              onClick={() => handleDemoLogin('mock-token-demo@teacher.com', 'TEACHER')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
-            >
-              <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Teacher</div>
-              <div className="text-zinc-500 text-xs mt-1">Manage classes & grades</div>
-            </button>
-            <button 
-              onClick={() => handleDemoLogin('mock-token-demo@admin.com', 'ADMIN')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
-            >
-              <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Admin</div>
-              <div className="text-zinc-500 text-xs mt-1">System configuration</div>
-            </button>
-            <button 
-              onClick={() => handleDemoLogin('mock-token-it-support@universe.com', 'ADMIN')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
-            >
-              <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">IT Support</div>
-              <div className="text-zinc-500 text-xs mt-1">Helpdesk access</div>
-            </button>
           </div>
         </div>
       </div>
@@ -226,6 +192,41 @@ export default function LoginPage() {
                 Sign up
               </Link>
             </p>
+          </div>
+        </div>
+
+        {/* Demo Accounts - Moved below login form */}
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-zinc-400 mb-4 text-center">Or test with demo accounts</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button 
+              onClick={() => handleDemoLogin('mock-token-demo@student.com', 'STUDENT')}
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+            >
+              <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Student</div>
+              <div className="text-zinc-500 text-xs mt-1">Full access to student dashboard</div>
+            </button>
+            <button 
+              onClick={() => handleDemoLogin('mock-token-demo@teacher.com', 'TEACHER')}
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+            >
+              <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Teacher</div>
+              <div className="text-zinc-500 text-xs mt-1">Manage classes & grades</div>
+            </button>
+            <button 
+              onClick={() => handleDemoLogin('mock-token-demo@admin.com', 'ADMIN')}
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+            >
+              <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Admin</div>
+              <div className="text-zinc-500 text-xs mt-1">System configuration</div>
+            </button>
+            <button 
+              onClick={() => handleDemoLogin('mock-token-it-support@universe.com', 'ADMIN')}
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#09090b] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+            >
+              <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">IT Support</div>
+              <div className="text-zinc-500 text-xs mt-1">Helpdesk access</div>
+            </button>
           </div>
         </div>
       </div>

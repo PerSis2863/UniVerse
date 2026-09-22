@@ -11,7 +11,7 @@ import { api } from '@/lib/api';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { setUser } = useAuthStore();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,7 +26,7 @@ export default function RegisterPage() {
       // Make API call to register/sync user data
       const { data: user } = await api.post('/auth/register', { name });
       
-      login({
+      setUser({
         id: user.id,
         name: user.name,
         email: user.email,
