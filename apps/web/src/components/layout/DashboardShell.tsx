@@ -73,10 +73,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
       
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
         {/* Mobile Header - only visible on mobile */}
-        <header className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-xl sticky top-0 z-50 relative pointer-events-auto shadow-sm">
+        <header className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-zinc-200 dark:border-white/[0.06] bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-xl fixed top-0 left-0 right-0 z-[90] shadow-sm">
           <UniverseLogo size="sm" showText={true} animated={false} />
           <div className="flex items-center gap-2">
-            <button className="p-2 text-zinc-400 hover:text-white relative z-50 cursor-pointer pointer-events-auto">
+            <button className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer touch-manipulation">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
             </button>
@@ -85,14 +85,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 e.preventDefault();
                 setSidebarOpen(true);
               }} 
-              className="p-2 text-zinc-400 hover:text-white relative z-50 cursor-pointer pointer-events-auto bg-transparent border-none"
+              className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer touch-manipulation bg-transparent border-none"
             >
               <Menu className="w-6 h-6" />
             </button>
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0 overflow-x-hidden">
+        <main className="flex-1 flex flex-col min-w-0 pb-20 pt-14 lg:pt-0 lg:pb-0 overflow-x-hidden">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
