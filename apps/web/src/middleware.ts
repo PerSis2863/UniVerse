@@ -16,9 +16,15 @@ export default clerkMiddleware(async (auth, req) => {
 
   // Real Auth Checking
   if (isProtectedRoute(req)) {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.redirect(new URL('/login', req.url));
+    try {
+      const { userId } = await auth();
+      if (!userId) {
+        return applySecurityHeaders(NextResponse.redirect(new URL('/login', req.url)));
+      }
+    } catch (error) {
+      // If auth() crashes (e.g. invalid CLERK_SECRET_KEY in Vercel), redirect to login instead of crashing
+      console.error("Clerk auth error:", error);
+      return applySecurityHeaders(NextResponse.redirect(new URL('/login', req.url)));
     }
   }
 
