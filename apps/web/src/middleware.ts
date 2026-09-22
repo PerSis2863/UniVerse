@@ -1,4 +1,7 @@
-export default function middleware(req: any) {
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export default function middleware(req: NextRequest) {
   return applySecurityHeaders(NextResponse.next());
 }
 
