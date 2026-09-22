@@ -18,4 +18,11 @@ export class AuthService {
       select: userSelect,
     });
   }
+
+  async getMeByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: userSelect,
+    });
+  }
 }

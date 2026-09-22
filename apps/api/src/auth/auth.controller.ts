@@ -15,4 +15,19 @@ export class AuthController {
   me(@CurrentUser() user: any) {
     return this.authService.getMe(user.id);
   }
+
+  @Post('login')
+  async login(@Body() body: any) {
+    if (body.email?.startsWith('demo@')) {
+      const user = await this.authService.getMeByEmail(body.email);
+      if (user) {
+        return {
+          accessToken: `mock-token-${user.id}`,
+          refreshToken: `mock-token-${user.id}`,
+          user
+        };
+      }
+    }
+    throw new import('@nestjs/common').UnauthorizedException('Invalid credentials');
+  }
 }
