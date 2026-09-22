@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
 import { auth } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 export default function RegisterPage() {
   const router = useRouter();

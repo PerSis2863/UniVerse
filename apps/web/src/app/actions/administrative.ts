@@ -1,7 +1,6 @@
 'use server';
 
 import prisma from '@/lib/db';
-import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 
 // Documents
@@ -14,15 +13,11 @@ export async function getAdminDocuments() {
 }
 
 export async function createAdminDocument(data: any) {
-  const { userId } = auth();
-  if (!userId) throw new Error('Unauthorized');
-  
-  // Note: we assume the user provides a real user ID in the form, 
-  // or we default to the admin's own ID if none is provided for school docs
+  // Note: we assume the user provides a real user ID in the form
   await prisma.studentDocument.create({
     data: {
       title: data.title,
-      userId: data.userId || userId,
+      userId: data.userId || 'admin',
       type: 'OTHER',
       fileUrl: data.fileUrl || '',
       isVerified: data.status === 'Published',
@@ -47,8 +42,6 @@ export async function getAdminInvoices() {
 }
 
 export async function createAdminInvoice(data: any) {
-  const { userId } = auth();
-  if (!userId) throw new Error('Unauthorized');
   
   const student = await prisma.user.findFirst({ where: { id: data.studentId } }) || 
                   await prisma.user.findFirst({ where: { role: 'STUDENT' } });

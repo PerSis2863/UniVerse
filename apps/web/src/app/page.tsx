@@ -5,9 +5,9 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { Globe2, Heart, Users, Sparkles, Sprout, ArrowRight, CheckCircle, Download, Apple, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/auth';
 
 const stats = [
   { value: '50+',  label: 'Global NGO Partners',  icon: Globe2,  color: 'text-blue-500',    lightBg: 'bg-blue-50',    darkBg: 'dark:bg-blue-500/10',    border: 'border-blue-100 dark:border-blue-500/20' },
@@ -36,14 +36,15 @@ const liveItems = [
 
 export default function ShowcasePage() {
   const [hoveredStat, setHoveredStat] = useState<number | null>(null);
-  const { isSignedIn } = useUser();
+  const { user } = useAuthStore();
+  const isSignedIn = !!user;
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    if (isSignedIn) router.push('/student');
-  }, [isSignedIn, router]);
+    if (isSignedIn) router.push(`/${user?.role.toLowerCase() || 'student'}`);
+  }, [isSignedIn, router, user]);
 
   useEffect(() => {
     const handler = (e: Event) => {

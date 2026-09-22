@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { motion } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
-import { useAuth } from '@clerk/nextjs';
+import { auth } from '@/lib/firebase';
 
 type NavItem = {
   href?: string;
@@ -246,7 +246,6 @@ function NavItemComponent({
 
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
-  const { signOut } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -259,9 +258,9 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      await auth.signOut();
     } catch (error) {
-      console.warn('Clerk signOut failed or was skipped:', error);
+      console.warn('Firebase signOut failed:', error);
     }
     logout();
     router.push('/login');

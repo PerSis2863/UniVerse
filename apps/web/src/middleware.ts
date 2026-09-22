@@ -1,35 +1,6 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
-import { NextResponse } from 'next/server';
-
-const isProtectedRoute = createRouteMatcher([
-  '/student(.*)',
-  '/teacher(.*)',
-  '/admin(.*)',
-])
-
-export default clerkMiddleware(async (auth, req) => {
-  // Check for demo bypass
-  const demoCookie = req.cookies.get('demo_token');
-  if (demoCookie?.value === 'mock-token') {
-    return applySecurityHeaders(NextResponse.next());
-  }
-
-  // Real Auth Checking
-  if (isProtectedRoute(req)) {
-    try {
-      const { userId } = await auth();
-      if (!userId) {
-        return applySecurityHeaders(NextResponse.redirect(new URL('/login', req.url)));
-      }
-    } catch (error) {
-      // If auth() crashes (e.g. invalid CLERK_SECRET_KEY in Vercel), redirect to login instead of crashing
-      console.error("Clerk auth error:", error);
-      return applySecurityHeaders(NextResponse.redirect(new URL('/login', req.url)));
-    }
-  }
-
+export default function middleware(req: any) {
   return applySecurityHeaders(NextResponse.next());
-});
+}
 
 function applySecurityHeaders(res: NextResponse) {
   const cspHeader = `
