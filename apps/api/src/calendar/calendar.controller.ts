@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CalendarService } from './calendar.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('calendar')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 @Controller('calendar')
 export class CalendarController {
   constructor(private readonly calendarService: CalendarService) {}

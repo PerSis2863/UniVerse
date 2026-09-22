@@ -1,10 +1,10 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('schedule')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 export class ScheduleController {
   constructor(private prisma: PrismaService) {}
 

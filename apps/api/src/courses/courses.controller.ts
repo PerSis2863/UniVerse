@@ -1,13 +1,13 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CoursesService } from './courses.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
 @ApiTags('courses')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 @Controller('courses')
 export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}

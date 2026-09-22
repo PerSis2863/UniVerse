@@ -1,0 +1,13 @@
+{
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "UniVerse",
+        "supportEmail": "adityabhatt2863@gmail.com",
+        "authorizedRedirectUris": ["https://universe.example.com"]
+      }
+    }
+  }
+}

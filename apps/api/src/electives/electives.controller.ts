@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ElectivesService } from './electives.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('electives')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 @Controller('electives')
 export class ElectivesController {
   constructor(private readonly electivesService: ElectivesService) {}

@@ -2,13 +2,13 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } fro
 import { KnowledgeHubService } from './knowledge-hub.service';
 import { CreateKnowledgeHubDto } from './dto/create-knowledge-hub.dto';
 import { UpdateKnowledgeHubDto } from './dto/update-knowledge-hub.dto';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('knowledge-hub')
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(FirebaseAuthGuard, RolesGuard)
 export class KnowledgeHubController {
   constructor(private readonly knowledgeHubService: KnowledgeHubService) {}
 

@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { AssociationsService } from './associations.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 
 @Controller('associations')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 export class AssociationsController {
   constructor(private readonly associationsService: AssociationsService) {}
 

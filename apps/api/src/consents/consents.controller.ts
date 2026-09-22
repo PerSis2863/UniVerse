@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsentsService } from './consents.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('consents')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 @Controller('consents')
 export class ConsentsController {
   constructor(private readonly consentsService: ConsentsService) {}

@@ -58,14 +58,14 @@ export class WebhooksController {
       await this.prisma.user.upsert({
         where: { email },
         update: {
-          clerkUserId: id,
+          firebaseUid: id,
           name,
           role,
           status: 'ACTIVE'
         },
         create: {
           email,
-          clerkUserId: id,
+          firebaseUid: id,
           name,
           role,
           status: 'ACTIVE',
@@ -85,12 +85,12 @@ export class WebhooksController {
       const name = `${firstName} ${lastName}`.trim() || email;
       
       await this.prisma.user.updateMany({
-        where: { clerkUserId: id },
+        where: { firebaseUid: id },
         data: { name, email },
       });
     } else if (eventType === 'user.deleted') {
       await this.prisma.user.deleteMany({
-        where: { clerkUserId: id },
+        where: { firebaseUid: id },
       });
     }
 

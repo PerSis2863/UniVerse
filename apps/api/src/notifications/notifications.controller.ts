@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards, Delete, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PushService } from './push.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('notifications')
@@ -10,7 +10,7 @@ export class NotificationsController {
   constructor(private readonly pushService: PushService) {}
 
   @Post('subscribe')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(FirebaseAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Subscribe to push notifications' })
   async subscribe(
@@ -22,7 +22,7 @@ export class NotificationsController {
   }
 
   @Post('unsubscribe')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(FirebaseAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Unsubscribe from push notifications' })
   async unsubscribe(@Body() body: { endpoint: string }) {

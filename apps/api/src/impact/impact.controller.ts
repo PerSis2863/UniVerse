@@ -2,7 +2,7 @@ import { Controller, Get, Post, Param, Body, Query, UseGuards, Res } from '@nest
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ImpactService } from './impact.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -10,7 +10,7 @@ import { Role } from '@prisma/client';
 
 @ApiTags('impact')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(FirebaseAuthGuard, RolesGuard)
 @Controller('impact')
 export class ImpactController {
   constructor(private readonly impactService: ImpactService) {}

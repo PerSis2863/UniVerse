@@ -5,8 +5,15 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as compression from 'compression';
+import { initializeApp, getApps } from 'firebase-admin/app';
 
 async function bootstrap() {
+  // Initialize Firebase Admin (Uses default service account in GCP, or GOOGLE_APPLICATION_CREDENTIALS)
+  // For local dev without a service account, it will only do basic ID token verification which is fine.
+  if (getApps().length === 0) {
+    initializeApp();
+  }
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['log', 'warn', 'error'],
   });

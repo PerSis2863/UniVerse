@@ -10,17 +10,19 @@ export const api = axios.create({
 // Add auth token to every request
 api.interceptors.request.use(async (config) => {
   if (typeof window !== 'undefined') {
-    // Try Clerk first for real users
-    if (window.Clerk?.session) {
-      try {
-        const token = await window.Clerk.session.getToken();
+    // Try Firebase first for real users
+    try {
+      const { auth } = await import('./firebase');
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const token = await currentUser.getIdToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
           return config;
         }
-      } catch (e) {
-        console.warn('Failed to get Clerk token', e);
       }
+    } catch (e) {
+      console.warn('Failed to get Firebase token', e);
     }
     
     // Fallback to localStorage for demo users

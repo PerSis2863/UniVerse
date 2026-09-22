@@ -1,11 +1,11 @@
 import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 
 @Controller('files')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 export class FilesController {
   @Post('upload')
   @UseInterceptors(

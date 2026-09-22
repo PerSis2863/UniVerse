@@ -1,13 +1,13 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { GradesService } from './grades.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('grades')
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(FirebaseAuthGuard, RolesGuard)
 export class GradesController {
   constructor(private readonly gradesService: GradesService) {}
 

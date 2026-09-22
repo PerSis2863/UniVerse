@@ -1,10 +1,10 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { MessagesService } from './messages.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('messages')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(FirebaseAuthGuard)
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 

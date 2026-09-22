@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { ClerkAuthGuard } from './clerk-auth.guard';
+import { FirebaseAuthGuard } from './firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('auth')
@@ -10,7 +10,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Get('me')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(FirebaseAuthGuard)
   @ApiBearerAuth()
   me(@CurrentUser() user: any) {
     return this.authService.getMe(user.id);
