@@ -9,23 +9,29 @@ const isProtectedRoute = createRouteMatcher([
 
 import { NextResponse } from 'next/server';
 
-export default clerkMiddleware(async (auth, req) => {
-  // Check for demo bypass
-  const demoCookie = req.cookies.get('demo_token');
-  if (demoCookie?.value === 'mock-token') {
+const hasClerkKeys = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!process.env.CLERK_SECRET_KEY;
+
+export default function middleware(req: any, event: any) {
+  if (hasClerkKeys) {
+    return clerkMiddleware(async (auth, request) => {
+      // Check for demo bypass
+      const demoCookie = request.cookies.get('demo_token');
+      if (demoCookie?.value === 'mock-token') {
+        return applySecurityHeaders(NextResponse.next());
+      }
+
+      // Real Auth Checking
+      if (isProtectedRoute(request)) {
+        await auth.protect();
+      }
+
+      return applySecurityHeaders(NextResponse.next());
+    })(req, event);
+  } else {
+    // Fallback if no keys are provided
     return applySecurityHeaders(NextResponse.next());
   }
-
-  // Real Auth Checking
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
-
-  return applySecurityHeaders(NextResponse.next());
-}, {
-  publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_Y2xlcmsuY2xlcmsuY2xlcmsuY2xlcmsuY2xlcms',
-  secretKey: process.env.CLERK_SECRET_KEY || 'sk_test_123',
-});
+}
 
 function applySecurityHeaders(res: NextResponse) {
   const cspHeader = `
