@@ -129,7 +129,7 @@ export default function GroupsPage() {
   const [showMeeting, setShowMeeting] = useState(false);
   const [showMeetingChat, setShowMeetingChat] = useState(false); // In-meeting chat panel
   const [showAllMembers, setShowAllMembers] = useState(false);
-  const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string, aiSummary?: string} | null>(null);
+  const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string, aiSummary?: string, fileUrl?: string, fileSize?: number} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -1060,66 +1060,62 @@ export default function GroupsPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[80] flex flex-col p-4 sm:p-8" onClick={(e) => e.target === e.currentTarget && setShowFilePreview(null)}>
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3 bg-zinc-900/50 p-2 pr-4 rounded-xl border border-zinc-700">
-                <div className={`p-2 rounded-lg ${showFilePreview.ext === 'pdf' ? 'bg-red-500/20 text-red-400' : showFilePreview.ext === 'fig' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                <div className={`p-2 rounded-lg ${showFilePreview.ext === 'pdf' ? 'bg-red-500/20 text-red-400' : ['png','jpg','jpeg','gif','webp'].includes(showFilePreview.ext) ? 'bg-green-500/20 text-green-400' : showFilePreview.ext === 'fig' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-blue-500/20 text-blue-400'}`}>
                   <FileText className="w-6 h-6" />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold">{showFilePreview.name}</h3>
-                  <p className="text-zinc-400 text-xs">{showFilePreview.ext.toUpperCase()} Document • 2.4 MB</p>
+                  <p className="text-zinc-400 text-xs">{showFilePreview.ext.toUpperCase()} • {showFilePreview.fileSize ? `${(showFilePreview.fileSize / 1024).toFixed(0)} KB` : '—'}</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors" onClick={() => {
-                  const link = document.createElement('a');
-                  link.href = '#';
-                  link.download = showFilePreview.name;
-                  link.click();
-                  toast.success(`Downloaded ${showFilePreview.name} to your device`);
-                }}><Download className="w-5 h-5" /></button>
-                <button className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors" onClick={() => toast.success('Link copied to clipboard!')}><ExternalLink className="w-5 h-5" /></button>
+                {showFilePreview.fileUrl && (
+                  <a href={showFilePreview.fileUrl} download={showFilePreview.name} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors flex items-center">
+                    <Download className="w-5 h-5" />
+                  </a>
+                )}
                 <button onClick={() => setShowFilePreview(null)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors ml-4"><X className="w-5 h-5" /></button>
               </div>
             </div>
             
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex-1 bg-white dark:bg-zinc-950 rounded-2xl overflow-hidden flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-2xl relative">
-               {/* Simulated Document Content */}
-               <div className="w-full h-full max-w-4xl mx-auto p-12 bg-white dark:bg-zinc-900 overflow-y-auto shadow-inner text-zinc-800 dark:text-zinc-200">
-                  <h1 className="text-3xl font-bold mb-6">{showFilePreview.name.replace(/\.[^/.]+$/, "")}</h1>
-                  
-                  {/* AI Summary Section */}
-                  <div className="mb-8 p-6 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-                    <h2 className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold mb-3">
-                      <Star className="w-4 h-4 fill-current" /> AI Summary
-                    </h2>
-                    <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                      {showFilePreview.aiSummary || `This document contains essential information and updates regarding our recent group activities and upcoming milestones. Please review the details below carefully.`}
-                    </p>
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex-1 bg-white dark:bg-zinc-950 rounded-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800 shadow-2xl">
+              {/* REAL file viewer based on file type */}
+              {showFilePreview.fileUrl ? (
+                ['png','jpg','jpeg','gif','webp','svg'].includes(showFilePreview.ext) ? (
+                  // Images — show directly
+                  <div className="flex-1 flex items-center justify-center p-8 bg-zinc-900">
+                    <img src={showFilePreview.fileUrl} alt={showFilePreview.name} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
                   </div>
-                  
-                  <h2 className="text-xl font-semibold mb-4 text-indigo-600 dark:text-indigo-400">1. Key Objectives</h2>
-                  <ul className="list-disc pl-6 space-y-2 mb-8">
-                    <li>Complete the primary research phase by end of this week.</li>
-                    <li>Draft the initial findings report and share with the team.</li>
-                    <li>Prepare presentation slides for the next sync meeting.</li>
-                  </ul>
-
-                  {showFilePreview.ext === 'pdf' || showFilePreview.ext === 'fig' ? (
-                    <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl mb-12 flex flex-col items-center justify-center border border-zinc-200 dark:border-zinc-700">
-                      <FileText className="w-16 h-16 text-zinc-400 dark:text-zinc-500 mb-4" />
-                      <span className="text-zinc-500 dark:text-zinc-400 font-medium">{showFilePreview.name} Visual Preview</span>
-                    </div>
-                  ) : null}
-
-                  <h2 className="text-xl font-semibold mb-4 text-indigo-600 dark:text-indigo-400">2. Next Steps</h2>
-                  <p className="leading-relaxed mb-6">
-                    Ensure all assignments are submitted through the portal before the deadline. We will discuss these points in detail during our next scheduled call.
-                  </p>
-                  
-                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg">
-                    <p className="text-amber-800 dark:text-amber-200 text-sm font-medium">Note: This is a simulated document view. You can download the actual file using the button in the top right corner.</p>
+                ) : showFilePreview.ext === 'pdf' ? (
+                  // PDFs — embed with iframe
+                  <iframe src={showFilePreview.fileUrl} className="flex-1 w-full" title={showFilePreview.name} />
+                ) : ['xlsx','xls','docx','doc','pptx','ppt','csv'].includes(showFilePreview.ext) ? (
+                  // Office files — use Google Docs Viewer
+                  <iframe
+                    src={`https://docs.google.com/gview?url=${encodeURIComponent(showFilePreview.fileUrl)}&embedded=true`}
+                    className="flex-1 w-full"
+                    title={showFilePreview.name}
+                    onError={() => {}}
+                  />
+                ) : (
+                  // Text / unknown — try to display as text
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4 bg-zinc-900">
+                    <FileText className="w-20 h-20 text-zinc-400" />
+                    <p className="text-zinc-300 font-medium">{showFilePreview.name}</p>
+                    <p className="text-zinc-500 text-sm text-center">Preview not available for this file type.</p>
+                    <a href={showFilePreview.fileUrl} download={showFilePreview.name} className="btn-primary px-6 py-2.5 text-sm flex items-center gap-2">
+                      <Download className="w-4 h-4" /> Download File
+                    </a>
                   </div>
-               </div>
+                )
+              ) : (
+                // No URL stored (legacy/static files) — show info only
+                <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4 bg-zinc-900">
+                  <FileText className="w-20 h-20 text-zinc-400" />
+                  <p className="text-zinc-300 font-medium text-lg">{showFilePreview.name}</p>
+                  <p className="text-zinc-500 text-sm text-center max-w-sm">This file was shared before local preview was enabled. Re-upload the file to preview it here.</p>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -1139,16 +1135,18 @@ export default function GroupsPage() {
         if (e.target.files && e.target.files[0]) {
           const file = e.target.files[0];
           const tempId = Date.now();
-          const newFileMsg = { id: tempId, user: 'You', initials: 'ME', text: 'Uploading and analyzing...', isFile: true, fileName: file.name, time: 'Just now', aiSummary: '' };
+          // Store real object URL so preview can show actual content
+          const objectUrl = URL.createObjectURL(file);
+          const newFileMsg = { id: tempId, user: 'You', initials: 'ME', text: 'Uploading and analyzing...', isFile: true, fileName: file.name, fileUrl: objectUrl, fileSize: file.size, time: 'Just now', aiSummary: '' };
           setChatMessages([...chatMessages, newFileMsg]);
           toast.info(`Uploading ${file.name}...`);
           
           try {
             const uploadRes = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
-            let fileUrl = '';
+            let fileUrl = objectUrl; // default to local object URL
             if (uploadRes.ok) {
                const blobData = await uploadRes.json();
-               fileUrl = blobData.url;
+               fileUrl = blobData.url || objectUrl;
             }
 
             const summarizeRes = await fetch('/api/summarize', {
@@ -1156,31 +1154,20 @@ export default function GroupsPage() {
               body: JSON.stringify({ fileUrl: fileUrl || 'local-file' })
             });
             
-            let aiSummary = `Simulated Summary: This document covers key objectives and research phases.`;
+            let aiSummary = '';
             if (summarizeRes.ok) {
                const summaryData = await summarizeRes.json();
                aiSummary = summaryData.summary;
             }
 
-            // DB call
-            fetch('/api/groups/messages', {
-              method: 'POST',
-              body: JSON.stringify({
-                content: 'Shared a file',
-                senderId: 'mock-user-id',
-                groupId: selectedGroup?.id?.toString() || '1',
-                attachments: [{ url: fileUrl, fileName: file.name, aiSummary }]
-              })
-            }).catch(e => console.error("DB push failed", e));
-
-            setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary } : msg));
-            toast.success('Document analyzed and shared!');
+            setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary, fileUrl } : msg));
+            toast.success('Document uploaded and shared!');
           } catch (err) {
-            console.warn("API failed, using simulated data", err);
+            // Even if API fails, the objectUrl still works for local preview
             setTimeout(() => {
-               setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary: `AI Summary for ${file.name}: The document covers essential milestones and objectives for the group project.` } : msg));
-               toast.success('Document analyzed and shared!');
-            }, 1500);
+               setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary: '', fileUrl: objectUrl } : msg));
+               toast.success('File shared with the group!');
+            }, 500);
           }
         }
       }} />
