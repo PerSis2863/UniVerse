@@ -73,15 +73,21 @@ export function DashboardShell({ children }: DashboardShellProps) {
       
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
         {/* Mobile Header - only visible on mobile */}
-        <header className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-xl sticky top-0 z-30">
+        <header className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-xl sticky top-0 z-50 relative pointer-events-auto shadow-sm">
           <UniverseLogo size="sm" showText={true} animated={false} />
-          <div className="flex items-center gap-1">
-            <button className="p-2 text-zinc-400 hover:text-white relative">
+          <div className="flex items-center gap-2">
+            <button className="p-2 text-zinc-400 hover:text-white relative z-50 cursor-pointer pointer-events-auto">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
             </button>
-            <button onClick={() => setSidebarOpen(true)} className="p-2 text-zinc-400 hover:text-white">
-              <Menu className="w-5 h-5" />
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                setSidebarOpen(true);
+              }} 
+              className="p-2 text-zinc-400 hover:text-white relative z-50 cursor-pointer pointer-events-auto bg-transparent border-none"
+            >
+              <Menu className="w-6 h-6" />
             </button>
           </div>
         </header>
