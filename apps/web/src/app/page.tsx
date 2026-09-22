@@ -76,12 +76,14 @@ export default function ShowcasePage() {
       if (isIOS) {
         toast('📱 How to install on iOS', {
           description: 'Tap the Share icon at the bottom of Safari, then scroll down and tap "Add to Home Screen".',
-          duration: 8000,
+          duration: 10000,
+          style: { background: '#4f46e5', color: 'white', border: 'none' },
         });
       } else {
         toast('💻 How to install', {
           description: 'Look for the install icon (usually a computer with a down arrow) in your address bar to install the app.',
-          duration: 8000,
+          duration: 10000,
+          style: { background: '#4f46e5', color: 'white', border: 'none' },
         });
       }
     }
