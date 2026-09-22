@@ -249,6 +249,9 @@ importers:
       next-themes:
         specifier: ^0.3.0
         version: 0.3.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      puppeteer:
+        specifier: ^25.11.0
+        version: 25.11.0
       react:
         specifier: 19.2.8
         version: 19.2.8

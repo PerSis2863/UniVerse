@@ -2,11 +2,12 @@
 
 import { motion } from 'framer-motion';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { Globe2, Heart, Users, Sparkles, Sprout, ArrowRight, CheckCircle, Download } from 'lucide-react';
+import { Globe2, Heart, Users, Sparkles, Sprout, ArrowRight, CheckCircle, Download, Apple, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 const stats = [
   { value: '50+',  label: 'Global NGO Partners',  icon: Globe2,  color: 'text-blue-500',    lightBg: 'bg-blue-50',    darkBg: 'dark:bg-blue-500/10',    border: 'border-blue-100 dark:border-blue-500/20' },
@@ -54,12 +55,35 @@ export default function ShowcasePage() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') setInstalled(true);
-    setInstallPrompt(null);
+  const handleInstallClick = async () => {
+    if (installed) {
+      toast.success('App is already installed!');
+      return;
+    }
+    
+    if (installPrompt) {
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setInstalled(true);
+        toast.success('App installed successfully!');
+      }
+      setInstallPrompt(null);
+    } else {
+      // Fallback instructions for iOS Safari and browsers where prompt isn't fired
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isIOS) {
+        toast('📱 How to install on iOS', {
+          description: 'Tap the Share icon at the bottom of Safari, then scroll down and tap "Add to Home Screen".',
+          duration: 8000,
+        });
+      } else {
+        toast('💻 How to install', {
+          description: 'Look for the install icon (usually a computer with a down arrow) in your address bar to install the app.',
+          duration: 8000,
+        });
+      }
+    }
   };
 
   return (
@@ -139,29 +163,40 @@ export default function ShowcasePage() {
           >
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-xl shadow-indigo-500/30"
+              className="inline-flex items-center justify-center h-14 px-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-xl shadow-indigo-500/30"
             >
-              Get Started <ArrowRight className="w-4 h-4" />
+              Get Started <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
-            {installPrompt && !installed && (
-              <button
-                onClick={handleInstall}
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm transition-all border"
-                style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', borderColor: 'rgba(99,102,241,0.3)' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.25)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.15)')}
-              >
-                <Download className="w-4 h-4" /> Install App
-              </button>
-            )}
-            {installed && (
-              <span className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-emerald-400 text-sm font-semibold" style={{ background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.2)', border: '1px solid' }}>
-                ✓ App Installed!
-              </span>
-            )}
+            
+            <button
+              onClick={handleInstallClick}
+              className="group relative inline-flex items-center justify-center h-14 px-8 rounded-full font-bold text-sm transition-all overflow-hidden"
+            >
+              {/* Animated glowing background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 opacity-80 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 blur-md opacity-50 group-hover:opacity-70 transition-opacity" />
+              
+              {/* Inner dark container to give it a "border" glow effect, or just keep it solid colorful */}
+              <div className="absolute inset-[1px] rounded-full bg-[#0d1117] group-hover:bg-[#131720] transition-colors z-0" />
+              
+              <div className="relative z-10 flex items-center">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center mr-3 shadow-lg group-hover:scale-110 transition-transform">
+                  <Smartphone className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex flex-col items-start leading-none text-left">
+                  <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-0.5">
+                    {installed ? 'Already Installed' : 'Get the Web App'}
+                  </span>
+                  <span className="text-[15px] font-black bg-gradient-to-r from-white to-indigo-100 bg-clip-text text-transparent">
+                    {installed ? 'Open App' : 'Download App'}
+                  </span>
+                </div>
+              </div>
+            </button>
+            
             <a
               href="#about"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm transition-all border"
+              className="inline-flex items-center justify-center h-14 px-8 rounded-full font-bold text-sm transition-all border"
               style={{ background: 'rgba(255,255,255,0.06)', color: '#e4e4e7', borderColor: 'rgba(255,255,255,0.08)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}

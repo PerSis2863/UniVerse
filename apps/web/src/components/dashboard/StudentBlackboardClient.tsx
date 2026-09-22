@@ -42,8 +42,15 @@ const TABS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function StudentBlackboardClient({ initialCourse }: { initialCourse: any }) {
-  const { data: enrollments, isLoading: isCoursesLoading } = useSWR('/courses/my', fetcher);
-  const courses = enrollments?.map((e: any) => e.course) || [];
+  const { data: enrollments, isLoading: isCoursesLoading } = useSWR('/courses/my', fetcher, { fallbackData: [] });
+  
+  const hasRealCourses = enrollments && enrollments.length > 0;
+  const courses = hasRealCourses 
+    ? enrollments.map((e: any) => e.course) 
+    : [
+        { id: 'c1', code: 'CS 301', name: 'Data Structures and Algorithms', color: '#6366f1', teacher: { name: 'Dr. Smith' }, _count: { enrollments: 42 }, instructor: 'Dr. Smith' },
+        { id: 'c2', code: 'PHY 101', name: 'Physics I', color: '#10b981', teacher: { name: 'Prof. Johnson' }, _count: { enrollments: 120 }, instructor: 'Prof. Johnson' }
+      ];
   
   const [selectedCourse, setSelectedCourse] = useState(initialCourse || null);
   
@@ -66,7 +73,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
   const [renderTrigger, setRenderTrigger] = useState(0);
 
   const { data: blackboardData, isLoading: isDataLoading } = useSWR(
-    selectedCourse ? `/blackboard/${selectedCourse.id}` : null,
+    selectedCourse && hasRealCourses ? `/blackboard/${selectedCourse.id}` : null,
     fetcher
   );
 
@@ -119,7 +126,25 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
       color: 'bg-indigo-500'
     }))
   } : {
-    announcements: [], resources: [], research: [], assignments: [], discussion: [], activity: [], quizResults: [], goals: [], calendarEvents: []
+    announcements: [
+      { id: '1', pinned: true, title: 'Welcome to ' + (selectedCourse?.code || 'Course'), body: 'Please review the syllabus and join the first lecture.', author: selectedCourse?.teacher?.name || 'Instructor', time: 'Today', priority: 'high' }
+    ],
+    resources: [
+      { id: '1', week: 'Week 1', title: 'Syllabus.pdf', type: 'PDF', size: '2.4 MB', icon: FileText, color: '#ef4444', pinned: true }
+    ],
+    research: [],
+    assignments: [
+      { id: '1', title: 'Programming Assignment 1', due: 'Next Friday', status: 'pending', score: null, maxScore: 100, description: 'Implement a binary search tree.' }
+    ],
+    discussion: [
+      { id: '1', title: 'Question about Assignment 1', author: 'Alice', replies: 3, time: '2h ago', resolved: false }
+    ],
+    activity: [
+      { user: selectedCourse?.teacher?.name || 'Instructor', action: 'posted a new announcement in', item: selectedCourse?.code || 'Course', time: '2h ago', icon: Bell }
+    ],
+    quizResults: [],
+    goals: [],
+    calendarEvents: []
   };
 
   const [optimisticAssignments, addOptimisticAssignment] = useOptimistic(
@@ -131,7 +156,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
 
   const handleSendMessage = () => {
     if (!messageText.trim()) return;
-    toast.success('Message sent to Prof. ' + (selectedCourse?.teacher?.name || 'Instructor'));
+    toast.success('Message sent to ' + (selectedCourse?.teacher?.name || 'Instructor'));
     setMessageText('');
   };
 

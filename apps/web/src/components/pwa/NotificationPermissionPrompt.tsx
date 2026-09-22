@@ -49,31 +49,38 @@ export function NotificationPermissionPrompt() {
         return;
       }
 
-      // Try to subscribe to push
-      const registration = await navigator.serviceWorker.ready;
-      let subscription = await registration.pushManager.getSubscription();
-
-      if (!subscription) {
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (vapidKey) {
-          try {
-            subscription = await registration.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(vapidKey),
-            });
-          } catch {
-            // Brave shields or browser blocking — still count as enabled
-          }
-        }
-      }
-
-      // Fire-and-forget backend registration
-      if (subscription) {
-        api.post('/notifications/subscribe', { subscription: subscription.toJSON() }).catch(() => {});
-      }
-
       localStorage.setItem('pushSubscribed', 'true');
       setStatus('success');
+
+      // Try to subscribe to push asynchronously in the background so it doesn't block the UI
+      // If service worker isn't ready (e.g. in dev mode or blocked), this won't hang the UI.
+      (async () => {
+        try {
+          const registration = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 3000))
+          ]) as ServiceWorkerRegistration;
+          
+          let subscription = await registration.pushManager.getSubscription();
+
+          if (!subscription) {
+            const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            if (vapidKey) {
+              subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidKey),
+              });
+            }
+          }
+
+          if (subscription) {
+            api.post('/notifications/subscribe', { subscription: subscription.toJSON() }).catch(() => {});
+          }
+        } catch (e) {
+          console.warn('Push subscription failed or SW not available:', e);
+        }
+      })();
+
     } catch {
       setStatus('idle');
     }

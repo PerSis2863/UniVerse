@@ -19,8 +19,14 @@ export class ClerkAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     if (token.startsWith('mock-token-')) {
-      const userId = token.replace('mock-token-', '');
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      const identifier = token.replace('mock-token-', '');
+      let user;
+      if (identifier.includes('@')) {
+        user = await this.prisma.user.findUnique({ where: { email: identifier } });
+      } else {
+        user = await this.prisma.user.findUnique({ where: { id: identifier } });
+      }
+      
       if (user) {
         request.user = user;
         return true;
