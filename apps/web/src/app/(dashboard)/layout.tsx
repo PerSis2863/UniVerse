@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useAuth } from '@clerk/nextjs';
 import { DashboardShell } from '@/components/layout/DashboardShell';
@@ -11,6 +11,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { signOut } = useAuth();
   const { user: demoUser, setUser } = useAuthStore();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Wait for Clerk to load before checking auth state
@@ -30,8 +35,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoaded, isSignedIn, demoUser, clerkUser, router, setUser]);
 
-  // Show nothing while loading auth
-  if ((!isLoaded || !isSignedIn) && !demoUser) return null;
+  // Show nothing while loading auth or before mounting (to prevent hydration mismatch)
+  if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return null;
   
   return <DashboardShell>{children}</DashboardShell>;
 }
