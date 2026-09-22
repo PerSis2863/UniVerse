@@ -22,6 +22,9 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   return applySecurityHeaders(NextResponse.next());
+}, {
+  publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_Y2xlcmsuY2xlcmsuY2xlcmsuY2xlcmsuY2xlcms',
+  secretKey: process.env.CLERK_SECRET_KEY || 'sk_test_123',
 });
 
 function applySecurityHeaders(res: NextResponse) {
