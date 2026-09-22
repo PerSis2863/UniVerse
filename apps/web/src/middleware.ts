@@ -1,47 +1,26 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server';
 
-// Define which routes require the user to be logged in
 const isProtectedRoute = createRouteMatcher([
   '/student(.*)',
   '/teacher(.*)',
   '/admin(.*)',
 ])
 
-import { NextResponse } from 'next/server';
-
-const hasClerkKeys = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!process.env.CLERK_SECRET_KEY;
-
-import { NextRequest, NextFetchEvent } from 'next/server';
-
-export default async function middleware(req: NextRequest, event: NextFetchEvent) {
-  try {
-    if (hasClerkKeys) {
-      const handler = clerkMiddleware(async (auth, request) => {
-        // Check for demo bypass
-        const demoCookie = request.cookies.get('demo_token');
-        if (demoCookie?.value === 'mock-token') {
-          return applySecurityHeaders(NextResponse.next());
-        }
-
-        // Real Auth Checking
-        if (isProtectedRoute(request)) {
-          await auth.protect();
-        }
-
-        return applySecurityHeaders(NextResponse.next());
-      });
-      
-      return await handler(req, event);
-    } else {
-      // Fallback if no keys are provided
-      return applySecurityHeaders(NextResponse.next());
-    }
-  } catch (error) {
-    console.error("Clerk Middleware crashed:", error);
-    // If Clerk throws an exception (e.g. invalid keys), fail gracefully
+export default clerkMiddleware(async (auth, req) => {
+  // Check for demo bypass
+  const demoCookie = req.cookies.get('demo_token');
+  if (demoCookie?.value === 'mock-token') {
     return applySecurityHeaders(NextResponse.next());
   }
-}
+
+  // Real Auth Checking
+  if (isProtectedRoute(req)) {
+    await auth.protect();
+  }
+
+  return applySecurityHeaders(NextResponse.next());
+});
 
 function applySecurityHeaders(res: NextResponse) {
   const cspHeader = `
