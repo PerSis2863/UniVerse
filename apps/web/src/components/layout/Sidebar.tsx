@@ -257,7 +257,11 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (error) {
+      console.warn('Clerk signOut failed or was skipped:', error);
+    }
     logout();
     router.push('/login');
   };

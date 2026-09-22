@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
+import { PushNotificationManager } from '@/components/pwa/PushNotificationManager';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -102,6 +103,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
       {user && <MobileBottomNav role={user.role} />}
       <OfflineBar />
       <InstallBanner />
+      {user && <PushNotificationManager />}
     </div>
   );
 }

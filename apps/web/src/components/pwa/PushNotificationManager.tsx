@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { useAuth } from '@clerk/nextjs';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -21,6 +22,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export function PushNotificationManager() {
   const { user } = useAuthStore();
+  const { getToken } = useAuth();
   const [showPrompt, setShowPrompt] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
@@ -90,8 +92,13 @@ export function PushNotificationManager() {
       }
 
       // Send to backend
+      const token = await getToken();
       await api.post('/notifications/subscribe', {
         subscription: subscription.toJSON(),
+      }, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
       });
       
       setShowPrompt(false);
