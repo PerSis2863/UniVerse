@@ -122,44 +122,51 @@ export function PushNotificationManager() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm"
+          className="fixed top-2 left-1/2 -translate-x-1/2 z-[100] w-[95%] max-w-sm pointer-events-none"
         >
-          {/* iOS Style Notification Banner */}
-          <div className="bg-zinc-900/90 backdrop-blur-xl border border-white/10 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] rounded-[2rem] overflow-hidden p-5 relative text-center">
+          {/* iOS Native-like Notification Banner */}
+          <div className="bg-white/80 dark:bg-zinc-800/80 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] rounded-[24px] p-3 pointer-events-auto flex flex-col gap-2">
             
-            <button 
-              onClick={handleDismiss}
-              className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="w-14 h-14 bg-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3 text-indigo-400">
-              <Bell className="w-7 h-7 fill-indigo-400/50" />
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 bg-indigo-500 rounded-md flex items-center justify-center">
+                  <span className="text-[10px] font-black text-white">U</span>
+                </div>
+                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 tracking-wide">UniVerse</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">now</span>
+                <button 
+                  onClick={handleDismiss}
+                  className="w-5 h-5 flex items-center justify-center rounded-full bg-zinc-200/50 dark:bg-zinc-700/50 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
             </div>
-            
-            <h3 className="text-white font-semibold text-lg mb-1">
-              Enable Notifications
-            </h3>
-            
-            <p className="text-zinc-400 text-sm mb-5 px-2 leading-relaxed">
-              Get important updates about classes, assignments, and verified impact hours.
-            </p>
 
-            <div className="flex flex-col gap-2 w-full">
+            <div className="px-1 mb-1">
+              <h4 className="text-sm font-semibold text-zinc-900 dark:text-white leading-tight mb-0.5">
+                Enable Notifications
+              </h4>
+              <p className="text-[13px] text-zinc-600 dark:text-zinc-300 leading-snug">
+                Get important updates about classes, assignments, and verified impact hours.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleDismiss}
+                className="flex-1 bg-zinc-100 dark:bg-zinc-700/50 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-medium py-2.5 rounded-[14px] transition-colors text-[13px]"
+              >
+                Later
+              </button>
               <button
                 onClick={() => subscribeUser(false)}
                 disabled={isSubscribing}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-50 text-[15px]"
+                className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-2.5 rounded-[14px] transition-colors disabled:opacity-50 text-[13px]"
               >
-                {isSubscribing ? 'Allowing...' : 'Allow'}
-              </button>
-              
-              <button
-                onClick={handleDismiss}
-                className="w-full bg-white/5 hover:bg-white/10 text-zinc-300 font-medium py-3.5 rounded-xl transition-colors text-[15px]"
-              >
-                Maybe Later
+                {isSubscribing ? 'Allowing...' : 'Options'}
               </button>
             </div>
           </div>

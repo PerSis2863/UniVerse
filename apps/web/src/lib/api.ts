@@ -8,8 +8,22 @@ export const api = axios.create({
 });
 
 // Add auth token to every request
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   if (typeof window !== 'undefined') {
+    // Try Clerk first for real users
+    if (window.Clerk?.session) {
+      try {
+        const token = await window.Clerk.session.getToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          return config;
+        }
+      } catch (e) {
+        console.warn('Failed to get Clerk token', e);
+      }
+    }
+    
+    // Fallback to localStorage for demo users
     const token = localStorage.getItem('accessToken');
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
