@@ -1,13 +1,13 @@
 'use client';
 import { useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { Menu, LayoutDashboard, BookOpen, GraduationCap, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { Menu, LayoutDashboard, BookOpen, GraduationCap, MessageSquare, MoreHorizontal, Bell } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { PageTransition } from './PageTransition';
 import { AIStudyAssistant } from '@/components/ui/AIStudyAssistant';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { useAuthStore } from '@/store/auth';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
@@ -37,8 +37,8 @@ function MobileBottomNav({ role }: { role: string }) {
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-xl border-t border-zinc-200 dark:border-white/[0.06] pb-safe">
-      <div className="flex items-center justify-around px-2 py-2">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#09090b]/98 backdrop-blur-xl border-t border-zinc-200 dark:border-white/[0.06] pb-safe">
+      <div className="flex items-center justify-around px-1 py-2">
         {items.map((item) => {
           const isActive = pathname === item.href || (item.href !== base && pathname.startsWith(item.href));
           return (
@@ -46,15 +46,15 @@ function MobileBottomNav({ role }: { role: string }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all relative",
-                isActive ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-500 dark:text-zinc-500"
+                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all relative min-w-[56px]",
+                isActive ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500"
               )}
             >
               {isActive && (
                 <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-indigo-500" />
               )}
               <item.icon className={cn("w-5 h-5 transition-transform", isActive && "scale-110")} />
-              <span className={cn("text-[10px] font-medium", isActive && "font-bold")}>{item.label}</span>
+              <span className={cn("text-[10px] font-medium leading-tight", isActive && "font-bold")}>{item.label}</span>
             </Link>
           );
         })}
@@ -68,22 +68,29 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const { user } = useAuthStore();
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-zinc-50 dark:bg-[#09090b]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
-        {/* Mobile Header */}
-        <header className="lg:hidden flex items-center justify-between px-4 h-16 border-b border-white/[0.06] bg-[#09090b] sticky top-0 z-30">
+        {/* Mobile Header - only visible on mobile */}
+        <header className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-xl sticky top-0 z-30">
           <UniverseLogo size="sm" showText={true} animated={false} />
-          <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white">
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button className="p-2 text-zinc-400 hover:text-white relative">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            </button>
+            <button onClick={() => setSidebarOpen(true)} className="p-2 text-zinc-400 hover:text-white">
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
         </header>
 
-        <main className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0">
+        <main className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0 overflow-x-hidden">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+
       <AIStudyAssistant />
       <CommandPalette role={user?.role} />
       {user && <MobileBottomNav role={user.role} />}

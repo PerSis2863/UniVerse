@@ -52,7 +52,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
 
   return (
     <>
-      <header className="relative lg:sticky lg:top-0 z-20 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-200 dark:border-white/[0.06] px-4 md:px-8 h-auto lg:h-16 py-4 lg:py-0 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0">
+      <header className="hidden lg:flex relative lg:sticky lg:top-0 z-20 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-200 dark:border-white/[0.06] px-4 md:px-8 h-auto lg:h-16 py-3 lg:py-0 flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div className="flex items-center gap-4">
         {leftNode}
         <div>
