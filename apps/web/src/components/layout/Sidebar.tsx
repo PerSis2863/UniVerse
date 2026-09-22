@@ -245,6 +245,7 @@ function NavItemComponent({
 
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
+  const { signOut } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -255,7 +256,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const nav = navByRole[user.role] ?? [];
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     logout();
     router.push('/login');
   };
