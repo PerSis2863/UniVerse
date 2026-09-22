@@ -414,3 +414,71 @@ div[class*="cl-internal-"] > a[href*="clerk.com"] {
 .cl-watermark {
   display: none !important;
 }
+
+/* ─── PWA Mobile Optimizations ─────────────────── */
+
+/* Safe area padding for notches and home indicators */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Smooth iOS-style momentum scrolling */
+.ios-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Eliminate 300ms tap delay on touch devices */
+* {
+  touch-action: manipulation;
+}
+
+/* Prevent text selection during tap/swipe gestures */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* PWA standalone mode - hide browser chrome elements */
+@media (display-mode: standalone) {
+  .hide-in-pwa {
+    display: none !important;
+  }
+  /* Add padding at top for PWA title bar */
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* Slide in animation for PWA components */
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.slide-in-from-bottom-4 {
+  animation-name: slide-in-from-bottom;
+}
+
+.duration-500 {
+  animation-duration: 500ms;
+}

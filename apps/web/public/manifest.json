@@ -1,21 +1,81 @@
 {
-  "name": "UniVerse",
+  "name": "UniVerse Impact",
   "short_name": "UniVerse",
-  "description": "The unified university management platform.",
+  "description": "The all-in-one university management platform for students, teachers, and administrators.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "background_color": "#09090b",
   "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "categories": ["education", "productivity"],
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "My Grades",
+      "short_name": "Grades",
+      "description": "View your academic grades",
+      "url": "/student/grades",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Inbox",
+      "description": "Open your messages inbox",
+      "url": "/student/inbox",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "description": "View your academic calendar",
+      "url": "/student/calendar",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Courses",
+      "short_name": "Courses",
+      "description": "Browse your enrolled courses",
+      "url": "/student/courses",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "UniVerse Student Dashboard"
+    }
+  ],
+  "prefer_related_applications": false
 }

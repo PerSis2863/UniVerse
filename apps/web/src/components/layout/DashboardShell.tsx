@@ -10,6 +10,8 @@ import { useAuthStore } from '@/store/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { InstallBanner } from '@/components/pwa/InstallBanner';
+import { OfflineBar } from '@/components/pwa/OfflineBar';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -85,6 +87,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <AIStudyAssistant />
       <CommandPalette role={user?.role} />
       {user && <MobileBottomNav role={user.role} />}
+      <OfflineBar />
+      <InstallBanner />
     </div>
   );
 }

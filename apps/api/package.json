@@ -47,7 +47,8 @@
     "rxjs": "^7.8.1",
     "socket.io": "^4.7.2",
     "svix": "^2.5.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -64,6 +65,7 @@
     "@types/puppeteer": "^5.4.7",
     "@types/supertest": "^6.0.0",
     "@types/uuid": "^10.0.0",
+    "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^8.0.0",

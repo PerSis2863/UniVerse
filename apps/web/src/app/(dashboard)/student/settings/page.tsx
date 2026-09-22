@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
 import { toast } from 'sonner';
+import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermissionPrompt';
 
 export default function StudentSettings() {
   const [user, setUser] = useState<any>(null);
@@ -192,6 +193,16 @@ export default function StudentSettings() {
                           <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{t('settings.notifications')}</h2>
                           <p className="text-sm text-zinc-500">Manage how we contact you</p>
                         </div>
+                      </div>
+
+                      {/* Push Notifications */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Push Notifications</p>
+                        <NotificationPermissionPrompt />
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Email & In-App</p>
                       </div>
                       {[
                         { label: 'Email Notifications', desc: 'Receive announcements and updates via email.', icon: Mail, key: 'emailNotifications' },
