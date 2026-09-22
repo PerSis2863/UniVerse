@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { Globe2, Heart, Users, Sparkles, Sprout, ArrowRight, CheckCircle } from 'lucide-react';
+import { Globe2, Heart, Users, Sparkles, Sprout, ArrowRight, CheckCircle, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
@@ -37,10 +37,30 @@ export default function ShowcasePage() {
   const [hoveredStat, setHoveredStat] = useState<number | null>(null);
   const { isSignedIn } = useUser();
   const router = useRouter();
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) router.push('/student');
   }, [isSignedIn, router]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setInstalled(true));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstalled(true);
+    setInstallPrompt(null);
+  };
 
   return (
     <div className="dark min-h-screen overflow-hidden font-sans" style={{ backgroundColor: '#0d1117', color: '#ffffff' }}>
@@ -115,7 +135,7 @@ export default function ShowcasePage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex items-center gap-4 mb-20"
+            className="flex flex-wrap items-center gap-4 mb-20 justify-center"
           >
             <Link
               href="/login"
@@ -123,6 +143,22 @@ export default function ShowcasePage() {
             >
               Get Started <ArrowRight className="w-4 h-4" />
             </Link>
+            {installPrompt && !installed && (
+              <button
+                onClick={handleInstall}
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm transition-all border"
+                style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', borderColor: 'rgba(99,102,241,0.3)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.25)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.15)')}
+              >
+                <Download className="w-4 h-4" /> Install App
+              </button>
+            )}
+            {installed && (
+              <span className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-emerald-400 text-sm font-semibold" style={{ background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.2)', border: '1px solid' }}>
+                ✓ App Installed!
+              </span>
+            )}
             <a
               href="#about"
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-bold text-sm transition-all border"

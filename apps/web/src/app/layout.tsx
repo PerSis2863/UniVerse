@@ -4,6 +4,7 @@ import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from 'sonner';
+import ErrorMonitorBootstrap from '@/components/ErrorMonitorBootstrap';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -76,6 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <link rel="apple-touch-startup-image" href="/icon-512x512.png" />
         </head>
         <body className={`${inter.variable} ${outfit.variable} min-h-screen antialiased`} style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
+            <ErrorMonitorBootstrap />
             {children}
             <Toaster 
               position="bottom-right"
