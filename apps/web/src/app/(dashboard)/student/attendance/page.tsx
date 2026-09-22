@@ -1,22 +1,56 @@
-'use client';
 import { useState } from 'react';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const attendanceData = [
-  { course: 'Data Structures & Algorithms', date: 'Sept 19, 2026', status: 'Present', time: '9:00 AM' },
-  { course: 'Operating Systems', date: 'Sept 18, 2026', status: 'Present', time: '11:00 AM' },
-  { course: 'Database Management', date: 'Sept 17, 2026', status: 'Absent', time: '2:00 PM' },
-  { course: 'Computer Networks', date: 'Sept 16, 2026', status: 'Excused', time: '10:00 AM' },
-  { course: 'Software Engineering', date: 'Sept 15, 2026', status: 'Present', time: '1:00 PM' },
-  { course: 'Data Structures & Algorithms', date: 'Sept 14, 2026', status: 'Present', time: '9:00 AM' },
-];
 
 export default function AttendancePage() {
   const [selectedCourse, setSelectedCourse] = useState('All Courses');
-  const filteredData = selectedCourse === 'All Courses' ? attendanceData : attendanceData.filter(r => r.course === selectedCourse);
+  const { data, isLoading, error } = useSWR('/attendance/student', fetcher);
+
+  if (isLoading) {
+    return (
+      <>
+        <Topbar title="Attendance" subtitle="Track your class presence and absences." />
+        <div className="flex-1 p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Topbar title="Attendance" subtitle="Track your class presence and absences." />
+        <div className="flex-1 p-8 text-center text-rose-500">
+          Failed to load attendance records.
+        </div>
+      </>
+    );
+  }
+
+  const records = data?.records || [];
+  const summary = data?.summary || [];
+
+  const totalClasses = summary.reduce((acc: number, item: any) => acc + item._count.status, 0);
+  const totalPresent = summary.filter((i: any) => i.status === 'PRESENT').reduce((acc: number, item: any) => acc + item._count.status, 0);
+  const totalAbsences = summary.filter((i: any) => i.status === 'ABSENT').reduce((acc: number, item: any) => acc + item._count.status, 0);
+  const totalExcused = summary.filter((i: any) => i.status === 'EXCUSED').reduce((acc: number, item: any) => acc + item._count.status, 0);
+  const attendancePercentage = totalClasses === 0 ? 100 : Math.round((totalPresent / totalClasses) * 1000) / 10;
+
+  const attendanceData = records.map((r: any) => ({
+    course: r.course?.name || 'Unknown Course',
+    date: new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    time: new Date(r.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    status: r.status === 'PRESENT' ? 'Present' : r.status === 'ABSENT' ? 'Absent' : 'Excused',
+  }));
+
+  const filteredData = selectedCourse === 'All Courses' ? attendanceData : attendanceData.filter((r: any) => r.course === selectedCourse);
+
+  const uniqueCourses = Array.from(new Set(attendanceData.map((r: any) => r.course))) as string[];
 
   return (
     <>
@@ -25,9 +59,9 @@ export default function AttendancePage() {
         
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <KpiCard title="Overall Attendance" value="91.2%" icon={ClipboardList} change={2.4} color="indigo" />
-          <KpiCard title="Total Absences" value="3" icon={AlertCircle} change={-1} color="rose" />
-          <KpiCard title="Excused Leaves" value="1" icon={Clock} change={0} color="amber" />
+          <KpiCard title="Overall Attendance" value={`${attendancePercentage}%`} icon={ClipboardList} change={0} color="indigo" />
+          <KpiCard title="Total Absences" value={totalAbsences.toString()} icon={AlertCircle} change={0} color="rose" />
+          <KpiCard title="Excused Leaves" value={totalExcused.toString()} icon={Clock} change={0} color="amber" />
         </div>
 
         {/* Detailed List */}
@@ -40,9 +74,9 @@ export default function AttendancePage() {
               className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50"
             >
               <option value="All Courses">All Courses</option>
-              <option value="Data Structures & Algorithms">Data Structures & Algorithms</option>
-              <option value="Operating Systems">Operating Systems</option>
-              <option value="Database Management">Database Management</option>
+              {uniqueCourses.map((course: string, i: number) => (
+                <option key={i} value={course}>{course}</option>
+              ))}
             </select>
           </div>
 
@@ -56,7 +90,14 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((record, i) => (
+                {filteredData.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="py-8 text-center text-zinc-500">
+                      No attendance records found.
+                    </td>
+                  </tr>
+                )}
+                {filteredData.map((record: any, i: number) => (
                   <motion.tr 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}

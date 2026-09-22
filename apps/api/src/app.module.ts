@@ -37,6 +37,9 @@ import { MentorshipModule } from './mentorship/mentorship.module';
 import { CollaborationsModule } from './collaborations/collaborations.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { HealthModule } from './health/health.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { BlackboardModule } from './blackboard/blackboard.module';
 
 @Module({
   imports: [
@@ -76,6 +79,9 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     CollaborationsModule,
     CalendarModule,
     WebhooksModule,
+    HealthModule,
+    DashboardModule,
+    BlackboardModule,
   ],
   providers: [
     {

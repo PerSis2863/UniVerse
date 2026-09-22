@@ -1,33 +1,15 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { TrendingUp, BookOpen, Award, FileBadge, Download, X, TrendingDown, Sparkles } from 'lucide-react';
+import { TrendingUp, BookOpen, Award, FileBadge, Download, X, TrendingDown, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
-const allGrades: Record<string, { course: string; code: string; credits: number; grade: string; percentage: number }[]> = {
-  'Fall 2026': [
-    { course: 'Data Structures & Algorithms', code: 'CS301', credits: 4, grade: 'A', percentage: 94 },
-    { course: 'Operating Systems', code: 'CS302', credits: 4, grade: 'B+', percentage: 88 },
-    { course: 'Database Management', code: 'CS303', credits: 3, grade: 'A-', percentage: 91 },
-    { course: 'Computer Networks', code: 'CS304', credits: 3, grade: 'A', percentage: 96 },
-    { course: 'Software Engineering', code: 'CS305', credits: 4, grade: 'B', percentage: 84 },
-  ],
-  'Spring 2026': [
-    { course: 'Introduction to AI', code: 'AI201', credits: 4, grade: 'A+', percentage: 98 },
-    { course: 'Web Development', code: 'WEB301', credits: 3, grade: 'A', percentage: 93 },
-    { course: 'Linear Algebra', code: 'MATH201', credits: 3, grade: 'B+', percentage: 89 },
-  ],
-  'Fall 2025': [
-    { course: 'Programming Fundamentals', code: 'CS101', credits: 4, grade: 'A', percentage: 95 },
-    { course: 'Discrete Math', code: 'MATH101', credits: 3, grade: 'A-', percentage: 90 },
-    { course: 'Physics I', code: 'PHY101', credits: 4, grade: 'B+', percentage: 87 },
-  ],
-};
-
-// Historical GPA data for sparkline
+// Historical GPA data for sparkline (mocked for visual effect)
 const gpaHistory = [
   { sem: 'Fall 2025', gpa: 3.72 },
   { sem: 'Spring 2026', gpa: 3.91 },
@@ -131,17 +113,22 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
 // Grade distribution donut
 function GradeDonut({ grades }: { grades: { grade: string; percentage: number }[] }) {
   const [hovered, setHovered] = useState<string | null>(null);
-  const counts = { A: 0, B: 0, C: 0 };
+  const counts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
   grades.forEach(g => {
     if (g.grade.startsWith('A')) counts.A++;
     else if (g.grade.startsWith('B')) counts.B++;
-    else counts.C++;
+    else if (g.grade.startsWith('C')) counts.C++;
+    else if (g.grade.startsWith('D')) counts.D++;
+    else counts.F++;
   });
   const total = grades.length;
+  if (total === 0) return <div className="text-zinc-500 text-sm py-4">No grades available.</div>;
+
   const slices = [
     { label: 'A grades', count: counts.A, color: '#10b981', pct: (counts.A / total) * 100 },
     { label: 'B grades', count: counts.B, color: '#6366f1', pct: (counts.B / total) * 100 },
     { label: 'C grades', count: counts.C, color: '#f59e0b', pct: (counts.C / total) * 100 },
+    { label: 'D/F grades', count: counts.D + counts.F, color: '#ef4444', pct: ((counts.D + counts.F) / total) * 100 },
   ].filter(s => s.count > 0);
 
   const r = 40;
@@ -203,21 +190,76 @@ function GradeDonut({ grades }: { grades: { grade: string; percentage: number }[
   );
 }
 
+function getLetter(percentage: number) {
+  if (percentage >= 97) return 'A+';
+  if (percentage >= 93) return 'A';
+  if (percentage >= 90) return 'A-';
+  if (percentage >= 87) return 'B+';
+  if (percentage >= 83) return 'B';
+  if (percentage >= 80) return 'B-';
+  if (percentage >= 77) return 'C+';
+  if (percentage >= 73) return 'C';
+  if (percentage >= 70) return 'C-';
+  if (percentage >= 67) return 'D+';
+  if (percentage >= 65) return 'D';
+  return 'F';
+}
+
 export default function GradesPage() {
-  const [semester, setSemester] = useState('Fall 2026');
+  const [semester, setSemester] = useState('All Grades');
   const [showModal, setShowModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [transcriptType, setTranscriptType] = useState('full');
 
-  const gradesData = allGrades[semester] ?? [];
-  const avg = gradesData.length ? gradesData.reduce((a, r) => a + r.percentage, 0) / gradesData.length : 0;
+  const { data, isLoading, error } = useSWR('/grades/student', fetcher);
+
+  if (isLoading) {
+    return (
+      <>
+        <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
+        <div className="flex-1 p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
+        <div className="flex-1 p-8 text-center text-rose-500">
+          Failed to load grades.
+        </div>
+      </>
+    );
+  }
+
+  // Group by Course or Date, but since we don't have semester, we'll just show all.
+  const apiGrades = data?.grades || [];
+  
+  const mappedGrades = apiGrades.map((g: any) => {
+    const percentage = g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0;
+    return {
+      course: g.course?.name || 'Unknown',
+      code: g.course?.code || '---',
+      credits: g.course?.credits || 3,
+      assignment: g.assignmentName,
+      grade: getLetter(percentage),
+      percentage: Math.round(percentage)
+    };
+  });
+
+  const allGradesData: Record<string, typeof mappedGrades> = {
+    'All Grades': mappedGrades,
+  };
+
+  const gradesData = allGradesData[semester] ?? [];
+  const avg = gradesData.length ? gradesData.reduce((a: number, r: any) => a + r.percentage, 0) / gradesData.length : 0;
   const semGPA = ((avg / 100) * 4).toFixed(2);
 
-  const prevSems = Object.keys(allGrades);
-  const prevIdx = prevSems.indexOf(semester);
-  const prevData = prevIdx < prevSems.length - 1 ? allGrades[prevSems[prevIdx + 1]] : null;
-  const prevAvg = prevData ? prevData.reduce((a, r) => a + r.percentage, 0) / prevData.length : avg;
-  const trend = avg - prevAvg;
+  const prevAvg = 0; // Mocked for now
+  const trend = avg > 0 ? avg - 85 : 0; // Mocked trend vs an 85 average
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -235,7 +277,7 @@ export default function GradesPage() {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Aditya_Bhatt_Transcript_${transcriptType}.pdf`;
+    a.download = `Student_Transcript_${transcriptType}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -270,9 +312,9 @@ export default function GradesPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <KpiCard title="Cumulative GPA" value="3.84" icon={TrendingUp} change={0.12} color="indigo" />
-          <KpiCard title="Credits Earned" value="84" icon={Award} change={14} color="emerald" />
-          <KpiCard title="Semester GPA" value={semGPA} icon={BookOpen} change={0.2} color="fuchsia" />
+          <KpiCard title="Cumulative GPA" value={semGPA} icon={TrendingUp} change={0} color="indigo" />
+          <KpiCard title="Credits Earned" value={gradesData.reduce((acc: number, r: any) => acc + r.credits, 0).toString()} icon={Award} change={0} color="emerald" />
+          <KpiCard title="Average Score" value={`${Math.round(avg)}%`} icon={BookOpen} change={0} color="fuchsia" />
         </div>
 
         {/* Performance Insight Banner */}
@@ -297,9 +339,10 @@ export default function GradesPage() {
               <span className="text-sm font-bold text-zinc-900 dark:text-white">AI Performance Insight</span>
             </div>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {trend >= 0
-                ? `Your average improved by ${Math.abs(trend).toFixed(1)}% compared to last semester. You're in the top 15% of your cohort! 🚀 Keep it up.`
-                : `Your average dipped by ${Math.abs(trend).toFixed(1)}% this semester. Focus on ${gradesData.sort((a,b) => a.percentage - b.percentage)[0]?.course ?? 'your weakest subject'} to boost your GPA.`
+              {gradesData.length === 0 ? "No grades available yet to analyze." :
+               trend >= 0
+                ? `You're performing well above average. Keep it up! 🚀`
+                : `Your average is slightly down. Focus on your weaker subjects to boost your GPA.`
               }
             </p>
           </div>
@@ -337,7 +380,7 @@ export default function GradesPage() {
               onChange={e => setSemester(e.target.value)}
               className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50 font-medium text-zinc-900 dark:text-white"
             >
-              {Object.keys(allGrades).map(s => <option key={s}>{s}</option>)}
+              {Object.keys(allGradesData).map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
 
@@ -345,14 +388,21 @@ export default function GradesPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/[0.06] text-sm text-zinc-500 dark:text-zinc-400">
-                  <th className="pb-3 font-medium px-4">Course</th>
+                  <th className="pb-3 font-medium px-4">Course / Assignment</th>
                   <th className="pb-3 font-medium px-4 text-center hidden sm:table-cell">Credits</th>
                   <th className="pb-3 font-medium px-4 text-center">Score</th>
                   <th className="pb-3 font-medium px-4 text-center">Grade</th>
                 </tr>
               </thead>
               <tbody>
-                {gradesData.map((record, i) => (
+                {gradesData.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-zinc-500">
+                      No grades found.
+                    </td>
+                  </tr>
+                )}
+                {gradesData.map((record: any, i: number) => (
                   <motion.tr
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -363,7 +413,7 @@ export default function GradesPage() {
                   >
                     <td className="py-4 px-4">
                       <div className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{record.course}</div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-mono">{record.code}</div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-mono">{record.code} • {record.assignment}</div>
                     </td>
                     <td className="py-4 px-4 text-sm text-center text-zinc-600 dark:text-zinc-300 font-medium hidden sm:table-cell">{record.credits}</td>
                     <td className="py-4 px-4 text-center">
@@ -382,7 +432,8 @@ export default function GradesPage() {
                         "inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-black border",
                         record.grade.startsWith('A') ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
                         record.grade.startsWith('B') ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" :
-                        "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20"
+                        record.grade.startsWith('C') ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
+                        "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
                       )}>
                         {record.grade}
                       </div>

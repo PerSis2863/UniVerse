@@ -3,13 +3,11 @@ import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Users, BookOpen, DollarSign, Activity, TrendingUp, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-
-const recentPayments = [
-  { name: 'Aditya Bhatt', type: 'Tuition Fee', amount: 2500, status: 'completed' },
-  { name: 'Priya Sharma', type: 'Exam Fee', amount: 150, status: 'pending' },
-  { name: 'Rahul Kumar', type: 'Library Fee', amount: 50, status: 'completed' },
-  { name: 'Sneha Patel', type: 'Activity Fee', amount: 200, status: 'failed' },
-];
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useLanguageStore } from '@/store/language';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 const statusIcon = {
   completed: <CheckCircle2 className="w-4 h-4 text-green-400" />,
@@ -17,31 +15,28 @@ const statusIcon = {
   failed: <XCircle className="w-4 h-4 text-rose-400" />,
 };
 
-const departments = [
-  { name: 'Computer Science', students: 420, teachers: 28, color: '#6366f1' },
-  { name: 'Mathematics', students: 310, teachers: 22, color: '#06b6d4' },
-  { name: 'Physics', students: 280, teachers: 18, color: '#10b981' },
-  { name: 'Electronics', students: 365, teachers: 24, color: '#f59e0b' },
-];
-
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { useLanguageStore } from '@/store/language';
 
 export default function AdminDashboard() {
   const { t } = useLanguageStore();
-  const [pendingUsers, setPendingUsers] = useState([
-    { id: 1, name: 'Dr. Kavya Reddy', role: 'Teacher', dept: 'Computer Science', applied: '2 hours ago' },
-    { id: 2, name: 'Mohammed Ali', role: 'Teacher', dept: 'Mathematics', applied: '5 hours ago' },
-    { id: 3, name: 'Lisa Chen', role: 'Admin', dept: 'Administration', applied: '1 day ago' },
-  ]);
+  const { data, isLoading } = useSWR('/dashboard/admin', fetcher);
+  
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
 
-  const handleApprove = (id: number, name: string) => {
+  useEffect(() => {
+    if (data?.pendingUsers && pendingUsers.length === 0) {
+      setPendingUsers(data.pendingUsers);
+    }
+  }, [data]);
+
+  const departments = data?.departments || [];
+  const recentPayments = data?.recentPayments || [];
+
+  const handleApprove = (id: string, name: string) => {
     setPendingUsers(prev => prev.filter(u => u.id !== id));
     toast.success(`${name} approved successfully`);
   };
 
-  const handleReject = (id: number, name: string) => {
+  const handleReject = (id: string, name: string) => {
     setPendingUsers(prev => prev.filter(u => u.id !== id));
     toast.error(`${name}'s application rejected`);
   };
@@ -57,10 +52,10 @@ export default function AdminDashboard() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard title={t('admin.total_students')} value="1,375" icon={Users} change={12} color="indigo" />
-          <KpiCard title={t('admin.active_courses')} value="48" icon={BookOpen} change={4} color="cyan" />
-          <KpiCard title={t('admin.revenue')} value={formatCurrency(87500)} icon={DollarSign} change={8} color="green" />
-          <KpiCard title={t('admin.uptime')} value="99.9%" icon={Activity} change={0} color="amber" />
+          <KpiCard title={t('admin.total_students')} value={data?.totalStudents || 0} icon={Users} change={12} color="indigo" />
+          <KpiCard title={t('admin.active_courses')} value={data?.totalCourses || 0} icon={BookOpen} change={4} color="cyan" />
+          <KpiCard title={t('admin.revenue')} value={formatCurrency(data?.revenue || 0)} icon={DollarSign} change={8} color="green" />
+          <KpiCard title={t('admin.uptime')} value={data?.uptime || '99.9%'} icon={Activity} change={0} color="amber" />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

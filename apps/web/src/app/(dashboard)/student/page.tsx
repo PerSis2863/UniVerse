@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import dynamic from 'next/dynamic';
@@ -20,25 +22,19 @@ import Link from 'next/link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { motion } from 'framer-motion';
 
-const deadlines = [
-  { title: 'Project Phase 1', course: 'Software Eng', due: 'Tomorrow, 11:59 PM', urgent: true },
-  { title: 'Midterm Essay', course: 'Ethics', due: 'Friday, 5:00 PM', urgent: false },
-  { title: 'Lab 4 Report', course: 'Physics', due: 'Next Mon, 8:00 AM', urgent: false },
-];
-
-const courseProgress = [
-  { name: 'Data Structures', grade: '94%', progress: 85, color: 'from-indigo-500 to-indigo-400' },
-  { name: 'Operating Systems', grade: '88%', progress: 65, color: 'from-cyan-500 to-cyan-400' },
-  { name: 'Database Management', grade: '92%', progress: 75, color: 'from-emerald-500 to-emerald-400' },
-  { name: 'Software Engineering', grade: 'A', progress: 40, color: 'from-amber-500 to-amber-400' },
-];
-
 export default function StudentDashboard() {
   const { user } = useAuthStore();
   const { t } = useLanguageStore();
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
+
+  const { data, error, isLoading } = useSWR('/api/dashboard/student', fetcher);
+
+  if (isLoading) return <div className="p-8 text-center text-zinc-500">Loading dashboard...</div>;
+  if (error) return <div className="p-8 text-center text-rose-500">Failed to load dashboard</div>;
+
+  const { kpis, courseProgress = [], deadlines = [], schedule = [] } = data || {};
 
   return (
     <>
@@ -83,11 +79,11 @@ export default function StudentDashboard() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <KpiCard title={t('dashboard.enrolled')} value="6" icon={BookOpen} change={0} color="indigo" />
-          <KpiCard title={t('dashboard.attendance')} value="91.2%" icon={ClipboardList} change={2.4} color="green" />
-          <KpiCard title={t('dashboard.gpa')} value="3.74" icon={BarChart3} change={5} color="cyan" />
-          <KpiCard title={t('dashboard.assignments')} value="24/28" icon={Trophy} change={-3} color="amber" />
-          <KpiCard title={t('dashboard.impact_hours')} value="142 hrs" icon={Globe2} change={18} color="indigo" />
+          <KpiCard title={t('dashboard.enrolled')} value={kpis?.enrolled?.toString() || "0"} icon={BookOpen} change={0} color="indigo" />
+          <KpiCard title={t('dashboard.attendance')} value={`${kpis?.attendance || 0}%`} icon={ClipboardList} change={0} color="green" />
+          <KpiCard title={t('dashboard.gpa')} value={(kpis?.gpa || 0).toFixed(2)} icon={BarChart3} change={0} color="cyan" />
+          <KpiCard title={t('dashboard.assignments')} value={kpis?.assignments?.toString() || "0"} icon={Trophy} change={0} color="amber" />
+          <KpiCard title={t('dashboard.impact_hours')} value={`${kpis?.impactHours || 0} hrs`} icon={Globe2} change={0} color="indigo" />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -98,13 +94,9 @@ export default function StudentDashboard() {
               <span className="text-xs text-zinc-500 dark:text-zinc-500">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
             </div>
             <div className="space-y-3">
-              {[
-                { time: '09:00 AM', course: 'Advanced Algorithms', location: 'Room 302', duration: 1.5, type: 'Lecture', color: '#6366f1' },
-                { time: '11:30 AM', course: 'Operating Systems', location: 'Lab 4', duration: 2, type: 'Lab', color: '#10b981' },
-                { time: '02:00 PM', course: 'Machine Learning', location: 'Virtual', duration: 1.5, type: 'Lecture', color: '#a855f7' }
-              ].map((cls, i) => (
+              {schedule.length > 0 ? schedule.map((cls: any, i: number) => (
                 <div key={i} onClick={() => setSelectedClass({ ...cls, subject: cls.course })} className="flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group border border-zinc-200 dark:border-white/[0.06] bg-zinc-100 dark:bg-white/[0.03]">
-                  <div className="w-1.5 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
+                  <div className="w-1.5 h-12 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color || '#6366f1' }} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">{cls.course}</div>
                     <div className="text-xs text-zinc-500 dark:text-zinc-500">{cls.location}</div>
@@ -114,7 +106,9 @@ export default function StudentDashboard() {
                     {cls.time}
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-sm text-zinc-500 text-center py-4">No classes scheduled for today.</div>
+              )}
             </div>
           </div>
 
@@ -176,7 +170,7 @@ export default function StudentDashboard() {
               <Link href="/student/courses" className="text-xs font-semibold text-indigo-500 hover:text-indigo-600">{t('dashboard.view_all')}</Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {courseProgress.map((course, i) => (
+              {courseProgress.map((course: any, i: number) => (
                 <div key={i} className="p-4 rounded-xl border border-zinc-200 dark:border-white/[0.06] bg-zinc-50 dark:bg-white/[0.02]">
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="font-semibold text-sm text-zinc-900 dark:text-white">{course.name}</h3>
@@ -206,7 +200,7 @@ export default function StudentDashboard() {
               <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-white"><Calendar className="w-4 h-4" /></button>
             </div>
             <div className="space-y-3 flex-1">
-              {deadlines.map((item, i) => (
+              {deadlines.map((item: any, i: number) => (
                 <div key={i} className="flex gap-3 p-3 rounded-xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 hover:border-indigo-500/30 transition-colors group cursor-pointer">
                   <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0", item.urgent ? "bg-rose-500/10 text-rose-500" : "bg-indigo-500/10 text-indigo-500")}>
                     {item.urgent ? <AlertCircle className="w-5 h-5" /> : <Clock className="w-5 h-5" />}

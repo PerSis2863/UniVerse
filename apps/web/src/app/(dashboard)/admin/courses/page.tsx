@@ -3,51 +3,61 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Plus, Edit2, Trash2, X, BookOpen, Users, FileText, LayoutGrid } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-const MOCK_COURSES = [
-  { id: '1', name: 'Computer Science 101', code: 'CS101', teacher: 'Dr. Alan Turing', emoji: '💻', color: '#3b82f6', description: 'Introduction to computer science and programming fundamentals.', materials: 12, quizzes: 3 },
-  { id: '2', name: 'Advanced Calculus', code: 'MATH201', teacher: 'Dr. Katherine Johnson', emoji: '📐', color: '#f59e0b', description: 'Limits, derivatives, integrals, and the fundamental theorem of calculus.', materials: 8, quizzes: 5 },
-  { id: '3', name: 'World History', code: 'HIST101', teacher: 'Prof. Mary Beard', emoji: '🌍', color: '#10b981', description: 'A comprehensive overview of global historical events and civilizations.', materials: 15, quizzes: 2 },
-];
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
+import api from '@/lib/api';
 
 export default function AdminCoursesPage() {
-  const [courses, setCourses] = useState(MOCK_COURSES);
+  const { data: courses = [], mutate: mutateCourses } = useSWR('/courses/admin/all', fetcher);
+  const { data: teachers = [] } = useSWR('/users?role=TEACHER', fetcher);
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    name: '', code: '', teacher: '', emoji: '📚', color: '#6366f1', description: ''
+    name: '', code: '', teacherId: '', emoji: '📚', color: '#6366f1', description: ''
   });
 
   const handleOpenModal = (id: string | null = null) => {
     if (id) {
-      const item = courses.find(c => c.id === id);
-      if (item) setFormData({ name: item.name, code: item.code, teacher: item.teacher, emoji: item.emoji, color: item.color, description: item.description });
+      const item = courses.find((c: any) => c.id === id);
+      if (item) setFormData({ name: item.name, code: item.code, teacherId: item.teacherId, emoji: item.emoji || '📚', color: item.color || '#6366f1', description: item.description || '' });
       setEditingId(id);
     } else {
-      setFormData({ name: '', code: '', teacher: '', emoji: '📚', color: '#6366f1', description: '' });
+      setFormData({ name: '', code: '', teacherId: '', emoji: '📚', color: '#6366f1', description: '' });
       setEditingId(null);
     }
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      setCourses(prev => prev.map(c => c.id === editingId ? { ...c, ...formData } : c));
-      toast.success('Course updated successfully');
-    } else {
-      setCourses(prev => [...prev, { ...formData, id: Math.random().toString(), materials: 0, quizzes: 0 }]);
-      toast.success('New course created');
+    try {
+      if (editingId) {
+        await api.patch(`/courses/${editingId}`, formData);
+        toast.success('Course updated successfully');
+      } else {
+        await api.post('/courses', formData);
+        toast.success('New course created');
+      }
+      setIsModalOpen(false);
+      mutateCourses();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'An error occurred');
     }
-    setIsModalOpen(false);
   };
   
-  const handleDelete = (id: string) => {
-    setCourses(prev => prev.filter(c => c.id !== id));
-    toast.success('Course deleted');
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this course?")) {
+      try {
+        await api.delete(`/courses/${id}`);
+        toast.success('Course deleted');
+        mutateCourses();
+      } catch (error: any) {
+        toast.error('Failed to delete course');
+      }
+    }
   };
 
   return (
@@ -88,7 +98,12 @@ export default function AdminCoursesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Primary Instructor</label>
-                  <input required value={formData.teacher} onChange={e => setFormData({...formData, teacher: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. Dr. Sigmund Freud" />
+                  <select required value={formData.teacherId} onChange={e => setFormData({...formData, teacherId: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
+                    <option value="" disabled>Select an instructor</option>
+                    {teachers.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -123,13 +138,13 @@ export default function AdminCoursesPage() {
         <div className="max-w-7xl mx-auto space-y-6">
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
+            {courses.map((course: any) => (
               <div key={course.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden flex flex-col group">
-                <div className="h-24 p-6 relative flex items-center justify-between" style={{ backgroundColor: course.color }}>
-                  <div className="bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-zinc-900 dark:text-white">
+                <div className="h-24 p-6 relative flex items-center justify-between" style={{ backgroundColor: course.color || '#6366f1' }}>
+                  <div className="bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-white">
                     {course.code}
                   </div>
-                  <div className="text-4xl">{course.emoji}</div>
+                  <div className="text-4xl">{course.emoji || '📚'}</div>
                 </div>
                 <div className="p-5 flex-1 flex flex-col">
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">{course.name}</h3>
@@ -139,17 +154,17 @@ export default function AdminCoursesPage() {
                   
                   <div className="flex items-center gap-2 mb-4">
                     <Users className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                    <span className="text-sm text-zinc-300">{course.teacher}</span>
+                    <span className="text-sm text-zinc-600 dark:text-zinc-300">{course.teacher?.name || 'Unassigned'}</span>
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-400 p-3 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 mb-4">
                     <div className="flex flex-col gap-1 items-center flex-1 border-r border-zinc-200 dark:border-zinc-800">
                       <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/> Materials</span>
-                      <span className="text-zinc-900 dark:text-white font-medium text-sm">{course.materials}</span>
+                      <span className="text-zinc-900 dark:text-white font-medium text-sm">{course._count?.materials || 0}</span>
                     </div>
                     <div className="flex flex-col gap-1 items-center flex-1">
                       <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5"/> Quizzes</span>
-                      <span className="text-zinc-900 dark:text-white font-medium text-sm">{course.quizzes}</span>
+                      <span className="text-zinc-900 dark:text-white font-medium text-sm">{course._count?.quizzes || 0}</span>
                     </div>
                   </div>
                 </div>

@@ -2,28 +2,11 @@
 
 import { Topbar } from '@/components/layout/Topbar';
 import { Users, UserCheck, UserX, Clock, Calendar, CheckCircle2, ChevronDown, Download, Save, Filter, FileText, Check, X } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
-
-// Define rich mock data covering various courses including business
-const COURSES = [
-  { id: 'BUS101', name: 'Introduction to Business', code: 'BUS-101' },
-  { id: 'FIN202', name: 'Corporate Finance', code: 'FIN-202' },
-  { id: 'MKT305', name: 'Digital Marketing Strategies', code: 'MKT-305' },
-  { id: 'CS101', name: 'Introduction to Computer Science', code: 'CS-101' },
-  { id: 'ENG201', name: 'Advanced Engineering', code: 'ENG-201' },
-];
-
-const STUDENTS = [
-  { id: 'S001', name: 'Alice Johnson', email: 'alice.j@university.edu', major: 'Business Admin' },
-  { id: 'S002', name: 'Bob Smith', email: 'bob.s@university.edu', major: 'Computer Science' },
-  { id: 'S003', name: 'Charlie Brown', email: 'charlie.b@university.edu', major: 'Marketing' },
-  { id: 'S004', name: 'Diana Prince', email: 'diana.p@university.edu', major: 'Finance' },
-  { id: 'S005', name: 'Ethan Hunt', email: 'ethan.h@university.edu', major: 'Engineering' },
-  { id: 'S006', name: 'Fiona Gallagher', email: 'fiona.g@university.edu', major: 'Business Admin' },
-  { id: 'S007', name: 'George Miller', email: 'george.m@university.edu', major: 'Economics' },
-  { id: 'S008', name: 'Hannah Abbott', email: 'hannah.a@university.edu', major: 'Computer Science' },
-];
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
+import { api } from '@/lib/api';
 
 const MOCK_JUSTIFICATIONS = [
   { id: 'J1', studentName: 'Charlie Brown', studentId: 'S003', course: 'BUS-101', date: '2026-10-24', reason: 'Medical emergency (doctor note attached)', status: 'PENDING' },
@@ -32,48 +15,48 @@ const MOCK_JUSTIFICATIONS = [
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
-const generateInitialAttendance = () => {
-  const data: Record<string, Record<string, Record<string, AttendanceStatus>>> = {};
-  const today = new Date().toISOString().split('T')[0];
-  
-  data[today] = {};
-  COURSES.forEach(course => {
-    data[today][course.id] = {};
-    STUDENTS.forEach((student, index) => {
-      let status: AttendanceStatus = 'present';
-      if (index % 5 === 0) status = 'absent';
-      else if (index % 7 === 0) status = 'late';
-      
-      data[today][course.id][student.id] = status;
-    });
-  });
-  return data;
-};
-
 export default function AdminAttendance() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedCourse, setSelectedCourse] = useState(COURSES[0].id);
-  const [activeTab, setActiveTab] = useState<'roster' | 'justifications'>('roster');
+  const { data: courses = [] } = useSWR('/courses/admin/all', fetcher);
   
-  const [attendanceRecords, setAttendanceRecords] = useState(generateInitialAttendance());
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedCourse, setSelectedCourse] = useState('');
+  
+  useEffect(() => {
+    if (courses.length > 0 && !selectedCourse) {
+      setSelectedCourse(courses[0].id);
+    }
+  }, [courses, selectedCourse]);
+
+  const { data: courseData, mutate: mutateCourseData } = useSWR(
+    selectedCourse ? `/attendance/course/${selectedCourse}?date=${selectedDate}` : null,
+    fetcher
+  );
+
+  const [activeTab, setActiveTab] = useState<'roster' | 'justifications'>('roster');
   const [localEdits, setLocalEdits] = useState<Record<string, AttendanceStatus>>({});
   const [justifications, setJustifications] = useState(MOCK_JUSTIFICATIONS);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedJustificationPhoto, setSelectedJustificationPhoto] = useState<string | null>(null);
 
   const currentAttendance = useMemo(() => {
-    const record = attendanceRecords[selectedDate]?.[selectedCourse] || {};
+    const record: Record<string, AttendanceStatus> = {};
+    if (courseData?.attendance) {
+      courseData.attendance.forEach((att: any) => {
+        record[att.studentId] = att.status.toLowerCase() as AttendanceStatus;
+      });
+    }
     return { ...record, ...localEdits };
-  }, [attendanceRecords, selectedDate, selectedCourse, localEdits]);
+  }, [courseData, localEdits]);
 
   const stats = useMemo(() => {
-    const total = STUDENTS.length;
+    const total = courseData?.enrollments?.length || 0;
     let present = 0;
     let absent = 0;
     let late = 0;
     
-    STUDENTS.forEach(student => {
-      const status = currentAttendance[student.id] || 'present';
+    courseData?.enrollments?.forEach((enrollment: any) => {
+      const studentId = enrollment.student.id;
+      const status = currentAttendance[studentId] || 'present';
       if (status === 'present') present++;
       if (status === 'absent') absent++;
       if (status === 'late') late++;
@@ -84,9 +67,9 @@ export default function AdminAttendance() {
       present,
       absent,
       late,
-      rate: Math.round(((present + late) / total) * 100) || 0
+      rate: total > 0 ? Math.round(((present + late) / total) * 100) : 0
     };
-  }, [currentAttendance]);
+  }, [currentAttendance, courseData]);
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     setLocalEdits(prev => ({
@@ -95,26 +78,25 @@ export default function AdminAttendance() {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    setTimeout(() => {
-      setAttendanceRecords(prev => {
-        const newRecords = { ...prev };
-        if (!newRecords[selectedDate]) newRecords[selectedDate] = {};
-        if (!newRecords[selectedDate][selectedCourse]) newRecords[selectedDate][selectedCourse] = {};
-        
-        newRecords[selectedDate][selectedCourse] = {
-          ...newRecords[selectedDate][selectedCourse],
-          ...localEdits
-        };
-        
-        return newRecords;
-      });
-      
-      setLocalEdits({});
-      setIsSaving(false);
+    try {
+      const promises = Object.entries(localEdits).map(([studentId, status]) => 
+        api.post(`/attendance/course/${selectedCourse}`, {
+          date: selectedDate,
+          studentId,
+          status: status.toUpperCase(),
+        })
+      );
+      await Promise.all(promises);
       toast.success('Attendance records saved successfully.');
-    }, 800);
+      setLocalEdits({});
+      mutateCourseData();
+    } catch (e: any) {
+      toast.error('Failed to save attendance');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleJustificationAction = (id: string, action: 'APPROVE' | 'REJECT') => {
@@ -175,14 +157,11 @@ export default function AdminAttendance() {
                     <div className="flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden focus-within:border-indigo-500 transition-colors">
                       <div className="pl-3 text-zinc-600 dark:text-zinc-400"><Filter className="w-4 h-4" /></div>
                       <select 
-                        value={selectedCourse}
-                        onChange={(e) => {
-                          setSelectedCourse(e.target.value);
-                          setLocalEdits({});
-                        }}
-                        className="bg-transparent border-none text-sm text-zinc-900 dark:text-white px-3 py-2 outline-none w-56 appearance-none cursor-pointer"
+                        value={selectedCourse} 
+                        onChange={(e) => setSelectedCourse(e.target.value)}
+                        className="pl-10 pr-8 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 appearance-none"
                       >
-                        {COURSES.map(course => (
+                        {courses.map(course => (
                           <option key={course.id} value={course.id}>{course.code} - {course.name}</option>
                         ))}
                       </select>
@@ -269,7 +248,7 @@ export default function AdminAttendance() {
                     </div>
                     <div>
                       <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Class Roster</h2>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">Mark attendance for {COURSES.find(c => c.id === selectedCourse)?.code}</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">Mark attendance for {courses.find((c: any) => c.id === selectedCourse)?.code}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-xs font-medium">
@@ -280,45 +259,38 @@ export default function AdminAttendance() {
                 </div>
                 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full">
                     <thead>
-                      <tr className="bg-zinc-50 dark:bg-zinc-950/80">
-                        <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50 pl-6">Student Info</th>
-                        <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50">Major</th>
-                        <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50 text-right pr-6">Status</th>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                        <th className="text-left p-4 text-sm font-medium text-zinc-500 dark:text-zinc-500">Student Name</th>
+                        <th className="text-right p-4 text-sm font-medium text-zinc-500 dark:text-zinc-500">Attendance Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800/30">
-                      {STUDENTS.map((student) => {
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
+                      {courseData?.enrollments?.map((enrollment: any) => {
+                        const student = enrollment.student;
                         const status = currentAttendance[student.id] || 'present';
                         
                         return (
-                          <tr key={student.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
-                            <td className="p-4 pl-6">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold shadow-inner">
+                          <tr key={student.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
                                   {student.name.charAt(0)}
                                 </div>
                                 <div>
                                   <div className="text-sm font-medium text-zinc-900 dark:text-white">{student.name}</div>
-                                  <div className="text-xs text-zinc-500 dark:text-zinc-500 font-mono mt-0.5">{student.id} • {student.email}</div>
+                                  <div className="text-xs text-zinc-500 dark:text-zinc-500">{student.email}</div>
                                 </div>
                               </div>
                             </td>
-                            
                             <td className="p-4">
-                              <span className="inline-flex px-2.5 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800/50 text-zinc-300 text-xs font-medium border border-zinc-700/30">
-                                {student.major}
-                              </span>
-                            </td>
-                            
-                            <td className="p-4 pr-6 text-right">
-                              <div className="inline-flex rounded-xl bg-zinc-50 dark:bg-zinc-950 p-1 border border-zinc-200 dark:border-zinc-800 shadow-inner">
+                              <div className="flex justify-end gap-1.5 sm:gap-2">
                                 <button
                                   onClick={() => handleStatusChange(student.id, 'present')}
                                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                                     status === 'present' 
-                                      ? 'bg-emerald-500/15 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)] border border-emerald-500/20' 
+                                      ? 'bg-emerald-500/15 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.15)] border border-emerald-500/20' 
                                       : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white dark:bg-zinc-900'
                                   }`}
                                 >
@@ -328,7 +300,7 @@ export default function AdminAttendance() {
                                   onClick={() => handleStatusChange(student.id, 'absent')}
                                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                                     status === 'absent' 
-                                      ? 'bg-red-500/15 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)] border border-red-500/20' 
+                                      ? 'bg-red-500/15 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.15)] border border-red-500/20' 
                                       : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white dark:bg-zinc-900'
                                   }`}
                                 >
@@ -338,7 +310,7 @@ export default function AdminAttendance() {
                                   onClick={() => handleStatusChange(student.id, 'late')}
                                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                                     status === 'late' 
-                                      ? 'bg-amber-500/15 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.1)] border border-amber-500/20' 
+                                      ? 'bg-amber-500/15 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.15)] border border-amber-500/20' 
                                       : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white dark:bg-zinc-900'
                                   }`}
                                 >
@@ -348,7 +320,7 @@ export default function AdminAttendance() {
                                   onClick={() => handleStatusChange(student.id, 'excused')}
                                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                                     status === 'excused' 
-                                      ? 'bg-blue-500/15 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.1)] border border-blue-500/20' 
+                                      ? 'bg-blue-500/15 text-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.15)] border border-blue-500/20' 
                                       : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-300 hover:bg-white dark:bg-zinc-900'
                                   }`}
                                 >

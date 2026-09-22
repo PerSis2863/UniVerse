@@ -3,20 +3,28 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Target, Award, CheckCircle2, ChevronRight, BookOpen, Code, Terminal, Monitor, Layout, Database, MessageSquare, Users, Brain, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
-const TECHNICAL_SKILLS = [
-  { name: 'JavaScript / TypeScript', level: 85, icon: Code },
-  { name: 'React & Next.js', level: 90, icon: Layout },
-  { name: 'Database Design', level: 70, icon: Database },
-  { name: 'System Architecture', level: 45, icon: Monitor },
-  { name: 'Python', level: 75, icon: Terminal },
-];
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
-const SOFT_SKILLS = [
-  { name: 'Communication', level: 80, icon: MessageSquare },
-  { name: 'Team Collaboration', level: 95, icon: Users },
-  { name: 'Problem Solving', level: 85, icon: Brain },
-  { name: 'Time Management', level: 60, icon: Clock },
-];
+// Default icons based on name/category
+const getSkillIcon = (name: string, category: string) => {
+  if (name.toLowerCase().includes('react') || name.toLowerCase().includes('next')) return Layout;
+  if (name.toLowerCase().includes('java') || name.toLowerCase().includes('python') || name.toLowerCase().includes('code')) return Code;
+  if (name.toLowerCase().includes('database') || name.toLowerCase().includes('sql')) return Database;
+  if (name.toLowerCase().includes('system') || name.toLowerCase().includes('architecture')) return Monitor;
+  if (name.toLowerCase().includes('communication')) return MessageSquare;
+  if (name.toLowerCase().includes('team') || name.toLowerCase().includes('collaborat')) return Users;
+  if (name.toLowerCase().includes('time')) return Clock;
+  if (category?.toLowerCase().includes('soft')) return Brain;
+  return Terminal;
+};
+
+const getLevelValue = (level: string) => {
+  if (level === 'EXPERT') return 95;
+  if (level === 'ADVANCED') return 80;
+  if (level === 'INTERMEDIATE') return 60;
+  return 30; // BEGINNER
+};
 
 const ACHIEVEMENTS = [
   { title: 'Dean\'s List', date: 'Fall 2025', icon: Award, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
@@ -30,6 +38,11 @@ const IMPACT_BADGES = [
 ];
 
 export default function StudentSkills() {
+  const { data: mySkills, isLoading } = useSWR('/skills/my', fetcher);
+
+  const technicalSkills = (mySkills || []).filter((s: any) => s.category?.toLowerCase() === 'technical' || !s.category?.toLowerCase().includes('soft'));
+  const softSkills = (mySkills || []).filter((s: any) => s.category?.toLowerCase() === 'soft skill' || s.category?.toLowerCase().includes('soft'));
+
   const getLevelColor = (level: number) => {
     if (level >= 90) return 'bg-emerald-500';
     if (level >= 75) return 'bg-indigo-500';
@@ -58,7 +71,7 @@ export default function StudentSkills() {
                 <Target className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-3xl font-bold text-zinc-900 dark:text-white">12</div>
+                <div className="text-3xl font-bold text-zinc-900 dark:text-white">{mySkills?.length || 0}</div>
                 <div className="text-sm text-zinc-600 dark:text-zinc-400">Skills Tracked</div>
               </div>
             </div>
@@ -92,25 +105,33 @@ export default function StudentSkills() {
               </div>
               
               <div className="space-y-6">
-                {TECHNICAL_SKILLS.map((skill, i) => (
+                {isLoading ? (
+                  <div className="text-center py-8 text-zinc-500">Loading skills...</div>
+                ) : technicalSkills.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-500">No technical skills added yet.</div>
+                ) : technicalSkills.map((skill: any, i: number) => {
+                  const Icon = getSkillIcon(skill.name, skill.category);
+                  const levelVal = getLevelValue(skill.level);
+                  return (
                   <div key={i} className="group cursor-pointer" onClick={() => toast.success(`Viewing details for ${skill.name}`)}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <skill.icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors" />
+                        <Icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors" />
                         <span className="text-sm font-semibold text-zinc-200">{skill.name}</span>
                       </div>
                       <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                        {getLevelLabel(skill.level)} • {skill.level}%
+                        {getLevelLabel(levelVal)} • {levelVal}%
                       </div>
                     </div>
                     <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full rounded-full transition-all duration-1000 ${getLevelColor(skill.level)}`}
-                        style={{ width: `${skill.level}%` }}
+                        className={`h-full rounded-full transition-all duration-1000 ${getLevelColor(levelVal)}`}
+                        style={{ width: `${levelVal}%` }}
                       ></div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -120,25 +141,33 @@ export default function StudentSkills() {
                 <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-8">Soft Skills</h3>
                 
                 <div className="space-y-6">
-                  {SOFT_SKILLS.map((skill, i) => (
+                  {isLoading ? (
+                    <div className="text-center py-8 text-zinc-500">Loading soft skills...</div>
+                  ) : softSkills.length === 0 ? (
+                    <div className="text-center py-8 text-zinc-500">No soft skills added yet.</div>
+                  ) : softSkills.map((skill: any, i: number) => {
+                    const Icon = getSkillIcon(skill.name, skill.category);
+                    const levelVal = getLevelValue(skill.level);
+                    return (
                     <div key={i} className="group cursor-pointer" onClick={() => toast.success(`Viewing details for ${skill.name}`)}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <skill.icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors" />
+                          <Icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors" />
                           <span className="text-sm font-semibold text-zinc-200">{skill.name}</span>
                         </div>
                         <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                          {getLevelLabel(skill.level)} • {skill.level}%
+                          {getLevelLabel(levelVal)} • {levelVal}%
                         </div>
                       </div>
                       <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full transition-all duration-1000 ${getLevelColor(skill.level)}`}
-                          style={{ width: `${skill.level}%` }}
+                          className={`h-full rounded-full transition-all duration-1000 ${getLevelColor(levelVal)}`}
+                          style={{ width: `${levelVal}%` }}
                         ></div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

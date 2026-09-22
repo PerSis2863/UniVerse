@@ -1,21 +1,10 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { Search, Filter, MoreVertical, Mail, GraduationCap, X, User } from 'lucide-react';
+import { Search, Filter, MoreVertical, Mail, GraduationCap, X, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-const MOCK_STUDENTS = [
-  { id: '1', name: 'Alice Johnson', email: 'alice.j@universe.edu', course: 'Introduction to Computer Science', grade: 'A', attendance: '95%' },
-  { id: '2', name: 'Bob Smith', email: 'bob.s@universe.edu', course: 'Data Structures and Algorithms', grade: 'B+', attendance: '88%' },
-  { id: '3', name: 'Charlie Brown', email: 'charlie.b@universe.edu', course: 'Introduction to Business', grade: 'A-', attendance: '92%' },
-  { id: '4', name: 'Diana Prince', email: 'diana.p@universe.edu', course: 'Corporate Finance', grade: 'A+', attendance: '98%' },
-  { id: '5', name: 'Evan Davis', email: 'evan.d@universe.edu', course: 'Introduction to Computer Science', grade: 'C+', attendance: '75%' },
-  { id: '6', name: 'Fiona Gallagher', email: 'fiona.g@universe.edu', course: 'Digital Marketing Strategy', grade: 'B', attendance: '85%' },
-  { id: '7', name: 'George Miller', email: 'george.m@universe.edu', course: 'Data Structures and Algorithms', grade: 'B-', attendance: '80%' },
-  { id: '8', name: 'Hannah Abbott', email: 'hannah.a@universe.edu', course: 'Introduction to Business', grade: 'A', attendance: '100%' },
-  { id: '9', name: 'Ian Wright', email: 'ian.w@universe.edu', course: 'Corporate Finance', grade: 'C', attendance: '70%' },
-  { id: '10', name: 'Julia Roberts', email: 'julia.r@universe.edu', course: 'Digital Marketing Strategy', grade: 'B+', attendance: '89%' },
-];
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 export default function TeacherStudents() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,9 +18,11 @@ export default function TeacherStudents() {
   const [activeModal, setActiveModal] = useState<{type: 'profile' | 'message' | 'warning', student: any} | null>(null);
   const [modalText, setModalText] = useState('');
 
-  const uniqueCourses = ['All', ...Array.from(new Set(MOCK_STUDENTS.map(s => s.course)))];
+  const { data: students = [], isLoading } = useSWR('/courses/my-students', fetcher);
 
-  const filteredStudents = MOCK_STUDENTS.filter(s => {
+  const uniqueCourses = ['All', ...Array.from(new Set(students.map((s: any) => s.course)))];
+
+  const filteredStudents = students.filter((s: any) => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCourse = courseFilter === 'All' || s.course === courseFilter;
     return matchesSearch && matchesCourse;
@@ -97,7 +88,12 @@ export default function TeacherStudents() {
         </div>
 
         {/* Students Table */}
-        <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden min-h-[400px] flex flex-col">
+          {isLoading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
@@ -171,7 +167,8 @@ export default function TeacherStudents() {
               </tbody>
             </table>
           </div>
-          {filteredStudents.length === 0 && (
+          )}
+          {!isLoading && filteredStudents.length === 0 && (
             <div className="p-12 text-center text-zinc-500 dark:text-zinc-500">
               No students found matching your search.
             </div>

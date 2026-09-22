@@ -1,0 +1,96 @@
+--- apps/web/src/app/(dashboard)/student/life/associations/page.tsx
++++ apps/web/src/app/(dashboard)/student/life/associations/page.tsx
+@@ -4,15 +4,8 @@
+ import { motion } from 'framer-motion';
+ import { useState } from 'react';
+ import { toast } from 'sonner';
++import useSWR from 'swr';
++import { fetcher } from '@/lib/fetcher';
+-
+-const associations = [
+-  { id: 1, name: 'Computer Science Society', category: 'Academic', members: 342, description: 'The official student chapter for CS majors. We host hackathons, tech talks, and networking events.', color: 'from-blue-500 to-indigo-600', icon: '💻' },
+-  { id: 2, name: 'Green Campus Initiative', category: 'Sustainability', members: 128, description: 'Dedicated to making our campus carbon-neutral by 2030 through advocacy and local action.', color: 'from-emerald-500 to-teal-600', icon: '🌱' },
+-  { id: 3, name: 'Robotics Club', category: 'Engineering', members: 89, description: 'Build, program, and compete with autonomous robots in national collegiate competitions.', color: 'from-orange-500 to-red-600', icon: '🤖' },
+-  { id: 4, name: 'Debate Society', category: 'Arts & Humanities', members: 215, description: 'Fostering critical thinking and public speaking through weekly debates and workshops.', color: 'from-purple-500 to-pink-600', icon: '🎙️' },
+-  { id: 5, name: 'Investment Group', category: 'Business', members: 156, description: 'Learn about financial markets and manage a real student-run investment portfolio.', color: 'from-yellow-400 to-amber-600', icon: '📈' },
+-  { id: 6, name: 'International Students Union', category: 'Cultural', members: 450, description: 'A home away from home. Celebrating diversity and supporting international students.', color: 'from-cyan-500 to-blue-600', icon: '🌍' },
+-];
+ 
+ export default function AssociationsPage() {
+   const [searchQuery, setSearchQuery] = useState('');
+   const [activeCategory, setActiveCategory] = useState('All');
++  const { data: associationsData, isLoading } = useSWR('/associations', fetcher);
++  const { data: myMemberships } = useSWR('/associations/my-memberships', fetcher);
+ 
++  const associations = associationsData || [];
++  const membershipsSet = new Set(myMemberships?.map((m: any) => m.associationId) || []);
++
+-  const filteredAssociations = associations.filter(club => {
++  const filteredAssociations = associations.filter((club: any) => {
+     const matchesSearch = club.name.toLowerCase().includes(searchQuery.toLowerCase()) || club.description.toLowerCase().includes(searchQuery.toLowerCase());
+     const matchesCategory = activeCategory === 'All' || club.category === activeCategory;
+     return matchesSearch && matchesCategory;
+   });
++
++  const handleJoin = async (id: string, name: string) => {
++    try {
++      const api = (await import('@/lib/fetcher')).api;
++      await api.post(`/associations/${id}/join`);
++      toast.success(`Joined ${name}!`);
++    } catch (e: any) {
++      toast.error(e.response?.data?.message || `Failed to join ${name}`);
++    }
++  };
+ 
+   return (
+     <>
+@@ -62,21 +70,26 @@
+ 
+           {/* Grid */}
++          {isLoading ? (
++            <div className="py-12 text-center text-zinc-500">Loading associations...</div>
++          ) : (
+           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-4">
+             {filteredAssociations.map((club, i) => (
+               <motion.div
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ delay: i * 0.1 }}
+                 key={club.id}
+                 className="group relative bg-[#0d1117] border border-white/[0.06] rounded-3xl p-6 hover:border-indigo-500/30 transition-all overflow-hidden flex flex-col h-full"
+               >
+-                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${club.color} opacity-10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:opacity-20 transition-opacity`} />
++                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:opacity-20 transition-opacity`} />
+                 
+                 <div className="flex items-start justify-between mb-4 relative z-10">
+-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${club.color} flex items-center justify-center text-2xl shadow-lg`}>
+-                    {club.icon}
++                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg`}>
++                    ✨
+                   </div>
+                   <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/[0.05] text-zinc-300 border border-white/[0.05]">
+                     {club.category}
+                   </span>
+@@ -94,11 +107,11 @@
+                     <span>{club.members}</span>
+                   </div>
+                   <button 
+-                    onClick={() => toast.success(`Requested to join ${club.name}!`)}
+-                    className="flex items-center gap-1.5 text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors"
++                    onClick={() => handleJoin(club.id, club.name)}
++                    className="flex items-center gap-1.5 text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors disabled:opacity-50"
++                    disabled={membershipsSet.has(club.id)}
+                   >
+-                    Join <ExternalLink className="w-3.5 h-3.5" />
++                    {membershipsSet.has(club.id) ? 'Joined' : <>Join <ExternalLink className="w-3.5 h-3.5" /></>}
+                   </button>
+                 </div>
+               </motion.div>
+@@ -109,6 +122,7 @@
+               </div>
+             )}
+           </div>
++          )}
+ 
+         </div>
+       </div>

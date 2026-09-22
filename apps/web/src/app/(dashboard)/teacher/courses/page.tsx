@@ -1,43 +1,46 @@
 'use client';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
-import { BookOpen, Users, FileText, ChevronRight, Edit, Trash2, Plus, X, Upload } from 'lucide-react';
+import { BookOpen, Users, FileText, ChevronRight, Edit, Trash2, Plus, X, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-
-const INITIAL_COURSES = [
-  { id: '1', code: 'CS101', name: 'Introduction to Computer Science', description: 'A fundamental course on programming and computer science.', emoji: '💻', color: '#6366f1', _count: { enrollments: 45, materials: 12 } },
-  { id: '2', code: 'CS201', name: 'Data Structures and Algorithms', description: 'Advanced programming concepts focusing on data structures.', emoji: '🧠', color: '#10b981', _count: { enrollments: 38, materials: 8 } },
-  { id: '3', code: 'BUS101', name: 'Introduction to Business', description: 'Core principles of modern business management.', emoji: '💼', color: '#f59e0b', _count: { enrollments: 120, materials: 15 } },
-  { id: '4', code: 'FIN201', name: 'Corporate Finance', description: 'Financial analysis and decision making.', emoji: '📈', color: '#3b82f6', _count: { enrollments: 85, materials: 22 } },
-  { id: '5', code: 'MKT301', name: 'Digital Marketing Strategy', description: 'Marketing in the digital age.', emoji: '🎯', color: '#ec4899', _count: { enrollments: 64, materials: 18 } },
-  { id: '6', code: 'PHY101', name: 'General Physics', description: 'Mechanics, heat, and sound.', emoji: '⚛️', color: '#8b5cf6', _count: { enrollments: 60, materials: 15 } }
-];
+import useSWR from 'swr';
+import { fetcher, api } from '@/lib/fetcher';
 
 export default function TeacherCourses() {
   const router = useRouter();
-  const [courses, setCourses] = useState(INITIAL_COURSES);
+  const { data: courses = [], isLoading, mutate } = useSWR('/courses/my', fetcher);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState<any>(null);
   
   const [formData, setFormData] = useState({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!formData.name || !formData.code) {
       toast.error('Code and Name are required.');
       return;
     }
-    setCourses([...courses, { id: Date.now().toString(), ...formData, _count: { enrollments: 0, materials: 0 } }]);
-    setShowCreateModal(false);
-    setFormData({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
-    toast.success('Course created successfully!');
+    try {
+      await api.post('/courses', formData);
+      await mutate();
+      setShowCreateModal(false);
+      setFormData({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
+      toast.success('Course created successfully!');
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to create course');
+    }
   };
 
-  const handleEdit = () => {
-    setCourses(courses.map(c => c.id === showEditModal.id ? { ...c, ...formData } : c));
-    setShowEditModal(null);
-    toast.success('Course updated successfully!');
+  const handleEdit = async () => {
+    try {
+      await api.patch(`/courses/${showEditModal.id}`, formData);
+      await mutate();
+      setShowEditModal(null);
+      toast.success('Course updated successfully!');
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to update course');
+    }
   };
 
   const openEdit = (course: any) => {
@@ -45,9 +48,15 @@ export default function TeacherCourses() {
     setShowEditModal(course);
   };
 
-  const handleDelete = (id: string) => {
-    setCourses(courses.filter(c => c.id !== id));
-    toast.success('Course deleted.');
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this course?')) return;
+    try {
+      await api.delete(`/courses/${id}`);
+      await mutate();
+      toast.success('Course deleted.');
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to delete course');
+    }
   };
 
   return (
@@ -63,7 +72,11 @@ export default function TeacherCourses() {
           </button>
         </div>
 
-        {courses.length === 0 ? (
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          </div>
+        ) : courses.length === 0 ? (
           <div className="card text-center py-12">
             <BookOpen className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">No courses yet</h2>
@@ -71,7 +84,7 @@ export default function TeacherCourses() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
+            {courses.map((course: any) => (
               <div key={course.id} className="card p-0 overflow-hidden group border border-white/[0.05] hover:border-indigo-500/50 transition-all flex flex-col h-full relative cursor-pointer" onClick={() => setShowDetailsModal(course)}>
                 
                 {/* Actions Overlay */}

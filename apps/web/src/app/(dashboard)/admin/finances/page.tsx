@@ -2,23 +2,8 @@
 
 import { Topbar } from '@/components/layout/Topbar';
 import { DollarSign, ArrowUpRight, ArrowDownRight, CreditCard, Activity, Download, Settings, Plus, X, BarChart3, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-
-const STATS = [
-  { label: 'Total Revenue (MTD)', value: '$45,231.89', trend: '+14.2%', up: true, icon: DollarSign, color: 'from-emerald-400 to-teal-500' },
-  { label: 'Platform Fees', value: '$4,523.19', trend: '+14.2%', up: true, icon: Wallet, color: 'from-blue-400 to-indigo-500' },
-  { label: 'Pending Payouts', value: '$12,450.00', trend: '-2.4%', up: false, icon: CreditCard, color: 'from-amber-400 to-orange-500' },
-  { label: 'Active Subscriptions', value: '1,204', trend: '+5.1%', up: true, icon: Activity, color: 'from-purple-400 to-pink-500' }
-];
-
-const INITIAL_TRANSACTIONS = [
-  { id: 'TRX-1029', date: '2026-10-24', type: 'Course Purchase', amount: 149.00, status: 'Completed', user: 'Alice Johnson' },
-  { id: 'TRX-1028', date: '2026-10-24', type: 'Teacher Payout', amount: -1200.00, status: 'Processing', user: 'Dr. Jane Smith' },
-  { id: 'TRX-1027', date: '2026-10-23', type: 'Subscription', amount: 29.99, status: 'Completed', user: 'Bob Smith' },
-  { id: 'TRX-1026', date: '2026-10-23', type: 'Refund', amount: -149.00, status: 'Completed', user: 'Charlie Brown' },
-  { id: 'TRX-1025', date: '2026-10-22', type: 'Course Purchase', amount: 149.00, status: 'Completed', user: 'Diana Prince' },
-];
 
 import { createTransaction, getTransactions } from '@/app/actions/transaction';
 
@@ -39,6 +24,20 @@ export default function AdminFinances() {
     };
     fetchTransactions();
   }, []);
+
+  const stats = useMemo(() => {
+    const totalRevenue = transactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
+    const platformFees = totalRevenue * 0.1; // Example 10% fee
+    const pendingPayouts = Math.abs(transactions.filter(t => t.amount < 0 && t.status === 'PENDING').reduce((acc, t) => acc + t.amount, 0));
+    
+    return [
+      { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}`, trend: '0.0%', up: true, icon: DollarSign, color: 'from-emerald-400 to-teal-500' },
+      { label: 'Platform Fees', value: `$${platformFees.toFixed(2)}`, trend: '0.0%', up: true, icon: Wallet, color: 'from-blue-400 to-indigo-500' },
+      { label: 'Pending Payouts', value: `$${pendingPayouts.toFixed(2)}`, trend: '0.0%', up: false, icon: CreditCard, color: 'from-amber-400 to-orange-500' },
+      { label: 'Total Transactions', value: transactions.length.toString(), trend: '0.0%', up: true, icon: Activity, color: 'from-purple-400 to-pink-500' }
+    ];
+  }, [transactions]);
+
   const [isExporting, setIsExporting] = useState(false);
   
   // Modal states
@@ -189,8 +188,8 @@ export default function AdminFinances() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {STATS.map((stat, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-6 relative overflow-hidden group hover:bg-white dark:bg-zinc-900/80 transition-all duration-300">
                 <div className={`absolute -right-6 -top-6 w-32 h-32 rounded-full bg-gradient-to-br ${stat.color} opacity-[0.03] group-hover:opacity-[0.08] blur-2xl transition-opacity duration-500`}></div>
                 

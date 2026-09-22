@@ -46,30 +46,39 @@ export default function DocumentsPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      simulateUpload(file.name);
+      simulateUpload(file);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const simulateUpload = (fileName: string) => {
+  const simulateUpload = async (file: File) => {
     setUploadProgress(10);
-    const interval = setInterval(async () => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          finishUpload(fileName);
-          return 100;
-        }
-        return prev + 20;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await api.post('/files/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        },
       });
-    }, 200);
+      
+      finishUpload(file.name, res.data.url);
+    } catch (error) {
+      toast.error('Failed to upload file');
+      setUploadProgress(0);
+    }
   };
 
-  const finishUpload = async (fileName: string) => {
+  const finishUpload = async (fileName: string, fileUrl: string) => {
     try {
       await api.post('/documents', {
         title: fileName,
-        fileUrl: `https://dummy.storage/${encodeURIComponent(fileName)}`,
+        fileUrl: process.env.NEXT_PUBLIC_API_URL + fileUrl,
         type: 'OTHER'
       });
       toast.success(`Successfully uploaded ${fileName}`);
@@ -87,17 +96,23 @@ export default function DocumentsPage() {
     setActiveModal('view');
   };
 
-  const handleDownload = (docTitle: string) => {
-    toast.success(`Downloading ${docTitle}...`);
-    const blob = new Blob(["This is a dummy document content."], { type: "application/pdf" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${docTitle.replace(/\s+/g, "_")}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+  const handleDownload = async (doc: Doc) => {
+    toast.success(`Downloading ${doc.title}...`);
+    try {
+      const response = await fetch(doc.fileUrl);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.title;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error('Failed to download document');
+    }
   };
 
   if (isLoading) {
@@ -191,7 +206,7 @@ export default function DocumentsPage() {
                     <button onClick={() => handleView(doc)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors">
                       <Eye className="w-3.5 h-3.5" /> View
                     </button>
-                    <button onClick={() => handleDownload(doc.title)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors">
+                    <button onClick={() => handleDownload(doc)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition-colors">
                       <Download className="w-3.5 h-3.5" /> Download
                     </button>
                   </div>
@@ -273,7 +288,7 @@ export default function DocumentsPage() {
                     </div>
                     
                     <div className="flex justify-center">
-                      <button onClick={() => handleDownload(selectedDoc.title)} className="btn-primary py-3 px-8 rounded-xl font-bold flex items-center gap-2">
+                      <button onClick={() => handleDownload(selectedDoc)} className="btn-primary py-3 px-8 rounded-xl font-bold flex items-center gap-2">
                         <Download className="w-5 h-5" /> Download {selectedDoc.type}
                       </button>
                     </div>

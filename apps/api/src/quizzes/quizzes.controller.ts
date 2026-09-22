@@ -40,6 +40,12 @@ export class QuizzesController {
     return this.quizzesService.remove(id);
   }
 
+  @Get('teacher/my-quizzes')
+  @Roles(Role.TEACHER, Role.ADMIN)
+  getTeacherQuizzes(@Req() req) {
+    return this.quizzesService.getTeacherQuizzes(req.user.userId);
+  }
+
   @Get('student/my-quizzes')
   @Roles(Role.STUDENT, Role.ADMIN)
   getStudentQuizzes(@Req() req) {

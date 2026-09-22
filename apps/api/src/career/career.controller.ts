@@ -40,20 +40,11 @@ export class CareerController {
       take: 3,
     });
     
-    if (events.length > 0) {
-      return events.map(e => ({
-        id: e.id,
-        title: e.title,
-        date: e.startAt.toISOString(),
-        location: e.description || 'Virtual'
-      }));
-    }
-
-    // Fallback if no career events exist
-    return [
-      { id: '1', title: 'Fall Career Fair 2026', date: new Date(Date.now() + 10*24*60*60*1000).toISOString(), location: 'Student Union Building' },
-      { id: '2', title: 'Resume Workshop with Big Tech', date: new Date(Date.now() + 15*24*60*60*1000).toISOString(), location: 'Library Auditorium' },
-      { id: '3', title: 'Mock Interviews', date: new Date(Date.now() + 20*24*60*60*1000).toISOString(), location: 'Career Center' }
-    ];
+    return events.map(e => ({
+      id: e.id,
+      title: e.title,
+      date: e.startAt.toISOString(),
+      location: e.description || 'Virtual'
+    }));
   }
 }

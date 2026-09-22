@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   Search, Filter, MoreVertical, UserCheck, UserX, Shield,
@@ -8,32 +8,19 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 const ROLE_FILTERS = ['All', 'STUDENT', 'TEACHER', 'ADMIN'];
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: users = [], isLoading: loading, mutate: mutateUsers } = useSWR('/users', fetcher);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLTableDataCellElement>(null);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await api.get('/users');
-        setUsers(response.data);
-      } catch (error) {
-        console.error('Failed to fetch users:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsers();
-  }, []);
 
   const filteredUsers = useMemo(() => users.filter(u => {
     const matchSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,23 +29,40 @@ export default function AdminUsers() {
     return matchSearch && matchRole;
   }), [users, searchTerm, roleFilter]);
 
-  const handleDeactivate = (userId: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'INACTIVE' } : u));
-    toast.success('User deactivated.');
+  const handleDeactivate = async (userId: string) => {
+    try {
+      await api.patch(`/users/${userId}/status`, { status: 'INACTIVE' });
+      toast.success('User deactivated.');
+      mutateUsers();
+    } catch (e) {
+      toast.error('Failed to deactivate user');
+    }
     setOpenMenuId(null);
   };
 
-  const handleActivate = (userId: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: 'ACTIVE' } : u));
-    toast.success('User reactivated.');
+  const handleActivate = async (userId: string) => {
+    try {
+      await api.patch(`/users/${userId}/status`, { status: 'ACTIVE' });
+      toast.success('User reactivated.');
+      mutateUsers();
+    } catch (e) {
+      toast.error('Failed to reactivate user');
+    }
     setOpenMenuId(null);
   };
 
-  const handleDelete = (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    setSelectedUser(null);
+  const handleDelete = async (userId: string) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      try {
+        await api.delete(`/users/${userId}`);
+        toast.success('User removed from system.');
+        setSelectedUser(null);
+        mutateUsers();
+      } catch (e) {
+        toast.error('Failed to delete user');
+      }
+    }
     setOpenMenuId(null);
-    toast.success('User removed from system.');
   };
 
   return (

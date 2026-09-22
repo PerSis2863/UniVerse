@@ -3,9 +3,10 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Map, Calendar as CalendarIcon, Clock, Users, Search, X, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState } from 'react';import useSWR from 'swr';
+import { fetcher, api } from '@/lib/fetcher';
 
-type Room = { name: string, capacity: number, type: string, features: string[] };
+type Room = { id: string, name: string, capacity: number, type: string, features: string[] };
 
 export default function RoomReservationPage() {
   const [isSearching, setIsSearching] = useState(false);
@@ -21,21 +22,23 @@ export default function RoomReservationPage() {
   const [bookingStatus, setBookingStatus] = useState<'confirm' | 'loading' | 'success'>('confirm');
   const [bookingId, setBookingId] = useState('');
 
+  const { data: allRooms } = useSWR('/rooms', fetcher);
+
   const handleSearch = () => {
     setIsSearching(true);
     setHasSearched(false);
     toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 1500)),
+      new Promise((resolve) => setTimeout(resolve, 800)),
       {
         loading: 'Searching for available rooms...',
-        success: 'Found 3 available rooms!',
+        success: 'Found available rooms!',
         error: 'Error searching for rooms',
       }
     );
     setTimeout(() => {
       setIsSearching(false);
       setHasSearched(true);
-    }, 1500);
+    }, 800);
   };
 
   const handleBookClick = (room: Room) => {
@@ -43,13 +46,21 @@ export default function RoomReservationPage() {
     setBookingStatus('confirm');
   };
 
-  const confirmBooking = () => {
+  const confirmBooking = async () => {
+    if (!selectedRoom) return;
     setBookingStatus('loading');
-    setTimeout(() => {
-      const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
-      setBookingId(randomId);
+    try {
+      const res = await api.post(`/rooms/${selectedRoom.id}/book`, {
+        date: date || new Date().toISOString().split('T')[0],
+        time,
+        duration
+      });
+      setBookingId(res.data.id || Math.random().toString(36).substring(2, 10).toUpperCase());
       setBookingStatus('success');
-    }, 1500);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Booking failed');
+      setBookingStatus('confirm');
+    }
   };
 
   const closeBookingModal = () => {
@@ -183,11 +194,13 @@ export default function RoomReservationPage() {
               className="space-y-4"
             >
               <h3 className="text-lg font-bold text-white mb-4">Available Rooms</h3>
-              {[
-                { name: 'Library Study Room 4A', capacity: 4, type: 'Study Room', features: ['Whiteboard', 'Monitor'] },
-                { name: 'Media Lab B', capacity: 2, type: 'Media Lab', features: ['Mac Studio', 'Dual Monitors'] },
-                { name: 'Innovation Hub 1', capacity: 6, type: 'Collaboration', features: ['Smart Board', 'Video Conf'] },
-              ].map((room, i) => (
+              {(allRooms || []).map((r: any) => ({
+                id: r.id,
+                name: r.name,
+                capacity: r.capacity,
+                type: r.type,
+                features: r.amenities ? r.amenities.split(',').map((s: string) => s.trim()) : []
+              })).map((room: Room, i: number) => (
                 <div key={i} className="bg-[#0d1117] border border-white/[0.08] rounded-2xl p-6 flex flex-col sm:flex-row gap-6 justify-between items-center hover:bg-white/[0.02] transition-colors shadow-lg">
                   <div>
                     <h4 className="font-bold text-white text-lg">{room.name}</h4>

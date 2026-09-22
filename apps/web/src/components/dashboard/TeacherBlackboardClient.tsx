@@ -11,17 +11,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
+import useSWR from 'swr';
+import { fetcher, api } from '@/lib/fetcher';
+import { Loader2 } from 'lucide-react';
 
 const CollaborationWhiteboard = dynamic(
   () => import('@/components/dashboard/CollaborationWhiteboard').then(mod => mod.CollaborationWhiteboard),
   { ssr: false, loading: () => <div className="h-[600px] w-full bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-2xl flex items-center justify-center text-zinc-500">Loading Whiteboard...</div> }
 );
 
-const COURSES = [
-  { code: 'CS301', name: 'Data Structures & Algorithms', students: 45, color: '#6366f1' },
-  { code: 'CS302', name: 'Operating Systems', students: 52, color: '#a855f7' },
-  { code: 'CS303', name: 'Database Management', students: 38, color: '#10b981' },
-];
+
 
 const TEACHER_TABS = [
   { id: 'board', label: 'Board', icon: Pin },
@@ -37,43 +36,27 @@ const TEACHER_TABS = [
   { id: 'tools', label: 'Tools', icon: Bookmark },
 ];
 
-const MOCK_RESOURCES = [
-  { id: 1, week: 'Week 1', title: 'Arrays & Linked Lists — Lecture Slides', type: 'PDF', size: '2.4 MB', pinned: true, downloads: 42 },
-  { id: 2, week: 'Week 2', title: 'Sorting Algorithms — Video Lecture', type: 'Video', size: '240 MB', pinned: false, downloads: 38 },
-  { id: 3, week: 'Week 3', title: 'Trees & Graphs — Reference Sheet', type: 'PDF', size: '1.1 MB', pinned: false, downloads: 29 },
-];
 
-const STUDENT_MSGS = [
-  { 
-    id: 1, name: 'Aditya Bhatt', avatar: 'AB', unread: true, 
-    thread: [
-      { id: 101, from: 'student', text: 'Professor, can you clarify the midterm scope for dynamic programming?', time: '15m ago', read: false }
-    ]
-  },
-  { 
-    id: 2, name: 'Priya Sharma', avatar: 'PS', unread: false, 
-    thread: [
-      { id: 201, from: 'teacher', text: 'Hi Priya, I have uploaded the notes for Week 3.', time: '1d ago', read: true },
-      { id: 202, from: 'student', text: 'Thank you for the notes! Very helpful.', time: '2h ago', read: true }
-    ]
-  },
-  { 
-    id: 3, name: 'Rahul Kumar', avatar: 'RK', unread: true, 
-    thread: [
-      { id: 301, from: 'student', text: 'I had a question about the complexity of Dijkstra...', time: '4h ago', read: false }
-    ]
-  },
-];
-
-const GRADEBOOK_DATA = [
-  { name: 'Aditya Bhatt', avatar: 'AB', assignments: { a1: 92, a2: 88, a3: 95 }, midterm: 89, total: 91 },
-  { name: 'Priya Sharma', avatar: 'PS', assignments: { a1: 85, a2: 90, a3: 88 }, midterm: 92, total: 89 },
-  { name: 'Rahul Kumar', avatar: 'RK', assignments: { a1: 76, a2: 72, a3: 80 }, midterm: 78, total: 77 },
-  { name: 'Sneha Patel', avatar: 'SP', assignments: { a1: 98, a2: 95, a3: 100 }, midterm: 96, total: 97 },
-];
 
 export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any }) {
-  const [selectedCourse, setSelectedCourse] = useState(initialCourse || COURSES[0]);
+  const { data: coursesData, isLoading: loadingCourses } = useSWR('/courses/my', fetcher);
+  const courses = coursesData || [];
+  
+  const [selectedCourse, setSelectedCourse] = useState<any>(initialCourse || null);
+  
+  // Auto-select first course when loaded
+  import { useEffect } from 'react';
+  useEffect(() => {
+    if (!selectedCourse && courses.length > 0) {
+      setSelectedCourse(courses[0]);
+    }
+  }, [courses, selectedCourse]);
+
+  const { data: blackboardData, isLoading: loadingBlackboard, mutate } = useSWR(
+    selectedCourse ? `/blackboard/${selectedCourse.id}` : null,
+    fetcher
+  );
+
   const [activeTab, setActiveTab] = useState('board');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
@@ -88,58 +71,82 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
   const [annPriority, setAnnPriority] = useState('normal');
   const [replyTo, setReplyTo] = useState<any>(null);
   const [replyText, setReplyText] = useState('');
-  const [resources, setResources] = useState(MOCK_RESOURCES);
-  const [announcements, setAnnouncements] = useState([
-    { id: 1, pinned: true, title: 'Midterm Exam Details', body: 'The midterm will cover chapters 1–8. Open book, 90 minutes. Room: Main Hall A.', time: '2 hours ago', priority: 'high' },
-    { id: 2, pinned: false, title: 'Office Hours This Week', body: 'Office hours moved to Wednesday 3–5 PM due to faculty meeting.', time: '1 day ago', priority: 'normal' },
-  ]);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [eventType, setEventType] = useState('office');
 
-  const [optimisticAnnouncements, addOptimisticAnnouncement] = useOptimistic(
-    announcements,
-    (state, newAnnouncement: any) => [newAnnouncement, ...state]
-  );
+  const resources = blackboardData?.resources || [];
+  const announcements = blackboardData?.announcements || [];
+  const events = blackboardData?.events || [];
+  
+  // Mock data for messages and gradebook until API is ready
+  const GRADEBOOK_DATA = [
+    { name: 'Aditya Bhatt', avatar: 'AB', assignments: { a1: 92, a2: 88, a3: 95 }, midterm: 89, total: 91 },
+    { name: 'Priya Sharma', avatar: 'PS', assignments: { a1: 85, a2: 90, a3: 88 }, midterm: 92, total: 89 },
+  ];
+  const STUDENT_MSGS = [
+    { id: 1, name: 'Aditya Bhatt', avatar: 'AB', unread: true, thread: [{ id: 101, from: 'student', text: 'Professor, can you clarify?', time: '15m ago', read: false }] },
+  ];
 
   const [showEventModal, setShowEventModal] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventType, setEventType] = useState('office');
-  const [events, setEvents] = useState([
-    { id: 1, date: 'Oct 5', title: 'Assignment 3 Due', type: 'assignment', color: 'bg-amber-500' },
-    { id: 2, date: 'Oct 10', title: 'Midterm Exam', type: 'exam', color: 'bg-rose-500' },
-    { id: 3, date: 'Oct 15', title: 'Office Hours', type: 'office', color: 'bg-indigo-500' },
-    { id: 4, date: 'Oct 22', title: 'Pop Quiz', type: 'quiz', color: 'bg-purple-500' },
-  ]);
 
-  const handleAddEvent = () => {
+
+  const handleAddEvent = async () => {
     if (!eventTitle || !eventDate) return toast.error('Please fill in title and date.');
-    const color = eventType === 'exam' ? 'bg-rose-500' : eventType === 'assignment' ? 'bg-amber-500' : eventType === 'quiz' ? 'bg-purple-500' : 'bg-indigo-500';
-    setEvents(prev => [...prev, { id: Date.now(), date: eventDate, title: eventTitle, type: eventType, color }]);
-    setShowEventModal(false);
-    setEventTitle(''); setEventDate('');
-    toast.success('Event added to calendar!');
+    
+    try {
+      await api.post(`/blackboard/${selectedCourse.id}/events`, {
+        title: eventTitle,
+        type: eventType,
+        startDate: new Date(eventDate).toISOString(),
+        endDate: new Date(eventDate).toISOString(),
+      });
+      await mutate();
+      setShowEventModal(false);
+      setEventTitle(''); setEventDate('');
+      toast.success('Event added to calendar!');
+    } catch (error) {
+      toast.error('Failed to add event');
+    }
   };
 
   const handlePostAnnouncement = async () => {
     if (!annTitle) return toast.error('Please add a title');
     
-    const newAnn = { id: Date.now(), pinned: annPriority === 'high', title: annTitle, body: annBody, time: 'Just now', priority: annPriority };
-    
-    setShowAnnouncementModal(false);
-    addOptimisticAnnouncement(newAnn);
-    toast.success('Announcement posted to all students!');
-    
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Mock network
-    setAnnouncements(prev => [newAnn, ...prev]);
-    
-    setAnnTitle(''); setAnnBody('');
+    try {
+      await api.post(`/blackboard/${selectedCourse.id}/announcements`, {
+        title: annTitle,
+        content: annBody,
+        priority: annPriority,
+      });
+      await mutate();
+      setShowAnnouncementModal(false);
+      toast.success('Announcement posted to all students!');
+      setAnnTitle(''); setAnnBody('');
+    } catch (error) {
+      toast.error('Failed to post announcement');
+    }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!uploadTitle) return toast.error('Please add a file title');
-    setResources(prev => [...prev, { id: Date.now(), week: uploadWeek, title: uploadTitle, type: uploadType, size: '—', pinned: false, downloads: 0 }]);
-    setShowUploadModal(false);
-    setUploadTitle('');
-    toast.success('Resource uploaded to Blackboard!');
+    try {
+      await api.post(`/blackboard/${selectedCourse.id}/resources`, {
+        title: uploadTitle,
+        type: uploadType,
+        url: '#', // placeholder
+      });
+      await mutate();
+      setShowUploadModal(false);
+      setUploadTitle('');
+      toast.success('Resource uploaded to Blackboard!');
+    } catch (error) {
+      toast.error('Failed to upload resource');
+    }
   };
 
   return (
@@ -148,17 +155,23 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Course Selector */}
+        {loadingCourses ? (
+          <div className="border-b border-zinc-200 dark:border-white/[0.06] bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto">
+            <div className="h-9 w-32 bg-zinc-200 dark:bg-zinc-800 rounded-xl animate-pulse" />
+            <div className="h-9 w-32 bg-zinc-200 dark:bg-zinc-800 rounded-xl animate-pulse" />
+          </div>
+        ) : (
         <div className="border-b border-zinc-200 dark:border-white/[0.06] bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-none">
-          {COURSES.map(c => (
-            <button key={c.code} onClick={() => setSelectedCourse(c)}
+          {courses.map((c: any) => (
+            <button key={c.id} onClick={() => setSelectedCourse(c)}
               className={cn('relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border',
-                selectedCourse.code === c.code ? 'text-white shadow-lg border-transparent' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400')}
+                selectedCourse?.id === c.id ? 'text-white shadow-lg border-transparent' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400')}
             >
-              {selectedCourse.code === c.code && (
+              {selectedCourse?.id === c.id && (
                 <motion.div
                   layoutId="activeCourseTeacher"
                   className="absolute inset-0 rounded-xl"
-                  style={{ background: c.color, boxShadow: `0 4px 14px ${c.color}40` }}
+                  style={{ background: c.color || '#6366f1', boxShadow: `0 4px 14px ${(c.color || '#6366f1')}40` }}
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -167,16 +180,18 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
             </button>
           ))}
         </div>
+        )}
 
         {/* Course Header + actions */}
+        {selectedCourse && (
         <div className="px-4 sm:px-8 py-4 border-b border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/40 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold" style={{ background: selectedCourse.color }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold" style={{ background: selectedCourse.color || '#6366f1' }}>
               {selectedCourse.code.slice(-2)}
             </div>
             <div>
               <h2 className="font-bold text-zinc-900 dark:text-white">{selectedCourse.name}</h2>
-              <p className="text-xs text-zinc-500">{selectedCourse.students} Students enrolled</p>
+              <p className="text-xs text-zinc-500">{selectedCourse._count?.enrollments || 0} Students enrolled</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -204,6 +219,17 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
         </div>
 
         {/* Content */}
+        {loadingBlackboard ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-zinc-400">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
+            <p className="text-sm">Loading blackboard...</p>
+          </div>
+        ) : !selectedCourse ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-zinc-400">
+            <BookOpen className="w-12 h-12 opacity-20 mb-3" />
+            <p className="text-sm">Select a course to view blackboard</p>
+          </div>
+        ) : (
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-zinc-50 dark:bg-zinc-950/40">
           <div key={activeTab} className="h-full">
 
@@ -214,7 +240,7 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
                     <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Bell className="w-4 h-4 text-indigo-500" /> Announcements</h3>
                     <button onClick={() => setShowAnnouncementModal(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> New</button>
                   </div>
-                  {optimisticAnnouncements.map((a: any, i: number) => (
+                  {announcements.map((a: any, i: number) => (
                     <motion.div key={a.id} 
                       className={cn('bg-white dark:bg-zinc-900 border rounded-2xl p-5', a.priority === 'high' ? 'border-rose-500/30' : 'border-zinc-200 dark:border-zinc-800')}>
                       <div className="flex items-start justify-between gap-3 mb-2">
@@ -224,15 +250,26 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
                           <h4 className="font-bold text-zinc-900 dark:text-white">{a.title}</h4>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-zinc-400 whitespace-nowrap">{a.time}</span>
-                          <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors" onClick={() => { setAnnouncements(prev => prev.filter(x => x.id !== a.id)); toast.info('Announcement removed.'); }}>
+                          <span className="text-xs text-zinc-400 whitespace-nowrap">{new Date(a.createdAt).toLocaleDateString()}</span>
+                          <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors" onClick={async () => { 
+                            try {
+                              await api.delete(`/blackboard/${selectedCourse.id}/announcements/${a.id}`);
+                              mutate();
+                              toast.success('Announcement removed.');
+                            } catch(e) {
+                              toast.error('Failed to remove');
+                            }
+                          }}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
-                      <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{a.body}</p>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{a.content || a.body}</p>
                     </motion.div>
                   ))}
+                  {announcements.length === 0 && (
+                    <div className="text-center text-sm text-zinc-500 py-8">No announcements yet.</div>
+                  )}
                 </div>
               )}
 
@@ -243,7 +280,7 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
                     <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-500" /> Course Materials</h3>
                     <button onClick={() => setShowUploadModal(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Upload</button>
                   </div>
-                  {resources.map((r, i) => (
+                  {resources.map((r: any, i: number) => (
                     <motion.div key={r.id} 
                       className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex items-center gap-4 hover:border-indigo-500/30 transition-all group">
                       <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
@@ -257,20 +294,31 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
                         <div className="flex items-center gap-3 mt-0.5 text-xs text-zinc-400">
                           <span>{r.week}</span>
                           <span className="px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-medium">{r.type}</span>
-                          <span>{r.size}</span>
-                          <span className="flex items-center gap-0.5"><Download className="w-3 h-3" /> {r.downloads}</span>
+                          {r.size && <span>{r.size}</span>}
+                          {r.downloads !== undefined && <span className="flex items-center gap-0.5"><Download className="w-3 h-3" /> {r.downloads}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => toast.info(`Editing ${r.title}`)}>
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
-                        <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-rose-500 transition-colors" onClick={() => { setResources(prev => prev.filter(x => x.id !== r.id)); toast.info('Resource removed.'); }}>
+                        <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-rose-500 transition-colors" onClick={async () => {
+                          try {
+                            await api.delete(`/blackboard/${selectedCourse.id}/resources/${r.id}`);
+                            mutate();
+                            toast.success('Resource removed.');
+                          } catch(e) {
+                            toast.error('Failed to remove resource');
+                          }
+                        }}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </motion.div>
                   ))}
+                  {resources.length === 0 && (
+                    <div className="text-center text-sm text-zinc-500 py-8">No resources uploaded yet.</div>
+                  )}
                 </div>
               )}
 
@@ -455,16 +503,24 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
                     <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Calendar className="w-4 h-4 text-indigo-500" /> Course Calendar</h3>
                     <button onClick={() => setShowEventModal(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> New Event</button>
                   </div>
-                  {events.map((e) => (
+                  {events.map((e: any) => (
                     <div key={e.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 flex items-center gap-4 hover:border-indigo-500/30 transition-all group">
                       <div className={`w-10 h-10 rounded-xl ${e.color} flex items-center justify-center flex-shrink-0`}><Calendar className="w-5 h-5 text-white" /></div>
                       <div className="flex-1">
                         <p className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{e.title}</p>
-                        <p className="text-xs text-zinc-400">{e.date}</p>
+                        <p className="text-xs text-zinc-400">{new Date(e.date || e.startDate).toLocaleDateString()}</p>
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 capitalize hidden sm:block">{e.type}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 capitalize hidden sm:block">{e.type || 'Event'}</span>
                       <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-indigo-500 transition-colors opacity-0 group-hover:opacity-100" onClick={() => toast.info('Edit event...')}><Edit3 className="w-3.5 h-3.5" /></button>
-                      <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100" onClick={() => { setEvents(prev => prev.filter(x => x.id !== e.id)); toast.info('Event removed.'); }}><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100" onClick={async () => { 
+                        try {
+                          await api.delete(`/blackboard/${selectedCourse.id}/events/${e.id}`);
+                          mutate();
+                          toast.success('Event removed.');
+                        } catch(err) {
+                          toast.error('Failed to remove event');
+                        }
+                      }}><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   ))}
                 </div>
@@ -514,6 +570,7 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
 
             </div>
         </div>
+        )}
       </div>
 
       {/* Upload Resource Modal */}

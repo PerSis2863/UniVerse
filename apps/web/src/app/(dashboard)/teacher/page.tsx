@@ -9,33 +9,9 @@ import { toast } from 'sonner';
 import { useState } from 'react';
 import { useLanguageStore } from '@/store/language';
 
-const recentStudents = [
-  { name: 'Aditya Bhatt', course: 'Data Structures', score: 94, status: 'excellent' },
-  { name: 'Priya Sharma', course: 'Algorithms', score: 87, status: 'good' },
-  { name: 'Rahul Kumar', course: 'Database', score: 72, status: 'needs-help' },
-  { name: 'Sneha Patel', course: 'OS', score: 91, status: 'excellent' },
-];
-
-const myCourses = [
-  { name: 'Data Structures', code: 'CS301', students: 45, completion: 68, color: '#6366f1' },
-  { name: 'Algorithms', code: 'CS302', students: 38, completion: 52, color: '#06b6d4' },
-  { name: 'Database Management', code: 'CS401', students: 52, completion: 80, color: '#10b981' },
-];
-
-const gradeDistributionData = [
-  { grade: 'A', count: 24 },
-  { grade: 'B', count: 45 },
-  { grade: 'C', count: 32 },
-  { grade: 'D', count: 12 },
-  { grade: 'F', count: 3 },
-];
-
-const performanceTrendData = [
-  { month: 'Sep', avgScore: 76 },
-  { month: 'Oct', avgScore: 78 },
-  { month: 'Nov', avgScore: 82 },
-  { month: 'Dec', avgScore: 84 },
-];
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
+import { Loader2 } from 'lucide-react';
 
 export default function TeacherDashboard() {
   const { user } = useAuthStore();
@@ -63,6 +39,39 @@ export default function TeacherDashboard() {
     toast.success(`Course "${courseName}" created!`, { description: `Code: ${courseCode} • Capacity: ${courseCapacity} students` });
   };
 
+  const { data, isLoading, error } = useSWR('/dashboard/teacher', fetcher);
+
+  if (isLoading) {
+    return (
+      <>
+        <Topbar title={t('teacher.title')} subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`} />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        </div>
+      </>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <>
+        <Topbar title={t('teacher.title')} subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`} />
+        <div className="flex-1 flex items-center justify-center text-red-500">Failed to load dashboard data</div>
+      </>
+    );
+  }
+
+  const {
+    activeCourses = 0,
+    totalStudents = 0,
+    pendingGrades = 0,
+    avgClassScore = 0,
+    myCourses = [],
+    gradeDistributionData = [],
+    performanceTrendData = [],
+    recentStudents = []
+  } = data;
+
   return (
     <>
       <Topbar
@@ -72,10 +81,10 @@ export default function TeacherDashboard() {
       />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard title={t('teacher.total_students')} value="135" icon={Users} change={8} color="indigo" />
-          <KpiCard title={t('teacher.active_courses')} value="3" icon={BookOpen} change={0} color="cyan" />
-          <KpiCard title={t('teacher.pending_grades')} value="12" icon={FileText} change={-25} color="amber" />
-          <KpiCard title={t('teacher.avg_class_score')} value="84.2%" icon={BarChart3} change={3} color="green" />
+          <KpiCard title={t('teacher.total_students')} value={totalStudents.toString()} icon={Users} change={8} color="indigo" />
+          <KpiCard title={t('teacher.active_courses')} value={activeCourses.toString()} icon={BookOpen} change={0} color="cyan" />
+          <KpiCard title={t('teacher.pending_grades')} value={pendingGrades.toString()} icon={FileText} change={-25} color="amber" />
+          <KpiCard title={t('teacher.avg_class_score')} value={`${avgClassScore}%`} icon={BarChart3} change={3} color="green" />
         </div>
 
         {/* Analytics Section */}
@@ -129,7 +138,7 @@ export default function TeacherDashboard() {
               </button>
             </div>
             <div className="space-y-4">
-              {myCourses.map((c, i) => (
+              {myCourses.map((c: any, i: number) => (
                 <motion.div
                   whileHover={{ scale: 1.01 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -171,7 +180,7 @@ export default function TeacherDashboard() {
               <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium" onClick={() => toast.info('Opening student list...')}>{t('dashboard.view_all')}</button>
             </div>
             <div className="space-y-3">
-              {recentStudents.map((s, i) => (
+              {recentStudents.map((s: any, i: number) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => toast.info(`${s.name} — ${s.score}%`)}>
                   <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400">
                     {s.name[0]}

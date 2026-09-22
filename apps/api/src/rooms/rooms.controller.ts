@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Req, Query } from '@nestjs/common';
 import { RoomsService } from './rooms.service';
 import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 
@@ -8,8 +8,8 @@ export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
   @Get()
-  findAll() {
-    return this.roomsService.findAll();
+  findAll(@Query('date') date?: string) {
+    return this.roomsService.findAll(date);
   }
 
   @Get('my-bookings')

@@ -1,42 +1,60 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { Map, CheckCircle2, Clock, X, Calendar, Users } from 'lucide-react';
+import { Map, CheckCircle2, Clock, X, Calendar, Users, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-
-const TEACHER_ROOMS = [
-  { id: 'tr-1', name: 'Lecture Hall 101', capacity: 120, amenities: 'Projector + Microphone + Recording', type: 'lecture' },
-  { id: 'tr-2', name: 'Lecture Hall 201', capacity: 80, amenities: 'Dual Projector + Live Streaming', type: 'lecture' },
-  { id: 'tr-3', name: 'Seminar Room 301', capacity: 30, amenities: 'Smart Board + Video Conferencing', type: 'seminar' },
-  { id: 'tr-4', name: 'Computer Lab B', capacity: 40, amenities: '40 Workstations + Server Access', type: 'lab' },
-];
+import useSWR from 'swr';
+import { fetcher, api } from '@/lib/fetcher';
 
 const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
 
 export default function TeacherRoomReservationPage() {
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [duration, setDuration] = useState('1 Hour');
   const [roomType, setRoomType] = useState('lecture');
   const [searched, setSearched] = useState(false);
-  const [bookings, setBookings] = useState<{ roomId: string; time: string; purpose: string }[]>([]);
   const [confirmBooking, setConfirmBooking] = useState<{ room: any; time: string } | null>(null);
   const [purpose, setPurpose] = useState('');
 
+  const { data: rooms = [], isLoading: loadingRooms, mutate: mutateRooms } = useSWR(
+    searched && date ? `/rooms?date=${date}` : null,
+    fetcher
+  );
+
+  const { data: myBookings = [], isLoading: loadingBookings, mutate: mutateBookings } = useSWR(
+    '/rooms/my-bookings',
+    fetcher
+  );
+
   const filteredRooms = useMemo(() => {
     if (!searched) return [];
-    return TEACHER_ROOMS.filter(r => r.type === roomType);
-  }, [searched, roomType]);
+    return rooms.filter((r: any) => r.type === roomType);
+  }, [searched, roomType, rooms]);
 
-  const isBooked = (roomId: string, time: string) =>
-    bookings.some(b => b.roomId === roomId && b.time === time);
+  const isBooked = (roomId: string, time: string) => {
+    const room = rooms.find((r: any) => r.id === roomId);
+    if (!room) return false;
+    return room.reservations?.some((r: any) => r.time === time);
+  };
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!confirmBooking) return;
-    setBookings(prev => [...prev, { roomId: confirmBooking.room.id, time: confirmBooking.time, purpose: purpose || 'Extra Class' }]);
-    toast.success(`Reserved ${confirmBooking.room.name} at ${confirmBooking.time}!`);
-    setConfirmBooking(null);
-    setPurpose('');
+    try {
+      await api.post(`/rooms/${confirmBooking.room.id}/book`, {
+        date,
+        time: confirmBooking.time,
+        duration,
+        purpose: purpose || 'Extra Class'
+      });
+      toast.success(`Reserved ${confirmBooking.room.name} at ${confirmBooking.time}!`);
+      setConfirmBooking(null);
+      setPurpose('');
+      mutateRooms();
+      mutateBookings();
+    } catch (error) {
+      toast.error('Failed to reserve room.');
+    }
   };
 
   return (
@@ -91,11 +109,12 @@ export default function TeacherRoomReservationPage() {
 
           {searched && (
             <div className="space-y-4">
-              <h3 className="font-semibold text-zinc-900 dark:text-white">
+              <h3 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
                 Available Rooms
-                <span className="text-zinc-500 dark:text-zinc-500 font-normal text-sm ml-2">({filteredRooms.length} found)</span>
+                {loadingRooms && <Loader2 className="w-4 h-4 animate-spin" />}
+                {!loadingRooms && <span className="text-zinc-500 dark:text-zinc-500 font-normal text-sm ml-2">({filteredRooms.length} found)</span>}
               </h3>
-              {filteredRooms.map((room) => (
+              {!loadingRooms && filteredRooms.map((room: any) => (
                 <div key={room.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -130,21 +149,33 @@ export default function TeacherRoomReservationPage() {
             </div>
           )}
 
-          {bookings.length > 0 && (
+          {myBookings.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-semibold text-zinc-900 dark:text-white">My Reservations</h3>
-              {bookings.map((b, i) => {
-                const room = TEACHER_ROOMS.find(r => r.id === b.roomId);
+              <h3 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
+                My Reservations
+                {loadingBookings && <Loader2 className="w-4 h-4 animate-spin" />}
+              </h3>
+              {myBookings.map((b: any) => {
+                const room = b.room;
                 return (
-                  <div key={i} className="flex items-center justify-between p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+                  <div key={b.id} className="flex items-center justify-between p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
                     <div>
-                      <div className="font-medium text-zinc-900 dark:text-white text-sm">{room?.name}</div>
+                      <div className="font-medium text-zinc-900 dark:text-white text-sm">{room?.name || 'Unknown Room'}</div>
                       <div className="text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-2 mt-0.5">
-                        <Clock className="w-3 h-3" /> {date || 'Selected date'} at {b.time} · {duration} · {b.purpose}
+                        <Clock className="w-3 h-3" /> {b.date} at {b.time} · {b.duration}
                       </div>
                     </div>
                     <button
-                      onClick={() => { setBookings(prev => prev.filter((_, idx) => idx !== i)); toast.success('Booking cancelled.'); }}
+                      onClick={async () => {
+                        try {
+                          await api.delete(`/rooms/bookings/${b.id}`);
+                          toast.success('Booking cancelled.');
+                          mutateBookings();
+                          if (date === b.date) mutateRooms();
+                        } catch (e) {
+                          toast.error('Failed to cancel');
+                        }
+                      }}
                       className="text-xs text-red-400 hover:text-red-300 transition-colors"
                     >
                       Cancel

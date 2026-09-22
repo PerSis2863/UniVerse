@@ -1,0 +1,192 @@
+--- apps/web/src/components/dashboard/StudentBlackboardClient.tsx
++++ apps/web/src/components/dashboard/StudentBlackboardClient.tsx
+@@ -1,7 +1,7 @@
+ 'use client';
+-import { useState, useOptimistic } from 'react';
++import { useState, useOptimistic, useEffect } from 'react';
+ import { Topbar } from '@/components/layout/Topbar';
+ import {
+   BookOpen, FileText, Search, MessageSquare, Bell, Calendar,
+   Download, ExternalLink, Pin, Star, Clock, Users, ChevronRight,
+   Upload, Video, Activity, Briefcase, Target, Plus, X, Send,
+@@ -11,8 +11,10 @@
+ import { toast } from 'sonner';
+ import dynamic from 'next/dynamic';
+ import { cn } from '@/lib/utils';
++import useSWR from 'swr';
++import { fetcher } from '@/lib/fetcher';
+ 
+ const CollaborationWhiteboard = dynamic(
+   () => import('@/components/dashboard/CollaborationWhiteboard').then(mod => mod.CollaborationWhiteboard),
+   { ssr: false, loading: () => <div className="h-[600px] w-full bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-2xl flex items-center justify-center text-zinc-500">Loading Whiteboard...</div> }
+ );
+ 
+-// ─── Mock Data ────────────────────────────────────────────────────────────────
+-
+-const COURSES = [
+-  { code: 'CS301', name: 'Data Structures & Algorithms', instructor: 'Prof. Mehta', color: '#6366f1', students: 45 },
+-  { code: 'CS302', name: 'Operating Systems', instructor: 'Prof. Patel', color: '#a855f7', students: 52 },
+-  { code: 'CS303', name: 'Database Management', instructor: 'Prof. Joshi', color: '#10b981', students: 38 },
+-  { code: 'CS304', name: 'Computer Networks', instructor: 'Dr. Sharma', color: '#3b82f6', students: 41 },
+-];
+-
+-const BLACKBOARD_DATA: Record<string, {
+-  announcements: any[], resources: any[], research: any[],
+-  assignments: any[], discussion: any[], activity: any[], quizResults: any[], goals: any[]
+-}> = {
+-  CS301: {
+-    announcements: [
+-      { id: 1, pinned: true, title: 'Midterm Exam Details', body: 'The midterm will cover chapters 1–8. Open book, 90 minutes. Room: Main Hall A.', author: 'Prof. Mehta', time: '2 hours ago', priority: 'high' },
+-      { id: 2, pinned: false, title: 'Office Hours This Week', body: 'Office hours moved to Wednesday 3–5 PM due to faculty meeting. Room 302.', author: 'Prof. Mehta', time: '1 day ago', priority: 'normal' },
+-      { id: 3, pinned: false, title: 'Assignment 3 Posted', body: 'Graph traversal assignment is now live. Due date: Oct 5. Submit via Blackboard.', author: 'Prof. Mehta', time: '3 days ago', priority: 'normal' },
+-    ],
+-    resources: [
+-      { id: 1, week: 'Week 1', title: 'Arrays & Linked Lists — Lecture Slides', type: 'PDF', size: '2.4 MB', icon: FileText, color: '#6366f1', pinned: true },
+-      { id: 2, week: 'Week 2', title: 'Sorting Algorithms — Video Lecture', type: 'Video', size: '240 MB', icon: Video, color: '#ec4899', pinned: false },
+-      { id: 3, week: 'Week 3', title: 'Trees & Graphs — Reference Sheet', type: 'PDF', size: '1.1 MB', icon: FileText, color: '#6366f1', pinned: false },
+-      { id: 4, week: 'Week 4', title: 'Dynamic Programming — Practice Set', type: 'DOCX', size: '0.8 MB', icon: FileText, color: '#10b981', pinned: false },
+-      { id: 5, week: 'Week 5', title: 'Hash Tables — Lecture Recording', type: 'Video', size: '320 MB', icon: Video, color: '#ec4899', pinned: false },
+-    ],
+-    research: [
+-      { id: 1, title: 'Skip Lists: A Probabilistic Alternative to Balanced Trees', authors: 'William Pugh', journal: 'Communications of the ACM', year: 1990, url: '#', tags: ['Data Structures', 'Probabilistic'] },
+-      { id: 2, title: 'An Introduction to the Analysis of Algorithms', authors: 'Sedgewick & Flajolet', journal: 'Addison-Wesley', year: 2013, url: '#', tags: ['Algorithms', 'Analysis'] },
+-      { id: 3, title: 'Cache-Oblivious Algorithms', authors: 'Frigo et al.', journal: 'FOCS 1999', year: 1999, url: '#', tags: ['Cache', 'Memory'] },
+-    ],
+-    assignments: [
+-      { id: 1, title: 'Assignment 3: Graph Traversal', due: 'Oct 5, 2026', status: 'pending', score: null, maxScore: 100, description: 'Implement BFS and DFS on a weighted graph.' },
+-      { id: 2, title: 'Assignment 2: Sorting Challenge', due: 'Sept 20, 2026', status: 'submitted', score: 91, maxScore: 100, description: 'Compare performance of QuickSort, MergeSort, HeapSort.' },
+-      { id: 3, title: 'Assignment 1: Array Problems', due: 'Sept 10, 2026', status: 'graded', score: 94, maxScore: 100, description: 'Solve 10 classic array manipulation problems.' },
+-    ],
+-    discussion: [
+-      { id: 1, title: 'Confused about Dijkstra vs Bellman-Ford', author: 'Ravi M.', replies: 6, time: '30 mins ago', resolved: false },
+-      { id: 2, title: 'What is the best way to visualize a trie?', author: 'Priya S.', replies: 4, time: '2 hours ago', resolved: true },
+-      { id: 3, title: 'Help with Assignment 3 — Edge Cases', author: 'Aditya B.', replies: 2, time: '1 day ago', resolved: false },
+-    ],
+-    activity: [
+-      { user: 'Prof. Mehta', action: 'posted an announcement', item: 'Midterm Exam Details', time: '2h ago', icon: Bell },
+-      { user: 'Ravi M.', action: 'started a discussion', item: 'Dijkstra vs Bellman-Ford', time: '2h ago', icon: MessageSquare },
+-      { user: 'Prof. Mehta', action: 'uploaded a resource', item: 'Hash Tables — Lecture Recording', time: '4h ago', icon: Upload },
+-      { user: 'Priya S.', action: 'submitted', item: 'Assignment 2: Sorting Challenge', time: '1d ago', icon: CheckCircle2 },
+-    ],
+-    quizResults: [
+-      { id: 1, title: 'Graph Algorithms Quiz', date: 'Sept 15, 2026', score: 92, maxScore: 100, questions: 30, timeTaken: '38 mins' },
+-      { id: 2, title: 'Sorting Algorithms Quiz', date: 'Sept 8, 2026', score: 88, maxScore: 100, questions: 25, timeTaken: '42 mins' },
+-    ],
+-    goals: [
+-      { id: 1, title: 'Complete all Week 1–5 resources', progress: 80, due: 'Sept 25' },
+-      { id: 2, title: 'Score 90%+ on midterm', progress: 0, due: 'Oct 10' },
+-      { id: 3, title: 'Participate in 3 discussions', progress: 67, due: 'Oct 1' },
+-    ],
+-  },
+-};
+-// fill other courses with same data for now
+-['CS302', 'CS303', 'CS304'].forEach(c => {
+-  (BLACKBOARD_DATA as any)[c] = { ...BLACKBOARD_DATA.CS301 };
+-});
+-
+ const TABS = [
+   { id: 'board', label: 'Board', icon: Pin },
+   { id: 'resources', label: 'Resources', icon: FileText },
+@@ -105,8 +45,11 @@
+ // ─── Component ────────────────────────────────────────────────────────────────
+ 
+ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any }) {
+-  const [selectedCourse, setSelectedCourse] = useState(initialCourse || COURSES[0]);
++  const { data: enrollments, isLoading: isCoursesLoading } = useSWR('/courses/my', fetcher);
++  const courses = enrollments?.map((e: any) => e.course) || [];
++  
++  const [selectedCourse, setSelectedCourse] = useState(initialCourse || courses[0]);
++  
++  useEffect(() => {
++    if (!selectedCourse && courses.length > 0) {
++      setSelectedCourse(courses[0]);
++    }
++  }, [courses, selectedCourse]);
++
+   const [activeTab, setActiveTab] = useState('board');
+   const [messageText, setMessageText] = useState('');
+   const [newDiscTitle, setNewDiscTitle] = useState('');
+@@ -118,17 +61,28 @@
+   const [isSubmitting, setIsSubmitting] = useState(false);
+   const [renderTrigger, setRenderTrigger] = useState(0);
+ 
+-  const data = BLACKBOARD_DATA[selectedCourse.code];
++  const { data: blackboardData, isLoading: isDataLoading } = useSWR(
++    selectedCourse ? `/blackboard/${selectedCourse.id}` : null,
++    fetcher
++  );
+ 
+   const [optimisticAssignments, addOptimisticAssignment] = useOptimistic(
+-    data.assignments,
++    blackboardData?.assignments || [],
+     (state: any[], updatedAssignment: any) => {
+       return state.map(a => a.id === updatedAssignment.id ? { ...a, ...updatedAssignment } : a);
+     }
+   );
+ 
+   const handleSendMessage = () => {
+     if (!messageText.trim()) return;
+-    toast.success('Message sent to Prof. ' + selectedCourse.instructor.split(' ')[1]);
++    toast.success('Message sent to Prof. ' + (selectedCourse?.teacher?.name || 'Instructor'));
+     setMessageText('');
+   };
+ 
++  if (isCoursesLoading) return <div className="p-8 flex justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
++  if (!selectedCourse) return <div className="p-8">No courses available.</div>;
++
++  const data = blackboardData || {
++    announcements: [], resources: [], research: [], assignments: [], discussion: [], activity: [], quizResults: [], goals: [], calendarEvents: []
++  };
++
+   return (
+     <>
+       <Topbar title="Blackboard" subtitle="Course resources, research, assignments & more." />
+ 
+       <div className="flex-1 flex flex-col overflow-hidden">
+         {/* Course Selector */}
+         <div className="border-b border-zinc-200 dark:border-white/[0.06] bg-white/60 dark:bg-zinc-900/60 backdrop-blur-xl px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-none">
+-          {COURSES.map(c => (
++          {courses.map((c: any) => (
+             <button
+-              key={c.code}
++              key={c.id}
+               onClick={() => setSelectedCourse(c)}
+               className={cn(
+                 'relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border',
+-                selectedCourse.code === c.code
++                selectedCourse.id === c.id
+                   ? 'text-white shadow-lg border-transparent'
+                   : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
+               )}
+             >
+-              {selectedCourse.code === c.code && (
++              {selectedCourse.id === c.id && (
+                 <motion.div
+                   layoutId="activeCourseStudent"
+                   className="absolute inset-0 rounded-xl"
+-                  style={{ background: c.color, boxShadow: `0 4px 14px ${c.color}40` }}
++                  style={{ background: c.color || '#6366f1', boxShadow: `0 4px 14px ${c.color || '#6366f1'}40` }}
+                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                 />
+               )}
+               <span className="relative z-10 font-bold">{c.code}</span>
+-              <span className="relative z-10 hidden sm:inline opacity-75">{c.name.split(' ').slice(0, 2).join(' ')}</span>
++              <span className="relative z-10 hidden sm:inline opacity-75">{c.name?.split(' ').slice(0, 2).join(' ')}</span>
+             </button>
+           ))}
+         </div>
+ 
+         {/* Course Header */}
+         <div className="px-4 sm:px-8 py-4 border-b border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/40 flex items-center justify-between gap-4 flex-wrap">
+           <div className="flex items-center gap-3">
+-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold" style={{ background: selectedCourse.color }}>
++            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold" style={{ background: selectedCourse.color || '#6366f1' }}>
+               {selectedCourse.code.slice(-2)}
+             </div>
+             <div>
+               <h2 className="font-bold text-zinc-900 dark:text-white">{selectedCourse.name}</h2>
+-              <p className="text-xs text-zinc-500">{selectedCourse.instructor} · {selectedCourse.students} Students</p>
++              <p className="text-xs text-zinc-500">{selectedCourse?.teacher?.name || 'Unknown Instructor'} · {selectedCourse._count?.enrollments || 0} Students</p>
+             </div>
+           </div>
+           <div className="flex gap-2">

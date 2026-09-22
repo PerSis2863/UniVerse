@@ -5,7 +5,16 @@ import { PrismaService } from '../prisma/prisma.service';
 export class RoomsService {
   constructor(private prisma: PrismaService) {}
 
-  findAll() {
+  findAll(date?: string) {
+    if (date) {
+      return this.prisma.room.findMany({
+        include: {
+          reservations: {
+            where: { date }
+          }
+        }
+      });
+    }
     return this.prisma.room.findMany();
   }
 

@@ -44,6 +44,30 @@ export class QuizzesService {
     });
   }
 
+  async getTeacherQuizzes(teacherId: string) {
+    const quizzes = await this.prisma.quiz.findMany({
+      where: {
+        course: { teacherId }
+      },
+      include: {
+        course: { select: { name: true } },
+        _count: { select: { questions: true, submissions: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return quizzes.map(q => ({
+      id: q.id,
+      title: q.title,
+      course: q.course?.name || 'Unknown Course',
+      questions: q._count.questions,
+      timeLimit: `${q.timeLimit} mins`,
+      status: q.status,
+      submissions: q._count.submissions,
+      dueDate: q.dueDate ? q.dueDate.toISOString().split('T')[0] : 'No date set'
+    }));
+  }
+
   async getStudentQuizzes(studentId: string) {
     const quizzes = await this.prisma.quiz.findMany({
       include: { 

@@ -5,14 +5,14 @@ import { MessageSquare, Heart, Share2, Search, Filter, TrendingUp, Users } from 
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-const MOCK_POSTS = [
-  { id: 1, author: 'Alice J.', avatar: 'A', role: 'Student', time: '2 hours ago', title: 'Study group for CS101 Midterm', content: 'Hey everyone, I am organizing a study group for the upcoming CS101 midterm. We will be meeting in the library at 5PM on Thursday. Let me know if you want to join!', likes: 12, comments: 4, tags: ['CS101', 'Study Group'] },
-  { id: 2, author: 'Prof. Alan T.', avatar: 'T', role: 'Teacher', time: '5 hours ago', title: 'New resources added to Data Structures', content: 'I have uploaded some additional practice problems for trees and graphs to the course materials. Please review them before next week\'s lecture.', likes: 45, comments: 2, tags: ['Announcement', 'Data Structures'] },
-  { id: 3, author: 'Charlie B.', avatar: 'C', role: 'Student', time: '1 day ago', title: 'Looking for a project partner for Web Dev', content: 'I am looking for someone to team up with for the final project in the Web Development Bootcamp. I am strong in React but need help with the backend (Node.js).', likes: 8, comments: 5, tags: ['Web Dev', 'Project'] },
-];
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 export default function StudentCommunity() {
   const [searchTerm, setSearchTerm] = useState('');
+  const { data: posts, isLoading } = useSWR('/announcements', fetcher);
+  
+  const filteredPosts = (posts || []).filter((p: any) => p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || p.content?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <>
@@ -47,25 +47,25 @@ export default function StudentCommunity() {
 
             {/* Posts */}
             <div className="space-y-4">
-              {MOCK_POSTS.map((post) => (
+              {isLoading ? (
+                <div className="text-center py-8 text-zinc-500">Loading posts...</div>
+              ) : filteredPosts.length === 0 ? (
+                <div className="text-center py-8 text-zinc-500">No posts found.</div>
+              ) : filteredPosts.map((post: any) => (
                 <div key={post.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors">
                   
                   {/* Author Row */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-zinc-900 dark:text-white font-medium shadow-sm ${
-                        post.role === 'Teacher' ? 'bg-gradient-to-br from-blue-500 to-cyan-500' : 'bg-gradient-to-br from-indigo-500 to-purple-500'
-                      }`}>
-                        {post.avatar}
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-zinc-900 dark:text-white font-medium shadow-sm bg-gradient-to-br from-indigo-500 to-purple-500`}>
+                        {post.authorId?.charAt(0) || 'A'}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-zinc-900 dark:text-white">{post.author}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            post.role === 'Teacher' ? 'bg-blue-500/10 text-blue-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
-                          }`}>{post.role}</span>
+                          <span className="font-medium text-zinc-900 dark:text-white">{post.authorId || 'Admin'}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400`}>Announcement</span>
                         </div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-500">{post.time}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-500">{new Date(post.createdAt || Date.now()).toLocaleDateString()}</div>
                       </div>
                     </div>
                   </div>
@@ -74,22 +74,13 @@ export default function StudentCommunity() {
                   <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-2">{post.title}</h3>
                   <p className="text-zinc-300 text-sm leading-relaxed mb-4">{post.content}</p>
 
-                  {/* Tags */}
-                  <div className="flex gap-2 mb-4">
-                    {post.tags.map((tag, i) => (
-                      <span key={i} className="px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 text-xs rounded-md">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-
                   {/* Actions */}
                   <div className="flex items-center gap-6 pt-4 border-t border-zinc-200 dark:border-zinc-800/50">
                     <button onClick={() => toast.success('Liked post!')} className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-red-400 transition-colors">
-                      <Heart className="w-4 h-4" /> <span className="text-sm font-medium">{post.likes}</span>
+                      <Heart className="w-4 h-4" /> <span className="text-sm font-medium">0</span>
                     </button>
                     <button onClick={() => toast.success('Viewing comments...')} className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-indigo-400 transition-colors">
-                      <MessageSquare className="w-4 h-4" /> <span className="text-sm font-medium">{post.comments} Comments</span>
+                      <MessageSquare className="w-4 h-4" /> <span className="text-sm font-medium">0 Comments</span>
                     </button>
                     <button onClick={() => toast.success('Shared post!')} className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors ml-auto">
                       <Share2 className="w-4 h-4" />

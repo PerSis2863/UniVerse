@@ -1,14 +1,10 @@
 import { PrismaClient, Role, UserStatus } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Seeding demo accounts...');
 
-  const passwordHashStudent = await bcrypt.hash('password', 10);
-  const passwordHashTeacher = await bcrypt.hash('password', 10);
-  const passwordHashAdmin = await bcrypt.hash('password', 10);
 
   // Student
   const student = await prisma.user.upsert({
@@ -16,7 +12,6 @@ async function main() {
     update: {},
     create: {
       email: 'demo@student.com',
-      password: passwordHashStudent,
       name: 'John Doe',
       role: Role.STUDENT,
       status: UserStatus.ACTIVE,
@@ -37,7 +32,6 @@ async function main() {
     update: {},
     create: {
       email: 'demo@teacher.com',
-      password: passwordHashTeacher,
       name: 'Dr. Jane Smith',
       role: Role.TEACHER,
       status: UserStatus.ACTIVE,
@@ -57,7 +51,6 @@ async function main() {
     update: {},
     create: {
       email: 'demo@admin.com',
-      password: passwordHashAdmin,
       name: 'Admin User',
       role: Role.ADMIN,
       status: UserStatus.ACTIVE,
@@ -70,7 +63,6 @@ async function main() {
     update: {},
     create: {
       email: 'it-support@universe.com',
-      password: passwordHashAdmin,
       name: 'IT Support',
       role: Role.ADMIN,
       status: UserStatus.ACTIVE,
@@ -83,7 +75,6 @@ async function main() {
     update: {},
     create: {
       email: 'alice@student.com',
-      password: passwordHashStudent,
       name: 'Alice Johnson',
       role: Role.STUDENT,
       status: UserStatus.ACTIVE,
@@ -96,7 +87,6 @@ async function main() {
     update: {},
     create: {
       email: 'bob@student.com',
-      password: passwordHashStudent,
       name: 'Bob Smith',
       role: Role.STUDENT,
       status: UserStatus.ACTIVE,
@@ -375,6 +365,54 @@ async function main() {
         }
       });
     }
+  }
+
+  // Seed Companies and Internships
+  console.log('Seeding Internships...');
+  const companyCount = await prisma.company.count();
+  if (companyCount === 0) {
+    const google = await prisma.company.create({
+      data: {
+        name: 'Google',
+        location: 'Mountain View, CA',
+        sector: 'Technology'
+      }
+    });
+
+    const microsoft = await prisma.company.create({
+      data: {
+        name: 'Microsoft',
+        location: 'Seattle, WA',
+        sector: 'Technology'
+      }
+    });
+
+    await prisma.internship.createMany({
+      data: [
+        {
+          companyId: google.id,
+          title: 'Software Engineering Intern',
+          description: 'Work on cutting edge technologies.',
+          type: 'FULL_TIME',
+          location: 'Mountain View, CA',
+          duration: '12 weeks',
+          salary: '$8,000/mo',
+          deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true
+        },
+        {
+          companyId: microsoft.id,
+          title: 'Data Science Co-op',
+          description: 'Analyze large datasets to improve product experience.',
+          type: 'PART_TIME',
+          location: 'Seattle, WA',
+          duration: '6 months',
+          salary: '$7,500/mo',
+          deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+          isActive: true
+        }
+      ]
+    });
   }
 
   console.log('Demo accounts and messages seeded successfully!');
