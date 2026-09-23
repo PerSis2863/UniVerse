@@ -76,8 +76,9 @@ export default function AccountingPage() {
       } else {
         toast.error(data.error || 'Failed to create payment session.');
       }
-    } catch (e) {
-      toast.error('An error occurred. Please try again.');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || 'An error occurred while creating the payment session.');
     } finally {
       setIsLoading(false);
     }
