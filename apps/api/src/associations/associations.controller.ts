@@ -14,7 +14,7 @@ export class AssociationsController {
 
   @Get('my-memberships')
   getMyMemberships(@Req() req) {
-    return this.associationsService.getUserMemberships(req.user.userId);
+    return this.associationsService.getUserMemberships(req.user.id);
   }
 
   @Get(':id')
@@ -24,17 +24,17 @@ export class AssociationsController {
 
   @Post(':id/join')
   join(@Param('id') id: string, @Req() req) {
-    return this.associationsService.join(id, req.user.userId);
+    return this.associationsService.join(id, req.user.id);
   }
 
   @Delete(':id/leave')
   leave(@Param('id') id: string, @Req() req) {
-    return this.associationsService.leave(id, req.user.userId);
+    return this.associationsService.leave(id, req.user.id);
   }
 
   @Post()
   create(@Req() req) {
-    return this.associationsService.create(req.body, req.user.userId);
+    return this.associationsService.create(req.body, req.user.id);
   }
 
   @Patch(':id/status')
