@@ -8,10 +8,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 
-import { getUserTransactions } from '@/app/actions/transaction';
-
-// We'll use a hardcoded email for this prototype
-const USER_EMAIL = 'student@universe.edu';
+import { getUserTransactions, createTransaction } from '@/app/actions/transaction';
+import { useAuthStore } from '@/store/auth';
 
 const quickActions = [
   { id: 'statements', title: 'View Statements', subtitle: 'Monthly and annual', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'hover:border-blue-500/50' },
@@ -21,6 +19,7 @@ const quickActions = [
 ];
 
 export default function AccountingPage() {
+  const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const searchParams = useSearchParams();
@@ -32,15 +31,16 @@ export default function AccountingPage() {
 
   useEffect(() => {
     const fetchTrx = async () => {
+      if (!user?.email) return;
       try {
-        const data = await getUserTransactions(USER_EMAIL);
+        const data = await getUserTransactions(user.email);
         setTransactions(data);
       } catch (e) {
         console.error('Failed to load transactions', e);
       }
     };
     fetchTrx();
-  }, []);
+  }, [user?.email]);
 
   useEffect(() => {
     if (searchParams.get('success')) {
@@ -52,12 +52,25 @@ export default function AccountingPage() {
   }, [searchParams]);
 
   const handlePayment = async () => {
+    if (!user?.email) return;
     setIsLoading(true);
     try {
+      // Find a pending transaction to pay, or create a new one for the $15 outstanding balance
+      let pendingTrx = transactions.find(t => t.status === 'PENDING');
+      
+      if (!pendingTrx) {
+        pendingTrx = await createTransaction({
+          amount: 15.00,
+          description: 'Outstanding Balance',
+          status: 'PENDING',
+          userEmail: user.email
+        });
+      }
+
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 15.00, description: 'Outstanding Balance' }),
+        body: JSON.stringify({ transactionId: pendingTrx.id }),
       });
       const data = await res.json();
       if (data.url) {
