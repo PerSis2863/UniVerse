@@ -59,6 +59,7 @@ export const translations: Record<Language, TranslationMap> = {
     'nav.support': 'Support',
     'nav.beesafe': 'BeeSafe Reporting',
     // Common
+    'common.greeting': 'Hello',
     'common.search': 'Search...',
     'common.apply': 'Apply',
     'common.cancel': 'Cancel',
@@ -224,6 +225,7 @@ export const translations: Record<Language, TranslationMap> = {
     'dashboard.quick_actions': 'Actions rapides',
 
     // Common
+    'common.greeting': 'Bonjour',
     'common.search': 'Rechercher...',
     'common.apply': 'Postuler',
     'common.cancel': 'Annuler',
@@ -373,6 +375,7 @@ export const translations: Record<Language, TranslationMap> = {
     'dashboard.quick_actions': 'Acciones rápidas',
 
     // Common
+    'common.greeting': 'Hola',
     'common.search': 'Buscar...',
     'common.apply': 'Aplicar',
     'common.cancel': 'Cancelar',
@@ -522,6 +525,7 @@ export const translations: Record<Language, TranslationMap> = {
     'dashboard.quick_actions': 'त्वरित कार्रवाइयां',
 
     // Common
+    'common.greeting': 'नमस्ते',
     'common.search': 'खोजें...',
     'common.apply': 'आवेदन करें',
     'common.cancel': 'रद्द करें',
