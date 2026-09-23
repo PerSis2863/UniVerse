@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Phone, KeyRound, ArrowLeft, User } from 'lucide-react';
+import { Loader2, KeyRound, ArrowLeft, User } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 // Add the window type extension here so we don't get TS errors
 declare global {
@@ -31,18 +33,33 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   useEffect(() => {
-    // Initialize RecaptchaVerifier
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-          setError('reCAPTCHA expired. Please try again.');
-        }
-      });
+    // Clear any existing recaptcha verifier to prevent "auth/internal-error" on hot reloads
+    if (window.recaptchaVerifier) {
+      try {
+        window.recaptchaVerifier.clear();
+      } catch (e) {}
+      window.recaptchaVerifier = undefined;
     }
+
+    // Initialize RecaptchaVerifier
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {
+        // reCAPTCHA solved
+      },
+      'expired-callback': () => {
+        setError('reCAPTCHA expired. Please try again.');
+      }
+    });
+
+    return () => {
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {}
+        window.recaptchaVerifier = undefined;
+      }
+    };
   }, []);
 
   const handleSendCode = async (e: React.FormEvent) => {
@@ -61,10 +78,8 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
 
     try {
       const appVerifier = window.recaptchaVerifier;
-      // Firebase expects phone numbers in E.164 format (e.g. +16505551234)
-      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
-      
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      // react-phone-number-input already formats the value as E.164 (e.g. +16505551234)
+      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
       setConfirmationResult(confirmation);
       setStep('CODE_INPUT');
     } catch (err: any) {
@@ -134,19 +149,42 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
 
           <div>
             <label className="block text-zinc-400 text-sm font-medium mb-1.5">Phone Number</label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <input
-                type="tel"
-                required
+            <div className="relative phone-input-container">
+              <PhoneInput
+                placeholder="Enter phone number"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                placeholder="+1 555 123 4567"
+                onChange={(value) => setPhoneNumber(value || '')}
+                defaultCountry="US"
+                className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 px-4 text-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-colors"
                 disabled={isLoading}
               />
             </div>
-            <p className="text-zinc-500 text-xs mt-1">Include country code (e.g. +1 for US)</p>
+            <style jsx global>{`
+              .phone-input-container .PhoneInputInput {
+                background: transparent;
+                border: none;
+                color: white;
+                outline: none;
+                font-size: 0.875rem; /* text-sm */
+              }
+              .phone-input-container .PhoneInputCountry {
+                margin-right: 12px;
+              }
+              .phone-input-container .PhoneInputCountrySelectArrow {
+                color: #71717a; /* text-zinc-500 */
+              }
+              .phone-input-container .PhoneInputCountryIcon--border {
+                border-color: #27272a; /* border-zinc-800 */
+              }
+              .phone-input-container .PhoneInputCountrySelect {
+                background-color: #09090b;
+                color: white;
+              }
+              .phone-input-container .PhoneInputCountrySelect option {
+                background-color: #09090b;
+                color: white;
+              }
+            `}</style>
           </div>
 
           <div id="recaptcha-container"></div>
