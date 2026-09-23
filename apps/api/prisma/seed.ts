@@ -415,6 +415,98 @@ async function main() {
     });
   }
 
+  // Seed Administrative Data
+  console.log('Seeding Administrative Data...');
+  
+  // Scholarships
+  const scholarshipCount = await prisma.scholarship.count();
+  if (scholarshipCount === 0) {
+    const meritscholarship = await prisma.scholarship.create({
+      data: {
+        name: 'Excellence in STEM Scholarship',
+        description: 'Awarded to top-performing students in Science, Technology, Engineering, and Mathematics.',
+        amount: 5000,
+        currency: 'USD',
+        provider: 'Tech Innovators Foundation',
+        deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
+        requirements: 'Minimum GPA of 3.8. Must be enrolled in a STEM program.',
+        isActive: true,
+      }
+    });
+
+    await prisma.scholarship.create({
+      data: {
+        name: 'Community Leadership Award',
+        description: 'For students demonstrating exceptional commitment to community service.',
+        amount: 2500,
+        currency: 'USD',
+        provider: 'Local Community Board',
+        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        isActive: true,
+      }
+    });
+
+    await prisma.scholarshipApplication.create({
+        data: {
+            scholarshipId: meritscholarship.id,
+            studentId: student.id,
+            status: 'PENDING',
+            essay: 'I believe I am a strong candidate for this scholarship because...',
+        }
+    });
+  }
+
+  // Documents
+  const docCount = await prisma.studentDocument.count();
+  if (docCount === 0) {
+    await prisma.studentDocument.createMany({
+        data: [
+            {
+                userId: student.id,
+                type: 'TRANSCRIPT',
+                title: 'Official Transcript - Fall 2025',
+                fileUrl: 'https://example.com/transcript.pdf',
+                issuedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days ago
+                isVerified: true
+            },
+            {
+                userId: student.id,
+                type: 'LETTER',
+                title: 'Enrollment Verification Letter',
+                fileUrl: 'https://example.com/enrollment.pdf',
+                isVerified: false
+            }
+        ]
+    });
+  }
+
+  // Invoices
+  const invoiceCount = await prisma.invoice.count();
+  if (invoiceCount === 0) {
+      await prisma.invoice.createMany({
+          data: [
+              {
+                  userId: student.id,
+                  number: 'INV-2026-001',
+                  amount: 4500,
+                  status: 'PENDING',
+                  dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+                  description: 'Fall Semester Tuition',
+                  items: [{ label: 'Tuition', amount: 4500 }]
+              },
+              {
+                  userId: student.id,
+                  number: 'INV-2026-002',
+                  amount: 250,
+                  status: 'COMPLETED',
+                  paidAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+                  description: 'Library Fees',
+                  items: [{ label: 'Late Return Fee', amount: 50 }, { label: 'Book Replacement', amount: 200 }]
+              }
+          ]
+      });
+  }
+
   console.log('Demo accounts and messages seeded successfully!');
 }
 

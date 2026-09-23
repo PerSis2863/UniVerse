@@ -27,7 +27,7 @@ export default function AdminAdministrativeClient() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.get('/documents/my').catch(() => ({ data: [] })),
+      api.get('/documents').catch(() => ({ data: [] })),
       api.get('/scholarships').catch(() => ({ data: [] })),
     ]).then(([docsRes, schRes]) => {
       setDocs(docsRes.data || []);
@@ -38,7 +38,7 @@ export default function AdminAdministrativeClient() {
 
   const refetch = async () => {
     const [docsRes, schRes] = await Promise.all([
-      api.get('/documents/my').catch(() => ({ data: [] })),
+      api.get('/documents').catch(() => ({ data: [] })),
       api.get('/scholarships').catch(() => ({ data: [] })),
     ]);
     setDocs(docsRes.data || []);
