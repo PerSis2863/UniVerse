@@ -223,10 +223,11 @@ hi_keys = """
     'admin.reject': 'अस्वीकार',
 """
 
-content = re.sub(r"(\s+)'impact.join': 'Join Campaign',", r"\\1'impact.join': 'Join Campaign'," + en_keys, content)
-content = re.sub(r"(\s+)'impact.join': 'Rejoindre la campagne',", r"\\1'impact.join': 'Rejoindre la campagne'," + fr_keys, content)
-content = re.sub(r"(\s+)'impact.join': 'Unirse a la campaña',", r"\\1'impact.join': 'Unirse a la campaña'," + es_keys, content)
-content = re.sub(r"(\s+)'impact.join': 'अभियान में शामिल हों',", r"\\1'impact.join': 'अभियान में शामिल हों'," + hi_keys, content)
+content = re.sub(r"(\s+)'impact\.leaderboard': 'Impact Leaderboard',", r"\\1'impact.leaderboard': 'Impact Leaderboard'," + en_keys, content)
+content = re.sub(r"(\s+)'impact\.leaderboard': 'Classement d\\'impact',", r"\\1'impact.leaderboard': 'Classement d\\'impact'," + fr_keys, content)
+content = re.sub(r"(\s+)'impact\.leaderboard': 'Clasificación de impacto',", r"\\1'impact.leaderboard': 'Clasificación de impacto'," + es_keys, content)
+content = re.sub(r"(\s+)'impact\.leaderboard': 'प्रभाव लीडरबोर्ड',", r"\\1'impact.leaderboard': 'प्रभाव लीडरबोर्ड'," + hi_keys, content)
 
 with open('./apps/web/src/lib/i18n.ts', 'w') as f:
     f.write(content)
+
