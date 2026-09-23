@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, KeyRound, ArrowLeft, User } from 'lucide-react';
+import { Loader2, KeyRound, ArrowLeft, User, Globe } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import PhoneInput from 'react-phone-number-input';
@@ -14,6 +14,10 @@ declare global {
     grecaptcha: any;
   }
 }
+
+const CustomFlag = () => (
+  <Globe className="w-5 h-5 text-zinc-400" />
+);
 
 interface PhoneAuthFlowProps {
   isRegister: boolean;
@@ -155,6 +159,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
                 value={phoneNumber}
                 onChange={(value) => setPhoneNumber(value || '')}
                 defaultCountry="US"
+                flagComponent={CustomFlag}
                 className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 px-4 text-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-colors"
                 disabled={isLoading}
               />
