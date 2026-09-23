@@ -129,7 +129,7 @@ export default function AdminAnnouncements() {
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-500">
                     <Calendar className="w-3.5 h-3.5" />
-                    {new Date(ann.createdAt).toLocaleDateString()}
+                    {new Date(ann.createdAt).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </div>

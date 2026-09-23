@@ -65,7 +65,7 @@ export default function StudentCommunity() {
                           <span className="font-medium text-zinc-900 dark:text-white">{post.authorId || 'Admin'}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400`}>Announcement</span>
                         </div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-500">{new Date(post.createdAt || Date.now()).toLocaleDateString()}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-500">{new Date(post.createdAt || Date.now()).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     </div>
                   </div>

@@ -84,7 +84,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
       title: a.title,
       body: a.content,
       author: a.author?.name || 'Instructor',
-      time: new Date(a.createdAt).toLocaleDateString(),
+      time: new Date(a.createdAt).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
       priority: 'normal'
     })),
     resources: blackboardData.resources.map((r: any) => ({

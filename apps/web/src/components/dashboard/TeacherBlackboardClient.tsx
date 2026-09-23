@@ -239,7 +239,7 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
                           <h4 className="font-bold text-zinc-900 dark:text-white">{a.title}</h4>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-zinc-400 whitespace-nowrap">{new Date(a.createdAt).toLocaleDateString()}</span>
+                          <span className="text-xs text-zinc-400 whitespace-nowrap">{new Date(a.createdAt).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors" onClick={async () => { 
                             try {
                               await api.delete(`/blackboard/${selectedCourse.id}/announcements/${a.id}`);
