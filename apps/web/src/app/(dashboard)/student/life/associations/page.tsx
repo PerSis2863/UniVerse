@@ -6,12 +6,14 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import { RequestAssociationModal } from './RequestAssociationModal';
 
 export default function AssociationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const { data: associationsData, isLoading } = useSWR('/associations', fetcher);
-  const { data: myMemberships } = useSWR('/associations/my-memberships', fetcher);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const { data: associationsData, isLoading, mutate } = useSWR('/associations', fetcher);
+  const { data: myMemberships, mutate: mutateMemberships } = useSWR('/associations/my-memberships', fetcher);
 
   const associations = associationsData || [];
   const membershipsSet = new Set(myMemberships?.map((m: any) => m.associationId) || []);
@@ -62,6 +64,16 @@ export default function AssociationsPage() {
                 Search
               </button>
             </div>
+          </div>
+          
+          <div className="flex justify-end">
+            <button 
+              onClick={() => setIsRequestModalOpen(true)}
+              className="px-5 py-2.5 rounded-xl font-medium bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/30 transition-colors flex items-center gap-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Request New Association
+            </button>
           </div>
 
           {/* Categories */}
@@ -140,6 +152,16 @@ export default function AssociationsPage() {
 
         </div>
       </div>
+      
+      {isRequestModalOpen && (
+        <RequestAssociationModal 
+          onClose={() => setIsRequestModalOpen(false)} 
+          onSuccess={() => {
+            setIsRequestModalOpen(false);
+            mutate();
+          }} 
+        />
+      )}
     </>
   );
 }

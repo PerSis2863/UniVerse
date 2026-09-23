@@ -1,9 +1,29 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
+import { useState } from 'react';
 import { Users, ShieldCheck, AlertCircle } from 'lucide-react';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
+import { toast } from 'sonner';
+import { ManageAssociationModal } from './ManageAssociationModal';
 
 export default function AdminAssociationsMonitoringPage() {
+  const { data: associationsData, isLoading, mutate } = useSWR('/associations', fetcher);
+  const [managingAssociation, setManagingAssociation] = useState<any>(null);
+
+  const associations = associationsData || [];
+
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      const api = (await import('@/lib/fetcher')).api;
+      await api.patch(`/associations/${id}/status`, { status });
+      toast.success(`Association ${status.toLowerCase()} successfully`);
+      mutate();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to update status');
+    }
+  };
   return (
     <>
       <Topbar title="Associations Monitoring" subtitle="Oversee student clubs and societies" />
@@ -19,15 +39,11 @@ export default function AdminAssociationsMonitoringPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { name: 'Computer Science Society', members: 120, status: 'Active', budget: '$1,500' },
-              { name: 'Debate Club', members: 45, status: 'Active', budget: '$500' },
-              { name: 'Robotics Team', members: 85, status: 'Active', budget: '$2,500' },
-              { name: 'Green Earth Initiative', members: 200, status: 'Active', budget: '$800' },
-              { name: 'Astronomy Club', members: 0, status: 'Pending Approval', budget: '$0' },
-            ].map((assoc, i) => (
-              <div key={i} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl relative overflow-hidden group hover:border-zinc-700 transition-colors">
-                {assoc.status === 'Pending Approval' && (
+            {isLoading ? (
+              <div className="col-span-full py-12 text-center text-zinc-500">Loading associations...</div>
+            ) : associations.map((assoc: any) => (
+              <div key={assoc.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl relative overflow-hidden group hover:border-zinc-700 transition-colors">
+                {assoc.status === 'PENDING' && (
                   <div className="absolute top-0 right-0 p-2 text-amber-500">
                     <AlertCircle className="w-5 h-5" />
                   </div>
@@ -42,27 +58,36 @@ export default function AdminAssociationsMonitoringPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500 dark:text-zinc-500">Allocated Budget</span>
-                    <span className="text-zinc-300">{assoc.budget}</span>
+                    <span className="text-zinc-300">${assoc.budget || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500 dark:text-zinc-500">Status</span>
-                    <span className={assoc.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'}>
+                    <span className={assoc.status === 'ACTIVE' ? 'text-emerald-400' : assoc.status === 'REJECTED' ? 'text-rose-400' : 'text-amber-400'}>
                       {assoc.status}
                     </span>
                   </div>
                 </div>
 
-                {assoc.status === 'Pending Approval' ? (
+                {assoc.status === 'PENDING' ? (
                   <div className="flex gap-2">
-                    <button className="flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 py-2 rounded-lg text-sm font-medium transition-colors">
+                    <button 
+                      onClick={() => updateStatus(assoc.id, 'ACTIVE')}
+                      className="flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
                       Approve
                     </button>
-                    <button className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 py-2 rounded-lg text-sm font-medium transition-colors">
+                    <button 
+                      onClick={() => updateStatus(assoc.id, 'REJECTED')}
+                      className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
                       Reject
                     </button>
                   </div>
                 ) : (
-                  <button className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white py-2 rounded-lg text-sm font-medium transition-colors">
+                  <button 
+                    onClick={() => setManagingAssociation(assoc)}
+                    className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
                     Manage Association
                   </button>
                 )}
@@ -72,6 +97,17 @@ export default function AdminAssociationsMonitoringPage() {
 
         </div>
       </div>
+      
+      {managingAssociation && (
+        <ManageAssociationModal
+          association={managingAssociation}
+          onClose={() => setManagingAssociation(null)}
+          onSuccess={() => {
+            setManagingAssociation(null);
+            mutate();
+          }}
+        />
+      )}
     </>
   );
 }

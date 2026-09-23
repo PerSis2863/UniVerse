@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { AssociationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -7,7 +8,12 @@ export class AssociationsService {
 
   findAll() {
     return this.prisma.association.findMany({
-      orderBy: { members: 'desc' },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { memberships: true }
+        }
+      }
     });
   }
 
@@ -73,6 +79,48 @@ export class AssociationsService {
     return this.prisma.associationMembership.findMany({
       where: { userId },
       include: { association: true },
+    });
+  }
+
+  async create(data: { name: string; category: string; description: string; requirements: string; }, userId: string) {
+    const association = await this.prisma.association.create({
+      data: {
+        name: data.name,
+        category: data.category,
+        description: data.description,
+        status: 'PENDING',
+        budget: 0,
+      },
+    });
+
+    // Make the creator a member automatically (maybe the founder/admin)
+    await this.prisma.associationMembership.create({
+      data: {
+        associationId: association.id,
+        userId: userId,
+        role: 'FOUNDER',
+      },
+    });
+    
+    await this.prisma.association.update({
+      where: { id: association.id },
+      data: { members: 1 },
+    });
+
+    return association;
+  }
+
+  async updateStatus(id: string, status: AssociationStatus) {
+    return this.prisma.association.update({
+      where: { id },
+      data: { status },
+    });
+  }
+
+  async update(id: string, data: any) {
+    return this.prisma.association.update({
+      where: { id },
+      data,
     });
   }
 }

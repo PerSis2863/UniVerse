@@ -96,7 +96,7 @@ model User {
   id        String     @id @default(cuid())
   name      String
   email     String     @unique
-  clerkUserId String?  @unique
+  firebaseUid String?  @unique
   role      Role       @default(STUDENT)
   status    UserStatus @default(PENDING)
   avatar    String?
@@ -541,6 +541,8 @@ model Association {
   category    String
   description String
   members     Int      @default(0)
+  status      AssociationStatus @default(PENDING)
+  budget      Float    @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -597,6 +599,12 @@ model RoomReservation {
 }
 
 // ─── ENUMS (EXTENDED) ──────────────────────────────────────────────────────
+
+enum AssociationStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
 
 enum ApplicationStatus {
   PENDING
