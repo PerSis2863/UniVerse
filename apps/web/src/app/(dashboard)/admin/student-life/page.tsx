@@ -151,7 +151,7 @@ export default function AdminStudentLifePage() {
               </thead>
               <tbody className="divide-y divide-zinc-800/50 text-zinc-300">
                 {activeTab === 'events' && filteredEvents.map(event => (
-                  <tr key={event.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30">
+                  <tr key={event.id} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 dark:bg-zinc-800/30">
                     <td className="px-6 py-4 font-medium text-zinc-900 dark:text-white">{event.title}</td>
                     <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {event.date}</span></td>
                     <td className="px-6 py-4"><span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {event.location}</span></td>
@@ -163,7 +163,7 @@ export default function AdminStudentLifePage() {
                   </tr>
                 ))}
                 {activeTab === 'clubs' && filteredClubs.map(club => (
-                  <tr key={club.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30">
+                  <tr key={club.id} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 dark:bg-zinc-800/30">
                     <td className="px-6 py-4 font-medium text-zinc-900 dark:text-white">{club.name}</td>
                     <td className="px-6 py-4"><span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">{club.category}</span></td>
                     <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {club.members}</span></td>
@@ -174,7 +174,7 @@ export default function AdminStudentLifePage() {
                   </tr>
                 ))}
                 {activeTab === 'forums' && filteredForums.map(forum => (
-                  <tr key={forum.id} className="hover:bg-zinc-100 dark:bg-zinc-800/30">
+                  <tr key={forum.id} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 dark:bg-zinc-800/30">
                     <td className="px-6 py-4 font-medium text-zinc-900 dark:text-white">{forum.topic}</td>
                     <td className="px-6 py-4"><span className="flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {forum.posts}</span></td>
                     <td className="px-6 py-4"><span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-500"/> {forum.lastActive}</span></td>
