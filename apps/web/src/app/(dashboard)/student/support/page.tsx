@@ -267,6 +267,15 @@ export default function StudentSupport() {
             </div>
           </div>
 
+          {/* Support Footer */}
+          <div className="pt-12 border-t border-zinc-200 dark:border-zinc-800 text-center pb-8">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Still need help?</h3>
+            <p className="text-zinc-500 dark:text-zinc-400 mb-4">You can reach out to us directly via email.</p>
+            <a href="mailto:myuniverseimpact@gmail.com" className="inline-flex items-center justify-center px-6 py-3 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold transition-colors">
+              myuniverseimpact@gmail.com
+            </a>
+          </div>
+
         </div>
       </div>
 
