@@ -65,6 +65,10 @@ export default function AccountingPage() {
         userEmail: user.email
       });
 
+      if ('error' in pendingTrx) {
+        throw new Error(pendingTrx.error as string);
+      }
+
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

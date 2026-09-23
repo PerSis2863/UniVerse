@@ -11,26 +11,37 @@ export async function createTransaction(data: {
   status: string;
   userEmail: string;
 }) {
-  const user = await prisma.user.findUnique({
-    where: { email: data.userEmail },
-  });
+  try {
+    let user = await prisma.user.findUnique({
+      where: { email: data.userEmail },
+    });
 
-  if (!user) {
-    throw new Error('User not found');
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: data.userEmail,
+          name: data.userEmail.split('@')[0],
+          role: 'STUDENT',
+        }
+      });
+    }
+
+    const payment = await prisma.payment.create({
+      data: {
+        amount: data.amount,
+        description: data.description,
+        status: data.status === 'PAID' ? 'COMPLETED' : 'PENDING',
+        type: 'OTHER',
+        userId: user.id,
+      },
+    });
+
+    revalidatePath('/admin/finances');
+    return payment;
+  } catch (e: any) {
+    console.error('Error creating transaction:', e);
+    return { error: e.message || 'Database error occurred' };
   }
-
-  const payment = await prisma.payment.create({
-    data: {
-      amount: data.amount,
-      description: data.description,
-      status: data.status === 'PAID' ? 'COMPLETED' : 'PENDING',
-      type: 'OTHER',
-      userId: user.id,
-    },
-  });
-
-  revalidatePath('/admin/finances');
-  return payment;
 }
 
 export async function getTransactions() {
