@@ -104,7 +104,8 @@ export const translations: Record<Language, TranslationMap> = {
     'impact.title': 'Social Impact Hub',
     'impact.startups': 'Startup Incubator',
     'impact.ngo': 'NGO Marketplace',
-    'impact.companies': 'Company CSR Portal',\1'impact.leaderboard': 'Impact Leaderboard',
+    'impact.companies': 'Company CSR Portal',
+    'impact.leaderboard': 'Impact Leaderboard',
     // Teacher Sidebar
     'nav.global_collab': 'Global Collaborations',
     'nav.inter_uni_research': 'Inter-Uni Research',
@@ -254,7 +255,8 @@ export const translations: Record<Language, TranslationMap> = {
     'impact.title': 'Hub d\'impact social',
     'impact.startups': 'Incubateur de startups',
     'impact.ngo': 'Marché des ONG',
-    'impact.companies': 'Portail RSE des entreprises',\1'impact.leaderboard': 'Classement d\'impact',
+    'impact.companies': 'Portail RSE des entreprises',
+    'impact.leaderboard': 'Classement d\'impact',
     // Teacher Sidebar
     'nav.global_collab': 'Collaborations mondiales',
     'nav.inter_uni_research': 'Recherche inter-universités',
@@ -404,7 +406,8 @@ export const translations: Record<Language, TranslationMap> = {
     'impact.title': 'Hub de impacto social',
     'impact.startups': 'Incubadora de startups',
     'impact.ngo': 'Mercado de ONG',
-    'impact.companies': 'Portal RSE empresarial',\1'impact.leaderboard': 'Clasificación de impacto',
+    'impact.companies': 'Portal RSE empresarial',
+    'impact.leaderboard': 'Clasificación de impacto',
     // Teacher Sidebar
     'nav.global_collab': 'Colaboraciones globales',
     'nav.inter_uni_research': 'Investigación interuniversitaria',
@@ -554,7 +557,8 @@ export const translations: Record<Language, TranslationMap> = {
     'impact.title': 'सामाजिक प्रभाव हब',
     'impact.startups': 'स्टार्टअप इनक्यूबेटर',
     'impact.ngo': 'एनजीओ बाज़ार',
-    'impact.companies': 'कंपनी सीएसआर पोर्टल',\1'impact.leaderboard': 'प्रभाव लीडरबोर्ड',
+    'impact.companies': 'कंपनी सीएसआर पोर्टल',
+    'impact.leaderboard': 'प्रभाव लीडरबोर्ड',
     // Teacher Sidebar
     'nav.global_collab': 'वैश्विक सहयोग',
     'nav.inter_uni_research': 'अंतर-विश्वविद्यालय अनुसंधान',
