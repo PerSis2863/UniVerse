@@ -1,7 +1,7 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight, Clock, X, Calendar, User, Search, Filter, ChevronRight } from 'lucide-react';
+import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight, Clock, X, Calendar, User, Search, Filter, ChevronRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -25,9 +25,11 @@ export default function AccountingPage() {
   const searchParams = useSearchParams();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   
-  // Appointment state
   const [appointmentStep, setAppointmentStep] = useState(1);
   const [selectedAdvisor, setSelectedAdvisor] = useState<string | null>(null);
+
+  // Custom Payment State
+  const [customAmount, setCustomAmount] = useState<string>('');
 
   useEffect(() => {
     const fetchTrx = async () => {
@@ -51,21 +53,17 @@ export default function AccountingPage() {
     }
   }, [searchParams]);
 
-  const handlePayment = async () => {
+  const handlePayment = async (amount: number) => {
     if (!user?.email) return;
     setIsLoading(true);
     try {
-      // Find a pending transaction to pay, or create a new one for the $15 outstanding balance
-      let pendingTrx = transactions.find(t => t.status === 'PENDING');
-      
-      if (!pendingTrx) {
-        pendingTrx = await createTransaction({
-          amount: 15.00,
-          description: 'Outstanding Balance',
-          status: 'PENDING',
-          userEmail: user.email
-        });
-      }
+      // Create a new pending transaction for the custom amount
+      const pendingTrx = await createTransaction({
+        amount: amount,
+        description: 'Custom Payment',
+        status: 'PENDING',
+        userEmail: user.email
+      });
 
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -240,12 +238,44 @@ export default function AccountingPage() {
             ))}
           </div>
         );
+      case 'custom_payment':
+        return (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Amount to Pay (USD)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-3.5 text-zinc-500 font-bold">$</span>
+                <input 
+                  type="number" 
+                  value={customAmount} 
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  className="w-full bg-[#0d1117] border border-white/[0.08] rounded-xl pl-8 pr-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="0.00"
+                  min="1.00"
+                  step="0.01"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <button 
+              onClick={() => handlePayment(Number(customAmount))} 
+              disabled={isLoading || !customAmount || Number(customAmount) < 1}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
+              {isLoading ? 'Processing...' : 'Proceed to Checkout'}
+            </button>
+          </div>
+        );
       default:
         return null;
     }
   };
 
   const getModalConfig = () => {
+    if (activeModal === 'custom_payment') {
+      return { id: 'custom_payment', title: 'Make a Payment', subtitle: 'Enter custom amount', icon: Wallet, color: 'text-indigo-400', bg: 'bg-indigo-500/10' };
+    }
     return quickActions.find(m => m.id === activeModal);
   };
 
@@ -264,7 +294,7 @@ export default function AccountingPage() {
       <Topbar 
         title="Accounting & Billing" 
         subtitle="Manage your tuition, fees, and payment history." 
-        action={{ label: 'Make a Payment', onClick: handlePayment }}
+        action={{ label: 'Make a Payment', onClick: () => setActiveModal('custom_payment') }}
       />
       <div className="flex-1 p-8 space-y-8 overflow-y-auto">
         
@@ -278,13 +308,13 @@ export default function AccountingPage() {
             <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-2xl -mr-12 -mt-12 pointer-events-none" />
             <div className="relative z-10">
               <div className="flex items-center gap-3 text-indigo-100 font-medium mb-4">
-                <Wallet className="w-5 h-5" /> Outstanding Balance
+                <Wallet className="w-5 h-5" /> Make Custom Payment
               </div>
-              <div className="text-4xl font-black mb-2">$15.00</div>
-              <p className="text-sm text-indigo-100/80 mb-6">Due by Sept 30, 2026</p>
+              <div className="text-4xl font-black mb-2">Flexible</div>
+              <p className="text-sm text-indigo-100/80 mb-6">Pay any custom amount you choose.</p>
               
-              <button onClick={handlePayment} disabled={isLoading} className="px-5 py-2.5 rounded-xl bg-white text-indigo-600 font-bold text-sm shadow-md hover:bg-indigo-50 transition-colors flex items-center gap-2 disabled:opacity-50">
-                <CreditCard className="w-4 h-4" /> {isLoading ? 'Loading...' : 'Pay Now'}
+              <button onClick={() => setActiveModal('custom_payment')} disabled={isLoading} className="px-5 py-2.5 rounded-xl bg-white text-indigo-600 font-bold text-sm shadow-md hover:bg-indigo-50 transition-colors flex items-center gap-2 disabled:opacity-50">
+                <CreditCard className="w-4 h-4" /> Pay Custom Amount
               </button>
             </div>
           </motion.div>
