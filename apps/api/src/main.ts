@@ -5,14 +5,27 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as compression from 'compression';
-import { initializeApp, getApps } from 'firebase-admin/app';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
 async function bootstrap() {
-  // Initialize Firebase Admin (Uses default service account in GCP, or GOOGLE_APPLICATION_CREDENTIALS)
-  // For local dev without a service account, it will only do basic ID token verification which is fine.
+  // Initialize Firebase Admin with service account if provided, otherwise use default (GCP)
   if (getApps().length === 0) {
-    initializeApp();
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (serviceAccountJson) {
+      try {
+        const serviceAccount = JSON.parse(serviceAccountJson);
+        initializeApp({ credential: cert(serviceAccount) });
+        Logger.log('Firebase Admin initialized with service account credentials', 'Bootstrap');
+      } catch (e) {
+        Logger.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON, falling back to default', 'Bootstrap');
+        initializeApp();
+      }
+    } else {
+      // Falls back to GOOGLE_APPLICATION_CREDENTIALS or GCP default service account
+      initializeApp();
+    }
   }
+
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['log', 'warn', 'error'],

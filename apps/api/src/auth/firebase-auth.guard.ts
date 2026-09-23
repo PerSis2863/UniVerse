@@ -65,8 +65,20 @@ export class FirebaseAuthGuard implements CanActivate {
       }
 
       if (!user) {
-        this.logger.warn(`User with firebaseUid ${firebaseUid} not found in database.`);
-        throw new UnauthorizedException('User not fully registered in system');
+        // Auto-create user for new Firebase sign-ins (first-time Google/Apple/Phone login)
+        if (!decodedToken.email && !decodedToken.phone_number) {
+          throw new UnauthorizedException('No email or phone associated with Firebase account');
+        }
+        user = await this.prisma.user.create({
+          data: {
+            firebaseUid: firebaseUid,
+            email: decodedToken.email || `${firebaseUid}@phone.local`,
+            name: decodedToken.name || decodedToken.email?.split('@')[0] || 'User',
+            role: 'STUDENT',
+            avatar: decodedToken.picture || null,
+          }
+        });
+        this.logger.log(`Auto-created new user for Firebase UID: ${firebaseUid}`);
       }
 
       request.user = user;
