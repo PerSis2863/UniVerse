@@ -181,17 +181,54 @@ async function main() {
           create: [
             {
               senderId: alice.id,
-              body: 'Hey, do you want to study together for the midterms?',
-              read: false
+              body: 'Hey! Are we still meeting for the study group later?',
+              read: true
             },
             {
               senderId: student.id,
-              body: 'Sure! Meet at the library at 5 PM?',
+              body: 'Yes, absolutely. 5 PM at the library?',
               read: true
             },
             {
               senderId: alice.id,
-              body: 'Sounds good! See you then.',
+              body: 'Perfect, see you there!',
+              read: false
+            }
+          ]
+        }
+      }
+    });
+  }
+
+  // Conversation with Bob
+  const bobConv = await prisma.conversation.findFirst({
+    where: {
+      AND: [
+        { participants: { some: { userId: student.id } } },
+        { participants: { some: { userId: bob.id } } }
+      ]
+    }
+  });
+
+  if (!bobConv) {
+    await prisma.conversation.create({
+      data: {
+        participants: {
+          create: [
+            { userId: student.id },
+            { userId: bob.id }
+          ]
+        },
+        messages: {
+          create: [
+            {
+              senderId: student.id,
+              body: 'Did you finish the lab report?',
+              read: true
+            },
+            {
+              senderId: bob.id,
+              body: 'Almost done. Just need to add the conclusion. You?',
               read: false
             }
           ]
