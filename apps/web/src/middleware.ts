@@ -8,15 +8,15 @@ export default function middleware(req: NextRequest) {
 function applySecurityHeaders(res: NextResponse) {
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://challenges.cloudflare.com;
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.clerk.accounts.dev https://*.clerk.com https://clerk.com https://challenges.cloudflare.com https://www.gstatic.com https://apis.google.com https://www.google.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' blob: data: https://images.unsplash.com https://img.clerk.com https://*.clerk.com https://ui-avatars.com;
+    img-src 'self' blob: data: https://images.unsplash.com https://img.clerk.com https://*.clerk.com https://ui-avatars.com https://lh3.googleusercontent.com https://*.googleusercontent.com;
     font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
-    connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://api.clerk.dev wss://*.clerk.accounts.dev https://vitals.vercel-insights.com https://*.onrender.com http://localhost:*;
+    connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://api.clerk.dev wss://*.clerk.accounts.dev https://vitals.vercel-insights.com https://*.onrender.com http://localhost:* https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
-    frame-src 'self' https://challenges.cloudflare.com;
+    frame-src 'self' https://challenges.cloudflare.com https://universe-71e68.firebaseapp.com https://accounts.google.com https://appleid.apple.com https://www.google.com;
     frame-ancestors 'none';
     upgrade-insecure-requests;
   `;
