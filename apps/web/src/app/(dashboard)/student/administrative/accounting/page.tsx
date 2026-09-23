@@ -30,6 +30,7 @@ export default function AccountingPage() {
 
   // Custom Payment State
   const [customAmount, setCustomAmount] = useState<string>('');
+  const [currency, setCurrency] = useState<string>('USD');
 
   useEffect(() => {
     const fetchTrx = async () => {
@@ -53,13 +54,14 @@ export default function AccountingPage() {
     }
   }, [searchParams]);
 
-  const handlePayment = async (amount: number) => {
+  const handlePayment = async (amount: number, selectedCurrency: string) => {
     if (!user?.email) return;
     setIsLoading(true);
     try {
       // Create a new pending transaction for the custom amount
       const pendingTrx = await createTransaction({
         amount: amount,
+        currency: selectedCurrency,
         description: 'Custom Payment',
         status: 'PENDING',
         userEmail: user.email
@@ -68,6 +70,7 @@ export default function AccountingPage() {
       if ('error' in pendingTrx) {
         throw new Error(pendingTrx.error as string);
       }
+      console.log('pendingTrx:', pendingTrx);
 
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -247,23 +250,42 @@ export default function AccountingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-2">Amount to Pay (USD)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-3.5 text-zinc-500 font-bold">$</span>
-                <input 
-                  type="number" 
-                  value={customAmount} 
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  className="w-full bg-[#0d1117] border border-white/[0.08] rounded-xl pl-8 pr-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors"
-                  placeholder="0.00"
-                  min="1.00"
-                  step="0.01"
-                  autoFocus
-                />
+              <label className="block text-sm font-medium text-zinc-400 mb-2">Amount to Pay</label>
+              <div className="relative flex gap-3">
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="bg-[#0d1117] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
+                >
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="INR">INR (₹)</option>
+                  <option value="CAD">CAD ($)</option>
+                  <option value="AUD">AUD ($)</option>
+                </select>
+                <div className="relative flex-1">
+                  <span className="absolute left-4 top-3.5 text-zinc-500 font-bold">
+                    {currency === 'USD' || currency === 'CAD' || currency === 'AUD' ? '$' : 
+                     currency === 'EUR' ? '€' : 
+                     currency === 'GBP' ? '£' : 
+                     currency === 'INR' ? '₹' : ''}
+                  </span>
+                  <input 
+                    type="number" 
+                    value={customAmount} 
+                    onChange={(e) => setCustomAmount(e.target.value)}
+                    className="w-full bg-[#0d1117] border border-white/[0.08] rounded-xl pl-8 pr-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors"
+                    placeholder="0.00"
+                    min="1.00"
+                    step="0.01"
+                    autoFocus
+                  />
+                </div>
               </div>
             </div>
             <button 
-              onClick={() => handlePayment(Number(customAmount))} 
+              onClick={() => handlePayment(Number(customAmount), currency)} 
               disabled={isLoading || !customAmount || Number(customAmount) < 1}
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
@@ -400,7 +422,7 @@ export default function AccountingPage() {
                       <span className="font-bold text-zinc-900 dark:text-white">${Math.abs(record.amount).toFixed(2)}</span>
                     </td>
                     <td className="py-4 px-4">
-                      {record.status === 'PAID' ? (
+                      {record.status === 'COMPLETED' ? (
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Paid
                         </div>
@@ -411,10 +433,21 @@ export default function AccountingPage() {
                       )}
                     </td>
                     <td className="py-4 px-4 text-right">
-                      {record.status === 'PAID' && (
-                        <button onClick={() => toast.success(`Downloading receipt for ${record.id}...`)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-500/20 text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                          <Download className="w-4 h-4" />
-                        </button>
+                      {record.status === 'COMPLETED' && (
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => window.open(`/receipt/${record.id}`, '_blank')} 
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-500/20 text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-xs font-semibold"
+                          >
+                            <FileText className="w-3.5 h-3.5" /> View
+                          </button>
+                          <button 
+                            onClick={() => window.open(`/receipt/${record.id}?download=true`, '_blank')} 
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-white/[0.04] hover:bg-indigo-50 dark:hover:bg-indigo-500/20 text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-xs font-semibold"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Download
+                          </button>
+                        </div>
                       )}
                     </td>
                   </motion.tr>

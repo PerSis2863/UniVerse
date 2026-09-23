@@ -314,6 +314,10 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
 
       {/* User */}
       <div className="px-3 py-4 border-t border-zinc-200 dark:border-white/[0.06]">
+        <div className="mb-3 px-3 py-2 bg-indigo-50/50 dark:bg-indigo-500/10 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
+          <p className="text-[10px] uppercase font-bold text-indigo-400 mb-0.5">Support</p>
+          <a href="mailto:myuniverseimpact@gmail.com" className="text-xs font-medium text-indigo-600 dark:text-indigo-300 hover:underline truncate block" title="myuniverseimpact@gmail.com">myuniverseimpact@gmail.com</a>
+        </div>
         <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors cursor-pointer group">
           <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
             {initials}

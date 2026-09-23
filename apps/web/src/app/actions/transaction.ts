@@ -10,6 +10,7 @@ export async function createTransaction(data: {
   description: string;
   status: string;
   userEmail: string;
+  currency?: string;
 }) {
   try {
     let user = await prisma.user.findUnique({
@@ -29,6 +30,7 @@ export async function createTransaction(data: {
     const payment = await prisma.payment.create({
       data: {
         amount: data.amount,
+        currency: data.currency || 'USD',
         description: data.description,
         status: data.status === 'PAID' ? 'COMPLETED' : 'PENDING',
         type: 'OTHER',
@@ -37,7 +39,7 @@ export async function createTransaction(data: {
     });
 
     revalidatePath('/admin/finances');
-    return payment;
+    return { id: payment.id };
   } catch (e: any) {
     console.error('Error creating transaction:', e);
     return { error: e.message || 'Database error occurred' };
@@ -69,5 +71,14 @@ export async function getUserTransactions(userEmail: string) {
     orderBy: {
       createdAt: 'desc',
     },
+  });
+}
+
+export async function getTransactionById(id: string) {
+  return await prisma.payment.findUnique({
+    where: { id },
+    include: {
+      user: true
+    }
   });
 }

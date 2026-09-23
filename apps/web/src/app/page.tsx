@@ -620,7 +620,10 @@ export default function ShowcasePage() {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-zinc-100 dark:border-white/[0.06] px-6 py-8 max-w-7xl mx-auto flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-600">
-        <span>© 2026 UniVerse Impact Network</span>
+        <div className="flex flex-col gap-1">
+          <span>© 2026 UniVerse Impact Network</span>
+          <span>Support: <a href="mailto:myuniverseimpact@gmail.com" className="hover:text-indigo-400 text-indigo-500">myuniverseimpact@gmail.com</a></span>
+        </div>
         <span className="flex items-center gap-1">Made with <span className="text-red-500">❤️</span> by Aditya Bhatt</span>
       </footer>
     </div>

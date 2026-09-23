@@ -136,8 +136,12 @@ export default function StudentSupport() {
               <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <MessageCircle className="w-6 h-6 text-blue-400" />
               </div>
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Live Chat</h3>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Live Chat & Email</h3>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">Chat directly with a support representative.</p>
+              <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">Or email us at:</p>
+                <a href="mailto:myuniverseimpact@gmail.com" className="text-sm font-medium text-indigo-500 hover:text-indigo-400" onClick={(e) => e.stopPropagation()}>myuniverseimpact@gmail.com</a>
+              </div>
             </div>
 
             <div onClick={() => setActiveModal('library')} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 transition-colors cursor-pointer group shadow-lg">

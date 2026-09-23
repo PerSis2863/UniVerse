@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: (transaction.currency || 'USD').toLowerCase(),
             product_data: {
               name: transaction.description || 'Payment Balance',
             },
