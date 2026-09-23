@@ -10,6 +10,12 @@ export const api = axios.create({
 // Add auth token to every request
 api.interceptors.request.use(async (config) => {
   if (typeof window !== 'undefined') {
+    const localToken = localStorage.getItem('accessToken');
+    if (localToken && localToken.startsWith('mock-token-')) {
+      config.headers.Authorization = `Bearer ${localToken}`;
+      return config;
+    }
+
     // Try Firebase first for real users
     try {
       const { auth } = await import('./firebase');
@@ -26,8 +32,7 @@ api.interceptors.request.use(async (config) => {
     }
     
     // Fallback to localStorage for demo users
-    const token = localStorage.getItem('accessToken');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (localToken) config.headers.Authorization = `Bearer ${localToken}`;
   }
   return config;
 });

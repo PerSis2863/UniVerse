@@ -15,6 +15,7 @@ async function main() {
       name: 'John Doe',
       role: Role.STUDENT,
       status: UserStatus.ACTIVE,
+      dateOfBirth: new Date(new Date().getFullYear() - 20, 0, 1),
       studentProfile: {
         create: {
           studentId: 'STU_DEMO_01',

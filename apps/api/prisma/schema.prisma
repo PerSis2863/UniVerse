@@ -102,6 +102,7 @@ model User {
   avatar    String?
   googleId  String?    @unique
   phone     String?
+  dateOfBirth DateTime?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AssociationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { differenceInYears } from 'date-fns';
 
 @Injectable()
 export class AssociationsService {
@@ -83,6 +84,32 @@ export class AssociationsService {
   }
 
   async create(data: { name: string; category: string; description: string; requirements: string; }, userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { studentProfile: true },
+    });
+
+    if (!user || user.role !== 'STUDENT' || !user.studentProfile) {
+      throw new Error('Only students can create associations.');
+    }
+
+    if (!user.dateOfBirth) {
+      throw new Error('Date of Birth is required for eligibility check.');
+    }
+
+    const age = differenceInYears(new Date(), user.dateOfBirth);
+    if (age < 18) {
+      throw new Error('You must be at least 18 years old to create an association.');
+    }
+
+    if (user.studentProfile.gpa < 2.5) {
+      throw new Error('A minimum GPA of 2.5 is required to create an association.');
+    }
+
+    if (user.studentProfile.year < 2) {
+      throw new Error('You must be at least in your 2nd year to create an association.');
+    }
+
     const association = await this.prisma.association.create({
       data: {
         name: data.name,
@@ -111,10 +138,39 @@ export class AssociationsService {
   }
 
   async updateStatus(id: string, status: AssociationStatus) {
-    return this.prisma.association.update({
+    const association = await this.prisma.association.update({
       where: { id },
       data: { status },
+      include: {
+        memberships: {
+          where: { role: 'FOUNDER' },
+          include: { user: true }
+        }
+      }
     });
+
+    // Notify founder
+    const founderMembership = association.memberships[0];
+    if (founderMembership) {
+      const founderId = founderMembership.userId;
+      const founder = founderMembership.user;
+      const message = `Your association "${association.name}" has been ${status.toLowerCase()}.`;
+
+      // In-app notification
+      await this.prisma.notification.create({
+        data: {
+          userId: founderId,
+          title: `Association ${status}`,
+          message: message,
+          type: 'SYSTEM',
+        }
+      });
+
+      // Email notification placeholder (in a real app, send actual email)
+      console.log(`[EMAIL NOTIFICATION] To: ${founder.email} - Subject: Association ${status} - Body: ${message}`);
+    }
+
+    return association;
   }
 
   async update(id: string, data: any) {

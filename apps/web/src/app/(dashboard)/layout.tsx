@@ -21,11 +21,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   useEffect(() => {
+    const checkSync = async () => {
+      const token = localStorage.getItem('accessToken');
+      if (token && demoUser && demoUser.id.includes('@')) {
+        try {
+          const res = await api.get('/users/me');
+          if (res.data) {
+            setUser({
+              id: res.data.id,
+              name: res.data.name || 'Student',
+              email: res.data.email,
+              role: res.data.role as Role,
+              avatar: res.data.avatar || undefined,
+            });
+          }
+        } catch (e) {
+          console.error("Failed to sync user data", e);
+        }
+      }
+    };
+    checkSync();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setIsSignedIn(true);
         // Sync Firebase User to our local store
-        if (!demoUser) {
+        if (!demoUser || demoUser.id.includes('@')) {
           try {
             const res = await api.get('/users/me');
             if (res.data) {
@@ -42,7 +63,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }
         }
       } else {
-        setIsSignedIn(false);
+        // If not firebase user, but we have a mock token, we consider them signed in
+        const token = localStorage.getItem('accessToken');
+        if (token && token.startsWith('mock-token-')) {
+          setIsSignedIn(true);
+        } else {
+          setIsSignedIn(false);
+        }
       }
       setIsLoaded(true);
     });

@@ -19,14 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleDemoLogin = (token: string, role: string) => {
-    localStorage.setItem('accessToken', token);
-    setUser({
-      id: token.replace('mock-token-', ''),
-      name: `Demo ${role}`,
-      email: token.replace('mock-token-', ''),
-      role: role as any,
-    });
-    router.push(role === 'STUDENT' ? '/student' : role === 'TEACHER' ? '/teacher' : '/admin');
+    handleLoginSuccess(token);
   };
 
   const handleLoginSuccess = async (token: string) => {

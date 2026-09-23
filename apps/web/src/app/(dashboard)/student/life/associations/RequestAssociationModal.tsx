@@ -52,9 +52,10 @@ export function RequestAssociationModal({ onClose, onSuccess }: RequestAssociati
               <h3 className="font-semibold text-blue-100">Eligibility & Requirements</h3>
             </div>
             <ul className="list-disc pl-9 space-y-1 text-sm text-blue-200/80">
+              <li>Must have a minimum GPA of 2.5.</li>
+              <li>Must be at least in your 2nd year of study.</li>
+              <li>Must be at least 18 years old.</li>
               <li>You must have a clear mission statement and purpose.</li>
-              <li>A minimum of 5 founding members is recommended.</li>
-              <li>Must comply with the university's code of conduct.</li>
               <li>After submission, your request will be reviewed by the Administration.</li>
             </ul>
           </div>
