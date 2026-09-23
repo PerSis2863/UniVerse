@@ -23,10 +23,6 @@ export class InternshipsService {
     return item;
   }
 
-  async create(userId: string, data: any) {
-    return this.prisma.internship.create({ data: { ...data, postedById: userId } });
-  }
-
   async apply(internshipId: string, studentId: string, body: any) {
     return this.prisma.internshipApplication.upsert({
       where: { internshipId_studentId: { internshipId, studentId } },
@@ -41,5 +37,48 @@ export class InternshipsService {
 
   async updateApplication(id: string, data: any) {
     return this.prisma.internshipApplication.update({ where: { id }, data });
+  }
+
+  private async getOrCreateCompany(companyName: string) {
+    if (!companyName) return null;
+    let company = await this.prisma.company.findFirst({
+      where: { name: { equals: companyName, mode: 'insensitive' } }
+    });
+    if (!company) {
+      company = await this.prisma.company.create({
+        data: { name: companyName }
+      });
+    }
+    return company.id;
+  }
+
+  async create(userId: string, data: any) {
+    const { company, ...rest } = data;
+    const companyId = await this.getOrCreateCompany(company);
+    return this.prisma.internship.create({
+      data: {
+        ...rest,
+        companyId: companyId,
+        postedById: userId,
+      }
+    });
+  }
+
+  async update(id: string, data: any) {
+    const { company, companyId: _cid, ...rest } = data;
+    const updateData: any = { ...rest };
+    if (company) {
+      updateData.companyId = await this.getOrCreateCompany(company);
+    }
+    return this.prisma.internship.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+
+  async remove(id: string) {
+    return this.prisma.internship.delete({
+      where: { id }
+    });
   }
 }

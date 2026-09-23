@@ -20,8 +20,13 @@ export default function AdminInternshipsPage() {
 
   const handleOpenModal = (id: string | null = null) => {
     if (id) {
-      const item = internships.find(i => i.id === id);
-      if (item) setFormData({ ...item });
+      const item = internships.find((i: any) => i.id === id);
+      if (item) {
+        setFormData({ 
+          ...item,
+          company: item.company?.name || item.company || ''
+        });
+      }
       setEditingId(id);
     } else {
       setFormData({ title: '', company: '', location: '', type: 'Full-time', duration: '', stipend: '', deadline: '', status: 'Active' });
@@ -34,8 +39,8 @@ export default function AdminInternshipsPage() {
     e.preventDefault();
     try {
       if (editingId) {
-        // await api.patch(`/internships/${editingId}`, formData);
-        toast.success('Internship updated successfully (mock update)');
+        await api.patch(`/internships/${editingId}`, formData);
+        toast.success('Internship updated successfully');
       } else {
         await api.post('/internships', formData);
         toast.success('New internship added');
@@ -49,8 +54,8 @@ export default function AdminInternshipsPage() {
   
   const handleDelete = async (id: string) => {
     try {
-      // await api.delete(`/internships/${id}`);
-      toast.success('Internship deleted (mock delete)');
+      await api.delete(`/internships/${id}`);
+      toast.success('Internship deleted successfully');
       mutate();
     } catch (error) {
       toast.error('Failed to delete internship');
