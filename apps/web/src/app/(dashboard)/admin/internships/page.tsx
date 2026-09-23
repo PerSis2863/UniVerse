@@ -15,7 +15,7 @@ export default function AdminInternshipsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    title: '', company: '', location: '', type: 'Full-time', duration: '', stipend: '', deadline: '', status: 'Active'
+    title: '', company: '', location: '', type: 'Full-time', duration: '', salary: '', deadline: '', status: 'Active'
   });
 
   const handleOpenModal = (id: string | null = null) => {
@@ -24,12 +24,13 @@ export default function AdminInternshipsPage() {
       if (item) {
         setFormData({ 
           ...item,
+          salary: item.salary || item.stipend || '',
           company: item.company?.name || item.company || ''
         });
       }
       setEditingId(id);
     } else {
-      setFormData({ title: '', company: '', location: '', type: 'Full-time', duration: '', stipend: '', deadline: '', status: 'Active' });
+      setFormData({ title: '', company: '', location: '', type: 'Full-time', duration: '', salary: '', deadline: '', status: 'Active' });
       setEditingId(null);
     }
     setIsModalOpen(true);
@@ -116,7 +117,7 @@ export default function AdminInternshipsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Stipend / Pay</label>
-                  <input required value={formData.stipend} onChange={e => setFormData({...formData, stipend: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. $8,000/mo or Unpaid" />
+                  <input required value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. $8,000/mo or Unpaid" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Deadline</label>
