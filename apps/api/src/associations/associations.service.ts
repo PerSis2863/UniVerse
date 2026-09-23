@@ -161,7 +161,7 @@ export class AssociationsService {
         data: {
           userId: founderId,
           title: `Association ${status}`,
-          message: message,
+          body: message,
           type: 'SYSTEM',
         }
       });
