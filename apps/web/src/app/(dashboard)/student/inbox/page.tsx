@@ -1,7 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { Search, Send, Phone, Video, MoreVertical, Paperclip, Smile, Check, CheckCheck, Mic, X, FileText, Image as ImageIcon, Contact, BarChart } from 'lucide-react';
+import { Search, Send, Phone, Video, MoreVertical, Paperclip, Smile, Check, CheckCheck, Mic, X, FileText, Image as ImageIcon, Contact, BarChart, ChevronLeft } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { useAuthStore } from '@/store/auth';
@@ -208,9 +208,9 @@ export default function InboxPage() {
     <div className="flex h-screen bg-[var(--background)] flex-col font-sans">
       <Topbar title="Messages" subtitle="Connect with peers and faculty" />
       
-      <div className="flex-1 flex overflow-hidden p-6 gap-6 max-w-7xl mx-auto w-full chat-container">
+      <div className="flex-1 flex overflow-hidden md:p-6 md:gap-6 max-w-7xl mx-auto w-full chat-container">
         {/* Left Sidebar - Contacts List */}
-        <div className="w-1/3 min-w-[320px] max-w-[400px] glass rounded-2xl flex flex-col overflow-hidden shadow-2xl border-none">
+        <div className={`w-full md:w-1/3 md:min-w-[320px] md:max-w-[400px] glass md:rounded-2xl flex flex-col overflow-hidden shadow-2xl border-none ${activeConvId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-5 border-b border-zinc-800/50 bg-[var(--surface)] z-10">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Chats</h2>
@@ -286,19 +286,25 @@ export default function InboxPage() {
 
         {/* Right Panel - Active Chat */}
         {activeConv && otherUser ? (
-          <div className="flex-1 glass flex flex-col overflow-hidden relative border-none">
+          <div className={`flex-1 glass flex flex-col overflow-hidden relative border-none ${!activeConvId ? 'hidden md:flex' : 'flex w-full'}`}>
             {/* WhatsApp-style subtle background pattern */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
             
             {/* Chat Header */}
-            <div className="px-6 py-4 bg-[var(--surface)]/60 backdrop-blur-md border-b border-white/5 flex justify-between items-center z-20">
-              <div className="flex items-center gap-4">
+            <div className="px-4 md:px-6 py-3 md:py-4 bg-[var(--surface)]/60 backdrop-blur-md border-b border-white/5 flex justify-between items-center z-20">
+              <div className="flex items-center gap-3 md:gap-4">
+                <button 
+                  onClick={() => setActiveConvId(null)}
+                  className="md:hidden p-2 -ml-2 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
                 <div className="relative">
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-indigo-400 font-bold text-lg border border-indigo-500/20">
+                  <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-indigo-400 font-bold text-lg border border-indigo-500/20">
                     {otherUser.avatar || otherUser.name.charAt(0).toUpperCase()}
                   </div>
                   {onlineUsers[otherUser.id] && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[var(--surface)] rounded-full"></div>
+                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 md:w-3 md:h-3 bg-emerald-500 border-2 border-[var(--surface)] rounded-full"></div>
                   )}
                 </div>
                 <div>
@@ -442,7 +448,7 @@ export default function InboxPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 glass border-none flex flex-col items-center justify-center text-zinc-500 relative overflow-hidden">
+          <div className="hidden md:flex flex-1 glass border-none flex-col items-center justify-center text-zinc-500 relative overflow-hidden">
             <div className="empty-glass">
               <div className="empty-icon">
                 💬

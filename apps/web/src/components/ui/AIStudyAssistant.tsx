@@ -20,6 +20,7 @@ const SUGGESTIONS = [
 
 export function AIStudyAssistant() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', role: 'assistant', content: "Hi! I'm your Gemini AI Study Assistant. How can I help you today?" }
@@ -84,11 +85,28 @@ export function AIStudyAssistant() {
     }
   };
 
+  if (isDismissed) return null;
+
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 flex flex-col items-end gap-2">
       <AnimatePresence>
         {!isOpen && (
-          <motion.button
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            className="flex flex-col items-end gap-2"
+          >
+            {/* Dismiss Button - only shows on hover or mobile */}
+            <button 
+              onClick={() => setIsDismissed(true)}
+              className="w-8 h-8 rounded-full bg-zinc-800/80 backdrop-blur text-zinc-400 hover:text-white flex items-center justify-center shadow-lg transition-colors border border-zinc-700/50"
+              title="Hide AI Assistant"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <motion.button
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
@@ -116,7 +134,8 @@ export function AIStudyAssistant() {
             
             {/* Notification dot */}
             <span className="absolute top-0 right-0 w-3 h-3 bg-rose-500 border-2 border-white dark:border-zinc-900 rounded-full animate-pulse" />
-          </motion.button>
+            </motion.button>
+          </motion.div>
         )}
       </AnimatePresence>
 
