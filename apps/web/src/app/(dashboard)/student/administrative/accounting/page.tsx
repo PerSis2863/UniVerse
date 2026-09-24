@@ -3,7 +3,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight, Clock, X, Calendar, User, Search, Filter, ChevronRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
@@ -18,7 +18,7 @@ const quickActions = [
   { id: 'tax', title: 'Download Tax Forms', subtitle: '1098-T and more', icon: Download, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'hover:border-orange-500/50' },
 ];
 
-export default function AccountingPage() {
+function AccountingContent() {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -500,5 +500,17 @@ export default function AccountingPage() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+export default function AccountingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 min-h-screen bg-black/95 ml-64 p-8 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+      </div>
+    }>
+      <AccountingContent />
+    </Suspense>
   );
 }

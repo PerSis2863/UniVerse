@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GraduationCap, Building2, Globe, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -35,7 +35,7 @@ const ROLE_DETAILS: Record<string, {
   },
 };
 
-export default function JoinPage() {
+function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
@@ -144,5 +144,17 @@ export default function JoinPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function JoinPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+      </div>
+    }>
+      <JoinContent />
+    </Suspense>
   );
 }
