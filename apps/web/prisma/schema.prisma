@@ -102,6 +102,7 @@ model User {
   avatar    String?
   googleId  String?    @unique
   phone     String?
+  dateOfBirth DateTime?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -176,6 +177,16 @@ model User {
 
   // PWA Push Notifications
   pushSubscriptions  PushSubscription[]
+
+  // Feature 7: Proof of Work
+  proofOfWork        ProofOfWork[]
+
+  // Feature 9: Gamification
+  impactLevel        Int        @default(1)
+  impactXP           Int        @default(0)
+
+  // Feature 10: Certificates
+  impactCertificates ImpactCertificate[]
 
   @@index([role])
   @@index([status])
@@ -1358,4 +1369,82 @@ model ProjectMilestone {
 
   @@index([projectId])
   @@map("project_milestones")
+}
+
+// ─── FEATURE 7: PROOF OF WORK VERIFICATION ─────────────────────────────────
+
+enum ProofStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model ProofOfWork {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectName     String
+  organization    String
+  description     String?
+  hoursCompleted  Int         @default(0)
+  codeCommits     Int         @default(0)
+  ngoVerified     Boolean     @default(false)
+  blockchainHash  String?
+  status          ProofStatus @default(PENDING)
+  evidenceUrl     String?
+  verifiedAt      DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId])
+  @@map("proof_of_work")
+}
+
+// ─── FEATURE 8: SOCIAL PROOF FEED ──────────────────────────────────────────
+
+model ActivityFeedItem {
+  id          String   @id @default(cuid())
+  userId      String?
+  userName    String
+  userAvatar  String?
+  university  String?
+  emoji       String   @default("⭐")
+  title       String
+  subtitle    String?
+  category    String   @default("general") // volunteer, milestone, hackathon, partnership, badge
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@map("activity_feed_items")
+}
+
+// ─── FEATURE 10: BUILT-IN CERTIFICATION SYSTEM ─────────────────────────────
+
+enum CertificateStatus {
+  DRAFT
+  ISSUED
+  REVOKED
+}
+
+model ImpactCertificate {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certificateCode String            @unique
+  title           String
+  projectName     String
+  organization    String
+  hoursCompleted  Int               @default(0)
+  peopleImpacted  Int               @default(0)
+  description     String?
+  status          CertificateStatus @default(ISSUED)
+  blockchainHash  String?
+  issuedAt        DateTime          @default(now())
+  expiresAt       DateTime?
+  linkedinUrl     String?
+
+  @@index([userId])
+  @@index([certificateCode])
+  @@map("impact_certificates")
 }

@@ -2,11 +2,12 @@
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { api } from '@/lib/api';
-import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight } from 'lucide-react';
+import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
+import { useAiStore } from '@/store/ai';
 import { toast } from 'sonner';
 import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermissionPrompt';
 
@@ -15,12 +16,13 @@ export default function StudentSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { language, setLanguage, t } = useLanguageStore();
+  const { isChatbotEnabled, setChatbotEnabled } = useAiStore();
   const [activeSection, setActiveSection] = useState('profile');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const section = params.get('section');
-    if (section && ['profile', 'language', 'notifications', 'privacy'].includes(section)) {
+    if (section && ['profile', 'language', 'notifications', 'privacy', 'ai'].includes(section)) {
       setActiveSection(section);
     }
     
@@ -52,6 +54,7 @@ export default function StudentSettings() {
     { id: 'language', label: t('settings.language'), icon: Globe },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'privacy', label: t('settings.privacy'), icon: Shield },
+    { id: 'ai', label: 'AI Features', icon: Sparkles },
   ];
 
   return (
@@ -263,6 +266,39 @@ export default function StudentSettings() {
                       <button onClick={() => toast.info('Password reset email sent!')} className="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2">
                         <Shield className="w-4 h-4" /> Change Password
                       </button>
+                    </motion.div>
+                  )}
+
+                  {/* AI Features */}
+                  {activeSection === 'ai' && (
+                    <motion.div key="ai" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="card p-6 space-y-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                          <Sparkles className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-zinc-900 dark:text-white">AI Features</h2>
+                          <p className="text-sm text-zinc-500">Manage your AI assistants and tools</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] rounded-xl">
+                        <div>
+                          <h3 className="font-medium text-zinc-900 dark:text-white text-sm">AI Study Assistant Chatbot</h3>
+                          <p className="text-xs text-zinc-500 mt-0.5">Enable the floating AI chatbot to help you with course material and queries.</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="sr-only peer" 
+                            checked={isChatbotEnabled}
+                            onChange={(e) => {
+                              setChatbotEnabled(e.target.checked);
+                              toast.success(`Chatbot ${e.target.checked ? 'enabled' : 'disabled'}`);
+                            }} 
+                          />
+                          <div className="w-11 h-6 bg-zinc-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                        </label>
+                      </div>
                     </motion.div>
                   )}
 

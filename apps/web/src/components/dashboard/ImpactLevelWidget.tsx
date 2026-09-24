@@ -52,24 +52,24 @@ export function ImpactLevelWidget({
   ] : [];
 
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4">
+    <div className="card p-4">
       {/* Current Level */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-sm">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-sm shadow-sm">
             {currentLevel.emoji}
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-white font-bold text-sm">Level {currentLevel.level}</span>
-              <span className="text-amber-400 font-bold text-sm">&quot;{currentLevel.name}&quot;</span>
+              <span className="text-zinc-900 dark:text-white font-bold text-sm">Level {currentLevel.level}</span>
+              <span className="text-amber-600 dark:text-amber-400 font-bold text-sm">&quot;{currentLevel.name}&quot;</span>
             </div>
             <div className="text-[10px] text-zinc-500">{xp} XP total</div>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Zap className="w-3.5 h-3.5 text-amber-400" />
-          <span className="text-xs text-amber-400 font-bold">{Math.round(progress)}%</span>
+          <Zap className="w-3.5 h-3.5 text-amber-500" />
+          <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">{Math.round(progress)}%</span>
         </div>
       </div>
 
@@ -79,7 +79,7 @@ export function ImpactLevelWidget({
           <span>Progress to Level {nextLevel?.level || '∞'}</span>
           <span>{xpInLevel}/{xpNeeded} XP</span>
         </div>
-        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 transition-all duration-1000"
             style={{ width: `${progress}%` }}
@@ -98,11 +98,11 @@ export function ImpactLevelWidget({
               const Icon = req.icon;
               return (
                 <div key={req.label} className="flex items-center gap-2">
-                  <Icon className={`w-3 h-3 flex-shrink-0 ${done ? 'text-emerald-400' : 'text-zinc-600'}`} />
-                  <span className={`text-[11px] flex-1 ${done ? 'text-emerald-400 line-through' : 'text-zinc-400'}`}>
+                  <Icon className={`w-3 h-3 flex-shrink-0 ${done ? 'text-emerald-500 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-600'}`} />
+                  <span className={`text-[11px] flex-1 ${done ? 'text-emerald-600 dark:text-emerald-400 line-through' : 'text-zinc-600 dark:text-zinc-400'}`}>
                     {req.label}
                   </span>
-                  <span className={`text-[10px] font-bold ${done ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  <span className={`text-[10px] font-bold ${done ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500'}`}>
                     {req.current}/{req.target}
                   </span>
                 </div>
@@ -114,12 +114,12 @@ export function ImpactLevelWidget({
 
       {/* Perks Preview */}
       {nextPerks.length > 0 && (
-        <div className="pt-2 border-t border-zinc-800">
+        <div className="pt-2 border-t border-zinc-200 dark:border-white/[0.05]">
           <p className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-1.5">Next Level Unlocks</p>
           {nextPerks.map(perk => (
             <div key={perk} className="flex items-center gap-1.5 mb-1">
-              <ChevronRight className="w-3 h-3 text-purple-400 flex-shrink-0" />
-              <span className="text-[11px] text-purple-300">{perk}</span>
+              <ChevronRight className="w-3 h-3 text-purple-500 flex-shrink-0" />
+              <span className="text-[11px] text-purple-600 dark:text-purple-300">{perk}</span>
             </div>
           ))}
         </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Globe, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface FeedItem {
   id: string;
@@ -48,13 +49,13 @@ export function SocialProofFeed() {
   }, []);
 
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4">
+    <div className="card p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-          <Globe className="w-3 h-3 text-emerald-400" />
+        <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center">
+          <Globe className="w-3 h-3 text-emerald-500" />
         </div>
-        <span className="text-white font-bold text-sm">Live Impact Happening Now</span>
+        <span className="text-zinc-900 dark:text-white font-bold text-sm">Live Impact Happening Now</span>
         <span className="relative flex h-2 w-2 ml-1">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -62,29 +63,38 @@ export function SocialProofFeed() {
       </div>
 
       {/* Feed items */}
-      <div className={`space-y-2.5 transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
-        {items.map((item) => (
-          <div key={item.id + item.title} className="flex items-start gap-2.5 group">
-            <span className="text-base flex-shrink-0 mt-0.5">{item.emoji}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-zinc-200 font-medium leading-snug">{item.title}</p>
-              <p className="text-[11px] text-zinc-500 leading-snug">{item.subtitle}</p>
-            </div>
-            <span className="text-[10px] text-zinc-600 flex-shrink-0 mt-0.5">{item.timeAgo}</span>
-          </div>
-        ))}
+      <div className="space-y-2.5 relative min-h-[160px]">
+        <AnimatePresence mode="popLayout">
+          {items.map((item) => (
+            <motion.div
+              layout
+              key={item.id + item.title}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 350, damping: 25 } }}
+              exit={{ opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.2 } }}
+              className="flex items-start gap-2.5 group"
+            >
+              <span className="text-base flex-shrink-0 mt-0.5">{item.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-zinc-900 dark:text-zinc-200 font-medium leading-snug">{item.title}</p>
+                <p className="text-[11px] text-zinc-500 leading-snug">{item.subtitle}</p>
+              </div>
+              <span className="text-[10px] text-zinc-500 flex-shrink-0 mt-0.5">{item.timeAgo}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       {/* Footer */}
-      <div className="mt-3 pt-2 border-t border-zinc-800">
+      <div className="mt-3 pt-2 border-t border-zinc-200 dark:border-white/[0.05]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <Zap className="w-3 h-3 text-amber-400" />
+            <Zap className="w-3 h-3 text-amber-500" />
             <span className="text-[10px] text-zinc-500 font-medium">
-              <span className="text-amber-400 font-bold">247</span> actions today
+              <span className="text-amber-600 dark:text-amber-400 font-bold">247</span> actions today
             </span>
           </div>
-          <span className="text-[10px] text-zinc-600">Updates every few seconds</span>
+          <span className="text-[10px] text-zinc-500">Updates every few seconds</span>
         </div>
       </div>
     </div>

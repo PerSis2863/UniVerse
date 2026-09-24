@@ -3,25 +3,26 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const myEmail = 'myuniverseimpact@gmail.com';
+  const targetEmails = ['boltanicity@gmail.com', 'demo@student.com', 'john.doe@example.com'];
 
-  // 1. Ensure target user exists
-  let mainUser = await prisma.user.findUnique({
-    where: { email: myEmail },
-  });
-
-  if (!mainUser) {
-    mainUser = await prisma.user.create({
-      data: {
-        email: myEmail,
-        name: 'John Doe',
-        role: 'STUDENT',
-      },
+  for (const myEmail of targetEmails) {
+    // 1. Ensure target user exists
+    let mainUser = await prisma.user.findUnique({
+      where: { email: myEmail },
     });
-    console.log(`Created main user: ${myEmail}`);
-  } else {
-    console.log(`Found main user: ${myEmail}`);
-  }
+
+    if (!mainUser) {
+      mainUser = await prisma.user.create({
+        data: {
+          email: myEmail,
+          name: myEmail.split('@')[0],
+          role: 'STUDENT',
+        },
+      });
+      console.log(`Created main user: ${myEmail}`);
+    } else {
+      console.log(`Found main user: ${myEmail}`);
+    }
 
   // 2. Ensure some other users exist
   const dummyUsersData = [
@@ -94,6 +95,7 @@ async function main() {
       console.log(`Seeded conversation with ${otherUser.name}`);
     } else {
       console.log(`Conversation with ${otherUser.name} already exists.`);
+    }
     }
   }
 

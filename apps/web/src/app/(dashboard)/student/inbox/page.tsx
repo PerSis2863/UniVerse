@@ -205,32 +205,32 @@ export default function InboxPage() {
   });
 
   return (
-    <div className="flex h-screen bg-[var(--background)] flex-col font-sans">
+    <div className="flex h-screen bg-zinc-50 dark:bg-black flex-col font-sans">
       <Topbar title="Messages" subtitle="Connect with peers and faculty" />
       
-      <div className="flex-1 flex overflow-hidden md:p-6 md:gap-6 max-w-7xl mx-auto w-full chat-container">
+      <div className="flex-1 flex overflow-hidden md:p-6 md:gap-6 max-w-7xl mx-auto w-full">
         {/* Left Sidebar - Contacts List */}
-        <div className={`w-full md:w-1/3 md:min-w-[320px] md:max-w-[400px] glass md:rounded-2xl flex flex-col overflow-hidden shadow-2xl border-none ${activeConvId ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-5 border-b border-zinc-800/50 bg-[var(--surface)] z-10">
+        <div className={`w-full md:w-1/3 md:min-w-[320px] md:max-w-[400px] bg-white dark:bg-[#09090b] md:rounded-2xl md:border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden ${activeConvId ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-5 border-b border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Chats</h2>
-              <button className="text-zinc-400 hover:text-white transition-colors">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Chats</h2>
+              <button className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
                 <MoreVertical className="w-5 h-5" />
               </button>
             </div>
-            <div className="search-glass">
-              <Search className="w-4 h-4 text-zinc-500 transition-colors" />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input 
                 type="text" 
                 placeholder="Search messages or contacts"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="glass-input"
+                className="w-full bg-zinc-100 dark:bg-zinc-900 border-none rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-1 focus:ring-indigo-500 outline-none text-zinc-900 dark:text-white placeholder:text-zinc-500"
               />
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800">
+          <div className="flex-1 overflow-y-auto">
             {filteredConversations.map(conv => {
               const other = getOtherParticipant(conv);
               if (!other) return null;
@@ -242,37 +242,37 @@ export default function InboxPage() {
                 <div 
                   key={conv.id} 
                   onClick={() => setActiveConvId(conv.id)}
-                  className={`chat-item-glass ${activeConvId === conv.id ? 'selected' : ''}`}
+                  className={`flex items-center gap-3 p-4 cursor-pointer transition-colors border-b border-zinc-100 dark:border-zinc-800/50 ${activeConvId === conv.id ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/50'}`}
                 >
                   <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-indigo-400 font-bold text-lg border border-indigo-500/20 flex-shrink-0 shadow-inner">
+                    <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 font-bold text-lg flex-shrink-0">
                       {other.avatar || other.name.charAt(0).toUpperCase()}
                     </div>
                     {isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-[var(--surface)] rounded-full"></div>
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#09090b] rounded-full"></div>
                     )}
                   </div>
-                  <div className="content">
-                    <div className="header">
-                      <h3>{other.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline mb-0.5">
+                      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{other.name}</h3>
                       {lastMsg && (
-                        <span className="time">
+                        <span className="text-xs text-zinc-500 flex-shrink-0 ml-2">
                           {format(new Date(lastMsg.createdAt), 'HH:mm')}
                         </span>
                       )}
                     </div>
-                    <p className="preview">
+                    <p className="text-sm text-zinc-500 truncate">
                       {isTypingUser ? (
-                        <span className="text-indigo-400 italic font-medium">typing...</span>
+                        <span className="text-indigo-500 italic">typing...</span>
                       ) : lastMsg ? (
-                        <>
+                        <span className="flex items-center">
                           {lastMsg.senderId === user?.id && (
-                            <span className="inline-flex mr-1">
-                              {lastMsg.read ? <CheckCheck className="w-4 h-4 text-indigo-400" /> : <Check className="w-4 h-4 text-zinc-500" />}
+                            <span className="mr-1">
+                              {lastMsg.read ? <CheckCheck className="w-3.5 h-3.5 text-indigo-500" /> : <Check className="w-3.5 h-3.5" />}
                             </span>
                           )}
-                          {lastMsg.body}
-                        </>
+                          <span className="truncate">{lastMsg.body}</span>
+                        </span>
                       ) : (
                         <span className="italic">No messages yet</span>
                       )}
@@ -286,54 +286,51 @@ export default function InboxPage() {
 
         {/* Right Panel - Active Chat */}
         {activeConv && otherUser ? (
-          <div className={`flex-1 glass flex flex-col overflow-hidden relative border-none ${!activeConvId ? 'hidden md:flex' : 'flex w-full'}`}>
-            {/* WhatsApp-style subtle background pattern */}
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
-            
+          <div className={`flex-1 bg-white dark:bg-[#09090b] md:rounded-2xl md:border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden relative ${!activeConvId ? 'hidden md:flex' : 'flex w-full'}`}>
             {/* Chat Header */}
-            <div className="px-4 md:px-6 py-3 md:py-4 bg-[var(--surface)]/60 backdrop-blur-md border-b border-white/5 flex justify-between items-center z-20">
-              <div className="flex items-center gap-3 md:gap-4">
+            <div className="px-4 md:px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white dark:bg-[#09090b] z-20">
+              <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setActiveConvId(null)}
-                  className="md:hidden p-2 -ml-2 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                  className="md:hidden p-2 -ml-2 rounded-full text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <div className="relative">
-                  <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-indigo-400 font-bold text-lg border border-indigo-500/20">
+                  <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 font-bold text-lg">
                     {otherUser.avatar || otherUser.name.charAt(0).toUpperCase()}
                   </div>
                   {onlineUsers[otherUser.id] && (
-                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 md:w-3 md:h-3 bg-emerald-500 border-2 border-[var(--surface)] rounded-full"></div>
+                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-[#09090b] rounded-full"></div>
                   )}
                 </div>
                 <div>
-                  <h2 className="font-bold text-zinc-100 text-lg">{otherUser.name}</h2>
-                  <div className="text-xs text-zinc-400 font-medium">
+                  <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">{otherUser.name}</h2>
+                  <div className="text-xs font-medium">
                     {isTyping[otherUser.id] ? (
-                      <span className="text-indigo-400">typing...</span>
+                      <span className="text-indigo-500">typing...</span>
                     ) : onlineUsers[otherUser.id] ? (
-                      <span className="text-emerald-400">online</span>
+                      <span className="text-emerald-500">online</span>
                     ) : (
-                      <span>offline</span>
+                      <span className="text-zinc-500">offline</span>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-5 text-zinc-400">
-                <button className="hover:text-indigo-400 transition-colors p-2 rounded-full hover:bg-zinc-800"><Video className="w-5 h-5" /></button>
-                <button className="hover:text-indigo-400 transition-colors p-2 rounded-full hover:bg-zinc-800"><Phone className="w-5 h-5" /></button>
-                <div className="w-px h-6 bg-zinc-800"></div>
-                <button className="hover:text-zinc-200 transition-colors p-2 rounded-full hover:bg-zinc-800"><Search className="w-5 h-5" /></button>
-                <button className="hover:text-zinc-200 transition-colors p-2 rounded-full hover:bg-zinc-800"><MoreVertical className="w-5 h-5" /></button>
+              <div className="flex items-center gap-1 sm:gap-2 text-zinc-500">
+                <button className="hover:text-indigo-500 transition-colors p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"><Video className="w-5 h-5" /></button>
+                <button className="hover:text-indigo-500 transition-colors p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"><Phone className="w-5 h-5" /></button>
+                <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
+                <button className="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 hidden sm:flex"><Search className="w-5 h-5" /></button>
+                <button className="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"><MoreVertical className="w-5 h-5" /></button>
               </div>
             </div>
 
             {/* Chat Messages */}
-            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-6 z-10 scroll-smooth relative">
-              <div className="flex justify-center mb-8 sticky top-2 z-10">
-                <div className="bg-zinc-800/90 backdrop-blur-md text-zinc-300 text-xs px-4 py-1.5 rounded-full shadow-lg border border-zinc-700/50 flex items-center gap-2">
-                  <CheckCheck className="w-3.5 h-3.5 text-zinc-400" />
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 z-10 scroll-smooth bg-zinc-50 dark:bg-[#09090b]">
+              <div className="flex justify-center mb-6">
+                <div className="bg-white dark:bg-zinc-900 text-zinc-500 text-xs px-3 py-1 rounded-full shadow-sm border border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5">
+                  <CheckCheck className="w-3.5 h-3.5" />
                   Messages are end-to-end encrypted
                 </div>
               </div>
@@ -348,20 +345,24 @@ export default function InboxPage() {
                   return (
                     <div key={msg.id}>
                       {showDate && (
-                        <div className="flex justify-center my-6 sticky top-14 z-10">
-                          <div className="bg-zinc-800/90 backdrop-blur-md text-zinc-300 text-xs px-4 py-1.5 rounded-full shadow-lg border border-zinc-700/50">
+                        <div className="flex justify-center my-6">
+                          <div className="bg-white dark:bg-zinc-900 text-zinc-500 text-xs px-3 py-1 rounded-full shadow-sm border border-zinc-200 dark:border-zinc-800">
                             {format(new Date(msg.createdAt), 'MMMM d, yyyy')}
                           </div>
                         </div>
                       )}
                       <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : 'mt-0.5'}`}>
-                        <div className={`bubble-glass ${isMe ? 'sent' : 'received'}`}>
-                          <div className="text-[15px] leading-relaxed">{msg.body}</div>
-                          <div className="bubble-timestamp flex items-center justify-end gap-1">
+                        <div className={`max-w-[85%] sm:max-w-[70%] px-4 py-2 text-[15px] leading-relaxed shadow-sm ${
+                          isMe 
+                            ? 'bg-indigo-600 text-white rounded-2xl rounded-tr-sm' 
+                            : 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-tl-sm border border-zinc-100 dark:border-zinc-800'
+                        }`}>
+                          <div>{msg.body}</div>
+                          <div className={`flex items-center justify-end gap-1 mt-1 text-[11px] ${isMe ? 'text-indigo-200' : 'text-zinc-400'}`}>
                             {format(new Date(msg.createdAt), 'HH:mm')}
                             {isMe && (
-                              <span className="inline-flex ml-0.5">
-                                {msg.read ? <CheckCheck className="w-[14px] h-[14px] text-white/90" /> : <Check className="w-[14px] h-[14px] text-white/70" />}
+                              <span className="inline-flex">
+                                {msg.read ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
                               </span>
                             )}
                           </div>
@@ -375,67 +376,67 @@ export default function InboxPage() {
 
             {/* Attachments Menu Popover */}
             {showAttachMenu && (
-              <div className="absolute bottom-24 left-6 z-30 glass rounded-2xl p-4 shadow-2xl flex flex-col gap-4 animate-in slide-in-from-bottom-2 fade-in">
-                <button className="flex items-center gap-3 text-zinc-300 hover:text-white transition-colors group">
-                  <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+              <div className="absolute bottom-20 left-4 z-30 bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-4 animate-in slide-in-from-bottom-2 fade-in">
+                <button className="flex items-center gap-3 text-zinc-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-white transition-colors group">
+                  <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                     <FileText className="w-5 h-5" />
                   </div>
-                  <span className="font-medium">Document</span>
+                  <span className="font-medium text-sm">Document</span>
                 </button>
-                <button className="flex items-center gap-3 text-zinc-300 hover:text-white transition-colors group">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                <button className="flex items-center gap-3 text-zinc-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-white transition-colors group">
+                  <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                     <ImageIcon className="w-5 h-5" />
                   </div>
-                  <span className="font-medium">Photos & Videos</span>
+                  <span className="font-medium text-sm">Photos & Videos</span>
                 </button>
-                <button className="flex items-center gap-3 text-zinc-300 hover:text-white transition-colors group">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                <button className="flex items-center gap-3 text-zinc-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-white transition-colors group">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                     <Contact className="w-5 h-5" />
                   </div>
-                  <span className="font-medium">Contact</span>
+                  <span className="font-medium text-sm">Contact</span>
                 </button>
-                <button className="flex items-center gap-3 text-zinc-300 hover:text-white transition-colors group">
-                  <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                <button className="flex items-center gap-3 text-zinc-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-white transition-colors group">
+                  <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors">
                     <BarChart className="w-5 h-5" />
                   </div>
-                  <span className="font-medium">Poll</span>
+                  <span className="font-medium text-sm">Poll</span>
                 </button>
               </div>
             )}
 
             {/* Chat Input */}
-            <div className="px-6 py-4 bg-[var(--surface)]/80 backdrop-blur-md z-20 border-t border-white/5">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-white dark:bg-[#09090b] border-t border-zinc-200 dark:border-zinc-800 z-20">
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className={`p-2.5 rounded-full transition-colors ${showEmojiPicker ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
+                  className={`p-2 rounded-full transition-colors ${showEmojiPicker ? 'bg-zinc-100 dark:bg-zinc-800 text-indigo-500' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                 >
                   <Smile className="w-6 h-6" />
                 </button>
                 <button 
                   onClick={() => setShowAttachMenu(!showAttachMenu)}
-                  className={`p-2.5 rounded-full transition-colors ${showAttachMenu ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
+                  className={`p-2 rounded-full transition-colors ${showAttachMenu ? 'bg-zinc-100 dark:bg-zinc-800 text-indigo-500' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                 >
                   {showAttachMenu ? <X className="w-6 h-6" /> : <Paperclip className="w-6 h-6" />}
                 </button>
                 
-                <div className="search-glass flex-1 border-none focus-within:shadow-none focus-within:border-transparent py-2">
+                <div className="flex-1 bg-zinc-100 dark:bg-zinc-900 rounded-full border border-transparent focus-within:border-indigo-500 px-4 py-2 flex items-center transition-colors">
                   <input 
                     type="text"
                     value={currentMessage}
                     onChange={handleTyping}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="Type a message..."
-                    className="glass-input"
+                    className="w-full bg-transparent border-none outline-none text-zinc-900 dark:text-white placeholder:text-zinc-500 text-[15px]"
                   />
                 </div>
                 
                 <button 
                   onClick={currentMessage.trim() ? handleSendMessage : undefined}
-                  className={`p-3.5 rounded-full transition-all flex items-center justify-center shadow-lg transform active:scale-95 ${
+                  className={`p-3 rounded-full transition-all flex items-center justify-center flex-shrink-0 shadow-sm ${
                     currentMessage.trim() 
-                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white translate-x-0' 
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white transform active:scale-95' 
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
                   }`}
                 >
                   {currentMessage.trim() ? (
@@ -448,17 +449,15 @@ export default function InboxPage() {
             </div>
           </div>
         ) : (
-          <div className="hidden md:flex flex-1 glass border-none flex-col items-center justify-center text-zinc-500 relative overflow-hidden">
-            <div className="empty-glass">
-              <div className="empty-icon">
-                💬
-              </div>
-              <h2 className="text-3xl font-bold text-zinc-100 mb-3 tracking-tight">Messages</h2>
-              <p className="text-zinc-400 max-w-sm text-center text-[15px] leading-relaxed">
-                Select a chat to start messaging or search for someone new.
-              </p>
+          <div className="hidden md:flex flex-1 bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 rounded-2xl flex-col items-center justify-center text-zinc-500">
+            <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-6">
+              <MessageSquare className="w-8 h-8 text-zinc-400" />
             </div>
-            <div className="mt-8 px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-500 flex items-center gap-2 relative z-10">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Your Messages</h2>
+            <p className="text-zinc-500 max-w-sm text-center text-sm">
+              Select a chat to start messaging or search for someone new.
+            </p>
+            <div className="mt-8 px-4 py-1.5 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500 flex items-center gap-2">
               <CheckCheck className="w-3.5 h-3.5" /> End-to-end encrypted
             </div>
           </div>

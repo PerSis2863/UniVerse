@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Send, Sparkles, User, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAiStore } from '@/store/ai';
 
 type Message = {
   id: string;
@@ -22,6 +23,7 @@ export function AIStudyAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const { isChatbotEnabled } = useAiStore();
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', role: 'assistant', content: "Hi! I'm your Gemini AI Study Assistant. How can I help you today?" }
   ]);
@@ -85,7 +87,7 @@ export function AIStudyAssistant() {
     }
   };
 
-  if (isDismissed) return null;
+  if (!isChatbotEnabled || isDismissed) return null;
 
   return (
     <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 flex flex-col items-end gap-2">
@@ -106,13 +108,13 @@ export function AIStudyAssistant() {
               <X className="w-4 h-4" />
             </button>
 
-            <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsOpen(true)}
+              <motion.button
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
+                exit={{ scale: 0, opacity: 0 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsOpen(true)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className="w-14 h-14 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center relative overflow-hidden group"
@@ -143,7 +145,7 @@ export function AIStudyAssistant() {
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 350, damping: 25 } }}
             exit={{ opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.2 } }}
             className="absolute bottom-0 right-0 w-[350px] sm:w-[400px] h-[550px] max-h-[80vh] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
