@@ -38,7 +38,7 @@ export default function StudentDashboard() {
   const { user } = useAuthStore();
   const { t } = useLanguageStore();
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const [showSkillMatch, setShowSkillMatch] = useState(true);
+  const [showSkillMatch, setShowSkillMatch] = useState(false);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
 
@@ -251,10 +251,11 @@ export default function StudentDashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { icon: FileText, label: 'View Assignments', color: 'indigo', href: '/student/courses' },
-              { icon: ClipboardList, label: 'Check Attendance', color: 'cyan', href: '/student/attendance' },
-              { icon: TrendingUp, label: 'View Grades', color: 'green', href: '/student/grades' },
-              { icon: CheckCircle2, label: 'Take Quiz', color: 'amber', href: '/student/quizzes' },
-            ].map(a => (
+              { icon: Sparkles, label: 'Skill Match', color: 'cyan', onClick: () => setShowSkillMatch(true) },
+              { icon: ClipboardList, label: 'Check Attendance', color: 'green', href: '/student/attendance' },
+              { icon: TrendingUp, label: 'View Grades', color: 'amber', href: '/student/grades' },
+              { icon: CheckCircle2, label: 'Take Quiz', color: 'indigo', href: '/student/quizzes' },
+            ].map((a: any) => a.href ? (
               <Link href={a.href} key={a.label} passHref legacyBehavior>
                 <motion.a 
                   whileHover={{ scale: 1.05 }}
@@ -270,6 +271,22 @@ export default function StudentDashboard() {
                   <span className="text-xs text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white text-center">{a.label}</span>
                 </motion.a>
               </Link>
+            ) : (
+              <motion.button 
+                key={a.label}
+                onClick={a.onClick}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="glass glass-hover rounded-xl p-4 flex flex-col items-center gap-2 group cursor-pointer transition-all">
+                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center',
+                  a.color === 'indigo' ? 'bg-indigo-600/20 text-indigo-400' :
+                  a.color === 'cyan' ? 'bg-cyan-600/20 text-cyan-400' :
+                  a.color === 'green' ? 'bg-green-900/30 text-green-400' : 'bg-amber-900/30 text-amber-400'
+                )}>
+                  <a.icon className="w-5 h-5" />
+                </div>
+                <span className="text-xs text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white text-center">{a.label}</span>
+              </motion.button>
             ))}
           </div>
         </div>
