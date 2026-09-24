@@ -205,27 +205,27 @@ export default function InboxPage() {
   });
 
   return (
-    <div className="flex h-screen bg-[#09090b] flex-col font-sans">
+    <div className="flex h-screen bg-[var(--background)] flex-col font-sans">
       <Topbar title="Messages" subtitle="Connect with peers and faculty" />
       
-      <div className="flex-1 flex overflow-hidden p-6 gap-6 max-w-7xl mx-auto w-full">
+      <div className="flex-1 flex overflow-hidden p-6 gap-6 max-w-7xl mx-auto w-full chat-container">
         {/* Left Sidebar - Contacts List */}
-        <div className="w-1/3 min-w-[320px] max-w-[400px] bg-[#18181b] border border-zinc-800 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
-          <div className="p-5 border-b border-zinc-800/50 bg-[#18181b] z-10">
+        <div className="w-1/3 min-w-[320px] max-w-[400px] glass rounded-2xl flex flex-col overflow-hidden shadow-2xl border-none">
+          <div className="p-5 border-b border-zinc-800/50 bg-[var(--surface)] z-10">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-white tracking-tight">Chats</h2>
+              <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Chats</h2>
               <button className="text-zinc-400 hover:text-white transition-colors">
                 <MoreVertical className="w-5 h-5" />
               </button>
             </div>
-            <div className="relative group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" />
+            <div className="search-glass">
+              <Search className="w-4 h-4 text-zinc-500 transition-colors" />
               <input 
                 type="text" 
                 placeholder="Search messages or contacts"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-[#27272a]/50 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:bg-[#27272a] transition-all placeholder:text-zinc-500"
+                className="glass-input"
               />
             </div>
           </div>
@@ -242,41 +242,41 @@ export default function InboxPage() {
                 <div 
                   key={conv.id} 
                   onClick={() => setActiveConvId(conv.id)}
-                  className={`p-4 flex items-center gap-4 cursor-pointer transition-all border-l-4 ${activeConvId === conv.id ? 'bg-[#27272a] border-indigo-500' : 'hover:bg-[#27272a]/50 border-transparent'}`}
+                  className={`chat-item-glass ${activeConvId === conv.id ? 'selected' : ''}`}
                 >
                   <div className="relative">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-indigo-400 font-bold text-lg border border-indigo-500/20 flex-shrink-0 shadow-inner">
                       {other.avatar || other.name.charAt(0).toUpperCase()}
                     </div>
                     {isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#18181b] rounded-full"></div>
+                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-[var(--surface)] rounded-full"></div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 border-b border-zinc-800/30 pb-4 mt-4">
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h3 className="font-semibold text-zinc-100 truncate pr-2">{other.name}</h3>
+                  <div className="content">
+                    <div className="header">
+                      <h3>{other.name}</h3>
                       {lastMsg && (
-                        <span className={`text-xs flex-shrink-0 ${activeConvId === conv.id ? 'text-indigo-400' : 'text-zinc-500'}`}>
+                        <span className="time">
                           {format(new Date(lastMsg.createdAt), 'HH:mm')}
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-zinc-400 truncate flex items-center gap-1.5">
+                    <p className="preview">
                       {isTypingUser ? (
                         <span className="text-indigo-400 italic font-medium">typing...</span>
                       ) : lastMsg ? (
                         <>
                           {lastMsg.senderId === user?.id && (
-                            <span className="inline-flex">
+                            <span className="inline-flex mr-1">
                               {lastMsg.read ? <CheckCheck className="w-4 h-4 text-indigo-400" /> : <Check className="w-4 h-4 text-zinc-500" />}
                             </span>
                           )}
-                          <span className="truncate">{lastMsg.body}</span>
+                          {lastMsg.body}
                         </>
                       ) : (
-                        <span className="italic text-zinc-600">No messages yet</span>
+                        <span className="italic">No messages yet</span>
                       )}
-                    </div>
+                    </p>
                   </div>
                 </div>
               );
@@ -286,19 +286,19 @@ export default function InboxPage() {
 
         {/* Right Panel - Active Chat */}
         {activeConv && otherUser ? (
-          <div className="flex-1 bg-[#18181b] border border-zinc-800 rounded-2xl flex flex-col overflow-hidden relative shadow-2xl">
+          <div className="flex-1 glass flex flex-col overflow-hidden relative border-none">
             {/* WhatsApp-style subtle background pattern */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
             
             {/* Chat Header */}
-            <div className="px-6 py-4 bg-[#18181b]/95 backdrop-blur-md border-b border-zinc-800 flex justify-between items-center z-20">
+            <div className="px-6 py-4 bg-[var(--surface)]/60 backdrop-blur-md border-b border-white/5 flex justify-between items-center z-20">
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-indigo-400 font-bold text-lg border border-indigo-500/20">
                     {otherUser.avatar || otherUser.name.charAt(0).toUpperCase()}
                   </div>
                   {onlineUsers[otherUser.id] && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#18181b] rounded-full"></div>
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[var(--surface)] rounded-full"></div>
                   )}
                 </div>
                 <div>
@@ -349,24 +349,13 @@ export default function InboxPage() {
                         </div>
                       )}
                       <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-2' : 'mt-0.5'}`}>
-                        <div className={`max-w-[65%] px-4 py-2 relative shadow-sm ${
-                          isMe 
-                            ? `bg-indigo-600 text-white ${isFirstInGroup ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl'}` 
-                            : `bg-zinc-800 text-zinc-200 ${isFirstInGroup ? 'rounded-2xl rounded-tl-sm' : 'rounded-2xl'}`
-                        }`}>
-                          {/* WhatsApp Tail */}
-                          {isFirstInGroup && (
-                            <svg viewBox="0 0 8 13" width="8" height="13" className={`absolute top-0 ${isMe ? '-right-2 text-indigo-600' : '-left-2 text-zinc-800'}`}>
-                              <path fill="currentColor" d={isMe ? "M0,0 H8 V13 Q8,0 0,0 Z" : "M8,0 H0 V13 Q0,0 8,0 Z"} />
-                            </svg>
-                          )}
-                          
-                          <div className="text-[15px] leading-relaxed break-words">{msg.body}</div>
-                          <div className={`flex items-center gap-1 mt-1 text-[11px] ${isMe ? 'text-indigo-200 justify-end' : 'text-zinc-500 justify-end'}`}>
+                        <div className={`bubble-glass ${isMe ? 'sent' : 'received'}`}>
+                          <div className="text-[15px] leading-relaxed">{msg.body}</div>
+                          <div className="bubble-timestamp flex items-center justify-end gap-1">
                             {format(new Date(msg.createdAt), 'HH:mm')}
                             {isMe && (
                               <span className="inline-flex ml-0.5">
-                                {msg.read ? <CheckCheck className="w-[14px] h-[14px] text-blue-300" /> : <Check className="w-[14px] h-[14px] text-indigo-300" />}
+                                {msg.read ? <CheckCheck className="w-[14px] h-[14px] text-white/90" /> : <Check className="w-[14px] h-[14px] text-white/70" />}
                               </span>
                             )}
                           </div>
@@ -380,7 +369,7 @@ export default function InboxPage() {
 
             {/* Attachments Menu Popover */}
             {showAttachMenu && (
-              <div className="absolute bottom-24 left-6 z-30 bg-[#27272a] rounded-2xl p-4 shadow-2xl border border-zinc-700/50 flex flex-col gap-4 animate-in slide-in-from-bottom-2 fade-in">
+              <div className="absolute bottom-24 left-6 z-30 glass rounded-2xl p-4 shadow-2xl flex flex-col gap-4 animate-in slide-in-from-bottom-2 fade-in">
                 <button className="flex items-center gap-3 text-zinc-300 hover:text-white transition-colors group">
                   <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                     <FileText className="w-5 h-5" />
@@ -409,7 +398,7 @@ export default function InboxPage() {
             )}
 
             {/* Chat Input */}
-            <div className="px-6 py-4 bg-[#18181b] z-20 border-t border-zinc-800/50">
+            <div className="px-6 py-4 bg-[var(--surface)]/80 backdrop-blur-md z-20 border-t border-white/5">
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -424,14 +413,14 @@ export default function InboxPage() {
                   {showAttachMenu ? <X className="w-6 h-6" /> : <Paperclip className="w-6 h-6" />}
                 </button>
                 
-                <div className="flex-1 bg-[#27272a] rounded-2xl flex items-center px-4 py-3 shadow-inner border border-zinc-800/50 focus-within:border-indigo-500/50 transition-colors">
+                <div className="search-glass flex-1 border-none focus-within:shadow-none focus-within:border-transparent py-2">
                   <input 
                     type="text"
                     value={currentMessage}
                     onChange={handleTyping}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Type a message"
-                    className="flex-1 bg-transparent text-white focus:outline-none placeholder:text-zinc-500 text-[15px]"
+                    placeholder="Type a message..."
+                    className="glass-input"
                   />
                 </div>
                 
@@ -453,17 +442,16 @@ export default function InboxPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 bg-[#18181b] border border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-zinc-500 shadow-2xl relative overflow-hidden">
-             {/* Subtle background pattern */}
-             <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
-            
-            <div className="w-24 h-24 rounded-full bg-zinc-900 flex items-center justify-center mb-6 border border-zinc-800 shadow-xl relative z-10">
-              <Phone className="w-10 h-10 text-indigo-500/50" />
+          <div className="flex-1 glass border-none flex flex-col items-center justify-center text-zinc-500 relative overflow-hidden">
+            <div className="empty-glass">
+              <div className="empty-icon">
+                💬
+              </div>
+              <h2 className="text-3xl font-bold text-zinc-100 mb-3 tracking-tight">Messages</h2>
+              <p className="text-zinc-400 max-w-sm text-center text-[15px] leading-relaxed">
+                Select a chat to start messaging or search for someone new.
+              </p>
             </div>
-            <h2 className="text-3xl font-bold text-zinc-100 mb-3 relative z-10 tracking-tight">UniVerse Web</h2>
-            <p className="text-zinc-400 max-w-sm text-center relative z-10 text-[15px] leading-relaxed">
-              Send and receive messages seamlessly. Select a chat to start messaging.
-            </p>
             <div className="mt-8 px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-500 flex items-center gap-2 relative z-10">
               <CheckCheck className="w-3.5 h-3.5" /> End-to-end encrypted
             </div>
