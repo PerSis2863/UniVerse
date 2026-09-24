@@ -45,7 +45,7 @@ const ROLES = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const { setUser, setTokens } = useAuthStore();
 
   const [step, setStep] = useState<'role' | 'credentials'>('role');
   const [selectedRole, setSelectedRole] = useState<string>('');
@@ -61,6 +61,7 @@ export default function RegisterPage() {
   const handleRegisterSuccess = async (token: string, displayName: string) => {
     try {
       localStorage.setItem('accessToken', token);
+      setTokens(token);
       const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole });
       setUser({ id: user.id, name: user.name, email: user.email, role: user.role });
       router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');

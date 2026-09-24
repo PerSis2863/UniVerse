@@ -13,7 +13,7 @@ import { VerificationStatusModal } from '@/components/auth/VerificationStatusMod
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const { setUser, setTokens } = useAuthStore();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +29,7 @@ export default function LoginPage() {
   const handleLoginSuccess = async (token: string) => {
     try {
       localStorage.setItem('accessToken', token);
+      setTokens(token);
       
       // Make API call to sync user data and get role
       const { data: user } = await api.get('/auth/me');
