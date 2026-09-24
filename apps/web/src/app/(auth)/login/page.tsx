@@ -9,6 +9,7 @@ import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
+import { VerificationStatusModal } from '@/components/auth/VerificationStatusModal';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
+  const [verificationUser, setVerificationUser] = useState<any>(null);
 
   const handleDemoLogin = (token: string, role: string) => {
     handleLoginSuccess(token);
@@ -38,11 +40,24 @@ export default function LoginPage() {
         role: user.role,
       });
 
-      router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
+      // Show verification status modal before redirect (only for real accounts, not demo)
+      if (!token.startsWith('mock-token-')) {
+        setVerificationUser(user);
+      } else {
+        router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
+      }
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Login successful, but failed to retrieve user data. Please contact support.');
     }
+  };
+
+  const handleVerificationClose = () => {
+    if (verificationUser) {
+      const role = verificationUser.role;
+      router.push(role === 'STUDENT' ? '/student' : role === 'TEACHER' ? '/teacher' : '/admin');
+    }
+    setVerificationUser(null);
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -80,7 +95,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full">
+    <>
+      {verificationUser && (
+        <VerificationStatusModal user={verificationUser} onClose={handleVerificationClose} />
+      )}
+      <div className="w-full">
       {/* Header */}
       <div className="mb-8">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-4">
@@ -259,5 +278,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

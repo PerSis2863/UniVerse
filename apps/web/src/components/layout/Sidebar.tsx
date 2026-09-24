@@ -7,7 +7,7 @@ import {
   MessageSquare, Bell, Settings, LogOut,
   GraduationCap, Brain, ClipboardList, Calendar as CalendarIcon,
   Info, AlertTriangle, Globe, Folder, Search, Link as LinkIcon, ChevronDown, ChevronRight,
-  Coffee, Shield, Map, Globe2, Layers
+  Coffee, Shield, Map, Globe2, Layers, Award
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -87,6 +87,7 @@ const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { href: '/student/knowledge-hub', label: 'nav.knowledge_hub', icon: Brain },
+    { href: '/student/credentials', label: 'nav.credentials', icon: Award },
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
     { href: '/student/community', label: 'nav.community', icon: Users },
     { href: '/student/support', label: 'nav.support', icon: Settings },
