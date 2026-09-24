@@ -1,7 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { Search, Send, Phone, Video, MoreVertical, Paperclip, Smile, Check, CheckCheck, Mic, X, FileText, Image as ImageIcon, Contact, BarChart, ChevronLeft } from 'lucide-react';
+import { Search, Send, Phone, Video, MoreVertical, Paperclip, Smile, Check, CheckCheck, Mic, X, FileText, Image as ImageIcon, Contact, BarChart, ChevronLeft, MessageSquare } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { useAuthStore } from '@/store/auth';
