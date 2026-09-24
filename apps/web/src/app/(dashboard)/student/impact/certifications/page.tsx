@@ -1,217 +1,194 @@
 'use client';
 
-import React, { useState } from 'react';
-import useSWR from 'swr';
-import { Download, Award, CheckCircle, Clock, Info, ExternalLink } from 'lucide-react';
-import { toast } from "sonner";
-import { api } from '@/lib/api';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
-const fetcher = (url: string) => api.get(url).then(res => res.data);
+import { useState } from 'react';
+import { useAuthStore } from '@/store/auth';
+import {
+  Award, Download, ExternalLink, Copy, Shield, CheckCircle2,
+  Clock, Hash, Building2, Users, FileText
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Certificate {
   id: string;
+  certificateCode: string;
   title: string;
-  type: string;
-  isVerified: boolean;
-  issuedAt: string | null;
-  createdAt: string;
+  projectName: string;
+  organization: string;
+  hoursCompleted: number;
+  peopleImpacted: number;
+  description: string;
+  blockchainHash: string | null;
+  issuedAt: string;
+  status: 'ISSUED' | 'DRAFT' | 'REVOKED';
 }
 
+const DEMO_CERTS: Certificate[] = [
+  {
+    id: '1', certificateCode: 'CERT_X7K92', title: 'Verified Social Impact',
+    projectName: 'Clean Water Kenya', organization: 'WaterAid Kenya',
+    hoursCompleted: 40, peopleImpacted: 500,
+    description: 'Successfully completed the Clean Water Kenya project, improving access to clean water for 500+ people.',
+    blockchainHash: '0x7f3da82c...e91f', issuedAt: '2025-08-20T00:00:00Z', status: 'ISSUED',
+  },
+  {
+    id: '2', certificateCode: 'CERT_M3P45', title: 'Digital Literacy Champion',
+    projectName: 'Digital Literacy Program', organization: 'Tech4Good',
+    hoursCompleted: 25, peopleImpacted: 150,
+    description: 'Mentored 15 students achieving a 100% pass rate in basic programming skills.',
+    blockchainHash: '0x4e1bf93a...b27d', issuedAt: '2025-07-15T00:00:00Z', status: 'ISSUED',
+  },
+  {
+    id: '3', certificateCode: 'CERT_R9L67', title: 'Community Health Advocate',
+    projectName: 'Health Awareness Campaign', organization: 'Red Cross',
+    hoursCompleted: 18, peopleImpacted: 300,
+    description: 'Organized health screening events in 3 rural communities.',
+    blockchainHash: null, issuedAt: '2025-09-10T00:00:00Z', status: 'DRAFT',
+  },
+];
+
 export default function CertificationsPage() {
-  const { data: stats, isLoading: loadingStats } = useSWR(`/impact/dashboard/stats`, fetcher);
-  const { data: certificates, mutate, isLoading: loadingCerts } = useSWR<Certificate[]>(`/impact/certificates`, fetcher);
-  
-  const [isRequesting, setIsRequesting] = useState(false);
+  const { user } = useAuthStore();
+  const [certs] = useState<Certificate[]>(DEMO_CERTS);
+  const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
 
-  const totalPoints = stats?.totalPoints || 0;
-  
-  // Determine eligibility tier
-  let eligibleTier = '';
-  if (totalPoints >= 2000) eligibleTier = 'Gold Level Humanitarian';
-  else if (totalPoints >= 1000) eligibleTier = 'Silver Level Humanitarian';
-  else if (totalPoints >= 500) eligibleTier = 'Bronze Level Humanitarian';
-
-  const handleRequestCertificate = async () => {
-    if (!eligibleTier) {
-      toast.error('You do not have enough points to request a certificate yet.');
-      return;
-    }
-    
-    // Check if they already requested this tier
-    const existing = certificates?.find(c => c.title === eligibleTier);
-    if (existing) {
-      if (existing.isVerified) toast.error(`You already have the ${eligibleTier} certificate.`);
-      else toast.info(`Your request for ${eligibleTier} is already pending approval.`);
-      return;
-    }
-
-    setIsRequesting(true);
-    try {
-      await api.post(`/impact/certificates/request`, { title: eligibleTier });
-      toast.success('Certificate requested successfully! Awaiting admin approval.');
-      mutate();
-    } catch (error) {
-      toast.error('Failed to request certificate');
-    } finally {
-      setIsRequesting(false);
-    }
+  const handleCopyLink = (cert: Certificate) => {
+    const url = `${window.location.origin}/certificates/${cert.certificateCode}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Certificate link copied!');
   };
 
-  const handleDownload = (id: string) => {
-    const token = localStorage.getItem('accessToken');
-    window.open(`${API_URL}/impact/certificates/${id}/pdf?token=${token}`, '_blank');
+  const handleLinkedIn = (cert: Certificate) => {
+    const url = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(cert.title)}&organizationName=${encodeURIComponent(cert.organization)}&certId=${cert.certificateCode}&certUrl=${encodeURIComponent(window.location.origin + '/certificates/' + cert.certificateCode)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleTwitter = (cert: Certificate) => {
+    const text = `🎉 I just earned the "${cert.title}" certificate from ${cert.organization}! ${cert.peopleImpacted} people impacted. #SocialImpact #UniVerseImpact`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">My Certifications</h1>
-        <p className="text-zinc-500 mt-2">Manage and showcase your social impact achievements.</p>
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold mb-3">
+          <Award className="w-3 h-3" />
+          Digital Certificates
+        </div>
+        <h1 className="text-2xl font-black text-white mb-1">Impact Certificates</h1>
+        <p className="text-zinc-400 text-sm">Blockchain-verified certificates for completed social impact projects</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-          <div className="p-6">
-            <h3 className="text-2xl font-semibold leading-none tracking-tight flex items-center gap-2 mb-2">
-              <Award className="h-6 w-6 text-yellow-400" />
-              Certificate Eligibility
-            </h3>
-            <p className="text-sm text-slate-300">
-              Certificates are awarded based on your total Impact Points.
-            </p>
-          </div>
-          <div className="p-6 pt-0 space-y-4">
-            <div className="flex items-center justify-between p-4 bg-white/10 rounded-lg">
-              <div>
-                <p className="text-sm text-slate-300 uppercase tracking-wider font-semibold">Current Impact Points</p>
-                <p className="text-4xl font-bold mt-1">{loadingStats ? '...' : totalPoints}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-slate-300 uppercase tracking-wider font-semibold">Next Milestone</p>
-                <p className="text-xl font-semibold mt-1">
-                  {totalPoints < 500 ? '500 Points (Bronze)' : 
-                   totalPoints < 1000 ? '1,000 Points (Silver)' : 
-                   totalPoints < 2000 ? '2,000 Points (Gold)' : 'Max Tier Reached'}
-                </p>
-              </div>
-            </div>
-            
-            <div className="pt-4 flex flex-col gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-600"></div> Bronze Level (500 pts)</span>
-                {totalPoints >= 500 && <CheckCircle className="h-4 w-4 text-emerald-400" />}
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-400"></div> Silver Level (1000 pts)</span>
-                {totalPoints >= 1000 && <CheckCircle className="h-4 w-4 text-emerald-400" />}
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-yellow-400"></div> Gold Level (2000 pts)</span>
-                {totalPoints >= 2000 && <CheckCircle className="h-4 w-4 text-emerald-400" />}
-              </div>
-            </div>
-          </div>
-          <div className="p-6 pt-0">
-            <button 
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 w-full bg-indigo-500 hover:bg-indigo-600 text-white" 
-              onClick={handleRequestCertificate}
-              disabled={!eligibleTier || isRequesting || loadingCerts}
-            >
-              {eligibleTier ? `Request ${eligibleTier} Certificate` : 'Not Eligible Yet'}
-            </button>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 text-center">
+          <div className="text-2xl font-black text-white">{certs.filter(c => c.status === 'ISSUED').length}</div>
+          <div className="text-xs text-zinc-500 mt-1">🏆 Certificates Earned</div>
         </div>
-        
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold leading-none tracking-tight">How it works</h3>
-          </div>
-          <div className="p-6 pt-0 space-y-4 text-sm text-zinc-500 dark:text-zinc-400">
-            <div className="flex gap-3">
-              <CheckCircle className="h-5 w-5 text-indigo-500 shrink-0" />
-              <p>Volunteer and participate in NGO projects to earn Impact Points.</p>
-            </div>
-            <div className="flex gap-3">
-              <CheckCircle className="h-5 w-5 text-indigo-500 shrink-0" />
-              <p>Once you cross a point threshold, request your official certificate.</p>
-            </div>
-            <div className="flex gap-3">
-              <CheckCircle className="h-5 w-5 text-indigo-500 shrink-0" />
-              <p>Admins review your impact history and approve your request.</p>
-            </div>
-            <div className="flex gap-3">
-              <CheckCircle className="h-5 w-5 text-indigo-500 shrink-0" />
-              <p>Download your verified, digitally-signed PDF certificate instantly.</p>
-            </div>
-          </div>
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 text-center">
+          <div className="text-2xl font-black text-white">{certs.reduce((s, c) => s + c.hoursCompleted, 0)}</div>
+          <div className="text-xs text-zinc-500 mt-1">⏱️ Total Hours</div>
+        </div>
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 text-center">
+          <div className="text-2xl font-black text-white">{certs.reduce((s, c) => s + c.peopleImpacted, 0)}</div>
+          <div className="text-xs text-zinc-500 mt-1">👥 People Impacted</div>
         </div>
       </div>
 
+      {/* Certificates */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold tracking-tight">My Gallery</h2>
-        
-        {loadingCerts ? (
-          <p className="text-zinc-500">Loading your certificates...</p>
-        ) : certificates?.length === 0 ? (
-          <div className="text-center p-12 border-2 border-dashed rounded-xl bg-zinc-100 dark:bg-zinc-800/50">
-            <Award className="h-12 w-12 text-zinc-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No certificates yet</h3>
-            <p className="text-zinc-500 mb-4">Start making an impact to earn your first certificate.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {certificates?.map((cert) => (
-              <div key={cert.id} className="flex flex-col relative overflow-hidden group bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800">
-                <div className="absolute top-0 left-0 w-1 bg-indigo-500 h-full"></div>
-                <div className="p-6">
-                  <div className="flex justify-between items-start">
-                    <Award className="h-8 w-8 text-indigo-500" />
-                    {cert.isVerified ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                        <CheckCircle className="w-3 h-3 mr-1" /> Verified
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-600">
-                        <Clock className="w-3 h-3 mr-1" /> Pending
-                      </span>
-                    )}
+        {certs.map(cert => (
+          <div key={cert.id} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-colors">
+            {/* Certificate Header - Gradient banner */}
+            <div className={`px-5 py-3 ${cert.status === 'ISSUED' ? 'bg-gradient-to-r from-purple-500/20 to-indigo-500/20' : 'bg-zinc-800/50'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🎉</span>
+                  <div>
+                    <span className="text-white font-bold text-sm">Congratulations!</span>
+                    <span className="text-zinc-400 text-xs ml-2">You&apos;ve earned a Certificate</span>
                   </div>
-                  <h3 className="mt-4 text-lg font-semibold leading-none tracking-tight">{cert.title}</h3>
-                  <p className="text-sm text-zinc-500 mt-1">
-                    {cert.isVerified && cert.issuedAt 
-                      ? `Issued on ${new Date(cert.issuedAt).toLocaleDateString()}` 
-                      : `Requested on ${new Date(cert.createdAt).toLocaleDateString()}`}
-                  </p>
                 </div>
-                <div className="p-6 pt-0 flex-1">
-                  <p className="text-sm text-zinc-500">
-                    Official UniVerse credential recognizing your contribution to social impact.
-                  </p>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
+                  cert.status === 'ISSUED' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                  'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                }`}>
+                  {cert.status === 'ISSUED' ? '✓ Issued' : '⏳ Pending'}
+                </span>
+              </div>
+            </div>
+
+            {/* Certificate Body */}
+            <div className="p-5">
+              <h3 className="text-white font-black text-lg mb-1">&quot;{cert.title}&quot;</h3>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                  <div>
+                    <div className="text-[10px] text-zinc-500">Project</div>
+                    <div className="text-xs text-white font-medium">{cert.projectName}</div>
+                  </div>
                 </div>
-                <div className="p-6 pt-4 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-100 dark:border-zinc-800">
-                  {cert.isVerified ? (
-                    <button 
-                      className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 w-full gap-2" 
-                      onClick={() => handleDownload(cert.id)}
-                    >
-                      <Download className="h-4 w-4" />
-                      Download PDF
-                    </button>
-                  ) : (
-                    <button 
-                      className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 border border-zinc-200 dark:border-zinc-700 w-full gap-2 text-zinc-500" 
-                      disabled
-                    >
-                      <Clock className="h-4 w-4" />
-                      Awaiting Review
-                    </button>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div>
+                    <div className="text-[10px] text-zinc-500">Organization</div>
+                    <div className="text-xs text-white font-medium">{cert.organization}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <div>
+                    <div className="text-[10px] text-zinc-500">Hours Completed</div>
+                    <div className="text-xs text-white font-medium">{cert.hoursCompleted}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-purple-400" />
+                  <div>
+                    <div className="text-[10px] text-zinc-500">Impact</div>
+                    <div className="text-xs text-white font-medium">{cert.peopleImpacted} people helped</div>
+                  </div>
                 </div>
               </div>
-            ))}
+
+              {/* Actions */}
+              {cert.status === 'ISSUED' && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <button className="flex items-center gap-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors">
+                    <Download className="w-3 h-3" /> View Certificate
+                  </button>
+                  <button onClick={() => handleLinkedIn(cert)} className="flex items-center gap-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors">
+                    <ExternalLink className="w-3 h-3" /> Add to LinkedIn
+                  </button>
+                  <button onClick={() => handleTwitter(cert)} className="flex items-center gap-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors">
+                    <ExternalLink className="w-3 h-3" /> Share on Twitter
+                  </button>
+                </div>
+              )}
+
+              {/* Blockchain verification */}
+              <div className="mt-4 pt-3 border-t border-zinc-800">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="text-[11px] text-zinc-500">Certificate ID: <span className="text-cyan-400 font-mono font-bold">{cert.certificateCode}</span></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[11px] text-zinc-500">
+                      Blockchain: {cert.blockchainHash
+                        ? <span className="text-emerald-400 font-bold">✅ Verified</span>
+                        : <span className="text-amber-400">⏳ Pending</span>
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

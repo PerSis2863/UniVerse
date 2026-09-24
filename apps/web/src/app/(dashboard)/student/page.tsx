@@ -13,6 +13,18 @@ const GamificationWidget = dynamic(
     loading: () => <div className="h-64 w-full bg-zinc-100 dark:bg-zinc-900/50 animate-pulse rounded-2xl flex items-center justify-center text-zinc-500 text-sm">Loading widget...</div> 
   }
 );
+const SocialProofFeed = dynamic(
+  () => import('@/components/dashboard/SocialProofFeed').then(mod => mod.SocialProofFeed),
+  { ssr: false, loading: () => <div className="h-48 bg-zinc-900/50 animate-pulse rounded-2xl" /> }
+);
+const ImpactLevelWidget = dynamic(
+  () => import('@/components/dashboard/ImpactLevelWidget').then(mod => mod.ImpactLevelWidget),
+  { ssr: false, loading: () => <div className="h-48 bg-zinc-900/50 animate-pulse rounded-2xl" /> }
+);
+const SkillMatchModal = dynamic(
+  () => import('@/components/dashboard/SkillMatchModal').then(mod => mod.SkillMatchModal),
+  { ssr: false }
+);
 import { useAuthStore } from '@/store/auth';
 import { useLanguageStore } from '@/store/language';
 import { ClassDetailModal, ClassData } from '@/components/dashboard/ClassDetailModal';
@@ -26,6 +38,7 @@ export default function StudentDashboard() {
   const { user } = useAuthStore();
   const { t } = useLanguageStore();
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
+  const [showSkillMatch, setShowSkillMatch] = useState(true);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
 
@@ -261,12 +274,32 @@ export default function StudentDashboard() {
           </div>
         </div>
 
+        {/* Feature 8: Social Proof Feed + Feature 9: Impact Level */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <SocialProofFeed />
+          <ImpactLevelWidget />
+        </div>
+
       </div>
 
       <ClassDetailModal 
         selectedClass={selectedClass} 
         onClose={() => setSelectedClass(null)} 
       />
+
+      {showSkillMatch && user && (
+        <SkillMatchModal 
+          user={{
+            name: user.name,
+            skills: [
+              { name: 'Python', category: 'Technology' },
+              { name: 'Social Work', category: 'Humanities' },
+              { name: 'Community Building', category: 'Social Sciences' },
+            ]
+          }} 
+          onClose={() => setShowSkillMatch(false)} 
+        />
+      )}
     </>
   );
 }

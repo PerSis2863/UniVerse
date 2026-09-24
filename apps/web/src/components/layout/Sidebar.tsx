@@ -56,6 +56,8 @@ const navByRole: Record<string, NavItem[]> = {
     {
       label: 'nav.global_impact', icon: Globe2,
       subItems: [
+        { href: '/student/impact/proof-of-work', label: 'Proof of Work' },
+        { href: '/student/impact/certifications', label: 'Certifications' },
         { href: '/student/impact/startups', label: 'nav.startups' },
         { href: '/student/impact/ngo-marketplace', label: 'nav.ngo_marketplace' },
         { href: '/student/impact/edu-society', label: 'nav.edu_society' },
