@@ -55,7 +55,9 @@ export async function createAdminInvoice(data: any) {
       amount: data.amount,
       description: data.description,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
-      status: data.status === 'Paid' ? 'PAID' : data.status === 'Overdue' ? 'OVERDUE' : 'PENDING',
+      // PaymentStatus has no PAID/OVERDUE values: paid = COMPLETED, overdue is derived from dueDate.
+      status: data.status === 'Paid' ? 'COMPLETED' : 'PENDING',
+      paidAt: data.status === 'Paid' ? new Date() : null,
       items: [],
     }
   });

@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import puppeteer from 'puppeteer';
 import { getCertificateHtml } from './certificate-template';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
+import { CredentialSigner, verifyUrlFor } from './credential-signer';
+import { IssueCredentialDto, RequestCredentialDto } from './dto/credential.dto';
 
 // ── Impact level thresholds ──────────────────────────────────────────────────
 const LEVELS = [
@@ -33,25 +35,6 @@ function getLevelInfo(xp: number) {
 // ── Deterministic blockchain-style hash ─────────────────────────────────────
 function generateBlockchainHash(data: string): string {
   return '0x' + createHash('sha256').update(data).digest('hex');
-}
-
-function buildCredentialPayload(cert: any, userName: string): object {
-  return {
-    '@context': ['https://www.w3.org/2018/credentials/v1'],
-    type: ['VerifiableCredential', 'ImpactCredential'],
-    id: `https://universeimpact.vercel.app/verify/${cert.id}`,
-    issuer: 'did:universe:impact-platform',
-    issuanceDate: cert.issuedAt,
-    credentialSubject: {
-      id: `did:universe:student:${cert.userId}`,
-      name: userName,
-      achievement: cert.title,
-      project: cert.projectName,
-      organization: cert.organization,
-      hoursCompleted: cert.hoursCompleted,
-      peopleImpacted: cert.peopleImpacted,
-    },
-  };
 }
 
 @Injectable()
@@ -183,81 +166,232 @@ export class ImpactService {
     return this.prisma.summitRegistration.findMany({ where: { userId }, include: { summit: true } });
   }
 
-  // ── Blockchain Credentials ───────────────────────────────────────────────
-  async getMyBlockchainCredentials(userId: string) {
-    const certs = await this.prisma.impactCertificate.findMany({
-      where: { userId },
-      include: { user: { select: { name: true, email: true } } },
-      orderBy: { issuedAt: 'desc' },
-    });
-    return certs.map(cert => {
-      const payload = buildCredentialPayload(cert, cert.user.name);
-      const hash = cert.blockchainHash || generateBlockchainHash(JSON.stringify(payload));
-      return { ...cert, blockchainHash: hash, verifyUrl: `https://universeimpact.vercel.app/verify/${cert.id}` };
-    });
-  }
+  // ── Verified Credentials ─────────────────────────────────────────────────
+  // Flow: student requests (DRAFT) → admin verifies → credential is signed (ISSUED).
+  // Admins can also issue directly, and revoke. Anyone can verify via the public endpoint.
 
-  async issueBlockchainCredential(userId: string, data: {
-    title: string;
-    projectName: string;
-    organization: string;
-    hoursCompleted: number;
-    peopleImpacted: number;
-    description?: string;
-  }) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-    const certCode = `UNI-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    
-    // Generate hash from payload
-    const tempData = { userId, ...data, certCode, issuedAt: new Date() };
-    const blockchainHash = generateBlockchainHash(JSON.stringify(tempData));
-
-    const cert = await this.prisma.impactCertificate.create({
-      data: {
-        userId,
-        certificateCode: certCode,
-        title: data.title,
-        projectName: data.projectName,
-        organization: data.organization,
-        hoursCompleted: data.hoursCompleted,
-        peopleImpacted: data.peopleImpacted,
-        description: data.description,
-        blockchainHash,
-        status: 'ISSUED',
-      },
-    });
-
-    // Award XP for earning a credential
-    await this.awardPoints(userId, {
-      points: 150,
-      reason: `Blockchain credential issued: ${data.title}`,
-      sourceType: 'CREDENTIAL',
-      sourceId: cert.id,
-    });
-
-    return { ...cert, blockchainHash, verifyUrl: `https://universeimpact.vercel.app/verify/${cert.id}` };
-  }
-
-  async verifyBlockchainCredential(credentialId: string) {
-    const cert = await this.prisma.impactCertificate.findUnique({
-      where: { id: credentialId },
-      include: { user: { select: { name: true, email: true } } },
-    });
-    if (!cert) return null;
-    const payload = buildCredentialPayload(cert, cert.user.name);
-    const recomputedHash = generateBlockchainHash(JSON.stringify({
-      userId: cert.userId,
+  private toClientCredential(cert: any) {
+    const signed = !!cert.signature;
+    return {
+      id: cert.id,
+      certificateCode: cert.certificateCode,
       title: cert.title,
       projectName: cert.projectName,
       organization: cert.organization,
       hoursCompleted: cert.hoursCompleted,
       peopleImpacted: cert.peopleImpacted,
       description: cert.description,
-      certCode: cert.certificateCode,
-      issuedAt: cert.issuedAt,
-    }));
-    const isValid = recomputedHash === cert.blockchainHash;
-    return { cert, payload, isValid, blockchainHash: cert.blockchainHash };
+      evidenceUrl: cert.evidenceUrl,
+      // PENDING = awaiting verification, ISSUED = signed & valid, REVOKED, REJECTED (never signed)
+      status:
+        cert.status === 'DRAFT' ? 'PENDING'
+        : cert.status === 'REVOKED' ? (signed ? 'REVOKED' : 'REJECTED')
+        : signed ? 'ISSUED' : 'UNVERIFIED_LEGACY',
+      blockchainHash: signed ? cert.blockchainHash : null,
+      signature: cert.signature,
+      signingKeyId: cert.signingKeyId,
+      verifiedByName: cert.verifiedByName,
+      requestedAt: cert.requestedAt,
+      issuedAt: signed ? cert.issuedAt : null,
+      revokedAt: cert.revokedAt,
+      revokedReason: cert.revokedReason,
+      verifyUrl: signed ? verifyUrlFor(cert.id) : null,
+    };
+  }
+
+  private newCertificateCode() {
+    return `UNI-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+  }
+
+  /** Signs a credential that has just been marked ISSUED and stores hash + signature. */
+  private async signAndStore(certId: string) {
+    const cert = await this.prisma.impactCertificate.findUnique({
+      where: { id: certId },
+      include: { user: { select: { name: true } } },
+    });
+    if (!cert) throw new NotFoundException('Credential not found');
+    const signed = CredentialSigner.sign(cert, cert.user.name);
+    return this.prisma.impactCertificate.update({
+      where: { id: certId },
+      data: {
+        blockchainHash: signed.hash,
+        signature: signed.signature,
+        signatureAlg: signed.alg,
+        signingKeyId: signed.keyId,
+      },
+    });
+  }
+
+  async getMyBlockchainCredentials(userId: string) {
+    const certs = await this.prisma.impactCertificate.findMany({
+      where: { userId },
+      orderBy: { requestedAt: 'desc' },
+    });
+    return certs.map((c) => this.toClientCredential(c));
+  }
+
+  async requestCredential(userId: string, dto: RequestCredentialDto) {
+    const pending = await this.prisma.impactCertificate.count({ where: { userId, status: 'DRAFT' } });
+    if (pending >= 10) {
+      throw new BadRequestException('You already have 10 credentials awaiting verification.');
+    }
+    const cert = await this.prisma.impactCertificate.create({
+      data: {
+        userId,
+        certificateCode: this.newCertificateCode(),
+        title: dto.title.trim(),
+        projectName: dto.projectName.trim(),
+        organization: dto.organization.trim(),
+        hoursCompleted: dto.hoursCompleted,
+        peopleImpacted: dto.peopleImpacted,
+        description: dto.description?.trim() || null,
+        evidenceUrl: dto.evidenceUrl?.trim() || null,
+        status: 'DRAFT',
+      },
+    });
+    return this.toClientCredential(cert);
+  }
+
+  async getPendingCredentialRequests() {
+    const certs = await this.prisma.impactCertificate.findMany({
+      where: { status: 'DRAFT' },
+      include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+      orderBy: { requestedAt: 'asc' },
+    });
+    return certs.map((c) => ({ ...this.toClientCredential(c), student: c.user }));
+  }
+
+  private async finalizeIssue(certId: string, holderId: string, title: string) {
+    const signed = await this.signAndStore(certId);
+    await this.awardPoints(holderId, {
+      points: 150,
+      reason: `Verified credential issued: ${title}`,
+      sourceType: 'CREDENTIAL',
+      sourceId: certId,
+    });
+    return this.toClientCredential(signed);
+  }
+
+  async approveCredential(certId: string, verifier: { id: string; name: string }) {
+    const cert = await this.prisma.impactCertificate.findUnique({ where: { id: certId } });
+    if (!cert) throw new NotFoundException('Credential not found');
+    if (cert.userId === verifier.id) throw new ForbiddenException('You cannot verify your own credential');
+    // Conditional update so two admins approving at once cannot double-issue.
+    const { count } = await this.prisma.impactCertificate.updateMany({
+      where: { id: certId, status: 'DRAFT' },
+      data: {
+        status: 'ISSUED',
+        issuedAt: new Date(),
+        verifiedById: verifier.id,
+        verifiedByName: verifier.name,
+      },
+    });
+    if (count === 0) throw new BadRequestException('Only pending credentials can be approved');
+    return this.finalizeIssue(certId, cert.userId, cert.title);
+  }
+
+  async issueCredentialDirect(verifier: { id: string; name: string }, dto: IssueCredentialDto) {
+    if (dto.studentId === verifier.id) throw new ForbiddenException('You cannot issue a credential to yourself');
+    const student = await this.prisma.user.findUnique({ where: { id: dto.studentId }, select: { id: true } });
+    if (!student) throw new NotFoundException('Student not found');
+    const cert = await this.prisma.impactCertificate.create({
+      data: {
+        userId: dto.studentId,
+        certificateCode: this.newCertificateCode(),
+        title: dto.title.trim(),
+        projectName: dto.projectName.trim(),
+        organization: dto.organization.trim(),
+        hoursCompleted: dto.hoursCompleted,
+        peopleImpacted: dto.peopleImpacted,
+        description: dto.description?.trim() || null,
+        evidenceUrl: dto.evidenceUrl?.trim() || null,
+        status: 'ISSUED',
+        issuedAt: new Date(),
+        verifiedById: verifier.id,
+        verifiedByName: verifier.name,
+      },
+    });
+    return this.finalizeIssue(cert.id, cert.userId, cert.title);
+  }
+
+  async rejectCredential(certId: string, reason?: string) {
+    const { count } = await this.prisma.impactCertificate.updateMany({
+      where: { id: certId, status: 'DRAFT' },
+      data: { status: 'REVOKED', revokedAt: new Date(), revokedReason: reason?.trim() || 'Not approved' },
+    });
+    if (count === 0) throw new BadRequestException('Only pending credentials can be rejected');
+    return this.toClientCredential(await this.prisma.impactCertificate.findUnique({ where: { id: certId } }));
+  }
+
+  async revokeCredential(certId: string, reason?: string) {
+    const { count } = await this.prisma.impactCertificate.updateMany({
+      where: { id: certId, status: 'ISSUED' },
+      data: { status: 'REVOKED', revokedAt: new Date(), revokedReason: reason?.trim() || 'Revoked by administrator' },
+    });
+    if (count === 0) throw new BadRequestException('Only issued credentials can be revoked');
+    return this.toClientCredential(await this.prisma.impactCertificate.findUnique({ where: { id: certId } }));
+  }
+
+  /**
+   * Credentials created before verification existed were self-issued and never signed.
+   * This moves them back to the review queue so an admin can verify (or reject) them.
+   */
+  async sendLegacyCredentialsToReview() {
+    const { count } = await this.prisma.impactCertificate.updateMany({
+      where: { status: 'ISSUED', signature: null },
+      data: { status: 'DRAFT' },
+    });
+    return { movedToReview: count };
+  }
+
+  /** Public verification. Accepts the credential id or its certificate code. */
+  async verifyCredentialPublic(idOrCode: string) {
+    const cert = await this.prisma.impactCertificate.findFirst({
+      where: { OR: [{ id: idOrCode }, { certificateCode: idOrCode }] },
+      include: { user: { select: { name: true, avatar: true } } },
+    });
+    // Pending, rejected and never-signed credentials are not publicly verifiable.
+    if (!cert || !cert.signature) {
+      return { result: 'NOT_FOUND' as const };
+    }
+    const check = CredentialSigner.verify(cert, cert.user.name);
+    let result: 'VALID' | 'REVOKED' | 'TAMPERED' | 'UNKNOWN_KEY';
+    if (!check.hashMatches) result = 'TAMPERED';
+    else if (!check.knownKey) result = 'UNKNOWN_KEY';
+    else if (!check.signatureValid) result = 'TAMPERED';
+    else if (cert.status === 'REVOKED') result = 'REVOKED';
+    else result = 'VALID';
+
+    return {
+      result,
+      credential: {
+        id: cert.id,
+        certificateCode: cert.certificateCode,
+        holderName: cert.user.name,
+        holderAvatar: cert.user.avatar,
+        title: cert.title,
+        projectName: cert.projectName,
+        organization: cert.organization,
+        hoursCompleted: cert.hoursCompleted,
+        peopleImpacted: cert.peopleImpacted,
+        description: cert.description,
+        verifiedByName: cert.verifiedByName,
+        issuedAt: cert.issuedAt,
+        revokedAt: cert.revokedAt,
+        revokedReason: cert.status === 'REVOKED' ? cert.revokedReason : null,
+      },
+      proof: {
+        hash: cert.blockchainHash,
+        signature: cert.signature,
+        alg: cert.signatureAlg,
+        keyId: cert.signingKeyId,
+        payload: check.payload,
+      },
+    };
+  }
+
+  getCredentialPublicKey() {
+    return CredentialSigner.publicKeyInfo();
   }
 
   // ── AI Skill-to-Project Matching ─────────────────────────────────────────

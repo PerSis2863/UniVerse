@@ -5,6 +5,7 @@ import { FirebaseAuthGuard } from './firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '@prisma/client';
+import { isDemoAccount, isDemoLoginEnabled } from './demo-accounts';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -23,8 +24,8 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() body: any) {
-    if (body.email?.startsWith('demo@')) {
-      const user = await this.authService.getMeByEmail(body.email);
+    if (isDemoLoginEnabled() && isDemoAccount(body?.email)) {
+      const user = await this.authService.getMeByEmail(body.email.trim().toLowerCase());
       if (user) {
         return {
           accessToken: `mock-token-${user.id}`,
@@ -40,8 +41,9 @@ export class AuthController {
   @UseGuards(FirebaseAuthGuard)
   @ApiBearerAuth()
   async register(@CurrentUser() user: any, @Body() body: { name?: string; role?: string }) {
-    // Update role and name if provided (happens after Firebase social auth)
-    const allowedRoles: Role[] = [Role.STUDENT, Role.TEACHER, Role.ADMIN];
+    // Update role and name if provided (happens after Firebase social auth).
+    // ADMIN can never be self-assigned: admins must be promoted by an existing admin.
+    const allowedRoles: Role[] = [Role.STUDENT, Role.TEACHER];
     const updateData: any = {};
     if (body.name && body.name.trim()) updateData.name = body.name.trim();
     if (body.role && allowedRoles.includes(body.role as Role)) {

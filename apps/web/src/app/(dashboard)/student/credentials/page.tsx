@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  Shield, Share2, ExternalLink, Copy, Download, CheckCircle2,
-  Clock, Award, Star, Loader2, Plus, X, Link2,
-  Globe2, ChevronDown, ChevronUp, Sparkles, Lock, Hash
+  Shield, ExternalLink, Copy, CheckCircle2, Clock, Loader2, Plus, X,
+  Globe2, ChevronDown, ChevronUp, Sparkles, Lock, Hash, AlertTriangle, XCircle
 } from 'lucide-react';
 
 const TwitterIcon = ({ className }: { className?: string }) => (
@@ -24,7 +22,9 @@ const LinkedinIcon = ({ className }: { className?: string }) => (
 );
 import { Topbar } from '@/components/layout/Topbar';
 
-interface BlockchainCredential {
+type CredentialStatus = 'PENDING' | 'ISSUED' | 'REVOKED' | 'REJECTED' | 'UNVERIFIED_LEGACY';
+
+interface Credential {
   id: string;
   certificateCode: string;
   title: string;
@@ -32,132 +32,116 @@ interface BlockchainCredential {
   organization: string;
   hoursCompleted: number;
   peopleImpacted: number;
-  description?: string;
-  status: 'ISSUED' | 'REVOKED';
-  blockchainHash: string;
-  issuedAt: string;
-  verifyUrl: string;
+  description?: string | null;
+  evidenceUrl?: string | null;
+  status: CredentialStatus;
+  blockchainHash: string | null;
+  signature: string | null;
+  signingKeyId: string | null;
+  verifiedByName: string | null;
+  requestedAt: string;
+  issuedAt: string | null;
+  revokedAt: string | null;
+  revokedReason: string | null;
+  verifyUrl: string | null;
 }
 
-const STATUS_MAP = {
-  ISSUED: { label: 'Blockchain Verified', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
+const STATUS_MAP: Record<CredentialStatus, { label: string; color: string; bg: string; dot: string }> = {
+  ISSUED: { label: 'Verified & Signed', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
+  PENDING: { label: 'Awaiting Verification', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-400' },
   REVOKED: { label: 'Revoked', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
+  REJECTED: { label: 'Not Approved', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
+  UNVERIFIED_LEGACY: { label: 'Unverified (legacy)', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20', dot: 'bg-zinc-400' },
 };
 
-const MOCK_CREDENTIALS: BlockchainCredential[] = [
-  {
-    id: 'mock-1',
-    certificateCode: 'UNI-M9X2K-AB3C',
-    title: 'Climate Champion',
-    projectName: 'Clean Water IoT Filtration',
-    organization: 'Water.org & UNICEF East Africa',
-    hoursCompleted: 120,
-    peopleImpacted: 500,
-    description: 'Led a 4-month field project deploying solar-powered IoT water purification units across 12 rural clinics in East Africa.',
-    status: 'ISSUED',
-    blockchainHash: '0xa3f8e2d1c4b6f9e0a3f8e2d1c4b6f9e0a3f8e2d1c4b6f9e0a3f8e2d1c4b6f9',
-    issuedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-    verifyUrl: `${typeof window !== 'undefined' ? window.location.origin : 'https://universeimpact.vercel.app'}/verify/mock-1`,
-  },
-  {
-    id: 'mock-2',
-    certificateCode: 'UNI-K3T7P-ZX9Y',
-    title: 'Social Innovator Badge',
-    projectName: 'AI-Powered Education Access',
-    organization: 'EdTech NGO Forum',
-    hoursCompleted: 80,
-    peopleImpacted: 1200,
-    description: 'Built an offline-first learning platform for students in low-connectivity regions, used by 1,200+ students.',
-    status: 'ISSUED',
-    blockchainHash: '0xb7c3d9e0f1a2b7c3d9e0f1a2b7c3d9e0f1a2b7c3d9e0f1a2b7c3d9e0f1a2b7',
-    issuedAt: new Date(Date.now() - 90 * 86400000).toISOString(),
-    verifyUrl: `${typeof window !== 'undefined' ? window.location.origin : 'https://universeimpact.vercel.app'}/verify/mock-2`,
-  },
-];
+function apiErrorMessage(err: any, fallback: string): string {
+  const msg = err?.response?.data?.message;
+  if (Array.isArray(msg)) return msg.join(', ');
+  if (typeof msg === 'string') return msg;
+  return fallback;
+}
 
-function IssueCredentialModal({ onClose, onIssued }: { onClose: () => void; onIssued: (c: BlockchainCredential) => void }) {
-  const [form, setForm] = useState({ title: '', projectName: '', organization: '', hoursCompleted: '', peopleImpacted: '', description: '' });
+function RequestCredentialModal({ onClose, onRequested }: { onClose: () => void; onRequested: (c: Credential) => void }) {
+  const [form, setForm] = useState({ title: '', projectName: '', organization: '', hoursCompleted: '', peopleImpacted: '', description: '', evidenceUrl: '' });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.projectName || !form.organization) return;
+    if (!form.title.trim() || !form.projectName.trim() || !form.organization.trim()) return;
     setLoading(true);
     try {
-      const res = await api.post('/impact/blockchain-credentials/issue', {
-        ...form,
-        hoursCompleted: parseInt(form.hoursCompleted) || 0,
-        peopleImpacted: parseInt(form.peopleImpacted) || 0,
-      });
-      onIssued(res.data);
-      toast.success('🎉 Blockchain credential issued!', { description: 'Your achievement is now permanently recorded on-chain.' });
-      onClose();
-    } catch {
-      // Fall back to mock
-      const mock: BlockchainCredential = {
-        id: `local-${Date.now()}`,
-        certificateCode: `UNI-${Date.now().toString(36).toUpperCase().slice(-5)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-        ...form,
-        hoursCompleted: parseInt(form.hoursCompleted) || 0,
-        peopleImpacted: parseInt(form.peopleImpacted) || 0,
-        status: 'ISSUED',
-        blockchainHash: `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
-        issuedAt: new Date().toISOString(),
-        verifyUrl: `${window.location.origin}/verify/local-${Date.now()}`,
+      const payload: Record<string, unknown> = {
+        title: form.title.trim(),
+        projectName: form.projectName.trim(),
+        organization: form.organization.trim(),
+        hoursCompleted: parseInt(form.hoursCompleted, 10) || 0,
+        peopleImpacted: parseInt(form.peopleImpacted, 10) || 0,
       };
-      onIssued(mock);
-      toast.success('🎉 Blockchain credential issued!');
+      if (form.description.trim()) payload.description = form.description.trim();
+      if (form.evidenceUrl.trim()) payload.evidenceUrl = form.evidenceUrl.trim();
+      const res = await api.post('/impact/blockchain-credentials/request', payload);
+      onRequested(res.data);
+      toast.success('Request submitted', { description: 'An administrator will verify your work before the credential is signed.' });
       onClose();
+    } catch (err) {
+      toast.error('Could not submit request', { description: apiErrorMessage(err, 'Please check the form and try again.') });
     } finally {
       setLoading(false);
     }
   };
 
+  const inputCls = 'w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:border-emerald-500/50 focus:outline-none transition-colors';
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+        className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-white font-bold text-lg flex items-center gap-2"><Shield className="w-5 h-5 text-emerald-400" /> Issue New Credential</h2>
-            <p className="text-zinc-500 text-xs mt-1">Creates a permanent, tamper-proof record on-chain</p>
+            <h2 className="text-white font-bold text-lg flex items-center gap-2"><Shield className="w-5 h-5 text-emerald-400" /> Request a Credential</h2>
+            <p className="text-zinc-500 text-xs mt-1">An administrator verifies your work, then the credential is cryptographically signed.</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
-            { key: 'title', label: 'Credential Title', placeholder: 'e.g. Climate Champion' },
-            { key: 'projectName', label: 'Project Name', placeholder: 'e.g. Water Filtration Initiative' },
-            { key: 'organization', label: 'Issuing Organization', placeholder: 'e.g. UNICEF' },
-          ].map(({ key, label, placeholder }) => (
+            { key: 'title', label: 'Credential Title', placeholder: 'e.g. Clean Water Champion', min: 3, max: 120 },
+            { key: 'projectName', label: 'Project Name', placeholder: 'e.g. Water Filtration Initiative', min: 2, max: 160 },
+            { key: 'organization', label: 'Organization (NGO / partner)', placeholder: 'e.g. WaterAid Kenya', min: 2, max: 160 },
+          ].map(({ key, label, placeholder, min, max }) => (
             <div key={key}>
               <label className="block text-xs font-medium text-zinc-400 mb-1">{label}</label>
-              <input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} required
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:border-emerald-500/50 focus:outline-none transition-colors" />
+              <input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} required minLength={min} maxLength={max}
+                className={inputCls} />
             </div>
           ))}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-zinc-400 mb-1">Hours Completed</label>
-              <input type="number" value={form.hoursCompleted} onChange={e => setForm(f => ({ ...f, hoursCompleted: e.target.value }))} placeholder="e.g. 120" min="0"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:border-emerald-500/50 focus:outline-none transition-colors" />
+              <input type="number" value={form.hoursCompleted} onChange={e => setForm(f => ({ ...f, hoursCompleted: e.target.value }))} placeholder="e.g. 40" min="0" max="10000" step="1"
+                className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-400 mb-1">People Impacted</label>
-              <input type="number" value={form.peopleImpacted} onChange={e => setForm(f => ({ ...f, peopleImpacted: e.target.value }))} placeholder="e.g. 500" min="0"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:border-emerald-500/50 focus:outline-none transition-colors" />
+              <input type="number" value={form.peopleImpacted} onChange={e => setForm(f => ({ ...f, peopleImpacted: e.target.value }))} placeholder="e.g. 500" min="0" max="10000000" step="1"
+                className={inputCls} />
             </div>
           </div>
           <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Evidence link (optional)</label>
+            <input type="url" value={form.evidenceUrl} onChange={e => setForm(f => ({ ...f, evidenceUrl: e.target.value }))} placeholder="https://… (report, photos, NGO letter)" maxLength={500}
+              className={inputCls} />
+          </div>
+          <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1">Description (optional)</label>
-            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Describe your achievement and impact..."
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:border-emerald-500/50 focus:outline-none transition-colors resize-none" />
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} maxLength={2000} placeholder="What did you do and what changed because of it?"
+              className={`${inputCls} resize-none`} />
           </div>
           <button type="submit" disabled={loading}
             className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-            {loading ? 'Recording on blockchain...' : 'Issue Credential'}
+            {loading ? 'Submitting…' : 'Submit for Verification'}
           </button>
         </form>
       </motion.div>
@@ -165,204 +149,231 @@ function IssueCredentialModal({ onClose, onIssued }: { onClose: () => void; onIs
   );
 }
 
-function CredentialCard({ cred, onShare }: { cred: BlockchainCredential; onShare: (c: BlockchainCredential) => void }) {
+function CredentialCard({ cred }: { cred: Credential }) {
   const [expanded, setExpanded] = useState(false);
-  const status = STATUS_MAP[cred.status];
+  const status = STATUS_MAP[cred.status] ?? STATUS_MAP.UNVERIFIED_LEGACY;
+  const isVerified = cred.status === 'ISSUED' && !!cred.verifyUrl;
+  const dateLabel = cred.issuedAt ?? cred.requestedAt;
 
   const shareLinkedIn = () => {
-    const url = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(cred.verifyUrl)}&title=${encodeURIComponent(`I earned the "${cred.title}" blockchain credential!`)}&summary=${encodeURIComponent(`Verified by UniVerse Impact Platform. Project: ${cred.projectName} — ${cred.hoursCompleted} hours, ${cred.peopleImpacted.toLocaleString()} people impacted.`)}`;
-    window.open(url, '_blank');
+    if (!cred.verifyUrl) return;
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(cred.verifyUrl)}`, '_blank', 'noopener,noreferrer');
   };
   const shareTwitter = () => {
-    const text = `🏆 Just earned a blockchain-verified credential: "${cred.title}" for ${cred.hoursCompleted}hrs of impact on the ${cred.projectName} project! 🌍\n\nVerify it here: ${cred.verifyUrl}\n\n#SocialImpact #UniVerse #SDGs`;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+    if (!cred.verifyUrl) return;
+    const text = `I earned a verified credential: "${cred.title}" — ${cred.hoursCompleted} hours on ${cred.projectName} with ${cred.organization}.`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(cred.verifyUrl)}`, '_blank', 'noopener,noreferrer');
+  };
+  const copyLink = async () => {
+    if (!cred.verifyUrl) return;
+    try {
+      await navigator.clipboard.writeText(cred.verifyUrl);
+      toast.success('Verification link copied');
+    } catch {
+      toast.error('Could not copy the link');
+    }
   };
 
   return (
-    <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/60 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all group">
-      {/* Main row */}
+    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all">
       <div className="p-5">
         <div className="flex items-start gap-4">
-          {/* Icon */}
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
-            <Shield className="w-6 h-6 text-emerald-400" />
+            {cred.status === 'PENDING' ? <Clock className="w-6 h-6 text-amber-400" />
+              : cred.status === 'REJECTED' || cred.status === 'REVOKED' ? <XCircle className="w-6 h-6 text-red-400" />
+              : <Shield className="w-6 h-6 text-emerald-400" />}
           </div>
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h3 className="text-white font-bold text-sm">{cred.title}</h3>
                   <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-semibold ${status.bg} ${status.color}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${status.dot} animate-pulse`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
                     {status.label}
                   </span>
                 </div>
                 <p className="text-xs text-emerald-400 font-medium">{cred.organization}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">{cred.projectName}</p>
               </div>
-              <span className="text-xs text-zinc-600 flex-shrink-0">{new Date(cred.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              <span className="text-xs text-zinc-600 flex-shrink-0">
+                {new Date(dateLabel).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
             </div>
-            {/* Stats */}
-            <div className="flex gap-4 mt-3">
-              <div className="text-xs">
-                <span className="text-zinc-500">Hours </span>
-                <span className="text-white font-bold">{cred.hoursCompleted}</span>
-              </div>
-              <div className="text-xs">
-                <span className="text-zinc-500">Impacted </span>
-                <span className="text-white font-bold">{cred.peopleImpacted.toLocaleString()}</span>
-              </div>
-              <div className="text-xs font-mono text-zinc-600 truncate max-w-[120px]" title={cred.blockchainHash}>
-                <Hash className="w-3 h-3 inline mr-1 text-emerald-600" />{cred.blockchainHash.slice(0, 10)}...
-              </div>
+            <div className="flex gap-4 mt-3 flex-wrap">
+              <div className="text-xs"><span className="text-zinc-500">Hours </span><span className="text-white font-bold">{cred.hoursCompleted}</span></div>
+              <div className="text-xs"><span className="text-zinc-500">Impacted </span><span className="text-white font-bold">{cred.peopleImpacted.toLocaleString()}</span></div>
+              {cred.verifiedByName && isVerified && (
+                <div className="text-xs"><span className="text-zinc-500">Verified by </span><span className="text-white font-semibold">{cred.verifiedByName}</span></div>
+              )}
+              {cred.blockchainHash && (
+                <div className="text-xs font-mono text-zinc-600 truncate max-w-[140px]" title={cred.blockchainHash}>
+                  <Hash className="w-3 h-3 inline mr-1 text-emerald-600" />{cred.blockchainHash.slice(0, 10)}…
+                </div>
+              )}
             </div>
+            {cred.status === 'PENDING' && (
+              <p className="text-xs text-amber-400/80 mt-3">An administrator is reviewing this request. You will be able to share it once it is verified.</p>
+            )}
+            {(cred.status === 'REJECTED' || cred.status === 'REVOKED') && cred.revokedReason && (
+              <p className="text-xs text-red-400/80 mt-3">Reason: {cred.revokedReason}</p>
+            )}
+            {cred.status === 'UNVERIFIED_LEGACY' && (
+              <p className="text-xs text-zinc-500 mt-3">Created before verification was introduced. It will be reviewed by an administrator before it can be shared.</p>
+            )}
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex flex-wrap gap-2 mt-4">
-          <button onClick={shareLinkedIn}
-            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
-            <LinkedinIcon className="w-3 h-3" /> LinkedIn
-          </button>
-          <button onClick={shareTwitter}
-            className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
-            <TwitterIcon className="w-3 h-3" /> Twitter / X
-          </button>
-          <button onClick={() => { navigator.clipboard.writeText(cred.verifyUrl); toast.success('Link copied!'); }}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all">
-            <Copy className="w-3 h-3" /> Copy Link
-          </button>
-          <button onClick={() => setExpanded(v => !v)}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all ml-auto">
-            {expanded ? <><ChevronUp className="w-3 h-3" /> Hide Hash</> : <><ChevronDown className="w-3 h-3" /> Verify On-Chain</>}
-          </button>
-        </div>
+        {isVerified && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            <button onClick={shareLinkedIn}
+              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              <LinkedinIcon className="w-3 h-3" /> LinkedIn
+            </button>
+            <button onClick={shareTwitter}
+              className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              <TwitterIcon className="w-3 h-3" /> Twitter / X
+            </button>
+            <button onClick={copyLink}
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all">
+              <Copy className="w-3 h-3" /> Copy Link
+            </button>
+            <a href={`/verify/${cred.id}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              <ExternalLink className="w-3 h-3" /> Public Page
+            </a>
+            <button onClick={() => setExpanded(v => !v)}
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all ml-auto">
+              {expanded ? <><ChevronUp className="w-3 h-3" /> Hide Proof</> : <><ChevronDown className="w-3 h-3" /> Show Proof</>}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Expanded blockchain proof */}
       <AnimatePresence>
-        {expanded && (
+        {expanded && isVerified && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-t border-zinc-800">
             <div className="p-5 bg-zinc-950/50">
               <div className="flex items-center gap-2 mb-3">
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Blockchain Proof of Authenticity</span>
+                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Cryptographic Proof</span>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-500">Certificate ID</span>
-                  <span className="font-mono text-zinc-300">{cred.certificateCode}</span>
-                </div>
-                <div className="flex items-start justify-between text-xs gap-4">
-                  <span className="text-zinc-500 flex-shrink-0">SHA-256 Hash</span>
-                  <span className="font-mono text-emerald-400 text-[10px] break-all text-right">{cred.blockchainHash}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-500">Issuer DID</span>
-                  <span className="font-mono text-zinc-300">did:universe:impact-platform</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-500">Standard</span>
-                  <span className="text-zinc-300">W3C Verifiable Credentials v1.1</span>
-                </div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Certificate ID</span><span className="font-mono text-zinc-300">{cred.certificateCode}</span></div>
+                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">SHA-256 Hash</span><span className="font-mono text-emerald-400 text-[10px] break-all text-right">{cred.blockchainHash}</span></div>
+                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">Ed25519 Signature</span><span className="font-mono text-zinc-300 text-[10px] break-all text-right">{cred.signature}</span></div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Signing Key ID</span><span className="font-mono text-zinc-300">{cred.signingKeyId}</span></div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Format</span><span className="text-zinc-300">W3C Verifiable Credential</span></div>
               </div>
               <div className="mt-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <p className="text-xs text-emerald-400">This credential is cryptographically verified and tamper-proof. Anyone can verify authenticity using the public hash.</p>
+                <p className="text-xs text-emerald-400">Signed by UniVerse after admin verification. Any change to this credential breaks the signature, so anyone with the link can check it is genuine.</p>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
-export default function BlockchainCredentialsPage() {
-  const { user } = useAuthStore();
-  const [credentials, setCredentials] = useState<BlockchainCredential[]>([]);
+export default function VerifiedCredentialsPage() {
+  const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-
-  useEffect(() => {
-    fetchCredentials();
-  }, []);
 
   const fetchCredentials = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await api.get('/impact/blockchain-credentials');
-      setCredentials(res.data?.length ? res.data : MOCK_CREDENTIALS);
-    } catch {
-      setCredentials(MOCK_CREDENTIALS);
+      setCredentials(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      setLoadError(apiErrorMessage(err, 'Could not load your credentials.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleIssued = (cred: BlockchainCredential) => {
-    setCredentials(prev => [cred, ...prev]);
-  };
+  useEffect(() => {
+    fetchCredentials();
+  }, []);
 
-  const verifiedCount = credentials.filter(c => c.status === 'ISSUED').length;
-  const totalHours = credentials.reduce((s, c) => s + c.hoursCompleted, 0);
-  const totalImpacted = credentials.reduce((s, c) => s + c.peopleImpacted, 0);
+  const verified = credentials.filter(c => c.status === 'ISSUED');
+  const pendingCount = credentials.filter(c => c.status === 'PENDING').length;
+  const totalHours = verified.reduce((s, c) => s + c.hoursCompleted, 0);
+  const totalImpacted = verified.reduce((s, c) => s + c.peopleImpacted, 0);
+
+  const stats = [
+    { label: 'Verified Credentials', val: verified.length, icon: Shield, box: 'bg-emerald-500/5 border-emerald-500/20', ic: 'text-emerald-400' },
+    { label: 'Verified Hours', val: totalHours, icon: Clock, box: 'bg-blue-500/5 border-blue-500/20', ic: 'text-blue-400' },
+    { label: 'People Impacted', val: totalImpacted.toLocaleString(), icon: Globe2, box: 'bg-amber-500/5 border-amber-500/20', ic: 'text-amber-400' },
+  ];
 
   return (
     <>
-      <Topbar title="⛓️ Blockchain Credentials" subtitle="Tamper-proof, shareable proof of your real-world impact" />
+      <Topbar title="🛡️ Verified Credentials" subtitle="Signed, shareable proof of your real-world impact" />
       <div className="flex-1 overflow-y-auto p-4 sm:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
 
-          {/* Hero stats */}
           <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Verified Credentials', val: verifiedCount, icon: Shield, color: 'emerald' },
-              { label: 'Total Hours', val: totalHours, icon: Clock, color: 'blue' },
-              { label: 'People Impacted', val: totalImpacted.toLocaleString(), icon: Globe2, color: 'amber' },
-            ].map(({ label, val, icon: Icon, color }) => (
-              <div key={label} className={`bg-${color}-500/5 border border-${color}-500/20 rounded-2xl p-4`}>
-                <Icon className={`w-5 h-5 text-${color}-400 mb-2`} />
+            {stats.map(({ label, val, icon: Icon, box, ic }) => (
+              <div key={label} className={`${box} border rounded-2xl p-4`}>
+                <Icon className={`w-5 h-5 ${ic} mb-2`} />
                 <div className="text-2xl font-black text-white">{val}</div>
                 <div className="text-xs text-zinc-500 mt-1">{label}</div>
               </div>
             ))}
           </div>
 
-          {/* What is this */}
           <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 rounded-2xl p-5">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-5 h-5 text-indigo-400" />
               </div>
               <div>
-                <h3 className="text-white font-bold text-sm mb-1">What are Blockchain Credentials?</h3>
-                <p className="text-zinc-400 text-xs leading-relaxed">Each credential is hashed using SHA-256 and anchored to a W3C Verifiable Credential. Anyone — recruiters, employers, universities — can verify your achievements are real and unaltered, forever. Share them on LinkedIn, Twitter, or paste the link on your resume.</p>
+                <h3 className="text-white font-bold text-sm mb-1">How verified credentials work</h3>
+                <p className="text-zinc-400 text-xs leading-relaxed">
+                  1. You request a credential for work you completed. 2. An administrator checks it with the partner organization.
+                  3. UniVerse signs it with its private key and gives it a public verification page. Employers can open the link and see instantly whether it is genuine, unaltered and not revoked.
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Header + Issue button */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-white font-bold text-base">Your Credentials <span className="text-zinc-600 font-normal text-sm">({credentials.length})</span></h2>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-white font-bold text-base">
+              Your Credentials <span className="text-zinc-600 font-normal text-sm">({credentials.length}{pendingCount > 0 ? `, ${pendingCount} pending` : ''})</span>
+            </h2>
             <button onClick={() => setShowModal(true)}
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
-              <Plus className="w-4 h-4" /> Issue Credential
+              <Plus className="w-4 h-4" /> Request Credential
             </button>
           </div>
 
-          {/* List */}
           {loading ? (
             <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-emerald-500" /></div>
+          ) : loadError ? (
+            <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-2xl flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-red-300">{loadError}</p>
+                <button onClick={fetchCredentials} className="mt-2 text-xs text-red-300 underline">Try again</button>
+              </div>
+            </div>
+          ) : credentials.length === 0 ? (
+            <div className="text-center p-10 bg-zinc-900/40 border border-dashed border-zinc-800 rounded-2xl">
+              <Shield className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+              <p className="text-sm text-white font-semibold">No credentials yet</p>
+              <p className="text-xs text-zinc-500 mt-1">Finished a project with a partner organization? Request your first verified credential.</p>
+            </div>
           ) : (
             <div className="space-y-4">
               {credentials.map((c, i) => (
-                <motion.div key={c.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
-                  <CredentialCard cred={c} onShare={() => {}} />
+                <motion.div key={c.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.06 }}>
+                  <CredentialCard cred={c} />
                 </motion.div>
               ))}
             </div>
@@ -371,7 +382,7 @@ export default function BlockchainCredentialsPage() {
       </div>
 
       <AnimatePresence>
-        {showModal && <IssueCredentialModal onClose={() => setShowModal(false)} onIssued={handleIssued} />}
+        {showModal && <RequestCredentialModal onClose={() => setShowModal(false)} onRequested={c => setCredentials(prev => [c, ...prev])} />}
       </AnimatePresence>
     </>
   );

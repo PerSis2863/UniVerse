@@ -717,11 +717,6 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                     
                     await new Promise(resolve => setTimeout(resolve, 1500));
                     
-                    const course = BLACKBOARD_DATA[selectedCourse.code];
-                    const asmt = course.assignments.find(a => a.id === asmtId);
-                    if (asmt) {
-                      asmt.status = newStatus;
-                    }
                     setRenderTrigger(r => r + 1);
                   }} 
                   className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2"

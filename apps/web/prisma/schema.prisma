@@ -1444,7 +1444,20 @@ model ImpactCertificate {
   expiresAt       DateTime?
   linkedinUrl     String?
 
+  // Verification & signing (Phase 1: trustworthy credentials)
+  // DRAFT = requested by student, awaiting admin verification.
+  evidenceUrl     String?
+  requestedAt     DateTime          @default(now())
+  verifiedById    String?
+  verifiedByName  String?
+  signature       String?           // Ed25519 signature (base64url) over the canonical credential payload
+  signatureAlg    String?           // e.g. "Ed25519"
+  signingKeyId    String?           // fingerprint of the public key that signed it
+  revokedAt       DateTime?
+  revokedReason   String?
+
   @@index([userId])
   @@index([certificateCode])
+  @@index([status])
   @@map("impact_certificates")
 }

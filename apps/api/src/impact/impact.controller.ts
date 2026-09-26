@@ -7,6 +7,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { CredentialDecisionDto, IssueCredentialDto, RequestCredentialDto } from './dto/credential.dto';
 
 @ApiTags('impact')
 @ApiBearerAuth()
@@ -39,15 +40,53 @@ export class ImpactController {
   @Post('summits/:id/register') registerSummit(@Param('id') id: string, @CurrentUser() user: any) { return this.impactService.registerForSummit(id, user.id); }
   @Get('summits/my-registrations') myRegistrations(@CurrentUser() user: any) { return this.impactService.getMyRegistrations(user.id); }
 
-  // ── Blockchain Credentials ───────────────────────────────────────────────
+  // ── Verified Credentials ─────────────────────────────────────────────────
   @Get('blockchain-credentials')
   myBlockchainCredentials(@CurrentUser() user: any) {
     return this.impactService.getMyBlockchainCredentials(user.id);
   }
 
+  /** Student submits a credential request; it is signed only after an admin verifies it. */
+  @Post('blockchain-credentials/request')
+  requestCredential(@CurrentUser() user: any, @Body() body: RequestCredentialDto) {
+    return this.impactService.requestCredential(user.id, body);
+  }
+
+  @Get('blockchain-credentials/pending')
+  @Roles(Role.ADMIN)
+  pendingCredentials() {
+    return this.impactService.getPendingCredentialRequests();
+  }
+
+  /** Admin issues a verified credential directly to a student. */
   @Post('blockchain-credentials/issue')
-  issueCredential(@CurrentUser() user: any, @Body() body: any) {
-    return this.impactService.issueBlockchainCredential(user.id, body);
+  @Roles(Role.ADMIN)
+  issueCredential(@CurrentUser() user: any, @Body() body: IssueCredentialDto) {
+    return this.impactService.issueCredentialDirect({ id: user.id, name: user.name }, body);
+  }
+
+  @Post('blockchain-credentials/legacy/send-to-review')
+  @Roles(Role.ADMIN)
+  sendLegacyToReview() {
+    return this.impactService.sendLegacyCredentialsToReview();
+  }
+
+  @Post('blockchain-credentials/:id/approve')
+  @Roles(Role.ADMIN)
+  approveCredential(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.impactService.approveCredential(id, { id: user.id, name: user.name });
+  }
+
+  @Post('blockchain-credentials/:id/reject')
+  @Roles(Role.ADMIN)
+  rejectCredential(@Param('id') id: string, @Body() body: CredentialDecisionDto) {
+    return this.impactService.rejectCredential(id, body.reason);
+  }
+
+  @Post('blockchain-credentials/:id/revoke')
+  @Roles(Role.ADMIN)
+  revokeCredential(@Param('id') id: string, @Body() body: CredentialDecisionDto) {
+    return this.impactService.revokeCredential(id, body.reason);
   }
 
   // ── AI Project Matching ──────────────────────────────────────────────────

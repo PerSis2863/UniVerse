@@ -57,7 +57,7 @@ const navByRole: Record<string, NavItem[]> = {
       label: 'nav.global_impact', icon: Globe2,
       subItems: [
         { href: '/student/impact/ai-match', label: '🤖 AI Project Match' },
-        { href: '/student/credentials', label: '⛓️ Blockchain Credentials' },
+        { href: '/student/credentials', label: '🛡️ Verified Credentials' },
         { href: '/student/impact/proof-of-work', label: 'Proof of Work' },
         { href: '/student/impact/certifications', label: 'Certifications' },
         { href: '/student/impact/startups', label: 'nav.startups' },
@@ -138,6 +138,7 @@ const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/partners', label: 'nav.sponsor_portal' },
         { href: '/admin/impact-metrics', label: 'nav.impact_analytics' },
         { href: '/admin/certifications', label: 'Certifications' },
+        { href: '/admin/credentials', label: 'Credential Verification' },
       ]
     },
     {

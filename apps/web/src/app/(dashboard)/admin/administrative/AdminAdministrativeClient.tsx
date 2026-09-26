@@ -298,7 +298,7 @@ export default function AdminAdministrativeClient() {
                         <td className="p-4 text-zinc-600 dark:text-zinc-300">{bill.dueDate ? new Date(bill.dueDate).toLocaleDateString() : '-'}</td>
                         <td className="p-4">
                           <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${
-                            bill.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+                            (bill.status === 'PAID' || bill.status === 'COMPLETED') ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
                             bill.status === 'PENDING' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
                             'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
                           }`}>{bill.status}</span>

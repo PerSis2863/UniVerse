@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { getAuth } from 'firebase-admin/auth';
 import { PrismaService } from '../prisma/prisma.service';
+import { isDemoAccount, isDemoLoginEnabled } from './demo-accounts';
 
 @Injectable()
 export class FirebaseAuthGuard implements CanActivate {
@@ -18,20 +19,21 @@ export class FirebaseAuthGuard implements CanActivate {
 
     const token = authHeader.split(' ')[1];
 
-    // Support for demo accounts / mock tokens
+    // Demo accounts / mock tokens: only for allowlisted demo users, and only when enabled.
     if (token.startsWith('mock-token-')) {
+      if (!isDemoLoginEnabled()) {
+        throw new UnauthorizedException('Demo login is disabled');
+      }
       const identifier = token.replace('mock-token-', '');
-      let user;
-      if (identifier.includes('@')) {
-        user = await this.prisma.user.findUnique({ where: { email: identifier } });
-      } else {
-        user = await this.prisma.user.findUnique({ where: { id: identifier } });
+      const user = identifier.includes('@')
+        ? await this.prisma.user.findUnique({ where: { email: identifier } })
+        : await this.prisma.user.findUnique({ where: { id: identifier } });
+
+      if (!user || !isDemoAccount(user.email)) {
+        throw new UnauthorizedException('Invalid demo token');
       }
-      
-      if (user) {
-        request.user = user;
-        return true;
-      }
+      request.user = user;
+      return true;
     }
 
     try {
