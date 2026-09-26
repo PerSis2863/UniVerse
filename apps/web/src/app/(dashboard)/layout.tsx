@@ -32,6 +32,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               name: res.data.name || 'Student',
               email: res.data.email,
               role: res.data.role as Role,
+              status: res.data.status || 'ACTIVE',
+              createdAt: res.data.createdAt || new Date().toISOString(),
               avatar: res.data.avatar || undefined,
             });
           }
@@ -55,6 +57,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 name: res.data.name || 'Student',
                 email: res.data.email,
                 role: res.data.role as Role,
+                status: res.data.status || 'ACTIVE',
+                createdAt: res.data.createdAt || new Date().toISOString(),
                 avatar: res.data.avatar || firebaseUser.photoURL || undefined,
               });
             }

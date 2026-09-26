@@ -63,7 +63,7 @@ export default function RegisterPage() {
       localStorage.setItem('accessToken', token);
       setTokens(token);
       const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole });
-      setUser({ id: user.id, name: user.name, email: user.email, role: user.role });
+      setUser({ id: user.id, name: user.name, email: user.email, role: user.role, status: user.status || 'ACTIVE', createdAt: user.createdAt || new Date().toISOString() });
       router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
     } catch (err) {
       console.error('Failed to sync user data', err);

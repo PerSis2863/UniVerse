@@ -1,0 +1,12 @@
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+async function main() {
+  const user = await prisma.user.findUnique({ where: { email: 'boltanicity@gmail.com' }});
+  if (!user) { console.log('User not found'); return; }
+  const convs = await prisma.conversation.findMany({
+    where: { participants: { some: { userId: user.id } } },
+    include: { messages: true, participants: { include: { user: true } } }
+  });
+  console.log(`User ${user.email} has ${convs.length} conversations`);
+}
+main().finally(() => prisma.$disconnect());

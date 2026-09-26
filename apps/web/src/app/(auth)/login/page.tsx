@@ -39,6 +39,9 @@ export default function LoginPage() {
         name: user.name,
         email: user.email,
         role: user.role,
+        status: user.status || 'ACTIVE',
+        createdAt: user.createdAt || new Date().toISOString(),
+        avatar: user.avatar,
       });
 
       // Show verification status modal before redirect (only for real accounts, not demo)

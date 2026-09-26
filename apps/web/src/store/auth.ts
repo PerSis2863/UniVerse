@@ -12,6 +12,7 @@ interface AuthStore {
   register: (name: string, email: string, password: string, role: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
+  setTokens: (accessToken: string, refreshToken?: string) => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -53,6 +54,9 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       setUser: (user) => set({ user }),
+      setTokens: (accessToken, refreshToken) => {
+        set({ accessToken, refreshToken: refreshToken ?? null });
+      },
     }),
     { name: 'universe-auth', partialize: (s) => ({ user: s.user }) }
   )
