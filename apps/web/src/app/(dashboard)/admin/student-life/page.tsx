@@ -105,7 +105,7 @@ export default function AdminStudentLifePage() {
           </div>
 
           <div className="flex justify-between items-center gap-4">
-            <div className="relative w-96">
+            <div className="relative w-full sm:w-96">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-500" />
               <input
                 type="text"
@@ -120,7 +120,7 @@ export default function AdminStudentLifePage() {
             </button>
           </div>
 
-          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-zinc-600 dark:text-zinc-400 uppercase bg-white dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800">
                 <tr>

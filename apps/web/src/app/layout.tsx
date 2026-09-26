@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 
@@ -47,16 +47,23 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // Lets the app draw under the iPhone notch / home indicator; the shell pads with safe-area insets.
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+  ],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
-        {/* PWA: iOS Safari viewport-fit for notch support */}
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        {/* PWA: Android theme color */}
-        <meta name="theme-color" content="#6366f1" />
         {/* PWA: iOS touch icon */}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         {/* PWA: iOS splash screens (portrait iPhone sizes) */}

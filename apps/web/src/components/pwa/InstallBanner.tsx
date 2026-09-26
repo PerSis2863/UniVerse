@@ -50,7 +50,7 @@ export function InstallBanner() {
 
   return (
     <div
-      className="fixed bottom-20 lg:bottom-6 left-4 right-4 lg:left-auto lg:right-6 lg:w-96 z-50 animate-in slide-in-from-bottom-4 duration-500"
+      className="fixed above-tabbar left-4 right-4 lg:left-auto lg:right-6 lg:w-96 z-[36] animate-in slide-in-from-bottom-4 duration-500"
       role="dialog"
       aria-label="Install UniVerse app"
     >

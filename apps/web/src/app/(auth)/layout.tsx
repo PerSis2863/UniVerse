@@ -3,7 +3,8 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex">
+    // The auth screens are designed dark-only; the "dark" class makes dark: variants (logo text etc.) apply here in light mode too.
+    <div className="dark min-h-[100dvh] flex">
       {/* ── Left Panel — always dark ─────────────────── */}
       <div
         className="hidden lg:flex w-[52%] relative overflow-hidden flex-col"
@@ -71,7 +72,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex flex-col p-6 lg:p-12" style={{ backgroundColor: '#09090b', color: '#ffffff' }}>
+      <div className="flex-1 flex flex-col p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-12" style={{ backgroundColor: '#09090b', color: '#ffffff' }}>
         {/* Mobile logo */}
         <div className="flex lg:hidden pt-2 pb-8">
           <UniverseLogo size="md" showText={true} animated={false} withGlow={false} />

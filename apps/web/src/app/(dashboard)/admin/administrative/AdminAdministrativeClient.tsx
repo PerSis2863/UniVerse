@@ -109,7 +109,7 @@ export default function AdminAdministrativeClient() {
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col lg:h-screen">
       <Topbar
         title="Administrative Management"
         subtitle="Manage documents, billing, and scholarships"

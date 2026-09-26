@@ -225,7 +225,7 @@ export default function CalendarPage() {
 
             {/* Scrollable Days */}
             <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2 snap-x snap-mandatory">
-              <div className="flex [--col-width:calc(100vw-5rem)] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
+              <div className="flex [--col-width:calc(100vw-6.5rem)] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
                 {loading ? (
                   <div className="w-full h-64 flex items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />

@@ -71,17 +71,17 @@ export default function StudentDashboard() {
       <Topbar title={t('nav.dashboard')} subtitle={`${t(greeting)}, ${user?.name?.split(' ')[0] ?? 'Student'}! 👋`} />
       <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-5 md:space-y-8">
 
-        <div className="relative rounded-2xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-amber-950/30 border border-zinc-200 dark:border-white/10 p-4 md:p-6 overflow-hidden shadow-xl">
+        <div className="relative rounded-2xl bg-gradient-to-r from-indigo-50 via-purple-50 to-amber-50 dark:from-indigo-950/60 dark:via-purple-950/40 dark:to-amber-950/30 border border-indigo-100 dark:border-white/10 p-4 md:p-6 overflow-hidden shadow-xl shadow-indigo-500/5 dark:shadow-black/20">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
             <div className="flex items-start gap-3">
               <UniverseLogo size="lg" animated={true} withGlow={true} />
               <div>
-                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold border border-indigo-400/30 mb-1.5">
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold border border-indigo-400/30 mb-1.5">
                   <Sparkles className="w-3 h-3 text-amber-400" />
                   {t('dashboard.network')}
                 </div>
                 <h2 className="text-lg md:text-xl font-black text-zinc-900 dark:text-white leading-tight">
-                  {t('dashboard.collab')} <span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">UNICEF & MIT</span>
+                  {t('dashboard.collab')} <span className="bg-gradient-to-r from-indigo-600 via-pink-600 to-amber-600 dark:from-indigo-400 dark:via-pink-400 dark:to-amber-400 bg-clip-text text-transparent">UNICEF & MIT</span>
                 </h2>
                 <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-1 max-w-xl">
                   {t('dashboard.impact_desc')}
@@ -98,7 +98,7 @@ export default function StudentDashboard() {
               </Link>
               <Link
                 href="/student/impact/dashboard"
-                className="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-700 flex items-center justify-center gap-1.5 transition-all"
+                className="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-1.5 transition-all"
               >
                 {t('dashboard.ledger')}
               </Link>

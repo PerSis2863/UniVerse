@@ -463,10 +463,7 @@ div[class*="cl-internal-"] > a[href*="clerk.com"] {
   .hide-in-pwa {
     display: none !important;
   }
-  /* Add padding at top for PWA title bar */
-  body {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
+  /* Safe-area spacing is handled by the fixed mobile header / tab bar (see "Mobile app shell" below). */
 }
 
 /* Slide in animation for PWA components */
@@ -623,5 +620,154 @@ div[class*="cl-internal-"] > a[href*="clerk.com"] {
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mobile app shell — iOS-style polish
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --mobile-header-h: 3.5rem;   /* 56px */
+  --mobile-tabbar-h: 3.5rem;   /* 56px, plus the home-indicator inset */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);      /* UIKit-like sheet curve */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Never let a stray wide element create sideways scrolling on phones */
+html, body { overflow-x: clip; max-width: 100%; }
+
+/* Page enter: transform/opacity only (GPU friendly). No fill-mode, so once the
+   animation ends no transform remains — position:fixed children (modals, sheets)
+   keep positioning against the viewport. */
+@keyframes page-enter {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.page-enter { animation: page-enter 280ms var(--ease-out-soft); }
+
+/* Fixed mobile header, content spacing and tab bar */
+.mobile-header {
+  padding-top: var(--safe-top);
+  height: calc(var(--mobile-header-h) + var(--safe-top));
+  padding-left: max(1rem, var(--safe-left));
+  padding-right: max(0.5rem, var(--safe-right));
+}
+.mobile-main {
+  padding-top: calc(var(--mobile-header-h) + var(--safe-top));
+  padding-bottom: calc(var(--mobile-tabbar-h) + var(--safe-bottom) + 0.75rem);
+}
+@media (min-width: 1024px) {
+  .mobile-main { padding-top: 0; padding-bottom: 0; }
+}
+.mobile-tabbar {
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+@media (max-width: 1023px) {
+  .mobile-fill-height {
+    /* Full-height pages (chat): exactly the space between the mobile header and tab bar */
+    height: calc(100dvh - var(--mobile-header-h) - var(--mobile-tabbar-h) - var(--safe-top) - var(--safe-bottom) - 0.75rem);
+  }
+}
+.above-tabbar { bottom: calc(var(--mobile-tabbar-h) + var(--safe-bottom) + 0.75rem); }
+@media (min-width: 1024px) { .above-tabbar { bottom: 1.5rem; } }
+
+/* Drawer/sheet safe areas */
+.sheet-safe-top { padding-top: var(--safe-top); }
+.sheet-safe-bottom { padding-bottom: max(1rem, var(--safe-bottom)); }
+
+/* Press feedback like iOS: quick dim + slight scale, no sticky hover on touch */
+.pressable { transition: transform 160ms var(--ease-out-soft), opacity 160ms ease, background-color 160ms ease; }
+.pressable:active { transform: scale(0.96); opacity: 0.85; }
+
+/* Horizontal chip/filter rows: swipeable, snapping, no visible scrollbar */
+.scroll-chips {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-chips::-webkit-scrollbar { display: none; }
+.scroll-chips > * { scroll-snap-align: start; flex-shrink: 0; }
+
+@media (hover: none) and (pointer: coarse) {
+  /* iOS zooms the page when focusing inputs under 16px — keep inputs at 16px on touch devices */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea { font-size: 16px !important; }
+
+  /* Many stacked backdrop blurs make scrolling stutter on phones; cards sit on a solid background anyway */
+  .card, .glass, .kpi-card { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+  /* Comfortable 44pt touch targets in the navigation sheet */
+  .sidebar-item { min-height: 44px; font-size: 15px; }
+
+  /* Smooth momentum scrolling inside scroll containers */
+  .overflow-y-auto, .overflow-auto, .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+}
+
+/* Centered modals: on short phone screens let tall dialogs scroll instead of being cut off
+   at the top and bottom (auto margins collapse to 0 when the dialog is taller than the screen). */
+@media (max-width: 1023px) {
+  .fixed.inset-0.flex.items-center.justify-center {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-top: max(1rem, var(--safe-top));
+    padding-bottom: max(1rem, var(--safe-bottom));
+  }
+  .fixed.inset-0.flex.items-center.justify-center > :not(.absolute):not(.fixed) {
+    margin-top: auto;
+    margin-bottom: auto;
+    max-width: 100%;
+  }
+}
+
+/* Scrollbar-hiding helpers used across pages (were referenced but never defined) */
+.hide-scrollbar, .scrollbar-hide, .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar, .scrollbar-hide::-webkit-scrollbar, .scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* Horizontal filter/tab rows on phones: swipe smoothly, keep chips on one line, no scrollbar */
+@media (max-width: 1023px) {
+  .flex.overflow-x-auto { scrollbar-width: none; overscroll-behavior-x: contain; scroll-padding-inline: 1rem; }
+  .flex.overflow-x-auto::-webkit-scrollbar { display: none; }
+  .flex.overflow-x-auto > button, .flex.overflow-x-auto > a { flex-shrink: 0; white-space: nowrap; }
+}
+
+/* Desktop-sized padding (p-8 / px-8) wastes a sixth of a phone screen; tighten it inside the app on phones */
+@media (max-width: 639px) {
+  .mobile-main .p-8 { padding: 1rem; }
+  .mobile-main .px-8 { padding-left: 1rem; padding-right: 1rem; }
+  .mobile-main .p-10 { padding: 1.25rem; }
+}
+
+/* Swipeable tables on phones: keep header labels on one line so columns stay readable */
+@media (max-width: 1023px) {
+  .overflow-x-auto > table th { white-space: nowrap; }
+}
+
+/* Lock page scroll while a mobile drawer is open */
+body.scroll-locked { overflow: hidden; touch-action: none; }
+
+/* Respect "Reduce Motion" (iOS Settings → Accessibility → Motion) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }

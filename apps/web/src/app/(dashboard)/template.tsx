@@ -1,16 +1,6 @@
-'use client';
-import { motion } from 'framer-motion';
-
+// Re-mounts on every navigation, so the CSS page-enter animation plays on each page.
+// CSS (transform/opacity only, no fill-mode) is lighter than JS springs and leaves no
+// transform behind that would break position:fixed modals inside the page.
 export default function Template({ children }: { children: React.ReactNode }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="flex flex-col flex-1 h-full"
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className="page-enter flex flex-col flex-1 min-w-0">{children}</div>;
 }

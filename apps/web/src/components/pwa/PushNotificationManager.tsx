@@ -145,7 +145,7 @@ export function PushNotificationManager() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed top-2 left-1/2 -translate-x-1/2 z-[100] w-[95%] max-w-sm"
+          className="fixed top-[calc(0.5rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[140] w-[95%] max-w-sm"
         >
           <div className="bg-white/80 dark:bg-zinc-800/80 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] rounded-[24px] p-3 flex flex-col gap-2">
 

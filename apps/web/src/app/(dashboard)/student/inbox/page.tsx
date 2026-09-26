@@ -205,7 +205,7 @@ export default function InboxPage() {
   });
 
   return (
-    <div className="flex h-screen bg-zinc-50 dark:bg-black flex-col font-sans">
+    <div className="flex mobile-fill-height lg:h-screen bg-zinc-50 dark:bg-black flex-col font-sans">
       <Topbar title="Messages" subtitle="Connect with peers and faculty" />
       
       <div className="flex-1 flex overflow-hidden md:p-6 md:gap-6 max-w-7xl mx-auto w-full">

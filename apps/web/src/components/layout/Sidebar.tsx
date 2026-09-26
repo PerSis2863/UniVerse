@@ -10,7 +10,7 @@ import {
   Coffee, Shield, Map, Globe2, Layers, Award
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { motion } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
@@ -257,6 +257,18 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const { t } = useLanguageStore();
 
+  // Lock background scrolling while the mobile navigation sheet is open.
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.classList.add('scroll-locked');
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose?.(); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.classList.remove('scroll-locked');
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen, onClose]);
+
   if (!user) return null;
 
   const nav = navByRole[user.role] ?? [];
@@ -274,17 +286,24 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
 
   return (
     <>
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden" 
-          onClick={onClose}
-        />
-      )}
-      
-      <aside className={cn(
-        "fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-[#0d1424]/90 backdrop-blur-xl border-r border-zinc-200 dark:border-white/[0.06] flex flex-col z-50 transition-transform duration-300 lg:translate-x-0",
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      {/* Mobile backdrop (fades in/out; sits above the mobile header and tab bar) */}
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        className={cn(
+          "fixed inset-0 z-[95] bg-black/50 lg:hidden transition-opacity duration-300",
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+      />
+
+      <aside
+        aria-label="Navigation"
+        className={cn(
+          "fixed left-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 bg-white dark:bg-[#0d1424] lg:dark:bg-[#0d1424]/90 lg:backdrop-blur-xl border-r border-zinc-200 dark:border-white/[0.06] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0",
+          "transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform lg:translate-x-0",
+          isOpen ? "translate-x-0 shadow-2xl lg:shadow-none" : "-translate-x-full"
+        )}
+      >
         {/* Brand */}
       <div className="flex items-center gap-3 px-4 h-16 border-b border-zinc-200 dark:border-white/[0.06] bg-gradient-to-r from-indigo-50 dark:from-indigo-950/20 via-transparent to-transparent">
         <UniverseLogo size="md" animated={true} withGlow={true} />
@@ -319,7 +338,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       </nav>
 
       {/* User */}
-      <div className="px-3 py-4 border-t border-zinc-200 dark:border-white/[0.06]">
+      <div className="px-3 pt-4 sheet-safe-bottom lg:pb-4 border-t border-zinc-200 dark:border-white/[0.06]">
 
         <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors cursor-pointer group">
           <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">

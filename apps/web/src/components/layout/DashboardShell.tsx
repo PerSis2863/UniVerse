@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { Menu, LayoutDashboard, BookOpen, GraduationCap, MessageSquare, MoreHorizontal, Bell } from 'lucide-react';
+import {
+  LayoutDashboard, BookOpen, MessageSquare, Bell, Search, Globe2, Users, ShieldCheck, Menu,
+} from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { PageTransition } from './PageTransition';
 import { AIStudyAssistant } from '@/components/ui/AIStudyAssistant';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { useAuthStore } from '@/store/auth';
@@ -18,47 +19,88 @@ interface DashboardShellProps {
   children: React.ReactNode;
 }
 
-function MobileBottomNav({ role }: { role: string }) {
-  const pathname = usePathname();
-  const isStudent = role === 'STUDENT';
-  const base = isStudent ? '/student' : role === 'TEACHER' ? '/teacher' : '/admin';
+type TabItem = { href: string; label: string; icon: typeof LayoutDashboard; match?: string[] };
 
-  const items = isStudent ? [
-    { href: '/student', label: 'Home', icon: LayoutDashboard },
-    { href: '/student/courses', label: 'Courses', icon: BookOpen },
-    { href: '/student/grades', label: 'Grades', icon: GraduationCap },
-    { href: '/student/inbox', label: 'Messages', icon: MessageSquare },
-    { href: '/student/settings', label: 'More', icon: MoreHorizontal },
-  ] : [
-    { href: `${base}`, label: 'Home', icon: LayoutDashboard },
-    { href: `${base}/courses`, label: 'Courses', icon: BookOpen },
-    { href: `${base}/grades`, label: 'Grades', icon: GraduationCap },
-    { href: `${base}/inbox`, label: 'Messages', icon: MessageSquare },
-    { href: `${base}/students`, label: 'More', icon: MoreHorizontal },
-  ];
+function tabsForRole(role: string): { base: string; items: TabItem[] } {
+  if (role === 'TEACHER') {
+    return {
+      base: '/teacher',
+      items: [
+        { href: '/teacher', label: 'Home', icon: LayoutDashboard },
+        { href: '/teacher/courses', label: 'Courses', icon: BookOpen },
+        { href: '/teacher/students', label: 'Students', icon: Users },
+        { href: '/teacher/inbox', label: 'Messages', icon: MessageSquare },
+      ],
+    };
+  }
+  if (role === 'ADMIN') {
+    return {
+      base: '/admin',
+      items: [
+        { href: '/admin', label: 'Overview', icon: LayoutDashboard },
+        { href: '/admin/users', label: 'Users', icon: Users },
+        { href: '/admin/credentials', label: 'Verify', icon: ShieldCheck, match: ['/admin/credentials', '/admin/certifications'] },
+        { href: '/admin/inbox', label: 'Messages', icon: MessageSquare },
+      ],
+    };
+  }
+  return {
+    base: '/student',
+    items: [
+      { href: '/student', label: 'Home', icon: LayoutDashboard },
+      { href: '/student/impact/projects', label: 'Impact', icon: Globe2, match: ['/student/impact', '/student/credentials'] },
+      { href: '/student/courses', label: 'Courses', icon: BookOpen },
+      { href: '/student/inbox', label: 'Messages', icon: MessageSquare },
+    ],
+  };
+}
+
+/** iOS-style tab bar. The last tab ("More") opens the full navigation sheet. */
+function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => void; moreOpen: boolean }) {
+  const pathname = usePathname();
+  const { base, items } = tabsForRole(role);
+
+  const isActive = (item: TabItem) => {
+    if (item.href === base) return pathname === base;
+    const prefixes = item.match ?? [item.href];
+    return prefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  };
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#09090b]/98 backdrop-blur-xl border-t border-zinc-200 dark:border-white/[0.06] pb-safe">
-      <div className="flex items-center justify-around px-1 py-2">
+    <nav
+      aria-label="Primary"
+      className="mobile-tabbar lg:hidden fixed bottom-0 inset-x-0 z-[35] border-t border-zinc-200/80 dark:border-white/[0.08] bg-white/85 dark:bg-[#0b0b0f]/85 backdrop-blur-xl backdrop-saturate-150"
+    >
+      <div className="grid grid-cols-5 h-[var(--mobile-tabbar-h)]">
         {items.map((item) => {
-          const isActive = pathname === item.href || (item.href !== base && pathname.startsWith(item.href));
+          const active = isActive(item);
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? 'page' : undefined}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all relative min-w-[56px]",
-                isActive ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500"
+                'pressable flex flex-col items-center justify-center gap-0.5 select-none',
+                active ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400',
               )}
             >
-              {isActive && (
-                <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-indigo-500" />
-              )}
-              <item.icon className={cn("w-5 h-5 transition-transform", isActive && "scale-110")} />
-              <span className={cn("text-[10px] font-medium leading-tight", isActive && "font-bold")}>{item.label}</span>
+              <item.icon className="w-[22px] h-[22px]" strokeWidth={active ? 2.4 : 1.9} />
+              <span className={cn('text-[10px] leading-none tracking-tight', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
             </Link>
           );
         })}
+        <button
+          type="button"
+          onClick={onMore}
+          aria-expanded={moreOpen}
+          className={cn(
+            'pressable flex flex-col items-center justify-center gap-0.5 select-none',
+            moreOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400',
+          )}
+        >
+          <Menu className="w-[22px] h-[22px]" strokeWidth={moreOpen ? 2.4 : 1.9} />
+          <span className={cn('text-[10px] leading-none tracking-tight', moreOpen ? 'font-semibold' : 'font-medium')}>More</span>
+        </button>
       </div>
     </nav>
   );
@@ -67,40 +109,52 @@ function MobileBottomNav({ role }: { role: string }) {
 export function DashboardShell({ children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuthStore();
+  const pathname = usePathname();
+
+  // Close the navigation sheet whenever the route changes.
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  const openSearch = () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true }));
+  };
+  const openNotifications = () => {
+    window.dispatchEvent(new CustomEvent('universe:open-notifications'));
+  };
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 dark:bg-[#09090b]">
+    <div className="flex min-h-[100dvh] bg-zinc-50 dark:bg-[#09090b]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
+
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
-        {/* Mobile Header - only visible on mobile */}
-        <header className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-zinc-200 dark:border-white/[0.06] bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-xl fixed top-0 left-0 right-0 z-[90] shadow-sm">
-          <UniverseLogo size="sm" showText={true} animated={false} />
-          <div className="flex items-center gap-2">
-            <button className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer touch-manipulation">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+        {/* Mobile navigation bar (fixed, translucent, respects the notch) */}
+        <header className="mobile-header lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between border-b border-zinc-200/80 dark:border-white/[0.08] bg-white/85 dark:bg-[#0b0b0f]/85 backdrop-blur-xl backdrop-saturate-150">
+          <Link href={tabsForRole(user?.role ?? 'STUDENT').base} className="flex items-center gap-2 min-w-0 pressable" aria-label="Home">
+            <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
+            <span className="font-black text-[17px] tracking-tight text-zinc-900 dark:text-white">
+              Uni<span className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">Verse</span>
+            </span>
+          </Link>
+          <div className="flex items-center">
+            <button type="button" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-zinc-600 dark:text-zinc-300">
+              <Search className="w-[21px] h-[21px]" />
             </button>
-            <button 
-              onClick={(e) => {
-                e.preventDefault();
-                setSidebarOpen(true);
-              }} 
-              className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer touch-manipulation bg-transparent border-none"
-            >
-              <Menu className="w-6 h-6" />
+            <button type="button" onClick={openNotifications} aria-label="Notifications" className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-zinc-600 dark:text-zinc-300">
+              <Bell className="w-[21px] h-[21px]" />
+              <span className="absolute top-[11px] right-[11px] w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-white dark:ring-[#0b0b0f]" />
             </button>
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col min-w-0 pb-20 pt-14 lg:pt-0 lg:pb-0 overflow-x-hidden">
-          <PageTransition>{children}</PageTransition>
+        <main className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip">
+          {children}
         </main>
       </div>
 
       <AIStudyAssistant />
       <CommandPalette role={user?.role} />
-      {user && <MobileBottomNav role={user.role} />}
+      {user && <MobileTabBar role={user.role} onMore={() => setSidebarOpen((v) => !v)} moreOpen={sidebarOpen} />}
       <OfflineBar />
       <InstallBanner />
       {user && <PushNotificationManager />}

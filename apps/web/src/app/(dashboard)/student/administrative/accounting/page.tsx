@@ -506,7 +506,7 @@ function AccountingContent() {
 export default function AccountingPage() {
   return (
     <Suspense fallback={
-      <div className="flex-1 min-h-screen bg-black/95 ml-64 p-8 flex items-center justify-center">
+      <div className="flex-1 min-h-[50vh] p-8 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
       </div>
     }>

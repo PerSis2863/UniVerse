@@ -1,25 +1,11 @@
-'use client';
-
 import { ReactNode } from 'react';
-import { motion } from 'framer-motion';
 
-interface PageTransitionProps {
-  children: ReactNode;
-}
-
-export function PageTransition({ children }: PageTransitionProps) {
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      transition={{
-        type: 'spring',
-        stiffness: 260,
-        damping: 20,
-      }}
-      className="flex flex-col flex-1 h-full"
-    >
-      {children}
-    </motion.div>
-  );
+/**
+ * Lightweight page-enter animation (see .page-enter in globals.css).
+ * Kept as a component for backwards compatibility; uses CSS instead of a
+ * framer-motion blur spring, which was janky on phones and left a CSS filter on the
+ * wrapper that broke position:fixed descendants.
+ */
+export function PageTransition({ children }: { children: ReactNode }) {
+  return <div className="page-enter flex flex-col flex-1 min-w-0">{children}</div>;
 }

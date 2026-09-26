@@ -100,21 +100,21 @@ export default function ShowcasePage() {
       </div>
 
       {/* ── Navbar ──────────────────────────────────────── */}
-      <nav className="relative z-10 w-full px-6 py-5 flex justify-between items-center max-w-7xl mx-auto">
-        <div className="flex items-center gap-3">
+      <nav className="relative z-10 w-full px-4 sm:px-6 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))] flex justify-between items-center gap-3 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3 min-w-0">
           <UniverseLogo size="md" animated withGlow />
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-black tracking-tight text-white text-lg">Universe</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold border" style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', borderColor: 'rgba(99,102,241,0.3)' }}>IMPACT</span>
             </div>
-            <span className="text-[11px] tracking-wider" style={{ color: '#6b7280' }}>Global Universities &amp; NGO Network</span>
+            <span className="hidden sm:block text-[11px] tracking-wider" style={{ color: '#6b7280' }}>Global Universities &amp; NGO Network</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-all shadow-lg"
+            className="pressable inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold whitespace-nowrap shrink-0 transition-all shadow-lg"
             style={{ boxShadow: '0 10px 25px -5px rgba(99,102,241,0.4)' }}
           >
             Sign In <ArrowRight className="w-4 h-4" />

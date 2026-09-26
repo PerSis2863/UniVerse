@@ -86,7 +86,7 @@ export default function InboxPage() {
     <>
       <Topbar title="Messages" subtitle="Communicate with teachers and administration." />
       
-      <div className="flex-1 p-8 overflow-hidden flex flex-col">
+      <div className="flex-1 p-4 lg:p-8 overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />

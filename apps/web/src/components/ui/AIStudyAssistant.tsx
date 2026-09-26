@@ -30,6 +30,26 @@ export function AIStudyAssistant() {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // iOS-style: tuck the floating button away while scrolling down, bring it back on scroll up.
+  const [tucked, setTucked] = useState(false);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        if (Math.abs(y - lastY) > 8) {
+          setTucked(y > lastY && y > 80);
+          lastY = y;
+        }
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -90,7 +110,7 @@ export function AIStudyAssistant() {
   if (!isChatbotEnabled || isDismissed) return null;
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 flex flex-col items-end gap-2">
+    <div className={cn("fixed above-tabbar right-[max(1rem,env(safe-area-inset-right))] lg:right-6 z-[30] flex flex-col items-end gap-2 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", tucked && !isOpen && "translate-y-24 opacity-0 pointer-events-none lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto")}>
       <AnimatePresence>
         {!isOpen && (
           <motion.div
@@ -102,7 +122,8 @@ export function AIStudyAssistant() {
             {/* Dismiss Button - only shows on hover or mobile */}
             <button 
               onClick={() => setIsDismissed(true)}
-              className="w-8 h-8 rounded-full bg-zinc-800/80 backdrop-blur text-zinc-400 hover:text-white flex items-center justify-center shadow-lg transition-colors border border-zinc-700/50"
+              aria-label="Hide AI Assistant"
+              className="hidden lg:flex w-7 h-7 rounded-full bg-zinc-800/80 backdrop-blur text-zinc-400 hover:text-white items-center justify-center shadow-lg transition-colors border border-zinc-700/50"
               title="Hide AI Assistant"
             >
               <X className="w-4 h-4" />
@@ -117,7 +138,8 @@ export function AIStudyAssistant() {
                 onClick={() => setIsOpen(true)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="w-14 h-14 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center relative overflow-hidden group"
+            aria-label="Open AI Study Assistant"
+            className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center relative overflow-hidden group"
           >
             {/* Glow effect */}
             <div className="absolute inset-0 bg-white/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -147,7 +169,7 @@ export function AIStudyAssistant() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 350, damping: 25 } }}
             exit={{ opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.2 } }}
-            className="absolute bottom-0 right-0 w-[350px] sm:w-[400px] h-[550px] max-h-[80vh] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="absolute bottom-0 right-0 w-[calc(100vw-2rem)] max-w-[400px] h-[min(550px,calc(100dvh-10rem))] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="p-4 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">

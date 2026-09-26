@@ -150,9 +150,9 @@ export default function StudentInternships() {
               {filteredInternships.map((job) => {
                 const hasApplied = applications.some(a => a.internshipId === job.id);
                 return (
-                  <div key={job.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group flex flex-col">
+                  <div key={job.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 sm:p-6 hover:border-zinc-700 transition-colors group flex flex-col">
                     <div className="flex justify-between items-start mb-4">
-                      <div className="flex gap-4">
+                      <div className="flex gap-4 min-w-0">
                         <div className="w-12 h-12 relative rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-500 dark:text-indigo-400 overflow-hidden shrink-0">
                           {job.company?.logoUrl ? (
                             <Image src={job.company.logoUrl} alt={job.company.name} fill className="object-cover" />
@@ -160,8 +160,8 @@ export default function StudentInternships() {
                             job.company?.name?.substring(0, 2).toUpperCase() || 'C'
                           )}
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">{job.title}</h3>
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-semibold leading-snug text-zinc-900 dark:text-white group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 sm:line-clamp-1">{job.title}</h3>
                           <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 mt-1">
                             <Building className="w-3.5 h-3.5" /> {job.company?.name}
                           </div>
@@ -172,18 +172,18 @@ export default function StudentInternships() {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 mb-6">
                       <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
                         <MapPin className="w-4 h-4 text-zinc-400 shrink-0" />
-                        <span className="truncate">{job.location || 'Remote'}</span>
+                        <span>{job.location || 'Remote'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
                         <Briefcase className="w-4 h-4 text-zinc-400 shrink-0" />
-                        <span className="truncate">{job.type?.replace('_', ' ') || 'Internship'}</span>
+                        <span>{job.type?.replace('_', ' ') || 'Internship'}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
                         <DollarSign className="w-4 h-4 text-zinc-400 shrink-0" />
-                        <span className="truncate">{job.salary || (job.isPaid ? 'Paid' : 'Unpaid')}</span>
+                        <span>{job.salary || (job.isPaid ? 'Paid' : 'Unpaid')}</span>
                       </div>
                     </div>
 

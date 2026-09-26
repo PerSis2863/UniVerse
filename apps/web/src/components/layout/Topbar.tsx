@@ -35,6 +35,13 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // The mobile header's bell (DashboardShell) opens this drawer via a window event.
+  useEffect(() => {
+    const open = () => setShowNotifications(true);
+    window.addEventListener('universe:open-notifications', open);
+    return () => window.removeEventListener('universe:open-notifications', open);
+  }, []);
+
   const [notifications, setNotifications] = useState([
     { id: 1, icon: '🎓', title: 'Grade posted: CS301 — A (94%)', time: '10m ago', unread: true, important: false },
     { id: 2, icon: '📅', title: 'Attendance alert: DB class missed', time: '2h ago', unread: true, important: true },
@@ -52,6 +59,29 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
 
   return (
     <>
+      {/* Mobile: iOS-style large title. Actions and controls stay visible (they were hidden on phones before). */}
+      <div className="lg:hidden px-4 pt-5 pb-2">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1 basis-[60%]">
+            {leftNode}
+            <div className="min-w-0">
+              <h1 className="text-[26px] leading-[1.15] font-bold tracking-tight text-zinc-900 dark:text-white break-words">{title}</h1>
+              {subtitle && <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">{subtitle}</p>}
+            </div>
+          </div>
+          {action && (
+            <button
+              onClick={action.onClick}
+              className="pressable shrink-0 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-600/25 active:bg-indigo-700"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{action.label}</span>
+            </button>
+          )}
+        </div>
+        {rightNode && <div className="mt-3 flex flex-wrap items-center gap-2 [&>*]:max-w-full">{rightNode}</div>}
+      </div>
+
       <header className="hidden lg:flex relative lg:sticky lg:top-0 z-20 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-200 dark:border-white/[0.06] px-4 md:px-8 h-auto lg:h-16 py-3 lg:py-0 flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div className="flex items-center gap-4">
         {leftNode}
@@ -111,12 +141,12 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowNotifications(false)}
-              className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm"
+              className="fixed inset-0 bg-black/40 z-[120] backdrop-blur-sm"
             />
             <motion.div
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-full w-full sm:w-[400px] bg-white dark:bg-[#09090b] shadow-2xl border-l border-zinc-200 dark:border-zinc-800 z-[70] flex flex-col"
+              transition={{ type: 'tween', duration: 0.38, ease: [0.32, 0.72, 0, 1] }}
+              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] bg-white dark:bg-[#09090b] shadow-2xl border-l border-zinc-200 dark:border-zinc-800 z-[130] flex flex-col sheet-safe-top"
             >
               {/* Header */}
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
@@ -126,7 +156,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
                   </h2>
                   <p className="text-xs text-zinc-500 mt-1">You have {unreadCount} unread messages</p>
                 </div>
-                <button onClick={() => setShowNotifications(false)} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 transition-colors">
+                <button onClick={() => setShowNotifications(false)} aria-label="Close notifications" className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -180,9 +210,9 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-4 sheet-safe-bottom border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-between items-center">
                 <button onClick={() => { setNotifications(prev => prev.map(n => ({...n, unread: false}))); import('sonner').then(m => m.toast.success('All marked as read')); }} className="text-sm font-medium text-zinc-500 hover:text-indigo-500 transition-colors">Mark all as read</button>
-                <Link href="/student/inbox" onClick={() => setShowNotifications(false)} className="text-sm font-semibold text-zinc-900 dark:text-white hover:text-indigo-500 transition-colors">View Inbox &rarr;</Link>
+                <Link href={user?.role === 'TEACHER' ? '/teacher/inbox' : user?.role === 'ADMIN' ? '/admin/inbox' : '/student/inbox'} onClick={() => setShowNotifications(false)} className="text-sm font-semibold text-zinc-900 dark:text-white hover:text-indigo-500 transition-colors">View Inbox &rarr;</Link>
               </div>
             </motion.div>
           </>
