@@ -4,6 +4,9 @@ import { getSessionUser } from '@/lib/server-auth';
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return NextResponse.json({ error: 'File uploads are not set up yet (storage is not connected).' }, { status: 503 });
+    }
     const user = await getSessionUser(request);
     if (!user) {
       return NextResponse.json({ error: 'Please sign in to upload files.' }, { status: 401 });

@@ -815,8 +815,8 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 .dark .glass-sidebar {
   /* Opaque on phones (it slides over content), translucent on desktop so the glow shows through */
   background:
-    radial-gradient(120% 45% at 0% 0%, rgba(99, 102, 241, 0.30), transparent 70%),
-    radial-gradient(120% 45% at 100% 100%, rgba(192, 38, 211, 0.22), transparent 70%),
+    radial-gradient(130% 50% at 0% 0%, rgba(99, 102, 241, 0.40), transparent 70%),
+    radial-gradient(130% 50% at 100% 100%, rgba(192, 38, 211, 0.30), transparent 70%),
     #0b0e1a;
 }
 @media (min-width: 1024px) {

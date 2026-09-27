@@ -77,6 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster 
             position="bottom-right"
+            mobileOffset={{ bottom: 'calc(var(--mobile-tabbar-h, 3.5rem) + env(safe-area-inset-bottom) + 12px)' }}
             toastOptions={{
               style: { background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }
             }}

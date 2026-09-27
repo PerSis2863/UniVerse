@@ -76,13 +76,21 @@ export async function uploadChatFile(file: File, userId: string, onProgress?: (p
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('Files must be 25 MB or smaller.');
   const token = await getAuthToken();
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100) || 'file';
-  const blob = await upload(`chat/${userId}/${safe}`, file, {
+  let blob;
+  try {
+    blob = await upload(`chat/${userId}/${safe}`, file, {
     access: 'public',
     handleUploadUrl: '/api/upload/token',
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     contentType: file.type || undefined,
-    onUploadProgress: onProgress ? ({ percentage }) => onProgress(Math.round(percentage)) : undefined,
-  });
+      onUploadProgress: onProgress ? ({ percentage }) => onProgress(Math.round(percentage)) : undefined,
+    });
+  } catch (e: any) {
+    const msg = String(e?.message ?? '');
+    if (/client token/i.test(msg)) throw new Error('File sharing isn’t available yet — your campus admin needs to finish setting up storage.');
+    if (/content type|not allowed/i.test(msg)) throw new Error('This file type can’t be shared.');
+    throw new Error('Upload failed. Please check your connection and try again.');
+  }
   return blob.url;
 }
 

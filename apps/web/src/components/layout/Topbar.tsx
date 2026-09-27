@@ -20,9 +20,11 @@ interface TopbarProps {
   action?: { label: string; onClick: () => void };
   rightNode?: React.ReactNode;
   leftNode?: React.ReactNode;
+  /** Hide the large mobile title (for full-screen pages like Messages that have their own header). */
+  hideMobileTitle?: boolean;
 }
 
-export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarProps) {
+export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobileTitle }: TopbarProps) {
   const { user } = useAuthStore();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -78,7 +80,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
   return (
     <>
       {/* Mobile: iOS-style large title. Actions and controls stay visible (they were hidden on phones before). */}
-      <div className="lg:hidden px-4 pt-5 pb-2">
+      <div className={hideMobileTitle ? 'hidden' : 'lg:hidden px-4 pt-5 pb-2'}>
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3">
           <div className="flex items-start gap-3 min-w-0 flex-1 basis-[60%]">
             {leftNode}
@@ -164,7 +166,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
             <motion.div
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'tween', duration: 0.38, ease: [0.32, 0.72, 0, 1] }}
-              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] bg-white dark:bg-[#0b0f1c] shadow-2xl border-l border-zinc-200 dark:border-zinc-800 z-[130] flex flex-col sheet-safe-top"
+              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] glass-sidebar shadow-2xl border-l border-indigo-100 dark:border-white/[0.07] z-[130] flex flex-col sheet-safe-top"
             >
               {/* Header */}
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
@@ -180,7 +182,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center gap-2 px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-2 px-6 py-3 border-b border-zinc-200/70 dark:border-white/[0.06]">
                 {['All', 'Unread', 'Important'].map(tab => (
                   <button 
                     key={tab} 
@@ -229,7 +231,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
               </div>
 
               {/* Footer */}
-              <div className="p-4 sheet-safe-bottom border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-4 sheet-safe-bottom border-t border-zinc-200/70 dark:border-white/[0.06] bg-white/40 dark:bg-white/[0.03] flex justify-between items-center">
                 <button onClick={() => { markRead(); import('sonner').then(m => m.toast.success('All marked as read')); }} className="text-sm font-medium text-zinc-500 hover:text-indigo-500 transition-colors">Mark all as read</button>
                 <Link href={user?.role === 'TEACHER' ? '/teacher/inbox' : user?.role === 'ADMIN' ? '/admin/inbox' : '/student/inbox'} onClick={() => setShowNotifications(false)} className="text-sm font-semibold text-zinc-900 dark:text-white hover:text-indigo-500 transition-colors">View Inbox &rarr;</Link>
               </div>

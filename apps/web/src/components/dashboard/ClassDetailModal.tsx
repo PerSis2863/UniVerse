@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, MapPin, Calendar as CalendarIcon, BookOpen, ExternalLink, Bell, FileText, Video, Users, X, ChevronRight as ChevronR } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
@@ -69,16 +68,16 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
     <AnimatePresence>
       {selectedClass && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[140]" onClick={onClose} />
           <motion.div
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 h-full w-full sm:w-[400px] bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-2xl z-50 overflow-y-auto flex flex-col"
+            className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] glass-sidebar border-l border-indigo-100 dark:border-white/[0.07] shadow-2xl z-[150] overflow-y-auto flex flex-col"
           >
-            {/* Colour band header */}
-            <div className={cn('h-24 relative flex items-end p-5', selectedClass.color?.replace('text-', 'bg-').replace('/20', '/30') ?? 'bg-indigo-500/30')}>
-              <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-zinc-900 dark:text-white transition-colors">
-                <X className="w-4 h-4" />
+            {/* Header (padded below the phone status bar so the close button is always tappable) */}
+            <div className="relative flex items-end px-5 pb-5 pt-[calc(env(safe-area-inset-top)+3.5rem)] bg-gradient-to-br from-indigo-500/25 via-transparent to-fuchsia-500/20">
+              <button onClick={onClose} aria-label="Close" className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] right-4 w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-zinc-900 dark:text-white flex items-center justify-center transition-colors">
+                <X className="w-5 h-5" />
               </button>
               <div>
                 <span className="text-xs font-bold opacity-70">{selectedClass.type}</span>
@@ -100,7 +99,7 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
                 }].map((item, i) => {
                   const Icon = item.icon;
                   return (
-                    <div key={i} className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3">
+                    <div key={i} className="bg-white/60 dark:bg-white/[0.05] border border-zinc-200/70 dark:border-white/[0.06] rounded-xl p-3">
                       <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] mb-1"><Icon className="w-3 h-3" />{item.label}</div>
                       <div className="text-sm font-semibold text-zinc-900 dark:text-white">{item.value}</div>
                     </div>
@@ -132,17 +131,21 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
                 <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Quick Actions</h4>
                 <div className="space-y-1.5">
                   {[{
-                    label: 'View Announcements', icon: Bell, action: () => { onClose(); router.push('/student/blackboard'); toast.info('Opening announcements...'); }
+                    label: 'Announcements & materials', icon: Bell, action: () => { onClose(); router.push('/student/blackboard'); }
                   }, {
-                    label: 'Download Materials', icon: FileText, action: () => toast.info('Opening course materials...')
+                    label: 'Assignments & quizzes', icon: FileText, action: () => { onClose(); router.push('/student/quizzes'); }
                   }, {
-                    label: 'Join Online Session', icon: Video, action: () => toast.success('Joining virtual class...')
+                    // A free video room shared by everyone in this class (same link for the whole class).
+                    label: 'Join class video room', icon: Video, action: () => {
+                      const room = `UniVerse-class-${(selectedClass.id || selectedClass.subject).replace(/[^A-Za-z0-9]/g, '')}`;
+                      window.open(`https://meet.jit.si/${room}`, '_blank', 'noopener,noreferrer');
+                    }
                   }, {
-                    label: 'View Classmates', icon: Users, action: () => toast.info('Loading class roster...')
+                    label: 'Message classmates', icon: Users, action: () => { onClose(); router.push('/student/inbox'); }
                   }].map((item, i) => {
                     const Icon = item.icon;
                     return (
-                      <button key={i} onClick={item.action} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 text-left transition-colors group">
+                      <button key={i} onClick={item.action} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/60 dark:hover:bg-white/[0.05] text-left transition-colors group">
                         <Icon className="w-4 h-4 text-zinc-400 group-hover:text-indigo-500 transition-colors" />
                         <span className="text-sm text-zinc-700 dark:text-zinc-300 flex-1">{item.label}</span>
                         <ChevronR className="w-3.5 h-3.5 text-zinc-300 group-hover:text-indigo-400 transition-colors" />

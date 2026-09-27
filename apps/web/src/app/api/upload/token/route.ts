@@ -17,6 +17,9 @@ const ALLOWED_TYPES = [
 ];
 
 export async function POST(request: Request) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json({ error: 'File uploads are not set up yet (storage is not connected).' }, { status: 503 });
+  }
   const body = (await request.json()) as HandleUploadBody;
 
   // Token requests must come from a signed-in user; completion callbacks are verified by the SDK.
