@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { createTransaction, getTransactions } from '@/app/actions/transaction';
+import { getAuthToken } from '@/lib/auth-token';
 
 export default function AdminFinances() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -14,7 +15,7 @@ export default function AdminFinances() {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const data = await getTransactions();
+        const data = await getTransactions(await getAuthToken());
         setTransactions(data);
       } catch (e) {
         console.error('Failed to load transactions', e);
@@ -61,18 +62,19 @@ export default function AdminFinances() {
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const newTrx = await createTransaction({
+      const newTrx = await createTransaction(await getAuthToken(), {
         amount: formData.type === 'Teacher Payout' || formData.type === 'Refund' ? -Math.abs(formData.amount) : Math.abs(formData.amount),
         description: formData.type,
         status: formData.status.toUpperCase(),
         userEmail: formData.user // Note: using the input as email for now
       });
-      
+      if ('error' in newTrx) throw new Error(newTrx.error);
+
       toast.success('Transaction added manually.');
       setIsAddTrxModalOpen(false);
       
       // Refresh list
-      const data = await getTransactions();
+      const data = await getTransactions(await getAuthToken());
       setTransactions(data);
     } catch (e: any) {
       toast.error(`Error: ${e.message}`);

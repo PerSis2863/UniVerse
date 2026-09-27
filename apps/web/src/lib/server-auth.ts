@@ -25,3 +25,9 @@ export async function getSessionUser(request: Request): Promise<SessionUser | nu
     return null;
   }
 }
+
+/** Same check as getSessionUser, for server actions (which receive the token as an argument). */
+export async function getUserFromToken(token: string | null | undefined): Promise<SessionUser | null> {
+  if (!token) return null;
+  return getSessionUser(new Request('http://internal', { headers: { authorization: `Bearer ${token}` } }));
+}

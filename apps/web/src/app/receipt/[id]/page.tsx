@@ -1,10 +1,11 @@
-import { getTransactionById } from '@/app/actions/transaction';
+import { getReceipt } from '@/lib/receipts';
 import { notFound } from 'next/navigation';
 import ReceiptActions from './ReceiptActions';
 import Link from 'next/link';
 
-export default async function ReceiptPage({ params }: { params: { id: string } }) {
-  const transaction = await getTransactionById(params.id);
+export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const transaction = await getReceipt(id);
 
   if (!transaction || transaction.status !== 'COMPLETED') {
     return notFound();

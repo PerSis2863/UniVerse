@@ -1,40 +1,45 @@
 'use server';
 
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { getUserFromToken } from '@/lib/server-auth';
 
-const prisma = new PrismaClient();
+// Server actions are public HTTP endpoints, so every action verifies the caller's token.
+// Students can only see and create (pending) payments for themselves; admins manage all.
 
-export async function createTransaction(data: {
-  amount: number;
-  description: string;
-  status: string;
-  userEmail: string;
-  currency?: string;
-}) {
+const MAX_AMOUNT = 1_000_000;
+const userSummary = { select: { id: true, name: true, email: true } } as const;
+
+export async function createTransaction(
+  token: string | null,
+  data: { amount: number; description: string; status: string; userEmail: string; currency?: string },
+) {
   try {
-    let user = await prisma.user.findUnique({
-      where: { email: data.userEmail },
-    });
+    const caller = await getUserFromToken(token);
+    if (!caller) return { error: 'Please sign in again.' };
 
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: data.userEmail,
-          name: data.userEmail.split('@')[0],
-          role: 'STUDENT',
-        }
-      });
-    }
+    const amount = Number(data.amount);
+    if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > MAX_AMOUNT) return { error: 'Enter a valid amount.' };
+    const description = String(data.description ?? '').trim().slice(0, 200) || 'Payment';
+    const currency = /^[A-Z]{3}$/.test(data.currency ?? '') ? data.currency! : 'USD';
+
+    const isAdmin = caller.role === 'ADMIN';
+    if (!isAdmin && amount < 0) return { error: 'Enter a valid amount.' };
+
+    const target = isAdmin
+      ? await prisma.user.findUnique({ where: { email: String(data.userEmail ?? '').trim().toLowerCase() } })
+      : await prisma.user.findUnique({ where: { id: caller.id } });
+    if (!target) return { error: 'No user found with that email.' };
 
     const payment = await prisma.payment.create({
       data: {
-        amount: data.amount,
-        currency: data.currency || 'USD',
-        description: data.description,
-        status: data.status === 'PAID' ? 'COMPLETED' : 'PENDING',
+        amount,
+        currency,
+        description,
+        // Only admins can record a payment as already paid; everyone else starts as pending.
+        status: isAdmin && data.status === 'PAID' ? 'COMPLETED' : 'PENDING',
         type: 'OTHER',
-        userId: user.id,
+        userId: target.id,
       },
     });
 
@@ -42,43 +47,25 @@ export async function createTransaction(data: {
     return { id: payment.id };
   } catch (e: any) {
     console.error('Error creating transaction:', e);
-    return { error: e.message || 'Database error occurred' };
+    return { error: 'Could not save the payment. Please try again.' };
   }
 }
 
-export async function getTransactions() {
-  return await prisma.payment.findMany({
-    include: {
-      user: true,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
+export async function getTransactions(token: string | null) {
+  const caller = await getUserFromToken(token);
+  if (caller?.role !== 'ADMIN') throw new Error('Not authorized');
+  return prisma.payment.findMany({
+    include: { user: userSummary },
+    orderBy: { createdAt: 'desc' },
+    take: 500,
   });
 }
 
-export async function getUserTransactions(userEmail: string) {
-  const user = await prisma.user.findUnique({
-    where: { email: userEmail },
-  });
-
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  return await prisma.payment.findMany({
-    where: { userId: user.id },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-}
-
-export async function getTransactionById(id: string) {
-  return await prisma.payment.findUnique({
-    where: { id },
-    include: {
-      user: true
-    }
+export async function getUserTransactions(token: string | null) {
+  const caller = await getUserFromToken(token);
+  if (!caller) throw new Error('Not authorized');
+  return prisma.payment.findMany({
+    where: { userId: caller.id },
+    orderBy: { createdAt: 'desc' },
   });
 }

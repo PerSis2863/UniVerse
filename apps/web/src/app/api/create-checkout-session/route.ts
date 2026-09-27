@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/db';
+import { getSessionUser } from '@/lib/server-auth';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-06-20' as any,
 });
 
-const prisma = new PrismaClient();
-
 export async function POST(req: Request) {
   try {
+    const user = await getSessionUser(req);
+    if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
+
     const body = await req.json();
     const { transactionId } = body;
 
@@ -21,7 +23,7 @@ export async function POST(req: Request) {
       where: { id: transactionId }
     });
 
-    if (!transaction) {
+    if (!transaction || (transaction.userId !== user.id && user.role !== 'ADMIN')) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
@@ -59,6 +61,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
   }
 }

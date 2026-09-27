@@ -5,7 +5,6 @@ const withPWA = withPWAInit({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
   register: true,
-  skipWaiting: true,
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
@@ -13,6 +12,7 @@ const withPWA = withPWAInit({
     document: '/offline',
   },
   workboxOptions: {
+    skipWaiting: true,
     disableDevLogs: true,
     runtimeCaching: [
       {
@@ -32,17 +32,10 @@ const withPWA = withPWAInit({
         },
       },
       {
-        urlPattern: /\/api\/auth\//,
-        handler: 'NetworkOnly',
-      },
-      {
+        // API responses are per-user (grades, messages, billing): never store them on the device,
+        // so nothing leaks between people sharing a computer and plan changes show immediately.
         urlPattern: /\/api\//,
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'api-cache',
-          networkTimeoutSeconds: 10,
-          expiration: { maxEntries: 64, maxAgeSeconds: 24 * 60 * 60 },
-        },
+        handler: 'NetworkOnly',
       },
     ],
   },
@@ -51,10 +44,7 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
+    ignoreBuildErrors: false,
   },
   images: {
     remotePatterns: [

@@ -20,7 +20,7 @@ export default function TeacherStudents() {
 
   const { data: students = [], isLoading } = useSWR('/courses/my-students', fetcher);
 
-  const uniqueCourses = ['All', ...Array.from(new Set(students.map((s: any) => s.course)))];
+  const uniqueCourses: string[] = ['All', ...Array.from(new Set<string>(students.map((s: any) => String(s.course ?? ''))))];
 
   const filteredStudents = students.filter((s: any) => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.email.toLowerCase().includes(searchTerm.toLowerCase());

@@ -1,13 +1,14 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { Users, BookOpen, DollarSign, Activity, TrendingUp, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Users, BookOpen, DollarSign, GraduationCap, ArrowRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
-import { fetcher } from '@/lib/fetcher';
+import { fetcher, api } from '@/lib/fetcher';
 
 const statusIcon = {
   completed: <CheckCircle2 className="w-4 h-4 text-green-400" />,
@@ -18,7 +19,7 @@ const statusIcon = {
 
 export default function AdminDashboard() {
   const { t } = useLanguageStore();
-  const { data, isLoading } = useSWR('/dashboard/admin', fetcher);
+  const { data, isLoading, mutate } = useSWR('/dashboard/admin', fetcher);
   
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
 
@@ -31,15 +32,22 @@ export default function AdminDashboard() {
   const departments = data?.departments || [];
   const recentPayments = data?.recentPayments || [];
 
-  const handleApprove = (id: string, name: string) => {
+  const setStatus = async (id: string, name: string, status: 'ACTIVE' | 'SUSPENDED') => {
+    const previous = pendingUsers;
     setPendingUsers(prev => prev.filter(u => u.id !== id));
-    toast.success(`${name} approved successfully`);
+    try {
+      await api.patch(`/users/${id}/status`, { status });
+      if (status === 'ACTIVE') toast.success(`${name} approved`);
+      else toast(`${name}'s application rejected`);
+      mutate();
+    } catch {
+      setPendingUsers(previous);
+      toast.error(`Couldn't update ${name}. Please try again.`);
+    }
   };
-
-  const handleReject = (id: string, name: string) => {
-    setPendingUsers(prev => prev.filter(u => u.id !== id));
-    toast.error(`${name}'s application rejected`);
-  };
+  const handleApprove = (id: string, name: string) => setStatus(id, name, 'ACTIVE');
+  const handleReject = (id: string, name: string) => setStatus(id, name, 'SUSPENDED');
+  const maxDeptStudents = Math.max(1, ...departments.map((d: any) => d.students || 0));
 
   const handleSendAnnouncement = () => {
     toast.info('Opening announcement composer...');
@@ -52,10 +60,10 @@ export default function AdminDashboard() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard title={t('admin.total_students')} value={data?.totalStudents || 0} icon={Users} change={12} color="indigo" />
-          <KpiCard title={t('admin.active_courses')} value={data?.totalCourses || 0} icon={BookOpen} change={4} color="cyan" />
-          <KpiCard title={t('admin.revenue')} value={formatCurrency(data?.revenue || 0)} icon={DollarSign} change={8} color="green" />
-          <KpiCard title={t('admin.uptime')} value={data?.uptime || '99.9%'} icon={Activity} change={0} color="amber" />
+          <KpiCard title={t('admin.total_students')} value={data?.totalStudents || 0} icon={Users} color="indigo" />
+          <KpiCard title="Teachers" value={data?.totalTeachers || 0} icon={GraduationCap} color="amber" />
+          <KpiCard title={t('admin.active_courses')} value={data?.totalCourses || 0} icon={BookOpen} color="cyan" />
+          <KpiCard title={t('admin.revenue')} value={formatCurrency(data?.revenue || 0)} icon={DollarSign} color="green" />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -73,7 +81,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
                       <div className="h-full rounded-full" style={{
-                        width: `${(d.students / 420) * 100}%`,
+                        width: `${(d.students / maxDeptStudents) * 100}%`,
                         background: `${d.color}`,
                         opacity: 0.7,
                       }} />
@@ -84,30 +92,10 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            {/* Revenue chart placeholder */}
-            <div className="mt-6 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('admin.revenue_overview')}</h3>
-                <span className="badge-green">+8% this month</span>
-              </div>
-              {/* Simple bar chart */}
-              <div className="flex items-end gap-2 h-24">
-                {[65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88, 72].map((v, i) => (
-                  <div key={i} className="flex-1 rounded-t-md transition-all"
-                    style={{
-                      height: `${v}%`,
-                      background: i === 11
-                        ? 'linear-gradient(180deg, #6366f1, #06b6d4)'
-                        : 'rgba(99,102,241,0.25)',
-                    }} />
-                ))}
-              </div>
-              <div className="flex justify-between mt-2">
-                {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(m => (
-                  <span key={m} className="text-[9px] text-zinc-600">{m}</span>
-                ))}
-              </div>
-            </div>
+            <Link href="/admin/finances" className="mt-6 flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-indigo-500/30 transition-colors">
+              <span className="text-sm font-semibold text-zinc-900 dark:text-white">{t('admin.revenue_overview')}</span>
+              <span className="text-xs font-semibold text-indigo-500 inline-flex items-center gap-1">View finances <ArrowRight className="w-3.5 h-3.5" /></span>
+            </Link>
           </div>
 
           {/* Recent Payments */}

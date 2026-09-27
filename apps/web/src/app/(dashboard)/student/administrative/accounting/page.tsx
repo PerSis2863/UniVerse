@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 
 import { getUserTransactions, createTransaction } from '@/app/actions/transaction';
+import { getAuthToken } from '@/lib/auth-token';
+import { authedFetch } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
 
 const quickActions = [
@@ -36,7 +38,7 @@ function AccountingContent() {
     const fetchTrx = async () => {
       if (!user?.email) return;
       try {
-        const data = await getUserTransactions(user.email);
+        const data = await getUserTransactions(await getAuthToken());
         setTransactions(data);
       } catch (e) {
         console.error('Failed to load transactions', e);
@@ -59,7 +61,7 @@ function AccountingContent() {
     setIsLoading(true);
     try {
       // Create a new pending transaction for the custom amount
-      const pendingTrx = await createTransaction({
+      const pendingTrx = await createTransaction(await getAuthToken(), {
         amount: amount,
         currency: selectedCurrency,
         description: 'Custom Payment',
@@ -72,9 +74,8 @@ function AccountingContent() {
       }
       console.log('pendingTrx:', pendingTrx);
 
-      const res = await fetch('/api/create-checkout-session', {
+      const res = await authedFetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transactionId: pendingTrx.id }),
       });
       const data = await res.json();
