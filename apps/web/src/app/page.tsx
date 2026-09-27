@@ -1,631 +1,545 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { Globe2, Heart, Users, Sparkles, Sprout, ArrowRight, CheckCircle, Download, Apple, Smartphone } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  AnimatePresence, MotionConfig, motion, useMotionTemplate, useMotionValue, useScroll, useSpring, useTransform,
+} from 'framer-motion';
+import {
+  ArrowRight, BadgeCheck, BarChart3, Bell, BookOpen, Brain, Building2, CalendarDays, Check, ChevronDown,
+  CreditCard, GraduationCap, HeartHandshake, KeyRound, Link2, Lock, MessagesSquare, ShieldCheck, Smartphone,
+  Sparkles, Users, WifiOff, Wand2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
+import { MarketingNav } from '@/components/marketing/MarketingNav';
+import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { PricingCards } from '@/components/billing/PricingCards';
+import type { BillingInterval } from '@/lib/plans';
 
-const stats = [
-  { value: '50+',  label: 'Global NGO Partners',  icon: Globe2,  color: 'text-blue-500',    lightBg: 'bg-blue-50',    darkBg: 'dark:bg-blue-500/10',    border: 'border-blue-100 dark:border-blue-500/20' },
-  { value: '12K',  label: 'Students Engaged',      icon: Users,  color: 'text-indigo-500',  lightBg: 'bg-indigo-50',  darkBg: 'dark:bg-indigo-500/10',  border: 'border-indigo-100 dark:border-indigo-500/20' },
-  { value: '2M',   label: 'Hours Volunteered',     icon: Heart,  color: 'text-rose-500',    lightBg: 'bg-rose-50',    darkBg: 'dark:bg-rose-500/10',    border: 'border-rose-100 dark:border-rose-500/20' },
-  { value: '85',   label: 'Active Projects',       icon: Sprout, color: 'text-emerald-500', lightBg: 'bg-emerald-50', darkBg: 'dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+const ROTATING = ['students', 'universities', 'NGOs', 'changemakers'];
+
+// Real platform capabilities — shown where the old (unverified) usage numbers used to be.
+const CAPABILITIES = [
+  { icon: BadgeCheck, title: 'Blockchain-verified', desc: 'Credentials anchored on Polygon, checkable by anyone.', tint: 'from-indigo-500/20' },
+  { icon: Brain, title: 'AI-powered', desc: 'Gemini-driven study help and project matching.', tint: 'from-fuchsia-500/20' },
+  { icon: MessagesSquare, title: 'Real-time', desc: 'Live chat, groups and instant notifications.', tint: 'from-cyan-500/20' },
+  { icon: Smartphone, title: 'Install anywhere', desc: 'One app for iOS, Android and desktop — works offline.', tint: 'from-emerald-500/20' },
 ];
 
-const projects = [
-  { title: 'Clean Water Initiative',   org: 'WaterAid Kenya',  tags: ['Environment', 'Health'],   color: 'from-cyan-500 to-blue-500' },
-  { title: 'Digital Literacy for All', org: 'Tech4Good',       tags: ['Education', 'Tech'],       color: 'from-purple-500 to-indigo-500' },
-  { title: 'Urban Reforestation',      org: 'Green Earth',     tags: ['Climate', 'Community'],    color: 'from-emerald-500 to-teal-500' },
-  { title: 'Youth Mentorship',         org: 'Global Scholars', tags: ['Education', 'Mentorship'], color: 'from-amber-500 to-orange-500' },
+const SOLUTIONS = {
+  students: {
+    label: 'Students', icon: GraduationCap,
+    headline: 'Your whole academic life — and your impact — in one place.',
+    points: ['Courses, grades, attendance and timetable at a glance', 'Apply to NGO projects and internships that match your skills', 'Earn verifiable credentials that employers can check instantly', 'An AI study assistant that is available 24/7'],
+  },
+  universities: {
+    label: 'Universities', icon: Building2,
+    headline: 'Run campus operations and prove your social impact.',
+    points: ['Student, teacher and admin portals out of the box', 'Manage courses, rooms, timetables, finances and announcements', 'Track engagement and impact with advanced analytics (Pro)', 'Export everything to CSV for accreditation and reporting (Pro)'],
+  },
+  ngos: {
+    label: 'NGOs & organizations', icon: HeartHandshake,
+    headline: 'Reach motivated student talent for the work that matters.',
+    points: ['Publish projects to a marketplace of skilled students', 'Review applications and track project progress', 'Issue tamper-proof certificates for completed work', 'AI-written executive impact reports for your board (Enterprise)'],
+  },
+} as const;
+
+const BENTO = [
+  { icon: BarChart3, title: 'Intelligent dashboards', desc: 'Every role gets a live overview of what matters today — deadlines, grades, attendance, applications.', span: 'md:col-span-2' },
+  { icon: Link2, title: 'Verifiable credentials', desc: 'Certificates are hashed and anchored on-chain, with a public verify page.', span: '' },
+  { icon: CalendarDays, title: 'Timetable & rooms', desc: 'Schedules, room bookings and calendar in sync.', span: '' },
+  { icon: Wand2, title: 'AI impact reports', desc: 'Turn live platform data into a board-ready executive summary in seconds.', span: 'md:col-span-2', premium: true },
+  { icon: Users, title: 'Groups & communities', desc: 'Study groups, associations and campus life, all connected.', span: '' },
+  { icon: CreditCard, title: 'Payments built in', desc: 'Tuition and fees paid securely through Stripe, with receipts.', span: '' },
+  { icon: WifiOff, title: 'Offline-ready', desc: 'Installable PWA that keeps working on a patchy connection.', span: '' },
 ];
 
-const liveItems = [
-  'Sarah completed 5hrs of tutoring 📚',
-  'Green Earth reached 10k trees planted 🌳',
-  'MIT joined the global network 🎓',
-  'New hackathon announced in London 🇬🇧',
-  'Tech4Good raised $5k for laptops 💻',
-  'Alex unlocked the "Mentor" badge 🏅',
-  'WaterAid launched new impact project 💧',
-  'Oxford partners with 3 local NGOs 🤝',
+const SECURITY = [
+  { icon: KeyRound, title: 'Secure sign-in', desc: 'Authentication powered by Firebase, with expiring tokens verified on every request.' },
+  { icon: Lock, title: 'Role-based access', desc: 'Students, teachers and admins only ever see what their role allows.' },
+  { icon: CreditCard, title: 'PCI-compliant payments', desc: 'Card details go straight to Stripe — they never touch our servers.' },
+  { icon: ShieldCheck, title: 'Tamper-proof records', desc: 'Credentials are anchored on a public blockchain, so they cannot be forged.' },
 ];
+
+const FAQ = [
+  { q: 'Is UniVerse free to use?', a: 'Yes. The Starter plan is free forever and includes the full student, teacher and admin portals, the NGO marketplace, messaging and verified credentials. Organizations upgrade only when they want premium analytics, exports or AI reporting.' },
+  { q: 'What does the 14-day free trial include?', a: 'Every feature of the plan you choose. You can cancel any time during the trial from the billing page, and you will not be charged.' },
+  { q: 'Can we switch plans or cancel later?', a: 'Any time. Admins manage their subscription, payment method and invoices from Billing & Plans inside the admin dashboard.' },
+  { q: 'Who pays — students or organizations?', a: 'Organizations. Students never pay to use UniVerse. Premium plans are purchased by a university, NGO or company admin for their organization.' },
+  { q: 'How are credentials verified?', a: 'Each certificate is fingerprinted and anchored on the Polygon blockchain. Anyone can open its public verification link to confirm it is genuine and unaltered.' },
+  { q: 'Do you offer custom contracts or invoicing?', a: 'Yes — Enterprise customers can request invoiced billing. Email us and we will get back to you.' },
+];
+
+/* ─────────────────────────── Small building blocks ─────────────────────────── */
+
+function Reveal({ children, delay = 0, className }: { children: React.ReactNode; delay?: number; className?: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.8, delay, ease: EASE }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function SectionHeading({ eyebrow, title, sub }: { eyebrow: string; title: React.ReactNode; sub?: string }) {
+  return (
+    <Reveal className="text-center max-w-3xl mx-auto mb-14">
+      <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-indigo-400 mb-4">{eyebrow}</span>
+      <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-[1.1]">{title}</h2>
+      {sub && <p className="text-zinc-400 text-lg mt-5 leading-relaxed">{sub}</p>}
+    </Reveal>
+  );
+}
+
+/** Card with a soft spotlight that follows the cursor. */
+function SpotlightCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const x = useMotionValue(-200);
+  const y = useMotionValue(-200);
+  const bg = useMotionTemplate`radial-gradient(360px circle at ${x}px ${y}px, rgba(129,140,248,0.14), transparent 70%)`;
+  return (
+    <motion.div
+      onMouseMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        x.set(e.clientX - r.left);
+        y.set(e.clientY - r.top);
+      }}
+      onMouseLeave={() => { x.set(-200); y.set(-200); }}
+      whileHover={{ y: -4 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+      className={`group relative overflow-hidden rounded-3xl border border-white/[0.07] bg-white/[0.025] ${className}`}
+    >
+      <motion.div aria-hidden className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: bg }} />
+      <div className="relative h-full">{children}</div>
+    </motion.div>
+  );
+}
+
+function RotatingWord() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => (n + 1) % ROTATING.length), 2400);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <span className="relative inline-grid align-bottom overflow-hidden pb-1">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={ROTATING[i]}
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '-100%', opacity: 0 }}
+          transition={{ duration: 0.55, ease: EASE }}
+          className="col-start-1 row-start-1 bg-gradient-to-r from-indigo-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent"
+        >
+          {ROTATING[i]}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
+/** Illustrative product preview (not real data) — clearly a UI mock, no usage claims. */
+function ProductPreview() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
+  const rotateX = useSpring(useTransform(scrollYProgress, [0, 0.45], [22, 0]), { stiffness: 120, damping: 24 });
+  const scale = useSpring(useTransform(scrollYProgress, [0, 0.45], [0.9, 1]), { stiffness: 120, damping: 24 });
+
+  return (
+    <div ref={ref} className="relative mx-auto max-w-5xl [perspective:1400px]">
+      <div aria-hidden className="absolute -inset-x-24 -top-24 bottom-0" style={{ background: 'radial-gradient(ellipse at top, rgba(99,102,241,0.28), rgba(217,70,239,0.08) 45%, transparent 70%)' }} />
+      <motion.div style={{ rotateX, scale }} className="relative origin-top rounded-[1.75rem] border border-white/10 bg-[#0f141c]/90 backdrop-blur-xl shadow-[0_40px_120px_-20px_rgba(79,70,229,0.45)] overflow-hidden">
+        {/* window chrome */}
+        <div className="flex items-center gap-2 px-4 h-11 border-b border-white/[0.06]">
+          <span className="w-3 h-3 rounded-full bg-[#ff5f57]" /><span className="w-3 h-3 rounded-full bg-[#febc2e]" /><span className="w-3 h-3 rounded-full bg-[#28c840]" />
+          <div className="mx-auto h-6 w-60 max-w-[50%] rounded-md bg-white/[0.05] text-[10px] text-zinc-500 flex items-center justify-center">app.universe · dashboard</div>
+        </div>
+        <div className="grid grid-cols-[56px_1fr] sm:grid-cols-[180px_1fr] min-h-[320px] sm:min-h-[400px]">
+          <aside className="border-r border-white/[0.06] p-3 space-y-1.5">
+            {[BarChart3, BookOpen, HeartHandshake, MessagesSquare, BadgeCheck, CalendarDays].map((Icon, i) => (
+              <div key={i} className={`flex items-center gap-2.5 h-9 px-2.5 rounded-lg ${i === 0 ? 'bg-indigo-500/15 text-indigo-300' : 'text-zinc-500'}`}>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:block h-2 rounded-full bg-current opacity-40" style={{ width: `${50 + ((i * 17) % 40)}%` }} />
+              </div>
+            ))}
+          </aside>
+          <div className="p-4 sm:p-6 space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              {['from-indigo-500', 'from-fuchsia-500', 'from-emerald-500'].map((c, i) => (
+                <motion.div key={c} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 + i * 0.1 }} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 sm:p-4">
+                  <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${c} to-transparent mb-3`} />
+                  <div className="h-2 w-1/2 rounded-full bg-white/20 mb-2" />
+                  <div className="h-2 w-3/4 rounded-full bg-white/10" />
+                </motion.div>
+              ))}
+            </div>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 h-40 sm:h-52 flex items-end gap-1.5 sm:gap-2">
+              {[38, 52, 44, 63, 58, 72, 66, 80, 74, 88, 83, 95].map((h, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ height: 0 }}
+                  whileInView={{ height: `${h}%` }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4 + i * 0.05, duration: 0.8, ease: EASE }}
+                  className="flex-1 rounded-t-[4px] bg-gradient-to-t from-indigo-600/60 to-fuchsia-400/80"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+      {/* floating chips */}
+      <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.8, ease: EASE }} className="hidden md:block absolute -left-10 top-1/3"><div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-[#111722]/90 backdrop-blur-xl px-4 py-3 shadow-2xl mkt-float">
+        <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center"><BadgeCheck className="w-4 h-4 text-emerald-400" /></div>
+        <div><div className="text-xs font-bold text-white">Credential verified</div><div className="text-[10px] text-zinc-500">Anchored on Polygon</div></div>
+      </div></motion.div>
+      <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 1, ease: EASE }} className="hidden md:block absolute -right-8 bottom-16"><div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-[#111722]/90 backdrop-blur-xl px-4 py-3 shadow-2xl mkt-float [animation-delay:1.5s]">
+        <div className="w-8 h-8 rounded-full bg-fuchsia-500/15 flex items-center justify-center"><Sparkles className="w-4 h-4 text-fuchsia-400" /></div>
+        <div><div className="text-xs font-bold text-white">AI match found</div><div className="text-[10px] text-zinc-500">Projects that fit your skills</div></div>
+      </div></motion.div>
+    </div>
+  );
+}
+
+function Solutions() {
+  const [tab, setTab] = useState<keyof typeof SOLUTIONS>('students');
+  const s = SOLUTIONS[tab];
+  return (
+    <div className="max-w-5xl mx-auto">
+      <Reveal className="flex justify-center mb-10">
+        <div className="inline-flex flex-wrap justify-center p-1.5 rounded-full border border-white/[0.08] bg-white/[0.03]">
+          {(Object.keys(SOLUTIONS) as (keyof typeof SOLUTIONS)[]).map((k) => {
+            const Icon = SOLUTIONS[k].icon;
+            return (
+              <button key={k} onClick={() => setTab(k)} className={`relative px-4 sm:px-5 py-2.5 rounded-full text-sm font-bold inline-flex items-center gap-2 transition-colors ${tab === k ? 'text-white' : 'text-zinc-400 hover:text-white'}`}>
+                {tab === k && <motion.span layoutId="solution-pill" className="absolute inset-0 -z-0 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
+                <Icon className="relative w-4 h-4" /><span className="relative">{SOLUTIONS[k].label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Reveal>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.4, ease: EASE }}
+          className="grid md:grid-cols-2 gap-10 items-center rounded-[2rem] border border-white/[0.07] bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-8 md:p-12"
+        >
+          <h3 className="text-2xl md:text-3xl font-black leading-tight">{s.headline}</h3>
+          <ul className="space-y-4">
+            {s.points.map((p, i) => (
+              <motion.li key={p} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.07, ease: EASE }} className="flex gap-3 text-zinc-300">
+                <span className="mt-0.5 w-5 h-5 rounded-full bg-indigo-500/15 flex items-center justify-center shrink-0"><Check className="w-3 h-3 text-indigo-300" strokeWidth={3} /></span>
+                {p}
+              </motion.li>
+            ))}
+          </ul>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
+  const [open, setOpen] = useState(i === 0);
+  return (
+    <Reveal delay={i * 0.04}>
+      <div className="border-b border-white/[0.07]">
+        <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between gap-6 py-6 text-left">
+          <span className="font-bold text-lg text-white">{q}</span>
+          <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }} className="shrink-0 w-8 h-8 rounded-full border border-white/10 flex items-center justify-center">
+            <ChevronDown className="w-4 h-4 text-zinc-400" />
+          </motion.span>
+        </button>
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
+              <p className="pb-6 text-zinc-400 leading-relaxed max-w-3xl">{a}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </Reveal>
+  );
+}
+
+/* ─────────────────────────────────── Page ─────────────────────────────────── */
 
 export default function ShowcasePage() {
-  const [hoveredStat, setHoveredStat] = useState<number | null>(null);
   const { user } = useAuthStore();
-  const isSignedIn = !!user;
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [installed, setInstalled] = useState(false);
+  const [interval, setInterval] = useState<BillingInterval>('year');
+
+  const { scrollYProgress } = useScroll();
+  const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30 });
+  const heroY = useTransform(scrollYProgress, [0, 0.2], [0, -60]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0.3]);
 
   useEffect(() => {
-    if (isSignedIn) router.push(`/${user?.role.toLowerCase() || 'student'}`);
-  }, [isSignedIn, router, user]);
+    if (user) router.push(`/${user.role.toLowerCase() || 'student'}`);
+  }, [user, router]);
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-    };
+    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e); };
+    const onInstalled = () => setInstalled(true);
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => setInstalled(true));
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
   }, []);
 
   const handleInstallClick = async () => {
-    if (installed) {
-      toast.success('App is already installed!');
-      return;
-    }
-    
+    if (installed) return void toast.success('App is already installed!');
     if (installPrompt) {
       installPrompt.prompt();
       const { outcome } = await installPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setInstalled(true);
-        toast.success('App installed successfully!');
-      }
+      if (outcome === 'accepted') { setInstalled(true); toast.success('App installed successfully!'); }
       setInstallPrompt(null);
-    } else {
-      // Fallback instructions for iOS Safari and browsers where prompt isn't fired
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-      if (isIOS) {
-        toast('📱 How to install on iOS', {
-          description: 'Tap the Share icon at the bottom of Safari, then scroll down and tap "Add to Home Screen".',
-          duration: 10000,
-          style: { background: '#4f46e5', color: 'white', border: 'none' },
-        });
-      } else {
-        toast('💻 How to install', {
-          description: 'Look for the install icon (usually a computer with a down arrow) in your address bar to install the app.',
-          duration: 10000,
-          style: { background: '#4f46e5', color: 'white', border: 'none' },
-        });
-      }
+      return;
     }
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    toast(isIOS ? '📱 How to install on iOS' : '💻 How to install', {
+      description: isIOS
+        ? 'Tap the Share icon at the bottom of Safari, then scroll down and tap "Add to Home Screen".'
+        : 'Look for the install icon (usually a computer with a down arrow) in your address bar to install the app.',
+      duration: 10000,
+      style: { background: '#4f46e5', color: 'white', border: 'none' },
+    });
   };
 
   return (
-    <div className="dark min-h-screen overflow-hidden font-sans" style={{ backgroundColor: '#0d1117', color: '#ffffff' }}>
+    <MotionConfig reducedMotion="user">
+      <div className="dark min-h-screen overflow-x-clip font-sans scroll-smooth" style={{ backgroundColor: '#0a0d13', color: '#ffffff' }}>
+        {/* scroll progress */}
+        <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500" />
 
-      {/* Gradient blobs */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-[-15%] left-[-5%] w-[45%] h-[45%] rounded-full blur-[120px]" style={{ background: 'rgba(99,102,241,0.15)' }} />
-        <div className="absolute bottom-[-15%] right-[-5%] w-[45%] h-[45%] rounded-full blur-[120px]" style={{ background: 'rgba(192,38,211,0.1)' }} />
-        <div className="absolute top-[40%] left-[50%] w-[30%] h-[30%] rounded-full blur-[100px]" style={{ background: 'rgba(6,182,212,0.08)' }} />
-      </div>
-
-      {/* ── Navbar ──────────────────────────────────────── */}
-      <nav className="relative z-10 w-full px-4 sm:px-6 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))] flex justify-between items-center gap-3 max-w-7xl mx-auto">
-        <div className="flex items-center gap-3 min-w-0">
-          <UniverseLogo size="md" animated withGlow />
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="font-black tracking-tight text-white text-lg">Universe</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold border" style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', borderColor: 'rgba(99,102,241,0.3)' }}>IMPACT</span>
-            </div>
-            <span className="hidden sm:block text-[11px] tracking-wider" style={{ color: '#6b7280' }}>Global Universities &amp; NGO Network</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="pressable inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold whitespace-nowrap shrink-0 transition-all shadow-lg"
-            style={{ boxShadow: '0 10px 25px -5px rgba(99,102,241,0.4)' }}
-          >
-            Sign In <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </nav>
-
-      {/* ── Hero ────────────────────────────────────────── */}
-      <main className="relative z-10 w-full max-w-7xl mx-auto px-6 pt-16 pb-32">
-        <div className="flex flex-col items-center text-center">
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-xs mb-8 border"
-            style={{ background: 'rgba(99,102,241,0.1)', color: '#a5b4fc', borderColor: 'rgba(99,102,241,0.2)' }}
-          >
-            <Sparkles className="w-3.5 h-3.5" /> Shaping the Future Together
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6 max-w-4xl"
-          >
-            Education that creates{' '}
-            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              real-world impact.
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-lg md:text-xl max-w-2xl mb-10 leading-relaxed"
-            style={{ color: '#9ca3af' }}
-          >
-            We connect students, mentors, and NGOs globally. Learn, collaborate,
-            and solve the world&apos;s most pressing challenges.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-wrap items-center gap-4 mb-20 justify-center"
-          >
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center h-14 px-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors shadow-xl shadow-indigo-500/30"
-            >
-              Get Started <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-            
-            <button
-              onClick={handleInstallClick}
-              className="group relative inline-flex items-center justify-center h-14 px-8 rounded-full font-bold text-sm transition-all overflow-hidden"
-            >
-              {/* Animated glowing background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 opacity-80 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 blur-md opacity-50 group-hover:opacity-70 transition-opacity" />
-              
-              {/* Inner dark container to give it a "border" glow effect, or just keep it solid colorful */}
-              <div className="absolute inset-[1px] rounded-full bg-[#0d1117] group-hover:bg-[#131720] transition-colors z-0" />
-              
-              <div className="relative z-10 flex items-center">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center mr-3 shadow-lg group-hover:scale-110 transition-transform">
-                  <Smartphone className="w-4 h-4 text-white" />
-                </div>
-                <div className="flex flex-col items-start leading-none text-left">
-                  <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-0.5">
-                    {installed ? 'Already Installed' : 'Get the Web App'}
-                  </span>
-                  <span className="text-[15px] font-black bg-gradient-to-r from-white to-indigo-100 bg-clip-text text-transparent">
-                    {installed ? 'Open App' : 'Download App'}
-                  </span>
-                </div>
-              </div>
-            </button>
-            
-            <a
-              href="#about"
-              className="inline-flex items-center justify-center h-14 px-8 rounded-full font-bold text-sm transition-all border"
-              style={{ background: 'rgba(255,255,255,0.06)', color: '#e4e4e7', borderColor: 'rgba(255,255,255,0.08)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-            >
-              Learn More
-            </a>
-          </motion.div>
-
-          {/* ── Stats ─────────────────────────────────────── */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl mb-28"
-          >
-            {stats.map((stat, i) => (
-              <div
-                key={i}
-                onMouseEnter={() => setHoveredStat(i)}
-                onMouseLeave={() => setHoveredStat(null)}
-                className="relative p-6 rounded-3xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-default"
-                style={{
-                  background: hoveredStat === i ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
-                  borderColor: 'rgba(255,255,255,0.08)',
-                }}
-              >
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 ${hoveredStat === i ? 'scale-110' : ''}`} style={{ background: 'rgba(99,102,241,0.1)' }}>
-                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                </div>
-                <div className="text-4xl font-black tracking-tight mb-1 text-white">{stat.value}</div>
-                <div className="text-sm font-medium" style={{ color: '#9ca3af' }}>{stat.label}</div>
-              </div>
-            ))}
-          </motion.div>
+        {/* ambient background */}
+        <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
+          <motion.div animate={{ x: [0, 40, 0], y: [0, -30, 0] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[-30%] left-[-20%] w-[80vw] h-[80vw] rounded-full will-change-transform" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.22), transparent)' }} />
+          <motion.div animate={{ x: [0, -40, 0], y: [0, 30, 0] }} transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }} className="absolute bottom-[-35%] right-[-20%] w-[75vw] h-[75vw] rounded-full will-change-transform" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.13), transparent)' }} />
+          <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '64px 64px', maskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)' }} />
         </div>
 
-        {/* ── About ─────────────────────────────────────── */}
-        <motion.div
-          id="about"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="w-full mb-28 grid md:grid-cols-2 gap-16 items-center"
-        >
-          <div>
-            <h2 className="text-3xl md:text-4xl font-black mb-6 tracking-tight">
-              Empowering the next generation of{' '}
-              <span className="text-indigo-600 dark:text-indigo-400">changemakers.</span>
-            </h2>
-            <p className="text-zinc-400 mb-8 text-lg leading-relaxed">
-              UniVerse Impact bridges the gap between academic learning and real-world social impact.
-              We provide a platform where students can apply their skills to solve genuine challenges
-              faced by NGOs and communities globally.
-            </p>
-            <ul className="space-y-5">
-              {[
-                { title: 'For Students',       desc: 'Gain real-world experience, earn verified certificates, and build a portfolio of impactful work.' },
-                { title: 'For Universities',   desc: 'Track student engagement, manage volunteering hours, and foster a culture of social responsibility.' },
-                { title: 'For Organizations', desc: 'Access a global pool of motivated talent ready to help scale your impact initiatives.' },
-              ].map((item, i) => (
-                <li key={i} className="flex gap-3">
-                  <CheckCircle className="w-5 h-5 text-indigo-500 dark:text-indigo-400 mt-0.5 shrink-0" />
-                  <div>
-                    <h4 className="font-bold text-white mb-1">{item.title}</h4>
-                    <p className="text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <MarketingNav />
 
-          {/* Steps card */}
-          <div className="relative hidden md:block">
-            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/20 via-purple-900/10 to-emerald-900/20 rounded-[2.5rem] blur-2xl opacity-60" />
-            <div className="relative bg-white/[0.03] rounded-[2.5rem] p-8 border border-white/[0.06]">
-              <div className="flex flex-col gap-5">
-                {[
-                  { num: '1', title: 'Connect',    sub: 'Join as a student, university, or NGO.',    lb: 'bg-indigo-500/15', lt: 'text-indigo-400', ml: '' },
-                  { num: '2', title: 'Collaborate', sub: 'Form teams and tackle live projects.',      lb: 'bg-fuchsia-500/15', lt: 'text-fuchsia-400', ml: 'ml-8' },
-                  { num: '3', title: 'Impact',      sub: 'Deliver solutions and track global change.', lb: 'bg-emerald-500/15', lt: 'text-emerald-400', ml: 'ml-16' },
-                ].map((s) => (
-                  <div key={s.num} className={`flex items-center gap-4 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.05] ${s.ml}`}>
-                    <div className={`w-12 h-12 rounded-full ${s.lb} flex items-center justify-center ${s.lt} font-black text-xl`}>{s.num}</div>
-                    <div>
-                      <div className="font-bold text-white">{s.title}</div>
-                      <div className="text-sm text-zinc-400">{s.sub}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── Core Values / Features ────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6 }}
-          className="w-full mb-28"
-        >
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-black mb-4 tracking-tight">Built for modern education</h2>
-            <p className="text-zinc-400 max-w-2xl mx-auto">
-              Everything you need to manage academics, collaborate on projects, and track social impact in one beautiful unified platform.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { title: "Intelligent Dashboard", desc: "Get a bird's eye view of your grades, attendance, and upcoming deadlines with our smart widgets.", icon: "🎯", color: "bg-blue-500/10 text-blue-400" },
-              { title: "Seamless Collaboration", desc: "Work together with peers and professors in real-time. Share documents and track project milestones.", icon: "🤝", color: "bg-fuchsia-500/10 text-fuchsia-400" },
-              { title: "Impact Tracking", desc: "Quantify your social impact. Log volunteer hours and earn verifiable digital credentials for your portfolio.", icon: "🌍", color: "bg-emerald-500/10 text-emerald-400" }
-            ].map((feature, idx) => (
-              <motion.div
-                key={idx}
-                whileHover={{ y: -8, scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                className="p-8 rounded-3xl bg-white/[0.03] border border-white/[0.06] flex flex-col items-center text-center backdrop-blur-sm"
+        <main className="relative z-10">
+          {/* ── Hero ─────────────────────────────────────────── */}
+          <section className="px-6 pt-36 md:pt-44 pb-16">
+            <motion.div style={{ y: heroY, opacity: heroOpacity }} className="max-w-5xl mx-auto flex flex-col items-center text-center">
+              <motion.a
+                href="#pricing"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: EASE }}
+                className="group inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-colors mb-8"
               >
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-6 ${feature.color}`}>
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                <p className="text-zinc-400 text-sm leading-relaxed">{feature.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white text-[10px] font-black uppercase tracking-wider">New</span>
+                <span className="text-zinc-300">AI impact reports for organizations</span>
+                <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
+              </motion.a>
 
-        {/* ── Featured Projects + Live Feed ─────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left"
-        >
-          {/* Projects */}
-          <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-xl font-bold flex items-center gap-2 mb-5">
-              <Sprout className="w-5 h-5 text-emerald-500" /> Featured Projects
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projects.map((proj, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + i * 0.08 }}
-                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:border-indigo-500/30 hover:bg-white/[0.05] transition-all duration-300 cursor-pointer group"
-                >
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${proj.color} mb-4 opacity-80 group-hover:opacity-100 transition-opacity`} />
-                  <h4 className="font-bold text-lg text-white mb-1">{proj.title}</h4>
-                  <p className="text-sm text-zinc-400 mb-4">{proj.org}</p>
-                  <div className="flex gap-2">
-                    {proj.tags.map(t => (
-                      <span key={t} className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-white/[0.06] text-zinc-400">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          {/* Live Feed */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold flex items-center gap-2 mb-5">
-              <Globe2 className="w-5 h-5 text-indigo-500" /> Live Impact
-            </h3>
-            <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex flex-col gap-3 h-[360px] overflow-hidden relative">
-              <div className="absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-[#0d1117] to-transparent z-10" />
-              <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-[#0d1117] to-transparent z-10 flex items-end justify-center pb-4">
-                <Link href="/login" className="px-4 py-2 rounded-full bg-white text-zinc-900 font-bold text-xs hover:opacity-90 transition-opacity shadow-lg z-20 inline-flex items-center gap-1.5">
-                  Join the Network <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-              <div className="space-y-3 animate-marquee-y hover:[animation-play-state:paused]">
-                {[...liveItems, ...liveItems].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-white/[0.03] p-3 rounded-xl border border-white/[0.05]">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
-                    <span className="text-sm font-medium text-zinc-300">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── How it Works ──────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6 }}
-          className="w-full mt-32 mb-32"
-        >
-          <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-4xl font-black mb-4 tracking-tight">How UniVerse Works</h2>
-            <p className="text-zinc-400 max-w-2xl mx-auto text-lg">
-              A streamlined journey from campus enrollment to global impact.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-8 relative">
-            {/* Connecting Line - positioned to align with badges */}
-            <div className="hidden md:block absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-indigo-500/0 via-indigo-500/40 to-indigo-500/0" />
-
-            {[
-              { step: '01', title: 'Enroll & Setup', desc: 'Join through your university portal. We instantly sync your timetable, courses, and accounting data.', color: 'from-blue-600 to-indigo-600' },
-              { step: '02', title: 'Learn & Grow', desc: 'Track grades, join study groups, and complete assignments within a unified academic ecosystem.', color: 'from-indigo-600 to-purple-600' },
-              { step: '03', title: 'Discover Projects', desc: 'Browse our Global Impact board for volunteering, internships, and NGO partnerships.', color: 'from-purple-600 to-fuchsia-600' },
-              { step: '04', title: 'Make an Impact', desc: 'Apply your skills, earn verifiable impact credits, and build a resume of real-world change.', color: 'from-fuchsia-600 to-pink-600' },
-            ].map((item, idx) => (
-              <motion.div
-                key={idx}
-                whileHover={{ y: -6 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-                className="relative bg-white/[0.03] p-8 pt-12 rounded-3xl border border-white/[0.08] shadow-2xl flex flex-col items-center text-center z-10 hover:border-indigo-500/30 transition-colors"
+              <motion.h1
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.9, delay: 0.1, ease: EASE }}
+                className="text-[2.75rem] leading-[1.05] sm:text-6xl md:text-7xl lg:text-[5.25rem] font-black tracking-[-0.035em]"
               >
-                <div className={`absolute -top-5 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-gradient-to-br ${item.color} flex items-center justify-center text-white font-black text-sm shadow-lg`}>
-                  {item.step}
-                </div>
-                <h3 className="text-lg font-bold mb-3 text-white">{item.title}</h3>
-                <p className="text-zinc-400 text-sm leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* ── Testimonials ──────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="w-full mb-32 relative py-10 overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
-          <div className="text-center mb-12 relative z-10">
-            <h2 className="text-3xl font-black tracking-tight mb-4">Loved by Students Globally</h2>
-            <p className="text-zinc-400">Real stories from students making real change.</p>
-          </div>
-          
-          {/* Overflow wrapper to hide overflow */}
-          <div className="overflow-hidden w-full">
-            <div className="flex gap-6 animate-marquee-x w-max hover:[animation-play-state:paused]">
-              {[
-                { quote: "UniVerse completely transformed how I handle my coursework. The impact dashboard is just the cherry on top!", author: "Elena M.", role: "Computer Science, MIT" },
-                { quote: "I found my summer internship at UNICEF directly through the Global Impact portal. Incredible platform.", author: "James T.", role: "Public Policy, Oxford" },
-                { quote: "Finally, a portal that doesn't look like it was built in 2005. The glassmorphism UI makes studying almost enjoyable.", author: "Sarah K.", role: "Design, ETH Zürich" },
-                { quote: "The integration between my tuition payments, classes, and study groups is flawless.", author: "Ahmed R.", role: "Engineering, NUS" },
-                { quote: "Tracking my volunteer hours automatically synced with my transcript is a game-changer.", author: "Chloe S.", role: "Bioethics, Stanford" },
-                // Duplicated for seamless loop
-                { quote: "UniVerse completely transformed how I handle my coursework. The impact dashboard is just the cherry on top!", author: "Elena M.", role: "Computer Science, MIT" },
-                { quote: "I found my summer internship at UNICEF directly through the Global Impact portal. Incredible platform.", author: "James T.", role: "Public Policy, Oxford" },
-                { quote: "Finally, a portal that doesn't look like it was built in 2005. The glassmorphism UI makes studying almost enjoyable.", author: "Sarah K.", role: "Design, ETH Zürich" },
-                { quote: "The integration between my tuition payments, classes, and study groups is flawless.", author: "Ahmed R.", role: "Engineering, NUS" },
-                { quote: "Tracking my volunteer hours automatically synced with my transcript is a game-changer.", author: "Chloe S.", role: "Bioethics, Stanford" },
-              ].map((t, i) => (
-                <div key={i} className="w-80 shrink-0 p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between">
-                  <div className="text-yellow-400 mb-4 text-base">★★★★★</div>
-                  <p className="text-zinc-300 text-sm italic mb-6 leading-relaxed">"{t.quote}"</p>
-                  <div>
-                    <div className="font-bold text-white text-sm">{t.author}</div>
-                    <div className="text-xs text-zinc-500">{t.role}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ── CTA Section ───────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-          className="w-full mb-10 relative overflow-hidden rounded-[3rem] border border-white/[0.08]"
-          style={{ background: 'linear-gradient(135deg, #0f0c29 0%, #1a1040 40%, #0f0c29 100%)' }}
-        >
-          {/* Animated Gradient Orbs */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <motion.div
-              animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] rounded-full blur-[120px]"
-              style={{ background: 'rgba(99,102,241,0.35)' }}
-            />
-            <motion.div
-              animate={{ x: [0, -25, 0], y: [0, 20, 0] }}
-              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-              className="absolute bottom-[-30%] right-[5%] w-[400px] h-[400px] rounded-full blur-[100px]"
-              style={{ background: 'rgba(168,85,247,0.3)' }}
-            />
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              className="absolute top-[20%] right-[25%] w-[200px] h-[200px] rounded-full blur-[80px]"
-              style={{ background: 'rgba(236,72,153,0.2)' }}
-            />
-          </div>
-
-          {/* Grid pattern overlay */}
-          <div
-            className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-              backgroundSize: '40px 40px',
-            }}
-          />
-
-          {/* Content */}
-          <div className="relative z-10 p-12 md:p-20 flex flex-col lg:flex-row items-center justify-between gap-12">
-
-            {/* Left: Text */}
-            <div className="flex-1 text-left">
-              {/* Badge */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold mb-6"
-              >
-                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-                Now Accepting Applications
-              </motion.div>
-
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tight"
-              >
-                Join the future of{' '}
-                <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  education.
-                </span>
-              </motion.h2>
+                The impact platform
+                <br />
+                for <RotatingWord />
+              </motion.h1>
 
               <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="text-zinc-400 text-lg leading-relaxed max-w-lg mb-8"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.25, ease: EASE }}
+                className="mt-7 text-lg md:text-xl text-zinc-400 max-w-2xl leading-relaxed"
               >
-                A unified platform for academics, social impact, and global collaboration. Your journey starts with one click.
+                UniVerse unifies academics, collaboration and social impact — connecting students,
+                universities and NGOs on one secure, AI-powered platform.
               </motion.p>
 
-              {/* CTA Buttons */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="flex flex-wrap gap-4"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4, ease: EASE }}
+                className="mt-10 flex flex-wrap items-center justify-center gap-3"
               >
-                <Link
-                  href="/login"
-                  className="group inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-zinc-900 font-black text-base hover:bg-indigo-50 transition-all shadow-xl shadow-white/10 hover:scale-105 active:scale-95"
-                >
-                  Access Student Portal
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <Link href="/register" className="group relative inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-zinc-900 font-bold text-sm overflow-hidden shadow-[0_0_40px_-8px_rgba(129,140,248,0.7)] hover:shadow-[0_0_60px_-6px_rgba(129,140,248,0.9)] transition-shadow">
+                  <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-indigo-200/60 to-transparent" />
+                  <span className="relative">Get started free</span>
+                  <ArrowRight className="relative w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
-                <a
-                  href="#about"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl border border-white/10 text-white font-semibold text-base hover:bg-white/5 transition-all"
-                >
-                  Learn More
+                <a href="#pricing" className="inline-flex items-center gap-2 h-14 px-8 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold text-sm transition-colors">
+                  View pricing
                 </a>
+                <button onClick={handleInstallClick} className="inline-flex items-center gap-2 h-14 px-6 rounded-full text-zinc-300 hover:text-white font-semibold text-sm transition-colors">
+                  <Smartphone className="w-4 h-4" /> {installed ? 'Open app' : 'Download app'}
+                </button>
               </motion.div>
-            </div>
 
-            {/* Right: Stats panel */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="w-full lg:w-72 shrink-0 space-y-4"
-            >
-              {[
-                { label: 'Students onboarded', value: '12,000+', color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: '🎓' },
-                { label: 'NGO Partnerships', value: '50+ Orgs', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: '🌍' },
-                { label: 'Volunteer Hours Logged', value: '2M+ Hrs', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', icon: '⏱️' },
-                { label: 'Active Projects', value: '85 Now', color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20', icon: '🚀' },
-              ].map((stat, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  whileHover={{ x: 4 }}
-                  transition={{ delay: 0.5 + i * 0.1 }}
-                  className={`flex items-center gap-4 p-4 rounded-2xl border ${stat.bg} ${stat.border} backdrop-blur-sm cursor-default`}
-                >
-                  <span className="text-2xl">{stat.icon}</span>
-                  <div>
-                    <div className={`text-xl font-black ${stat.color}`}>{stat.value}</div>
-                    <div className="text-xs text-zinc-400 font-medium">{stat.label}</div>
-                  </div>
-                </motion.div>
-              ))}
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-6 text-xs text-zinc-500">
+                Free for students, forever · Premium plans for organizations · 14-day free trial
+              </motion.p>
             </motion.div>
+          </section>
 
-          </div>
+          {/* ── Product preview ─────────────────────────────── */}
+          <section id="product" className="px-6 pb-24 scroll-mt-24">
+            <ProductPreview />
+          </section>
 
-          {/* Bottom strip */}
-          <div className="relative z-10 px-12 md:px-20 py-5 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-4 text-xs text-zinc-500">
-            <span>Trusted by 50+ universities across 25 countries</span>
-            <div className="flex items-center gap-6">
-              {['MIT', 'Oxford', 'ETH Zürich', 'NUS', 'Sorbonne'].map((uni) => (
-                <span key={uni} className="font-semibold text-zinc-400">{uni}</span>
+          {/* ── Capabilities (replaces the old stat numbers) ───── */}
+          <section className="px-6 pb-32">
+            <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {CAPABILITIES.map((c, i) => (
+                <Reveal key={c.title} delay={i * 0.08}>
+                  <SpotlightCard className="p-6 h-full">
+                    <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${c.tint} to-transparent border border-white/[0.08] flex items-center justify-center mb-5`}>
+                      <c.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="font-bold text-white text-lg">{c.title}</h3>
+                    <p className="text-sm text-zinc-400 mt-1.5 leading-relaxed">{c.desc}</p>
+                  </SpotlightCard>
+                </Reveal>
               ))}
             </div>
-          </div>
-        </motion.div>
-      </main>
+          </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-zinc-100 dark:border-white/[0.06] px-6 py-8 max-w-7xl mx-auto flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-600">
-        <div className="flex flex-col gap-1">
-          <span>© 2026 UniVerse Impact Network</span>
-          <span>Support: <a href="mailto:myuniverseimpact@gmail.com" className="hover:text-indigo-400 text-indigo-500">myuniverseimpact@gmail.com</a></span>
-        </div>
-        <span className="flex items-center gap-1">Made with <span className="text-red-500">❤️</span> by Aditya Bhatt</span>
-      </footer>
-    </div>
+          {/* ── Solutions ──────────────────────────────────────── */}
+          <section id="solutions" className="px-6 pb-32 scroll-mt-24">
+            <SectionHeading eyebrow="Solutions" title={<>Built for everyone in the <span className="bg-gradient-to-r from-indigo-400 to-fuchsia-400 bg-clip-text text-transparent">impact ecosystem</span></>} sub="One platform, three experiences — each designed around the people who use it every day." />
+            <Solutions />
+          </section>
+
+          {/* ── Bento features ─────────────────────────────────── */}
+          <section className="px-6 pb-32">
+            <SectionHeading eyebrow="Platform" title="Everything in one place" sub="Replace a patchwork of tools with a single, beautifully fast platform." />
+            <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-4">
+              {BENTO.map((f, i) => (
+                <Reveal key={f.title} delay={(i % 4) * 0.06} className={f.span}>
+                  <SpotlightCard className="p-7 h-full min-h-[190px]">
+                    <div className="flex items-start justify-between">
+                      <div className="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center mb-6">
+                        <f.icon className="w-5 h-5 text-indigo-300" />
+                      </div>
+                      {f.premium && <span className="text-[10px] font-black tracking-wider px-2 py-1 rounded-md bg-gradient-to-r from-indigo-500 to-fuchsia-500">ENTERPRISE</span>}
+                    </div>
+                    <h3 className="font-bold text-white text-lg">{f.title}</h3>
+                    <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{f.desc}</p>
+                  </SpotlightCard>
+                </Reveal>
+              ))}
+            </div>
+          </section>
+
+          {/* ── How it works ───────────────────────────────────── */}
+          <section className="px-6 pb-32">
+            <SectionHeading eyebrow="How it works" title="From sign-up to real-world impact" />
+            <div className="relative max-w-6xl mx-auto grid md:grid-cols-4 gap-6">
+              <motion.div aria-hidden initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease: EASE }} className="hidden md:block absolute top-6 left-[12%] right-[12%] h-px origin-left bg-gradient-to-r from-indigo-500/0 via-indigo-500/60 to-fuchsia-500/0" />
+              {[
+                { t: 'Join', d: 'Sign up as a student, teacher or organization admin in under a minute.' },
+                { t: 'Learn & organize', d: 'Courses, grades, timetable, groups and messaging — all in one place.' },
+                { t: 'Collaborate', d: 'Discover NGO projects and internships matched to your skills.' },
+                { t: 'Prove impact', d: 'Earn blockchain-verified credentials and report outcomes with confidence.' },
+              ].map((s, i) => (
+                <Reveal key={s.t} delay={0.15 + i * 0.12} className="relative text-center">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-[#0a0d13] border border-indigo-500/40 flex items-center justify-center font-black text-indigo-300 mb-6 shadow-[0_0_30px_-4px_rgba(99,102,241,0.6)]">{i + 1}</div>
+                  <h3 className="font-bold text-lg text-white mb-2">{s.t}</h3>
+                  <p className="text-sm text-zinc-400 leading-relaxed max-w-[240px] mx-auto">{s.d}</p>
+                </Reveal>
+              ))}
+            </div>
+          </section>
+
+          {/* ── Security ───────────────────────────────────────── */}
+          <section id="security" className="px-6 pb-32 scroll-mt-24">
+            <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.3fr] gap-12 items-center">
+              <Reveal>
+                <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-emerald-400 mb-4">Security & trust</span>
+                <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-[1.1]">Enterprise-grade by design.</h2>
+                <p className="text-zinc-400 text-lg mt-5 leading-relaxed">Student data deserves serious protection. UniVerse is built on proven infrastructure — so institutions can adopt it with confidence.</p>
+              </Reveal>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {SECURITY.map((s, i) => (
+                  <Reveal key={s.title} delay={i * 0.08}>
+                    <SpotlightCard className="p-6 h-full">
+                      <s.icon className="w-5 h-5 text-emerald-400 mb-4" />
+                      <h3 className="font-bold text-white">{s.title}</h3>
+                      <p className="text-sm text-zinc-400 mt-1.5 leading-relaxed">{s.desc}</p>
+                    </SpotlightCard>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ── Pricing ────────────────────────────────────────── */}
+          <section id="pricing" className="px-6 pb-32 scroll-mt-24">
+            <SectionHeading eyebrow="Pricing" title="Simple pricing that scales with you" sub="Free for students, forever. Organizations unlock premium analytics, exports and AI reporting." />
+            <div className="max-w-6xl mx-auto">
+              <PricingCards interval={interval} onIntervalChange={setInterval} onSelect={() => router.push('/register')} />
+              <Reveal className="text-center mt-8">
+                <Link href="/pricing" className="text-sm font-semibold text-indigo-300 hover:text-white inline-flex items-center gap-1">Compare all features <ArrowRight className="w-3.5 h-3.5" /></Link>
+              </Reveal>
+            </div>
+          </section>
+
+          {/* ── FAQ ────────────────────────────────────────────── */}
+          <section id="faq" className="px-6 pb-32 scroll-mt-24">
+            <SectionHeading eyebrow="FAQ" title="Questions, answered" />
+            <div className="max-w-3xl mx-auto">
+              {FAQ.map((f, i) => <FaqItem key={f.q} {...f} i={i} />)}
+            </div>
+          </section>
+
+          {/* ── Final CTA ──────────────────────────────────────── */}
+          <section className="px-6 pb-24">
+            <Reveal className="max-w-6xl mx-auto">
+              <div className="relative overflow-hidden rounded-[2.5rem] border border-white/[0.08] px-8 py-20 md:py-24 text-center" style={{ background: 'linear-gradient(135deg, #10123a 0%, #1d1049 50%, #0f0c29 100%)' }}>
+                <motion.div aria-hidden animate={{ rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }} className="absolute -top-1/2 left-1/2 -translate-x-1/2 w-[900px] h-[900px] rounded-full opacity-40" style={{ background: 'conic-gradient(from 0deg, transparent, rgba(99,102,241,0.35), transparent 30%, rgba(217,70,239,0.3), transparent 60%)' }} />
+                <div className="absolute inset-0 bg-[#0a0d13]/40" />
+                <div className="relative">
+                  <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/10 text-indigo-200 text-xs font-bold mb-7">
+                    <Bell className="w-3.5 h-3.5" /> Now onboarding partner organizations
+                  </span>
+                  <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[1.05] max-w-3xl mx-auto">
+                    Build the future of education <span className="bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-pink-300 bg-clip-text text-transparent">with us.</span>
+                  </h2>
+                  <p className="text-zinc-300/80 text-lg mt-6 max-w-xl mx-auto">Start free today. Upgrade when your organization is ready for premium insight.</p>
+                  <div className="mt-10 flex flex-wrap gap-3 justify-center">
+                    <Link href="/register" className="group inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-zinc-900 font-bold text-sm hover:scale-[1.03] active:scale-[0.98] transition-transform">
+                      Create free account <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                    <a href="mailto:myuniverseimpact@gmail.com?subject=UniVerse%20demo%20request" className="inline-flex items-center gap-2 h-14 px-8 rounded-full border border-white/15 text-white font-bold text-sm hover:bg-white/[0.06] transition-colors">
+                      Book a demo
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+          </section>
+        </main>
+
+        <MarketingFooter />
+      </div>
+    </MotionConfig>
   );
 }

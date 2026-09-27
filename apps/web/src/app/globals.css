@@ -771,3 +771,11 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
     scroll-behavior: auto !important;
   }
 }
+
+/* Marketing: gentle floating chips on the landing page */
+@keyframes mkt-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.mkt-float { animation: mkt-float 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mkt-float { animation: none; } }

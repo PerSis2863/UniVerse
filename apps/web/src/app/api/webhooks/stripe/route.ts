@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PrismaClient } from '@prisma/client';
+import { syncSubscription } from '@/lib/billing';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-06-20' as any,
@@ -23,6 +24,34 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error(`Webhook Error: ${err.message}`);
     return NextResponse.json({ error: err.message }, { status: 400 });
+  }
+
+  // Organization subscriptions (see /api/billing/checkout)
+  if (
+    event.type === 'customer.subscription.created' ||
+    event.type === 'customer.subscription.updated' ||
+    event.type === 'customer.subscription.deleted'
+  ) {
+    try {
+      await syncSubscription(event.data.object as Stripe.Subscription);
+    } catch (err) {
+      console.error('Error syncing subscription:', err);
+      return NextResponse.json({ error: 'Failed to sync subscription' }, { status: 500 });
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  if (event.type === 'checkout.session.completed' && (event.data.object as Stripe.Checkout.Session).mode === 'subscription') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (typeof session.subscription === 'string') {
+      try {
+        await syncSubscription(await stripe.subscriptions.retrieve(session.subscription));
+      } catch (err) {
+        console.error('Error syncing subscription from checkout:', err);
+        return NextResponse.json({ error: 'Failed to sync subscription' }, { status: 500 });
+      }
+    }
+    return NextResponse.json({ received: true });
   }
 
   if (event.type === 'checkout.session.completed') {

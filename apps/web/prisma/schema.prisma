@@ -188,9 +188,39 @@ model User {
   // Feature 10: Certificates
   impactCertificates ImpactCertificate[]
 
+  // Billing: the organization (and its subscription) this admin owns
+  ownedOrganization Organization?
+
   @@index([role])
   @@index([status])
   @@map("users")
+}
+
+// ─── BILLING / ORGANIZATION SUBSCRIPTIONS ─────────────────────────────────
+
+enum OrgPlan {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+model Organization {
+  id                   String   @id @default(cuid())
+  name                 String
+  ownerId              String   @unique
+  owner                User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  plan                 OrgPlan  @default(STARTER)
+  // Mirrors Stripe's subscription status: active, trialing, past_due, canceled, incomplete...
+  subscriptionStatus   String?
+  billingInterval      String? // "month" | "year"
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("organizations")
 }
 
 model PushSubscription {

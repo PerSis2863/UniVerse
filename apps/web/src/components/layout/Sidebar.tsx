@@ -7,7 +7,7 @@ import {
   MessageSquare, Bell, Settings, LogOut,
   GraduationCap, Brain, ClipboardList, Calendar as CalendarIcon,
   Info, AlertTriangle, Globe, Folder, Search, Link as LinkIcon, ChevronDown, ChevronRight,
-  Coffee, Shield, Map, Globe2, Layers, Award
+  Coffee, Shield, Map, Globe2, Layers, Award, Crown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -161,6 +161,14 @@ const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/monitoring/rooms', label: 'nav.room_bookings' },
         { href: '/admin/monitoring/associations', label: 'nav.associations' },
         { href: '/admin/timetable', label: 'nav.timetable_management' },
+      ]
+    },
+    {
+      label: 'Premium', icon: Crown,
+      subItems: [
+        { href: '/admin/analytics', label: 'Advanced Analytics' },
+        { href: '/admin/reports', label: 'Reports & Exports' },
+        { href: '/admin/billing', label: 'Billing & Plans' },
       ]
     },
     { href: '/admin/announcements', label: 'nav.announcements', icon: Bell },
