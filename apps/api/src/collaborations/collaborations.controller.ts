@@ -15,7 +15,7 @@ export class CollaborationsController {
 
   @Get('my') getMy(@CurrentUser() user: any) { return this.collaborationsService.getMyCollabs(user.id); }
   @Post() create(@CurrentUser() user: any, @Body() body: any) { return this.collaborationsService.create(user.id, body); }
-  @Patch(':id') update(@Param('id') id: string, @Body() body: any) { return this.collaborationsService.update(id, body); }
+  @Patch(':id') update(@Param('id') id: string, @CurrentUser() user: any, @Body() body: any) { return this.collaborationsService.update(id, user, body); }
 
   // ─── PHASE 3: COLLABORATION PROJECTS (NGO/Student Projects) ──────────────────
 
@@ -30,18 +30,20 @@ export class CollaborationsController {
   }
 
   @Post('projects')
+  @UseGuards(RolesGuard)
+  @Roles('TEACHER', 'ADMIN')
   createProject(@CurrentUser() user: any, @Body() body: any) {
     return this.collaborationsService.createProject(user.id, body);
   }
 
   @Patch('projects/:id')
-  updateProject(@Param('id') id: string, @Body() body: any) {
-    return this.collaborationsService.updateProject(id, body);
+  updateProject(@Param('id') id: string, @CurrentUser() user: any, @Body() body: any) {
+    return this.collaborationsService.updateProject(id, user, body);
   }
 
   @Post('projects/:id/join')
-  joinProject(@CurrentUser() user: any, @Param('id') projectId: string, @Body('role') role: string) {
-    return this.collaborationsService.joinProject(projectId, user.id, role);
+  joinProject(@CurrentUser() user: any, @Param('id') projectId: string) {
+    return this.collaborationsService.joinProject(projectId, user);
   }
 
   @Patch('projects/:id/review')
@@ -52,12 +54,12 @@ export class CollaborationsController {
   }
 
   @Post('projects/:id/milestones')
-  createMilestone(@Param('id') projectId: string, @Body() body: any) {
-    return this.collaborationsService.createMilestone(projectId, body);
+  createMilestone(@Param('id') projectId: string, @CurrentUser() user: any, @Body() body: any) {
+    return this.collaborationsService.createMilestone(projectId, user, body);
   }
 
   @Patch('projects/milestones/:milestoneId')
-  updateMilestone(@Param('milestoneId') milestoneId: string, @Body() body: any) {
-    return this.collaborationsService.updateMilestone(milestoneId, body);
+  updateMilestone(@Param('milestoneId') milestoneId: string, @CurrentUser() user: any, @Body() body: any) {
+    return this.collaborationsService.updateMilestone(milestoneId, user, body);
   }
 }

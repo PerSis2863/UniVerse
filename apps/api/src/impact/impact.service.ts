@@ -145,7 +145,13 @@ export class ImpactService {
   }
 
   async applyToNGOProject(projectId: string, studentId: string, data: any) {
-    return this.prisma.nGOProjectApplication.upsert({ where: { projectId_studentId: { projectId, studentId } }, create: { projectId, studentId, ...data }, update: data });
+    // Only the student's motivation comes from the request; status is decided by reviewers.
+    const motivation = typeof data?.motivation === 'string' ? data.motivation.slice(0, 2000) : undefined;
+    return this.prisma.nGOProjectApplication.upsert({
+      where: { projectId_studentId: { projectId, studentId } },
+      create: { projectId, studentId, motivation },
+      update: { motivation },
+    });
   }
 
   // ── Startups ─────────────────────────────────────────────────────────────
@@ -154,7 +160,9 @@ export class ImpactService {
   }
 
   async applyToStartup(startupId: string, userId: string, data: any) {
-    return this.prisma.startupApplication.upsert({ where: { startupId_userId: { startupId, userId } }, create: { startupId, userId, ...data }, update: data });
+    const role = typeof data?.role === 'string' ? data.role.slice(0, 120) : undefined;
+    const motivation = typeof data?.motivation === 'string' ? data.motivation.slice(0, 2000) : undefined;
+    return this.prisma.startupApplication.upsert({ where: { startupId_userId: { startupId, userId } }, create: { startupId, userId, role, motivation }, update: { role, motivation } });
   }
 
   // ── Summits ──────────────────────────────────────────────────────────────

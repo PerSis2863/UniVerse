@@ -86,8 +86,7 @@ export default function StudentInternships() {
 
   const withdrawApplication = async (id: string) => {
     try {
-      // In a real app we might DELETE, but PATCH status is safer
-      await api.patch(`/internships/applications/${id}`, { status: 'REJECTED' }); // using rejected or withdrawn if it exists
+      await api.patch(`/internships/applications/${id}`, { status: 'WITHDRAWN' });
       toast.success("Application withdrawn");
       fetchInternships();
     } catch (error) {

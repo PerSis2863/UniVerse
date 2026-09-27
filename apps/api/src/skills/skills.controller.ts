@@ -14,5 +14,5 @@ export class SkillsController {
   @Get('my') findMy(@CurrentUser() user: any) { return this.skillsService.findByUser(user.id); }
   @Get('user/:userId') findByUser(@Param('userId') id: string) { return this.skillsService.findByUser(id); }
   @Post() upsert(@CurrentUser() user: any, @Body() body: any) { return this.skillsService.upsert(user.id, body); }
-  @Delete(':id') remove(@Param('id') id: string) { return this.skillsService.remove(id); }
+  @Delete(':id') remove(@Param('id') id: string, @CurrentUser() user: any) { return this.skillsService.remove(id, user.id); }
 }

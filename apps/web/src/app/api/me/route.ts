@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const me = await prisma.user.findUnique({
     where: { id: user.id },
     select: {
-      name: true, email: true, phone: true, role: true, status: true,
+      name: true, email: true, phone: true, role: true, status: true, emergencyContacts: true, createdAt: true,
       studentProfile: { select: { department: true } },
       teacherProfile: { select: { department: true } },
     },
@@ -24,6 +24,8 @@ export async function GET(req: Request) {
       role: me.role,
       status: me.status,
       department: me.studentProfile?.department ?? me.teacherProfile?.department ?? null,
+      emergencyContacts: Array.isArray(me.emergencyContacts) ? me.emergencyContacts : [],
+      memberSince: me.createdAt,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );
@@ -49,5 +51,14 @@ export async function PATCH(req: Request) {
       await prisma.teacherProfile.upsert({ where: { userId: user.id }, update: { department }, create: { userId: user.id, department } });
     }
   }
+  if (Array.isArray(body.emergencyContacts)) {
+    const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+    const contacts = body.emergencyContacts.slice(0, 5).map((c: any) => ({
+      name: str(c?.name, 80), relation: str(c?.relation, 40), phone: str(c?.phone, 30), email: str(c?.email, 120),
+    }));
+    if (contacts.some((c: any) => !c.name || !c.phone)) return NextResponse.json({ error: 'Each contact needs a name and phone number.' }, { status: 400 });
+    await prisma.user.update({ where: { id: user.id }, data: { emergencyContacts: contacts } });
+  }
+
   return NextResponse.json({ ok: true });
 }

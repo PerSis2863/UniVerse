@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, NotFoundException, BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -26,13 +26,15 @@ export class ElectivesService {
   async selectElective(studentId: string, data: any) {
     return this.prisma.electiveRequest.upsert({
       where: { studentId_courseId_semesterId: { studentId, courseId: data.courseId, semesterId: data.semesterId ?? '' } },
-      create: { studentId, ...data },
+      create: { courseId: data.courseId, semesterId: data.semesterId ?? '', note: typeof data.note === 'string' ? data.note.slice(0, 500) : undefined, studentId },
       update: { status: 'PENDING' },
     });
   }
 
-  async withdrawElective(id: string) {
-    return this.prisma.electiveRequest.update({ where: { id }, data: { status: 'WITHDRAWN' } });
+  async withdrawElective(id: string, studentId: string) {
+    const res = await this.prisma.electiveRequest.updateMany({ where: { id, studentId }, data: { status: 'WITHDRAWN' } });
+    if (!res.count) throw new NotFoundException();
+    return { ok: true };
   }
 
   async getMyMajorRequests(studentId: string) {
@@ -40,10 +42,18 @@ export class ElectivesService {
   }
 
   async submitMajorRequest(studentId: string, data: any) {
-    return this.prisma.majorChangeRequest.create({ data: { studentId, ...data } });
+    const str = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : undefined);
+    return this.prisma.majorChangeRequest.create({
+      data: { requestType: str(data.requestType, 40) as any, currentMajor: str(data.currentMajor, 120), requestedProgram: str(data.requestedProgram, 120) as any, reason: str(data.reason, 2000), studentId },
+    });
   }
 
-  async reviewMajorRequest(id: string, reviewedById: string, data: any) {
-    return this.prisma.majorChangeRequest.update({ where: { id }, data: { reviewedById, ...data } });
+  async reviewMajorRequest(id: string, reviewer: { id: string; role: string }, data: any) {
+    if (reviewer.role !== 'ADMIN') throw new ForbiddenException('Only admins can review major change requests.');
+    if (!['APPROVED', 'REJECTED', 'PENDING'].includes(data?.status)) throw new BadRequestException('Invalid status');
+    return this.prisma.majorChangeRequest.update({
+      where: { id },
+      data: { status: data.status, reviewNote: typeof data.reviewNote === 'string' ? data.reviewNote.slice(0, 1000) : undefined, reviewedById: reviewer.id },
+    });
   }
 }

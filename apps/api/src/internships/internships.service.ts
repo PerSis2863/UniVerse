@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { pick } from '../common/pick';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -17,17 +18,33 @@ export class InternshipsService {
     });
   }
 
-  async findOne(id: string) {
-    const item = await this.prisma.internship.findUnique({ where: { id }, include: { company: true, applications: { include: { student: { select: { id: true, name: true, email: true, avatar: true } } } } } });
+  async findOne(id: string, user: { id: string; role: string }) {
+    const item = await this.prisma.internship.findUnique({ where: { id }, include: { company: true } });
     if (!item) throw new NotFoundException();
+    // Applicant details are only visible to admins and whoever posted the internship.
+    if (user.role === 'ADMIN' || item.postedById === user.id) {
+      const applications = await this.prisma.internshipApplication.findMany({
+        where: { internshipId: id },
+        include: { student: { select: { id: true, name: true, email: true, avatar: true } } },
+      });
+      return { ...item, applications };
+    }
     return item;
   }
 
+  private async assertCanManage(internshipId: string, user: { id: string; role: string }) {
+    const item = await this.prisma.internship.findUnique({ where: { id: internshipId }, select: { postedById: true } });
+    if (!item) throw new NotFoundException();
+    if (user.role !== 'ADMIN' && item.postedById !== user.id) throw new ForbiddenException('Only the poster or an admin can do this.');
+  }
+
   async apply(internshipId: string, studentId: string, body: any) {
+    // Applicants can only submit their cover letter and CV; status is set by reviewers.
+    const data = pick(body, ['coverLetter', 'cvUrl'] as const);
     return this.prisma.internshipApplication.upsert({
       where: { internshipId_studentId: { internshipId, studentId } },
-      create: { internshipId, studentId, ...body },
-      update: body,
+      create: { ...data, internshipId, studentId },
+      update: data,
     });
   }
 
@@ -35,8 +52,24 @@ export class InternshipsService {
     return this.prisma.internshipApplication.findMany({ where: { studentId }, include: { internship: { include: { company: true } } } });
   }
 
-  async updateApplication(id: string, data: any) {
-    return this.prisma.internshipApplication.update({ where: { id }, data });
+  async updateApplication(id: string, data: any, user: { id: string; role: string }) {
+    const app = await this.prisma.internshipApplication.findUnique({ where: { id }, select: { internshipId: true, studentId: true } });
+    if (!app) throw new NotFoundException();
+
+    // Applicants can edit their cover letter / CV and withdraw; nothing else.
+    if (app.studentId === user.id && user.role !== 'ADMIN') {
+      if (data?.status !== undefined && data.status !== 'WITHDRAWN') throw new ForbiddenException('You can only withdraw your application.');
+      return this.prisma.internshipApplication.update({
+        where: { id },
+        data: { ...pick(data, ['coverLetter', 'cvUrl'] as const), ...(data?.status === 'WITHDRAWN' ? { status: 'WITHDRAWN' as const } : {}) },
+      });
+    }
+
+    // Reviewers (poster or admin) set the status.
+    await this.assertCanManage(app.internshipId, user);
+    const allowed = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'];
+    if (!allowed.includes(data?.status)) throw new BadRequestException('Invalid status');
+    return this.prisma.internshipApplication.update({ where: { id }, data: { status: data.status } });
   }
 
   private async getOrCreateCompany(companyName: string) {
@@ -52,21 +85,25 @@ export class InternshipsService {
     return company.id;
   }
 
+  private static FIELDS = ['title', 'description', 'type', 'location', 'duration', 'isPaid', 'salary', 'openings', 'deadline', 'startDate', 'isActive'] as const;
+
   async create(userId: string, data: any) {
-    const { company, ...rest } = data;
+    const company = data?.company;
+    const rest = pick(data, InternshipsService.FIELDS);
     const companyId = await this.getOrCreateCompany(company);
     return this.prisma.internship.create({
       data: {
-        ...rest,
-        companyId: companyId,
+        ...(rest as any),
+        companyId: companyId as string,
         postedById: userId,
       }
     });
   }
 
-  async update(id: string, data: any) {
-    const { company, companyId: _cid, ...rest } = data;
-    const updateData: any = { ...rest };
+  async update(id: string, data: any, user: { id: string; role: string }) {
+    await this.assertCanManage(id, user);
+    const company = data?.company;
+    const updateData: any = pick(data, InternshipsService.FIELDS);
     if (company) {
       updateData.companyId = await this.getOrCreateCompany(company);
     }
@@ -76,7 +113,8 @@ export class InternshipsService {
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string, user: { id: string; role: string }) {
+    await this.assertCanManage(id, user);
     return this.prisma.internship.delete({
       where: { id }
     });

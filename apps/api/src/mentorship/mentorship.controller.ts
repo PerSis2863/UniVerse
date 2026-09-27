@@ -13,9 +13,9 @@ export class MentorshipController {
 
   @Get('my') getMy(@CurrentUser() user: any) { return this.mentorshipService.getMyRequests(user.id, user.role); }
   @Post('request') create(@CurrentUser() user: any, @Body() body: any) { return this.mentorshipService.create(user.id, body); }
-  @Patch(':id') update(@Param('id') id: string, @Body() body: any) { return this.mentorshipService.updateStatus(id, body); }
-  @Get(':id/sessions') getSessions(@Param('id') id: string) { return this.mentorshipService.getSessions(id); }
-  @Post(':id/sessions') addSession(@Param('id') id: string, @Body() body: any) { return this.mentorshipService.addSession(id, body); }
+  @Patch(':id') update(@Param('id') id: string, @CurrentUser() user: any, @Body() body: any) { return this.mentorshipService.updateStatus(id, user, body); }
+  @Get(':id/sessions') getSessions(@Param('id') id: string, @CurrentUser() user: any) { return this.mentorshipService.getSessions(id, user); }
+  @Post(':id/sessions') addSession(@Param('id') id: string, @CurrentUser() user: any, @Body() body: any) { return this.mentorshipService.addSession(id, user, body); }
 
   // ─── PHASE 3: INDUSTRY MENTORS ──────────────────────────────────
 
@@ -40,7 +40,7 @@ export class MentorshipController {
   }
 
   @Patch('bookings/:id/status')
-  updateBookingStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.mentorshipService.updateBookingStatus(id, status);
+  updateBookingStatus(@Param('id') id: string, @CurrentUser() user: any, @Body('status') status: string) {
+    return this.mentorshipService.updateBookingStatus(id, user, status);
   }
 }

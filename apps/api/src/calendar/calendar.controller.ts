@@ -13,6 +13,6 @@ export class CalendarController {
 
   @Get('my') getMyEvents(@CurrentUser() user: any) { return this.calendarService.getMyEvents(user.id); }
   @Post() create(@CurrentUser() user: any, @Body() body: any) { return this.calendarService.create(user.id, body); }
-  @Patch(':id') update(@Param('id') id: string, @Body() body: any) { return this.calendarService.update(id, body); }
-  @Delete(':id') remove(@Param('id') id: string) { return this.calendarService.remove(id); }
+  @Patch(':id') update(@Param('id') id: string, @CurrentUser() user: any, @Body() body: any) { return this.calendarService.update(id, user.id, body); }
+  @Delete(':id') remove(@Param('id') id: string, @CurrentUser() user: any) { return this.calendarService.remove(id, user.id); }
 }

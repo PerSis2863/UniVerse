@@ -108,6 +108,7 @@ model User {
 
   emailNotifications Boolean @default(true)
   lastSeenAt         DateTime?
+  emergencyContacts  Json?     // [{ name, relation, phone, email }] (max 5)
 
   // Profiles
   studentProfile StudentProfile?
@@ -529,6 +530,25 @@ model Message {
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@map("messages")
+}
+
+// Admin-managed campus information: services (dining, transport…), useful links and campus events.
+model CampusItem {
+  id          String    @id @default(cuid())
+  kind        String // SERVICE, LINK, EVENT
+  category    String?
+  title       String
+  description String?
+  url         String?
+  location    String?
+  hours       String?
+  startAt     DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([kind])
+  @@map("campus_items")
 }
 
 model MessageReaction {

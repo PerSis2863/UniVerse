@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -7,7 +7,17 @@ export class SkillsService {
 
   async findByUser(userId: string) { return this.prisma.studentSkill.findMany({ where: { userId } }); }
   async upsert(userId: string, data: any) {
-    return this.prisma.studentSkill.upsert({ where: { userId_name: { userId, name: data.name } }, create: { userId, ...data }, update: data });
+    const name = typeof data?.name === 'string' ? data.name.trim().slice(0, 60) : '';
+    if (!name) throw new BadRequestException('Skill name is required');
+    const fields = {
+      category: typeof data.category === 'string' ? data.category.slice(0, 60) : undefined,
+      level: data.level,
+    };
+    return this.prisma.studentSkill.upsert({ where: { userId_name: { userId, name } }, create: { ...fields, name, userId }, update: fields });
   }
-  async remove(id: string) { return this.prisma.studentSkill.delete({ where: { id } }); }
+  async remove(id: string, userId: string) {
+    const res = await this.prisma.studentSkill.deleteMany({ where: { id, userId } });
+    if (!res.count) throw new NotFoundException();
+    return { ok: true };
+  }
 }
