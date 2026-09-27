@@ -58,6 +58,16 @@ export class TokenAuthService {
       // Link an existing account (e.g. created before Google sign-in) by email.
       const byEmail = await this.prisma.user.findUnique({ where: { email: decoded.email } });
       if (byEmail) {
+        // Only link when the sign-in proves ownership of the email, and never take over an
+        // account that is already tied to a different sign-in. Firebase email/password accounts
+        // are not verified by default, so without this anyone could claim an existing account
+        // (including an admin's) just by registering with its email address.
+        if (byEmail.firebaseUid && byEmail.firebaseUid !== firebaseUid) {
+          throw new UnauthorizedException('This email is already linked to a different sign-in method.');
+        }
+        if (!decoded.email_verified) {
+          throw new UnauthorizedException('Please sign in with Google or verify your email address to access this account.');
+        }
         user = await this.prisma.user.update({ where: { email: decoded.email }, data: { firebaseUid } });
       }
     }

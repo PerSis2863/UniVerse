@@ -107,6 +107,7 @@ model User {
   updatedAt DateTime   @updatedAt
 
   emailNotifications Boolean @default(true)
+  lastSeenAt         DateTime?
 
   // Profiles
   studentProfile StudentProfile?
@@ -128,6 +129,7 @@ model User {
 
   // Messaging & Notifications
   sentMessages  Message[]                 @relation("MessageSender")
+  messageReactions MessageReaction[]
   conversations ConversationParticipant[]
   notifications Notification[]
 
@@ -469,9 +471,13 @@ model Announcement {
 }
 
 model Conversation {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  isGroup     Boolean  @default(false)
+  name        String?
+  avatarUrl   String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   participants ConversationParticipant[]
   messages     Message[]
@@ -487,6 +493,8 @@ model ConversationParticipant {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   joinedAt       DateTime     @default(now())
   lastReadAt     DateTime?
+  role           String       @default("MEMBER") // MEMBER, ADMIN (group chats)
+  typingUntil    DateTime?
 
   @@unique([conversationId, userId])
   @@index([conversationId])
@@ -504,9 +512,37 @@ model Message {
   read           Boolean      @default(false)
   createdAt      DateTime     @default(now())
 
+  // Rich messages (messaging hub)
+  type           String       @default("TEXT") // TEXT, IMAGE, FILE, AUDIO, VIDEO, CALL, SYSTEM
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentSize Int?
+  attachmentMime String?
+  metadata       Json?        // e.g. call room + kind
+  replyToId      String?
+  replyTo        Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]    @relation("MessageReplies")
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  reactions      MessageReaction[]
+
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@map("messages")
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@map("message_reactions")
 }
 
 model Notification {

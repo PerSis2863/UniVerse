@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
 import { PushNotificationManager } from '@/components/pwa/PushNotificationManager';
+import { IncomingCall } from '@/components/chat/IncomingCall';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -152,12 +153,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </main>
       </div>
 
-      <AIStudyAssistant />
+      {/* The floating assistant would cover the chat composer on the Messages page */}
+      {!pathname.endsWith('/inbox') && <AIStudyAssistant />}
       <CommandPalette role={user?.role} />
       {user && <MobileTabBar role={user.role} onMore={() => setSidebarOpen((v) => !v)} moreOpen={sidebarOpen} />}
       <OfflineBar />
       <InstallBanner />
       {user && <PushNotificationManager />}
+      {user && <IncomingCall inboxPath={`${tabsForRole(user.role).base}/inbox`} />}
     </div>
   );
 }

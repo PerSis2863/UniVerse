@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "mkdir -p prisma && cp ../api/prisma/schema.prisma prisma/schema.prisma && PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate && next build --webpack",
+    "build": "mkdir -p prisma && cp ../api/prisma/schema.prisma prisma/schema.prisma && PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate && node scripts/db-sync.mjs && next build --webpack",
     "postinstall": "mkdir -p prisma && cp ../api/prisma/schema.prisma prisma/schema.prisma && PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate",
     "start": "next start",
     "lint": "eslint"
