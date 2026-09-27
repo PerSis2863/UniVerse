@@ -6,7 +6,9 @@ import { useState, useRef, useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { useAuthStore } from '@/store/auth';
 import { io, Socket } from 'socket.io-client';
-import { api } from '@/lib/api';
+import { api, API_URL } from '@/lib/api';
+import { toast } from 'sonner';
+import { getAuthToken } from '@/lib/auth-token';
 
 type UserInfo = {
   id: string;
@@ -68,9 +70,13 @@ export default function InboxPage() {
     fetchConversations();
 
     // Setup Socket
-    const socketUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace('/api', '');
+    // Socket.IO lives on the API origin (same host as the REST API, without the /api prefix).
+    const socketUrl = API_URL.replace(/\/api\/?$/, '');
     const newSocket = io(socketUrl, {
-      auth: { token: `Bearer ${accessToken}` },
+      // Called on every (re)connect, so reconnections always use a fresh token.
+      auth: (cb) => {
+        getAuthToken().then((token) => cb({ token: token ? `Bearer ${token}` : '' }));
+      },
     });
 
     newSocket.on('connect', () => {
@@ -174,21 +180,37 @@ export default function InboxPage() {
       [activeConvId!]: [...(prev[activeConvId!] || []), tempMsg]
     }));
 
-    try {
-      if (socket) {
-        socket.emit('send_message', { receiverId: otherUser.id, body: text }, (response: any) => {
-          if (response?.data) {
-            // Replace temp message with real one from DB
-            setMessages(prev => {
-              const list = prev[activeConvId!] || [];
-              const updatedList = list.map(m => m.id === tempId ? response.data : m);
-              return { ...prev, [activeConvId!]: updatedList };
-            });
-          }
-        });
+    const convId = activeConvId!;
+    const replaceTemp = (saved: Message) => {
+      setMessages(prev => {
+        const list = prev[convId] || [];
+        return { ...prev, [convId]: list.map(m => m.id === tempId ? saved : m) };
+      });
+    };
+    const markFailed = () => {
+      setMessages(prev => ({ ...prev, [convId]: (prev[convId] || []).filter(m => m.id !== tempId) }));
+      setCurrentMessage(text);
+      toast.error('Message not sent. Please try again.');
+    };
+    const sendViaRest = async () => {
+      try {
+        const res = await api.post('/messages', { receiverId: otherUser.id, body: text });
+        replaceTemp(res.data);
+      } catch (e) {
+        console.error('Send message failed', e);
+        markFailed();
       }
-    } catch (e) {
-      console.error('Send message failed', e);
+    };
+
+    // Real-time path when connected; otherwise (or on error) fall back to the REST endpoint.
+    if (socket?.connected) {
+      socket.timeout(8000).emit('send_message', { receiverId: otherUser.id, body: text }, (err: Error | null, response: any) => {
+        if (!err && response?.ok && response.data) replaceTemp(response.data);
+        else if (!err && response && response.ok === false) markFailed();
+        else sendViaRest();
+      });
+    } else {
+      await sendViaRest();
     }
   };
 

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { authFetch } from '@/lib/auth-token';
 
 type GroupItem = {
   id: string | number;
@@ -1142,20 +1143,24 @@ export default function GroupsPage() {
           toast.info(`Uploading ${file.name}...`);
           
           try {
-            const uploadRes = await fetch(`/api/upload?filename=${file.name}`, { method: 'POST', body: file });
+            const uploadRes = await authFetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
             let fileUrl = objectUrl; // default to local object URL
             if (uploadRes.ok) {
                const blobData = await uploadRes.json();
                fileUrl = blobData.url || objectUrl;
             }
 
-            const summarizeRes = await fetch('/api/summarize', {
-              method: 'POST',
-              body: JSON.stringify({ fileUrl: fileUrl || 'local-file' })
-            });
+            // Only files that reached storage can be summarized (the server downloads them).
+            const summarizeRes = fileUrl && fileUrl !== objectUrl
+              ? await authFetch('/api/summarize', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ fileUrl })
+                })
+              : null;
             
             let aiSummary = '';
-            if (summarizeRes.ok) {
+            if (summarizeRes?.ok) {
                const summaryData = await summarizeRes.json();
                aiSummary = summaryData.summary;
             }

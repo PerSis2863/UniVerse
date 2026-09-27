@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+
+const MAX_MESSAGE_LENGTH = 5000;
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -53,6 +55,14 @@ export class MessagesService {
   }
 
   async sendMessage(senderId: string, receiverId: string, body: string) {
+    const text = typeof body === 'string' ? body.trim() : '';
+    if (!text) throw new BadRequestException('Message cannot be empty');
+    if (text.length > MAX_MESSAGE_LENGTH) throw new BadRequestException(`Message is too long (max ${MAX_MESSAGE_LENGTH} characters)`);
+    if (!receiverId || typeof receiverId !== 'string') throw new BadRequestException('receiverId is required');
+    if (receiverId === senderId) throw new BadRequestException('You cannot message yourself');
+    const receiver = await this.prisma.user.findUnique({ where: { id: receiverId }, select: { id: true } });
+    if (!receiver) throw new NotFoundException('Recipient not found');
+
     // Check if 1-on-1 conversation already exists
     let conversation = await this.prisma.conversation.findFirst({
       where: {
@@ -86,7 +96,7 @@ export class MessagesService {
       data: {
         conversationId: conversation.id,
         senderId,
-        body,
+        body: text,
       },
       include: {
         sender: {

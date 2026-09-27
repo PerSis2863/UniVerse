@@ -71,6 +71,12 @@ export class ImpactController {
     return this.impactService.sendLegacyCredentialsToReview();
   }
 
+  @Post('blockchain-credentials/anchor/retry')
+  @Roles(Role.ADMIN)
+  anchorOutstanding() {
+    return this.impactService.anchorOutstandingCredentials();
+  }
+
   @Post('blockchain-credentials/:id/approve')
   @Roles(Role.ADMIN)
   approveCredential(@Param('id') id: string, @CurrentUser() user: any) {

@@ -1456,8 +1456,17 @@ model ImpactCertificate {
   revokedAt       DateTime?
   revokedReason   String?
 
+  // Public blockchain anchoring (Polygon): the credential hash is written into a transaction
+  anchorStatus    String?           // PENDING | CONFIRMED | FAILED
+  anchorTxHash    String?
+  anchorChainId   Int?
+  anchorNetwork   String?           // e.g. "Polygon Amoy (testnet)"
+  anchoredAt      DateTime?
+  anchorError     String?
+
   @@index([userId])
   @@index([certificateCode])
   @@index([status])
+  @@index([anchorStatus])
   @@map("impact_certificates")
 }

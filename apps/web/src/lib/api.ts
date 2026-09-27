@@ -1,61 +1,31 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { getAuthToken } from './auth-token';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://universe-xsku.onrender.com/api';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://universe-xsku.onrender.com/api';
 
 export const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Add auth token to every request
+// Attach a fresh token to every request.
 api.interceptors.request.use(async (config) => {
-  if (typeof window !== 'undefined') {
-    const localToken = localStorage.getItem('accessToken');
-    if (localToken && localToken.startsWith('mock-token-')) {
-      config.headers.Authorization = `Bearer ${localToken}`;
-      return config;
-    }
-
-    // Try Firebase first for real users
-    try {
-      const { auth } = await import('./firebase');
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        const token = await currentUser.getIdToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-          return config;
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to get Firebase token', e);
-    }
-    
-    // Fallback to localStorage for demo users
-    if (localToken) config.headers.Authorization = `Bearer ${localToken}`;
-  }
+  const token = await getAuthToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Auto refresh on 401
+// If the API says the token is invalid/expired, force-refresh it once and retry.
 api.interceptors.response.use(
   (r) => r,
-  async (error) => {
-    const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+  async (error: AxiosError) => {
+    const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    if (error.response?.status === 401 && original && !original._retry) {
       original._retry = true;
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        try {
-          const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
-          const { accessToken } = res.data;
-          localStorage.setItem('accessToken', accessToken);
-          original.headers.Authorization = `Bearer ${accessToken}`;
-          return api(original);
-        } catch {
-          localStorage.clear();
-          window.location.href = '/login';
-        }
+      const fresh = await getAuthToken(true);
+      if (fresh && !fresh.startsWith('mock-token-')) {
+        original.headers.Authorization = `Bearer ${fresh}`;
+        return api(original);
       }
     }
     return Promise.reject(error);

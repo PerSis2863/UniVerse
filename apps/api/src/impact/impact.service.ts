@@ -4,6 +4,7 @@ import puppeteer from 'puppeteer';
 import { getCertificateHtml } from './certificate-template';
 import { createHash, randomBytes } from 'crypto';
 import { CredentialSigner, verifyUrlFor } from './credential-signer';
+import { ChainAnchorService } from './chain-anchor.service';
 import { IssueCredentialDto, RequestCredentialDto } from './dto/credential.dto';
 
 // ── Impact level thresholds ──────────────────────────────────────────────────
@@ -39,7 +40,10 @@ function generateBlockchainHash(data: string): string {
 
 @Injectable()
 export class ImpactService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private chain: ChainAnchorService,
+  ) {}
 
   // ── Leaderboard ──────────────────────────────────────────────────────────
   async getLeaderboard() {
@@ -196,6 +200,16 @@ export class ImpactService {
       revokedAt: cert.revokedAt,
       revokedReason: cert.revokedReason,
       verifyUrl: signed ? verifyUrlFor(cert.id) : null,
+      blockchain: signed && cert.anchorStatus
+        ? {
+            status: cert.anchorStatus,
+            network: cert.anchorNetwork,
+            chainId: cert.anchorChainId,
+            txHash: cert.anchorTxHash,
+            explorerUrl: this.chain.explorerUrl(cert.anchorTxHash),
+            anchoredAt: cert.anchoredAt,
+          }
+        : null,
     };
   }
 
@@ -263,6 +277,8 @@ export class ImpactService {
 
   private async finalizeIssue(certId: string, holderId: string, title: string) {
     const signed = await this.signAndStore(certId);
+    // Write the signed hash to the public blockchain in the background (never blocks issuing).
+    void this.chain.anchorCredential(certId);
     await this.awardPoints(holderId, {
       points: 150,
       reason: `Verified credential issued: ${title}`,
@@ -387,11 +403,28 @@ export class ImpactService {
         keyId: cert.signingKeyId,
         payload: check.payload,
       },
+      blockchain: cert.anchorTxHash
+        ? {
+            status: cert.anchorStatus,
+            network: cert.anchorNetwork,
+            chainId: cert.anchorChainId,
+            txHash: cert.anchorTxHash,
+            explorerUrl: this.chain.explorerUrl(cert.anchorTxHash),
+            anchoredAt: cert.anchoredAt,
+            // Independent live check against the chain (not just our database)
+            onChain: await this.chain.verifyOnChain(cert.anchorTxHash, cert.blockchainHash),
+          }
+        : null,
     };
   }
 
   getCredentialPublicKey() {
-    return CredentialSigner.publicKeyInfo();
+    return { ...CredentialSigner.publicKeyInfo(), blockchain: this.chain.publicInfo };
+  }
+
+  /** Admin: (re)anchor issued credentials that are not yet confirmed on-chain. */
+  anchorOutstandingCredentials() {
+    return this.chain.anchorOutstanding();
   }
 
   // ── AI Skill-to-Project Matching ─────────────────────────────────────────

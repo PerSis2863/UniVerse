@@ -1,8 +1,13 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { getSessionUser } from '@/lib/server-auth';
 
 export async function POST(request: Request) {
   try {
+    const user = await getSessionUser(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Please sign in to upload files.' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(request.url);
     const filename = searchParams.get('filename');
@@ -28,8 +33,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Request body is required' }, { status: 400 });
     }
 
-    const blob = await put(filename, request.body, {
+    // Keep files per user and add a random suffix so uploads never overwrite each other.
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120);
+    const blob = await put(`uploads/${user.id}/${safeName}`, request.body, {
       access: 'public',
+      addRandomSuffix: true,
     });
 
     return NextResponse.json(blob);

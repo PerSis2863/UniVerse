@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { CheckCircle, Clock, ExternalLink, Loader2, ShieldCheck, XCircle, History } from 'lucide-react';
+import { CheckCircle, Clock, ExternalLink, Loader2, ShieldCheck, XCircle, History, Link2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { api } from '@/lib/api';
 
@@ -35,6 +35,20 @@ export default function AdminCredentialVerificationPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
   const [legacyBusy, setLegacyBusy] = useState(false);
+  const [anchorBusy, setAnchorBusy] = useState(false);
+
+  const retryAnchoring = async () => {
+    setAnchorBusy(true);
+    try {
+      const res = await api.post('/impact/blockchain-credentials/anchor/retry');
+      if (res.data?.enabled === false) toast.info('Blockchain anchoring is not configured on the server yet.');
+      else toast.success(`${res.data?.queued ?? 0} credential(s) queued for blockchain anchoring`);
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not start anchoring'));
+    } finally {
+      setAnchorBusy(false);
+    }
+  };
 
   const act = async (id: string, action: 'approve' | 'reject') => {
     setBusyId(id);
@@ -84,11 +98,18 @@ export default function AdminCredentialVerificationPage() {
                 Confirm the hours and impact with the partner organization before approving. Approved credentials are signed and publicly verifiable.
               </p>
             </div>
+            <div className="flex flex-wrap gap-2">
+            <button onClick={retryAnchoring} disabled={anchorBusy}
+              title="Record issued credentials that are not yet on the blockchain (or failed) on Polygon."
+              className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50">
+              {anchorBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />} Anchor on blockchain
+            </button>
             <button onClick={sendLegacyToReview} disabled={legacyBusy}
               title="Credentials created before verification existed were never checked. Move them here for review."
               className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50">
               {legacyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <History className="w-4 h-4" />} Review legacy credentials
             </button>
+            </div>
           </div>
 
           {isLoading ? (

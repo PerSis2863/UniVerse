@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Send, Sparkles, User, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAiStore } from '@/store/ai';
+import { authFetch } from '@/lib/auth-token';
 
 type Message = {
   id: string;
@@ -72,7 +73,7 @@ export function AIStudyAssistant() {
     setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: '' }]);
 
     try {
-      const res = await fetch('/api/ai', {
+      const res = await authFetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,7 +82,13 @@ export function AIStudyAssistant() {
         }),
       });
 
-      if (!res.ok || !res.body) throw new Error('API error');
+      if (!res.ok || !res.body) {
+        let msg = "Sorry, I'm having trouble connecting right now. Please try again.";
+        try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* not JSON */ }
+        setIsTyping(false);
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: msg } : m));
+        return;
+      }
 
       setIsTyping(false);
       const reader = res.body.getReader();

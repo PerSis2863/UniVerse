@@ -11,6 +11,12 @@ import { api } from '@/lib/api';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { VerificationStatusModal } from '@/components/auth/VerificationStatusModal';
 
+// Mirrors the API's DEMO_LOGIN_ENABLED: demo buttons appear in development, or in production
+// only when NEXT_PUBLIC_DEMO_LOGIN_ENABLED=true is set on Vercel.
+const SHOW_DEMO_LOGIN =
+  process.env.NEXT_PUBLIC_DEMO_LOGIN_ENABLED === 'true' ||
+  (process.env.NEXT_PUBLIC_DEMO_LOGIN_ENABLED !== 'false' && process.env.NODE_ENV !== 'production');
+
 export default function LoginPage() {
   const router = useRouter();
   const { setUser, setTokens } = useAuthStore();
@@ -247,7 +253,8 @@ export default function LoginPage() {
         )}
       </div>
 
-      {/* Demo Accounts - Moved below login form */}
+      {/* Demo Accounts — only shown where the API accepts demo logins (off on the live site) */}
+      {SHOW_DEMO_LOGIN && (
       <div className="mt-8">
         <h2 className="text-sm font-semibold text-zinc-400 mb-4 text-center">Or test with demo accounts</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -281,6 +288,7 @@ export default function LoginPage() {
           </button>
         </div>
       </div>
+      )}
     </div>
     </>
   );

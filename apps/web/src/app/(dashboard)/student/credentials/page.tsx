@@ -44,6 +44,14 @@ interface Credential {
   revokedAt: string | null;
   revokedReason: string | null;
   verifyUrl: string | null;
+  blockchain?: {
+    status: 'PENDING' | 'CONFIRMED' | 'FAILED';
+    network: string | null;
+    chainId: number | null;
+    txHash: string | null;
+    explorerUrl: string | null;
+    anchoredAt: string | null;
+  } | null;
 }
 
 const STATUS_MAP: Record<CredentialStatus, { label: string; color: string; bg: string; dot: string }> = {
@@ -206,6 +214,9 @@ function CredentialCard({ cred }: { cred: Credential }) {
               {cred.verifiedByName && isVerified && (
                 <div className="text-xs"><span className="text-zinc-500">Verified by </span><span className="text-white font-semibold">{cred.verifiedByName}</span></div>
               )}
+              {cred.blockchain?.status === 'CONFIRMED' && (
+                <div className="text-xs text-emerald-400 font-semibold">⛓ On-chain</div>
+              )}
               {cred.blockchainHash && (
                 <div className="text-xs font-mono text-zinc-600 truncate max-w-[140px]" title={cred.blockchainHash}>
                   <Hash className="w-3 h-3 inline mr-1 text-emerald-600" />{cred.blockchainHash.slice(0, 10)}…
@@ -265,10 +276,22 @@ function CredentialCard({ cred }: { cred: Credential }) {
                 <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">Ed25519 Signature</span><span className="font-mono text-zinc-300 text-[10px] break-all text-right">{cred.signature}</span></div>
                 <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Signing Key ID</span><span className="font-mono text-zinc-300">{cred.signingKeyId}</span></div>
                 <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Format</span><span className="text-zinc-300">W3C Verifiable Credential</span></div>
+                <div className="flex items-start justify-between text-xs gap-4">
+                  <span className="text-zinc-500 flex-shrink-0">Blockchain</span>
+                  {cred.blockchain?.status === 'CONFIRMED' && cred.blockchain.explorerUrl ? (
+                    <a href={cred.blockchain.explorerUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 text-right inline-flex items-center gap-1">
+                      Anchored on {cred.blockchain.network} <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ) : cred.blockchain?.status === 'PENDING' ? (
+                    <span className="text-amber-400 text-right">Being recorded on {cred.blockchain.network}…</span>
+                  ) : (
+                    <span className="text-zinc-500 text-right">Not anchored yet</span>
+                  )}
+                </div>
               </div>
               <div className="mt-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <p className="text-xs text-emerald-400">Signed by UniVerse after admin verification. Any change to this credential breaks the signature, so anyone with the link can check it is genuine.</p>
+                <p className="text-xs text-emerald-400">Signed by UniVerse after admin verification{cred.blockchain?.status === 'CONFIRMED' ? `, and its fingerprint is recorded on ${cred.blockchain.network}` : ''}. Any change to this credential breaks the signature, so anyone with the link can check it is genuine.</p>
               </div>
             </div>
           </motion.div>

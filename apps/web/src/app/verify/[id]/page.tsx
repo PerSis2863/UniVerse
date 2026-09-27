@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Clock, Globe2, Building2, ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Clock, Globe2, Building2, ChevronDown, ChevronUp, Copy, Link2, ExternalLink } from 'lucide-react';
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'https://universe-xsku.onrender.com/api').replace(/\/+$/, '');
 
@@ -27,6 +27,14 @@ interface VerifyResponse {
     revokedReason: string | null;
   };
   proof?: { hash: string; signature: string; alg: string; keyId: string; payload: unknown };
+  blockchain?: {
+    status: 'PENDING' | 'CONFIRMED' | 'FAILED' | null;
+    network: string | null;
+    txHash: string;
+    explorerUrl: string | null;
+    anchoredAt: string | null;
+    onChain: { checked: boolean; matches: boolean; blockNumber?: number; blockTime?: string; reason?: string };
+  } | null;
 }
 
 const RESULT_UI: Record<VerifyResult, { title: string; text: string; icon: typeof ShieldCheck; tone: string }> = {
@@ -127,6 +135,33 @@ export default function VerifyCredentialPage() {
               <div><dt className="text-xs text-zinc-500">Issued</dt><dd className="text-sm font-semibold mt-1" style={{ color: 'var(--text-primary)' }}>{new Date(c.issuedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</dd></div>
             </dl>
             {c.verifiedByName && <p className="text-xs text-zinc-500 mt-4">Verified by {c.verifiedByName} · Certificate {c.certificateCode}</p>}
+          </section>
+        )}
+
+        {data?.blockchain && (data.result === 'VALID' || data.result === 'REVOKED') && (
+          <section className="mt-4 rounded-2xl border p-5" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card-bg)' }}>
+            <div className="flex items-start gap-3">
+              <Link2 className={`w-5 h-5 flex-shrink-0 mt-0.5 ${data.blockchain.onChain.matches ? 'text-emerald-500' : 'text-zinc-400'}`} />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {data.blockchain.onChain.matches
+                    ? `Recorded on ${data.blockchain.network ?? 'the blockchain'}`
+                    : data.blockchain.status === 'PENDING'
+                      ? `Being recorded on ${data.blockchain.network ?? 'the blockchain'}`
+                      : `Blockchain record: ${data.blockchain.onChain.reason ?? 'could not be checked right now'}`}
+                </p>
+                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                  {data.blockchain.onChain.matches
+                    ? `This credential's fingerprint was written to a public blockchain${data.blockchain.onChain.blockTime ? ` on ${new Date(data.blockchain.onChain.blockTime).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` : ''}, and we just re-checked it on-chain. The record can't be edited or deleted — not even by UniVerse.`
+                    : 'The signature check above does not depend on this record.'}
+                </p>
+                {data.blockchain.explorerUrl && (
+                  <a href={data.blockchain.explorerUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 break-all">
+                    View transaction <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                  </a>
+                )}
+              </div>
+            </div>
           </section>
         )}
 
