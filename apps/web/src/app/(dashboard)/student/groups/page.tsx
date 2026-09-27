@@ -5,7 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import { authFetch } from '@/lib/auth-token';
+import useSWR from 'swr';
+import { formatDistanceToNowStrict } from 'date-fns';
+import { authedJson } from '@/lib/authed-fetch';
+import { GroupChat } from '@/components/groups/GroupChat';
+import { GroupDetailBody } from '@/components/groups/GroupDetailBody';
 
 type GroupItem = {
   id: string | number;
@@ -23,20 +27,39 @@ type GroupItem = {
   isJoined?: boolean;
 };
 
-const INITIAL_GROUPS: GroupItem[] = [
-  { id: 1, name: 'OS Study Group', type: 'Study', members: 12, latestActivity: 'Alex shared Chapter_4_Notes.pdf', time: '10m ago', unread: 3, color: 'from-blue-500 to-indigo-600', initials: 'OS', completion: 68, avatars: ['AK','BL','CR','DM'], isMeetingActive: false },
-  { id: 2, name: 'Web App Hackathon', type: 'Project', members: 4, latestActivity: 'Sarah pushed to main branch', time: '1h ago', unread: 0, color: 'from-fuchsia-500 to-pink-600', initials: 'WH', completion: 42, avatars: ['SK','JP','RM','TN'], isMeetingActive: true },
-  { id: 3, name: 'Clean Water Initiative', type: 'Impact', members: 28, latestActivity: 'Dr. Evans: Meeting at 5PM today', time: '2h ago', unread: 12, color: 'from-emerald-500 to-teal-600', initials: 'CW', completion: 81, avatars: ['DE','LF','GM','HO'], isMeetingActive: false },
-  { id: 4, name: 'AI Research Collective', type: 'Research', members: 9, latestActivity: 'New paper shared: LLM Reasoning', time: '4h ago', unread: 2, color: 'from-amber-500 to-orange-600', initials: 'AI', completion: 55, avatars: ['PA','QB','RC','SD'], isMeetingActive: false },
-];
+type ActivityItem = {
+  id: string;
+  body: string;
+  imageUrl: string | null;
+  createdAt: string;
+  author: { id: string; name: string };
+  group: { id: string; name: string; category: string | null };
+};
 
-const feed = [
-  { id: 1, user: 'Alex Chen', initials: 'AC', group: 'OS Study Group', groupColor: 'text-blue-400', action: 'shared a file', item: 'Chapter_4_Notes.pdf', itemType: 'file', time: '10 mins ago', color: 'bg-blue-500/10 text-blue-500' },
-  { id: 2, user: 'Sarah Kim', initials: 'SK', group: 'Web App Hackathon', groupColor: 'text-fuchsia-400', action: 'commented', item: '"We should use Next.js for this."', itemType: 'comment', time: '1 hour ago', color: 'bg-fuchsia-500/10 text-fuchsia-500' },
-  { id: 3, user: 'Dr. Evans', initials: 'DE', group: 'Clean Water Initiative', groupColor: 'text-emerald-400', action: 'scheduled an event', item: 'Weekly Sync — Monday 5:00 PM', itemType: 'event', time: '2 hours ago', color: 'bg-emerald-500/10 text-emerald-500' },
-  { id: 4, user: 'Prof. Rao', initials: 'PR', group: 'AI Research Collective', groupColor: 'text-amber-400', action: 'shared a research paper', item: 'LLM Reasoning at Scale — Arxiv 2026', itemType: 'research', time: '4 hours ago', color: 'bg-amber-500/10 text-amber-500' },
-  { id: 5, user: 'Rahul Kumar', initials: 'RK', group: 'OS Study Group', groupColor: 'text-blue-400', action: 'posted a quiz result', item: 'Memory Management Quiz — 91%', itemType: 'quiz', time: 'Yesterday', color: 'bg-indigo-500/10 text-indigo-500' },
-];
+function ActivityRow({ item, onOpen, delay = 0 }: { item: ActivityItem; onOpen: () => void; delay?: number }) {
+  const preview = item.imageUrl ? '📷 Photo' : item.body.startsWith('📎 ') ? '📎 File' : item.body;
+  return (
+    <motion.button
+      initial={{ opacity: 0, x: 10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay }}
+      onClick={onOpen}
+      className="w-full text-left flex gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors"
+    >
+      <div className="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
+        {item.author.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <span className="text-xs font-semibold text-zinc-900 dark:text-white truncate">{item.author.name}</span>
+          <span className="text-[10px] text-zinc-400 whitespace-nowrap">{formatDistanceToNowStrict(new Date(item.createdAt), { addSuffix: true })}</span>
+        </div>
+        <p className="text-[11px] text-zinc-500 mb-1">in <span className="font-semibold text-indigo-500">{item.group.name}</span></p>
+        <p className="text-xs text-zinc-700 dark:text-zinc-300 truncate">{preview}</p>
+      </div>
+    </motion.button>
+  );
+}
 
 const typeColors: Record<string, string> = {
   Study: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
@@ -52,14 +75,11 @@ const gradientColors: Record<string, string> = {
   Research: 'from-amber-500 to-orange-600',
 };
 
-const itemIcons: Record<string, any> = {
-  file: FileText, comment: MessageSquare, event: Calendar, research: BookOpen, quiz: Star
-};
 
 const TABS = ['All', 'Study', 'Project', 'Impact', 'Research'];
 
 export default function GroupsPage() {
-  const [groupsList, setGroupsList] = useState<any[]>(INITIAL_GROUPS);
+  const [groupsList, setGroupsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
@@ -72,7 +92,7 @@ export default function GroupsPage() {
   
   const [inviteInput, setInviteInput] = useState('');
   const [inviteMembers, setInviteMembers] = useState<string[]>([]);
-  const [generatedLink, setGeneratedLink] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -99,14 +119,15 @@ export default function GroupsPage() {
           isMeetingActive: false,
           isJoined: myGroupIds.has(g.id)
         }));
-        if (formatted.length > 0) {
-          setGroupsList(formatted);
-        } else {
-          setGroupsList(INITIAL_GROUPS);
-        }
+        setGroupsList(formatted);
+        // Open a group shared via link (?group=<id>)
+        const linked = new URLSearchParams(window.location.search).get('group');
+        const target = linked ? formatted.find((g: any) => g.id === linked) : null;
+        if (target) setSelectedGroup(target);
       } catch (error) {
         console.error('Failed to fetch groups', error);
-        setGroupsList(INITIAL_GROUPS);
+        setGroupsList([]);
+        toast.error('Could not load groups. Please try again shortly.');
       } finally {
         setIsLoading(false);
       }
@@ -115,118 +136,16 @@ export default function GroupsPage() {
   }, []);
 
   
-  // New Modals State
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{ id: number | string, user: string, initials: string, text: string, time: string, isFile?: boolean, fileName?: string, isEdited?: boolean }>>([
-    { id: 1, user: 'Alex Chen', initials: 'AC', text: 'Hey guys, I uploaded the notes for Chapter 4.', time: '10:00 AM' },
-    { id: 2, user: 'Sarah Kim', initials: 'SK', text: 'Thanks! I will review them tonight.', time: '10:05 AM' }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [editingMessageId, setEditingMessageId] = useState<number | string | null>(null);
-  const [editingMessageText, setEditingMessageText] = useState('');
-  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
-  
-  const [showMeeting, setShowMeeting] = useState(false);
-  const [showMeetingChat, setShowMeetingChat] = useState(false); // In-meeting chat panel
-  const [showAllMembers, setShowAllMembers] = useState(false);
-  const [showFilePreview, setShowFilePreview] = useState<{name: string, ext: string, aiSummary?: string, fileUrl?: string, fileSize?: number} | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const { data: activityData } = useSWR<ActivityItem[]>('/api/groups/activity?limit=30', authedJson, { refreshInterval: 30_000 });
+  const activity = Array.isArray(activityData) ? activityData : [];
 
-  const handleInsertMockAttachment = (type: string) => {
-    setShowAttachmentMenu(false);
-    let text = '';
-    let isFile = false;
-    let fileName = '';
-    
-    if (type === 'Poll') {
-      text = '📊 Poll: When should we schedule our next meeting?';
-    } else if (type === 'Contact') {
-      text = '👤 Contact Shared: Prof. Rao';
-    } else if (type === 'AI Images') {
-      text = '✨ Generated AI Image';
-      isFile = true;
-      fileName = 'ai_generated_concept.png';
-    }
-    
-    const newId = Date.now();
-    setChatMessages(prev => [...prev, { id: newId, user: 'You', initials: 'ME', text, isFile, fileName, time: 'Just now' }]);
-    toast.success(`${type} added to chat`);
+  const openMeeting = (group: GroupItem) => {
+    // Free, real video call for the group (Jitsi Meet), opened in a new tab.
+    const room = `UniVerse-${String(group.name).replace(/[^A-Za-z0-9]/g, '')}-${String(group.id).slice(-8)}`;
+    window.open(`https://meet.jit.si/${room}`, '_blank', 'noopener,noreferrer');
   };
-  const [isMicOn, setIsMicOn] = useState(true);
-  const [isCamOn, setIsCamOn] = useState(false);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    let isSubscribed = true;
-
-    async function getMedia() {
-      if (!showMeeting) return;
-      if (!isCamOn && !isMicOn) {
-        setLocalStream(null);
-        return;
-      }
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: isCamOn, audio: isMicOn });
-        if (isSubscribed) {
-          setLocalStream(stream);
-        } else {
-          stream.getTracks().forEach(track => track.stop());
-        }
-      } catch (err: any) {
-        console.error("Media access error:", err);
-        
-        let errorMessage = "Could not access camera or mic. Please check browser permissions.";
-        if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          errorMessage = "No camera or microphone found on your device.";
-        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          errorMessage = "Permission denied. (Check macOS System Settings > Privacy & Security if using a Mac!)";
-        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-          errorMessage = "Camera or mic is already in use by another application.";
-        }
-        
-        if (isSubscribed) {
-          toast.error(`${errorMessage} (${err.name || 'Unknown Error'})`);
-          // Auto-toggle off to prevent infinite loops or locked UI state
-          if (isCamOn) setIsCamOn(false);
-          if (isMicOn) setIsMicOn(false);
-        }
-      }
-    }
-
-    getMedia();
-
-    return () => {
-      isSubscribed = false;
-      setLocalStream(prevStream => {
-        if (prevStream) {
-          prevStream.getTracks().forEach(track => track.stop());
-        }
-        return null;
-      });
-    };
-  }, [showMeeting, isCamOn, isMicOn]);
-
-  // Bind the stream to the video element whenever it changes or the video mounts
-  useEffect(() => {
-    if (videoRef.current && localStream) {
-      videoRef.current.srcObject = localStream;
-      videoRef.current.play().catch(e => console.error("Video play failed:", e));
-    }
-  }, [localStream, showMeeting, isCamOn]);
-
-  // Toggle mic track when isMicOn changes
-  useEffect(() => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach(track => {
-        track.enabled = isMicOn;
-      });
-    }
-  }, [isMicOn, localStream]);
-
 
   const filtered = groupsList.filter(g =>
     (filter === 'All' || g.type === filter) &&
@@ -308,9 +227,20 @@ export default function GroupsPage() {
                             <button onClick={() => { setInviteGroup(group); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2">
                                <Users className="w-4 h-4" /> Add people
                             </button>
-                            <button onClick={() => { setGroupsList(groupsList.filter(g => g.id !== group.id)); setActiveMenuId(null); toast.success("Group deleted"); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
-                               <Trash2 className="w-4 h-4" /> Delete group
+                            {group.isJoined && (
+                            <button onClick={async () => {
+                              setActiveMenuId(null);
+                              try {
+                                await api.delete(`/groups/${group.id}/leave`);
+                                setGroupsList(groupsList.map(g => g.id === group.id ? { ...g, isJoined: false, members: Math.max(0, g.members - 1) } : g));
+                                toast.success(`You left ${group.name}`);
+                              } catch {
+                                toast.error('Could not leave the group. Please try again.');
+                              }
+                            }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                               <Trash2 className="w-4 h-4" /> Leave group
                             </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -360,44 +290,21 @@ export default function GroupsPage() {
                 <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 text-sm">
                   <MessageSquare className="w-4 h-4 text-indigo-500" /> Activity Feed
                 </h3>
-                <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors" onClick={() => toast.info('Filter activity feed')}>
+                <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors" onClick={() => setShowAllActivity(true)}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="space-y-3">
-                {feed.map((item, i) => {
-                  const Icon = itemIcons[item.itemType] || FileText;
-                  return (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.08 }}
-                      className="flex gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer group"
-                      onClick={() => toast.info(`${item.user}: ${item.action} in ${item.group}`)}
-                    >
-                      {/* Avatar */}
-                      <div className={`w-8 h-8 rounded-full ${item.color} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
-                        {item.initials}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-0.5">
-                          <span className="text-xs font-semibold text-zinc-900 dark:text-white">{item.user}</span>
-                          <span className="text-[10px] text-zinc-400 whitespace-nowrap">{item.time}</span>
-                        </div>
-                        <p className="text-[11px] text-zinc-500 mb-1.5">
-                          {item.action} in <span className={`font-semibold ${item.groupColor}`}>{item.group}</span>
-                        </p>
-                        <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.04] rounded-lg px-2 py-1.5">
-                          <Icon className={`w-3 h-3 ${item.color.split(' ')[1]} flex-shrink-0`} />
-                          <span className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium truncate">{item.item}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                {activity.length === 0 && (
+                  <p className="text-xs text-zinc-500 py-4 text-center">No recent messages in your groups yet.</p>
+                )}
+                {activity.slice(0, 6).map((item, i) => (
+                  <ActivityRow key={item.id} item={item} delay={i * 0.06} onOpen={() => {
+                    const g = groupsList.find((x) => x.id === item.group.id);
+                    if (g) { setSelectedGroup(g); setShowChat(true); }
+                  }} />
+                ))}
               </div>
 
               <button className="w-full mt-4 text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center justify-center gap-1 py-2" onClick={() => setShowAllActivity(true)}>
@@ -428,8 +335,19 @@ export default function GroupsPage() {
                       <button onClick={() => { setInviteGroup(selectedGroup); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2">
                          <Users className="w-4 h-4" /> Add people
                       </button>
-                      <button onClick={() => { setGroupsList(groupsList.filter(g => g.id !== selectedGroup.id)); setSelectedGroup(null); setActiveMenuId(null); toast.success("Group deleted"); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
-                         <Trash2 className="w-4 h-4" /> Delete group
+                      <button onClick={async () => {
+                        setActiveMenuId(null);
+                        try {
+                          await api.delete(`/groups/${selectedGroup.id}/leave`);
+                          const updated = { ...selectedGroup, isJoined: false, members: Math.max(0, selectedGroup.members - 1) };
+                          setGroupsList(groupsList.map(g => g.id === selectedGroup.id ? updated : g));
+                          setSelectedGroup(null);
+                          toast.success(`You left ${selectedGroup.name}`);
+                        } catch {
+                          toast.error('Could not leave the group. Please try again.');
+                        }
+                      }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                         <Trash2 className="w-4 h-4" /> Leave group
                       </button>
                     </div>
                   )}
@@ -466,53 +384,20 @@ export default function GroupsPage() {
                       <button className="flex-1 btn-primary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => setShowChat(true)}>
                         <MessageSquare className="w-4 h-4 mr-1" /> Chat
                       </button>
-                      <button className="flex-1 btn-secondary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => {
-                        fileInputRef.current?.click();
-                      }}>
+                      <button className="flex-1 btn-secondary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => setShowChat(true)}>
                         <Upload className="w-4 h-4 mr-1" /> Files
                       </button>
                       <button 
                         className={`flex-1 py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap ${selectedGroup.isMeetingActive ? 'bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/30' : 'btn-secondary'}`} 
-                        onClick={() => setShowMeeting(true)}
+                        onClick={() => openMeeting(selectedGroup)}
                       >
-                        <Video className="w-4 h-4 mr-1" /> {selectedGroup.isMeetingActive ? 'Join Meeting' : 'Meet'}
+                        <Video className="w-4 h-4 mr-1" /> Meet
                       </button>
                     </>
                   )}
                 </div>
 
-                <div>
-                  <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Members ({selectedGroup.members})</h4>
-                  <div className="space-y-2">
-                    {selectedGroup.avatars.map((a, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-xs text-white font-bold">{a}</div>
-                        <div>
-                          <div className="text-sm font-medium text-zinc-900 dark:text-white">Member {a}</div>
-                          <div className="text-xs text-zinc-400">{i === 0 ? 'Admin' : 'Member'}</div>
-                        </div>
-                      </div>
-                    ))}
-                    {selectedGroup.members > 4 && (
-                      <button className="text-xs text-indigo-500 pl-2 hover:underline" onClick={() => setShowAllMembers(true)}>
-                        +{selectedGroup.members - 4} more members
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-
-
-                <div>
-                  <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Shared Resources</h4>
-                  {['Study_Guide_Week3.pdf', 'Project_Architecture.fig', 'Research_Notes.docx'].map((f, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700" onClick={() => setShowFilePreview({ name: f, ext: f.split('.').pop() || '' })}>
-                      <FileText className="w-4 h-4 text-indigo-400" />
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300 flex-1">{f}</span>
-                      <ChevronRight className="w-4 h-4 text-zinc-400" />
-                    </div>
-                  ))}
-                </div>
+                <GroupDetailBody groupId={selectedGroup.id} />
               </div>
             </motion.div>
           </>
@@ -584,75 +469,47 @@ export default function GroupsPage() {
                   )}
                 </div>
 
-                <div>
-                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Share Link</label>
-                   {generatedLink ? (
-                      <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2">
-                        <span className="text-xs font-mono text-green-700 dark:text-green-300 flex-1 truncate">{generatedLink}</span>
-                        <button onClick={() => { navigator.clipboard.writeText(generatedLink); toast.success("Link copied!"); }} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium text-sm px-2">Copy</button>
-                      </div>
-                   ) : (
-                      <button onClick={() => setGeneratedLink(`${window.location.origin}/join/${Math.random().toString(36).substring(7)}`)} className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
-                        Generate Invite Link
-                      </button>
-                   )}
-                </div>
               </div>
               <div className="flex gap-2 mt-6">
-                <button onClick={() => { setShowNewGroup(false); setInviteMembers([]); setGeneratedLink(''); setInviteInput(''); setNewGroupName(''); }} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                <button onClick={() => {
-                  if (!newGroupName.trim()) return toast.error("Group name is required");
-                  
-                  // Optimistic: add group to UI immediately
-                  const optimisticId = `local_${Date.now()}`;
-                  const newGroup = {
-                    id: optimisticId,
-                    name: newGroupName.trim(),
-                    type: newGroupType,
-                    members: 1,
-                    latestActivity: 'Group created just now',
-                    time: 'Just now',
-                    unread: 0,
-                    color: gradientColors[newGroupType] || 'from-indigo-500 to-purple-600',
-                    initials: newGroupName.trim().substring(0, 2).toUpperCase(),
-                    completion: 0,
-                    avatars: ['ME'],
-                    isMeetingActive: false,
-                    isJoined: true,
-                  };
-                  
-                  setGroupsList(prev => [newGroup, ...prev]);
-                  setShowNewGroup(false);
-                  toast.success(`"${newGroupName.trim()}" created! 🎉`);
-                  
-                  const savedName = newGroupName.trim();
-                  const savedType = newGroupType;
-                  const savedInviteMembers = [...inviteMembers];
-                  
-                  // Reset form
-                  setNewGroupName('');
-                  setInviteMembers([]);
-                  setGeneratedLink('');
-                  setInviteInput('');
-                  
-                  // Try API in background (won't break UI if it fails)
-                  api.post('/groups', { name: savedName, type: savedType, isPublic: true })
-                    .then(async (res) => {
-                      const g = res.data;
-                      // Update the optimistic group with real server ID
-                      setGroupsList(prev => prev.map(grp =>
-                        grp.id === optimisticId ? { ...grp, id: g.id } : grp
-                      ));
-                      if (savedInviteMembers.length > 0) {
-                        api.post(`/groups/${g.id}/invite`, { emails: savedInviteMembers })
-                          .then(() => toast.success(`Invited ${savedInviteMembers.length} members.`))
-                          .catch(() => {});
-                      }
-                    })
-                    .catch(() => {
-                      // Silently ignore — the group is already visible in UI
-                    });
-                }} className="flex-1 btn-primary py-2.5 text-sm">Create Group</button>
+                <button onClick={() => { setShowNewGroup(false); setInviteMembers([]); setInviteInput(''); setNewGroupName(''); }} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
+                <button disabled={creating} onClick={async () => {
+                  const name = newGroupName.trim();
+                  if (!name) return toast.error('Group name is required');
+                  setCreating(true);
+                  try {
+                    const { data: g } = await api.post('/groups', { name, category: newGroupType, isPublic: true });
+                    const newGroup = {
+                      id: g.id,
+                      name,
+                      type: newGroupType,
+                      members: 1,
+                      latestActivity: 'Group created',
+                      time: 'Just now',
+                      unread: 0,
+                      color: gradientColors[newGroupType] || 'from-indigo-500 to-purple-600',
+                      initials: name.substring(0, 2).toUpperCase(),
+                      completion: 0,
+                      avatars: [],
+                      isMeetingActive: false,
+                      isJoined: true,
+                    };
+                    setGroupsList(prev => [newGroup, ...prev]);
+                    if (inviteMembers.length > 0) {
+                      api.post(`/groups/${g.id}/invite`, { emails: inviteMembers })
+                        .then(() => toast.success(`Invited ${inviteMembers.length} member${inviteMembers.length === 1 ? '' : 's'}.`))
+                        .catch(() => toast.error('Group created, but the invites could not be sent.'));
+                    }
+                    toast.success(`"${name}" created`);
+                    setShowNewGroup(false);
+                    setNewGroupName('');
+                    setInviteMembers([]);
+                    setInviteInput('');
+                  } catch {
+                    toast.error('Could not create the group. Please try again.');
+                  } finally {
+                    setCreating(false);
+                  }
+                }} className="flex-1 btn-primary py-2.5 text-sm disabled:opacity-60">{creating ? 'Creating…' : 'Create Group'}</button>
               </div>
             </motion.div>
           </motion.div>
@@ -665,7 +522,7 @@ export default function GroupsPage() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-md shadow-2xl p-6 relative">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Invite to {inviteGroup.name}</h3>
-                <button onClick={() => { setInviteGroup(null); setGeneratedLink(''); setInviteInput(''); setInviteMembers([]); }} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-4 h-4" /></button>
+                <button onClick={() => { setInviteGroup(null); setInviteInput(''); setInviteMembers([]); }} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-4 h-4" /></button>
               </div>
               <div className="space-y-4">
                 <div>
@@ -711,16 +568,12 @@ export default function GroupsPage() {
 
                 <div>
                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Share Link</label>
-                   {generatedLink ? (
-                      <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2">
-                        <span className="text-xs font-mono text-green-700 dark:text-green-300 flex-1 truncate">{generatedLink}</span>
-                        <button onClick={() => { navigator.clipboard.writeText(generatedLink); toast.success("Link copied!"); }} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium text-sm px-2">Copy</button>
-                      </div>
-                   ) : (
-                      <button onClick={() => setGeneratedLink(`${window.location.origin}/join/${Math.random().toString(36).substring(7)}`)} className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
-                        Generate Invite Link
-                      </button>
-                   )}
+                   <button
+                     onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/student/groups?group=${inviteGroup.id}`); toast.success('Group link copied'); }}
+                     className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
+                   >
+                     Copy link to this group
+                   </button>
                 </div>
               </div>
               <div className="flex gap-2 mt-6">
@@ -735,7 +588,7 @@ export default function GroupsPage() {
                   }
                   setInviteGroup(null); 
                   setInviteMembers([]);
-                  setGeneratedLink('');
+                 
                   setInviteInput('');
                 }} className="flex-1 btn-primary py-2.5 text-sm">Done</button>
               </div>
@@ -753,429 +606,24 @@ export default function GroupsPage() {
                 <button onClick={() => setShowAllActivity(false)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
-                {[...feed, ...feed, ...feed].map((item, i) => {
-                  const Icon = itemIcons[item.itemType] || FileText;
-                  return (
-                    <div key={i} className="flex gap-4 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors group">
-                      <div className={`w-10 h-10 rounded-full ${item.color} flex items-center justify-center text-sm font-bold flex-shrink-0`}>{item.initials}</div>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <div className="flex justify-between items-start mb-1">
-                          <p className="text-sm text-zinc-900 dark:text-zinc-100">
-                            <span className="font-semibold">{item.user}</span> {item.action} in <span className={`font-semibold ${item.groupColor}`}>{item.group}</span>
-                          </p>
-                          <span className="text-xs text-zinc-400 whitespace-nowrap ml-4">{item.time}</span>
-                        </div>
-                        <div className="inline-flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 mt-1">
-                          <Icon className={`w-4 h-4 ${item.color.split(' ')[1]}`} />
-                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{item.item}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {activity.length === 0 && <p className="text-sm text-zinc-500 text-center py-8">No recent messages in your groups yet.</p>}
+                {activity.map((item) => (
+                  <ActivityRow key={item.id} item={item} onOpen={() => {
+                    const g = groupsList.find((x) => x.id === item.group.id);
+                    if (g) { setShowAllActivity(false); setSelectedGroup(g); setShowChat(true); }
+                  }} />
+                ))}
               </div>
             </motion.div>
           </motion.div>
         )}
 
-        {/* Group Chat Modal */}
-        {showChat && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.target === e.currentTarget && setShowChat(false)}>
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col h-[70vh]">
-              <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/20 rounded-t-2xl">
-                <div>
-                  <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Hash className="w-4 h-4 text-indigo-500" /> {selectedGroup?.name || 'Group Chat'}</h3>
-                  <p className="text-xs text-zinc-500">{selectedGroup?.members || 0} members</p>
-                </div>
-                <button onClick={() => setShowChat(false)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50/50 dark:bg-zinc-900/50">
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex gap-3 ${msg.user === 'You' ? 'flex-row-reverse' : ''} group/message`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${msg.user === 'You' ? 'bg-indigo-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'}`}>{msg.initials}</div>
-                    <div className={`max-w-[75%] ${msg.user === 'You' ? 'items-end' : 'items-start'} flex flex-col`}>
-                      <div className="flex items-baseline gap-2 mb-1 px-1">
-                        <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{msg.user}</span>
-                        <span className="text-[10px] text-zinc-400">{msg.time} {msg.isEdited && '(edited)'}</span>
-                      </div>
-                      <div className={`flex items-center gap-2 ${msg.user === 'You' ? 'flex-row-reverse' : ''}`}>
-                        <div className="opacity-0 group-hover/message:opacity-100 flex items-center gap-1 transition-opacity">
-                          <button onClick={() => { setEditingMessageId(msg.id); setEditingMessageText(msg.text); }} className="p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded">
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                          <button onClick={() => {
-                            // Optimistic delete
-                            setChatMessages(prev => prev.filter(m => m.id !== msg.id));
-                            fetch(`/api/groups/messages?id=${msg.id}`, { method: 'DELETE' }).catch(e => console.error("Failed to delete", e));
-                          }} className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded">
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                        <div className={`p-3 rounded-2xl text-sm ${msg.user === 'You' ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
-                          {msg.isFile ? (
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => setShowFilePreview({ name: msg.fileName || '', ext: msg.fileName?.split('.').pop() || '', aiSummary: (msg as any).aiSummary })}>
-                                <FileText className="w-5 h-5" />
-                                <span className="underline font-medium">{msg.fileName}</span>
-                              </div>
-                              {msg.text && msg.text.includes('Uploading') && (
-                                <span className="text-xs text-indigo-200 mt-1 animate-pulse">Generating AI Summary...</span>
-                              )}
-                            </div>
-                          ) : (
-                            msg.text
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-b-2xl">
-                {editingMessageId && (
-                  <div className="flex justify-between items-center mb-2 px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs text-zinc-600 dark:text-zinc-300">
-                    <span>Editing message</span>
-                    <button onClick={() => { setEditingMessageId(null); setEditingMessageText(''); setChatInput(''); }} className="hover:text-zinc-900 dark:hover:text-white"><X className="w-3 h-3" /></button>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 sm:gap-2 relative">
-                  <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors bg-zinc-100 dark:bg-zinc-800 rounded-full shrink-0" title="Attachments" onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}>
-                    <Plus className="w-5 h-5" />
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showAttachmentMenu && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute bottom-full left-0 mb-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-2xl p-2 flex flex-col gap-1 w-48 z-50 origin-bottom-left"
-                      >
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); imageInputRef.current?.click(); }}>
-                          <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                            <ImageIcon className="w-4 h-4 text-blue-500" />
-                          </div>
-                          Photos & Video
-                        </button>
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => { setShowAttachmentMenu(false); fileInputRef.current?.click(); }}>
-                          <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
-                            <Paperclip className="w-4 h-4 text-indigo-500" />
-                          </div>
-                          Document
-                        </button>
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => handleInsertMockAttachment('Poll')}>
-                          <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                            <BarChart2 className="w-4 h-4 text-emerald-500" />
-                          </div>
-                          Poll
-                        </button>
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => handleInsertMockAttachment('Contact')}>
-                          <div className="w-8 h-8 rounded-full bg-fuchsia-500/10 flex items-center justify-center shrink-0">
-                            <Contact className="w-4 h-4 text-fuchsia-500" />
-                          </div>
-                          Contact
-                        </button>
-                        <button className="flex items-center gap-3 p-2.5 text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium" onClick={() => handleInsertMockAttachment('AI Images')}>
-                          <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                            <Sparkles className="w-4 h-4 text-amber-500" />
-                          </div>
-                          AI Images
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  <input 
-                    value={editingMessageId ? editingMessageText : chatInput} 
-                    onChange={e => editingMessageId ? setEditingMessageText(e.target.value) : setChatInput(e.target.value)} 
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        if (editingMessageId && editingMessageText.trim()) {
-                          // Optimistic edit
-                          setChatMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, text: editingMessageText, isEdited: true } : m));
-                          fetch('/api/groups/messages', {
-                            method: 'PATCH',
-                            body: JSON.stringify({ messageId: editingMessageId, content: editingMessageText })
-                          }).catch(err => console.error("Failed to edit", err));
-                          setEditingMessageId(null);
-                          setEditingMessageText('');
-                        } else if (!editingMessageId && chatInput.trim()) {
-                          const newId = Date.now();
-                          setChatMessages([...chatMessages, { id: newId, user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
-                          fetch('/api/groups/messages', {
-                            method: 'POST',
-                            body: JSON.stringify({ content: chatInput, senderId: 'mock-user-id', groupId: selectedGroup?.id?.toString() || '1' })
-                          }).catch(err => console.error("Failed to send", err));
-                          setChatInput('');
-                        }
-                      }
-                    }} 
-                    placeholder={editingMessageId ? "Edit your message..." : "Type your message..."} 
-                    className="flex-1 bg-zinc-100 dark:bg-zinc-800 border-none rounded-full px-4 py-2 text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" 
-                  />
-                  <button className="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition-colors" onClick={() => {
-                    if (editingMessageId && editingMessageText.trim()) {
-                      setChatMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, text: editingMessageText, isEdited: true } : m));
-                      fetch('/api/groups/messages', {
-                        method: 'PATCH',
-                        body: JSON.stringify({ messageId: editingMessageId, content: editingMessageText })
-                      }).catch(err => console.error("Failed to edit", err));
-                      setEditingMessageId(null);
-                      setEditingMessageText('');
-                    } else if (!editingMessageId && chatInput.trim()) {
-                      const newId = Date.now();
-                      setChatMessages([...chatMessages, { id: newId, user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
-                      fetch('/api/groups/messages', {
-                        method: 'POST',
-                        body: JSON.stringify({ content: chatInput, senderId: 'mock-user-id', groupId: selectedGroup?.id?.toString() || '1' })
-                      }).catch(err => console.error("Failed to send", err));
-                      setChatInput('');
-                    }
-                  }}>
-                    {editingMessageId ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+        {/* Group Chat */}
+        {showChat && selectedGroup && (
+          <GroupChat group={selectedGroup} onClose={() => setShowChat(false)} />
         )}
 
-        {/* Video Meeting Simulation */}
-        {showMeeting && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-zinc-950 z-[70] flex flex-row">
-            <div className="flex-1 flex flex-col h-full relative">
-              <div className="p-4 flex justify-between items-center absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-zinc-950/80 to-transparent">
-                <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-white font-semibold">Meeting: {selectedGroup?.name}</span>
-                  <span className="text-zinc-400 text-sm pl-4 border-l border-zinc-700">04:23</span>
-                </div>
-              </div>
-              <div className="flex-1 p-4 sm:p-8 grid grid-cols-2 md:grid-cols-3 gap-4 place-content-center mt-12">
-                {[...Array(selectedGroup ? Math.min(selectedGroup.members, 6) : 4)].map((_, i) => (
-                  <div key={i} className="aspect-video bg-zinc-800 rounded-2xl relative overflow-hidden flex items-center justify-center border border-zinc-700">
-                    {i === 0 && isCamOn ? (
-                      <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
-                        {i === 0 ? 'ME' : (selectedGroup?.avatars[i] || 'U')}
-                      </div>
-                    )}
-                    <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur px-2 py-1 rounded-md text-xs text-white flex items-center gap-2">
-                      {i === 0 ? (
-                        !isMicOn && <MicOff className="w-3 h-3 text-red-400" />
-                      ) : (
-                        <MicOff className="w-3 h-3 text-red-400" />
-                      )} 
-                      {i === 0 ? 'You' : `User ${i + 1}`}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-6 bg-zinc-900/80 backdrop-blur-lg flex justify-center items-center gap-4 border-t border-zinc-800">
-                <button className={`w-12 h-12 rounded-full ${isMicOn ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-red-500 hover:bg-red-600'} flex items-center justify-center text-white transition-colors`} onClick={() => setIsMicOn(!isMicOn)}>
-                  {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-                </button>
-                <button className={`w-12 h-12 rounded-full ${isCamOn ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-red-500 hover:bg-red-600'} flex items-center justify-center text-white transition-colors`} onClick={() => setIsCamOn(!isCamOn)}>
-                  {isCamOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-                </button>
-                <button className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors shadow-lg" onClick={() => { setShowMeeting(false); setShowMeetingChat(false); toast.info('You left the meeting'); }}><PhoneOff className="w-6 h-6" /></button>
-                <button className={`w-12 h-12 rounded-full ${showMeetingChat ? 'bg-indigo-500 hover:bg-indigo-600 text-white' : 'bg-zinc-700 hover:bg-zinc-600 text-white'} flex items-center justify-center transition-colors`} onClick={() => setShowMeetingChat(!showMeetingChat)}>
-                  <MessageSquare className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* In-Meeting Side Chat */}
-            <AnimatePresence>
-              {showMeetingChat && (
-                <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 350, opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 flex flex-col h-full">
-                  <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
-                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">Meeting Chat</h3>
-                    <button onClick={() => setShowMeetingChat(false)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50/50 dark:bg-zinc-900/50">
-                    {chatMessages.map((msg, i) => (
-                      <div key={i} className={`flex gap-3 ${msg.user === 'You' ? 'flex-row-reverse' : ''}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${msg.user === 'You' ? 'bg-indigo-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'}`}>{msg.initials}</div>
-                        <div className={`max-w-[85%] ${msg.user === 'You' ? 'items-end' : 'items-start'} flex flex-col`}>
-                          <div className="flex items-baseline gap-2 mb-1 px-1">
-                            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{msg.user}</span>
-                            <span className="text-[10px] text-zinc-400">{msg.time}</span>
-                          </div>
-                          <div className={`p-3 rounded-2xl text-sm ${msg.user === 'You' ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-sm'}`}>
-                            {msg.text}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-                    <div className="flex items-center gap-2">
-                      <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => {
-                        if (e.key === 'Enter' && chatInput.trim()) {
-                          setChatMessages([...chatMessages, { id: Date.now(), user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
-                          setChatInput('');
-                        }
-                      }} placeholder="Send a message..." className="flex-1 bg-zinc-100 dark:bg-zinc-800 border-none rounded-full px-4 py-2 text-sm text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
-                      <button className="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full transition-colors" onClick={() => {
-                        if (chatInput.trim()) {
-                          setChatMessages([...chatMessages, { id: Date.now(), user: 'You', initials: 'ME', text: chatInput, time: 'Just now' }]);
-                          setChatInput('');
-                        }
-                      }}><Send className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-
-        {/* All Members Modal */}
-        {showAllMembers && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.target === e.currentTarget && setShowAllMembers(false)}>
-             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[70vh]">
-              <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
-                <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Group Members ({selectedGroup?.members})</h3>
-                <button onClick={() => setShowAllMembers(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {[...Array(selectedGroup?.members || 10)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-sm text-white font-bold">U{i+1}</div>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold text-zinc-900 dark:text-white">Group Member {i + 1}</div>
-                      <div className="text-xs text-zinc-500">{i === 0 ? 'Admin' : 'Member'} • Joined recently</div>
-                    </div>
-                    <button className="p-2 text-zinc-400 hover:text-indigo-500 transition-colors" onClick={() => { setShowAllMembers(false); setShowChat(true); }}><MessageSquare className="w-4 h-4" /></button>
-                  </div>
-                ))}
-              </div>
-             </motion.div>
-          </motion.div>
-        )}
-
-        {/* File Preview Modal */}
-        {showFilePreview && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[80] flex flex-col p-4 sm:p-8" onClick={(e) => e.target === e.currentTarget && setShowFilePreview(null)}>
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3 bg-zinc-900/50 p-2 pr-4 rounded-xl border border-zinc-700">
-                <div className={`p-2 rounded-lg ${showFilePreview.ext === 'pdf' ? 'bg-red-500/20 text-red-400' : ['png','jpg','jpeg','gif','webp'].includes(showFilePreview.ext) ? 'bg-green-500/20 text-green-400' : showFilePreview.ext === 'fig' ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                  <FileText className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold">{showFilePreview.name}</h3>
-                  <p className="text-zinc-400 text-xs">{showFilePreview.ext.toUpperCase()} • {showFilePreview.fileSize ? `${(showFilePreview.fileSize / 1024).toFixed(0)} KB` : '—'}</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {showFilePreview.fileUrl && (
-                  <a href={showFilePreview.fileUrl} download={showFilePreview.name} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors flex items-center">
-                    <Download className="w-5 h-5" />
-                  </a>
-                )}
-                <button onClick={() => setShowFilePreview(null)} className="p-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors ml-4"><X className="w-5 h-5" /></button>
-              </div>
-            </div>
-            
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex-1 bg-white dark:bg-zinc-950 rounded-2xl overflow-hidden flex flex-col border border-zinc-200 dark:border-zinc-800 shadow-2xl">
-              {/* REAL file viewer based on file type */}
-              {showFilePreview.fileUrl ? (
-                ['png','jpg','jpeg','gif','webp','svg'].includes(showFilePreview.ext) ? (
-                  // Images — show directly
-                  <div className="flex-1 flex items-center justify-center p-8 bg-zinc-900">
-                    <img src={showFilePreview.fileUrl} alt={showFilePreview.name} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
-                  </div>
-                ) : showFilePreview.ext === 'pdf' ? (
-                  // PDFs — embed with iframe
-                  <iframe src={showFilePreview.fileUrl} className="flex-1 w-full" title={showFilePreview.name} />
-                ) : ['xlsx','xls','docx','doc','pptx','ppt','csv'].includes(showFilePreview.ext) ? (
-                  // Office files — use Google Docs Viewer
-                  <iframe
-                    src={`https://docs.google.com/gview?url=${encodeURIComponent(showFilePreview.fileUrl)}&embedded=true`}
-                    className="flex-1 w-full"
-                    title={showFilePreview.name}
-                    onError={() => {}}
-                  />
-                ) : (
-                  // Text / unknown — try to display as text
-                  <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4 bg-zinc-900">
-                    <FileText className="w-20 h-20 text-zinc-400" />
-                    <p className="text-zinc-300 font-medium">{showFilePreview.name}</p>
-                    <p className="text-zinc-500 text-sm text-center">Preview not available for this file type.</p>
-                    <a href={showFilePreview.fileUrl} download={showFilePreview.name} className="btn-primary px-6 py-2.5 text-sm flex items-center gap-2">
-                      <Download className="w-4 h-4" /> Download File
-                    </a>
-                  </div>
-                )
-              ) : (
-                // No URL stored (legacy/static files) — show info only
-                <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4 bg-zinc-900">
-                  <FileText className="w-20 h-20 text-zinc-400" />
-                  <p className="text-zinc-300 font-medium text-lg">{showFilePreview.name}</p>
-                  <p className="text-zinc-500 text-sm text-center max-w-sm">This file was shared before local preview was enabled. Re-upload the file to preview it here.</p>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
       </AnimatePresence>
-
-      <input type="file" ref={imageInputRef} accept="image/*,video/*" className="hidden" onChange={async (e) => {
-        if (e.target.files && e.target.files[0]) {
-          const file = e.target.files[0];
-          const tempId = Date.now();
-          const newFileMsg = { id: tempId, user: 'You', initials: 'ME', text: 'Uploading media...', isFile: true, fileName: file.name, time: 'Just now', aiSummary: '' };
-          setChatMessages(prev => [...prev, newFileMsg]);
-          toast.info(`Uploading media ${file.name}...`);
-        }
-      }} />
-
-      <input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => {
-        if (e.target.files && e.target.files[0]) {
-          const file = e.target.files[0];
-          const tempId = Date.now();
-          // Store real object URL so preview can show actual content
-          const objectUrl = URL.createObjectURL(file);
-          const newFileMsg = { id: tempId, user: 'You', initials: 'ME', text: 'Uploading and analyzing...', isFile: true, fileName: file.name, fileUrl: objectUrl, fileSize: file.size, time: 'Just now', aiSummary: '' };
-          setChatMessages([...chatMessages, newFileMsg]);
-          toast.info(`Uploading ${file.name}...`);
-          
-          try {
-            const uploadRes = await authFetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
-            let fileUrl = objectUrl; // default to local object URL
-            if (uploadRes.ok) {
-               const blobData = await uploadRes.json();
-               fileUrl = blobData.url || objectUrl;
-            }
-
-            // Only files that reached storage can be summarized (the server downloads them).
-            const summarizeRes = fileUrl && fileUrl !== objectUrl
-              ? await authFetch('/api/summarize', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ fileUrl })
-                })
-              : null;
-            
-            let aiSummary = '';
-            if (summarizeRes?.ok) {
-               const summaryData = await summarizeRes.json();
-               aiSummary = summaryData.summary;
-            }
-
-            setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary, fileUrl } : msg));
-            toast.success('Document uploaded and shared!');
-          } catch (err) {
-            // Even if API fails, the objectUrl still works for local preview
-            setTimeout(() => {
-               setChatMessages(prev => prev.map(msg => msg.id === tempId ? { ...msg, text: 'Shared a file', aiSummary: '', fileUrl: objectUrl } : msg));
-               toast.success('File shared with the group!');
-            }, 500);
-          }
-        }
-      }} />
     </>
   );
 }

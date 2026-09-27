@@ -14,10 +14,10 @@ import { authedFetch } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
 
 const quickActions = [
-  { id: 'statements', title: 'View Statements', subtitle: 'Monthly and annual', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'hover:border-blue-500/50' },
-  { id: 'disbursed', title: 'Disbursed this term', subtitle: 'Grants and loans', icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'hover:border-emerald-500/50' },
-  { id: 'appointment', title: 'Book Appointment', subtitle: 'Financial Aid Office', icon: Clock, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'hover:border-purple-500/50' },
-  { id: 'tax', title: 'Download Tax Forms', subtitle: '1098-T and more', icon: Download, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'hover:border-orange-500/50' },
+  { id: 'statements', title: 'View Statements', subtitle: 'Payments and receipts', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'hover:border-blue-500/50' },
+  { id: 'disbursed', title: 'Financial aid', subtitle: 'Scholarships applied', icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'hover:border-emerald-500/50' },
+  { id: 'appointment', title: 'Talk to finance', subtitle: 'Contact via Support', icon: Clock, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'hover:border-purple-500/50' },
+  { id: 'tax', title: 'Tax documents', subtitle: 'From your institution', icon: Download, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'hover:border-orange-500/50' },
 ];
 
 function AccountingContent() {
@@ -27,8 +27,6 @@ function AccountingContent() {
   const searchParams = useSearchParams();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   
-  const [appointmentStep, setAppointmentStep] = useState(1);
-  const [selectedAdvisor, setSelectedAdvisor] = useState<string | null>(null);
 
   // Custom Payment State
   const [customAmount, setCustomAmount] = useState<string>('');
@@ -92,17 +90,20 @@ function AccountingContent() {
     }
   };
 
-  const downloadFakeFile = (name: string) => {
-    toast.success(`Downloading ${name}...`);
-    const blob = new Blob([`${name} content.`], { type: "application/pdf" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${name}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+  const completedPayments = transactions.filter((t: any) => t.status === 'COMPLETED' && t.amount > 0);
+  const totalPaidThisYear = completedPayments
+    .filter((t: any) => new Date(t.createdAt).getFullYear() === new Date().getFullYear())
+    .reduce((n: number, t: any) => n + t.amount, 0);
+
+  const downloadStatement = () => {
+    if (transactions.length === 0) return void toast.info('No payments to include yet.');
+    const cell = (v: unknown) => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+    const rows = [['Date', 'Description', 'Amount', 'Currency', 'Status', 'Receipt'],
+      ...transactions.map((t: any) => [new Date(t.createdAt).toISOString().slice(0, 10), t.description, t.amount, t.currency || 'USD', t.status,
+        t.status === 'COMPLETED' ? `${window.location.origin}/receipt/${t.id}` : ''])];
+    const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(r => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    Object.assign(document.createElement('a'), { href: url, download: `payment-statement-${new Date().toISOString().slice(0, 10)}.csv` }).click();
+    URL.revokeObjectURL(url);
   };
 
   const renderModalContent = () => {
@@ -110,141 +111,53 @@ function AccountingContent() {
       case 'statements':
         return (
           <div className="space-y-4">
-            {[
-              { date: 'August 2026', type: 'Monthly Statement' },
-              { date: 'July 2026', type: 'Monthly Statement' },
-              { date: 'Spring 2026', type: 'Term Summary' },
-              { date: 'Fall 2025', type: 'Term Summary' },
-            ].map((stmt, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl hover:bg-white/[0.04] transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-                    <FileText className="w-5 h-5" />
+            {transactions.length === 0 ? (
+              <p className="text-sm text-zinc-400 text-center py-6">You have no payments yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {transactions.map((t: any) => (
+                  <div key={t.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl">
+                    <div>
+                      <div className="font-bold text-white">{t.description}</div>
+                      <div className="text-sm text-zinc-500">{new Date(t.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })} · {t.status.toLowerCase()}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-white tabular-nums">{t.currency || 'USD'} {Number(t.amount).toFixed(2)}</span>
+                      {t.status === 'COMPLETED' && (
+                        <a href={`/receipt/${t.id}`} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-400 hover:underline">Receipt</a>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-bold text-white">{stmt.date}</div>
-                    <div className="text-sm text-zinc-500">{stmt.type}</div>
-                  </div>
-                </div>
-                <button onClick={() => downloadFakeFile(stmt.date.replace(' ', '_'))} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
-                  <Download className="w-5 h-5" />
-                </button>
+                ))}
               </div>
-            ))}
+            )}
+            <button onClick={downloadStatement} className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold flex items-center justify-center gap-2">
+              <Download className="w-4 h-4" /> Download statement (CSV)
+            </button>
           </div>
         );
       case 'disbursed':
         return (
-          <div className="space-y-6">
-            <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl text-center">
-              <h4 className="text-emerald-400 text-sm font-bold mb-1 uppercase tracking-wider">Total Disbursed (Fall 2026)</h4>
-              <div className="text-4xl font-black text-white">$12,500.00</div>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-bold text-white mb-4">Breakdown</h3>
-              <div className="space-y-3">
-                {[
-                  { name: 'Federal Pell Grant', amount: '$3,245.00', date: 'Aug 15, 2026' },
-                  { name: 'University Merit Scholarship', amount: '$5,000.00', date: 'Aug 15, 2026' },
-                  { name: 'Direct Subsidized Loan', amount: '$4,255.00', date: 'Aug 18, 2026' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl">
-                    <div>
-                      <div className="font-bold text-white">{item.name}</div>
-                      <div className="text-sm text-zinc-500">Applied on {item.date}</div>
-                    </div>
-                    <div className="font-bold text-emerald-400">{item.amount}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="text-center py-6 space-y-3">
+            <p className="text-white font-semibold">No aid disbursements recorded</p>
+            <p className="text-sm text-zinc-400 max-w-sm mx-auto">Scholarships and financial aid applied to your account by your institution will appear here.</p>
+            <a href="/student/administrative/scholarships" className="inline-block text-sm font-semibold text-indigo-400 hover:underline">Browse scholarships</a>
           </div>
         );
       case 'appointment':
-        if (appointmentStep === 1) {
-          return (
-            <div className="space-y-6">
-              <h3 className="text-lg font-bold text-white">Select a Financial Advisor</h3>
-              <div className="grid grid-cols-1 gap-4">
-                {[
-                  { id: '1', name: 'Sarah Jenkins', role: 'Financial Aid Counselor (A-L)' },
-                  { id: '2', name: 'Marcus Chen', role: 'Financial Aid Counselor (M-Z)' },
-                  { id: '3', name: 'Dr. Emily Vance', role: 'Scholarship Specialist' },
-                ].map(adv => (
-                  <div 
-                    key={adv.id} 
-                    onClick={() => { setSelectedAdvisor(adv.name); setAppointmentStep(2); }}
-                    className="flex items-center gap-4 p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl cursor-pointer hover:bg-white/[0.05] hover:border-purple-500/50 transition-all"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
-                      <User className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-white">{adv.name}</div>
-                      <div className="text-sm text-zinc-400">{adv.role}</div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-zinc-500 ml-auto" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        }
         return (
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-2">
-              <button onClick={() => setAppointmentStep(1)} className="text-sm text-zinc-400 hover:text-white transition-colors">← Back</button>
-            </div>
-            <h3 className="text-lg font-bold text-white">Select a Time with {selectedAdvisor}</h3>
-            
-            <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <Calendar className="w-5 h-5 text-purple-400" />
-                <span className="font-medium text-white">Available Next Week</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {['Mon, Sep 28 - 10:00 AM', 'Mon, Sep 28 - 2:30 PM', 'Tue, Sep 29 - 11:15 AM', 'Wed, Sep 30 - 9:00 AM'].map((time, i) => (
-                  <button 
-                    key={i}
-                    onClick={() => {
-                      toast.success(`Appointment booked with ${selectedAdvisor} for ${time}`);
-                      setTimeout(() => setActiveModal(null), 1000);
-                    }}
-                    className="p-3 text-sm font-medium text-center bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-xl hover:bg-purple-500 hover:text-white transition-colors"
-                  >
-                    {time}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="text-center py-6 space-y-3">
+            <p className="text-white font-semibold">Talk to the finance office</p>
+            <p className="text-sm text-zinc-400 max-w-sm mx-auto">Send a request through Support and the finance team will reply to arrange a time with an advisor.</p>
+            <a href="/student/support" className="inline-block px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">Contact finance via Support</a>
           </div>
         );
       case 'tax':
         return (
-          <div className="space-y-4">
-            {[
-              { year: '2025', form: '1098-T Tuition Statement', status: 'Available' },
-              { year: '2024', form: '1098-T Tuition Statement', status: 'Available' },
-              { year: '2023', form: '1098-T Tuition Statement', status: 'Available' },
-            ].map((tax, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500">
-                    <span className="font-black text-sm">{tax.year}</span>
-                  </div>
-                  <div>
-                    <div className="font-bold text-white">{tax.form}</div>
-                    <div className="text-sm text-emerald-400 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> {tax.status}
-                    </div>
-                  </div>
-                </div>
-                <button onClick={() => downloadFakeFile(`${tax.form}_${tax.year}`)} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-2">
-                  <Download className="w-4 h-4" /> PDF
-                </button>
-              </div>
-            ))}
+          <div className="text-center py-6 space-y-3">
+            <p className="text-white font-semibold">Tax documents</p>
+            <p className="text-sm text-zinc-400 max-w-sm mx-auto">Official tax forms are issued by your institution&apos;s finance office. Your payment statement and receipts are available under Statements.</p>
+            <button onClick={() => setActiveModal('statements')} className="text-sm font-semibold text-indigo-400 hover:underline">View statements</button>
           </div>
         );
       case 'custom_payment':
@@ -307,15 +220,6 @@ function AccountingContent() {
     return quickActions.find(m => m.id === activeModal);
   };
 
-  // Reset steps when modal opens/closes
-  useEffect(() => {
-    if (!activeModal) {
-      setTimeout(() => {
-        setAppointmentStep(1);
-        setSelectedAdvisor(null);
-      }, 300);
-    }
-  }, [activeModal]);
 
   return (
     <>
@@ -347,7 +251,7 @@ function AccountingContent() {
             </div>
           </motion.div>
 
-          <KpiCard title="Total Paid (2026)" value="$8,850.00" icon={Receipt} change={5} color="emerald" />
+          <KpiCard title={`Total paid (${new Date().getFullYear()})`} value={`$${totalPaidThisYear.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon={Receipt} color="emerald" />
         </div>
 
         {/* Quick Actions */}

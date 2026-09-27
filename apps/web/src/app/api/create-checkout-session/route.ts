@@ -60,7 +60,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (err: any) {
-    console.error(err);
+    console.error('Checkout session failed:', err?.type, err?.message);
+    if (err?.type === 'StripeAuthenticationError') {
+      return NextResponse.json({ error: 'Online payments are not set up correctly yet. Please contact your administrator.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
   }
 }

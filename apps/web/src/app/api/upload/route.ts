@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     // Basic MIME type check from extension
-    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.txt'];
     const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
     if (!allowedExtensions.includes(ext)) {
       return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
