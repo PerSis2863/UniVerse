@@ -287,6 +287,8 @@
   }
   .sidebar-item.active {
     background-color: var(--sidebar-item-active-bg);
+    background-image: linear-gradient(90deg, rgba(99, 102, 241, 0.16), rgba(217, 70, 239, 0.10));
+    box-shadow: inset 2px 0 0 #818cf8;
     color: var(--sidebar-item-active-color);
     border: 1px solid var(--sidebar-item-active-border);
     font-weight: 600;
@@ -802,4 +804,35 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 @keyframes ambient-drift-b { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-40px, 30px); } }
 @media (prefers-reduced-motion: reduce) {
   .ambient-bg::before, .ambient-bg::after { animation: none; }
+}
+
+/* ─── Two-tone glass chrome (sidebar, top bars) matching the landing page ─── */
+.glass-sidebar {
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 45%, #fdf4ff 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+.dark .glass-sidebar {
+  /* Opaque on phones (it slides over content), translucent on desktop so the glow shows through */
+  background:
+    radial-gradient(120% 45% at 0% 0%, rgba(99, 102, 241, 0.30), transparent 70%),
+    radial-gradient(120% 45% at 100% 100%, rgba(192, 38, 211, 0.22), transparent 70%),
+    #0b0e1a;
+}
+@media (min-width: 1024px) {
+  .glass-sidebar { background: linear-gradient(180deg, rgba(238, 242, 255, 0.85) 0%, rgba(255, 255, 255, 0.75) 45%, rgba(253, 244, 255, 0.85) 100%); }
+  .dark .glass-sidebar {
+    background:
+      radial-gradient(120% 45% at 0% 0%, rgba(99, 102, 241, 0.28), transparent 70%),
+      radial-gradient(120% 45% at 100% 100%, rgba(192, 38, 211, 0.20), transparent 70%),
+      rgba(11, 14, 26, 0.55);
+  }
+}
+.glass-bar {
+  background: linear-gradient(90deg, rgba(238, 242, 255, 0.85), rgba(255, 255, 255, 0.75) 50%, rgba(253, 244, 255, 0.85));
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+.dark .glass-bar {
+  background: linear-gradient(90deg, rgba(49, 46, 129, 0.30) 0%, rgba(11, 14, 26, 0.55) 45%, rgba(112, 26, 117, 0.22) 100%);
 }

@@ -69,7 +69,7 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
   return (
     <nav
       aria-label="Primary"
-      className="mobile-tabbar lg:hidden fixed bottom-0 inset-x-0 z-[35] border-t border-zinc-200/80 dark:border-white/[0.08] bg-white/85 dark:bg-[#0b0f1c]/85 backdrop-blur-xl backdrop-saturate-150"
+      className="mobile-tabbar lg:hidden fixed bottom-0 inset-x-0 z-[35] border-t border-indigo-100 dark:border-white/[0.08] glass-bar"
     >
       <div className="grid grid-cols-5 h-[var(--mobile-tabbar-h)]">
         {items.map((item) => {
@@ -129,7 +129,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
         {/* Mobile navigation bar (fixed, translucent, respects the notch) */}
-        <header className="mobile-header lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between border-b border-zinc-200/80 dark:border-white/[0.08] bg-white/85 dark:bg-[#0b0f1c]/85 backdrop-blur-xl backdrop-saturate-150">
+        <header className="mobile-header lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between border-b border-indigo-100 dark:border-white/[0.08] glass-bar">
           <Link href={tabsForRole(user?.role ?? 'STUDENT').base} className="flex items-center gap-2 min-w-0 pressable" aria-label="Home">
             <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
             <span className="font-black text-[17px] tracking-tight text-zinc-900 dark:text-white">
