@@ -325,12 +325,6 @@ export default function NGOMentorshipPage() {
                 >
                   Close
                 </button>
-                <button
-                  onClick={() => { toast.success('Report submitted to consortium!'); setSelectedProject(null); }}
-                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                >
-                  <Send className="w-4 h-4" /> Submit Milestone Report
-                </button>
               </div>
             </div>
           </div>

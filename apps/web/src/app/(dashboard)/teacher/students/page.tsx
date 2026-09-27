@@ -200,8 +200,13 @@ export default function TeacherStudents() {
             </div>
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
-              <button onClick={() => { toast.success('Emails sent successfully!'); setShowEmailModal(false); }} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg transition-all">
-                Send {filteredStudents.length} Emails
+              <button onClick={() => {
+                const to = filteredStudents.map((st: any) => st.email).filter(Boolean).join(',');
+                if (!to) return void toast.error('None of these students have an email address.');
+                window.location.href = `mailto:?bcc=${encodeURIComponent(to)}&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+                setShowEmailModal(false);
+              }} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg transition-all">
+                Open in email app ({filteredStudents.length})
               </button>
             </div>
           </div>

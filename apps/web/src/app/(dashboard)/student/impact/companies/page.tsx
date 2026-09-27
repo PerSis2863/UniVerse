@@ -1,256 +1,84 @@
 'use client';
-import { useState } from 'react';
+
+import { useMemo } from 'react';
+import useSWR from 'swr';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Building2, ExternalLink, MapPin } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { Building2, ArrowUpRight, Search, Briefcase, HeartHandshake, ShieldCheck, Target, ChevronRight, X, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { fetcher } from '@/lib/fetcher';
 
-interface Company {
-  id: string;
-  name: string;
-  logo: string;
-  industry: string;
-  csrFocus: string[];
-  description: string;
-  opportunities: {
-    title: string;
-    type: string;
-    points: number;
-    link: string;
-  }[];
-  fundingAvailable: string;
-  gradient: string;
-}
+type Partner = { id: string; name: string; type: string; description: string | null; websiteUrl: string | null; logoUrl: string | null; country: string | null };
+type Internship = { id: string; title: string; location: string | null; company: { id: string; name: string; logoUrl: string | null; websiteUrl: string | null; sector: string | null; description: string | null } };
 
-const COMPANIES: Company[] = [
-  {
-    id: 'comp-1',
-    name: 'Google.org',
-    logo: 'G',
-    industry: 'Technology',
-    csrFocus: ['Digital Inclusion', 'Education', 'Crisis Response'],
-    description: 'Supporting tech-driven solutions for social impact. Explore fellowships and technical volunteering opportunities.',
-    fundingAvailable: '$500k+ in student grants',
-    opportunities: [
-      { title: 'Tech Social Fellowship', type: 'Fellowship', points: 2000, link: '#' },
-      { title: 'Open Source Contributor (Impact)', type: 'Volunteer', points: 800, link: '#' }
-    ],
-    gradient: 'from-blue-500 via-red-500 to-yellow-500',
-  },
-  {
-    id: 'comp-2',
-    name: 'Deloitte Impact',
-    logo: 'D',
-    industry: 'Consulting',
-    csrFocus: ['Social Enterprise', 'Skill Development', 'Sustainability'],
-    description: 'Pro-bono consulting opportunities for students to help NGOs scale their operations and strategy.',
-    fundingAvailable: '$250k in advisory grants',
-    opportunities: [
-      { title: 'Pro-Bono Student Consultant', type: 'Project', points: 1500, link: '#' },
-      { title: 'NGO Strategy Workshop Lead', type: 'Workshop', points: 500, link: '#' }
-    ],
-    gradient: 'from-zinc-900 to-zinc-700',
-  },
-  {
-    id: 'comp-3',
-    name: 'Unilever Sustainable',
-    logo: 'U',
-    industry: 'Consumer Goods',
-    csrFocus: ['Climate Action', 'Health & Hygiene', 'Women Empowerment'],
-    description: 'Join initiatives focused on circular economy, waste reduction, and sustainable supply chains.',
-    fundingAvailable: '$100k startup seed fund',
-    opportunities: [
-      { title: 'Circular Economy Challenge', type: 'Hackathon', points: 1000, link: '#' },
-      { title: 'Campus Sustainability Ambassador', type: 'Role', points: 600, link: '#' }
-    ],
-    gradient: 'from-blue-600 to-indigo-700',
-  },
-  {
-    id: 'comp-4',
-    name: 'Tata Trusts',
-    logo: 'T',
-    industry: 'Philanthropy / Conglomerate',
-    csrFocus: ['Healthcare', 'Rural Development', 'Water Conservation'],
-    description: 'Participate in large-scale field projects addressing critical developmental challenges in rural areas.',
-    fundingAvailable: '$1M+ project funding',
-    opportunities: [
-      { title: 'Rural Health Data Intern', type: 'Internship', points: 1200, link: '#' },
-      { title: 'Water Conservation Field Visit', type: 'Field Work', points: 800, link: '#' }
-    ],
-    gradient: 'from-blue-800 to-blue-950',
-  }
-];
+export default function CorporatePartnersPage() {
+  const { data: partners, isLoading: l1 } = useSWR<Partner[]>('/partners', fetcher);
+  const { data: internships, isLoading: l2 } = useSWR<Internship[]>('/internships', fetcher);
 
-export default function CompaniesPage() {
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<Company | null>(null);
-
-  const filtered = COMPANIES.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
-    c.industry.toLowerCase().includes(search.toLowerCase()) ||
-    c.csrFocus.some(f => f.toLowerCase().includes(search.toLowerCase()))
-  );
+  const companies = useMemo(() => {
+    const map = new Map<string, { name: string; logoUrl: string | null; websiteUrl: string | null; description: string | null; sector: string | null; country: string | null; roles: Internship[] }>();
+    for (const p of Array.isArray(partners) ? partners : []) {
+      if (p.type !== 'CORPORATE') continue;
+      map.set(p.name.toLowerCase(), { name: p.name, logoUrl: p.logoUrl, websiteUrl: p.websiteUrl, description: p.description, sector: null, country: p.country, roles: [] });
+    }
+    for (const i of Array.isArray(internships) ? internships : []) {
+      const key = i.company.name.toLowerCase();
+      const entry = map.get(key) ?? { name: i.company.name, logoUrl: i.company.logoUrl, websiteUrl: i.company.websiteUrl, description: i.company.description, sector: i.company.sector, country: null, roles: [] };
+      entry.roles.push(i);
+      map.set(key, entry);
+    }
+    return [...map.values()].sort((a, b) => b.roles.length - a.roles.length);
+  }, [partners, internships]);
 
   return (
     <>
-      <Topbar 
-        title="🏢 Corporate Partners (CSR)" 
-        subtitle="Connect with leading companies funding and supporting social impact initiatives." 
-      />
-      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
-          
-          {/* Hero */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 to-black border border-zinc-800 p-8 shadow-2xl">
-            <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
-            <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="space-y-3 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-300 text-xs font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Verified CSR Partners
-                </div>
-                <h1 className="text-3xl font-black text-white">Bridge the Gap Between <span className="bg-gradient-to-r from-zinc-200 to-zinc-500 bg-clip-text text-transparent">Corporate & Impact</span></h1>
-                <p className="text-zinc-400 text-sm leading-relaxed">Discover companies offering grants, fellowships, and pro-bono projects. Leverage corporate resources to scale your ideas or gain valuable experience.</p>
-              </div>
-              <div className="flex gap-4">
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 text-center">
-                  <HeartHandshake className="w-6 h-6 text-indigo-400 mx-auto mb-2" />
-                  <div className="text-2xl font-black text-white">15+</div>
-                  <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Partners</div>
-                </div>
-                <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 text-center">
-                  <Target className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
-                  <div className="text-2xl font-black text-white">$2.5M</div>
-                  <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">CSR Funds</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search companies, industries, or focus areas..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors" />
-          </div>
-
-          {/* Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {filtered.map((company, i) => (
-              <motion.div key={company.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 hover:border-indigo-500/40 transition-all group cursor-pointer"
-                onClick={() => setSelected(company)}>
-                
-                <div className="flex items-start gap-4 mb-5">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${company.gradient} flex items-center justify-center text-white text-xl font-black shadow-lg flex-shrink-0`}>
-                    {company.logo}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-zinc-900 dark:text-white group-hover:text-indigo-500 transition-colors flex items-center gap-2">
-                      {company.name}
-                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                    </h3>
-                    <div className="text-sm text-zinc-500 font-medium flex items-center gap-1.5 mt-0.5">
-                      <Briefcase className="w-3.5 h-3.5" /> {company.industry}
+      <Topbar title="🏢 Corporate Partners" subtitle="Companies working with your campus and their open roles" />
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="max-w-6xl mx-auto">
+          {l1 || l2 ? (
+            <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>
+          ) : companies.length === 0 ? (
+            <FeatureGuide
+              icon={Building2}
+              title="Corporate partners will appear here"
+              description="Companies that partner with your campus — for CSR projects, fellowships and internships — show up here with their open roles."
+              steps={['Your admin adds company partners', 'Companies post internships and fellowships', 'Apply directly from their open roles']}
+              example={<div><ExampleRow title="Acme Technologies" meta="Technology · 3 open internships" right="Partner" /><ExampleRow title="Greenline Energy" meta="Clean energy · CSR fellowship" right="Partner" accent="from-emerald-500 to-teal-500" /></div>}
+              action={{ label: 'Browse internships', href: '/student/internships' }}
+            />
+          ) : (
+            <div className="grid md:grid-cols-2 gap-4">
+              {companies.map((c, i) => (
+                <motion.div key={c.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
+                  className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-5 flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    {c.logoUrl ? <img src={c.logoUrl} alt="" className="w-12 h-12 rounded-xl object-cover bg-white" /> : <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-black">{c.name.slice(0, 2).toUpperCase()}</div>}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-zinc-900 dark:text-white truncate">{c.name}</h3>
+                      <p className="text-xs text-zinc-500 inline-flex items-center gap-1">{c.sector ?? 'Company'}{c.country && <><MapPin className="w-3 h-3 ml-1" />{c.country}</>}</p>
                     </div>
+                    {c.websiteUrl && <a href={c.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-500" aria-label="Website"><ExternalLink className="w-4 h-4" /></a>}
                   </div>
-                </div>
-
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-5 line-clamp-2">{company.description}</p>
-
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider mb-2">CSR Focus Areas</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {company.csrFocus.map(focus => (
-                        <span key={focus} className="text-xs px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/50">
-                          {focus}
-                        </span>
+                  {c.description && <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{c.description}</p>}
+                  {c.roles.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {c.roles.slice(0, 3).map((r) => (
+                        <Link key={r.id} href="/student/internships" className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.03] hover:bg-indigo-500/5 text-sm">
+                          <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate">{r.title}</span>
+                          <span className="text-xs text-zinc-500 shrink-0 ml-2">{r.location ?? ''}</span>
+                        </Link>
                       ))}
                     </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md">
-                      {company.fundingAvailable}
-                    </div>
-                    <div className="text-xs font-semibold text-indigo-500 flex items-center gap-1 group-hover:gap-2 transition-all">
-                      View Opportunities <ChevronRight className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                  ) : (
+                    <p className="text-xs text-zinc-500">No open roles right now.</p>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Detail Modal */}
-      <AnimatePresence>
-        {selected && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-            onClick={e => e.target === e.currentTarget && setSelected(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
-              
-              <div className={`h-32 bg-gradient-to-br ${selected.gradient} relative`}>
-                <button onClick={() => setSelected(null)} className="absolute top-4 right-4 p-1.5 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors backdrop-blur-md">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="px-6 pb-6 pt-0 relative flex-1 overflow-y-auto">
-                <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${selected.gradient} border-4 border-white dark:border-zinc-900 flex items-center justify-center text-white text-3xl font-black shadow-xl -mt-10 mb-4 relative z-10`}>
-                  {selected.logo}
-                </div>
-                
-                <div className="mb-6 flex justify-between items-start">
-                  <div>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
-                      {selected.name} <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                    </h2>
-                    <div className="text-sm text-zinc-500 font-medium">{selected.industry}</div>
-                  </div>
-                  <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
-                    {selected.fundingAvailable}
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">About their CSR</h4>
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed bg-zinc-50 dark:bg-zinc-950/50 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
-                      {selected.description}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Active Opportunities</h4>
-                    <div className="space-y-3">
-                      {selected.opportunities.map((opp, i) => (
-                        <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-500/50 transition-colors gap-4">
-                          <div>
-                            <div className="font-bold text-sm text-zinc-900 dark:text-white mb-1">{opp.title}</div>
-                            <div className="flex gap-2">
-                              <span className="text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded-md">{opp.type}</span>
-                              <span className="text-[10px] font-semibold bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-md">+{opp.points} pts</span>
-                            </div>
-                          </div>
-                          <button onClick={() => {toast.success('Redirecting to partner portal...'); setSelected(null);}} 
-                            className="btn-secondary py-2 text-xs flex items-center justify-center gap-1.5 whitespace-nowrap">
-                            Apply Externally <ExternalLink className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }

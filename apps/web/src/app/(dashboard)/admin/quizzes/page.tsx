@@ -1,245 +1,54 @@
 'use client';
 
-import { Topbar } from '@/components/layout/Topbar';
-import { HelpCircle, Clock, Plus, Edit2, Trash2, X, Save, Search } from 'lucide-react';
-import { useState } from 'react';
+import useSWR from 'swr';
 import { toast } from 'sonner';
+import { ClipboardCheck, Trash2 } from 'lucide-react';
+import { Topbar } from '@/components/layout/Topbar';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { fetcher } from '@/lib/fetcher';
+import { api } from '@/lib/api';
 
-type Quiz = {
-  id: string;
-  title: string;
-  subject: string;
-  duration: number;
-  questions: number;
-};
-
-const INITIAL_QUIZZES: Quiz[] = [
-  { id: '1', title: 'Calculus Midterm Review', subject: 'Mathematics', duration: 45, questions: 20 },
-  { id: '2', title: 'Quantum Mechanics Basics', subject: 'Physics', duration: 30, questions: 15 },
-  { id: '3', title: 'Data Structures - Trees & Graphs', subject: 'Computer Science', duration: 60, questions: 25 },
-  { id: '4', title: 'World History: WW2', subject: 'History', duration: 45, questions: 30 },
-];
+type Quiz = { id: string; title: string; status: string; dueDate: string | null; timeLimit: number | null; createdAt: string; course: { name: string } };
+const STATUS: Record<string, string> = { DRAFT: 'bg-zinc-500/10 text-zinc-500', PUBLISHED: 'bg-emerald-500/10 text-emerald-600', CLOSED: 'bg-rose-500/10 text-rose-500' };
 
 export default function AdminQuizzesPage() {
-  const [quizzes, setQuizzes] = useState<Quiz[]>(INITIAL_QUIZZES);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const { data, isLoading, mutate } = useSWR<Quiz[]>('/quizzes', fetcher);
+  const quizzes = Array.isArray(data) ? data : [];
 
-  const [formData, setFormData] = useState({
-    title: '',
-    subject: '',
-    duration: 30,
-    questions: 10,
-  });
-
-  const handleOpenModal = (quiz?: Quiz) => {
-    if (quiz) {
-      setEditingQuiz(quiz);
-      setFormData({
-        title: quiz.title,
-        subject: quiz.subject,
-        duration: quiz.duration,
-        questions: quiz.questions,
-      });
-    } else {
-      setEditingQuiz(null);
-      setFormData({
-        title: '',
-        subject: '',
-        duration: 30,
-        questions: 10,
-      });
-    }
-    setIsModalOpen(true);
+  const remove = async (q: Quiz) => {
+    if (!confirm(`Delete "${q.title}"? Student submissions will be removed too.`)) return;
+    try { await api.delete(`/quizzes/${q.id}`); toast.success('Quiz deleted'); mutate(); } catch { toast.error('Could not delete the quiz.'); }
   };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingQuiz(null);
-  };
-
-  const handleSave = () => {
-    if (!formData.title || !formData.subject) {
-      toast.error('Please fill in all required fields.');
-      return;
-    }
-
-    if (editingQuiz) {
-      setQuizzes(quizzes.map(q => q.id === editingQuiz.id ? { ...q, ...formData } : q));
-      toast.success('Quiz updated successfully.');
-    } else {
-      const newQuiz: Quiz = {
-        id: Math.random().toString(36).substring(7),
-        ...formData,
-      };
-      setQuizzes([...quizzes, newQuiz]);
-      toast.success('New quiz created successfully.');
-    }
-    handleCloseModal();
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this quiz?')) {
-      setQuizzes(quizzes.filter(q => q.id !== id));
-      toast.success('Quiz deleted successfully.');
-    }
-  };
-
-  const filteredQuizzes = quizzes.filter(q => 
-    q.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    q.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <>
-      <Topbar title="Quizzes Management" subtitle="Create and manage assessments for students" />
-      
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
-          
-          {/* Header Actions */}
-          <div className="flex flex-col sm:flex-row justify-between gap-4 items-center">
-            <div className="relative w-full sm:w-96">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Search quizzes by title or subject..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-              />
+      <Topbar title="Quizzes" subtitle="Every quiz across your courses" />
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="max-w-5xl mx-auto">
+          {isLoading ? <div className="h-48 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" /> : quizzes.length === 0 ? (
+            <FeatureGuide
+              icon={ClipboardCheck}
+              title="Quizzes will appear here"
+              description="Teachers create quizzes for their courses; they're graded automatically when students submit. You can oversee all of them from here."
+              steps={['Teachers open Quizzes in their portal and create one', 'They publish it with a due date', 'Students take it and get their score instantly']}
+              example={<div><ExampleRow title="Memory Management Quiz" meta="Operating Systems · due Fri 18:00 · 20 min" right="Published" /><ExampleRow title="SDG Case Study Check" meta="Sustainable Development · draft" right="Draft" accent="from-zinc-400 to-zinc-500" /></div>}
+            />
+          ) : (
+            <div className="space-y-3">
+              {quizzes.map((q) => (
+                <div key={q.id} className="p-4 rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] flex items-center gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-zinc-900 dark:text-white truncate">{q.title}</p>
+                    <p className="text-xs text-zinc-500 truncate">{q.course.name}{q.dueDate ? ` · due ${new Date(q.dueDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}` : ''}{q.timeLimit ? ` · ${q.timeLimit} min` : ''}</p>
+                  </div>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS[q.status] ?? ''}`}>{q.status.toLowerCase()}</span>
+                  <button onClick={() => remove(q)} aria-label="Delete quiz" className="p-2 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              ))}
             </div>
-            
-            <button
-              onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white rounded-xl font-medium transition-colors w-full sm:w-auto justify-center"
-            >
-              <Plus className="w-4 h-4" />
-              Create New Quiz
-            </button>
-          </div>
-
-          {/* Quizzes List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredQuizzes.map((quiz) => (
-              <div key={quiz.id} className="card p-6 flex flex-col hover:border-indigo-500/50 transition-colors group relative">
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                  <button 
-                    onClick={() => handleOpenModal(quiz)}
-                    className="p-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-indigo-500/20 text-zinc-600 dark:text-zinc-400 hover:text-indigo-400 rounded-lg transition-colors"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(quiz.id)}
-                    className="p-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-rose-500/20 text-zinc-600 dark:text-zinc-400 hover:text-rose-400 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <div className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 w-max mb-4">
-                  {quiz.subject}
-                </div>
-                <h4 className="text-lg font-bold text-zinc-900 dark:text-white mb-2 pr-16">{quiz.title}</h4>
-                <div className="flex flex-wrap gap-4 text-sm text-zinc-600 dark:text-zinc-400 mt-auto">
-                  <span className="flex items-center gap-1.5"><Clock className="w-4 h-4"/> {quiz.duration} mins</span>
-                  <span className="flex items-center gap-1.5"><HelpCircle className="w-4 h-4"/> {quiz.questions} Questions</span>
-                </div>
-              </div>
-            ))}
-            
-            {filteredQuizzes.length === 0 && (
-              <div className="col-span-full py-12 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
-                <p className="text-zinc-500 dark:text-zinc-500">No quizzes found matching your criteria.</p>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
-
-      {/* Add/Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#0f111a] border border-white/[0.05] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-white/[0.05] flex items-center justify-between bg-white/[0.02]">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                {editingQuiz ? 'Edit Quiz' : 'Create New Quiz'}
-              </h2>
-              <button 
-                onClick={handleCloseModal}
-                className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto flex-1 space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">Quiz Title <span className="text-rose-500">*</span></label>
-                <input 
-                  type="text"
-                  value={formData.title}
-                  onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
-                  placeholder="e.g. Calculus Midterm Review"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">Subject <span className="text-rose-500">*</span></label>
-                <input 
-                  type="text"
-                  value={formData.subject}
-                  onChange={e => setFormData({...formData, subject: e.target.value})}
-                  className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
-                  placeholder="e.g. Mathematics"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-300">Duration (mins)</label>
-                  <input 
-                    type="number"
-                    value={formData.duration}
-                    onChange={e => setFormData({...formData, duration: parseInt(e.target.value) || 0})}
-                    className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
-                    min="1"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-300">Number of Questions</label>
-                  <input 
-                    type="number"
-                    value={formData.questions}
-                    onChange={e => setFormData({...formData, questions: parseInt(e.target.value) || 0})}
-                    className="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-colors"
-                    min="1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-white/[0.05] bg-white/[0.02] flex justify-end gap-3">
-              <button 
-                onClick={handleCloseModal}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-900 dark:text-white hover:bg-white/[0.05] transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSave}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white transition-colors flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                {editingQuiz ? 'Save Changes' : 'Create Quiz'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

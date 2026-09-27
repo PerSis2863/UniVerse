@@ -359,25 +359,27 @@ export default function StudentSupport() {
                   <input 
                     type="text" 
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 text-lg shadow-lg"
-                    placeholder="Search books, articles, journals, and more..."
+                    placeholder="Your campus library catalogue and databases are in Apps & Links"
+                    readOnly
+                    onFocus={() => { handleCloseModal(); router.push('/student/links'); }}
                   />
                   <button 
-                    onClick={() => toast.success('Search results loaded.')}
+                    onClick={() => { handleCloseModal(); router.push('/student/links'); }}
                     className="absolute inset-y-2 right-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl font-medium transition-colors">
-                    Search
+                    Open
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8">
-                  <div onClick={() => toast.success('Loading your active loans...')} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
+                  <div onClick={() => { handleCloseModal(); router.push('/student/links'); }} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
                     <Book className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
                     <h3 className="font-semibold text-white mb-1">My Loans</h3>
-                    <p className="text-sm text-zinc-400">View and renew borrowed items.</p>
+                    <p className="text-sm text-zinc-400">Via your library portal in Apps & Links.</p>
                   </div>
-                  <div onClick={() => toast.success('Connecting to academic databases...')} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
+                  <div onClick={() => { handleCloseModal(); router.push('/student/links'); }} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
                     <Laptop className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
                     <h3 className="font-semibold text-white mb-1">Databases</h3>
-                    <p className="text-sm text-zinc-400">Access academic research databases.</p>
+                    <p className="text-sm text-zinc-400">Research databases your campus subscribes to.</p>
                   </div>
                   <div onClick={() => {
                     handleCloseModal();

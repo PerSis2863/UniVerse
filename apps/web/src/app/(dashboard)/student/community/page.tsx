@@ -1,4 +1,6 @@
 'use client';
+import { useAuthStore } from '@/store/auth';
+import { api } from '@/lib/api';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { MessageSquare, Heart, Share2, Search, Filter, TrendingUp, Users } from 'lucide-react';
@@ -10,8 +12,39 @@ import { fetcher } from '@/lib/fetcher';
 
 export default function StudentCommunity() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: posts, isLoading } = useSWR('/announcements', fetcher);
+  const { data: posts, isLoading, mutate } = useSWR('/announcements', fetcher);
+  const role = useAuthStore((st) => st.user?.role);
+  const canPost = role === 'TEACHER' || role === 'ADMIN';
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftBody, setDraftBody] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const publish = async () => {
+    setPublishing(true);
+    try {
+      await api.post('/announcements', { title: draftTitle.trim(), body: draftBody.trim(), target: 'ALL' });
+      toast.success('Announcement published');
+      setDraftTitle(''); setDraftBody('');
+      mutate();
+    } catch {
+      toast.error('Could not publish the announcement.');
+    } finally {
+      setPublishing(false);
+    }
+  };
   
+  // Most active posters, computed from the real posts.
+  type Contributor = { name: string; posts: number; color: string };
+  const counts = new Map<string, number>();
+  for (const p of Array.isArray(posts) ? posts : []) {
+    const name: string | undefined = p?.author?.name;
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const COLORS = ['from-pink-500 to-rose-500', 'from-blue-500 to-cyan-500', 'from-indigo-500 to-purple-500'];
+  const topContributors: Contributor[] = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, n], i) => ({ name, posts: n, color: COLORS[i] }));
+
   const filteredPosts = (posts || []).filter((p: any) => p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || p.content?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
@@ -24,26 +57,25 @@ export default function StudentCommunity() {
           {/* Main Feed */}
           <div className="flex-1 space-y-6">
             
-            {/* Create Post */}
-            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex-shrink-0 flex items-center justify-center text-indigo-400 font-medium">
-                ME
-              </div>
-              <div className="flex-1">
-                <input 
-                  type="text" 
-                  placeholder="Start a new discussion..." 
-                  className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-                <div className="flex justify-between items-center mt-3">
-                  <div className="flex gap-2">
-                    <button onClick={() => toast.success('Add Topic clicked')} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white text-sm font-medium px-2 py-1 rounded hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">Add Topic</button>
-                    <button onClick={() => toast.success('Attach File clicked')} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white text-sm font-medium px-2 py-1 rounded hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">Attach File</button>
-                  </div>
-                  <button onClick={() => toast.success('Post submitted!')} className="bg-indigo-500 text-zinc-900 dark:text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors">Post</button>
+            {/* Create Post (teachers & admins publish announcements; students discuss in Groups) */}
+            {canPost ? (
+              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-3">
+                <input value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} maxLength={150} placeholder="Announcement title"
+                  className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500" />
+                <textarea value={draftBody} onChange={(e) => setDraftBody(e.target.value)} maxLength={5000} placeholder="Share news with your campus…"
+                  className="w-full min-h-[90px] bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500" />
+                <div className="flex justify-end">
+                  <button onClick={publish} disabled={publishing || !draftTitle.trim() || !draftBody.trim()} className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50">
+                    {publishing ? 'Publishing…' : 'Publish'}
+                  </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4">
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Campus news from your teachers and admins appears here. Want to start a discussion?</p>
+                <a href="/student/groups" className="shrink-0 px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium">Open Groups</a>
+              </div>
+            )}
 
             {/* Posts */}
             <div className="space-y-4">
@@ -58,11 +90,11 @@ export default function StudentCommunity() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-zinc-900 dark:text-white font-medium shadow-sm bg-gradient-to-br from-indigo-500 to-purple-500`}>
-                        {post.authorId?.charAt(0) || 'A'}
+                        {post.author?.name?.charAt(0) || 'A'}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-zinc-900 dark:text-white">{post.authorId || 'Admin'}</span>
+                          <span className="font-medium text-zinc-900 dark:text-white">{post.author?.name || 'Campus team'}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400`}>Announcement</span>
                         </div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-500">{new Date(post.createdAt || Date.now()).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
@@ -72,18 +104,12 @@ export default function StudentCommunity() {
 
                   {/* Content */}
                   <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-2">{post.title}</h3>
-                  <p className="text-zinc-300 text-sm leading-relaxed mb-4">{post.content}</p>
+                  <p className="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed mb-4 whitespace-pre-line">{post.body ?? post.content}</p>
 
                   {/* Actions */}
                   <div className="flex items-center gap-6 pt-4 border-t border-zinc-200 dark:border-zinc-800/50">
-                    <button onClick={() => toast.success('Liked post!')} className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-red-400 transition-colors">
-                      <Heart className="w-4 h-4" /> <span className="text-sm font-medium">0</span>
-                    </button>
-                    <button onClick={() => toast.success('Viewing comments...')} className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-indigo-400 transition-colors">
-                      <MessageSquare className="w-4 h-4" /> <span className="text-sm font-medium">0 Comments</span>
-                    </button>
-                    <button onClick={() => toast.success('Shared post!')} className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors ml-auto">
-                      <Share2 className="w-4 h-4" />
+                    <button onClick={() => { navigator.clipboard.writeText(`${post.title}\n\n${post.body ?? post.content ?? ''}`); toast.success('Copied to clipboard'); }} className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+                      <Share2 className="w-4 h-4" /> <span className="text-sm font-medium">Copy</span>
                     </button>
                   </div>
                 </div>
@@ -125,11 +151,8 @@ export default function StudentCommunity() {
                 <Users className="w-4 h-4 text-indigo-400" /> Top Contributors
               </h3>
               <div className="space-y-4">
-                {[
-                  { name: 'Diana Prince', posts: 42, color: 'from-pink-500 to-rose-500' },
-                  { name: 'Evan Davis', posts: 38, color: 'from-blue-500 to-cyan-500' },
-                  { name: 'Alice Johnson', posts: 25, color: 'from-indigo-500 to-purple-500' }
-                ].map((user, i) => (
+                {topContributors.length === 0 && <p className="text-sm text-zinc-500">No posts yet.</p>}
+                {topContributors.map((user, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${user.color} flex items-center justify-center text-zinc-900 dark:text-white text-xs font-medium`}>
                       {user.name.charAt(0)}

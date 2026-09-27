@@ -14,18 +14,9 @@ export default function StudentChoices() {
   const [myElectives, setMyElectives] = useState<any[]>([]);
   const [majorRequests, setMajorRequests] = useState<any[]>([]);
 
-  const SAMPLE_AVAILABLE = [
-    { id: 'c1', code: 'CS 461', title: 'Advanced Machine Learning', credits: 3, status: 'Available' },
-    { id: 'c2', code: 'CS 472', title: 'Distributed Systems', credits: 3, status: 'Available' },
-    { id: 'c3', code: 'CS 485', title: 'Ethics in AI', credits: 2, status: 'Available' },
-    { id: 'c4', code: 'CS 490', title: 'Blockchain & Web3', credits: 3, status: 'Available' },
-    { id: 'c5', code: 'CS 455', title: 'Computer Vision', credits: 3, status: 'Available' },
-    { id: 'c6', code: 'CS 420', title: 'Natural Language Processing', credits: 3, status: 'Available' },
-  ];
-  const SAMPLE_MY_ELECTIVES = [
-    { id: 'e1', code: 'CS 440', title: 'Cloud Computing & DevOps', credits: 3, status: 'Selected' },
-    { id: 'e2', code: 'CS 451', title: 'Advanced Algorithms', credits: 3, status: 'Waitlisted' },
-  ];
+  // Current academic term, e.g. "2026_FALL" (Jan–Jun = spring, Jul–Dec = fall).
+  const now = new Date();
+  const currentTerm = `${now.getFullYear()}_${now.getMonth() < 6 ? 'SPRING' : 'FALL'}`;
 
   const fetchElectives = async () => {
     try {
@@ -34,16 +25,16 @@ export default function StudentChoices() {
         api.get('/electives/my'),
         api.get('/electives/major-requests')
       ]);
-      const available = availableRes.data?.length > 0 ? availableRes.data : SAMPLE_AVAILABLE;
-      const my = myRes.data?.length > 0 ? myRes.data : [];
+      const available = Array.isArray(availableRes.data) ? availableRes.data : [];
+      const my = Array.isArray(myRes.data) ? myRes.data : [];
       setAvailableCourses(available);
       setMyElectives(my);
       setMajorRequests(majorRes.data || []);
     } catch (error) {
-      // Backend offline — show sample data
-      setAvailableCourses(SAMPLE_AVAILABLE);
-      setMyElectives(SAMPLE_MY_ELECTIVES);
+      setAvailableCourses([]);
+      setMyElectives([]);
       setMajorRequests([]);
+      toast.error('Couldn’t load electives right now. Please try again shortly.');
     } finally {
       setLoading(false);
     }
@@ -74,19 +65,18 @@ export default function StudentChoices() {
   const selectedCredits = displayElectives.filter(e => e.status === 'Selected' || e.status === 'Waitlisted').reduce((acc, curr) => acc + (curr.credits || 0), 0);
 
   const handleSelectElective = async (courseId: string) => {
-    // Optimistic update — move from available to selected instantly
-    setAvailableCourses(prev => prev.filter(c => c.id !== courseId));
-    const selected = availableCourses.find(c => c.id === courseId);
-    if (selected) {
-      setMyElectives(prev => [...prev, { ...selected, status: 'Waitlisted' }]);
-      toast.success('Elective added to your selections!');
+    try {
+      await api.post('/electives/select', { courseId, semesterId: currentTerm });
+      toast.success('Elective requested — your department will confirm it.');
+      fetchElectives();
+    } catch {
+      toast.error('Could not request this elective. Please try again.');
     }
-    // Try to save to backend silently
-    api.post('/electives/select', { courseId, semesterId: 'SPRING_2027' }).catch(() => {});
   };
 
   const handleConfirmSelections = () => {
-    toast.success('Your elective selections have been confirmed!');
+    fetchElectives();
+    toast.success('Your selections are saved.');
   };
 
   const handleSubmitRequest = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -170,7 +160,7 @@ export default function StudentChoices() {
 
                 <div className="space-y-4">
                   {displayElectives.length === 0 && (
-                    <div className="text-center py-8 text-zinc-500">No electives available at the moment.</div>
+                    <div className="text-center py-8 text-zinc-500">No electives are open for selection right now. Your department will publish them here each term.</div>
                   )}
                   {displayElectives.map((course, i) => (
                     <div key={i} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-700/50 rounded-lg transition-colors hover:border-zinc-300 dark:hover:border-zinc-600">

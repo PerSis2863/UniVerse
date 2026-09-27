@@ -190,7 +190,7 @@ export default function AdminUsers() {
                               <User className="w-3.5 h-3.5" /> View Profile
                             </button>
                             <button
-                              onClick={() => { toast.success(`Email sent to ${user.email}`); setOpenMenuId(null); }}
+                              onClick={() => { window.location.href = `mailto:${user.email}`; setOpenMenuId(null); }}
                               className="w-full px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2"
                             >
                               <Mail className="w-3.5 h-3.5" /> Send Email
@@ -282,7 +282,7 @@ export default function AdminUsers() {
               <div className="flex gap-2">
                 <button onClick={() => setSelectedUser(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Close</button>
                 <button
-                  onClick={() => { toast.success(`Email sent to ${selectedUser.email}`); setSelectedUser(null); }}
+                  onClick={() => { window.location.href = `mailto:${selectedUser.email}`; }}
                   className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 >
                   <Mail className="w-4 h-4" /> Send Email

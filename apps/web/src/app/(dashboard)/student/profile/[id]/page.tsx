@@ -17,12 +17,6 @@ type Resource = {
   date: string;
 };
 
-// Mock data to simulate shared resources from the user
-const MOCK_SHARED_RESOURCES: Resource[] = [
-  { id: '1', title: 'Intro to Algorithms Notes', category: 'Computer Science', type: 'PDF', size: '1.2 MB', date: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0] },
-  { id: '2', title: 'Machine Learning Study Guide', category: 'Computer Science', type: 'Document', size: '3.4 MB', date: new Date(Date.now() - 86400000 * 5).toISOString().split('T')[0] },
-  { id: '3', title: 'Calculus Cheat Sheet', category: 'General', type: 'PDF', size: '0.8 MB', date: new Date(Date.now() - 86400000 * 12).toISOString().split('T')[0] },
-];
 
 export default function StudentProfile() {
   const pathname = usePathname();

@@ -1,322 +1,94 @@
 'use client';
-import { Topbar } from '@/components/layout/Topbar';
-import { Plus, Edit2, Calendar, Clock, MapPin, Users, Filter, CheckCircle2, X, Trash2, BookOpen } from 'lucide-react';
+
 import { useState } from 'react';
+import useSWR from 'swr';
 import { toast } from 'sonner';
+import { CalendarClock, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Topbar } from '@/components/layout/Topbar';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { authedJson } from '@/lib/authed-fetch';
 
-const MOCK_ADMIN_SCHEDULE = [
-  { id: '1', course: 'Computer Science 101', code: 'CS101', instructor: 'Dr. Alan Turing', day: 'Monday', time: '09:00', duration: '120', location: 'Room 302', type: 'Lecture', status: 'Active', term: 'Fall 2026', startDate: '2026-09-01', endDate: '2026-12-15' },
-  { id: '2', course: 'Advanced Calculus', code: 'MATH201', instructor: 'Dr. Katherine Johnson', day: 'Monday', time: '13:30', duration: '90', location: 'Room 105', type: 'Lecture', status: 'Active', term: 'Fall 2026', startDate: '2026-09-01', endDate: '2026-12-15' },
-  { id: '3', course: 'Physics Lab', code: 'PHY102', instructor: 'Dr. Marie Curie', day: 'Tuesday', time: '10:00', duration: '120', location: 'Lab 4B', type: 'Lab', status: 'Active', term: 'Fall 2026', startDate: '2026-09-01', endDate: '2026-12-15' },
-  { id: '4', course: 'Artificial Intelligence', code: 'AI402', instructor: 'Dr. Geoffrey Hinton', day: 'Tuesday', time: '15:00', duration: '120', location: 'Auditorium B', type: 'Lecture', status: 'Active', term: 'Fall 2026', startDate: '2026-09-01', endDate: '2026-12-15' },
-  { id: '5', course: 'World History', code: 'HIST101', instructor: 'Prof. Mary Beard', day: 'Wednesday', time: '14:00', duration: '90', location: 'Auditorium A', type: 'Lecture', status: 'Draft', term: 'Spring 2027', startDate: '2027-01-10', endDate: '2027-05-20' },
-  { id: '6', course: 'Data Structures', code: 'CS201', instructor: 'Dr. Donald Knuth', day: 'Thursday', time: '16:00', duration: '120', location: 'Room 401', type: 'Lecture', status: 'Active', term: 'Fall 2026', startDate: '2026-09-01', endDate: '2026-12-15' },
-  { id: '7', course: 'Tech Festival', code: 'EVENT', instructor: 'Student Council', day: 'Wednesday', time: '08:00', duration: '720', location: 'Campus Wide', type: 'Event', status: 'Review', term: 'Fall 2026', startDate: '2026-10-15', endDate: '2026-10-15' },
-];
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+type Slot = { id: string; dayOfWeek: number; startTime: string; endTime: string; type: string; course: { id: string; code: string; name: string; color: string | null }; room: { id: string; name: string } | null };
+type Data = { slots: Slot[]; courses: { id: string; code: string; name: string }[]; rooms: { id: string; name: string }[] };
+const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 
-export default function AdminTimetablePage() {
-  const [schedule, setSchedule] = useState(MOCK_ADMIN_SCHEDULE);
-  const [filter, setFilter] = useState('All');
-  const [termFilter, setTermFilter] = useState('Fall 2026');
-  
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  
-  const [formData, setFormData] = useState({
-    course: '', code: '', instructor: '', day: 'Monday', time: '09:00', duration: '120', location: '', type: 'Lecture', status: 'Active', term: 'Fall 2026', startDate: '', endDate: ''
-  });
+export default function TimetableManagementPage() {
+  const { data, isLoading, error, mutate } = useSWR<Data>('/api/admin/timetable', authedJson);
+  const [form, setForm] = useState<{ courseId: string; dayOfWeek: number; startTime: string; endTime: string; roomId: string; type: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const open = () => setForm({ courseId: data?.courses[0]?.id ?? '', dayOfWeek: 0, startTime: '09:00', endTime: '10:30', roomId: '', type: 'LECTURE' });
 
-  const filteredSchedule = schedule
-    .filter(s => filter === 'All' || s.status === filter)
-    .filter(s => s.term === termFilter);
-
-  const handleOpenModal = (id: string | null = null) => {
-    if (id) {
-      const item = schedule.find(s => s.id === id);
-      if (item) setFormData({ ...item });
-      setEditingId(id);
-    } else {
-      setFormData({ course: '', code: '', instructor: '', day: 'Monday', time: '09:00', duration: '120', location: '', type: 'Lecture', status: 'Active', term: termFilter, startDate: '', endDate: '' });
-      setEditingId(null);
-    }
-    setIsModalOpen(true);
+  const save = async () => {
+    if (!form) return;
+    setBusy(true);
+    try {
+      await authedJson('/api/admin/timetable', { method: 'POST', body: JSON.stringify(form) });
+      toast.success('Class added to the timetable');
+      setForm(null);
+      mutate();
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  const remove = async (id: string) => {
+    if (!confirm('Remove this class from the timetable?')) return;
+    try { await authedJson(`/api/admin/timetable?id=${id}`, { method: 'DELETE' }); mutate(); } catch (e: any) { toast.error(e.message); }
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingId) {
-      setSchedule(prev => prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s));
-      toast.success('Schedule updated successfully');
-    } else {
-      setSchedule(prev => [...prev, { ...formData, id: Math.random().toString() }]);
-      toast.success('New schedule added');
-    }
-    setIsModalOpen(false);
-  };
-  
-  const handleDelete = (id: string) => {
-    setSchedule(prev => prev.filter(s => s.id !== id));
-    toast.success('Schedule removed');
-  };
-
+  const slots = data?.slots ?? [];
   return (
     <>
-      <Topbar 
-        title="Timetable Management" 
-        subtitle="Add, edit and manage master university schedules"
-        rightNode={
-          <button 
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Add Class / Event
-          </button>
-        }
-      />
-      
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
-              <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">{editingId ? 'Edit Class/Event' : 'Add New Class/Event'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white p-2 rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+      <Topbar title="Timetable Management" subtitle="Weekly class schedule for every course"
+        rightNode={<button onClick={open} disabled={!data?.courses.length} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50"><Plus className="w-4 h-4" /> Add class</button>} />
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
+          {form && (
+            <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 grid sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-3 flex justify-between"><p className="font-bold text-zinc-900 dark:text-white">New class</p><button onClick={() => setForm(null)} aria-label="Cancel"><X className="w-4 h-4 text-zinc-500" /></button></div>
+              <select className={input} value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>{data!.courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}</select>
+              <select className={input} value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select>
+              <select className={input} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['LECTURE', 'LAB', 'TUTORIAL'].map((t) => <option key={t} value={t}>{t.toLowerCase()}</option>)}</select>
+              <input className={input} type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+              <input className={input} type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+              <select className={input} value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })}><option value="">No room</option>{data!.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
+              <button onClick={save} disabled={busy} className="sm:col-span-3 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add to timetable</button>
             </div>
-            
-            <form onSubmit={handleSave} className="p-6 space-y-6">
-              
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-indigo-400 uppercase tracking-wider">Basic Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Course / Event Name</label>
-                    <input required value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. Computer Science 101" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Code</label>
-                    <input required value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. CS101" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Instructor / Organizer</label>
-                    <input required value={formData.instructor} onChange={e => setFormData({...formData, instructor: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. Dr. Alan Turing" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Location</label>
-                    <input required value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" placeholder="e.g. Room 302" />
-                  </div>
-                </div>
-              </div>
+          )}
 
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-indigo-400 uppercase tracking-wider">Scheduling</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Semester / Term</label>
-                    <select value={formData.term} onChange={e => setFormData({...formData, term: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
-                      <option value="Fall 2026">Fall 2026</option>
-                      <option value="Spring 2027">Spring 2027</option>
-                      <option value="Summer 2027">Summer 2027</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Start Date</label>
-                    <input required value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} type="date" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">End Date</label>
-                    <input required value={formData.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} type="date" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Day of Week</label>
-                    <select value={formData.day} onChange={e => setFormData({...formData, day: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
-                      {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Time</label>
-                    <input required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} type="time" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Duration (mins)</label>
-                    <input required value={formData.duration} onChange={e => setFormData({...formData, duration: e.target.value})} type="number" min="30" step="30" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-indigo-400 uppercase tracking-wider">Classification</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Type</label>
-                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
-                      <option value="Lecture">Lecture</option>
-                      <option value="Lab">Lab</option>
-                      <option value="Workshop">Workshop</option>
-                      <option value="Event">Event</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Status</label>
-                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
-                      <option value="Active">Active</option>
-                      <option value="Draft">Draft</option>
-                      <option value="Review">Review</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="pt-4 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-zinc-900 dark:text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition-colors shadow-lg shadow-indigo-500/20">
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
-          
-          {/* Controls */}
-          <div className="flex flex-col sm:flex-row justify-between gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
-              {/* Term Selector */}
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                <select 
-                  value={termFilter}
-                  onChange={(e) => setTermFilter(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-indigo-500 transition-colors"
-                >
-                  <option value="Fall 2026">Fall 2026 Semester</option>
-                  <option value="Spring 2027">Spring 2027 Semester</option>
-                  <option value="Summer 2027">Summer 2027 Term</option>
-                </select>
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 sm:border-l sm:border-zinc-200 dark:border-zinc-800 sm:pl-4">
-                {['All', 'Active', 'Draft', 'Review'].map(status => (
-                  <button 
-                    key={status}
-                    onClick={() => setFilter(status)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                      filter === status 
-                        ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' 
-                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:bg-zinc-800/50 hover:text-zinc-200'
-                    }`}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-          </div>
-
-          {/* Timetable List */}
-          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80">
-                    <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Class/Event Info</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Instructor/Organizer</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Date & Time</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Location</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Status</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/50">
-                  {filteredSchedule.map((item) => (
-                    <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-zinc-900 dark:text-white">{item.course}</span>
-                          <span className="text-sm text-indigo-400 font-medium">{item.code} • {item.type}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2 text-zinc-300">
-                          <Users className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                          <span>{item.instructor}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2 text-zinc-300 text-sm">
-                            <Calendar className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                            <span>
-                              {item.startDate === item.endDate 
-                                ? item.startDate 
-                                : `${item.startDate} to ${item.endDate}`
-                              }
-                            </span>
+          {isLoading ? <div className="h-48 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" /> : slots.length === 0 ? (
+            <FeatureGuide
+              icon={CalendarClock}
+              title="Build your weekly timetable"
+              description={data?.courses.length ? 'Schedule each course’s lectures, labs and tutorials. Students see their classes on their dashboard and timetable automatically.' : 'First create courses (Management → Courses), then schedule their classes here.'}
+              steps={['Create your courses', 'Add each class with day, time and room', 'Students and teachers see it on their timetable and dashboard']}
+              example={<div><ExampleRow title="CS301 · Operating Systems" meta="Monday 09:00–10:30 · Room B-204" right="Lecture" /><ExampleRow title="CS301 · Operating Systems" meta="Wednesday 14:00–16:00 · Lab 3" right="Lab" accent="from-emerald-500 to-teal-500" /></div>}
+              action={data?.courses.length ? { label: 'Add class', onClick: open } : { label: 'Create a course', href: '/admin/courses' }}
+            />
+          ) : (
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {DAYS.map((day, d) => {
+                const daySlots = slots.filter((s) => s.dayOfWeek === d);
+                if (daySlots.length === 0) return null;
+                return (
+                  <section key={day} className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-5">
+                    <h3 className="font-bold text-zinc-900 dark:text-white mb-3">{day}</h3>
+                    <ul className="space-y-2">
+                      {daySlots.map((s) => (
+                        <li key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03]">
+                          <span className="w-1.5 h-10 rounded-full" style={{ backgroundColor: s.course.color || '#6366f1' }} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{s.course.code} · {s.course.name}</p>
+                            <p className="text-xs text-zinc-500">{s.startTime}–{s.endTime} · {s.type.toLowerCase()}{s.room ? ` · ${s.room.name}` : ''}</p>
                           </div>
-                          <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 text-sm">
-                            <Clock className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                            <span>{item.day}s, {item.time} ({parseInt(item.duration) / 60}h)</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2 text-zinc-300">
-                          <MapPin className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
-                          <span>{item.location}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                          item.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                          item.status === 'Draft' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                          'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                        }`}>
-                          {item.status === 'Active' && <CheckCircle2 className="w-3 h-3" />}
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => handleOpenModal(item.id)}
-                            className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors inline-flex items-center justify-center"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(item.id)}
-                            className="p-2 text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors inline-flex items-center justify-center"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredSchedule.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-zinc-500 dark:text-zinc-500">
-                        No scheduled classes found matching this filter.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                          <button onClick={() => remove(s.id)} aria-label="Remove" className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
             </div>
-          </div>
-          
+          )}
         </div>
       </div>
     </>

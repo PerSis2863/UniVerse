@@ -1,4 +1,6 @@
 'use client';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { authedJson } from '@/lib/authed-fetch';
 import { useState, useOptimistic, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
@@ -44,13 +46,7 @@ const TABS = [
 export function StudentBlackboardClient({ initialCourse }: { initialCourse: any }) {
   const { data: enrollments, isLoading: isCoursesLoading } = useSWR('/courses/my', fetcher, { fallbackData: [] });
   
-  const hasRealCourses = enrollments && enrollments.length > 0;
-  const courses = hasRealCourses 
-    ? enrollments.map((e: any) => e.course) 
-    : [
-        { id: 'c1', code: 'CS 301', name: 'Data Structures and Algorithms', color: '#6366f1', teacher: { name: 'Dr. Smith' }, _count: { enrollments: 42 }, instructor: 'Dr. Smith' },
-        { id: 'c2', code: 'PHY 101', name: 'Physics I', color: '#10b981', teacher: { name: 'Prof. Johnson' }, _count: { enrollments: 120 }, instructor: 'Prof. Johnson' }
-      ];
+  const courses: any[] = Array.isArray(enrollments) ? enrollments.map((e: any) => e.course).filter(Boolean) : [];
   
   const [selectedCourse, setSelectedCourse] = useState(initialCourse || null);
   
@@ -73,7 +69,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
   const [renderTrigger, setRenderTrigger] = useState(0);
 
   const { data: blackboardData, isLoading: isDataLoading } = useSWR(
-    selectedCourse && hasRealCourses ? `/blackboard/${selectedCourse.id}` : null,
+    selectedCourse ? `/blackboard/${selectedCourse.id}` : null,
     fetcher
   );
 
@@ -126,22 +122,12 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
       color: 'bg-indigo-500'
     }))
   } : {
-    announcements: [
-      { id: '1', pinned: true, title: 'Welcome to ' + (selectedCourse?.code || 'Course'), body: 'Please review the syllabus and join the first lecture.', author: selectedCourse?.teacher?.name || 'Instructor', time: 'Today', priority: 'high' }
-    ],
-    resources: [
-      { id: '1', week: 'Week 1', title: 'Syllabus.pdf', type: 'PDF', size: '2.4 MB', icon: FileText, color: '#ef4444', pinned: true }
-    ],
+    announcements: [],
+    resources: [],
     research: [],
-    assignments: [
-      { id: '1', title: 'Programming Assignment 1', due: 'Next Friday', status: 'pending', score: null, maxScore: 100, description: 'Implement a binary search tree.' }
-    ],
-    discussion: [
-      { id: '1', title: 'Question about Assignment 1', author: 'Alice', replies: 3, time: '2h ago', resolved: false }
-    ],
-    activity: [
-      { user: selectedCourse?.teacher?.name || 'Instructor', action: 'posted a new announcement in', item: selectedCourse?.code || 'Course', time: '2h ago', icon: Bell }
-    ],
+    assignments: [],
+    discussion: [],
+    activity: [],
     quizResults: [],
     goals: [],
     calendarEvents: []
@@ -154,14 +140,39 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
     }
   );
 
-  const handleSendMessage = () => {
-    if (!messageText.trim()) return;
-    toast.success('Message sent to ' + (selectedCourse?.teacher?.name || 'Instructor'));
-    setMessageText('');
+  const handleSendMessage = async () => {
+    const text = messageText.trim();
+    const teacherId = selectedCourse?.teacher?.id ?? selectedCourse?.teacherId;
+    if (!text) return;
+    if (!teacherId) return void toast.error('This course has no instructor assigned yet.');
+    try {
+      const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: teacherId }) });
+      await authedJson(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ body: text }) });
+      toast.success(`Message sent to ${selectedCourse?.teacher?.name || 'your instructor'}`, { description: 'Continue the conversation in Messages.' });
+      setMessageText('');
+    } catch (e: any) {
+      toast.error(e.message || 'Message not sent.');
+    }
   };
 
   if (isCoursesLoading) return <div className="p-8 flex justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
-  if (!selectedCourse) return <div className="p-8">No courses available.</div>;
+  if (!selectedCourse) {
+    return (
+      <>
+        <Topbar title="Blackboard" subtitle="Course resources, research, assignments & more." />
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <FeatureGuide
+            icon={BookOpen}
+            title="Your course spaces live here"
+            description="Each course you're enrolled in gets a Blackboard with announcements, weekly materials, assignments and a direct line to your instructor."
+            steps={['Get enrolled in a course by your teacher or admin', 'Open it here to see materials and announcements', 'Submit assignments and message your instructor']}
+            example={<div><ExampleRow title="Week 3 · Process Scheduling slides" meta="Operating Systems · PDF" right="New" /><ExampleRow title="Assignment 2 due Friday" meta="Operating Systems · 100 pts" right="Pending" accent="from-amber-500 to-orange-500" /></div>}
+            action={{ label: 'Go to my courses', href: '/student/courses' }}
+          />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -500,9 +511,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                       </div>
                       <div className="flex-1 overflow-y-auto">
                         {[
-                          { name: selectedCourse.instructor, role: 'Course Instructor', status: 'online', initials: selectedCourse.instructor.split(' ').map((w: string) => w[0]).join('') },
-                          { name: 'Alice Chen', role: 'Teaching Assistant', status: 'offline', initials: 'AC' },
-                          { name: 'Dr. Robert Smith', role: 'Department Head', status: 'offline', initials: 'RS' }
+                          { name: selectedCourse.teacher?.name || 'Instructor', role: 'Course Instructor', status: 'unknown', initials: (selectedCourse.teacher?.name || 'I').split(' ').map((w: string) => w[0]).join('').slice(0, 2) },
                         ].map((contact, i) => (
                           <div 
                             key={i} 
@@ -529,10 +538,10 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                       <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                            {selectedInstructor ? selectedInstructor.initials : selectedCourse.instructor.split(' ').map((w: string) => w[0]).join('')}
+                            {selectedInstructor ? selectedInstructor.initials : (selectedCourse.teacher?.name || 'I').split(' ').map((w: string) => w[0]).join('').slice(0, 2)}
                           </div>
                           <div>
-                            <p className="font-bold text-zinc-900 dark:text-white text-sm">{selectedInstructor ? selectedInstructor.name : selectedCourse.instructor}</p>
+                            <p className="font-bold text-zinc-900 dark:text-white text-sm">{selectedInstructor ? selectedInstructor.name : (selectedCourse.teacher?.name || 'your instructor')}</p>
                             <p className="text-xs text-zinc-500">{selectedInstructor ? selectedInstructor.role : 'Course Instructor'}</p>
                           </div>
                         </div>
@@ -562,7 +571,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
                       </div>
                       <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2">
                         <input value={messageText} onChange={e => setMessageText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                          placeholder={`Message ${selectedInstructor ? selectedInstructor.name : selectedCourse.instructor}...`}
+                          placeholder={`Message ${selectedInstructor ? selectedInstructor.name : (selectedCourse.teacher?.name || 'your instructor')}...`}
                           className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
                         <button onClick={handleSendMessage} className="btn-primary p-2.5 aspect-square flex items-center justify-center">
                           <Send className="w-4 h-4" />

@@ -22,12 +22,16 @@ export class QuizzesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user?: { role: string }) {
     const quiz = await this.prisma.quiz.findUnique({
       where: { id },
-      include: { questions: true },
+      include: { questions: { orderBy: { order: 'asc' } } },
     });
     if (!quiz) throw new NotFoundException('Quiz not found');
+    // Students must never receive the answer key; grading happens server-side in submitQuiz.
+    if (user?.role !== 'TEACHER' && user?.role !== 'ADMIN') {
+      return { ...quiz, questions: quiz.questions.map(({ correctAnswer: _hidden, ...q }) => q) };
+    }
     return quiz;
   }
 

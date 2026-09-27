@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { ClassDetailModal, ClassData } from '@/components/dashboard/ClassDetailModal';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 
 const HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -39,16 +40,6 @@ export default function CalendarPage() {
     fetchData();
   }, []);
 
-  const SAMPLE_SLOTS = [
-    { id: 's1', dayOfWeek: 0, startTime: '09:00', endTime: '10:30', course: { name: 'Operating Systems', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' }, room: { name: 'Hall A-101' }, type: 'Lecture' },
-    { id: 's2', dayOfWeek: 2, startTime: '09:00', endTime: '10:30', course: { name: 'Operating Systems', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' }, room: { name: 'Hall A-101' }, type: 'Lecture' },
-    { id: 's3', dayOfWeek: 1, startTime: '11:00', endTime: '12:30', course: { name: 'Machine Learning', color: 'bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/30' }, room: { name: 'Lab B-205' }, type: 'Lab' },
-    { id: 's4', dayOfWeek: 3, startTime: '11:00', endTime: '12:30', course: { name: 'Machine Learning', color: 'bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/30' }, room: { name: 'Lab B-205' }, type: 'Lab' },
-    { id: 's5', dayOfWeek: 0, startTime: '14:00', endTime: '15:30', course: { name: 'Advanced Algorithms', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' }, room: { name: 'Room C-312' }, type: 'Lecture' },
-    { id: 's6', dayOfWeek: 2, startTime: '14:00', endTime: '15:30', course: { name: 'Advanced Algorithms', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' }, room: { name: 'Room C-312' }, type: 'Lecture' },
-    { id: 's7', dayOfWeek: 1, startTime: '16:00', endTime: '17:00', course: { name: 'Ethics in AI', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' }, room: { name: 'Seminar D-108' }, type: 'Seminar' },
-    { id: 's8', dayOfWeek: 4, startTime: '10:00', endTime: '11:00', course: { name: 'Cloud Computing', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' }, room: { name: 'Online (Zoom)' }, type: 'Lecture' },
-  ];
 
   const fetchData = async () => {
     try {
@@ -58,11 +49,11 @@ export default function CalendarPage() {
         api.get('/calendar/my')
       ]);
       const slots = slotsRes.data || [];
-      setTimetableSlots(slots.length > 0 ? slots : SAMPLE_SLOTS);
+      setTimetableSlots(slots);
       setCalendarEvents(eventsRes.data || []);
     } catch (error) {
-      // Backend offline — show sample schedule
-      setTimetableSlots(SAMPLE_SLOTS);
+      setTimetableSlots([]);
+      toast.error('Couldn’t load your timetable right now.');
       setCalendarEvents([]);
     } finally {
       setLoading(false);
@@ -186,6 +177,16 @@ export default function CalendarPage() {
     <>
       <Topbar title="My Timetable" subtitle={`View your ${view.toLowerCase()}ly class schedule`} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
+        {!loading && timetableSlots.length === 0 && calendarEvents.length === 0 && (
+          <FeatureGuide
+            className="mb-6"
+            icon={CalendarIcon}
+            title="Your weekly timetable lives here"
+            description="Once you're enrolled in courses and your campus publishes the timetable, every lecture, lab and tutorial appears on this calendar automatically."
+            steps={['Enroll in your courses', 'Your admin schedules classes in Timetable Management', 'Your week fills in here — tap a class for details']}
+            example={<div><ExampleRow title="Operating Systems · Lecture" meta="Monday 09:00–10:30 · Room B-204" right="CS301" /><ExampleRow title="Data Science · Lab" meta="Wednesday 14:00–16:00 · Lab 3" right="DS220" accent="from-fuchsia-500 to-pink-500" /></div>}
+          />
+        )}
         <div className="max-w-7xl mx-auto space-y-6">
           
           {/* Header Controls */}

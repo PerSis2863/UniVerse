@@ -1,3 +1,4 @@
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { QuizzesService } from './quizzes.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
@@ -24,8 +25,8 @@ export class QuizzesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.quizzesService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.quizzesService.findOne(id, user);
   }
 
   @Patch(':id')

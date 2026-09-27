@@ -108,7 +108,15 @@ export default function TeacherGradesPage() {
                 className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500"
               />
             </div>
-            <button onClick={() => toast.success('Grades exported to CSV')} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl hover:bg-indigo-500/20 transition-colors whitespace-nowrap">
+            <button onClick={() => {
+                      const rows: (string | number)[][] = filteredGrades.map((g: any) => [g.studentName, g.email, g.total, g.status, g.grades.length]);
+                      if (!rows.length) return void toast.info('Nothing to export yet.');
+                      const cell = (v: unknown) => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+                      const csv = [['Student', 'Email', 'Average %', 'Status', 'Graded items'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
+                      const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+                      Object.assign(document.createElement('a'), { href: url, download: `grades-${new Date().toISOString().slice(0, 10)}.csv` }).click();
+                      URL.revokeObjectURL(url);
+                    }} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl hover:bg-indigo-500/20 transition-colors whitespace-nowrap">
               <Download className="w-4 h-4" /> Export
             </button>
           </div>

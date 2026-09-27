@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { Topbar } from '@/components/layout/Topbar';
 import { Target, Award, CheckCircle2, ChevronRight, BookOpen, Code, Terminal, Monitor, Layout, Database, MessageSquare, Users, Brain, Clock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,18 +27,14 @@ const getLevelValue = (level: string) => {
   return 30; // BEGINNER
 };
 
-const ACHIEVEMENTS = [
-  { title: 'Dean\'s List', date: 'Fall 2025', icon: Award, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-  { title: 'Hackathon Winner', date: 'Spring 2026', icon: Target, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  { title: '100% Attendance', date: 'CS101', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-];
-
-const IMPACT_BADGES = [
-  { title: 'Top Mentor', date: '50+ Hours', icon: Users, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  { title: 'Global Innovator', date: 'Climate Tech Project', icon: Brain, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-];
-
 export default function StudentSkills() {
+  // Real achievements: issued credentials and SDG badges from accepted NGO projects.
+  const { data: credentials } = useSWR<any[]>('/impact/blockchain-credentials', fetcher);
+  const { data: impactStats } = useSWR<any>('/impact/dashboard/stats', fetcher);
+  const achievements = (Array.isArray(credentials) ? credentials : [])
+    .filter((c) => c.status === 'ISSUED')
+    .map((c) => ({ title: c.title, date: [c.organization, c.issuedAt && new Date(c.issuedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })].filter(Boolean).join(' · '), icon: Award, color: 'text-yellow-500', bg: 'bg-yellow-500/10' }));
+  const impactBadges = (impactStats?.sdgBadges ?? []).map((b: any) => ({ title: `SDG ${b.num}`, date: b.partner, icon: Target, color: 'text-emerald-500', bg: 'bg-emerald-500/10' }));
   const { data: mySkills, isLoading } = useSWR('/skills/my', fetcher);
 
   const technicalSkills = (mySkills || []).filter((s: any) => s.category?.toLowerCase() === 'technical' || !s.category?.toLowerCase().includes('soft'));
@@ -174,10 +171,11 @@ export default function StudentSkills() {
               <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center justify-between">
                   Achievements
-                  <button onClick={() => toast.success('Viewing all achievements')} className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View All</button>
+                  <Link href="/student/credentials" className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View all</Link>
                 </h3>
                 <div className="grid gap-4">
-                  {ACHIEVEMENTS.map((item, i) => (
+                  {achievements.length === 0 && <p className="text-sm text-zinc-500">Verified credentials you earn appear here. <Link href="/student/credentials" className="text-indigo-500 font-semibold">Request one</Link></p>}
+                  {achievements.map((item: any, i: number) => (
                     <div key={i} className="flex items-center gap-4 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/50">
                       <div className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center flex-shrink-0 border border-white/5`}>
                         <item.icon className={`w-6 h-6 ${item.color}`} />
@@ -194,10 +192,11 @@ export default function StudentSkills() {
               <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center justify-between">
                   Social Impact Badges
-                  <button onClick={() => toast.success('Viewing impact history')} className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View All</button>
+                  <Link href="/student/impact/dashboard" className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View all</Link>
                 </h3>
                 <div className="grid gap-4">
-                  {IMPACT_BADGES.map((item, i) => (
+                  {impactBadges.length === 0 && <p className="text-sm text-zinc-500">Complete an NGO project linked to a UN SDG to earn your first badge.</p>}
+                  {impactBadges.map((item: any, i: number) => (
                     <div key={i} className="flex items-center gap-4 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/50">
                       <div className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center flex-shrink-0 border border-white/5`}>
                         <item.icon className={`w-6 h-6 ${item.color}`} />

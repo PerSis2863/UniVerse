@@ -317,8 +317,18 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Star className="w-4 h-4 text-indigo-500" /> Advanced Gradebook</h3>
                     <div className="flex gap-2">
-                      <button onClick={() => setShowAiGradeModal(true)} className="btn-primary bg-gradient-to-r from-indigo-500 to-purple-500 text-xs py-2 px-3 flex items-center gap-1.5 shadow-lg shadow-indigo-500/25 border-none"><Sparkles className="w-3.5 h-3.5 text-white" /> AI Auto-Grade</button>
-                      <button className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export CSV</button>
+                      <button
+                        onClick={() => {
+                          const rows = GRADEBOOK_DATA as any[];
+                          if (!rows.length) return void toast.info('No grades to export yet.');
+                          const cols = Object.keys(rows[0]).filter((k) => typeof rows[0][k] !== 'object');
+                          const cell = (v: unknown) => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+                          const csv = [cols.join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\r\n');
+                          const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+                          Object.assign(document.createElement('a'), { href: url, download: `${selectedCourse?.code || 'course'}-gradebook.csv` }).click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export CSV</button>
                     </div>
                   </div>
                   
@@ -383,75 +393,13 @@ export function TeacherBlackboardClient({ initialCourse }: { initialCourse: any 
 
               {/* MESSAGES */}
               {activeTab === 'messages' && (
-                <div className="max-w-4xl mx-auto flex gap-4 h-[600px]">
-                  {/* Sidebar list */}
-                  <div className="w-1/3 border-r border-zinc-200 dark:border-zinc-800 pr-4 flex flex-col space-y-2 overflow-y-auto scrollbar-none">
-                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-2"><Send className="w-4 h-4 text-indigo-500" /> Inbox</h3>
-                    {STUDENT_MSGS.map((m) => {
-                      const lastMsg = m.thread[m.thread.length - 1];
-                      return (
-                        <div key={m.id} className={cn('bg-white dark:bg-zinc-900 border rounded-2xl p-3 cursor-pointer hover:border-indigo-500/50 transition-all', replyTo?.id === m.id ? 'border-indigo-500' : m.unread ? 'border-indigo-500/30' : 'border-zinc-200 dark:border-zinc-800')} onClick={() => setReplyTo(m)}>
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-sm font-bold text-indigo-500 flex-shrink-0">{m.avatar}</div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className={cn('text-sm font-semibold truncate', m.unread ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-900 dark:text-white')}>{m.name}</span>
-                                <span className="text-[10px] text-zinc-400 whitespace-nowrap">{lastMsg.time}</span>
-                              </div>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">{lastMsg.text}</p>
-                            </div>
-                            {m.unread && <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Conversation view */}
-                  <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-                    {replyTo ? (
-                      <>
-                        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/50">
-                          <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-sm font-bold text-indigo-500">{replyTo.avatar}</div>
-                          <div>
-                            <h4 className="font-bold text-zinc-900 dark:text-white">{replyTo.name}</h4>
-                            <p className="text-xs text-zinc-500">Student • Online</p>
-                          </div>
-                        </div>
-                        <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                          {replyTo.thread.map((msg: any) => (
-                            <div key={msg.id} className={cn('flex', msg.from === 'teacher' ? 'justify-end' : 'justify-start')}>
-                              <div className={cn('max-w-[70%] px-4 py-2.5 rounded-2xl text-sm', msg.from === 'teacher' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-sm')}>
-                                <p>{msg.text}</p>
-                                <div className={cn('text-[10px] mt-1.5 flex items-center gap-1 justify-end', msg.from === 'teacher' ? 'text-white/70' : 'text-zinc-400')}>
-                                  <span>{msg.time}</span>
-                                  {msg.from === 'teacher' && (
-                                    <div className="flex">
-                                      <CheckCircle2 className="w-3 h-3 text-white/50" />
-                                      {msg.read && <CheckCircle2 className="w-3 h-3 text-white -ml-1.5" />}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex gap-2">
-                          <input value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === 'Enter' && (toast.success(`Reply sent to ${replyTo.name}`), setReplyText(''))} placeholder="Type a message..." className="flex-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 placeholder:text-zinc-400" />
-                          <button onClick={() => { toast.success(`Reply sent to ${replyTo.name}`); setReplyText(''); }} className="btn-primary p-2.5 aspect-square flex items-center justify-center"><Send className="w-4 h-4" /></button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-zinc-400">
-                        <MessageSquare className="w-12 h-12 opacity-20 mb-3" />
-                        <p className="text-sm">Select a student to view thread</p>
-                      </div>
-                    )}
-                  </div>
+                <div className="max-w-xl mx-auto text-center py-16">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center mb-4"><Send className="w-6 h-6 text-white" /></div>
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Message your students in Messages</h3>
+                  <p className="text-sm text-zinc-500 mt-2">Chat one-to-one, create a group for this course, share files and start calls — all from your Messages hub.</p>
+                  <a href="/teacher/inbox" className="inline-flex mt-5 px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-bold">Open Messages</a>
                 </div>
               )}
-
-              {/* ACTIVITY */}
               {activeTab === 'activity' && (
                 <div className="max-w-3xl mx-auto space-y-3">
                   <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Activity className="w-4 h-4 text-indigo-500" /> Course Activity Stream</h3>

@@ -8,7 +8,6 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 
-const MOCK_JUSTIFICATIONS: any[] = [];
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
@@ -31,7 +30,7 @@ export default function AdminAttendance() {
 
   const [activeTab, setActiveTab] = useState<'roster' | 'justifications'>('roster');
   const [localEdits, setLocalEdits] = useState<Record<string, AttendanceStatus>>({});
-  const [justifications, setJustifications] = useState(MOCK_JUSTIFICATIONS);
+  const [justifications, setJustifications] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedJustificationPhoto, setSelectedJustificationPhoto] = useState<string | null>(null);
 
@@ -169,7 +168,15 @@ export default function AdminAttendance() {
                 
                 <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t border-zinc-200 dark:border-zinc-800/50 md:border-none">
                   <button 
-                    onClick={() => toast.info('Exporting attendance report...')}
+                    onClick={() => {
+                      const rows: (string | number)[][] = (courseData?.enrollments ?? []).map((e: any) => [e.student?.name, e.student?.email, (currentAttendance as Record<string, string>)[e.student?.id] ?? 'not marked']);
+                      if (!rows.length) return void toast.info('Nothing to export yet.');
+                      const cell = (v: unknown) => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+                      const csv = [['Student', 'Email', 'Status'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
+                      const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+                      Object.assign(document.createElement('a'), { href: url, download: `attendance-${new Date().toISOString().slice(0, 10)}.csv` }).click();
+                      URL.revokeObjectURL(url);
+                    }}
                     className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:text-white hover:bg-zinc-700 rounded-xl text-sm font-medium transition-colors border border-zinc-700/50"
                   >
                     <Download className="w-4 h-4" /> Export CSV

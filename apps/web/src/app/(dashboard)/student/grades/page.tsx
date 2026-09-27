@@ -1,7 +1,8 @@
 'use client';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { TrendingUp, BookOpen, Award, FileBadge, Download, X, TrendingDown, Sparkles, Loader2 } from 'lucide-react';
+import { GraduationCap, TrendingUp, BookOpen, Award, FileBadge, Download, X, TrendingDown, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
@@ -9,12 +10,23 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 
-// Historical GPA data for sparkline (mocked for visual effect)
-const gpaHistory = [
-  { sem: 'Fall 2025', gpa: 3.72 },
-  { sem: 'Spring 2026', gpa: 3.91 },
-  { sem: 'Fall 2026', gpa: 3.84 },
-];
+// GPA per term (Jan–Jun = Spring, Jul–Dec = Fall), from real grades on a 4.0 scale.
+function gpaByTerm(grades: { score: number; maxScore: number; gradedAt?: string; createdAt?: string }[]) {
+  const terms = new Map<string, { key: string; sum: number; n: number }>();
+  for (const g of grades) {
+    const d = new Date(g.gradedAt ?? g.createdAt ?? Date.now());
+    const spring = d.getMonth() < 6;
+    const label = `${spring ? 'Spring' : 'Fall'} ${d.getFullYear()}`;
+    const key = `${d.getFullYear()}-${spring ? 0 : 1}`;
+    const pct = g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0;
+    const t = terms.get(label) ?? { key, sum: 0, n: 0 };
+    t.sum += pct; t.n += 1;
+    terms.set(label, t);
+  }
+  return [...terms.entries()]
+    .sort((a, b) => a[1].key.localeCompare(b[1].key))
+    .map(([sem, t]) => ({ sem, gpa: Math.min(4, Math.round(((t.sum / t.n) / 25) * 100) / 100) }));
+}
 
 // Animated SVG Sparkline
 function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
@@ -228,6 +240,25 @@ export default function GradesPage() {
 
   // Group by Course or Date, but since we don't have semester, we'll just show all.
   const apiGrades = data?.grades || [];
+  const gpaHistory = gpaByTerm(apiGrades);
+
+  if (!error && apiGrades.length === 0) {
+    return (
+      <>
+        <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <FeatureGuide
+            icon={GraduationCap}
+            title="Your grades will appear here"
+            description="As teachers grade your assignments and quizzes, you'll see each result, your average per course, your GPA trend across terms and a downloadable transcript."
+            steps={['Submit assignments and take quizzes', 'Teachers grade your work', 'Track your GPA and download your transcript here']}
+            example={<div><ExampleRow title="Assignment 2 · Operating Systems" meta="Graded 2 days ago" right="91% · A" /><ExampleRow title="Midterm · Sustainable Development" meta="Graded last week" right="74% · C" accent="from-amber-500 to-orange-500" /></div>}
+            action={{ label: 'Go to my courses', href: '/student/courses' }}
+          />
+        </div>
+      </>
+    );
+  }
   
   const mappedGrades = apiGrades.map((g: any) => {
     const percentage = g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0;
@@ -347,7 +378,9 @@ export default function GradesPage() {
               <TrendingUp className="w-4 h-4 text-indigo-500" /> GPA Trend
             </h3>
             <p className="text-xs text-zinc-500 mb-4">Your cumulative GPA over semesters</p>
-            <GpaSparkline data={gpaHistory} />
+            {gpaHistory.length >= 2 ? <GpaSparkline data={gpaHistory} /> : (
+              <p className="text-sm text-zinc-500 py-6">Your trend appears once you have grades from at least two terms{gpaHistory[0] ? ` (so far: ${gpaHistory[0].sem}, GPA ${gpaHistory[0].gpa.toFixed(2)})` : ''}.</p>
+            )}
           </div>
 
           {/* Grade Distribution Donut */}

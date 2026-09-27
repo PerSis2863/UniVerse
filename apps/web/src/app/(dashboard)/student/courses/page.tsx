@@ -1,4 +1,5 @@
 'use client';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -35,12 +36,7 @@ export default function CoursesPage() {
   // Determine current vs past based on a simple heuristic (since we don't have terms modeled properly yet)
   // Here we'll treat 100% progress as 'past', else 'current'. We map backend model to frontend schema.
   
-  // Provide mock fallback data if API fails (since Clerk auth might not match backend JWT)
-  const safeEnrollments = enrollments || [
-    { course: { id: 'CS101', name: 'Introduction to Computer Science', teacher: { name: 'Prof. Alan Turing' } }, progress: 75, grade: null },
-    { course: { id: 'CS201', name: 'Data Structures and Algorithms', teacher: { name: 'Prof. Donald Knuth' } }, progress: 45, grade: null },
-    { course: { id: 'CS301', name: 'Database Systems', teacher: { name: 'Prof. Edgar Codd' } }, progress: 100, grade: 'A' },
-  ];
+  const safeEnrollments: any[] = Array.isArray(enrollments) ? enrollments : [];
 
   // Determine current vs past based on a simple heuristic (since we don't have terms modeled properly yet)
   // Here we'll treat 100% progress as 'past', else 'current'. We map backend model to frontend schema.
@@ -51,10 +47,10 @@ export default function CoursesPage() {
       id: course.id,
       title: course.name,
       professor: course.teacher?.name || 'Unassigned',
-      progress: e.progress || Math.floor(Math.random() * 100), // mock progress if not available
-      nextClass: 'Scheduled', // mock next class schedule
+      progress: typeof e.progress === 'number' ? e.progress : 0,
+      nextClass: null,
       completed: e.progress === 100 ? 'Completed' : null,
-      grade: e.grade || (e.progress === 100 ? 'A' : null),
+      grade: e.grade ?? null,
       ...theme
     };
   });
@@ -143,9 +139,14 @@ export default function CoursesPage() {
         {activeTab === 'current' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {courses.length === 0 ? (
-              <div className="col-span-full py-8 text-center text-zinc-500">
-                You are not enrolled in any current courses.
-              </div>
+              <FeatureGuide
+                className="col-span-full"
+                icon={BookOpen}
+                title="Your courses will appear here"
+                description="When you're enrolled in a course, you'll see its teacher, your progress and grades here — and open its Blackboard for materials, announcements and assignments."
+                steps={['Your teacher or admin enrolls you in courses', 'Open a course to see materials and assignments', 'Track progress and grades as you go']}
+                example={<div><ExampleRow title="Operating Systems" meta="Prof. R. Mehta · 45% complete" right="CS301" /><ExampleRow title="Sustainable Development" meta="Dr. A. Khan · 70% complete" right="ENV210" accent="from-emerald-500 to-teal-500" /></div>}
+              />
             ) : (
               courses.map((course: any, i: number) => (
                 <motion.div
@@ -189,7 +190,7 @@ export default function CoursesPage() {
 
                     <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/[0.06]">
                       <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                        <Clock className="w-3.5 h-3.5" /> Next: {course.nextClass}
+                        <Clock className="w-3.5 h-3.5" /> {course.progress}% complete
                       </div>
                     </div>
                   </div>

@@ -1,4 +1,6 @@
 'use client';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { useAuthStore } from '@/store/auth';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -53,18 +55,6 @@ const LEVELS = [
   { level: 7, title: 'UniVerse Legend',   minXP: 2500, emoji: '🌟' },
 ];
 
-const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, id: 'u1', name: 'Amara Osei', initials: 'AO', totalPoints: 2800, trend: 'same', gradient: LEVEL_GRADIENTS[7], levelInfo: { current: LEVELS[6], next: LEVELS[6], progress: 100, xp: 2800 } as any },
-  { rank: 2, id: 'u2', name: 'Liu Wei', initials: 'LW', totalPoints: 2200, trend: 'up', trendValue: 3, gradient: LEVEL_GRADIENTS[6], levelInfo: { current: LEVELS[5], next: LEVELS[6], progress: 70, xp: 2200 } as any },
-  { rank: 3, id: 'u3', name: 'Sofia Martínez', initials: 'SM', totalPoints: 1850, trend: 'up', trendValue: 1, gradient: LEVEL_GRADIENTS[5], levelInfo: { current: LEVELS[5], next: LEVELS[6], progress: 35, xp: 1850 } as any },
-  { rank: 4, id: 'u4', name: 'Rohan Patel', initials: 'RP', totalPoints: 1400, trend: 'down', trendValue: 2, gradient: LEVEL_GRADIENTS[4], levelInfo: { current: LEVELS[4], next: LEVELS[5], progress: 80, xp: 1400 } as any },
-  { rank: 5, id: 'u5', name: 'Fatima Hassan', initials: 'FH', totalPoints: 1100, trend: 'up', trendValue: 5, gradient: LEVEL_GRADIENTS[4], levelInfo: { current: LEVELS[4], next: LEVELS[5], progress: 20, xp: 1100 } as any },
-  { rank: 6, id: 'demo', name: 'You', initials: 'ME', totalPoints: 850, trend: 'up', trendValue: 12, gradient: LEVEL_GRADIENTS[3], isCurrentUser: true, levelInfo: { current: LEVELS[3], next: LEVELS[4], progress: 62, xp: 850 } as any },
-  { rank: 7, id: 'u7', name: 'James O\'Brien', initials: 'JO', totalPoints: 720, trend: 'same', gradient: LEVEL_GRADIENTS[3], levelInfo: { current: LEVELS[3], next: LEVELS[4], progress: 30, xp: 720 } as any },
-  { rank: 8, id: 'u8', name: 'Yuki Tanaka', initials: 'YT', totalPoints: 580, trend: 'up', trendValue: 2, gradient: LEVEL_GRADIENTS[2], levelInfo: { current: LEVELS[2], next: LEVELS[3], progress: 93, xp: 580 } as any },
-  { rank: 9, id: 'u9', name: 'Priya Sharma', initials: 'PS', totalPoints: 420, trend: 'down', trendValue: 1, gradient: LEVEL_GRADIENTS[2], levelInfo: { current: LEVELS[2], next: LEVELS[3], progress: 40, xp: 420 } as any },
-  { rank: 10, id: 'u10', name: 'Carlos Mendez', initials: 'CM', totalPoints: 310, trend: 'same', gradient: LEVEL_GRADIENTS[1], levelInfo: { current: LEVELS[1], next: LEVELS[2], progress: 68, xp: 310 } as any },
-];
 
 function MyScoreCard({ entry, levelInfo }: { entry: LeaderboardEntry | null; levelInfo: LevelInfo | null }) {
   const info = levelInfo || entry?.levelInfo;
@@ -157,23 +147,20 @@ export default function LeaderboardPage() {
             name: user.name || 'Anonymous',
             initials,
             totalPoints: user.totalPoints || 0,
-            trend: index % 3 === 0 ? 'up' : index % 4 === 0 ? 'down' : 'same',
-            trendValue: Math.floor(Math.random() * 8) + 1,
+            trend: 'same' as const,
             gradient: LEVEL_GRADIENTS[user.levelInfo?.current?.level || 1],
-            isCurrentUser: false,
+            isCurrentUser: user.id === useAuthStore.getState().user?.id,
             levelInfo: user.levelInfo,
           };
         });
-      } else {
-        lb = MOCK_LEADERBOARD;
       }
       setLeaderboard(lb);
       setMyEntry(lb.find(e => e.isCurrentUser) || null);
 
       if (levelRes.status === 'fulfilled') setMyLevelInfo(levelRes.value.data);
     } catch {
-      setLeaderboard(MOCK_LEADERBOARD);
-      setMyEntry(MOCK_LEADERBOARD.find(e => e.isCurrentUser) || null);
+      setLeaderboard([]);
+      setMyEntry(null);
     } finally {
       setLoading(false);
     }
@@ -252,6 +239,17 @@ export default function LeaderboardPage() {
               )}
             </AnimatePresence>
           </div>
+
+          {!loading && leaderboard.length === 0 && (
+            <FeatureGuide
+              icon={Trophy}
+              title="The leaderboard fills up as students make an impact"
+              description="Every NGO project, summit and venture you contribute to earns impact XP. The students with the most XP on your campus appear here."
+              steps={['Apply to an NGO project from the marketplace', 'Get accepted and complete the work', 'Earn XP, level up and climb the leaderboard']}
+              example={<div><ExampleRow title="1. Aanya K." meta="🌍 Global Catalyst" right="1,240 XP" accent="from-amber-400 to-orange-500" /><ExampleRow title="2. You" meta="⚡ Social Innovator" right="340 XP" /></div>}
+              action={{ label: 'Find a project', href: '/student/impact/ngo-marketplace' }}
+            />
+          )}
 
           {/* Podium */}
           {loading ? (
