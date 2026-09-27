@@ -4,9 +4,10 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { CreditCard, Crown, Loader2, ShieldCheck, CalendarClock, AlertTriangle } from 'lucide-react';
+import { CreditCard, Crown, Loader2, ShieldCheck, CalendarClock, AlertTriangle, FileText } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { PricingCards } from '@/components/billing/PricingCards';
+import { SupportPanel } from '@/components/billing/SupportPanel';
 import { useSubscription } from '@/hooks/useSubscription';
 import { authedJson } from '@/lib/authed-fetch';
 import { PLANS, isPaidPlan, type BillingInterval, type PlanId } from '@/lib/plans';
@@ -36,6 +37,9 @@ function BillingContent() {
       toast.success('Welcome aboard! Your subscription is being activated.', { description: 'Premium features unlock as soon as Stripe confirms — usually a few seconds.' });
       // The webhook may land a moment after the redirect; poll briefly.
       [2000, 5000, 10000].forEach((ms) => setTimeout(() => refresh(), ms));
+    } else if (status === 'invoice') {
+      toast.success('Enterprise plan activated — invoice billing is set up.', { description: 'Your 14-day trial has started. Stripe will email your first invoice (30-day terms) when it ends.' });
+      refresh();
     } else if (status === 'canceled') {
       toast('Checkout canceled — no charge was made.');
     }
@@ -45,13 +49,13 @@ function BillingContent() {
     }
   }, [params, router, refresh]);
 
-  const startCheckout = async (id: PlanId) => {
+  const startCheckout = async (id: PlanId, payBy: 'card' | 'invoice' = 'card') => {
     if (!isPaidPlan(id)) return;
     setLoadingPlan(id);
     try {
       const { url } = await authedJson<{ url: string }>('/api/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ plan: id, interval }),
+        body: JSON.stringify({ plan: id, interval, payBy }),
       });
       window.location.href = url;
     } catch (e: any) {
@@ -135,6 +139,24 @@ function BillingContent() {
         loadingPlan={loadingPlan}
         onSelect={(id) => (id === 'STARTER' || subscription?.hasBillingAccount && plan !== 'STARTER' ? openPortal() : startCheckout(id))}
       />
+
+      {plan === 'STARTER' && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 p-5">
+          <div className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-300">
+            <FileText className="w-5 h-5 text-fuchsia-500 shrink-0" />
+            <span><strong className="text-zinc-900 dark:text-white">Need to pay by invoice?</strong> Enterprise can be billed by emailed invoice with 30-day terms — no card required.</span>
+          </div>
+          <button
+            onClick={() => startCheckout('ENTERPRISE', 'invoice')}
+            disabled={loadingPlan !== null}
+            className="shrink-0 inline-flex items-center gap-2 h-10 px-5 rounded-full border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300 font-bold text-sm hover:bg-fuchsia-500/10 disabled:opacity-50"
+          >
+            {loadingPlan === 'ENTERPRISE' && <Loader2 className="w-4 h-4 animate-spin" />} Start Enterprise with invoicing
+          </button>
+        </div>
+      )}
+
+      <SupportPanel plan={plan} />
 
       <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-zinc-500 pb-6">
         <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Payments processed securely by Stripe</span>
