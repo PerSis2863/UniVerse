@@ -8,12 +8,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* ── Left Panel — always dark ─────────────────── */}
       <div
         className="hidden lg:flex w-[52%] relative overflow-hidden flex-col"
-        style={{ background: 'linear-gradient(135deg, #0d1117 0%, #0f1525 50%, #0d1424 100%)' }}
+        style={{ background: 'linear-gradient(135deg, rgba(16,18,58,0.85) 0%, rgba(20,16,56,0.8) 50%, rgba(15,12,41,0.85) 100%)' }}
       >
         {/* Ambient blobs */}
-        <div className="absolute -top-40 -left-40 w-[480px] h-[480px] rounded-full bg-indigo-700/20 blur-[120px] pointer-events-none" />
-        <div className="absolute -bottom-40 -right-20 w-[360px] h-[360px] rounded-full bg-cyan-600/15 blur-[120px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-indigo-900/20 blur-[140px] pointer-events-none" />
+        <div className="absolute -top-60 -left-60 w-[760px] h-[760px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(99,102,241,0.3), transparent)' }} />
+        <div className="absolute -bottom-60 -right-40 w-[620px] h-[620px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(217,70,239,0.2), transparent)' }} />
 
         {/* Content */}
         <div className="relative z-10 flex flex-col h-full p-12">
@@ -41,21 +40,20 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               UniVerse empowers students, world-class universities, and leading NGOs to collaborate on real-world projects, research initiatives, and social impact summits.
             </p>
 
-            {/* Stats */}
+            {/* Platform capabilities */}
             <div className="grid grid-cols-2 gap-3 max-w-sm">
               {[
-                { n: '120+', l: 'Partner Universities' },
-                { n: '85+',  l: 'Collaborating NGOs' },
-                { n: '450k+', l: 'Volunteer Hours' },
-                { n: '180+', l: 'Joint Social Ventures' },
+                { t: 'Blockchain-verified', l: 'Credentials anchored on Polygon' },
+                { t: 'AI-powered', l: 'Study help & project matching' },
+                { t: 'Real-time', l: 'Live chat & notifications' },
+                { t: 'Install anywhere', l: 'iOS, Android & desktop' },
               ].map(s => (
                 <div
-                  key={s.l}
-                  className="rounded-2xl p-4 border border-white/[0.07] hover:border-indigo-500/40 transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(12px)' }}
+                  key={s.t}
+                  className="rounded-2xl p-4 border border-white/[0.07] hover:border-indigo-500/40 transition-colors bg-white/[0.04]"
                 >
-                  <div className="text-2xl font-black bg-gradient-to-r from-indigo-300 via-white to-amber-300 bg-clip-text text-transparent leading-none mb-1">
-                    {s.n}
+                  <div className="text-sm font-black bg-gradient-to-r from-indigo-300 via-white to-fuchsia-300 bg-clip-text text-transparent leading-tight mb-1">
+                    {s.t}
                   </div>
                   <div className="text-zinc-500 text-xs font-medium">{s.l}</div>
                 </div>
@@ -72,7 +70,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex flex-col p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-12" style={{ backgroundColor: '#09090b', color: '#ffffff' }}>
+      <div className="flex-1 flex flex-col p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-12" style={{ color: '#ffffff' }}>
         {/* Mobile logo */}
         <div className="flex lg:hidden pt-2 pb-8">
           <UniverseLogo size="md" showText={true} animated={false} withGlow={false} />

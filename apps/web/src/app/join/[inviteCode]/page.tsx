@@ -35,7 +35,7 @@ export default function JoinGroupPage(props: { params: Promise<{ inviteCode: str
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4 font-sans">
+    <div className="min-h-screen flex items-center justify-center p-4 font-sans">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}

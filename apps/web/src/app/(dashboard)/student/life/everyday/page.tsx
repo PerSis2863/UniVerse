@@ -153,7 +153,7 @@ export default function EverydayLifePage() {
                 transition={{ delay: i * 0.1 }}
                 key={i}
                 onClick={() => setActiveModal(mod.id)}
-                className={`bg-[#0d1117] border border-white/[0.08] rounded-3xl p-6 flex flex-col items-center justify-center text-center hover:bg-white/[0.02] transition-all cursor-pointer group ${mod.border}`}
+                className={`bg-[#0e1427] border border-white/[0.08] rounded-3xl p-6 flex flex-col items-center justify-center text-center hover:bg-white/[0.02] transition-all cursor-pointer group ${mod.border}`}
               >
                 <div className={`w-14 h-14 rounded-2xl ${mod.bg} ${mod.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                   <mod.icon className="w-7 h-7" />
@@ -173,7 +173,7 @@ export default function EverydayLifePage() {
               className="space-y-4"
             >
               <h2 className="text-lg font-bold text-white">Today's Dining Menu</h2>
-              <div className="bg-[#0d1117] border border-white/[0.08] rounded-3xl p-6">
+              <div className="bg-[#0e1427] border border-white/[0.08] rounded-3xl p-6">
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/[0.06]">
                   <h3 className="font-bold text-white">Main Dining Hall</h3>
                   <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
@@ -203,7 +203,7 @@ export default function EverydayLifePage() {
               className="space-y-4"
             >
               <h2 className="text-lg font-bold text-white">Shuttle Schedule</h2>
-              <div className="bg-[#0d1117] border border-white/[0.08] rounded-3xl p-6">
+              <div className="bg-[#0e1427] border border-white/[0.08] rounded-3xl p-6">
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/[0.06]">
                   <h3 className="font-bold text-white">Campus Loop (Red Line)</h3>
                   <span className="text-xs text-zinc-400 font-medium">Next in 5 min</span>
@@ -216,7 +216,7 @@ export default function EverydayLifePage() {
                     { stop: 'North Dorms', time: 'Scheduled 10:28 AM', status: 'future', color: 'bg-zinc-700' },
                   ].map((stop, idx) => (
                     <div key={idx} className="relative flex items-start gap-4 z-10 pl-8">
-                      <div className={`absolute left-0 w-4 h-4 rounded-full border-4 border-[#0d1117] ${stop.color} ${stop.active ? 'ring-2 ring-indigo-500/50' : ''}`} />
+                      <div className={`absolute left-0 w-4 h-4 rounded-full border-4 border-[#0e1427] ${stop.color} ${stop.active ? 'ring-2 ring-indigo-500/50' : ''}`} />
                       <div>
                         <div className={`text-sm font-bold ${stop.active ? 'text-white' : 'text-zinc-300'}`}>{stop.stop}</div>
                         <div className={`text-xs mt-1 ${stop.active ? 'text-indigo-400' : 'text-zinc-500'}`}>{stop.time}</div>
@@ -238,7 +238,7 @@ export default function EverydayLifePage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#0d1117] border border-zinc-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="bg-[#0e1427] border border-zinc-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
                 <div className="flex items-center gap-3">

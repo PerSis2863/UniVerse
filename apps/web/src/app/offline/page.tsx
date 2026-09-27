@@ -34,7 +34,7 @@ export default function OfflinePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center px-6 py-12">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       {/* Animated WiFi icon */}
       <div className="relative mb-8">
         <div className="absolute inset-0 rounded-full bg-orange-500/10 animate-ping" />

@@ -25,7 +25,7 @@ export default async function ReceiptPage({ params }: { params: { id: string } }
   const currencyCode = transaction.currency || 'USD';
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
       
       {/* Return to Dashboard link (hidden when printing) */}
       <div className="w-full max-w-3xl mb-6 print:hidden">

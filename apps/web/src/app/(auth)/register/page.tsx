@@ -128,7 +128,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div className="bg-[#09090b] shadow-xl border border-zinc-800 rounded-2xl p-6 sm:p-8">
+      <div className="bg-white/[0.04] backdrop-blur-xl shadow-2xl shadow-indigo-950/40 border border-white/10 rounded-2xl p-6 sm:p-8">
         {error && !showPhoneFlow && (
           <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">{error}</div>
         )}

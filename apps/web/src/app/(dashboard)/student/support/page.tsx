@@ -286,7 +286,7 @@ export default function StudentSupport() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#0d1117] border border-zinc-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[70vh]"
+              className="bg-[#0e1427] border border-zinc-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[70vh]"
             >
               <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30 shrink-0">
                 <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ export default function StudentSupport() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#0d1117] border border-zinc-800 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[80vh]"
+              className="bg-[#0e1427] border border-zinc-800 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[80vh]"
             >
               <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30 shrink-0">
                 <div className="flex items-center gap-3">

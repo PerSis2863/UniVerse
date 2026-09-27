@@ -184,7 +184,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   return (
     <>
       <Topbar title={titles[role]} subtitle={subtitles[role]} />
-      <div className="flex-1 p-8 overflow-y-auto bg-[#09090b]">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-8">
           
           {/* Controls */}

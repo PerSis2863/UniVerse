@@ -232,7 +232,7 @@ export default function InboxPage() {
       
       <div className="flex-1 flex overflow-hidden md:p-6 md:gap-6 max-w-7xl mx-auto w-full">
         {/* Left Sidebar - Contacts List */}
-        <div className={`w-full md:w-1/3 md:min-w-[320px] md:max-w-[400px] bg-white dark:bg-[#09090b] md:rounded-2xl md:border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden ${activeConvId ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-1/3 md:min-w-[320px] md:max-w-[400px] bg-white dark:bg-[#0b0f1c] md:rounded-2xl md:border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden ${activeConvId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-5 border-b border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Chats</h2>
@@ -271,7 +271,7 @@ export default function InboxPage() {
                       {other.avatar || other.name.charAt(0).toUpperCase()}
                     </div>
                     {isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#09090b] rounded-full"></div>
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#0b0f1c] rounded-full"></div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -308,9 +308,9 @@ export default function InboxPage() {
 
         {/* Right Panel - Active Chat */}
         {activeConv && otherUser ? (
-          <div className={`flex-1 bg-white dark:bg-[#09090b] md:rounded-2xl md:border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden relative ${!activeConvId ? 'hidden md:flex' : 'flex w-full'}`}>
+          <div className={`flex-1 bg-white dark:bg-[#0b0f1c] md:rounded-2xl md:border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden relative ${!activeConvId ? 'hidden md:flex' : 'flex w-full'}`}>
             {/* Chat Header */}
-            <div className="px-4 md:px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white dark:bg-[#09090b] z-20">
+            <div className="px-4 md:px-6 py-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white dark:bg-[#0b0f1c] z-20">
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setActiveConvId(null)}
@@ -323,7 +323,7 @@ export default function InboxPage() {
                     {otherUser.avatar || otherUser.name.charAt(0).toUpperCase()}
                   </div>
                   {onlineUsers[otherUser.id] && (
-                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-[#09090b] rounded-full"></div>
+                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-[#0b0f1c] rounded-full"></div>
                   )}
                 </div>
                 <div>
@@ -349,7 +349,7 @@ export default function InboxPage() {
             </div>
 
             {/* Chat Messages */}
-            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 z-10 scroll-smooth bg-zinc-50 dark:bg-[#09090b]">
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 z-10 scroll-smooth bg-zinc-50 dark:bg-[#0b0f1c]">
               <div className="flex justify-center mb-6">
                 <div className="bg-white dark:bg-zinc-900 text-zinc-500 text-xs px-3 py-1 rounded-full shadow-sm border border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5">
                   <CheckCheck className="w-3.5 h-3.5" />
@@ -427,7 +427,7 @@ export default function InboxPage() {
             )}
 
             {/* Chat Input */}
-            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-white dark:bg-[#09090b] border-t border-zinc-200 dark:border-zinc-800 z-20">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-white dark:bg-[#0b0f1c] border-t border-zinc-200 dark:border-zinc-800 z-20">
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -471,7 +471,7 @@ export default function InboxPage() {
             </div>
           </div>
         ) : (
-          <div className="hidden md:flex flex-1 bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 rounded-2xl flex-col items-center justify-center text-zinc-500">
+          <div className="hidden md:flex flex-1 bg-white dark:bg-[#0b0f1c] border border-zinc-200 dark:border-zinc-800 rounded-2xl flex-col items-center justify-center text-zinc-500">
             <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-6">
               <MessageSquare className="w-8 h-8 text-zinc-400" />
             </div>

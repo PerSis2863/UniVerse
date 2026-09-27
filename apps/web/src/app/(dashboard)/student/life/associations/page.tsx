@@ -46,7 +46,7 @@ export default function AssociationsPage() {
           {/* Search Bar */}
           <div className="relative group">
             <div className="absolute inset-0 bg-indigo-500/10 rounded-2xl blur-xl transition-all group-hover:bg-indigo-500/20" />
-            <div className="relative flex items-center bg-[#0d1117] border border-white/[0.08] rounded-2xl p-2 shadow-2xl">
+            <div className="relative flex items-center bg-[#0e1427] border border-white/[0.08] rounded-2xl p-2 shadow-2xl">
               <div className="pl-4 pr-3 text-zinc-500">
                 <Search className="w-5 h-5" />
               </div>
@@ -104,7 +104,7 @@ export default function AssociationsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 key={club.id}
-                className="group relative bg-[#0d1117] border border-white/[0.06] rounded-3xl p-6 hover:border-indigo-500/30 transition-all overflow-hidden flex flex-col h-full"
+                className="group relative bg-[#0e1427] border border-white/[0.06] rounded-3xl p-6 hover:border-indigo-500/30 transition-all overflow-hidden flex flex-col h-full"
               >
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:opacity-20 transition-opacity`} />
                 

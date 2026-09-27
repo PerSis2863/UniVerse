@@ -54,7 +54,7 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0d13' },
   ],
 };
 
@@ -71,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} ${outfit.variable} min-h-screen antialiased`} style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
           <ErrorMonitorBootstrap />
+          <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
           {children}
           <Toaster 
             position="bottom-right"

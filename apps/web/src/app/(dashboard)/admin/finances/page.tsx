@@ -158,7 +158,7 @@ export default function AdminFinances() {
         </div>
       )}
 
-      <div className="flex-1 p-8 overflow-y-auto bg-[#09090b]">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
           
           {/* Header Actions */}
@@ -232,7 +232,7 @@ export default function AdminFinances() {
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                 {[4,3,2,1,0].map(i => (
                   <div key={i} className="w-full border-t border-zinc-200 dark:border-zinc-800/30 flex items-start">
-                    <span className="text-[10px] text-zinc-600 -mt-2.5 bg-[#09090b] pr-2 absolute left-0">${i * 30}k</span>
+                    <span className="text-[10px] text-zinc-600 -mt-2.5 bg-[#0b0f1c] pr-2 absolute left-0">${i * 30}k</span>
                   </div>
                 ))}
               </div>

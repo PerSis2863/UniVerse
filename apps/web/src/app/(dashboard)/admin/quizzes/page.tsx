@@ -95,7 +95,7 @@ export default function AdminQuizzesPage() {
     <>
       <Topbar title="Quizzes Management" subtitle="Create and manage assessments for students" />
       
-      <div className="flex-1 p-8 overflow-y-auto bg-[#09090b]">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
           
           {/* Header Actions */}

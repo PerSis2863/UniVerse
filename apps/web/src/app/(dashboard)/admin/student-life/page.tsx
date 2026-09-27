@@ -88,7 +88,7 @@ export default function AdminStudentLifePage() {
     <>
       <Topbar title="Student Life Management" subtitle="Manage events, clubs, and community forums" />
       
-      <div className="flex-1 p-8 overflow-y-auto bg-[#09090b]">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
           
           {/* Tabs */}

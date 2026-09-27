@@ -664,7 +664,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} 
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg bg-white dark:bg-[#0b0f1c] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col"
             >
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <div>
@@ -730,7 +730,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
         {quizReviewModal && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm" onClick={() => setQuizReviewModal(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col max-h-[80vh]">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#0b0f1c] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col max-h-[80vh]">
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-zinc-900 dark:text-white">Quiz Review</h3>
@@ -764,7 +764,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
         {discussionModal && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm" onClick={() => setDiscussionModal(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col max-h-[80vh]">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#0b0f1c] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col max-h-[80vh]">
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-zinc-900 dark:text-white">{discussionModal.title}</h3>
@@ -799,7 +799,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
         {toolModal && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm" onClick={() => setToolModal(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col min-h-[400px]">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-2xl bg-white dark:bg-[#0b0f1c] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 z-[70] overflow-hidden flex flex-col min-h-[400px]">
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${toolModal.color}18` }}>

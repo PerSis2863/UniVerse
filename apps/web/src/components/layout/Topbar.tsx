@@ -82,7 +82,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
         {rightNode && <div className="mt-3 flex flex-wrap items-center gap-2 [&>*]:max-w-full">{rightNode}</div>}
       </div>
 
-      <header className="hidden lg:flex relative lg:sticky lg:top-0 z-20 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-200 dark:border-white/[0.06] px-4 md:px-8 h-auto lg:h-16 py-3 lg:py-0 flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+      <header className="hidden lg:flex relative lg:sticky lg:top-0 z-20 bg-white/70 dark:bg-[#0a0d13]/60 backdrop-blur-xl border-b border-zinc-200 dark:border-white/[0.06] px-4 md:px-8 h-auto lg:h-16 py-3 lg:py-0 flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
       <div className="flex items-center gap-4">
         {leftNode}
         <div>
@@ -146,7 +146,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
             <motion.div
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'tween', duration: 0.38, ease: [0.32, 0.72, 0, 1] }}
-              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] bg-white dark:bg-[#09090b] shadow-2xl border-l border-zinc-200 dark:border-zinc-800 z-[130] flex flex-col sheet-safe-top"
+              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] bg-white dark:bg-[#0b0f1c] shadow-2xl border-l border-zinc-200 dark:border-zinc-800 z-[130] flex flex-col sheet-safe-top"
             >
               {/* Header */}
               <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
