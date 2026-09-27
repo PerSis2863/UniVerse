@@ -42,7 +42,7 @@ export default function NGOMentorshipPage() {
 
   // Propose form state
   const [proposeTitle, setProposeTitle] = useState('');
-  const [proposePartner, setProposePartner] = useState('UNICEF');
+  const [proposePartner, setProposePartner] = useState('');
   const [proposeDesc, setProposeDesc] = useState('');
   const [proposeTags, setProposeTags] = useState('');
 
@@ -365,18 +365,13 @@ export default function NGOMentorshipPage() {
 
               <div>
                 <label className="text-xs font-medium text-zinc-300 block mb-1">NGO / Partner Organization</label>
-                <select
+                <input
                   value={proposePartner}
                   onChange={e => setProposePartner(e.target.value)}
+                  maxLength={120}
+                  placeholder="e.g. a local NGO you work with"
                   className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option>UNICEF</option>
-                  <option>Doctors Without Borders</option>
-                  <option>Greenpeace International</option>
-                  <option>UNESCO</option>
-                  <option>Water.org</option>
-                  <option>Red Cross</option>
-                </select>
+                />
               </div>
 
               <div>

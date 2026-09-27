@@ -116,7 +116,7 @@ function RequestCredentialModal({ onClose, onRequested }: { onClose: () => void;
           {[
             { key: 'title', label: 'Credential Title', placeholder: 'e.g. Clean Water Champion', min: 3, max: 120 },
             { key: 'projectName', label: 'Project Name', placeholder: 'e.g. Water Filtration Initiative', min: 2, max: 160 },
-            { key: 'organization', label: 'Organization (NGO / partner)', placeholder: 'e.g. WaterAid Kenya', min: 2, max: 160 },
+            { key: 'organization', label: 'Organization (NGO / partner)', placeholder: 'e.g. City Food Bank', min: 2, max: 160 },
           ].map(({ key, label, placeholder, min, max }) => (
             <div key={key}>
               <label className="block text-xs font-medium text-zinc-400 mb-1">{label}</label>

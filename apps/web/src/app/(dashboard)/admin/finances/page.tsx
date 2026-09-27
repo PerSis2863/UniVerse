@@ -26,6 +26,23 @@ export default function AdminFinances() {
     fetchTransactions();
   }, []);
 
+  const monthlyRevenue = useMemo(() => {
+    const now = new Date();
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleString(undefined, { month: 'short' }), total: 0 };
+    });
+    const byKey = new Map(months.map((m) => [m.key, m]));
+    for (const t of transactions) {
+      if (t.status !== 'COMPLETED' || !(t.amount > 0)) continue;
+      const d = new Date(t.createdAt);
+      const bucket = byKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+      if (bucket) bucket.total += t.amount;
+    }
+    return months;
+  }, [transactions]);
+  const maxMonthlyRevenue = Math.max(1, ...monthlyRevenue.map((m) => m.total));
+
   const stats = useMemo(() => {
     const totalRevenue = transactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
     const platformFees = totalRevenue * 0.1; // Example 10% fee
@@ -214,44 +231,36 @@ export default function AdminFinances() {
             ))}
           </div>
 
-          {/* Chart Placeholder (CSS visually interesting) */}
-          <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-8 relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent"></div>
-            
-            <div className="flex justify-between items-center mb-8">
+          {/* Revenue by month (completed payments, last 12 months) */}
+          <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-6 md:p-8">
+            <div className="flex justify-between items-baseline mb-6">
               <div>
                 <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">Revenue Overview</h2>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">Monthly breakdown of gross volume</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Completed payments per month · last 12 months</p>
               </div>
-              <select className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-300 rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500">
-                <option>2026</option>
-                <option>2025</option>
-              </select>
+              <span className="text-sm font-semibold text-zinc-900 dark:text-white tabular-nums">
+                ${monthlyRevenue.reduce((n, m) => n + m.total, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
             </div>
-            
-            <div className="h-64 flex items-end justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800/50 pb-2 relative mt-4">
-              {/* Y-axis lines */}
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                {[4,3,2,1,0].map(i => (
-                  <div key={i} className="w-full border-t border-zinc-200 dark:border-zinc-800/30 flex items-start">
-                    <span className="text-[10px] text-zinc-600 -mt-2.5 bg-[#0b0f1c] pr-2 absolute left-0">${i * 30}k</span>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Mock Bars */}
-              <div className="w-8 flex-shrink-0"></div> {/* Spacer for y-axis labels */}
-              {[40, 60, 45, 80, 55, 90, 75, 100, 85, 110, 95, 120].map((h, i) => (
-                <div key={i} className="w-full bg-gradient-to-t from-indigo-600/20 to-indigo-400/40 hover:from-indigo-500/40 hover:to-indigo-300/60 border-t border-x border-indigo-400/30 rounded-t-md transition-all duration-300 relative group cursor-pointer" style={{ height: `${h}%` }}>
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white text-xs font-medium py-1 px-2.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl border border-zinc-700 whitespace-nowrap z-10">
-                    ${(h * 300).toFixed(0)}
-                  </div>
+            <div className="h-56 flex items-end gap-2 border-b border-zinc-200 dark:border-zinc-800/50">
+              {monthlyRevenue.map((m) => (
+                <div key={m.key} className="flex-1 h-full flex flex-col justify-end items-center group">
+                  <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity mb-1 tabular-nums">
+                    ${m.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </span>
+                  <div
+                    className="w-full min-h-[2px] rounded-t-[4px] bg-indigo-500/60 group-hover:bg-indigo-500 transition-all duration-500"
+                    style={{ height: `${(m.total / maxMonthlyRevenue) * 88}%` }}
+                  />
                 </div>
               ))}
             </div>
-            <div className="flex justify-between mt-4 text-xs font-medium text-zinc-500 dark:text-zinc-500 pl-11">
-              <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+            <div className="flex gap-2 mt-2">
+              {monthlyRevenue.map((m) => <span key={m.key} className="flex-1 text-center text-[10px] text-zinc-500">{m.label}</span>)}
             </div>
+            {!isLoading && monthlyRevenue.every((m) => m.total === 0) && (
+              <p className="mt-4 text-sm text-zinc-500">No completed payments in the last 12 months yet.</p>
+            )}
           </div>
 
           {/* Recent Transactions Table */}

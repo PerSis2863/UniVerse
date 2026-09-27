@@ -11,47 +11,30 @@ import useSWR from 'swr';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
-const SQUAD_DATA: Record<string, { students: string[]; milestones: { label: string; done: boolean }[] }> = {
-  'prop-1': {
-    students: ['Alice Johnson', 'Ben Okonkwo', 'Celia Torres', 'David Zhao', 'Emma Park', 'Fatima Al-Rashid', 'George Mensah', 'Hannah Scott'],
-    milestones: [
-      { label: 'Prototype complete', done: true },
-      { label: 'Field test in 3 rural sites', done: true },
-      { label: 'Final field deployment', done: false },
-    ],
-  },
-  'prop-2': {
-    students: ['Ivan Petrov', 'Julia Nakamura', 'Kevin Osei', 'Laura Bianchi', 'Marcus Webb', 'Nadia El-Amin'],
-    milestones: [
-      { label: 'Ethics committee submission', done: true },
-      { label: 'Ethics clearance obtained', done: false },
-      { label: 'Clinical pilot phase 1', done: false },
-    ],
-  },
-};
 
 export default function TeacherCollaborationsPage() {
   const [showNewProposalModal, setShowNewProposalModal] = useState(false);
   const [squadModal, setSquadModal] = useState<any | null>(null);
-  const [squadMessage, setSquadMessage] = useState('');
   const [proposalTitle, setProposalTitle] = useState('');
-  const [partnerUni, setPartnerUni] = useState('MIT');
-  const [leadNgo, setLeadNgo] = useState('UNICEF');
+  const [partnerUni, setPartnerUni] = useState('');
+  const [leadNgo, setLeadNgo] = useState('');
 
   const { data: realProposals, mutate } = useSWR('/collaborations/projects', async (url) => {
     const res = await api.get(url);
     return res.data;
   });
 
+  const { data: squadDetail, isLoading: squadLoading } = useSWR(squadModal ? `/collaborations/projects/${squadModal.id}` : null, async (url: string) => (await api.get(url)).data);
+
   const displayProposals = realProposals ? realProposals.map((p: any) => ({
     id: p.id,
     title: p.title,
-    status: p.status === 'PendingReview' ? 'Submitted for Consortium Approval' : p.status,
-    partner: p.partner || 'Unknown',
-    ngo: p.ngo || 'Unknown',
+    status: p.status === 'PendingReview' ? 'Awaiting admin review' : p.status,
+    partner: p.partner || '—',
+    ngo: p.ngo || '—',
     studentsAssigned: p._count?.members || 0,
-    funding: 'Pending Review',
-    nextMilestone: 'Review by Global Dean Committee',
+    funding: p.status === 'PendingReview' ? 'Pending review' : '—',
+    nextMilestone: p.status === 'PendingReview' ? 'Admin review' : '—',
   })) : [];
 
   const handleCreateProposal = async (e: React.FormEvent) => {
@@ -62,14 +45,14 @@ export default function TeacherCollaborationsPage() {
       await api.post('/collaborations/projects', {
         title: proposalTitle,
         description: 'New collaboration project',
-        partner: `${partnerUni} Consortium`,
-        ngo: leadNgo,
+        partner: partnerUni.trim() || null,
+        ngo: leadNgo.trim() || null,
       });
 
       mutate();
       setShowNewProposalModal(false);
       setProposalTitle('');
-      toast.success('Proposal submitted to the Academic Senate!');
+      toast.success('Proposal submitted for admin review');
     } catch (error) {
       toast.error('Failed to submit proposal');
     }
@@ -90,7 +73,7 @@ export default function TeacherCollaborationsPage() {
         }
       />
 
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Stats Bar */}
@@ -175,7 +158,8 @@ export default function TeacherCollaborationsPage() {
 
           {/* Squad Management Modal */}
           {squadModal && (() => {
-            const squadInfo = SQUAD_DATA[squadModal.id];
+            const members: { user: { id: string; name: string } }[] = squadDetail?.members ?? [];
+            const milestones: { id: string; title: string; status: string }[] = squadDetail?.milestones ?? [];
             return (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
@@ -193,50 +177,40 @@ export default function TeacherCollaborationsPage() {
                     <div>
                       <h4 className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-3">Milestone Tracker</h4>
                       <div className="space-y-2">
-                        {squadInfo?.milestones.map((m, i) => (
-                          <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border text-sm ${m.done ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300' : 'bg-zinc-100 dark:bg-zinc-800/40 border-zinc-700 text-zinc-600 dark:text-zinc-400'}`}>
-                            <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${m.done ? 'text-emerald-400' : 'text-zinc-600'}`} />
-                            {m.label}
-                            {m.done && <span className="ml-auto text-[10px] text-emerald-500 font-bold">DONE</span>}
-                          </div>
-                        ))}
+                        {squadLoading && <p className="text-sm text-zinc-500">Loading…</p>}
+                        {!squadLoading && milestones.length === 0 && <p className="text-sm text-zinc-500">No milestones yet.</p>}
+                        {milestones.map((m) => {
+                          const done = m.status === 'COMPLETED';
+                          return (
+                            <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border text-sm ${done ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-zinc-100 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'}`}>
+                              <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${done ? 'text-emerald-400' : 'text-zinc-500'}`} />
+                              {m.title}
+                              {done && <span className="ml-auto text-[10px] text-emerald-500 font-bold">DONE</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
                     {/* Squad Roster */}
                     <div>
                       <h4 className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-3">
-                        Squad Roster ({squadInfo?.students.length || squadModal.studentsAssigned} Researchers)
+                        Team ({members.length || squadModal.studentsAssigned} member{(members.length || squadModal.studentsAssigned) === 1 ? '' : 's'})
                       </h4>
                       <div className="grid grid-cols-2 gap-2">
-                        {(squadInfo?.students || []).map((s: string) => (
-                          <div key={s} className="flex items-center gap-2 p-2 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg text-sm text-zinc-300">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-zinc-900 dark:text-white text-xs font-bold flex-shrink-0">{s.charAt(0)}</div>
-                            {s}
+                        {!squadLoading && members.length === 0 && <p className="col-span-2 text-sm text-zinc-500">No students have joined yet.</p>}
+                        {members.map((m) => (
+                          <div key={m.user.id} className="flex items-center gap-2 p-2 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg text-sm text-zinc-700 dark:text-zinc-300">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{m.user.name.charAt(0)}</div>
+                            {m.user.name}
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Message Squad */}
-                    <div>
-                      <h4 className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-3">
-                        <MessageSquare className="w-3.5 h-3.5 inline mr-1" /> Message Squad
-                      </h4>
-                      <textarea
-                        rows={3}
-                        value={squadMessage}
-                        onChange={e => setSquadMessage(e.target.value)}
-                        placeholder="Send a message or update to the whole squad..."
-                        className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
-                      />
-                      <button
-                        onClick={() => { toast.success('Message sent to squad!'); setSquadMessage(''); }}
-                        className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors"
-                      >
-                        <Send className="w-4 h-4" /> Send Message
-                      </button>
-                    </div>
+                    <a href="/teacher/inbox" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors">
+                      <MessageSquare className="w-4 h-4" /> Message the team in Inbox
+                    </a>
                   </div>
 
                   <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
@@ -274,32 +248,24 @@ export default function TeacherCollaborationsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-medium text-zinc-300 block mb-1">Target University Partner</label>
-                      <select
+                      <input
                         value={partnerUni}
                         onChange={e => setPartnerUni(e.target.value)}
+                        maxLength={120}
+                        placeholder="Partner university (optional)"
                         className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="MIT">MIT</option>
-                        <option value="University of Oxford">University of Oxford</option>
-                        <option value="ETH Zürich">ETH Zürich</option>
-                        <option value="Sorbonne University">Sorbonne University</option>
-                        <option value="Univ of São Paulo">Univ of São Paulo</option>
-                      </select>
+                      />
                     </div>
 
                     <div>
                       <label className="text-xs font-medium text-zinc-300 block mb-1">NGO Co-Sponsor</label>
-                      <select
+                      <input
                         value={leadNgo}
                         onChange={e => setLeadNgo(e.target.value)}
+                        maxLength={120}
+                        placeholder="NGO partner (optional)"
                         className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="UNICEF">UNICEF</option>
-                        <option value="Doctors Without Borders">Doctors Without Borders</option>
-                        <option value="Greenpeace">Greenpeace</option>
-                        <option value="UNESCO">UNESCO</option>
-                        <option value="Water.org">Water.org</option>
-                      </select>
+                      />
                     </div>
                   </div>
 
@@ -315,7 +281,7 @@ export default function TeacherCollaborationsPage() {
                       type="submit"
                       className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2"
                     >
-                      <Send className="w-3.5 h-3.5" /> Submit to Academic Senate
+                      <Send className="w-3.5 h-3.5" /> Submit proposal
                     </button>
                   </div>
                 </form>

@@ -45,73 +45,6 @@ const SDG_COLORS: Record<number, string> = {
   17: 'from-blue-600 to-blue-800',
 };
 
-const MOCK_MATCHES: MatchedProject[] = [
-  {
-    rank: 1, score: 95, matchPercentage: 95,
-    matchReasons: ['Matches your React & Python skills', 'Aligns with your AI courses', 'High acceptance chance'],
-    skillMatches: ['Python', 'React'],
-    project: {
-      id: 'p1', name: 'AI-Powered Crop Diagnosis for Small Farmers',
-      description: 'Build an offline-capable mobile app that uses computer vision to diagnose crop diseases in sub-Saharan Africa, helping 50,000+ subsistence farmers save their harvests.',
-      ngo: { name: 'FAO Digital Agriculture Initiative', isVerified: true },
-      skillsRequired: ['Python', 'React Native', 'TensorFlow', 'UX Design'],
-      impactPoints: 200, location: 'Remote + Kenya Field Trip', duration: '3 months',
-      openings: 3, sdgNumber: 2, _count: { applications: 4 },
-    },
-  },
-  {
-    rank: 2, score: 82, matchPercentage: 82,
-    matchReasons: ['Matches your JavaScript skills', 'Aligns with your Web Dev courses', 'Newly posted'],
-    skillMatches: ['JavaScript', 'Node.js'],
-    project: {
-      id: 'p2', name: 'Open-Source Health Records for Refugee Camps',
-      description: 'Develop a secure, offline-first electronic health record system for UNHCR refugee camp clinics, processing medical data for 80,000+ displaced people.',
-      ngo: { name: 'UNHCR Innovation Lab', isVerified: true },
-      skillsRequired: ['Node.js', 'PostgreSQL', 'React', 'Security'],
-      impactPoints: 180, location: 'Remote', duration: '4 months',
-      openings: 2, sdgNumber: 3, _count: { applications: 2 },
-    },
-  },
-  {
-    rank: 3, score: 76, matchPercentage: 76,
-    matchReasons: ['Aligns with your courses', 'Open spots available'],
-    skillMatches: ['Data Analysis'],
-    project: {
-      id: 'p3', name: 'Water Quality Monitoring Dashboard',
-      description: 'Build a real-time IoT data dashboard tracking water safety across 300 rural wells in East Africa — visualizing pH, turbidity, and contamination alerts.',
-      ngo: { name: 'WaterAid Kenya', isVerified: true },
-      skillsRequired: ['Data Visualization', 'IoT', 'Python', 'GIS'],
-      impactPoints: 150, location: 'Remote', duration: '2 months',
-      openings: 5, sdgNumber: 6, _count: { applications: 1 },
-    },
-  },
-  {
-    rank: 4, score: 71, matchPercentage: 71,
-    matchReasons: ['High impact potential', 'High acceptance chance'],
-    skillMatches: ['UX Design'],
-    project: {
-      id: 'p4', name: 'Digital Literacy Platform for Women',
-      description: 'Design an intuitive mobile-first digital literacy curriculum for 10,000+ women in rural India entering the workforce, reducing the gender tech gap.',
-      ngo: { name: 'UNDP Gender Equality Initiative', isVerified: true },
-      skillsRequired: ['UX Design', 'Content Creation', 'Instructional Design'],
-      impactPoints: 160, location: 'Remote', duration: '3 months',
-      openings: 4, sdgNumber: 5, _count: { applications: 3 },
-    },
-  },
-  {
-    rank: 5, score: 65, matchPercentage: 65,
-    matchReasons: ['Recommended for you'],
-    skillMatches: [],
-    project: {
-      id: 'p5', name: 'Climate Refugee Resettlement Tracker',
-      description: 'Create a geospatial tracking tool mapping climate displacement patterns across 15 countries, supporting UN policy work affecting 1.2M displaced people.',
-      ngo: { name: 'Climate Refugee Foundation', isVerified: false },
-      skillsRequired: ['GIS', 'Python', 'Data Analysis', 'Mapping APIs'],
-      impactPoints: 200, location: 'Remote', duration: '5 months',
-      openings: 2, sdgNumber: 13, _count: { applications: 0 },
-    },
-  },
-];
 
 function MatchBar({ pct }: { pct: number }) {
   const color = pct >= 90 ? 'from-emerald-500 to-teal-500' : pct >= 75 ? 'from-blue-500 to-indigo-500' : 'from-amber-500 to-orange-500';
@@ -138,9 +71,9 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
       await api.post(`/impact/ngo-projects/${match.project.id}/apply`, { motivation: 'AI-matched application' });
       setApplied(true);
       toast.success('Applied successfully!', { description: 'The NGO will review your profile.' });
-    } catch {
-      setApplied(true);
-      toast.success('Application submitted!');
+    } catch (e: any) {
+      const msg = e?.response?.data?.message;
+      toast.error(typeof msg === 'string' ? msg : 'Could not apply right now. Please try again.');
     } finally {
       setApplying(false);
     }
@@ -230,6 +163,7 @@ export default function AIMatchPage() {
   const [matches, setMatches] = useState<MatchedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchMatches = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -242,9 +176,11 @@ export default function AIMatchPage() {
         matchReasons: m.matchReasons || ['Recommended for you'],
         skillMatches: m.skillMatches || [],
         project: m.project,
-      })) : MOCK_MATCHES);
+      })) : []);
+      setLoadError(false);
     } catch {
-      setMatches(MOCK_MATCHES);
+      setMatches([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -299,6 +235,15 @@ export default function AIMatchPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              {matches.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-zinc-800 p-10 text-center">
+                  <Brain className="w-8 h-8 text-purple-400 mx-auto mb-3" />
+                  <p className="font-semibold text-white">{loadError ? 'Couldn’t reach the matching service' : 'No matches yet'}</p>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    {loadError ? 'Please try again in a moment.' : 'Add skills to your profile and check back as NGOs post new projects.'}
+                  </p>
+                </div>
+              )}
               {matches.map(match => (
                 <ProjectMatchCard key={match.project.id} match={match} onApply={() => {}} />
               ))}

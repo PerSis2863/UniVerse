@@ -49,7 +49,7 @@ export default function AdminCertificationsPage() {
         subtitle="Review and approve student requests for Social Impact Certificates." 
       />
       
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
           
           <div className="flex justify-between items-center mb-6">

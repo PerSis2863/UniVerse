@@ -58,8 +58,6 @@ const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/student/impact/ai-match', label: '🤖 AI Project Match' },
         { href: '/student/credentials', label: '🛡️ Verified Credentials' },
-        { href: '/student/impact/proof-of-work', label: 'Proof of Work' },
-        { href: '/student/impact/certifications', label: 'Certifications' },
         { href: '/student/impact/startups', label: 'nav.startups' },
         { href: '/student/impact/ngo-marketplace', label: 'nav.ngo_marketplace' },
         { href: '/student/impact/edu-society', label: 'nav.edu_society' },

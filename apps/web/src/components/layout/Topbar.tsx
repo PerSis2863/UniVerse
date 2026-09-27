@@ -7,6 +7,12 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
+import useSWR from 'swr';
+import { formatDistanceToNowStrict } from 'date-fns';
+import { authedFetch, authedJson } from '@/lib/authed-fetch';
+
+type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
+const NOTIF_ICON: Record<string, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔', message: '💬', grade: '🎓', event: '📅' };
 
 interface TopbarProps {
   title: string;
@@ -42,13 +48,25 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
     return () => window.removeEventListener('universe:open-notifications', open);
   }, []);
 
-  const [notifications, setNotifications] = useState([
-    { id: 1, icon: '🎓', title: 'Grade posted: CS301 — A (94%)', time: '10m ago', unread: true, important: false },
-    { id: 2, icon: '📅', title: 'Attendance alert: DB class missed', time: '2h ago', unread: true, important: true },
-    { id: 3, icon: '💬', title: 'New message from Prof. Sharma', time: '4h ago', unread: false, important: false },
-    { id: 4, icon: '📢', title: 'Room Booking Confirmed: CS-201', time: '1d ago', unread: false, important: false },
-    { id: 5, icon: '🤝', title: 'New Consortium Project: UNICEF', time: '2d ago', unread: false, important: true },
-  ]);
+  const { data: apiNotifications, mutate: refreshNotifications } = useSWR<ApiNotification[]>(
+    user ? '/api/notifications' : null,
+    authedJson,
+    { refreshInterval: 60_000, revalidateOnFocus: true, dedupingInterval: 15_000 },
+  );
+  const notifications = (apiNotifications ?? []).map((n) => ({
+    id: n.id,
+    icon: NOTIF_ICON[n.type] ?? '🔔',
+    title: n.title,
+    body: n.body,
+    link: n.link,
+    time: formatDistanceToNowStrict(new Date(n.createdAt), { addSuffix: true }),
+    unread: !n.read,
+    important: n.type === 'warning' || n.type === 'error',
+  }));
+  const markRead = async (ids?: string[]) => {
+    refreshNotifications((prev) => prev?.map((n) => (!ids || ids.includes(n.id) ? { ...n, read: true } : n)), { revalidate: false });
+    await authedFetch('/api/notifications', { method: 'PATCH', body: JSON.stringify({ ids: ids ?? [] }) }).catch(() => null);
+  };
   const unreadCount = notifications.filter(n => n.unread).length;
 
   const filteredNotifications = notifications.filter(n => {
@@ -154,7 +172,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                     <Bell className="w-5 h-5 text-indigo-500" /> Notifications
                   </h2>
-                  <p className="text-xs text-zinc-500 mt-1">You have {unreadCount} unread messages</p>
+                  <p className="text-xs text-zinc-500 mt-1">{unreadCount === 0 ? 'You’re all caught up' : `You have ${unreadCount} unread`}</p>
                 </div>
                 <button onClick={() => setShowNotifications(false)} aria-label="Close notifications" className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 transition-colors">
                   <X className="w-4 h-4" />
@@ -186,7 +204,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
                 ) : (
                   filteredNotifications.map(n => (
                     <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                      key={n.id} onClick={() => setNotifications(prev => prev.map(x => x.id === n.id ? {...x, unread: false} : x))}
+                      key={n.id} onClick={() => { if (n.unread) markRead([n.id]); if (n.link?.startsWith("/")) { setShowNotifications(false); window.location.assign(n.link); } }}
                       className={cn("p-4 rounded-2xl border transition-all cursor-pointer group flex items-start gap-3",
                         n.unread ? "bg-white dark:bg-zinc-900 border-indigo-500/30 shadow-sm" : "bg-zinc-50 dark:bg-zinc-900/30 border-transparent hover:border-zinc-200 dark:hover:border-zinc-800"
                       )}
@@ -199,6 +217,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
                           <h4 className={cn("text-sm pr-2", n.unread ? "font-bold text-zinc-900 dark:text-white" : "font-medium text-zinc-600 dark:text-zinc-400")}>{n.title}</h4>
                           <span className="text-[10px] text-zinc-400 whitespace-nowrap">{n.time}</span>
                         </div>
+                        {n.body && <p className="text-xs text-zinc-500 line-clamp-2 mb-1">{n.body}</p>}
                         <div className="flex items-center gap-2">
                           {n.important && <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded-full"><AlertCircle className="w-3 h-3" /> Important</span>}
                         </div>
@@ -211,7 +230,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode }: TopbarP
 
               {/* Footer */}
               <div className="p-4 sheet-safe-bottom border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-between items-center">
-                <button onClick={() => { setNotifications(prev => prev.map(n => ({...n, unread: false}))); import('sonner').then(m => m.toast.success('All marked as read')); }} className="text-sm font-medium text-zinc-500 hover:text-indigo-500 transition-colors">Mark all as read</button>
+                <button onClick={() => { markRead(); import('sonner').then(m => m.toast.success('All marked as read')); }} className="text-sm font-medium text-zinc-500 hover:text-indigo-500 transition-colors">Mark all as read</button>
                 <Link href={user?.role === 'TEACHER' ? '/teacher/inbox' : user?.role === 'ADMIN' ? '/admin/inbox' : '/student/inbox'} onClick={() => setShowNotifications(false)} className="text-sm font-semibold text-zinc-900 dark:text-white hover:text-indigo-500 transition-colors">View Inbox &rarr;</Link>
               </div>
             </motion.div>

@@ -134,7 +134,7 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

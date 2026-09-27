@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
 
-export const runtime = 'edge';
 
 // gemini-1.5-flash (used before) has been shut down by Google. The model is configurable so it
 // can be updated from Vercel settings without a code change; if the primary model is unavailable

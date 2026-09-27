@@ -13,19 +13,12 @@ const GamificationWidget = dynamic(
     loading: () => <div className="h-64 w-full bg-zinc-100 dark:bg-zinc-900/50 animate-pulse rounded-2xl flex items-center justify-center text-zinc-500 text-sm">Loading widget...</div> 
   }
 );
-const SocialProofFeed = dynamic(
-  () => import('@/components/dashboard/SocialProofFeed').then(mod => mod.SocialProofFeed),
-  { ssr: false, loading: () => <div className="h-48 bg-zinc-900/50 animate-pulse rounded-2xl" /> }
-);
 const ImpactLevelWidget = dynamic(
   () => import('@/components/dashboard/ImpactLevelWidget').then(mod => mod.ImpactLevelWidget),
   { ssr: false, loading: () => <div className="h-48 bg-zinc-900/50 animate-pulse rounded-2xl" /> }
 );
-const SkillMatchModal = dynamic(
-  () => import('@/components/dashboard/SkillMatchModal').then(mod => mod.SkillMatchModal),
-  { ssr: false }
-);
 import { useAuthStore } from '@/store/auth';
+import { useRouter } from 'next/navigation';
 import { useLanguageStore } from '@/store/language';
 import { ClassDetailModal, ClassData } from '@/components/dashboard/ClassDetailModal';
 import { BookOpen, ClipboardList, BarChart3, Trophy, TrendingUp, Clock, CheckCircle2, FileText, Globe2, ArrowUpRight, Sparkles, HeartHandshake, AlertCircle, Calendar } from 'lucide-react';
@@ -38,7 +31,7 @@ export default function StudentDashboard() {
   const { user } = useAuthStore();
   const { t } = useLanguageStore();
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const [showSkillMatch, setShowSkillMatch] = useState(false);
+  const router = useRouter();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
 
@@ -81,7 +74,7 @@ export default function StudentDashboard() {
                   {t('dashboard.network')}
                 </div>
                 <h2 className="text-lg md:text-xl font-black text-zinc-900 dark:text-white leading-tight">
-                  {t('dashboard.collab')} <span className="bg-gradient-to-r from-indigo-600 via-pink-600 to-amber-600 dark:from-indigo-400 dark:via-pink-400 dark:to-amber-400 bg-clip-text text-transparent">UNICEF & MIT</span>
+                  {t('dashboard.collab')} <span className="bg-gradient-to-r from-indigo-600 via-pink-600 to-amber-600 dark:from-indigo-400 dark:via-pink-400 dark:to-amber-400 bg-clip-text text-transparent">NGOs &amp; changemakers</span>
                 </h2>
                 <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-1 max-w-xl">
                   {t('dashboard.impact_desc')}
@@ -91,7 +84,7 @@ export default function StudentDashboard() {
 
             <div className="flex items-center gap-3 w-full md:w-auto">
               <Link
-                href="/student/impact/projects"
+                href="/student/impact/ngo-marketplace"
                 className="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-1.5 transition-all"
               >
                 {t('dashboard.browse')} <ArrowUpRight className="w-3.5 h-3.5" />
@@ -251,7 +244,7 @@ export default function StudentDashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { icon: FileText, label: 'View Assignments', color: 'indigo', href: '/student/courses' },
-              { icon: Sparkles, label: 'Skill Match', color: 'cyan', onClick: () => setShowSkillMatch(true) },
+              { icon: Sparkles, label: 'Skill Match', color: 'cyan', onClick: () => router.push('/student/impact/ai-match') },
               { icon: ClipboardList, label: 'Check Attendance', color: 'green', href: '/student/attendance' },
               { icon: TrendingUp, label: 'View Grades', color: 'amber', href: '/student/grades' },
               { icon: CheckCircle2, label: 'Take Quiz', color: 'indigo', href: '/student/quizzes' },
@@ -291,9 +284,7 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Feature 8: Social Proof Feed + Feature 9: Impact Level */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <SocialProofFeed />
+        <div className="mt-6">
           <ImpactLevelWidget />
         </div>
 
@@ -304,19 +295,6 @@ export default function StudentDashboard() {
         onClose={() => setSelectedClass(null)} 
       />
 
-      {showSkillMatch && user && (
-        <SkillMatchModal 
-          user={{
-            name: user.name,
-            skills: [
-              { name: 'Python', category: 'Technology' },
-              { name: 'Social Work', category: 'Humanities' },
-              { name: 'Community Building', category: 'Social Sciences' },
-            ]
-          }} 
-          onClose={() => setShowSkillMatch(false)} 
-        />
-      )}
     </>
   );
 }

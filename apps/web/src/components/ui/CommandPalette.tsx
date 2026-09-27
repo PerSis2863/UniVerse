@@ -29,7 +29,7 @@ const STUDENT_COMMANDS: CommandItem[] = [
   { id: 'calendar', label: 'Timetable', description: 'View class schedule', href: '/student/calendar', icon: Clock, category: 'Pages' },
   { id: 'attendance', label: 'Attendance', description: 'Check attendance records', href: '/student/attendance', icon: FileText, category: 'Pages' },
   { id: 'community', label: 'Community', description: 'Connect with students', href: '/student/community', icon: Users, category: 'Pages' },
-  { id: 'impact', label: 'Social Impact Projects', href: '/student/impact/projects', icon: Globe2, category: 'Pages' },
+  { id: 'impact', label: 'Social Impact Projects', href: '/student/impact/ngo-marketplace', icon: Globe2, category: 'Pages' },
   { id: 'knowledge', label: 'Knowledge Hub', href: '/student/knowledge-hub', icon: BrainCircuit, category: 'Pages' },
   { id: 'skills', label: 'Skills & Badges', href: '/student/skills', icon: Trophy, category: 'Pages' },
   { id: 'personal', label: 'Personal Data', href: '/student/administrative/personal', icon: FileText, category: 'Administrative', keywords: ['profile', 'info'] },

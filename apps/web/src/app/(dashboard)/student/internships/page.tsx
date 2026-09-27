@@ -26,15 +26,8 @@ export default function StudentInternships() {
   const [internships, setInternships] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  const SAMPLE_INTERNSHIPS = [
-    { id: 1, title: 'Software Engineering Intern', company: { name: 'Google', logoUrl: null }, location: 'Mountain View, CA', type: 'On-site', duration: '12 weeks', stipend: '$8,500/mo', tags: ['React', 'Python', 'Cloud'], deadline: '2027-03-01', description: 'Join Google\'s engineering team to build products used by billions.', isBookmarked: false },
-    { id: 2, title: 'ML Research Intern', company: { name: 'DeepMind', logoUrl: null }, location: 'London, UK', type: 'Hybrid', duration: '6 months', stipend: '£6,000/mo', tags: ['PyTorch', 'NLP', 'LLMs'], deadline: '2027-02-15', description: 'Work alongside world-class researchers on frontier AI problems.', isBookmarked: false },
-    { id: 3, title: 'Data Science Intern', company: { name: 'Spotify', logoUrl: null }, location: 'Stockholm, Sweden', type: 'Remote', duration: '10 weeks', stipend: '€4,500/mo', tags: ['SQL', 'Python', 'ML'], deadline: '2027-03-20', description: 'Analyze music trends and build recommendation features at scale.', isBookmarked: false },
-    { id: 4, title: 'Product Design Intern', company: { name: 'Figma', logoUrl: null }, location: 'San Francisco, CA', type: 'On-site', duration: '12 weeks', stipend: '$7,000/mo', tags: ['UX', 'Figma', 'Prototyping'], deadline: '2027-04-01', description: 'Shape the future of design tools used by millions of designers.', isBookmarked: false },
-    { id: 5, title: 'Backend Engineering Intern', company: { name: 'Stripe', logoUrl: null }, location: 'Dublin, Ireland', type: 'Hybrid', duration: '6 months', stipend: '€5,500/mo', tags: ['Go', 'Distributed Systems', 'APIs'], deadline: '2027-02-28', description: 'Build payments infrastructure that powers the global economy.', isBookmarked: false },
-    { id: 6, title: 'Impact Technology Intern', company: { name: 'UNICEF', logoUrl: null }, location: 'New York, NY', type: 'Hybrid', duration: '3 months', stipend: '$3,200/mo', tags: ['Social Impact', 'Data', 'Python'], deadline: '2027-03-15', description: 'Use technology to improve outcomes for children worldwide.', isBookmarked: false },
-  ];
 
   const fetchInternships = async () => {
     try {
@@ -42,12 +35,11 @@ export default function StudentInternships() {
         api.get('/internships'),
         api.get('/internships/my-applications')
       ]);
-      const data = internshipsRes.data || [];
-      setInternships(data.length > 0 ? data : SAMPLE_INTERNSHIPS);
-      setApplications(appsRes.data || []);
+      setInternships(Array.isArray(internshipsRes.data) ? internshipsRes.data : []);
+      setApplications(Array.isArray(appsRes.data) ? appsRes.data : []);
     } catch (error) {
-      // Backend offline — show sample data
-      setInternships(SAMPLE_INTERNSHIPS);
+      setLoadError(true);
+      setInternships([]);
       setApplications([]);
     } finally {
       setIsLoading(false);
@@ -214,7 +206,7 @@ export default function StudentInternships() {
               
               {filteredInternships.length === 0 && (
                 <div className="col-span-1 md:col-span-2 text-center py-12 text-zinc-500">
-                  No internships found matching your criteria.
+                  {loadError ? "Couldn’t load internships right now. Please try again shortly." : internships.length === 0 ? "No internships posted yet. New opportunities will appear here." : "No internships found matching your criteria."}
                 </div>
               )}
             </div>

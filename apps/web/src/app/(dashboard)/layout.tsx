@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { AppSkeleton } from '@/components/layout/AppSkeleton';
 import { useAuthStore } from '@/store/auth';
 import { Role } from '@/types';
 import { auth } from '@/lib/firebase';
@@ -87,8 +88,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoaded, isSignedIn, demoUser, router]);
 
-  // Show nothing while loading auth or before mounting (to prevent hydration mismatch)
-  if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return null;
+  // Show the app skeleton while the session is restored (static markup, so no hydration mismatch)
+  if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return <AppSkeleton />;
   
   return <DashboardShell>{children}</DashboardShell>;
 }

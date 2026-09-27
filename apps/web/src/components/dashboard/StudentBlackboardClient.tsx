@@ -238,7 +238,7 @@ export function StudentBlackboardClient({ initialCourse }: { initialCourse: any 
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-zinc-50 dark:bg-zinc-950/40">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8/40">
           <div key={activeTab} className="h-full">
 
               {/* ── BOARD ────────────────────── */}

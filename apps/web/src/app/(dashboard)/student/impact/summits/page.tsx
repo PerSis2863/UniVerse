@@ -67,7 +67,7 @@ export default function GlobalSummitsPage() {
         }
       />
 
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Intro Banner */}
@@ -79,7 +79,7 @@ export default function GlobalSummitsPage() {
               </div>
               <h2 className="text-2xl font-black text-zinc-900 dark:text-white">Cross-University Team Matchmaking</h2>
               <p className="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed">
-                Need a teammate from another university? Our matchmaking engine pairs UniVerse students with computer scientists at MIT, medical students at Oxford, and policy advocates at Sorbonne.
+                Need a teammate from another university? Team up with students from other campuses who share your cause and bring complementary skills.
               </p>
             </div>
             <button className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 whitespace-nowrap">

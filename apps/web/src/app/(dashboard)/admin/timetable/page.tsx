@@ -183,7 +183,7 @@ export default function AdminTimetablePage() {
         </div>
       )}
 
-      <div className="flex-1 p-8 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           
           {/* Controls */}
