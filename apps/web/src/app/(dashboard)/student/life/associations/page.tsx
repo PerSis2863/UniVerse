@@ -58,7 +58,7 @@ export default function AssociationsPage() {
                 className="w-full bg-transparent border-none text-white focus:ring-0 placeholder:text-zinc-600 py-3"
               />
               <button 
-                onClick={() => toast.success('Search results updated')}
+                onClick={(e) => ((e.currentTarget.previousElementSibling as HTMLInputElement | null)?.focus())}
                 className="px-6 py-2 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform ml-2 shrink-0"
               >
                 Search

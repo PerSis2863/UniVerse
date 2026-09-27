@@ -13,6 +13,6 @@ export class BlackboardController {
 
   @Get(':courseId')
   getBlackboardData(@Param('courseId') courseId: string, @CurrentUser() user: any) {
-    return this.blackboardService.getBlackboardData(courseId, user.id);
+    return this.blackboardService.getBlackboardData(courseId, user.id, user.role);
   }
 }

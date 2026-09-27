@@ -14,7 +14,7 @@ export class RoomsController {
 
   @Get('my-bookings')
   getMyBookings(@Req() req) {
-    return this.roomsService.getUserBookings(req.user.userId);
+    return this.roomsService.getUserBookings(req.user.id);
   }
 
   @Get(':id')
@@ -24,7 +24,7 @@ export class RoomsController {
 
   @Post(':id/book')
   book(@Param('id') roomId: string, @Body() data: { date: string, time: string, duration: string }, @Req() req) {
-    return this.roomsService.bookRoom(req.user.userId, {
+    return this.roomsService.bookRoom(req.user.id, {
       roomId,
       date: data.date,
       time: data.time,
@@ -34,6 +34,6 @@ export class RoomsController {
 
   @Delete('bookings/:id')
   cancelBooking(@Param('id') id: string, @Req() req) {
-    return this.roomsService.cancelBooking(req.user.userId, id);
+    return this.roomsService.cancelBooking(req.user.id, id);
   }
 }

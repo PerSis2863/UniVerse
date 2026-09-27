@@ -71,6 +71,12 @@ export class CollaborationsService {
     return this.prisma.collaborationProject.update({ where: { id }, data: pick(data, PROJECT_FIELDS) });
   }
 
+  async deleteProject(id: string, actor: Actor) {
+    await this.assertSupervisor(id, actor);
+    await this.prisma.collaborationProject.delete({ where: { id } });
+    return { ok: true };
+  }
+
   joinProject(projectId: string, user: Actor) {
     return this.prisma.collaborationMember.create({
       data: { projectId, userId: user.id, role: user.role === 'TEACHER' ? 'TEACHER' : 'STUDENT' },

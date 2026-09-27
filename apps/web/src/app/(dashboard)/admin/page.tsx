@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
@@ -19,6 +20,7 @@ const statusIcon = {
 
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const { t } = useLanguageStore();
   const { data, isLoading, mutate } = useSWR('/dashboard/admin', fetcher);
   
@@ -50,9 +52,7 @@ export default function AdminDashboard() {
   const handleReject = (id: string, name: string) => setStatus(id, name, 'SUSPENDED');
   const maxDeptStudents = Math.max(1, ...departments.map((d: any) => d.students || 0));
 
-  const handleSendAnnouncement = () => {
-    toast.info('Opening announcement composer...');
-  };
+  const handleSendAnnouncement = () => router.push('/admin/announcements');
 
   return (
     <>
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
               ))}
             </div>
             <button 
-              onClick={() => toast.info('Loading all payments...')}
+              onClick={() => router.push('/admin/finances')}
               className="w-full mt-4 btn-secondary text-sm py-2">
               {t('admin.view_all_payments')}
             </button>

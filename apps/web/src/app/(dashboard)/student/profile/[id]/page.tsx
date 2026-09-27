@@ -6,6 +6,7 @@ import { Mail, Book, MapPin, Building2, Download, ExternalLink, FileText } from 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { authedJson } from '@/lib/authed-fetch';
 
 type Resource = {
   id: string;
@@ -41,7 +42,7 @@ export default function StudentProfile() {
           title: r.title,
           type: r.url ? 'Link' : 'Document',
           category: r.category || 'General',
-          url: r.url,
+          url: r.url || r.fileUrl,
           date: new Date(r.createdAt).toISOString().split('T')[0],
         }));
         
@@ -62,11 +63,20 @@ export default function StudentProfile() {
       window.open(resource.url, '_blank');
       return;
     }
-    toast.success(`Downloading ${resource.title}...`);
+    if (resource.url) window.open(resource.url, '_blank', 'noopener,noreferrer');
+    else toast.error('This resource has no file attached.');
   };
 
-  const handleMessage = () => {
-    router.push(`/student/inbox?chatWith=${encodeURIComponent(userName)}`);
+  const handleMessage = async () => {
+    try {
+      const people = await authedJson<{ id: string; name: string }[]>(`/api/chat/users?q=${encodeURIComponent(userName)}`);
+      const person = people.find((p) => p.name.toLowerCase() === userName.toLowerCase()) ?? (people.length === 1 ? people[0] : null);
+      if (!person) return void toast.error(`Couldn't find ${userName} to message.`);
+      const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: person.id }) });
+      router.push(`/student/inbox?c=${id}`);
+    } catch (e: any) {
+      toast.error(e.message || 'Could not start the chat.');
+    }
   };
 
   return (

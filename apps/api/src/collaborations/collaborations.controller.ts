@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CollaborationsService } from './collaborations.service';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
@@ -39,6 +39,11 @@ export class CollaborationsController {
   @Patch('projects/:id')
   updateProject(@Param('id') id: string, @CurrentUser() user: any, @Body() body: any) {
     return this.collaborationsService.updateProject(id, user, body);
+  }
+
+  @Delete('projects/:id')
+  deleteProject(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.collaborationsService.deleteProject(id, user);
   }
 
   @Post('projects/:id/join')

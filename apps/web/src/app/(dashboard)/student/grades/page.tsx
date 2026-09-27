@@ -7,6 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { authedJson } from '@/lib/authed-fetch';
+import { api as nestApi } from '@/lib/fetcher';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 
@@ -220,10 +223,12 @@ function getLetter(percentage: number) {
 export default function GradesPage() {
   const [semester, setSemester] = useState('All Grades');
   const [showModal, setShowModal] = useState(false);
-  const [downloading, setDownloading] = useState(false);
   const [transcriptType, setTranscriptType] = useState('full');
 
   const { data, isLoading, error } = useSWR('/grades/student', fetcher);
+  const { data: me } = useSWR<{ name: string; email: string }>('/api/me', authedJson);
+  const router = useRouter();
+  const [requesting, setRequesting] = useState(false);
 
   if (isLoading) {
     return (
@@ -263,6 +268,7 @@ export default function GradesPage() {
   const mappedGrades = apiGrades.map((g: any) => {
     const percentage = g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0;
     return {
+      courseId: g.course?.id || g.courseId,
       course: g.course?.name || 'Unknown',
       code: g.course?.code || '---',
       credits: g.course?.credits || 3,
@@ -280,40 +286,59 @@ export default function GradesPage() {
   const avg = gradesData.length ? gradesData.reduce((a: number, r: any) => a + r.percentage, 0) / gradesData.length : 0;
   const semGPA = ((avg / 100) * 4).toFixed(2);
 
-  const prevAvg = 0; // Mocked for now
-  const trend = avg > 0 ? avg - 85 : 0; // Mocked trend vs an 85 average
+  // Per-course averages drive the insight and the transcript summary.
+  type CourseAvg = { course: string; code: string; credits: number; sum: number; n: number };
+  const courseMap = new Map<string, CourseAvg>();
+  for (const r of gradesData as any[]) {
+    const cur = courseMap.get(r.code + r.course) ?? { course: r.course, code: r.code, credits: r.credits, sum: 0, n: 0 };
+    cur.sum += r.percentage;
+    cur.n += 1;
+    courseMap.set(r.code + r.course, cur);
+  }
+  const byCourse = [...courseMap.values()].map((c) => ({ ...c, avg: Math.round(c.sum / c.n) })).sort((a, b) => a.avg - b.avg);
+  const weakest = byCourse.length > 1 ? byCourse[0] : null;
+  const trend = avg >= 70 ? 1 : -1;
 
-  const handleDownload = async () => {
-    setDownloading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    
-    const pdfBase64 = 'JVBERi0xLjAKMSAwIG9iaiA8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PiBlbmRvYmogMiAwIG9iaiA8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PiBlbmRvYmogMyAwIG9iaiA8PC9UeXBlL1BhZ2UvTWVkaWFCb3hbMCAwIDU5NSA4NDJdL1BhcmVudCAyIDAgUi9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNCAwIFI+Pj4+L0NvbnRlbnRzIDUgMCBSPj4gZW5kb2JqIDQgMCBvYmogPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4gZW5kb2JqIDUgMCBvYmogPDwvTGVuZ3RoIDUyPj5zdHJlYW0KQlQKL0YxIDI0IFRmCjEwMCA3MDAgVGQKKE9mZmljaWFsIFRyYW5zY3JpcHQpIFRqCkVUCmVuZHN0cmVhbSBlbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDEwIDAwMDAwIG4gCjAwMDAwMDAwNjAgMDAwMDAgbiAKMDAwMDAwMDExNyAwMDAwMCBuIAowMDAwMDAwMjIwIDAwMDAwIG4gCjAwMDAwMDAzMDggMDAwMDAgbiAKdHJhaWxlcjw8L1NpemUgNi9Sb290IDEgMCBSPj4Kc3RhcnR4cmVmCjQxMQolJUVPRgo=';
-    const byteCharacters = atob(pdfBase64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], {type: 'application/pdf'});
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Student_Transcript_${transcriptType}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    setDownloading(false);
+  const handleDownload = () => {
+    const esc = (v: unknown) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+    const rows = transcriptType === 'summary'
+      ? byCourse.slice().sort((a, b) => a.code.localeCompare(b.code)).map((c) => `<tr><td>${esc(c.code)}</td><td>${esc(c.course)}</td><td>${c.credits}</td><td>${c.n}</td><td>${c.avg}%</td><td>${getLetter(c.avg)}</td></tr>`).join('')
+      : gradesData.map((r: any) => `<tr><td>${esc(r.code)}</td><td>${esc(r.course)}</td><td>${esc(r.assignment)}</td><td>${r.percentage}%</td><td>${esc(r.grade)}</td></tr>`).join('');
+    const head = transcriptType === 'summary'
+      ? '<tr><th>Code</th><th>Course</th><th>Credits</th><th>Graded items</th><th>Average</th><th>Grade</th></tr>'
+      : '<tr><th>Code</th><th>Course</th><th>Assessment</th><th>Score</th><th>Grade</th></tr>';
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Transcript - ${esc(me?.name)}</title><style>
+      body{font:14px/1.5 system-ui,sans-serif;color:#111;margin:40px}h1{margin:0 0 4px;font-size:22px}p{margin:0;color:#555}
+      table{width:100%;border-collapse:collapse;margin-top:24px}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd}th{background:#f4f4f6;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+      .sum{margin-top:20px;display:flex;gap:32px}.sum b{display:block;font-size:20px}.note{margin-top:32px;font-size:12px;color:#777}
+    </style></head><body>
+      <h1>Academic transcript (unofficial)</h1><p>${esc(me?.name)} · ${esc(me?.email)}</p><p>Generated ${new Date().toLocaleDateString(undefined, { dateStyle: 'long' })} from UniVerse</p>
+      <div class="sum"><div>Average<b>${Math.round(avg)}%</b></div><div>GPA (4.0 scale)<b>${semGPA}</b></div><div>Graded items<b>${gradesData.length}</b></div></div>
+      <table><thead>${head}</thead><tbody>${rows}</tbody></table>
+      <p class="note">This is an unofficial record generated from grades entered in UniVerse. Request an official transcript from your campus administration.</p>
+      <script>window.onload=()=>setTimeout(()=>window.print(),200)</script></body></html>`;
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    const w = window.open(url, '_blank');
+    if (!w) toast.error('Allow pop-ups to open your transcript.');
+    else toast.success('Transcript opened', { description: 'Choose “Save as PDF” in the print dialog.' });
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
     setShowModal(false);
-    toast.success('Transcript downloaded!', { description: 'Check your Downloads folder.' });
   };
 
-  const handleRequestOfficial = () => {
-    toast.success('Request sent to Admin!', {
-      description: 'The admin team has been notified and will provide your official transcript shortly.',
-    });
+  const handleRequestOfficial = async () => {
+    setRequesting(true);
+    try {
+      await nestApi.post('/tickets', {
+        subject: 'Official transcript request',
+        category: 'Academic',
+        description: `${me?.name ?? 'A student'} (${me?.email ?? ''}) is requesting an official transcript. Current record: ${gradesData.length} graded items, average ${Math.round(avg)}%.`,
+      });
+      toast.success('Request sent to your campus admin', { description: 'Track it under Support.' });
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Could not send the request. Please try again.');
+    } finally {
+      setRequesting(false);
+    }
   };
 
   return (
@@ -358,13 +383,12 @@ export default function GradesPage() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-4 h-4 text-amber-500" />
-              <span className="text-sm font-bold text-zinc-900 dark:text-white">AI Performance Insight</span>
+              <span className="text-sm font-bold text-zinc-900 dark:text-white">Performance insight</span>
             </div>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               {gradesData.length === 0 ? "No grades available yet to analyze." :
-               trend >= 0
-                ? `You're performing well above average. Keep it up! 🚀`
-                : `Your average is slightly down. Focus on your weaker subjects to boost your GPA.`
+               `Your overall average is ${Math.round(avg)}%${avg >= 70 ? ' — solid work.' : ' — there’s room to improve.'}` +
+               (weakest ? ` Your lowest course average is ${weakest.course} (${weakest.avg}%); that's where extra effort will lift your GPA most.` : '')
               }
             </p>
           </div>
@@ -433,7 +457,8 @@ export default function GradesPage() {
                     transition={{ delay: i * 0.05 }}
                     key={`${semester}-${i}`}
                     className="border-b border-zinc-100 dark:border-white/[0.03] hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors group cursor-pointer"
-                    onClick={() => toast.info(`${record.course} — ${record.percentage}% (${record.grade})`)}
+                    onClick={() => record.courseId && router.push(`/student/blackboard?course=${record.courseId}&tab=grades`)}
+                    title="Open this course's grades and feedback"
                   >
                     <td className="py-4 px-4">
                       <div className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{record.course}</div>
@@ -469,7 +494,7 @@ export default function GradesPage() {
           </div>
 
           <div className="mt-6 flex justify-end items-center gap-3">
-            <button onClick={handleRequestOfficial} className="btn-secondary text-sm h-10 px-4 flex items-center justify-center gap-2">
+            <button onClick={handleRequestOfficial} disabled={requesting} className="btn-secondary text-sm h-10 px-4 flex items-center justify-center gap-2">
               <FileBadge className="w-4 h-4" /> Request Official Transcript
             </button>
             <button onClick={() => setShowModal(true)} className="btn-primary text-sm h-10 px-4 flex items-center justify-center gap-2">
@@ -496,12 +521,11 @@ export default function GradesPage() {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-5">Select which transcript to download.</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-5">Opens a printable transcript — choose “Save as PDF” to keep a copy.</p>
               <div className="space-y-3 mb-6">
                 {[
-                  { id: 'full', label: 'Full Academic Record', desc: 'All semesters + cumulative GPA' },
-                  { id: 'semester', label: `${semester} Only`, desc: 'Current selected semester' },
-                  { id: 'summary', label: 'GPA Summary', desc: 'One-page GPA history overview' },
+                  { id: 'full', label: 'Full record', desc: 'Every graded item with its score and letter grade' },
+                  { id: 'summary', label: 'Course summary', desc: 'One line per course with its average' },
                 ].map(opt => (
                   <label key={opt.id} className={cn(
                     "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
@@ -517,12 +541,8 @@ export default function GradesPage() {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                <button onClick={handleDownload} disabled={downloading} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
-                  {downloading ? (
-                    <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> Downloading...</>
-                  ) : (
-                    <><Download className="w-4 h-4" /> Download PDF</>
-                  )}
+                <button onClick={handleDownload} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
+                  <Download className="w-4 h-4" /> Open transcript
                 </button>
               </div>
             </motion.div>

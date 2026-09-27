@@ -1,4 +1,6 @@
 'use client';
+import { useState } from 'react';
+import { api } from '@/lib/api';
 import Link from 'next/link';
 import { Topbar } from '@/components/layout/Topbar';
 import { Target, Award, CheckCircle2, ChevronRight, BookOpen, Code, Terminal, Monitor, Layout, Database, MessageSquare, Users, Brain, Clock } from 'lucide-react';
@@ -35,7 +37,25 @@ export default function StudentSkills() {
     .filter((c) => c.status === 'ISSUED')
     .map((c) => ({ title: c.title, date: [c.organization, c.issuedAt && new Date(c.issuedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })].filter(Boolean).join(' · '), icon: Award, color: 'text-yellow-500', bg: 'bg-yellow-500/10' }));
   const impactBadges = (impactStats?.sdgBadges ?? []).map((b: any) => ({ title: `SDG ${b.num}`, date: b.partner, icon: Target, color: 'text-emerald-500', bg: 'bg-emerald-500/10' }));
-  const { data: mySkills, isLoading } = useSWR('/skills/my', fetcher);
+  const { data: mySkills, isLoading, mutate: refreshSkills } = useSWR('/skills/my', fetcher);
+  const level = impactStats?.levelInfo?.current;
+  const [editor, setEditor] = useState<{ id?: string; name: string; category: string; level: string } | null>(null);
+  const [savingSkill, setSavingSkill] = useState(false);
+  const saveSkill = async () => {
+    if (!editor?.name.trim()) return;
+    setSavingSkill(true);
+    try {
+      await api.post('/skills', { name: editor.name.trim(), category: editor.category, level: editor.level });
+      toast.success(editor.id ? 'Skill updated' : 'Skill added');
+      setEditor(null);
+      refreshSkills();
+    } catch { toast.error('Could not save the skill.'); } finally { setSavingSkill(false); }
+  };
+  const deleteSkill = async () => {
+    if (!editor?.id || !confirm(`Remove ${editor.name}?`)) return;
+    try { await api.delete(`/skills/${editor.id}`); toast.success('Skill removed'); setEditor(null); refreshSkills(); } catch { toast.error('Could not remove the skill.'); }
+  };
+  const openSkill = (skill: any) => setEditor({ id: skill.id, name: skill.name, category: skill.category || 'Technical', level: skill.level || 'BEGINNER' });
 
   const technicalSkills = (mySkills || []).filter((s: any) => s.category?.toLowerCase() === 'technical' || !s.category?.toLowerCase().includes('soft'));
   const softSkills = (mySkills || []).filter((s: any) => s.category?.toLowerCase() === 'soft skill' || s.category?.toLowerCase().includes('soft'));
@@ -77,16 +97,16 @@ export default function StudentSkills() {
                 <Award className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-3xl font-bold text-zinc-900 dark:text-white">Lvl 4</div>
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">Advanced Learner</div>
+                <div className="text-3xl font-bold text-zinc-900 dark:text-white">Lvl {level?.level ?? 1}</div>
+                <div className="text-sm text-zinc-600 dark:text-zinc-400">{level?.title ?? 'Changemaker Seed'}</div>
               </div>
             </div>
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl flex items-center justify-between">
               <div>
-                <div className="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Update Skills</div>
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">Take an assessment</div>
+                <div className="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Add a skill</div>
+                <div className="text-sm text-zinc-600 dark:text-zinc-400">Used for AI project matching</div>
               </div>
-              <button onClick={() => toast.success('Launching assessment...')} className="p-3 bg-white text-black hover:bg-zinc-200 rounded-xl transition-colors">
+              <button onClick={() => setEditor({ name: '', category: 'Technical', level: 'BEGINNER' })} aria-label="Add a skill" className="p-3 bg-white text-black hover:bg-zinc-200 rounded-xl transition-colors">
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -110,7 +130,7 @@ export default function StudentSkills() {
                   const Icon = getSkillIcon(skill.name, skill.category);
                   const levelVal = getLevelValue(skill.level);
                   return (
-                  <div key={i} className="group cursor-pointer" onClick={() => toast.success(`Viewing details for ${skill.name}`)}>
+                  <div key={i} className="group cursor-pointer" onClick={() => openSkill(skill)}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <Icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors" />
@@ -146,7 +166,7 @@ export default function StudentSkills() {
                     const Icon = getSkillIcon(skill.name, skill.category);
                     const levelVal = getLevelValue(skill.level);
                     return (
-                    <div key={i} className="group cursor-pointer" onClick={() => toast.success(`Viewing details for ${skill.name}`)}>
+                    <div key={i} className="group cursor-pointer" onClick={() => openSkill(skill)}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <Icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors" />
@@ -214,6 +234,28 @@ export default function StudentSkills() {
           </div>
         </div>
       </div>
+      {editor && (
+        <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && setEditor(null)}>
+          <div className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11152a] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl space-y-3">
+            <h3 className="text-lg font-black text-zinc-900 dark:text-white">{editor.id ? 'Edit skill' : 'Add a skill'}</h3>
+            <input autoFocus disabled={!!editor.id} value={editor.name} onChange={(e) => setEditor({ ...editor, name: e.target.value })} maxLength={60} placeholder="e.g. Python, Public speaking"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none disabled:opacity-60" />
+            <div className="grid grid-cols-2 gap-3">
+              <select value={editor.category} onChange={(e) => setEditor({ ...editor, category: e.target.value })} className="px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white">
+                <option>Technical</option><option>Soft skill</option>
+              </select>
+              <select value={editor.level} onChange={(e) => setEditor({ ...editor, level: e.target.value })} className="px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white">
+                {['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'].map((l) => <option key={l} value={l}>{l.charAt(0) + l.slice(1).toLowerCase()}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              {editor.id && <button onClick={deleteSkill} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-500/10">Remove</button>}
+              <button onClick={() => setEditor(null)} className="ml-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300">Cancel</button>
+              <button onClick={saveSkill} disabled={savingSkill || !editor.name.trim()} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50">{savingSkill ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

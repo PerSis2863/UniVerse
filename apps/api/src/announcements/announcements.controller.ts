@@ -15,7 +15,7 @@ export class AnnouncementsController {
   @Post()
   @Roles(Role.ADMIN, Role.TEACHER)
   create(@Body() createAnnouncementDto: CreateAnnouncementDto, @Req() req) {
-    return this.announcementsService.create(createAnnouncementDto, req.user.userId);
+    return this.announcementsService.create(createAnnouncementDto, req.user.id);
   }
 
   @Get()

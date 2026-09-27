@@ -112,13 +112,14 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
   };
 
   const upload = async (file: File, asImage: boolean) => {
-    if (file.size > 5 * 1024 * 1024) return void toast.error('Files must be 5 MB or smaller.');
+    if (file.size > 4 * 1024 * 1024) return void toast.error('Files must be 4 MB or smaller.');
     setUploading(true);
     try {
       const res = await authedFetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed.');
-      await post(asImage || IMAGE_RE.test(file.name) ? { imageUrl: json.url } : { text: `📎 ${json.url}` });
+      const url = json.url.startsWith('/') ? `${window.location.origin}${json.url}` : json.url;
+      await post(asImage || IMAGE_RE.test(file.name) ? { imageUrl: json.url } : { text: `📎 ${url}` });
     } catch (e: any) {
       toast.error(e.message || 'Upload failed.');
     } finally {

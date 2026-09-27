@@ -1,9 +1,9 @@
-import { StudentBlackboardClient } from '@/components/dashboard/StudentBlackboardClient';
+import { CourseBoard } from '@/components/dashboard/CourseBoard';
 
 export const metadata = {
   title: 'Student Blackboard - Universe',
 };
 
 export default function StudentBlackboardPage() {
-  return <StudentBlackboardClient initialCourse={null} />;
+  return <CourseBoard role="student" />;
 }

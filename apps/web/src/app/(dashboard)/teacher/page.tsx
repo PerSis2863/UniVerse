@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
@@ -11,10 +12,11 @@ import { useState } from 'react';
 import { useLanguageStore } from '@/store/language';
 
 import useSWR from 'swr';
-import { fetcher } from '@/lib/fetcher';
+import { fetcher, api } from '@/lib/fetcher';
 import { Loader2 } from 'lucide-react';
 
 export default function TeacherDashboard() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { t } = useLanguageStore();
   const hour = new Date().getHours();
@@ -23,7 +25,7 @@ export default function TeacherDashboard() {
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [courseName, setCourseName] = useState('');
   const [courseCode, setCourseCode] = useState('');
-  const [courseCapacity, setCourseCapacity] = useState('40');
+  const [courseCapacity, setCourseCapacity] = useState('3');
   const [courseDesc, setCourseDesc] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -33,11 +35,17 @@ export default function TeacherDashboard() {
       return;
     }
     setCreating(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setCreating(false);
-    setShowCourseModal(false);
-    setCourseName(''); setCourseCode(''); setCourseCapacity('40'); setCourseDesc('');
-    toast.success(`Course "${courseName}" created!`, { description: `Code: ${courseCode} • Capacity: ${courseCapacity} students` });
+    try {
+      await api.post('/courses', { name: courseName.trim(), code: courseCode.trim().toUpperCase(), credits: Math.min(Math.max(parseInt(courseCapacity) || 3, 1), 12), description: courseDesc.trim() || undefined });
+      setShowCourseModal(false);
+      setCourseName(''); setCourseCode(''); setCourseCapacity('3'); setCourseDesc('');
+      toast.success(`Course "${courseName}" created`, { description: 'It starts as a draft. Your admin can enroll students, and you can post materials on Blackboard.' });
+      router.push('/teacher/blackboard');
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Could not create the course');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const { data, isLoading, error } = useSWR('/dashboard/teacher', fetcher);
@@ -146,7 +154,7 @@ export default function TeacherDashboard() {
                   transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                   key={i}
                   className="p-4 rounded-xl bg-white/[0.03] border border-zinc-100 dark:border-white/[0.06] hover:border-indigo-500/20 transition-all cursor-pointer group"
-                  onClick={() => toast.info(`Opening ${c.name}...`)}
+                  onClick={() => router.push('/teacher/blackboard')}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -179,11 +187,11 @@ export default function TeacherDashboard() {
           <div className="card">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-zinc-900 dark:text-white">{t('teacher.recent_students')}</h2>
-              <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium" onClick={() => toast.info('Opening student list...')}>{t('dashboard.view_all')}</button>
+              <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium" onClick={() => router.push('/teacher/students')}>{t('dashboard.view_all')}</button>
             </div>
             <div className="space-y-3">
               {recentStudents.map((s: any, i: number) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => toast.info(`${s.name} — ${s.score}%`)}>
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => router.push('/teacher/grades')}>
                   <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400">
                     {s.name[0]}
                   </div>
@@ -244,10 +252,10 @@ export default function TeacherDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Capacity</label>
+                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Credits</label>
                     <input
-                      type="number" value={courseCapacity} onChange={e => setCourseCapacity(e.target.value)}
-                      placeholder="40"
+                      type="number" min={1} max={12} value={courseCapacity} onChange={e => setCourseCapacity(e.target.value)}
+                      placeholder="3"
                       className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
                     />
                   </div>

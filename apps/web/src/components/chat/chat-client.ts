@@ -71,27 +71,46 @@ export async function chatJson<T = any>(url: string, init?: RequestInit): Promis
   return body as T;
 }
 
-/** Uploads a file straight from the browser to Vercel Blob (up to 25 MB). */
+const SERVER_MAX = 4 * 1024 * 1024;
+
+/**
+ * Uploads a chat attachment and returns its URL.
+ * Files up to 4 MB go through the server (stored in Vercel Blob if connected, otherwise in the
+ * database). Larger files upload straight to Vercel Blob, which needs Blob to be connected.
+ */
 export async function uploadChatFile(file: File, userId: string, onProgress?: (pct: number) => void) {
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('Files must be 25 MB or smaller.');
-  const token = await getAuthToken();
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100) || 'file';
-  let blob;
+
+  if (file.size <= SERVER_MAX) {
+    onProgress?.(10);
+    const res = await authedFetch(`/api/upload?filename=${encodeURIComponent(safe)}`, {
+      method: 'POST',
+      body: file,
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed. Please try again.');
+    onProgress?.(100);
+    return json.url as string;
+  }
+
+  const token = await getAuthToken();
   try {
-    blob = await upload(`chat/${userId}/${safe}`, file, {
-    access: 'public',
-    handleUploadUrl: '/api/upload/token',
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    contentType: file.type || undefined,
+    const blob = await upload(`chat/${userId}/${safe}`, file, {
+      access: 'public',
+      handleUploadUrl: '/api/upload/token',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      contentType: file.type || undefined,
       onUploadProgress: onProgress ? ({ percentage }) => onProgress(Math.round(percentage)) : undefined,
     });
+    return blob.url;
   } catch (e: any) {
     const msg = String(e?.message ?? '');
-    if (/client token/i.test(msg)) throw new Error('File sharing isn’t available yet — your campus admin needs to finish setting up storage.');
+    if (/client token|not set up/i.test(msg)) throw new Error('Files over 4 MB need cloud storage (Vercel Blob) to be connected. Try a smaller file.');
     if (/content type|not allowed/i.test(msg)) throw new Error('This file type can’t be shared.');
     throw new Error('Upload failed. Please check your connection and try again.');
   }
-  return blob.url;
 }
 
 export function messageTypeFor(mime: string): MessageType {

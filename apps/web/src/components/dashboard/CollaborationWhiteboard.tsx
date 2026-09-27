@@ -1,85 +1,294 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { PenTool, Square, Circle, Type, Eraser, Undo, Redo, Download, Share2, MousePointer2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Circle, Download, Eraser, PenTool, Redo, Share2, Square, Trash2, Type, Undo } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
-export function CollaborationWhiteboard() {
-  const [activeTool, setActiveTool] = useState('pen');
+type Pt = { x: number; y: number };
+type Shape =
+  | { kind: 'pen'; points: Pt[]; color: string; width: number }
+  | { kind: 'rect' | 'ellipse'; x: number; y: number; w: number; h: number; color: string; width: number }
+  | { kind: 'text'; x: number; y: number; text: string; color: string; size: number };
+type Tool = 'pen' | 'rect' | 'ellipse' | 'text' | 'eraser';
 
-  const tools = [
-    { id: 'select', icon: MousePointer2, label: 'Select (V)' },
-    { id: 'pen', icon: PenTool, label: 'Pen (P)' },
-    { id: 'square', icon: Square, label: 'Rectangle (R)' },
-    { id: 'circle', icon: Circle, label: 'Ellipse (O)' },
-    { id: 'text', icon: Type, label: 'Text (T)' },
-    { id: 'eraser', icon: Eraser, label: 'Eraser (E)' },
-  ];
+const COLORS = ['#111827', '#4f46e5', '#db2777', '#059669', '#d97706', '#dc2626'];
+const TOOLS: { id: Tool; icon: typeof PenTool; label: string; key: string }[] = [
+  { id: 'pen', icon: PenTool, label: 'Pen', key: 'p' },
+  { id: 'rect', icon: Square, label: 'Rectangle', key: 'r' },
+  { id: 'ellipse', icon: Circle, label: 'Ellipse', key: 'o' },
+  { id: 'text', icon: Type, label: 'Text', key: 't' },
+  { id: 'eraser', icon: Eraser, label: 'Eraser', key: 'e' },
+];
+
+function draw(ctx: CanvasRenderingContext2D, s: Shape) {
+  ctx.strokeStyle = s.color;
+  ctx.fillStyle = s.color;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  if (s.kind === 'pen') {
+    ctx.lineWidth = s.width;
+    ctx.beginPath();
+    s.points.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    if (s.points.length === 1) ctx.lineTo(s.points[0].x + 0.1, s.points[0].y);
+    ctx.stroke();
+  } else if (s.kind === 'rect') {
+    ctx.lineWidth = s.width;
+    ctx.strokeRect(s.x, s.y, s.w, s.h);
+  } else if (s.kind === 'ellipse') {
+    ctx.lineWidth = s.width;
+    ctx.beginPath();
+    ctx.ellipse(s.x + s.w / 2, s.y + s.h / 2, Math.abs(s.w / 2), Math.abs(s.h / 2), 0, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (s.kind === 'text') {
+    ctx.font = `600 ${s.size}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.textBaseline = 'top';
+    ctx.fillText(s.text, s.x, s.y);
+  }
+}
+
+function hits(s: Shape, p: Pt, r: number, ctx: CanvasRenderingContext2D | null) {
+  if (s.kind === 'pen') return s.points.some((q) => Math.hypot(q.x - p.x, q.y - p.y) <= r + s.width / 2);
+  if (s.kind === 'text') {
+    const w = ctx ? (ctx.font = `600 ${s.size}px ui-sans-serif, system-ui, sans-serif`, ctx.measureText(s.text).width) : s.text.length * s.size * 0.6;
+    return p.x >= s.x - r && p.x <= s.x + w + r && p.y >= s.y - r && p.y <= s.y + s.size + r;
+  }
+  const x0 = Math.min(s.x, s.x + s.w), x1 = Math.max(s.x, s.x + s.w), y0 = Math.min(s.y, s.y + s.h), y1 = Math.max(s.y, s.y + s.h);
+  const inside = p.x >= x0 - r && p.x <= x1 + r && p.y >= y0 - r && p.y <= y1 + r;
+  const deep = p.x > x0 + r && p.x < x1 - r && p.y > y0 + r && p.y < y1 - r;
+  return inside && !deep; // only the outline, so erasing inside a box doesn't remove it
+}
+
+/** A personal whiteboard: drawings are saved on this device (per board) and can be exported or shared as an image. */
+export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboard' }: { boardId?: string; title?: string }) {
+  const storageKey = `universe:whiteboard:${boardId}`;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [shapes, setShapes] = useState<Shape[]>([]);
+  const [redo, setRedo] = useState<Shape[][]>([]);
+  const [undoStack, setUndoStack] = useState<Shape[][]>([]);
+  const [draft, setDraft] = useState<Shape | null>(null);
+  const [tool, setTool] = useState<Tool>('pen');
+  const [color, setColor] = useState(COLORS[1]);
+  const [width, setWidth] = useState(3);
+  const [textAt, setTextAt] = useState<Pt | null>(null);
+  const [textValue, setTextValue] = useState('');
+  const start = useRef<Pt | null>(null);
+  const erasing = useRef<{ before: Shape[] } | null>(null);
+
+  // Load/save per board.
+  useEffect(() => {
+    try { const raw = localStorage.getItem(storageKey); setShapes(raw ? JSON.parse(raw) : []); } catch { setShapes([]); }
+    setUndoStack([]); setRedo([]);
+  }, [storageKey]);
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify(shapes)); } catch { /* storage full or blocked — board still works in memory */ }
+  }, [shapes, storageKey]);
+
+  const render = useCallback(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d')!;
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width / dpr, c.height / dpr);
+    for (const s of shapes) draw(ctx, s);
+    if (draft) draw(ctx, draft);
+  }, [shapes, draft]);
+
+  // Keep the canvas sharp and sized to its container.
+  useEffect(() => {
+    const c = canvasRef.current, wrap = wrapRef.current;
+    if (!c || !wrap) return;
+    const ro = new ResizeObserver(() => {
+      const dpr = window.devicePixelRatio || 1;
+      c.width = Math.round(wrap.clientWidth * dpr);
+      c.height = Math.round(wrap.clientHeight * dpr);
+      render();
+    });
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [render]);
+  useEffect(render, [render]);
+
+  const commit = (next: Shape[], before = shapes) => {
+    setUndoStack((u) => [...u.slice(-49), before]);
+    setRedo([]);
+    setShapes(next);
+  };
+  const undo = useCallback(() => {
+    if (!undoStack.length) return;
+    setRedo((r) => [...r, shapes]);
+    setShapes(undoStack[undoStack.length - 1]);
+    setUndoStack(undoStack.slice(0, -1));
+  }, [shapes, undoStack]);
+  const redoFn = useCallback(() => {
+    if (!redo.length) return;
+    setUndoStack((u) => [...u, shapes]);
+    setShapes(redo[redo.length - 1]);
+    setRedo(redo.slice(0, -1));
+  }, [shapes, redo]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.closest('input, textarea, [contenteditable]')) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redoFn(); else undo(); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoFn(); return; }
+      const t = TOOLS.find((x) => x.key === e.key.toLowerCase());
+      if (t && !e.metaKey && !e.ctrlKey && !e.altKey && wrapRef.current?.matches(':hover')) setTool(t.id);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redoFn]);
+
+  const pos = (e: React.PointerEvent): Pt => {
+    const r = canvasRef.current!.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+
+  const eraseAt = (p: Pt) => {
+    const ctx = canvasRef.current?.getContext('2d') ?? null;
+    setShapes((cur) => cur.filter((s) => !hits(s, p, 8, ctx)));
+  };
+
+  const onDown = (e: React.PointerEvent) => {
+    if (textAt) return;
+    const p = pos(e);
+    if (tool === 'text') { setTextAt(p); setTextValue(''); return; }
+    (e.target as Element).setPointerCapture(e.pointerId);
+    start.current = p;
+    if (tool === 'eraser') { erasing.current = { before: shapes }; eraseAt(p); return; }
+    setDraft(tool === 'pen' ? { kind: 'pen', points: [p], color, width } : { kind: tool, x: p.x, y: p.y, w: 0, h: 0, color, width });
+  };
+  const onMove = (e: React.PointerEvent) => {
+    if (!start.current) return;
+    const p = pos(e);
+    if (tool === 'eraser') return eraseAt(p);
+    setDraft((d) => {
+      if (!d) return d;
+      if (d.kind === 'pen') return { ...d, points: [...d.points, p] };
+      if (d.kind === 'rect' || d.kind === 'ellipse') {
+        let w = p.x - start.current!.x, h = p.y - start.current!.y;
+        if (e.shiftKey) { const m = Math.max(Math.abs(w), Math.abs(h)); w = Math.sign(w || 1) * m; h = Math.sign(h || 1) * m; }
+        return { ...d, w, h };
+      }
+      return d;
+    });
+  };
+  const onUp = () => {
+    if (erasing.current) {
+      const before = erasing.current.before;
+      erasing.current = null;
+      start.current = null;
+      if (before.length !== shapes.length) { setUndoStack((u) => [...u.slice(-49), before]); setRedo([]); }
+      return;
+    }
+    start.current = null;
+    if (!draft) return;
+    const tiny = (draft.kind === 'rect' || draft.kind === 'ellipse') && Math.abs(draft.w) < 3 && Math.abs(draft.h) < 3;
+    if (!tiny) commit([...shapes, draft]);
+    setDraft(null);
+  };
+
+  const placeText = () => {
+    if (textAt && textValue.trim()) commit([...shapes, { kind: 'text', x: textAt.x, y: textAt.y, text: textValue.trim(), color, size: 12 + width * 3 }]);
+    setTextAt(null);
+    setTextValue('');
+  };
+
+  const toBlob = () => new Promise<Blob>((resolve, reject) => {
+    const c = canvasRef.current;
+    if (!c) return reject(new Error('Nothing to export'));
+    c.toBlob((b) => (b ? resolve(b) : reject(new Error('Export failed'))), 'image/png');
+  });
+  const fileName = `${title.replace(/[^\w-]+/g, '-').toLowerCase() || 'whiteboard'}.png`;
+
+  const exportPng = async () => {
+    try {
+      const url = URL.createObjectURL(await toBlob());
+      const a = Object.assign(document.createElement('a'), { href: url, download: fileName });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success('Whiteboard saved as an image');
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const share = async () => {
+    try {
+      const blob = await toBlob();
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title });
+        return;
+      }
+      if (window.ClipboardItem && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        toast.success('Image copied — paste it into any chat or message');
+        return;
+      }
+      await exportPng();
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') toast.error('Could not share the image. Try Export instead.');
+    }
+  };
+
+  const clear = () => {
+    if (!shapes.length || !confirm('Clear the whole whiteboard? You can undo this.')) return;
+    commit([]);
+  };
+
+  const iconBtn = 'w-9 h-9 shrink-0 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40';
 
   return (
-    <div className="flex flex-col h-[600px] bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden relative shadow-sm">
-      {/* Toolbar */}
-      <div className="h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md px-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          {tools.map(tool => (
-            <button
-              key={tool.id}
-              title={tool.label}
-              onClick={() => setActiveTool(tool.id)}
-              className={cn(
-                "w-9 h-9 flex items-center justify-center rounded-lg transition-colors",
-                activeTool === tool.id
-                  ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400"
-                  : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white"
-              )}
-            >
-              <tool.icon className="w-4 h-4" />
-            </button>
-          ))}
-          <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2" />
-          <button onClick={() => toast.info('Undo last action')} className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><Undo className="w-4 h-4" /></button>
-          <button onClick={() => toast.info('Redo action')} className="w-9 h-9 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"><Redo className="w-4 h-4" /></button>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex -space-x-2">
-            <div className="w-8 h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white z-20">You</div>
-            <div className="w-8 h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white z-10">JS</div>
-            <div className="w-8 h-8 rounded-full border-2 border-white dark:border-zinc-900 bg-rose-500 flex items-center justify-center text-[10px] font-bold text-white z-0">AL</div>
-          </div>
-          <button onClick={() => toast.success('Sharing link copied!')} className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5" /> Share</button>
-          <button onClick={() => toast.info('Exporting canvas...')} className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export</button>
+    <div className="flex flex-col h-[600px] rounded-2xl border border-zinc-200 dark:border-white/10 overflow-hidden bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl shadow-sm">
+      <div className="border-b border-zinc-200 dark:border-white/10 px-3 py-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
+        {TOOLS.map((t) => (
+          <button key={t.id} title={`${t.label} (${t.key.toUpperCase()})`} aria-label={t.label} onClick={() => setTool(t.id)}
+            className={cn(iconBtn, tool === t.id ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}>
+            <t.icon className="w-4 h-4" />
+          </button>
+        ))}
+        <div className="w-px h-6 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+        {COLORS.map((c) => (
+          <button key={c} aria-label={`Colour ${c}`} onClick={() => setColor(c)}
+            className={cn('w-6 h-6 shrink-0 rounded-full border-2 transition-transform', color === c ? 'border-indigo-400 scale-110' : 'border-white dark:border-zinc-800')} style={{ background: c }} />
+        ))}
+        <select aria-label="Thickness" value={width} onChange={(e) => setWidth(Number(e.target.value))} className="shrink-0 ml-1 text-xs rounded-lg bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 px-2 py-1.5">
+          <option value={2}>Thin</option><option value={3}>Medium</option><option value={6}>Thick</option><option value={10}>Marker</option>
+        </select>
+        <div className="w-px h-6 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
+        <button title="Undo (Ctrl+Z)" aria-label="Undo" onClick={undo} disabled={!undoStack.length} className={cn(iconBtn, 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><Undo className="w-4 h-4" /></button>
+        <button title="Redo (Ctrl+Shift+Z)" aria-label="Redo" onClick={redoFn} disabled={!redo.length} className={cn(iconBtn, 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><Redo className="w-4 h-4" /></button>
+        <button title="Clear" aria-label="Clear whiteboard" onClick={clear} disabled={!shapes.length} className={cn(iconBtn, 'text-zinc-500 hover:bg-rose-500/10 hover:text-rose-500')}><Trash2 className="w-4 h-4" /></button>
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <button onClick={share} className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5" /> Share</button>
+          <button onClick={exportPng} className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export</button>
         </div>
       </div>
 
-      {/* Canvas Area (Mockup) */}
-      <div className="flex-1 relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-center overflow-hidden cursor-crosshair">
-        {/* Collaborative Cursor Mockups */}
-        <motion.div animate={{ x: [0, 50, -20, 0], y: [0, -30, 40, 0] }} transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }} className="absolute z-10 pointer-events-none">
-          <MousePointer2 className="w-5 h-5 text-rose-500 fill-rose-500" style={{ transform: 'rotate(-20deg)' }} />
-          <div className="bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm mt-1 whitespace-nowrap">Alice L.</div>
-        </motion.div>
-        <motion.div animate={{ x: [0, -80, 10, 0], y: [0, 60, -10, 0] }} transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }} className="absolute z-10 pointer-events-none" style={{ left: '60%', top: '30%' }}>
-          <MousePointer2 className="w-5 h-5 text-indigo-500 fill-indigo-500" style={{ transform: 'rotate(-20deg)' }} />
-          <div className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm mt-1 whitespace-nowrap">John S.</div>
-        </motion.div>
-
-        {/* Dummy Canvas Drawings */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 800 600">
-          <path d="M 200 200 Q 300 100 400 200 T 600 200" stroke="currentColor" strokeWidth="4" fill="none" className="text-indigo-500" />
-          <rect x="250" y="250" width="150" height="100" stroke="currentColor" strokeWidth="4" fill="none" className="text-rose-500" />
-          <circle cx="500" cy="350" r="60" stroke="currentColor" strokeWidth="4" fill="none" className="text-amber-500" />
-          <text x="350" y="450" fill="currentColor" className="text-zinc-800 dark:text-zinc-200 text-2xl font-bold font-sans">System Architecture</text>
-        </svg>
-
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-           <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm p-4 rounded-2xl shadow-xl text-center border border-zinc-200 dark:border-zinc-800">
-              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                 <PenTool className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-zinc-900 dark:text-white">Live Collaboration Engine</h3>
-              <p className="text-xs text-zinc-500 mt-1 max-w-[250px]">Canvas connected via WebSockets. Start drawing to sync with other members in real-time.</p>
-           </div>
-        </div>
+      <div ref={wrapRef} className="relative flex-1 touch-none">
+        <canvas
+          ref={canvasRef}
+          className={cn('absolute inset-0 w-full h-full', tool === 'text' ? 'cursor-text' : tool === 'eraser' ? 'cursor-cell' : 'cursor-crosshair')}
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+        />
+        {textAt && (
+          <input
+            autoFocus
+            value={textValue}
+            onChange={(e) => setTextValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') placeText(); if (e.key === 'Escape') setTextAt(null); }}
+            onBlur={placeText}
+            placeholder="Type, then press Enter"
+            maxLength={200}
+            className="absolute px-1 py-0.5 bg-white/90 border border-indigo-400 rounded outline-none text-zinc-900 font-semibold"
+            style={{ left: textAt.x, top: textAt.y - 2, color, fontSize: 12 + width * 3, minWidth: 160 }}
+          />
+        )}
+        {!shapes.length && !draft && !textAt && (
+          <p className="absolute inset-x-0 bottom-4 text-center text-xs text-zinc-400 pointer-events-none">Draw with the pen, add shapes or text. Your board is saved on this device.</p>
+        )}
       </div>
     </div>
   );

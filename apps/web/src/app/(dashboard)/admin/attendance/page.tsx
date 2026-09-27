@@ -28,11 +28,8 @@ export default function AdminAttendance() {
     fetcher
   );
 
-  const [activeTab, setActiveTab] = useState<'roster' | 'justifications'>('roster');
   const [localEdits, setLocalEdits] = useState<Record<string, AttendanceStatus>>({});
-  const [justifications, setJustifications] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedJustificationPhoto, setSelectedJustificationPhoto] = useState<string | null>(null);
 
   const currentAttendance = useMemo(() => {
     const record: Record<string, AttendanceStatus> = {};
@@ -95,39 +92,17 @@ export default function AdminAttendance() {
     }
   };
 
-  const handleJustificationAction = (id: string, action: 'APPROVE' | 'REJECT') => {
-    setJustifications(prev => prev.filter(j => j.id !== id));
-    toast.success(`Justification ${action === 'APPROVE' ? 'approved' : 'rejected'}.`);
-  };
 
   const hasUnsavedChanges = Object.keys(localEdits).length > 0;
-  const pendingCount = justifications.length;
 
   return (
     <>
       <Topbar title="Attendance Management" subtitle="Track and manage student presence across all courses" />
       
-      <div className="flex-1 p-8 overflow-y-auto">
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
           
-          {/* Tabs */}
-          <div className="flex border-b border-zinc-200 dark:border-zinc-800">
-            <button 
-              onClick={() => setActiveTab('roster')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'roster' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-300'}`}
-            >
-              Class Roster
-            </button>
-            <button 
-              onClick={() => setActiveTab('justifications')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'justifications' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-300'}`}
-            >
-              Pending Justifications 
-              {pendingCount > 0 && <span className="bg-indigo-500 text-zinc-900 dark:text-white text-xs px-2 py-0.5 rounded-full">{pendingCount}</span>}
-            </button>
-          </div>
-
-          {activeTab === 'roster' && (
+          {(
             <>
               {/* Filters & Actions Header */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-zinc-900 via-zinc-900/80 to-zinc-900 border border-zinc-200 dark:border-zinc-800/50 p-5 rounded-2xl backdrop-blur-xl">
@@ -354,92 +329,9 @@ export default function AdminAttendance() {
             </>
           )}
 
-          {activeTab === 'justifications' && (
-            <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-2xl p-6">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-6">Pending Student Justifications</h2>
-              
-              {justifications.length === 0 ? (
-                <div className="text-center py-12">
-                  <CheckCircle2 className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-                  <h3 className="text-zinc-900 dark:text-white font-medium">All caught up!</h3>
-                  <p className="text-zinc-600 dark:text-zinc-400 text-sm">There are no pending absent justifications to review.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {justifications.map((justification) => (
-                    <div key={justification.id} className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-zinc-900 dark:text-white">{justification.studentName}</span>
-                          <span className="text-xs text-zinc-500 dark:text-zinc-500 font-mono">{justification.studentId}</span>
-                          <span className="text-xs px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 rounded-md">{justification.course}</span>
-                          <span className="text-xs px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 rounded-md">{justification.date}</span>
-                        </div>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">"{justification.reason}"</p>
-                        <button 
-                          onClick={() => setSelectedJustificationPhoto(justification.id)}
-                          className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 transition-colors"
-                        >
-                          <FileText className="w-3.5 h-3.5" /> View Attached Photo/Document
-                        </button>
-                      </div>
-                      
-                      <div className="flex items-center gap-3 shrink-0">
-                        <button 
-                          onClick={() => handleJustificationAction(justification.id, 'REJECT')}
-                          className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors border border-red-500/20"
-                        >
-                          <X className="w-4 h-4" /> Reject
-                        </button>
-                        <button 
-                          onClick={() => handleJustificationAction(justification.id, 'APPROVE')}
-                          className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg text-sm font-medium transition-colors border border-emerald-500/20"
-                        >
-                          <Check className="w-4 h-4" /> Approve
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
         </div>
       </div>
 
-      {/* Document Viewer Modal */}
-      {selectedJustificationPhoto && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Attached Document</h3>
-              <button 
-                onClick={() => setSelectedJustificationPhoto(null)}
-                className="text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 flex flex-col items-center justify-center bg-white dark:bg-zinc-900/50 min-h-[400px]">
-              {/* Dummy Image placeholder */}
-              <div className="w-full h-64 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center flex-col text-zinc-500 dark:text-zinc-500">
-                <FileText className="w-12 h-12 mb-3 opacity-50" />
-                <p>Medical_Certificate.pdf</p>
-                <span className="text-xs mt-2 text-zinc-600">Document viewer simulated</span>
-              </div>
-            </div>
-            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/30 flex justify-end">
-              <button 
-                onClick={() => setSelectedJustificationPhoto(null)}
-                className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                Close Viewer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

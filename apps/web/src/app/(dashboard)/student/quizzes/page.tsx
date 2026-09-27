@@ -8,15 +8,17 @@ import { toast } from 'sonner';
 import useSWR, { mutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
+import { QuizReview } from '@/components/dashboard/CourseBoard';
 
 export default function QuizzesPage() {
   const { data: quizzes = [], error, isLoading } = useSWR('/quizzes/student/my-quizzes', fetcher);
 
-  const activeQuizzesList = quizzes.filter((q: any) => !q.completed);
+  const activeQuizzesList = quizzes.filter((q: any) => !q.completed && q.status === 'PUBLISHED');
   const completedQuizzesList = quizzes.filter((q: any) => q.completed);
 
   const [activeQuiz, setActiveQuiz] = useState<any>(null);
   const [currentQ, setCurrentQ] = useState(0);
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(0);
@@ -179,7 +181,7 @@ export default function QuizzesPage() {
                       initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
                       key={quiz.id}
                       className="p-4 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-between border border-transparent hover:border-zinc-200 dark:hover:border-white/[0.04] cursor-pointer"
-                      onClick={() => toast.info(`${quiz.title}: ${quiz.score}%`)}
+                      onClick={() => setReviewing(quiz.id)}
                     >
                       <div>
                         <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{quiz.title}</h4>
@@ -291,6 +293,7 @@ export default function QuizzesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      {reviewing && <QuizReview quizId={reviewing} onClose={() => setReviewing(null)} />}
     </>
   );
 }

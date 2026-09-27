@@ -44,15 +44,23 @@ export default function AdminFinances() {
   const maxMonthlyRevenue = Math.max(1, ...monthlyRevenue.map((m) => m.total));
 
   const stats = useMemo(() => {
-    const totalRevenue = transactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
-    const platformFees = totalRevenue * 0.1; // Example 10% fee
-    const pendingPayouts = Math.abs(transactions.filter(t => t.amount < 0 && t.status === 'PENDING').reduce((acc, t) => acc + t.amount, 0));
-    
+    const completedIn = (y: number, m: number) => transactions
+      .filter((t) => t.amount > 0 && t.status === 'COMPLETED' && new Date(t.createdAt).getFullYear() === y && new Date(t.createdAt).getMonth() === m)
+      .reduce((acc, t) => acc + t.amount, 0);
+    const now = new Date();
+    const thisMonth = completedIn(now.getFullYear(), now.getMonth());
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonth = completedIn(prev.getFullYear(), prev.getMonth());
+    const change = lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : null;
+    const totalRevenue = transactions.filter(t => t.amount > 0 && t.status === 'COMPLETED').reduce((acc, t) => acc + t.amount, 0);
+    const pending = transactions.filter(t => t.status === 'PENDING');
+    const pendingPayouts = Math.abs(pending.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0));
+
     return [
-      { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}`, trend: '0.0%', up: true, icon: DollarSign, color: 'from-emerald-400 to-teal-500' },
-      { label: 'Platform Fees', value: `$${platformFees.toFixed(2)}`, trend: '0.0%', up: true, icon: Wallet, color: 'from-blue-400 to-indigo-500' },
-      { label: 'Pending Payouts', value: `$${pendingPayouts.toFixed(2)}`, trend: '0.0%', up: false, icon: CreditCard, color: 'from-amber-400 to-orange-500' },
-      { label: 'Total Transactions', value: transactions.length.toString(), trend: '0.0%', up: true, icon: Activity, color: 'from-purple-400 to-pink-500' }
+      { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}`, note: 'All completed payments', icon: DollarSign, color: 'from-emerald-400 to-teal-500' },
+      { label: 'This Month', value: `$${thisMonth.toFixed(2)}`, note: change == null ? (thisMonth > 0 ? 'No revenue last month to compare' : 'No payments yet this month') : `${change >= 0 ? '+' : ''}${change.toFixed(1)}% vs last month`, up: change == null ? undefined : change >= 0, icon: Wallet, color: 'from-blue-400 to-indigo-500' },
+      { label: 'Pending Payouts', value: `$${pendingPayouts.toFixed(2)}`, note: `${pending.length} pending transaction${pending.length === 1 ? '' : 's'}`, icon: CreditCard, color: 'from-amber-400 to-orange-500' },
+      { label: 'Total Transactions', value: transactions.length.toString(), note: 'Recorded in UniVerse', icon: Activity, color: 'from-purple-400 to-pink-500' }
     ];
   }, [transactions]);
 
@@ -68,12 +76,19 @@ export default function AdminFinances() {
   });
 
   const handleExport = () => {
+    if (!transactions.length) return void toast.info('No transactions to export yet.');
     setIsExporting(true);
-    toast.info('Generating financial report...');
-    setTimeout(() => {
+    try {
+      const cell = (v: unknown) => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+      const rows = transactions.map((t) => [t.id, new Date(t.createdAt).toISOString().slice(0, 10), t.description ?? '', t.user?.name ?? '', t.user?.email ?? '', Number(t.amount).toFixed(2), t.status]);
+      const csv = [['Transaction ID', 'Date', 'Description', 'User', 'Email', 'Amount (USD)', 'Status'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
+      const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+      Object.assign(document.createElement('a'), { href: url, download: `finance-report-${new Date().toISOString().slice(0, 10)}.csv` }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`Exported ${rows.length} transactions`);
+    } finally {
       setIsExporting(false);
-      toast.success('Report downloaded successfully as CSV.');
-    }, 2000);
+    }
   };
 
   const handleAddTransaction = async (e: React.FormEvent) => {
@@ -113,18 +128,15 @@ export default function AdminFinances() {
               <div className="w-16 h-16 bg-[#635BFF]/10 rounded-full flex items-center justify-center mb-2">
                 <CreditCard className="w-8 h-8 text-[#635BFF]" />
               </div>
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connect Stripe</h2>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Stripe payments</h2>
               <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-                Integrate your Stripe account to automatically track real-time payments, handle payouts, and sync financial data.
+                Stripe is connected through your server settings (STRIPE_SECRET_KEY in Vercel). Payouts, refunds and disputes are managed in your Stripe dashboard.
               </p>
               <button 
-                onClick={() => {
-                  toast.success('Redirecting to Stripe OAuth...');
-                  setTimeout(() => setIsStripeModalOpen(false), 1000);
-                }}
+                onClick={() => { window.open('https://dashboard.stripe.com', '_blank', 'noopener,noreferrer'); setIsStripeModalOpen(false); }}
                 className="w-full py-3 bg-[#635BFF] hover:bg-[#635BFF]/90 text-zinc-900 dark:text-white rounded-xl font-medium transition-colors shadow-lg shadow-[#635BFF]/20 mt-4"
               >
-                Connect with Stripe
+                Open Stripe dashboard
               </button>
             </div>
           </div>
@@ -221,12 +233,16 @@ export default function AdminFinances() {
                 
                 <div className="text-3xl font-bold text-zinc-900 dark:text-white mb-3 tracking-tight">{stat.value}</div>
                 
-                <div className={`flex items-center text-xs font-semibold px-2.5 py-1 rounded-full w-max ${
-                  stat.up ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                }`}>
-                  {stat.up ? <TrendingUp className="w-3.5 h-3.5 mr-1" /> : <TrendingDown className="w-3.5 h-3.5 mr-1" />}
-                  {stat.trend} <span className="text-zinc-500 dark:text-zinc-500 font-normal ml-1">vs last month</span>
-                </div>
+                {stat.up === undefined ? (
+                  <p className="text-xs text-zinc-500">{stat.note}</p>
+                ) : (
+                  <div className={`flex items-center text-xs font-semibold px-2.5 py-1 rounded-full w-max ${
+                    stat.up ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                  }`}>
+                    {stat.up ? <TrendingUp className="w-3.5 h-3.5 mr-1" /> : <TrendingDown className="w-3.5 h-3.5 mr-1" />}
+                    {stat.note}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -302,7 +318,7 @@ export default function AdminFinances() {
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          trx.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                          trx.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                           trx.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                           'bg-red-500/10 text-red-400 border border-red-500/20'
                         }`}>

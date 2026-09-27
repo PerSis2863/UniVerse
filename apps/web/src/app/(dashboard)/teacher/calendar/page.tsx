@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { downloadIcs } from '@/components/dashboard/CourseBoard';
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -26,6 +28,36 @@ export default function TeacherCalendarPage() {
   const [timetableSlots, setTimetableSlots] = useState<any[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Weekly classes repeat for the next 16 weeks; one-off events (office hours etc.) are exported as-is.
+  const exportIcs = () => {
+    if (!timetableSlots.length && !calendarEvents.length) return void toast.info('Nothing to export yet — your classes and events will appear here first.');
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const local = (d: Date) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+    const utc = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const esc = (v: string) => v.replace(/[\\;,]/g, (m) => `\\${m}`).replace(/\n/g, '\\n');
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//UniVerse//Teaching Timetable//EN', 'CALSCALE:GREGORIAN'];
+    const today = new Date();
+    for (const slot of timetableSlots) {
+      const first = new Date(today);
+      const jsDay = (slot.dayOfWeek + 1) % 7; // 0=Mon in our data, 0=Sun in JS
+      first.setDate(today.getDate() + ((jsDay - today.getDay() + 7) % 7));
+      const [sh, sm] = String(slot.startTime).split(':').map(Number);
+      const [eh, em] = String(slot.endTime).split(':').map(Number);
+      const start = new Date(first); start.setHours(sh, sm, 0, 0);
+      const end = new Date(first); end.setHours(eh, em, 0, 0);
+      lines.push('BEGIN:VEVENT', `UID:slot-${slot.id}@universe`, `DTSTAMP:${utc(today)}`, `DTSTART:${local(start)}`, `DTEND:${local(end)}`, 'RRULE:FREQ=WEEKLY;COUNT=16',
+        `SUMMARY:${esc(`${slot.course?.code ?? ''} ${slot.course?.name ?? 'Class'}`.trim())}`, ...(slot.room?.name ? [`LOCATION:${esc(slot.room.name)}`] : []), 'END:VEVENT');
+    }
+    for (const e of calendarEvents) {
+      lines.push('BEGIN:VEVENT', `UID:event-${e.id}@universe`, `DTSTAMP:${utc(today)}`, `DTSTART:${utc(new Date(e.startAt))}`, `DTEND:${utc(new Date(e.endAt))}`,
+        `SUMMARY:${esc(e.title)}`, ...(e.description ? [`DESCRIPTION:${esc(e.description)}`] : []), 'END:VEVENT');
+    }
+    lines.push('END:VCALENDAR');
+    downloadIcs(lines.join('\r\n'), 'teaching-timetable.ics');
+    toast.success('Calendar file downloaded', { description: 'Open it to add your classes to Google, Apple or Outlook Calendar.' });
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -94,6 +126,7 @@ export default function TeacherCalendarPage() {
       time: slot.startTime,
       duration: getDurationMins(slot.startTime, slot.endTime).toString(),
       course: {
+        id: slot.course?.id ?? slot.courseId,
         name: slot.course?.name || 'Unknown Course',
         code: slot.course?.code || 'UNK101',
         color: slot.course?.color || '#6366f1'
@@ -115,6 +148,7 @@ export default function TeacherCalendarPage() {
         time: `${hh}:${mm}`,
         duration: durationMins.toString(),
         course: {
+          id: evt.courseId as string | undefined,
           name: evt.title,
           code: evt.type,
           color: evt.color || '#f97316'
@@ -200,7 +234,7 @@ export default function TeacherCalendarPage() {
         title="Teaching Timetable" 
         subtitle="Manage your classes and office hours" 
         rightNode={
-          <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={() => toast.success('Exporting schedule...')}>
+          <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={exportIcs}>
             <Download className="w-4 h-4" /> Export
           </button>
         }
@@ -332,7 +366,8 @@ export default function TeacherCalendarPage() {
                                 borderRight: `1px solid ${cls.course.color}40`,
                                 borderBottom: `1px solid ${cls.course.color}40`,
                               }}
-                              onClick={() => toast.success(`Viewing details for ${cls.course.name}`)}
+                              onClick={() => cls.course.id && router.push(`/teacher/blackboard?course=${cls.course.id}`)}
+                              title={`Open ${cls.course.name} on Blackboard`}
                             >
                               <div className="text-xs font-bold mb-1" style={{ color: cls.course.color || '#818cf8' }}>
                                 {cls.course.code}

@@ -3,11 +3,13 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CoursesService } from './courses.service';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
 @ApiTags('courses')
 @ApiBearerAuth()
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(FirebaseAuthGuard, RolesGuard)
 @Controller('courses')
 export class CoursesController {
   constructor(private readonly coursesService: CoursesService) {}
@@ -18,6 +20,7 @@ export class CoursesController {
   }
 
   @Get('admin/all')
+  @Roles(Role.ADMIN)
   findAllForAdmin() {
     return this.coursesService.findAllForAdmin();
   }
@@ -35,11 +38,12 @@ export class CoursesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.coursesService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.coursesService.findOne(id, user);
   }
 
   @Post()
+  @Roles(Role.TEACHER, Role.ADMIN)
   create(@CurrentUser() user: any, @Body() body: any) {
     const teacherId = (user.role === Role.ADMIN) && body.teacherId 
       ? body.teacherId 
@@ -48,11 +52,13 @@ export class CoursesController {
   }
 
   @Patch(':id')
+  @Roles(Role.TEACHER, Role.ADMIN)
   update(@Param('id') id: string, @CurrentUser() user: any, @Body() body: any) {
     return this.coursesService.update(id, user.id, user.role, body);
   }
 
   @Delete(':id')
+  @Roles(Role.TEACHER, Role.ADMIN)
   remove(@Param('id') id: string, @CurrentUser() user: any) {
     return this.coursesService.remove(id, user.id, user.role);
   }

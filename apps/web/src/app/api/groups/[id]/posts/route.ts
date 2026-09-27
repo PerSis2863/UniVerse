@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { groupRole, postSelect, MAX_POST_LENGTH } from '@/lib/groups';
+import { isAppFileUrl } from '@/lib/storage';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -37,7 +38,7 @@ export async function POST(req: Request, { params }: Ctx) {
 
   const body = await req.json().catch(() => ({}));
   const text = String(body.text ?? '').trim().slice(0, MAX_POST_LENGTH);
-  const imageUrl = typeof body.imageUrl === 'string' && /^https:\/\//.test(body.imageUrl) ? body.imageUrl.slice(0, 1000) : null;
+  const imageUrl = isAppFileUrl(body.imageUrl) ? body.imageUrl.slice(0, 1000) : null;
   if (!text && !imageUrl) return NextResponse.json({ error: 'Message is empty.' }, { status: 400 });
 
   const post = await prisma.groupPost.create({

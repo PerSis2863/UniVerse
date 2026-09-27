@@ -15,7 +15,7 @@ export class KnowledgeHubController {
   @Post()
   @Roles(Role.STUDENT, Role.TEACHER, Role.ADMIN)
   create(@Body() createKnowledgeHubDto: CreateKnowledgeHubDto, @Req() req) {
-    return this.knowledgeHubService.create(createKnowledgeHubDto, req.user.userId);
+    return this.knowledgeHubService.create(createKnowledgeHubDto, req.user.id);
   }
 
   @Get()

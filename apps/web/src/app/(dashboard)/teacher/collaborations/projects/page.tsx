@@ -311,8 +311,16 @@ export default function NGOMentorshipPage() {
 
             <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <button
-                onClick={() => {
-                   toast.info('Feature under construction (delete project).');
+                onClick={async () => {
+                  if (!confirm(`Remove "${selectedProject.title}"? Its members and milestones will be removed too.`)) return;
+                  try {
+                    await api.delete(`/collaborations/projects/${selectedProject.id}`);
+                    setProjects((ps) => ps.filter((p) => p.id !== selectedProject.id));
+                    setSelectedProject(null);
+                    toast.success('Project removed');
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.message || 'Could not remove the project');
+                  }
                 }}
                 className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
               >

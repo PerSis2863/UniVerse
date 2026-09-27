@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,12 +7,23 @@ import { PrismaService } from '../prisma/prisma.service';
 export class QuizzesService {
   constructor(private prisma: PrismaService) {}
 
-  create(createQuizDto: CreateQuizDto, teacherId: string) {
-    return this.prisma.quiz.create({
-      data: {
-        ...createQuizDto,
-      },
-    });
+  /** Teachers may only manage quizzes for their own courses; admins may manage any. */
+  private async assertCourseOwner(courseId: string, user: { id: string; role: string }) {
+    const course = await this.prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
+    if (!course) throw new NotFoundException('Course not found');
+    if (user.role !== 'ADMIN' && course.teacherId !== user.id) throw new ForbiddenException('You can only manage quizzes for your own courses');
+  }
+
+  private async assertQuizOwner(id: string, user: { id: string; role: string }) {
+    const quiz = await this.prisma.quiz.findUnique({ where: { id }, select: { courseId: true } });
+    if (!quiz) throw new NotFoundException('Quiz not found');
+    await this.assertCourseOwner(quiz.courseId, user);
+  }
+
+  async create(createQuizDto: CreateQuizDto, user: { id: string; role: string }) {
+    await this.assertCourseOwner(createQuizDto.courseId, user);
+    // New quizzes always start as drafts; they are published once they have questions.
+    return this.prisma.quiz.create({ data: { ...createQuizDto, status: 'DRAFT' } });
   }
 
   findAll() {
@@ -35,14 +46,17 @@ export class QuizzesService {
     return quiz;
   }
 
-  update(id: string, updateQuizDto: UpdateQuizDto) {
+  async update(id: string, updateQuizDto: UpdateQuizDto, user: { id: string; role: string }) {
+    await this.assertQuizOwner(id, user);
+    if (updateQuizDto.courseId) await this.assertCourseOwner(updateQuizDto.courseId, user);
     return this.prisma.quiz.update({
       where: { id },
       data: updateQuizDto,
     });
   }
 
-  remove(id: string) {
+  async remove(id: string, user: { id: string; role: string }) {
+    await this.assertQuizOwner(id, user);
     return this.prisma.quiz.delete({
       where: { id },
     });
@@ -65,7 +79,7 @@ export class QuizzesService {
       title: q.title,
       course: q.course?.name || 'Unknown Course',
       questions: q._count.questions,
-      timeLimit: `${q.timeLimit} mins`,
+      timeLimit: q.timeLimit ? `${q.timeLimit} mins` : 'No limit',
       status: q.status,
       submissions: q._count.submissions,
       dueDate: q.dueDate ? q.dueDate.toISOString().split('T')[0] : 'No date set'
@@ -74,6 +88,7 @@ export class QuizzesService {
 
   async getStudentQuizzes(studentId: string) {
     const quizzes = await this.prisma.quiz.findMany({
+      where: { status: { in: ['PUBLISHED', 'CLOSED'] }, course: { enrollments: { some: { studentId } } } },
       include: { 
         course: { select: { name: true } },
         _count: { select: { questions: true } }
@@ -104,6 +119,13 @@ export class QuizzesService {
     });
     
     if (!quiz) throw new NotFoundException('Quiz not found');
+    if (quiz.status !== 'PUBLISHED') throw new BadRequestException('This quiz is not open for submissions');
+    if (quiz.dueDate && quiz.dueDate.getTime() < Date.now()) throw new BadRequestException('The due date for this quiz has passed');
+    const enrolled = await this.prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId: quiz.courseId } } });
+    if (!enrolled) throw new ForbiddenException('You are not enrolled in this course');
+    if (await this.prisma.quizSubmission.findUnique({ where: { quizId_studentId: { quizId, studentId } } })) {
+      throw new ConflictException('You have already submitted this quiz');
+    }
 
     let score = 0;
     let maxScore = 0;

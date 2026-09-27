@@ -16,7 +16,7 @@ export class QuizzesController {
   @Post()
   @Roles(Role.ADMIN, Role.TEACHER)
   create(@Body() createQuizDto: CreateQuizDto, @Req() req) {
-    return this.quizzesService.create(createQuizDto, req.user.userId);
+    return this.quizzesService.create(createQuizDto, req.user);
   }
 
   @Get()
@@ -31,31 +31,31 @@ export class QuizzesController {
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.TEACHER)
-  update(@Param('id') id: string, @Body() updateQuizDto: UpdateQuizDto) {
-    return this.quizzesService.update(id, updateQuizDto);
+  update(@Param('id') id: string, @Body() updateQuizDto: UpdateQuizDto, @Req() req) {
+    return this.quizzesService.update(id, updateQuizDto, req.user);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN, Role.TEACHER)
-  remove(@Param('id') id: string) {
-    return this.quizzesService.remove(id);
+  remove(@Param('id') id: string, @Req() req) {
+    return this.quizzesService.remove(id, req.user);
   }
 
   @Get('teacher/my-quizzes')
   @Roles(Role.TEACHER, Role.ADMIN)
   getTeacherQuizzes(@Req() req) {
-    return this.quizzesService.getTeacherQuizzes(req.user.userId);
+    return this.quizzesService.getTeacherQuizzes(req.user.id);
   }
 
   @Get('student/my-quizzes')
   @Roles(Role.STUDENT, Role.ADMIN)
   getStudentQuizzes(@Req() req) {
-    return this.quizzesService.getStudentQuizzes(req.user.userId);
+    return this.quizzesService.getStudentQuizzes(req.user.id);
   }
 
   @Post(':id/submit')
   @Roles(Role.STUDENT)
   submitQuiz(@Req() req, @Param('id') id: string, @Body('answers') answers: any) {
-    return this.quizzesService.submitQuiz(req.user.userId, id, answers);
+    return this.quizzesService.submitQuiz(req.user.id, id, answers);
   }
 }

@@ -5,6 +5,7 @@ import { Plus, Search, FileText, CheckCircle2, PlayCircle, MoreVertical, Clock, 
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
+import { QuizManager } from '@/components/quizzes/QuizManager';
 
 export default function TeacherQuizzes() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,7 +14,8 @@ export default function TeacherQuizzes() {
   const { data: courses = [], isLoading: loadingCourses } = useSWR('/courses/my', fetcher);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newQuiz, setNewQuiz] = useState({ title: '', courseId: '', questions: 10, timeLimit: 30 });
+  const [newQuiz, setNewQuiz] = useState({ title: '', courseId: '', timeLimit: 30 });
+  const [managing, setManaging] = useState<string | null>(null);
 
   const filteredQuizzes = quizzes.filter((q: any) => {
     const matchesSearch = q.title.toLowerCase().includes(searchTerm.toLowerCase()) || q.course.toLowerCase().includes(searchTerm.toLowerCase());
@@ -27,11 +29,12 @@ export default function TeacherQuizzes() {
       return;
     }
     try {
-      await api.post('/quizzes', newQuiz);
+      const { data: created } = await api.post('/quizzes', newQuiz);
       await mutateQuizzes();
       setShowCreateModal(false);
-      setNewQuiz({ title: '', courseId: '', questions: 10, timeLimit: 30 });
-      toast.success('Quiz created successfully!');
+      setNewQuiz({ title: '', courseId: '', timeLimit: 30 });
+      toast.success('Draft created — now add your questions');
+      if (created?.id) setManaging(created.id);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to create quiz');
     }
@@ -50,9 +53,9 @@ export default function TeacherQuizzes() {
 
   const getStatusStyle = (status: string) => {
     switch(status) {
-      case 'Active': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'Draft': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'Completed': return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20';
+      case 'PUBLISHED': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'DRAFT': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'CLOSED': return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20';
       default: return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20';
     }
   };
@@ -60,7 +63,7 @@ export default function TeacherQuizzes() {
   return (
     <>
       <Topbar title="Quizzes & Assessments" subtitle="Manage course evaluations" />
-      <div className="flex-1 p-8 overflow-y-auto space-y-6">
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
         
         {/* Actions */}
         <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
@@ -81,9 +84,9 @@ export default function TeacherQuizzes() {
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 hidden sm:block"
             >
               <option value="All">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Draft">Drafts</option>
-              <option value="Completed">Completed</option>
+              <option value="PUBLISHED">Published</option>
+              <option value="DRAFT">Drafts</option>
+              <option value="CLOSED">Closed</option>
             </select>
           </div>
           <button 
@@ -106,10 +109,10 @@ export default function TeacherQuizzes() {
               <div className="p-6 pb-4">
                 <div className="flex justify-between items-start mb-4">
                   <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${getStatusStyle(quiz.status)}`}>
-                    {quiz.status}
+                    {quiz.status === 'PUBLISHED' ? 'Published' : quiz.status === 'CLOSED' ? 'Closed' : 'Draft'}
                   </span>
                   <div className="flex gap-1">
-                    <button className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:bg-zinc-800">
+                    <button onClick={() => setManaging(quiz.id)} aria-label="Edit quiz" className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:bg-zinc-800">
                       <Edit className="w-4 h-4" />
                     </button>
                     <button onClick={() => handleDeleteQuiz(quiz.id)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-red-400 rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:bg-zinc-800">
@@ -139,7 +142,7 @@ export default function TeacherQuizzes() {
               
               <div className="mt-auto p-4 border-t border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-900/30">
                 <button 
-                  onClick={() => toast.success(`Managing ${quiz.title}`)}
+                  onClick={() => setManaging(quiz.id)}
                   className="w-full py-2 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:bg-white/10 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
                 >
                   Manage Quiz
@@ -149,12 +152,14 @@ export default function TeacherQuizzes() {
           ))}
           {filteredQuizzes.length === 0 && (
             <div className="col-span-full p-12 text-center text-zinc-500 dark:text-zinc-500 bg-white dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-              No quizzes match your search.
+              {quizzes.length === 0 ? 'No quizzes yet. Create a draft, add questions, then publish it to your students.' : 'No quizzes match your search.'}
             </div>
           )}
         </div>
         )}
       </div>
+
+      {managing && <QuizManager quizId={managing} onClose={() => setManaging(null)} onChanged={() => mutateQuizzes()} />}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -196,15 +201,6 @@ export default function TeacherQuizzes() {
                 </select>
               </div>
               <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="text-xs font-medium text-zinc-300 block mb-1">Number of Questions</label>
-                  <input 
-                    type="number" 
-                    value={newQuiz.questions}
-                    onChange={e => setNewQuiz({...newQuiz, questions: parseInt(e.target.value) || 0})}
-                    className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" 
-                  />
-                </div>
                 <div className="flex-1">
                   <label className="text-xs font-medium text-zinc-300 block mb-1">Time Limit</label>
                   <select 

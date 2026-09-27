@@ -1,250 +1,63 @@
 'use client';
-import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
-import { useState } from 'react';
+import Link from 'next/link';
 import useSWR from 'swr';
-import { fetcher } from '@/lib/fetcher';
-import { Topbar } from '@/components/layout/Topbar';
-import { toast } from 'sonner';
-import { BookOpen, Clock, PlayCircle, MoreHorizontal, GraduationCap, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { BookOpen, ChevronRight, FileText, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { Topbar } from '@/components/layout/Topbar';
+import { fetcher } from '@/lib/fetcher';
 
-// Helper to generate consistent colors based on course string
-const getCourseTheme = (seed: string) => {
-  const colors = [
-    { color: 'from-blue-500 to-indigo-500', bg: 'bg-blue-500/10', text: 'text-blue-500' },
-    { color: 'from-fuchsia-500 to-pink-500', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-500' },
-    { color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-500/10', text: 'text-emerald-500' },
-    { color: 'from-amber-500 to-orange-500', bg: 'bg-amber-500/10', text: 'text-amber-500' },
-    { color: 'from-purple-500 to-violet-500', bg: 'bg-purple-500/10', text: 'text-purple-500' },
-    { color: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-500/10', text: 'text-cyan-500' },
-    { color: 'from-rose-500 to-red-500', bg: 'bg-rose-500/10', text: 'text-rose-500' },
-  ];
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
-};
+interface Enrollment {
+  enrolledAt: string;
+  course: {
+    id: string; code: string; name: string; credits: number; department: string | null; color: string | null;
+    teacher: { name: string } | null;
+    _count: { materials: number; quizzes: number };
+  };
+}
 
 export default function CoursesPage() {
-  const [activeTab, setActiveTab] = useState<'current' | 'past'>('current');
-  const { data: enrollments, isLoading, error } = useSWR('/courses/my', fetcher, {
-    shouldRetryOnError: false,
-    errorRetryCount: 1,
-    dedupingInterval: 30000,
-  });
-
-  // Determine current vs past based on a simple heuristic (since we don't have terms modeled properly yet)
-  // Here we'll treat 100% progress as 'past', else 'current'. We map backend model to frontend schema.
-  
-  const safeEnrollments: any[] = Array.isArray(enrollments) ? enrollments : [];
-
-  // Determine current vs past based on a simple heuristic (since we don't have terms modeled properly yet)
-  // Here we'll treat 100% progress as 'past', else 'current'. We map backend model to frontend schema.
-  const allCourses = safeEnrollments.map((e: any) => {
-    const course = e.course;
-    const theme = getCourseTheme(course.id || course.name);
-    return {
-      id: course.id,
-      title: course.name,
-      professor: course.teacher?.name || 'Unassigned',
-      progress: typeof e.progress === 'number' ? e.progress : 0,
-      nextClass: null,
-      completed: e.progress === 100 ? 'Completed' : null,
-      grade: e.grade ?? null,
-      ...theme
-    };
-  });
-
-  const courses = allCourses.filter((c: any) => c.progress < 100);
-  const pastCourses = allCourses.filter((c: any) => c.progress === 100 || c.completed);
+  const { data, isLoading, error } = useSWR<Enrollment[]>('/courses/my', fetcher, { dedupingInterval: 30000 });
+  const enrollments = Array.isArray(data) ? data.filter((e) => e.course) : [];
 
   return (
     <>
-      <Topbar title="My Courses" subtitle="Manage your current semester classes and materials." />
-      <div className="flex-1 p-8 space-y-8 overflow-y-auto">
-        
-        {/* Continue Learning Banner */}
-        {courses.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-500/10 p-8 flex flex-col md:flex-row items-center gap-8"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-            
-            <div className="flex-1 space-y-4 relative z-10">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold border border-indigo-500/20">
-                <PlayCircle className="w-3.5 h-3.5" /> Continue Learning
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-white">
-                {courses[0].title}
-              </h2>
-              <p className="text-zinc-600 dark:text-zinc-400">
-                Pick up right where you left off.
-              </p>
-              <div className="pt-2">
-                <button 
-                  onClick={() => toast.success(`Resuming ${courses[0].title}`)}
-                  className="btn-primary"
-                >
-                  Resume Course
-                </button>
-              </div>
-            </div>
-            
-            <div className="w-full md:w-1/3 bg-white dark:bg-zinc-900/50 rounded-2xl p-6 border border-zinc-200 dark:border-white/[0.06] shadow-xl relative z-10">
-              <div className="flex justify-between items-end mb-2">
-                <span className="font-semibold text-zinc-900 dark:text-white text-lg">{courses[0].progress}%</span>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Course Progress</span>
-              </div>
-              <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${courses[0].progress}%` }}
-                  transition={{ duration: 1, ease: 'easeOut' }}
-                  className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full"
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Tabs */}
-        <div className="flex items-center gap-4 border-b border-zinc-200 dark:border-white/[0.06] pb-px">
-          <button 
-            onClick={() => setActiveTab('current')}
-            className={cn(
-              "px-4 py-2 border-b-2 font-semibold text-sm transition-colors",
-              activeTab === 'current' 
-                ? "border-indigo-500 text-indigo-600 dark:text-indigo-400" 
-                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-            )}
-          >
-            Current Semester
-          </button>
-          <button 
-            onClick={() => setActiveTab('past')}
-            className={cn(
-              "px-4 py-2 border-b-2 font-semibold text-sm transition-colors",
-              activeTab === 'past' 
-                ? "border-indigo-500 text-indigo-600 dark:text-indigo-400" 
-                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-            )}
-          >
-            Past Courses
-          </button>
-        </div>
-
-        {/* Course Grid */}
-        {activeTab === 'current' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {courses.length === 0 ? (
-              <FeatureGuide
-                className="col-span-full"
-                icon={BookOpen}
-                title="Your courses will appear here"
-                description="When you're enrolled in a course, you'll see its teacher, your progress and grades here — and open its Blackboard for materials, announcements and assignments."
-                steps={['Your teacher or admin enrolls you in courses', 'Open a course to see materials and assignments', 'Track progress and grades as you go']}
-                example={<div><ExampleRow title="Operating Systems" meta="Prof. R. Mehta · 45% complete" right="CS301" /><ExampleRow title="Sustainable Development" meta="Dr. A. Khan · 70% complete" right="ENV210" accent="from-emerald-500 to-teal-500" /></div>}
-              />
-            ) : (
-              courses.map((course: any, i: number) => (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  key={course.id}
-                  className="card-hover group cursor-pointer"
-                >
-                  <div className="flex justify-between items-start mb-6">
-                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", course.bg, course.text)}>
-                      <BookOpen className="w-6 h-6" />
-                    </div>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-400 transition-colors">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
-                  </div>
-                  
-                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
-                    {course.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                    <GraduationCap className="w-4 h-4" /> {course.professor}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="font-medium text-zinc-700 dark:text-zinc-300">Progress</span>
-                        <span className="font-semibold text-zinc-900 dark:text-white">{course.progress}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-zinc-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${course.progress}%` }}
-                          transition={{ duration: 1, delay: i * 0.1 }}
-                          className={cn("h-full rounded-full bg-gradient-to-r", course.color)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/[0.06]">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                        <Clock className="w-3.5 h-3.5" /> {course.progress}% complete
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))
-            )}
-          </div>
+      <Topbar title="My Courses" subtitle="Your enrolled courses — open one to see its Blackboard" />
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        {error && <p className="text-sm text-rose-500 mb-4">Couldn&apos;t load your courses right now. Please try again shortly.</p>}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">{[0, 1, 2].map((i) => <div key={i} className="h-48 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>
+        ) : enrollments.length === 0 ? (
+          <FeatureGuide
+            icon={BookOpen}
+            title="Your courses will appear here"
+            description="When you're enrolled in a course, you'll see it here with its teacher, and open its Blackboard for announcements, materials, grades and quizzes."
+            steps={['Your teacher or admin enrolls you in courses', 'Open a course to see materials and announcements', 'Check your grades and quiz results as you go']}
+            example={<div><ExampleRow title="Operating Systems" meta="Prof. R. Mehta · 12 materials" right="CS301" /><ExampleRow title="Sustainable Development" meta="Dr. A. Khan · 3 quizzes" right="ENV210" accent="from-emerald-500 to-teal-500" /></div>}
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {pastCourses.length === 0 ? (
-              <div className="col-span-full py-8 text-center text-zinc-500">
-                You have no past courses.
-              </div>
-            ) : (
-              pastCourses.map((course: any, i: number) => (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  key={course.id}
-                  className="card-hover group cursor-pointer"
-                >
-                  <div className="flex justify-between items-start mb-6">
-                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", course.bg, course.text)}>
-                      <BookOpen className="w-6 h-6" />
-                    </div>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-400 transition-colors">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {enrollments.map(({ course, enrolledAt }, i) => (
+              <motion.div key={course.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05 }}>
+                <Link href={`/student/blackboard?course=${course.id}`}
+                  className="group block h-full rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-6 hover:border-indigo-500/40 hover:shadow-lg transition-all">
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: course.color || '#4f46e5' }}>{course.code.slice(-3)}</div>
+                    <span className="text-xs font-mono text-zinc-500">{course.code} · {course.credits} cr</span>
                   </div>
-                  
-                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
-                    {course.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 mb-6">
-                    <GraduationCap className="w-4 h-4" /> {course.professor}
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white group-hover:text-indigo-500 transition-colors">{course.name}</h3>
+                  <p className="flex items-center gap-2 text-sm text-zinc-500 mt-1"><GraduationCap className="w-4 h-4" /> {course.teacher?.name ?? 'Instructor to be assigned'}</p>
+                  <div className="flex items-center gap-4 text-xs text-zinc-500 mt-5 pt-4 border-t border-zinc-200/70 dark:border-white/[0.06]">
+                    <span className="inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {course._count.materials} material{course._count.materials === 1 ? '' : 's'}</span>
+                    <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {course._count.quizzes} quiz{course._count.quizzes === 1 ? '' : 'zes'}</span>
+                    <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-indigo-500">Open <ChevronRight className="w-3.5 h-3.5" /></span>
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-white/[0.06]">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                        <Clock className="w-3.5 h-3.5" /> Completed: {course.completed}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-sm font-bold text-zinc-900 dark:text-white">
-                        Grade: <span className={course.text}>{course.grade}</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))
-            )}
+                  <p className="text-[11px] text-zinc-400 mt-2">Enrolled {new Date(enrolledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
+                </Link>
+              </motion.div>
+            ))}
           </div>
         )}
-
       </div>
     </>
   );

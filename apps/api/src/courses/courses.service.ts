@@ -1,6 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, CourseStatus } from '@prisma/client';
+import { pick } from '../common/pick';
+
+const COURSE_FIELDS = ['code', 'name', 'description', 'credits', 'department', 'color', 'emoji'] as const;
 
 @Injectable()
 export class CoursesService {
@@ -111,7 +114,7 @@ export class CoursesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: { id: string; role: string }) {
     const course = await this.prisma.course.findUnique({
       where: { id },
       include: {
@@ -122,12 +125,21 @@ export class CoursesService {
       },
     });
     if (!course) throw new NotFoundException('Course not found');
-    return course;
+    // Only the teacher, admins and enrolled students see the roster and materials; others get the catalogue view.
+    const insider = user.role === Role.ADMIN || course.teacherId === user.id || course.enrollments.some((e) => e.studentId === user.id);
+    if (insider) return course;
+    const { enrollments, materials, quizzes, ...info } = course;
+    return { ...info, teacher: course.teacher && { id: course.teacher.id, name: course.teacher.name, avatar: course.teacher.avatar }, _count: { enrollments: enrollments.length, materials: materials.length } };
   }
 
   async create(teacherId: string, data: any) {
+    const fields = pick(data, COURSE_FIELDS);
+    if (typeof fields.code !== 'string' || !fields.code.trim() || typeof fields.name !== 'string' || !fields.name.trim()) {
+      throw new BadRequestException('Course name and code are required');
+    }
+    if (await this.prisma.course.findUnique({ where: { code: fields.code.trim() } })) throw new ConflictException('A course with this code already exists');
     return this.prisma.course.create({
-      data: { ...data, teacherId, status: 'DRAFT' },
+      data: { ...(fields as any), code: fields.code.trim(), name: fields.name.trim(), teacherId, status: 'DRAFT' },
     });
   }
 
@@ -135,7 +147,9 @@ export class CoursesService {
     const course = await this.prisma.course.findUnique({ where: { id } });
     if (!course) throw new NotFoundException('Course not found');
     if (role !== Role.ADMIN && course.teacherId !== teacherId) throw new ForbiddenException();
-    return this.prisma.course.update({ where: { id }, data });
+    // Only admins may reassign a course to another teacher.
+    const fields = pick(data, role === Role.ADMIN ? [...COURSE_FIELDS, 'status', 'teacherId'] as const : [...COURSE_FIELDS, 'status'] as const);
+    return this.prisma.course.update({ where: { id }, data: fields as any });
   }
 
   async remove(id: string, teacherId: string, role: Role) {

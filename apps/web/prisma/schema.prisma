@@ -532,6 +532,21 @@ model Message {
   @@map("messages")
 }
 
+// Uploaded files stored in the database (used when no external file storage is configured).
+model StoredFile {
+  id        String   @id @default(cuid())
+  key       String   @unique // random, unguessable id used in the file's URL
+  ownerId   String
+  name      String
+  mime      String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
+  @@map("stored_files")
+}
+
 // Admin-managed campus information: services (dining, transport…), useful links and campus events.
 model CampusItem {
   id          String    @id @default(cuid())

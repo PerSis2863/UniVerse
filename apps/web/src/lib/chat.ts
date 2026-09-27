@@ -83,16 +83,8 @@ export function membership(conversationId: string, userId: string) {
   });
 }
 
-/** Attachments must be files uploaded to this app's Vercel Blob store. */
-export function isOwnBlobUrl(url: unknown): url is string {
-  if (typeof url !== 'string') return false;
-  try {
-    const u = new URL(url);
-    return u.protocol === 'https:' && u.hostname.endsWith('.public.blob.vercel-storage.com');
-  } catch {
-    return false;
-  }
-}
+/** Attachments must be files uploaded through this app (Vercel Blob or database storage). */
+export { isAppFileUrl as isOwnBlobUrl } from '@/lib/storage';
 
 export const messageSelect = {
   id: true,

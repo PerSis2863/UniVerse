@@ -1,5 +1,6 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
+import { uploadChatFile } from '@/components/chat/chat-client';
 import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, Copy } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
@@ -89,9 +90,8 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
       let fileUrl = formData.url;
 
       if (formData.type !== 'Link' && selectedFile) {
-        // In a real app we would upload the file to S3/GCS.
-        // For this demo, we'll just mock a URL.
-        fileUrl = `https://mock-storage.com/${selectedFile.name}`;
+        const uploaded = await uploadChatFile(selectedFile, 'knowledge-hub');
+        fileUrl = uploaded.startsWith('/') ? `${window.location.origin}${uploaded}` : uploaded;
       }
 
       await api.post('/knowledge-hub', {
@@ -106,9 +106,9 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
       setSelectedFile(null);
       toast.success('Resource added successfully!');
       fetchResources();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to add resource');
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to add resource');
     }
   };
 
@@ -144,9 +144,13 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
     }
   };
 
-  const handleShareFile = (title: string) => {
-    navigator.clipboard.writeText(`Check out this resource: ${title}`);
-    toast.success(`Share link for "${title}" copied to clipboard!`);
+  const handleShareFile = async (title: string, url?: string) => {
+    try {
+      await navigator.clipboard.writeText(url ? `${title}: ${url}` : title);
+      toast.success(url ? 'Link copied — paste it into a chat or email' : 'Title copied (this resource has no link to share)');
+    } catch {
+      toast.error('Could not copy to the clipboard');
+    }
   };
 
   const handleDownload = (resource: Resource) => {
@@ -156,7 +160,6 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
     }
 
     if (resource.url) {
-      // It's an object URL (simulated file)
       const a = document.createElement('a');
       a.href = resource.url;
       a.download = resource.title;
@@ -164,8 +167,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
       a.click();
       document.body.removeChild(a);
     } else {
-      // Fallback for dummy resources
-      toast.error('File content not available for mock resource.');
+      toast.error('This resource has no file or link attached.');
     }
   };
 
@@ -265,7 +267,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                         </div>
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
-                            onClick={() => handleShareFile(resource.title)}
+                            onClick={() => handleShareFile(resource.title, resource.url)}
                             className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
                             title="Share"
                           >
