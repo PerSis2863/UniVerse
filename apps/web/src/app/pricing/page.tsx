@@ -58,7 +58,7 @@ export default function PricingPage() {
     <MotionConfig reducedMotion="user">
       <div className="dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0a0d13', color: '#fff' }}>
         <div aria-hidden className="fixed inset-0 pointer-events-none">
-          <div className="absolute top-[-35%] left-1/2 -translate-x-1/2 w-[110vw] h-[80vw]" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.25), transparent)' }} />
+          <div className="absolute top-[-35%] left-1/2 -translate-x-1/2 w-[max(110vw,900px)] h-[max(80vw,700px)]" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.25), transparent)' }} />
         </div>
         <MarketingNav />
 

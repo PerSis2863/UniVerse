@@ -156,7 +156,7 @@ function ProductPreview() {
 
   return (
     <div ref={ref} className="relative mx-auto max-w-5xl [perspective:1400px]">
-      <div aria-hidden className="absolute -inset-x-24 -top-24 bottom-0" style={{ background: 'radial-gradient(ellipse at top, rgba(99,102,241,0.28), rgba(217,70,239,0.08) 45%, transparent 70%)' }} />
+      <div aria-hidden className="absolute -inset-x-24 -top-40 -bottom-16 pointer-events-none" style={{ background: 'radial-gradient(ellipse 55% 45% at 50% 45%, rgba(99,102,241,0.30), rgba(217,70,239,0.10) 55%, transparent 80%)' }} />
       <motion.div style={{ rotateX, scale }} className="relative origin-top rounded-[1.75rem] border border-white/10 bg-[#0f141c]/90 backdrop-blur-xl shadow-[0_40px_120px_-20px_rgba(79,70,229,0.45)] overflow-hidden">
         {/* window chrome */}
         <div className="flex items-center gap-2 px-4 h-11 border-b border-white/[0.06]">
@@ -331,8 +331,8 @@ export default function ShowcasePage() {
 
         {/* ambient background */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
-          <motion.div animate={{ x: [0, 40, 0], y: [0, -30, 0] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[-30%] left-[-20%] w-[80vw] h-[80vw] rounded-full will-change-transform" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.22), transparent)' }} />
-          <motion.div animate={{ x: [0, -40, 0], y: [0, 30, 0] }} transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }} className="absolute bottom-[-35%] right-[-20%] w-[75vw] h-[75vw] rounded-full will-change-transform" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.13), transparent)' }} />
+          <motion.div animate={{ x: [0, 40, 0], y: [0, -30, 0] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[-20%] left-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full will-change-transform" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.26), transparent)' }} />
+          <motion.div animate={{ x: [0, -40, 0], y: [0, 30, 0] }} transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }} className="absolute bottom-[-25%] right-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full will-change-transform" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.17), transparent)' }} />
           <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '64px 64px', maskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)' }} />
         </div>
 

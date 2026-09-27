@@ -4,7 +4,13 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     // The auth screens are designed dark-only; the "dark" class makes dark: variants (logo text etc.) apply here in light mode too.
-    <div className="dark min-h-[100dvh] flex">
+    <div
+      className="dark min-h-[100dvh] flex"
+      style={{
+        background:
+          'radial-gradient(90% 55% at 0% 0%, rgba(79,70,229,0.30), transparent 70%), radial-gradient(90% 55% at 100% 100%, rgba(192,38,211,0.22), transparent 70%), #0a0d13',
+      }}
+    >
       {/* ── Left Panel — always dark ─────────────────── */}
       <div
         className="hidden lg:flex w-[52%] relative overflow-hidden flex-col"

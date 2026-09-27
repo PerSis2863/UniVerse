@@ -9,7 +9,6 @@ import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
-import { VerificationStatusModal } from '@/components/auth/VerificationStatusModal';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,7 +19,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
-  const [verificationUser, setVerificationUser] = useState<any>(null);
 
   const handleLoginSuccess = async (token: string) => {
     try {
@@ -36,23 +34,11 @@ export default function LoginPage() {
         createdAt: user.createdAt || new Date().toISOString(),
         avatar: user.avatar,
       });
-      if (!token.startsWith('mock-token-')) {
-        setVerificationUser(user);
-      } else {
-        router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
-      }
+      router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Login successful, but failed to retrieve user data. Please contact support.');
     }
-  };
-
-  const handleVerificationClose = () => {
-    if (verificationUser) {
-      const role = verificationUser.role;
-      router.push(role === 'STUDENT' ? '/student' : role === 'TEACHER' ? '/teacher' : '/admin');
-    }
-    setVerificationUser(null);
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -105,10 +91,6 @@ export default function LoginPage() {
 
   return (
     <>
-      {verificationUser && (
-        <VerificationStatusModal user={verificationUser} onClose={handleVerificationClose} />
-      )}
-
       <div className="w-full">
         {/* Header */}
         <div className="mb-8">
@@ -237,7 +219,8 @@ export default function LoginPage() {
           )}
         </div>
 
-        {/* Demo Accounts */}
+        {/* Demo Accounts (only when demo login is enabled for this deployment) */}
+        {process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true' && (
         <div className="mt-8">
           <h2 className="text-sm font-semibold text-zinc-400 mb-4 text-center">Or test with demo accounts</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -274,6 +257,7 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+        )}
       </div>
     </>
   );

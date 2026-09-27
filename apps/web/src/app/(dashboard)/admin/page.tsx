@@ -1,4 +1,5 @@
 'use client';
+import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Users, BookOpen, DollarSign, GraduationCap, ArrowRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
@@ -57,6 +58,7 @@ export default function AdminDashboard() {
     <>
       <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} action={{ label: t('admin.send_announcement'), onClick: handleSendAnnouncement }} />
       <div className="flex-1 p-8 space-y-8">
+        <AccountSetupCard />
 
         {/* KPIs */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

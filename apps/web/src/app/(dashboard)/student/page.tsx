@@ -7,6 +7,7 @@ import {
   ArrowUpRight, BookOpen, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, Clock, GraduationCap,
   MapPin, Sparkles, Target, TrendingUp, FileText, Brain, Trophy, type LucideIcon,
 } from 'lucide-react';
+import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { useAuthStore } from '@/store/auth';
@@ -168,6 +169,8 @@ export default function StudentDashboard() {
             </div>
           </div>
         </div>
+
+        <AccountSetupCard />
 
         {error && (
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-500">

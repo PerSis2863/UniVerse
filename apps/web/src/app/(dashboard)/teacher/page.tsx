@@ -1,4 +1,5 @@
 'use client';
+import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useAuthStore } from '@/store/auth';
@@ -80,11 +81,12 @@ export default function TeacherDashboard() {
         action={{ label: t('teacher.new_course'), onClick: () => setShowCourseModal(true) }}
       />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
+        <AccountSetupCard />
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard title={t('teacher.total_students')} value={totalStudents.toString()} icon={Users} change={8} color="indigo" />
-          <KpiCard title={t('teacher.active_courses')} value={activeCourses.toString()} icon={BookOpen} change={0} color="cyan" />
-          <KpiCard title={t('teacher.pending_grades')} value={pendingGrades.toString()} icon={FileText} change={-25} color="amber" />
-          <KpiCard title={t('teacher.avg_class_score')} value={`${avgClassScore}%`} icon={BarChart3} change={3} color="green" />
+          <KpiCard title={t('teacher.total_students')} value={totalStudents.toString()} icon={Users} color="indigo" />
+          <KpiCard title={t('teacher.active_courses')} value={activeCourses.toString()} icon={BookOpen} color="cyan" />
+          <KpiCard title={t('teacher.pending_grades')} value={pendingGrades.toString()} icon={FileText} color="amber" />
+          <KpiCard title={t('teacher.avg_class_score')} value={`${avgClassScore}%`} icon={BarChart3} color="green" />
         </div>
 
         {/* Analytics Section */}
