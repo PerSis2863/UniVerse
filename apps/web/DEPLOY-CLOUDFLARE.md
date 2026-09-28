@@ -75,4 +75,3 @@ Postgres database are no longer used.
 ## Notes
 
 - The Worker is about 3.2 MB gzipped (minified). The Workers free plan allows 3 MB, the paid plan ($5/month) 10 MB.
-- Files uploaded to Vercel Blob before the move keep working (their URLs are still accepted and allowed by the CSP).

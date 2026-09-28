@@ -83,7 +83,7 @@ export function membership(conversationId: string, userId: string) {
   });
 }
 
-/** Attachments must be files uploaded through this app (R2, the old Vercel Blob store, or database storage). */
+/** Attachments must be files uploaded through this app (R2 or database storage). */
 export { isAppFileUrl as isOwnBlobUrl } from '@/lib/storage';
 
 export const messageSelect = {

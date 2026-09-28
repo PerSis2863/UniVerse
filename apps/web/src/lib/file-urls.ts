@@ -9,11 +9,10 @@ const FILES_HOST = (() => {
   }
 })();
 
-/** True for https URLs on our R2 files domain, or on the Vercel Blob store used before the move. */
+/** True for https URLs on our R2 files domain. */
 export function isStorageHostUrl(u: URL): boolean {
   if (u.protocol !== 'https:') return false;
-  if (FILES_HOST && u.hostname === FILES_HOST) return true;
-  return u.hostname.endsWith('.public.blob.vercel-storage.com');
+  return !!FILES_HOST && u.hostname === FILES_HOST;
 }
 
 export function isUploadedFileUrl(url: string): boolean {

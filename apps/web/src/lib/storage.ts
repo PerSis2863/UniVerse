@@ -23,7 +23,7 @@ export async function saveFile(opts: { ownerId: string; name: string; mime: stri
   return `/api/files/${key}/${encodeURIComponent(safeName)}`;
 }
 
-/** True for URLs of files uploaded through this app (R2, the old Vercel Blob store, or database storage). */
+/** True for URLs of files uploaded through this app (R2 or database storage). */
 export function isAppFileUrl(url: unknown): url is string {
   if (typeof url !== 'string') return false;
   if (/^\/api\/files\/[A-Za-z0-9_-]{16,}(\/|$)/.test(url)) return true;
