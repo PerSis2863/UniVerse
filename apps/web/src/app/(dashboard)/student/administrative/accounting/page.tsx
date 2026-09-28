@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 
 import { getUserTransactions, createTransaction } from '@/app/actions/transaction';
+import { isSampleMode } from '@/lib/sample-mode';
 import { getAuthToken } from '@/lib/auth-token';
 import { authedFetch } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
@@ -37,7 +38,7 @@ function AccountingContent() {
     const fetchTrx = async () => {
       if (!user?.email) return;
       try {
-        const data = await getUserTransactions(await getAuthToken());
+        const data = isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions(true) : await getUserTransactions(await getAuthToken());
         setTransactions(data);
       } catch (e) {
         console.error('Failed to load transactions', e);
@@ -57,6 +58,7 @@ function AccountingContent() {
 
   const handlePayment = async (amount: number, selectedCurrency: string) => {
     if (!user?.email) return;
+    if (isSampleMode()) { toast.error('Payments aren’t available in sample mode. Exit sample mode to pay.'); return; }
     setIsLoading(true);
     try {
       // Create a new pending transaction for the custom amount

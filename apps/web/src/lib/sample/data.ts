@@ -32,7 +32,7 @@ export function levelInfo(xp: number) {
 }
 
 export function buildSampleDb(me: Me) {
-  const teacherView = me.role === 'TEACHER' || me.role === 'ADMIN';
+  const teacherView = me.role === 'TEACHER';
 
   // ── People ────────────────────────────────────────────────────────────
   const people = {
@@ -210,8 +210,12 @@ export function buildSampleDb(me: Me) {
   conversations[3].messages.push(
     msg('sample-conv-group', people.zoya, 'Sharing my notes on paging for Monday 📚', 400),
     msg('sample-conv-group', people.liam, 'Lifesaver, thanks Zoya!', 390),
-    msg('sample-conv-group', people.aarav, 'Library at 5 tomorrow?', 25),
+    msg('sample-conv-group', people.liam, 'When should we meet for revision?', 120, { type: 'POLL', body: 'When should we meet for revision?', metadata: { question: 'When should we meet for revision?', options: ['Tomorrow 5 pm', 'Saturday morning', 'Sunday evening'], multiple: false } }),
+    msg('sample-conv-group', people.zoya, 'Central Library', 60, { type: 'LOCATION', body: 'Central Library', metadata: { lat: 12.97194, lng: 77.59369, label: 'Central Library' } }),
+    msg('sample-conv-group', people.aarav, 'Library at 5 tomorrow? @' + me.name.split(' ')[0], 25),
   );
+  const pollVotes: Record<string, Record<string, number[]>> = { [conversations[3].messages[2].id]: { [people.aarav.id]: [0], [people.zoya.id]: [0], [people.liam.id]: [1] } };
+  for (const c of conversations) Object.assign(c, { prefs: { pinned: c.id === 'sample-conv-group', muted: false, archived: false, markedUnread: false }, disappearingSec: null });
   const directory = [people.meera, people.arjun, people.kavya, people.sam, ...classmates];
 
   // ── Notifications ─────────────────────────────────────────────────────
@@ -282,9 +286,9 @@ export function buildSampleDb(me: Me) {
   const myApplications = [{ id: sid('ia'), internshipId: 'sample-in-data', studentId: me.id, status: 'REVIEWING', coverLetter: 'I love working with real-world data…', cvUrl: null, appliedAt: at(-4), updatedAt: at(-2), internship: internships[1] }];
   const placements = [{ id: sid('pl'), updatedAt: at(-120), internship: { title: 'Summer Intern · Web', location: 'Remote', type: 'REMOTE', duration: '8 weeks', startDate: at(-180), company: { name: 'Nova Labs', logoUrl: null, sector: 'Software' } } }];
   const partners = [
-    { id: 'sample-pa-1', name: 'City Learning Trust', type: 'NGO', description: 'After-school learning for 3,000 children.', websiteUrl: null, logoUrl: null, country: 'India' },
-    { id: 'sample-pa-2', name: 'Nova Labs', type: 'COMPANY', description: 'Internships and mentoring for CS students.', websiteUrl: null, logoUrl: null, country: 'India' },
-    { id: 'sample-pa-3', name: 'Green Roots NGO', type: 'NGO', description: 'Urban greening and water projects.', websiteUrl: null, logoUrl: null, country: 'India' },
+    { id: 'sample-pa-1', name: 'City Learning Trust', type: 'NGO', description: 'After-school learning for 3,000 children.', websiteUrl: null, logoUrl: null, country: 'India', status: 'ACTIVE', isActive: true, partnerships: [{ id: 'x1' }] },
+    { id: 'sample-pa-2', name: 'Nova Labs', type: 'COMPANY', description: 'Internships and mentoring for CS students.', websiteUrl: null, logoUrl: null, country: 'India', status: 'ACTIVE', isActive: true, partnerships: [{ id: 'x2' }, { id: 'x3' }] },
+    { id: 'sample-pa-3', name: 'Green Roots NGO', type: 'NGO', description: 'Urban greening and water projects.', websiteUrl: null, logoUrl: null, country: 'India', status: 'PENDING', isActive: true, partnerships: [] },
   ];
   const skills = [
     { id: sid('sk'), userId: me.id, name: 'Python', category: 'Technical', level: 'ADVANCED', endorsements: 4, createdAt: at(-40) },
@@ -297,9 +301,9 @@ export function buildSampleDb(me: Me) {
     { id: sid('t'), subject: 'Library card replacement', description: 'Lost my card, need a new one.', category: 'Library', status: 'RESOLVED', priority: 'LOW', createdAt: at(-15), updatedAt: at(-12) },
   ];
   const associations = [
-    { id: 'sample-as-robo', name: 'Robotics Society', description: 'Build robots, compete nationally.', category: 'Technology', members: 64, _count: { memberships: 64 }, createdAt: at(-200) },
-    { id: 'sample-as-debate', name: 'Debate Union', description: 'Weekly debates and inter-college tournaments.', category: 'Academic', members: 41, _count: { memberships: 41 }, createdAt: at(-300) },
-    { id: 'sample-as-music', name: 'Music Collective', description: 'Jam sessions, open mics and the annual concert.', category: 'Arts', members: 88, _count: { memberships: 88 }, createdAt: at(-250) },
+    { id: 'sample-as-robo', name: 'Robotics Society', description: 'Build robots, compete nationally.', category: 'Technology', members: 64, budget: 2500, status: 'ACTIVE', _count: { memberships: 64 }, createdAt: at(-200) },
+    { id: 'sample-as-debate', name: 'Debate Union', description: 'Weekly debates and inter-college tournaments.', category: 'Academic', members: 41, budget: 900, status: 'ACTIVE', _count: { memberships: 41 }, createdAt: at(-300) },
+    { id: 'sample-as-music', name: 'Music Collective', description: 'Jam sessions, open mics and the annual concert.', category: 'Arts', members: 88, budget: 1800, status: 'PENDING', _count: { memberships: 88 }, createdAt: at(-250) },
   ];
   const myMemberships = [{ id: sid('am'), associationId: 'sample-as-robo', userId: me.id, role: 'MEMBER', status: 'APPROVED', association: associations[0] }];
   const knowledge = [
@@ -330,9 +334,63 @@ export function buildSampleDb(me: Me) {
     emergencyContacts: [{ name: 'Priya Sharma', relation: 'Mother', phone: '+91 98765 11111', email: '' }],
   };
 
+  // ── Admin view ────────────────────────────────────────────────────────
+  const extraStudents = ['Rohan Das', 'Ishita Rao', 'Kabir Singh', 'Meher Kapoor', 'Arnav Joshi', 'Sara Thomas'].map((name, i) => ({
+    id: `sample-u-x${i}`, name, email: `${name.toLowerCase().replace(' ', '.')}@example.edu`, role: 'STUDENT', avatar: null,
+  }));
+  const users = [...classmates, ...extraStudents, people.meera, people.arjun, people.kavya, people.sam].map((u, i) => ({
+    id: u.id, name: u.name, email: u.email, role: u.role, status: i === 6 || i === 9 ? 'PENDING' : 'ACTIVE', createdAt: at(-300 + i * 17), avatar: null,
+  }));
+  const adminAnnouncements = [
+    { id: sid('ann'), title: 'Campus closed on Friday', body: 'The campus will be closed for the regional holiday. Online classes continue as scheduled.', createdAt: at(-1, 9), author: { name: me.name }, course: null },
+    { id: sid('ann'), title: 'Hackathon registrations open', body: 'Teams of up to 4 can register until the 20th. Prizes from our partners!', createdAt: at(-6, 12), author: { name: me.name }, course: null },
+    { id: sid('ann'), title: 'Midterm results are out', body: 'Average was 74%. Detailed feedback is in your grades.', createdAt: at(-2, 17), author: { name: people.meera.name }, course: { name: 'Operating Systems' } },
+  ].map((a) => ({ ...a, content: a.body }));
+  const pendingCertificates = [
+    { id: sid('pc'), title: 'Certificate of Completion — Operating Systems', user: { name: people.aarav.name, email: people.aarav.email }, createdAt: at(-2) },
+    { id: sid('pc'), title: 'Volunteer Certificate — Health Camp', user: { name: people.zoya.name, email: people.zoya.email }, createdAt: at(-1) },
+  ];
+  const pendingCredentials = [
+    { ...credentials[1], id: 'sample-pcred-1', student: { name: people.ananya.name, email: people.ananya.email }, title: 'Garden Builder', hoursCompleted: 18, peopleImpacted: 150 },
+    { ...credentials[1], id: 'sample-pcred-2', student: { name: people.diego.name, email: people.diego.email }, title: 'Solar Installer', projectName: 'SunShare pilot', organization: 'SunShare', hoursCompleted: 30, peopleImpacted: 40, requestedAt: at(-1) },
+  ];
+  const projects = [
+    { id: 'sample-prj-1', title: 'Clean Water for Riverside', description: 'Student teams test well water and publish a monthly report with Green Roots NGO.', partner: 'Green Roots NGO', ngo: 'Green Roots NGO', status: 'Active', deadline: at(45), tags: ['Water', 'Data'], contactEmail: 'water@example.org', supervisingTeacher: { id: people.arjun.id, name: people.arjun.name, avatar: null }, ngoProject: null, _count: { members: 7 }, createdAt: at(-40) },
+    { id: 'sample-prj-2', title: 'Reading Buddies', description: 'University students read with primary-school children twice a week.', partner: 'City Learning Trust', ngo: 'City Learning Trust', status: 'Recruiting', deadline: at(20), tags: ['Education'], contactEmail: null, supervisingTeacher: { id: people.sam.id, name: people.sam.name, avatar: null }, ngoProject: null, _count: { members: 3 }, createdAt: at(-12) },
+    { id: 'sample-prj-3', title: 'Solar Kits Pilot', description: 'Install and monitor 20 solar kits with SunShare.', partner: 'SunShare', ngo: null, status: 'PendingReview', deadline: at(60), tags: ['Energy'], contactEmail: null, supervisingTeacher: { id: people.kavya.id, name: people.kavya.name, avatar: null }, ngoProject: null, _count: { members: 0 }, createdAt: at(-2) },
+  ];
+  const partnerships = [
+    { id: sid('ps'), title: 'Summer internship programme', description: '10 paid internships every summer.', startDate: at(-200), endDate: at(165), isActive: true, partner: { name: 'Nova Labs' }, company: { name: 'Nova Labs' } },
+    { id: sid('ps'), title: 'After-school tutoring', description: 'Volunteer tutoring for local schools.', startDate: at(-400), endDate: null, isActive: true, partner: { name: 'City Learning Trust' }, company: null },
+  ];
+  const adminRooms = Object.values(rooms).map((r, i) => ({
+    id: r.id, name: r.name, capacity: [40, 120, 30, 24][i], amenities: ['Projector, Whiteboard', 'Projector, Mic', 'Studio tables', '24 PCs'][i], type: ['CLASSROOM', 'LECTURE_HALL', 'STUDIO', 'LAB'][i], createdAt: at(-500),
+    reservations: i < 2 ? [{ id: sid('rv'), roomId: r.id, userId: people.aarav.id, date: at(1).slice(0, 10), time: '16:00', duration: '1h', createdAt: at(-1), user: { name: people.aarav.name, email: people.aarav.email } }] : [],
+  }));
+  const months12 = (vals: number[]) => vals.map((value, i) => ({ month: new Date(new Date().getFullYear(), new Date().getMonth() - (11 - i), 1).toLocaleString('en-US', { month: 'short' }), value }));
+  const analytics = {
+    totals: { members: 1326, activeMembers: 842, courses: 142, enrollments: 3910, impactPoints: 48250 },
+    roles: [{ role: 'STUDENT', count: 1240 }, { role: 'TEACHER', count: 80 }, { role: 'ADMIN', count: 6 }],
+    applications: [{ status: 'PENDING', count: 42 }, { status: 'ACCEPTED', count: 118 }, { status: 'REJECTED', count: 17 }],
+    signupsByMonth: months12([40, 52, 38, 61, 70, 66, 90, 120, 210, 160, 130, 118]),
+    impactByMonth: months12([1200, 1500, 1350, 2100, 2600, 2400, 3100, 3900, 5200, 6100, 5800, 6400]),
+    topContributors: leaderboard.slice(0, 5).map((u) => ({ id: u.id, name: u.name, impactXP: u.impactXP, impactLevel: u.impactLevel })),
+  };
+  const adminImpact = {
+    kpis: { students: 1240, ngos: 18, activeProjects: 23, impactPoints: 48250 },
+    impactByMonth: months12([1200, 1500, 1350, 2100, 2600, 2400, 3100, 3900, 5200, 6100, 5800, 6400]),
+    sectors: [{ sector: 'Education', count: 9 }, { sector: 'Environment', count: 7 }, { sector: 'Health', count: 4 }, { sector: 'Other', count: 3 }],
+  };
+  const transactions = [
+    ['Tuition fee — Semester 3', 1200, 'COMPLETED', people.aarav, -3], ['Hostel fee', 450, 'PENDING', people.zoya, -2], ['Exam fee', 60, 'COMPLETED', people.liam, -9],
+    ['Library fine', 12, 'COMPLETED', people.ananya, -15], ['Tuition fee — Semester 3', 1200, 'COMPLETED', people.diego, -30], ['Scholarship payout', -500, 'PENDING', people.ananya, -1],
+    ['Lab materials', 85, 'FAILED', people.aarav, -40],
+  ].map(([description, amount, status, u, days]: any, i) => ({ id: `sample-trx-${i}-${Math.random().toString(36).slice(2, 8)}`, description, amount, currency: 'USD', status, createdAt: at(days, 11), user: { id: u.id, name: u.name, email: u.email } }));
+
   return {
+    users, adminAnnouncements, pendingCertificates, pendingCredentials, projects, partnerships, adminRooms, analytics, adminImpact, transactions, rooms,
     me, meCard, teacherView, people, classmates, directory, courses, taught, slots, myGrades, classGrades, quizzes, submissions, board, attendance, calendar,
-    conversations, notifications, groups, groupPosts, xp, ngoProjects, impactActivities, leaderboard, startups, summits, summitRegs: ['sample-sm-youth'],
+    conversations, pollVotes, starred: new Set<string>(), hiddenMsgs: new Set<string>(), notifications, groups, groupPosts, xp, ngoProjects, impactActivities, leaderboard, startups, summits, summitRegs: ['sample-sm-youth'],
     credentials, internships, myApplications, placements, partners, skills, tickets, associations, myMemberships, knowledge, documents, scholarships, myScholarships,
     campusItems, profile,
   };

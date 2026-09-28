@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { FileText, ImageIcon, Loader2, Mic, Paperclip, Pencil, Send, Smile, Trash2, X } from 'lucide-react';
+import { BarChart3, Camera, FileText, ImageIcon, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from './chat-client';
 
@@ -14,6 +14,8 @@ export interface SendPayload {
   voice?: { blob: Blob; durationSec: number };
 }
 
+export type ComposerExtra = 'poll' | 'location' | 'contact';
+
 interface Props {
   disabled?: boolean;
   replyTo: ChatMessage | null;
@@ -24,9 +26,13 @@ interface Props {
   onSend: (p: SendPayload) => Promise<void>;
   onSaveEdit: (text: string) => Promise<void>;
   onTyping: () => void;
+  onExtra: (kind: ComposerExtra) => void;
+  mentionables?: { id: string; name: string }[];
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [] }: Props) {
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [emoji, setEmoji] = useState(false);
@@ -191,14 +197,48 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                   <button onClick={() => mediaRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span> Photos & videos
                   </button>
+                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-500 flex items-center justify-center"><Camera className="w-4 h-4" /></span> Camera
+                  </button>
                   <button onClick={() => docRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-500 flex items-center justify-center"><FileText className="w-4 h-4" /></span> Document
+                  </button>
+                  <button onClick={() => { setAttach(false); onExtra('poll'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center"><BarChart3 className="w-4 h-4" /></span> Poll
+                  </button>
+                  <button onClick={() => { setAttach(false); onExtra('location'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center"><MapPin className="w-4 h-4" /></span> Location
+                  </button>
+                  <button onClick={() => { setAttach(false); onExtra('contact'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><UserRound className="w-4 h-4" /></span> Contact
                   </button>
                 </div>
               )}
             </div>
           )}
 
+          <div className="relative flex-1 min-w-0 flex">
+          {mentionQuery !== null && (() => {
+            const list = mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6);
+            if (!list.length) return null;
+            return (
+              <div className="absolute bottom-full mb-2 left-0 z-30 w-64 py-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl">
+                {list.map((u) => (
+                  <button key={u.id} onMouseDown={(e) => {
+                    e.preventDefault();
+                    const el = areaRef.current!;
+                    const pos = el.selectionStart ?? text.length;
+                    const before = text.slice(0, pos).replace(/@[\w.-]*$/, `@${u.name.split(' ')[0]} `);
+                    setText(before + text.slice(pos));
+                    setMentionQuery(null);
+                    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(before.length, before.length); });
+                  }} className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
+                    @{u.name}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
           <textarea
             ref={areaRef}
             rows={1}
@@ -207,6 +247,13 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             onChange={(e) => {
               setText(e.target.value);
               if (Date.now() - lastTyping.current > 3000) { lastTyping.current = Date.now(); onTyping(); }
+              const upto = e.target.value.slice(0, e.target.selectionStart ?? e.target.value.length);
+              const at = /(?:^|\s)@([\w.-]*)$/.exec(upto);
+              setMentionQuery(mentionables.length && at ? at[1].toLowerCase() : null);
+            }}
+            onPaste={(e) => {
+              const f = Array.from(e.clipboardData.files ?? []).find((x) => x.type.startsWith('image/'));
+              if (f && !editing) { e.preventDefault(); pickFile(f); }
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
@@ -215,6 +262,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             placeholder={editing ? 'Edit your message' : 'Type a message'}
             className="flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
           />
+          </div>
 
           {text.trim() || editing ? (
             <button onClick={submit} disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 disabled:opacity-50 active:scale-95 transition-transform">
@@ -229,6 +277,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
       )}
 
       <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
       <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
     </div>
   );

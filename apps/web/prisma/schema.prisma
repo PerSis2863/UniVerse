@@ -131,6 +131,8 @@ model User {
   // Messaging & Notifications
   sentMessages  Message[]                 @relation("MessageSender")
   messageReactions MessageReaction[]
+  messageStates    MessageUserState[]
+  pollVotes        PollVote[]
   conversations ConversationParticipant[]
   notifications Notification[]
 
@@ -477,6 +479,7 @@ model Conversation {
   name        String?
   avatarUrl   String?
   createdById String?
+  disappearingSec Int?  // new messages expire after this many seconds (null = off)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -496,6 +499,11 @@ model ConversationParticipant {
   lastReadAt     DateTime?
   role           String       @default("MEMBER") // MEMBER, ADMIN (group chats)
   typingUntil    DateTime?
+  // Per-person chat list preferences
+  pinnedAt       DateTime?
+  mutedUntil     DateTime?
+  archivedAt     DateTime?
+  markedUnread   Boolean      @default(false)
 
   @@unique([conversationId, userId])
   @@index([conversationId])
@@ -525,7 +533,11 @@ model Message {
   replies        Message[]    @relation("MessageReplies")
   editedAt       DateTime?
   deletedAt      DateTime?
+  expiresAt      DateTime?    // disappearing messages
+  forwarded      Boolean      @default(false)
   reactions      MessageReaction[]
+  userStates     MessageUserState[]
+  pollVotes      PollVote[]
 
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
@@ -564,6 +576,36 @@ model CampusItem {
 
   @@index([kind])
   @@map("campus_items")
+}
+
+/// Per-person state of a message: starred, or hidden ("delete for me").
+model MessageUserState {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  starred   Boolean  @default(false)
+  hidden    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([userId, starred])
+  @@map("message_user_states")
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option    Int
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, option])
+  @@index([messageId])
+  @@map("poll_votes")
 }
 
 model MessageReaction {

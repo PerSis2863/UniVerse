@@ -17,7 +17,7 @@ function applySecurityHeaders(res: NextResponse) {
     object-src 'none';
     base-uri 'self';
     form-action 'self';
-    frame-src 'self' https://universe-71e68.firebaseapp.com https://accounts.google.com https://appleid.apple.com https://www.google.com;
+    frame-src 'self' https://universe-71e68.firebaseapp.com https://accounts.google.com https://appleid.apple.com https://www.google.com https://www.openstreetmap.org;
     frame-ancestors 'none';
     upgrade-insecure-requests;
   `;

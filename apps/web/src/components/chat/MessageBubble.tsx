@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { Ban, Check, CheckCheck, Copy, CornerUpLeft, Download, FileText, MoreVertical, Pencil, Phone, SmilePlus, Trash2, Video } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
+import {
+  Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle,
+  MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes } from './chat-client';
 
 const URL_SPLIT = /(https?:\/\/[^\s]+)/g;
+const MENTION_SPLIT = /(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)/g;
 
 function RichText({ text, mine }: { text: string; mine: boolean }) {
   return (
@@ -16,7 +22,9 @@ function RichText({ text, mine }: { text: string; mine: boolean }) {
             {part}
           </a>
         ) : (
-          <span key={i}>{part}</span>
+          part.split(MENTION_SPLIT).map((p, j) =>
+            /^@[A-Za-z]/.test(p) ? <span key={`${i}-${j}`} className={cn('font-semibold', mine ? 'text-sky-200' : 'text-indigo-500 dark:text-indigo-300')}>{p}</span> : <span key={`${i}-${j}`}>{p}</span>,
+          )
         ),
       )}
     </span>
@@ -39,6 +47,42 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
   );
 }
 
+/** Voice-note player: play/pause, scrubbable progress and 1× / 1.5× / 2× speed. */
+function VoicePlayer({ src, mine, durationSec }: { src: string; mine: boolean; durationSec?: number }) {
+  const audio = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [pos, setPos] = useState(0);
+  const [dur, setDur] = useState(durationSec ?? 0);
+  const [rate, setRate] = useState(1);
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  useEffect(() => { if (audio.current) audio.current.playbackRate = rate; }, [rate]);
+  const toggle = () => { const a = audio.current; if (!a) return; if (a.paused) a.play().catch(() => {}); else a.pause(); };
+  return (
+    <div className="flex items-center gap-2.5 px-3 pt-2.5 w-64 max-w-full">
+      <audio
+        ref={audio} src={src} preload="metadata"
+        onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setPos(0); }}
+        onTimeUpdate={(e) => setPos(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => { if (Number.isFinite(e.currentTarget.duration)) setDur(e.currentTarget.duration); }}
+      />
+      <button onClick={toggle} aria-label={playing ? 'Pause' : 'Play'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', mine ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white')}>
+        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <input
+          type="range" min={0} max={dur || 1} step={0.1} value={pos} aria-label="Seek"
+          onChange={(e) => { const t = Number(e.target.value); setPos(t); if (audio.current) audio.current.currentTime = t; }}
+          className={cn('w-full h-1 cursor-pointer', mine ? 'accent-white' : 'accent-indigo-600')}
+        />
+        <div className={cn('text-[10px] tabular-nums mt-0.5', mine ? 'text-white/70' : 'text-zinc-500')}>{fmt(playing || pos ? pos : dur)}</div>
+      </div>
+      <button onClick={() => setRate((r) => (r === 1 ? 1.5 : r === 1.5 ? 2 : 1))} aria-label="Playback speed" className={cn('px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0', mine ? 'bg-white/20' : 'bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300')}>
+        {rate}×
+      </button>
+    </div>
+  );
+}
+
 interface Props {
   m: ChatMessage;
   mine: boolean;
@@ -46,39 +90,59 @@ interface Props {
   showSender: boolean;
   readState: 'sent' | 'read' | null;
   canModerate: boolean;
+  highlight?: boolean;
   onReply: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onDeleteForMe: () => void;
+  onStar: () => void;
+  onForward: () => void;
+  onInfo: () => void;
+  onVote: (option: number) => void;
+  onOpenContact: (userId: string) => void;
   onReact: (emoji: string) => void;
   onOpenImage: (url: string) => void;
 }
 
-export function MessageBubble({ m, mine, me, showSender, readState, canModerate, onReply, onEdit, onDelete, onReact, onOpenImage }: Props) {
+const FORWARDABLE = new Set(['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'LOCATION', 'CONTACT']);
+
+export function MessageBubble(p: Props) {
+  const { m, mine, me, showSender, readState, canModerate, highlight } = p;
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [touch, setTouch] = useState(false);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const x = useMotionValue(0);
+  const replyHint = useTransform(x, [0, 60], [0, 1]);
+  useEffect(() => { setTouch(window.matchMedia('(pointer: coarse)').matches); }, []);
+
   const time = new Date(m.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const deleted = m.type === 'DELETED';
   const canEdit = mine && m.type === 'TEXT' && !deleted && Date.now() - new Date(m.createdAt).getTime() < 86_400_000;
   const reactionEntries = Object.entries(m.reactions ?? {}).filter(([, users]) => users.length > 0);
+  const interactive = !deleted && !m.pending;
 
   if (m.type === 'SYSTEM') {
     return (
       <div className="flex justify-center my-2">
-        <span className="text-[11px] px-3 py-1 rounded-full bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400">{m.body}</span>
+        <span className="text-[11px] px-3 py-1 rounded-full bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400 text-center max-w-[85%]">{m.body}</span>
       </div>
     );
   }
 
   const bubble = cn(
-    'relative max-w-[min(78%,34rem)] rounded-2xl text-sm shadow-sm',
+    'relative max-w-[min(78%,34rem)] rounded-2xl text-sm shadow-sm transition-shadow',
     mine
       ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-br-md'
       : 'bg-white dark:bg-white/[0.07] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.06] rounded-bl-md',
     m.pending && 'opacity-60',
+    highlight && 'ring-4 ring-amber-400/70',
   );
 
   const meta = (
     <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none', mine ? 'text-white/70' : 'text-zinc-400')}>
+      {m.starred && <Star className="w-3 h-3 fill-current" />}
+      {m.expiresAt && <span title="Disappearing message">⏱</span>}
       {m.editedAt && !deleted && 'edited ·'} {time}
       {mine && !deleted && (m.pending ? <Check className="w-3 h-3" /> : readState === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" /> : <CheckCheck className="w-3.5 h-3.5" />)}
     </span>
@@ -89,14 +153,14 @@ export function MessageBubble({ m, mine, me, showSender, readState, canModerate,
     content = <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
-      <button onClick={() => onOpenImage(m.attachmentUrl!)} className="block p-1">
+      <button onClick={() => p.onOpenImage(m.attachmentUrl!)} className="block p-1">
         <img src={m.attachmentUrl} alt={m.attachmentName || 'Photo'} loading="lazy" className="rounded-xl max-h-80 w-auto object-cover" />
       </button>
     );
   } else if (m.type === 'VIDEO' && m.attachmentUrl) {
     content = <video src={m.attachmentUrl} controls preload="metadata" className="rounded-xl max-h-80 m-1" />;
   } else if (m.type === 'AUDIO' && m.attachmentUrl) {
-    content = <div className="px-2 pt-2 w-60 max-w-full"><audio src={m.attachmentUrl} controls preload="metadata" className="h-10 w-full" /></div>;
+    content = <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} />;
   } else if (m.type === 'FILE' && m.attachmentUrl) {
     content = (
       <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 min-w-[14rem]">
@@ -129,16 +193,115 @@ export function MessageBubble({ m, mine, me, showSender, readState, canModerate,
         )}
       </div>
     );
+  } else if (m.type === 'POLL') {
+    const options = m.metadata?.options ?? [];
+    const counts = m.poll?.counts ?? options.map(() => 0);
+    const mineVotes = m.poll?.mine ?? [];
+    const total = counts.reduce((a, b) => a + b, 0);
+    content = (
+      <div className="p-3 w-72 max-w-full">
+        <p className="font-bold flex items-start gap-2"><BarChart3 className="w-4 h-4 mt-0.5 shrink-0" /> {m.metadata?.question ?? m.body}</p>
+        <p className={cn('text-[11px] mt-0.5 mb-2', mine ? 'text-white/70' : 'text-zinc-500')}>{m.metadata?.multiple ? 'Select one or more' : 'Select one'}</p>
+        <div className="space-y-1.5">
+          {options.map((o, i) => {
+            const pct = total ? Math.round((counts[i] / total) * 100) : 0;
+            const chosen = mineVotes.includes(i);
+            return (
+              <button key={i} onClick={() => { haptic('tap'); p.onVote(i); }} disabled={m.pending}
+                className={cn('relative w-full text-left rounded-xl px-3 py-2 overflow-hidden border transition-colors', mine ? 'border-white/25 hover:bg-white/10' : 'border-zinc-200 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-white/[0.04]')}>
+                <span className={cn('absolute inset-y-0 left-0 transition-[width] duration-500', mine ? 'bg-white/20' : 'bg-indigo-500/15')} style={{ width: `${pct}%` }} />
+                <span className="relative flex items-center gap-2">
+                  <span className={cn('w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0', chosen ? (mine ? 'bg-white border-white text-indigo-600' : 'bg-indigo-600 border-indigo-600 text-white') : mine ? 'border-white/60' : 'border-zinc-300 dark:border-white/30')}>
+                    {chosen && <Check className="w-3 h-3" />}
+                  </span>
+                  <span className="flex-1 min-w-0 truncate">{o}</span>
+                  <span className="text-xs font-semibold tabular-nums">{counts[i]}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className={cn('text-[11px] mt-2', mine ? 'text-white/70' : 'text-zinc-500')}>{m.poll?.voters ?? 0} {m.poll?.voters === 1 ? 'person' : 'people'} voted</p>
+      </div>
+    );
+  } else if (m.type === 'LOCATION' && m.metadata?.lat != null && m.metadata?.lng != null) {
+    const { lat, lng } = m.metadata as { lat: number; lng: number };
+    const d = 0.004;
+    content = (
+      <div className="p-1 w-72 max-w-full">
+        <iframe
+          title="Shared location"
+          loading="lazy"
+          className="w-full h-40 rounded-xl border-0 pointer-events-none"
+          src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - d},${lat - d},${lng + d},${lat + d}&layer=mapnik&marker=${lat},${lng}`}
+        />
+        <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-2.5 py-2">
+          <MapPin className="w-4 h-4 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold truncate">{m.metadata.label || 'Shared location'}</span>
+            <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>Open in Maps</span>
+          </span>
+        </a>
+      </div>
+    );
+  } else if (m.type === 'CONTACT' && m.metadata?.userId) {
+    content = (
+      <div className="p-3 w-64 max-w-full">
+        <div className="flex items-center gap-3">
+          <Avatar name={m.metadata.name ?? m.body} src={m.metadata.avatar} size={40} />
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{m.metadata.name ?? m.body}</p>
+            <p className={cn('text-[11px] capitalize', mine ? 'text-white/70' : 'text-zinc-500')}>{(m.metadata.role ?? '').toLowerCase()} · UniVerse</p>
+          </div>
+        </div>
+        {m.metadata.userId !== me && (
+          <button onClick={() => p.onOpenContact(m.metadata!.userId!)} className={cn('mt-2.5 w-full py-1.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5', mine ? 'bg-white/20 hover:bg-white/25' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/15')}>
+            <MessageCircle className="w-3.5 h-3.5" /> Message
+          </button>
+        )}
+      </div>
+    );
   } else {
     content = <div className="px-3.5 py-2.5"><RichText text={m.body} mine={mine} /></div>;
   }
 
+  const startPress = () => {
+    if (!touch || !interactive) return;
+    pressTimer.current = setTimeout(() => { haptic('tap'); setMenu(true); setPicker(true); }, 480);
+  };
+  const cancelPress = () => { if (pressTimer.current) clearTimeout(pressTimer.current); };
+  const close = () => { setMenu(false); setPicker(false); };
+
   return (
-    <div className={cn('group flex gap-2 items-end', mine ? 'justify-end' : 'justify-start')}>
-      <div className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
+    <div className={cn('group relative flex gap-2 items-end', mine ? 'justify-end' : 'justify-start')}>
+      {/* Swipe-right-to-reply hint */}
+      {touch && interactive && (
+        <motion.div style={{ opacity: replyHint }} className="absolute left-1 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-500 flex items-center justify-center pointer-events-none">
+          <CornerUpLeft className="w-4 h-4" />
+        </motion.div>
+      )}
+      <motion.div
+        drag={touch && interactive ? 'x' : false}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={{ left: 0, right: 0.5 }}
+        dragDirectionLock
+        style={{ x }}
+        onDragEnd={(_, info) => { if (info.offset.x > 60) { haptic('tap'); p.onReply(); } }}
+        className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}
+      >
         {showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2">{m.sender.name}</span>}
         <div className={cn('flex items-center gap-1', mine && 'flex-row-reverse')}>
-          <div className={bubble}>
+          <div
+            className={bubble}
+            onDoubleClick={() => { if (interactive) { haptic('tap'); p.onReact('❤️'); } }}
+            onPointerDown={startPress}
+            onPointerUp={cancelPress}
+            onPointerLeave={cancelPress}
+            onContextMenu={(e) => { if (interactive && !touch) { e.preventDefault(); setMenu(true); setPicker(false); } }}
+          >
+            {m.forwarded && !deleted && (
+              <p className={cn('px-3.5 pt-2 text-[11px] italic flex items-center gap-1', mine ? 'text-white/70' : 'text-zinc-500')}><CornerUpRight className="w-3 h-3" /> Forwarded</p>
+            )}
             {m.replyTo && !deleted && (
               <div className={cn('mx-2 mt-2 px-3 py-1.5 rounded-lg border-l-4 text-xs', mine ? 'bg-white/10 border-white/60' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400')}>
                 <p className="font-semibold">{m.replyTo.sender.id === me ? 'You' : m.replyTo.sender.name}</p>
@@ -146,15 +309,11 @@ export function MessageBubble({ m, mine, me, showSender, readState, canModerate,
               </div>
             )}
             {content}
-            {m.type !== 'TEXT' || deleted ? (
-              <div className="flex justify-end px-3 pb-2">{meta}</div>
-            ) : (
-              <div className="flex justify-end px-3 pb-2 -mt-1">{meta}</div>
-            )}
+            <div className={cn('flex justify-end px-3 pb-2', m.type === 'TEXT' && !deleted && '-mt-1')}>{meta}</div>
           </div>
 
-          {!deleted && !m.pending && (
-            <div className="relative opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          {interactive && (
+            <div className={cn('relative transition-opacity', menu || picker ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100', touch && !menu && !picker && 'hidden')}>
               <button onClick={() => { setPicker((v) => !v); setMenu(false); }} aria-label="React" className="p-1.5 rounded-full text-zinc-400 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                 <SmilePlus className="w-4 h-4" />
               </button>
@@ -164,16 +323,21 @@ export function MessageBubble({ m, mine, me, showSender, readState, canModerate,
               {picker && (
                 <div className={cn('absolute z-20 bottom-full mb-1 flex gap-1 p-1.5 rounded-full bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-xl', mine ? 'right-0' : 'left-0')}>
                   {REACTIONS.map((e) => (
-                    <button key={e} onClick={() => { onReact(e); setPicker(false); }} className="w-8 h-8 rounded-full text-lg hover:bg-zinc-100 dark:hover:bg-white/10 hover:scale-125 transition-transform">{e}</button>
+                    <button key={e} onClick={() => { p.onReact(e); close(); }} className="w-8 h-8 rounded-full text-lg hover:bg-zinc-100 dark:hover:bg-white/10 hover:scale-125 transition-transform">{e}</button>
                   ))}
                 </div>
               )}
               {menu && (
-                <div className={cn('absolute z-20 bottom-full mb-1 w-40 py-1 rounded-xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', mine ? 'right-0' : 'left-0')} onMouseLeave={() => setMenu(false)}>
-                  <MenuItem icon={CornerUpLeft} label="Reply" onClick={() => { onReply(); setMenu(false); }} />
-                  {m.type === 'TEXT' && <MenuItem icon={Copy} label="Copy" onClick={() => { navigator.clipboard.writeText(m.body); setMenu(false); }} />}
-                  {canEdit && <MenuItem icon={Pencil} label="Edit" onClick={() => { onEdit(); setMenu(false); }} />}
-                  {(mine || canModerate) && <MenuItem icon={Trash2} label="Delete for everyone" danger onClick={() => { onDelete(); setMenu(false); }} />}
+                <div className={cn('absolute z-20 w-48 py-1 rounded-xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', picker ? 'top-full mt-1' : 'bottom-full mb-1', mine ? 'right-0' : 'left-0')} onMouseLeave={() => !touch && setMenu(false)}>
+                  <MenuItem icon={CornerUpLeft} label="Reply" onClick={() => { p.onReply(); close(); }} />
+                  {FORWARDABLE.has(m.type) && <MenuItem icon={CornerUpRight} label="Forward" onClick={() => { p.onForward(); close(); }} />}
+                  <MenuItem icon={m.starred ? StarOff : Star} label={m.starred ? 'Unstar' : 'Star'} onClick={() => { p.onStar(); close(); }} />
+                  {m.type === 'TEXT' && <MenuItem icon={Copy} label="Copy" onClick={() => { navigator.clipboard.writeText(m.body); close(); }} />}
+                  {canEdit && <MenuItem icon={Pencil} label="Edit" onClick={() => { p.onEdit(); close(); }} />}
+                  {mine && <MenuItem icon={Info} label="Info" onClick={() => { p.onInfo(); close(); }} />}
+                  <MenuItem icon={EyeOff} label="Delete for me" onClick={() => { p.onDeleteForMe(); close(); }} />
+                  {(mine || canModerate) && <MenuItem icon={Trash2} label="Delete for everyone" danger onClick={() => { p.onDelete(); close(); }} />}
+                  {touch && <MenuItem icon={Ban} label="Cancel" onClick={close} />}
                 </div>
               )}
             </div>
@@ -185,7 +349,7 @@ export function MessageBubble({ m, mine, me, showSender, readState, canModerate,
             {reactionEntries.map(([emoji, users]) => (
               <button
                 key={emoji}
-                onClick={() => onReact(emoji)}
+                onClick={() => p.onReact(emoji)}
                 className={cn('px-1.5 py-0.5 rounded-full text-xs border shadow-sm', users.includes(me) ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-400/40' : 'bg-white dark:bg-[#161b2e] border-zinc-200 dark:border-white/10')}
               >
                 {emoji} {users.length > 1 && <span className="text-zinc-600 dark:text-zinc-300">{users.length}</span>}
@@ -193,7 +357,7 @@ export function MessageBubble({ m, mine, me, showSender, readState, canModerate,
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -100,6 +100,8 @@ export const messageSelect = {
   createdAt: true,
   editedAt: true,
   deletedAt: true,
+  expiresAt: true,
+  forwarded: true,
   replyTo: { select: { id: true, body: true, type: true, deletedAt: true, sender: { select: { id: true, name: true } } } },
   reactions: { select: { emoji: true, userId: true } },
 } as const;
@@ -130,4 +132,35 @@ export function serializeMessage<T extends RawMessage>(m: T) {
     reactions,
     replyTo: m.replyTo ? { ...m.replyTo, body: m.replyTo.deletedAt ? '' : m.replyTo.body.slice(0, 200) } : null,
   };
+}
+
+/** Messages a user should see: not expired (disappearing) and not deleted "for me". */
+export function visibleTo(userId: string) {
+  return {
+    OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    NOT: { userStates: { some: { userId, hidden: true } } },
+  };
+}
+
+/** Adds the viewer's star and live poll tallies to serialized messages. */
+export async function decorate<T extends { id: string; type: string; metadata: unknown }>(messages: T[], userId: string) {
+  if (!messages.length) return messages.map((m) => ({ ...m, starred: false, poll: null }));
+  const ids = messages.map((m) => m.id);
+  const pollIds = messages.filter((m) => m.type === 'POLL').map((m) => m.id);
+  const [stars, votes] = await Promise.all([
+    prisma.messageUserState.findMany({ where: { userId, starred: true, messageId: { in: ids } }, select: { messageId: true } }),
+    pollIds.length ? prisma.pollVote.findMany({ where: { messageId: { in: pollIds } }, select: { messageId: true, userId: true, option: true } }) : [],
+  ]);
+  const starred = new Set(stars.map((s) => s.messageId));
+  return messages.map((m) => {
+    let poll = null;
+    if (m.type === 'POLL') {
+      const options = ((m.metadata as { options?: string[] } | null)?.options ?? []);
+      const mine = votes.filter((v) => v.messageId === m.id && v.userId === userId).map((v) => v.option);
+      const counts = options.map((_, i) => votes.filter((v) => v.messageId === m.id && v.option === i).length);
+      const voters = new Set(votes.filter((v) => v.messageId === m.id).map((v) => v.userId)).size;
+      poll = { counts, mine, voters };
+    }
+    return { ...m, starred: starred.has(m.id), poll };
+  });
 }

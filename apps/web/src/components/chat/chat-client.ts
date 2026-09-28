@@ -4,7 +4,7 @@ import { upload } from '@vercel/blob/client';
 import { getAuthToken } from '@/lib/auth-token';
 import { authedFetch } from '@/lib/authed-fetch';
 
-export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'SYSTEM' | 'DELETED';
+export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
 
 export interface ChatMessage {
   id: string;
@@ -16,13 +16,22 @@ export interface ChatMessage {
   attachmentName: string | null;
   attachmentSize: number | null;
   attachmentMime: string | null;
-  metadata: { kind?: 'audio' | 'video'; room?: string; url?: string; durationSec?: number } | null;
+  metadata: {
+    kind?: 'audio' | 'video'; room?: string; url?: string; durationSec?: number;
+    question?: string; options?: string[]; multiple?: boolean; // POLL
+    lat?: number; lng?: number; label?: string | null; // LOCATION
+    userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
+  } | null;
   createdAt: string;
   editedAt: string | null;
   deletedAt: string | null;
   replyTo: { id: string; body: string; type: string; sender: { id: string; name: string } } | null;
   reactions: Record<string, string[]>;
   sender: { id: string; name: string; avatar: string | null };
+  expiresAt?: string | null;
+  forwarded?: boolean;
+  starred?: boolean;
+  poll?: { counts: number[]; mine: number[]; voters: number } | null;
   pending?: boolean;
 }
 
@@ -39,6 +48,10 @@ export interface ConversationSummary {
   typing: string[];
   lastMessage: { id: string; body: string; type: MessageType; senderId: string; createdAt: string; deletedAt: string | null; attachmentName: string | null; mine: boolean } | null;
   unread: number;
+  markedUnread?: boolean;
+  pinned?: boolean;
+  muted?: boolean;
+  archived?: boolean;
   activityAt: string;
 }
 
@@ -54,7 +67,10 @@ export interface Member {
 }
 
 export interface ThreadResponse {
-  conversation: { id: string; isGroup: boolean; isOfficial: boolean; title: string; avatarUrl: string | null; myRole: string; members: Member[] };
+  conversation: {
+    id: string; isGroup: boolean; isOfficial: boolean; title: string; avatarUrl: string | null; myRole: string; members: Member[];
+    disappearingSec?: number | null; pinned?: boolean; muted?: boolean; archived?: boolean;
+  };
   typing: string[];
   messages: ChatMessage[];
   hasMore: boolean;
@@ -140,6 +156,9 @@ export function previewText(m: { type: string; body: string; attachmentName?: st
     case 'AUDIO': return '🎤 Voice message';
     case 'FILE': return `📎 ${m.attachmentName || 'File'}`;
     case 'CALL': return m.body.startsWith('Video') ? '📹 Video call' : '📞 Voice call';
+    case 'POLL': return `📊 ${m.body}`;
+    case 'LOCATION': return '📍 Location';
+    case 'CONTACT': return `👤 ${m.body}`;
     default: return m.body.split('\n')[0];
   }
 }
@@ -167,4 +186,29 @@ export function lastSeenLabel(online: boolean, lastSeenAt: string | null) {
   if (online) return 'online';
   if (!lastSeenAt) return 'offline';
   return `last seen ${timeLabel(lastSeenAt).toLowerCase()}`;
+}
+
+export const DISAPPEARING_OPTIONS = [
+  { sec: 0, label: 'Off' },
+  { sec: 86_400, label: '24 hours' },
+  { sec: 604_800, label: '7 days' },
+  { sec: 7_776_000, label: '90 days' },
+];
+export const disappearingLabel = (sec?: number | null) => DISAPPEARING_OPTIONS.find((o) => o.sec === (sec ?? 0))?.label ?? 'Off';
+
+/** Pick a wallpaper per browser (not synced). */
+export const WALLPAPERS: { id: string; label: string; style: React.CSSProperties }[] = [
+  { id: 'dots', label: 'Dots', style: { backgroundImage: 'radial-gradient(rgba(99,102,241,0.08) 1px, transparent 1px)', backgroundSize: '22px 22px' } },
+  { id: 'plain', label: 'Plain', style: {} },
+  { id: 'aurora', label: 'Aurora', style: { backgroundImage: 'radial-gradient(60% 50% at 20% 10%, rgba(99,102,241,0.16), transparent), radial-gradient(50% 40% at 90% 80%, rgba(217,70,239,0.14), transparent)' } },
+  { id: 'mint', label: 'Mint', style: { backgroundImage: 'linear-gradient(160deg, rgba(16,185,129,0.10), rgba(6,182,212,0.06))' } },
+  { id: 'sunset', label: 'Sunset', style: { backgroundImage: 'linear-gradient(160deg, rgba(251,146,60,0.12), rgba(236,72,153,0.08))' } },
+  { id: 'grid', label: 'Grid', style: { backgroundImage: 'linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px)', backgroundSize: '28px 28px' } },
+];
+export function getWallpaper(): string {
+  try { return localStorage.getItem('universe:chat-wallpaper') ?? 'dots'; } catch { return 'dots'; }
+}
+export function setWallpaper(id: string) {
+  try { localStorage.setItem('universe:chat-wallpaper', id); } catch { /* ignore */ }
+  window.dispatchEvent(new Event('universe:wallpaper'));
 }

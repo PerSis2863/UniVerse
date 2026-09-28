@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { createTransaction, getTransactions } from '@/app/actions/transaction';
 import { getAuthToken } from '@/lib/auth-token';
+import { isSampleMode } from '@/lib/sample-mode';
 
 export default function AdminFinances() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -15,7 +16,7 @@ export default function AdminFinances() {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const data = await getTransactions(await getAuthToken());
+        const data = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken()));
         setTransactions(data);
       } catch (e) {
         console.error('Failed to load transactions', e);
@@ -93,6 +94,13 @@ export default function AdminFinances() {
 
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSampleMode()) {
+      const amount = formData.type === 'Teacher Payout' || formData.type === 'Refund' ? -Math.abs(formData.amount) : Math.abs(formData.amount);
+      setTransactions((cur) => [{ id: `sample-trx-${Date.now()}`, description: formData.type, amount, status: formData.status.toUpperCase(), createdAt: new Date().toISOString(), user: { name: formData.user || 'Sample user', email: formData.user } }, ...cur]);
+      setIsAddTrxModalOpen(false);
+      toast('Added in sample mode — not saved');
+      return;
+    }
     try {
       const newTrx = await createTransaction(await getAuthToken(), {
         amount: formData.type === 'Teacher Payout' || formData.type === 'Refund' ? -Math.abs(formData.amount) : Math.abs(formData.amount),
@@ -106,7 +114,7 @@ export default function AdminFinances() {
       setIsAddTrxModalOpen(false);
       
       // Refresh list
-      const data = await getTransactions(await getAuthToken());
+      const data = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken()));
       setTransactions(data);
     } catch (e: any) {
       toast.error(`Error: ${e.message}`);

@@ -6,14 +6,15 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, BadgeCheck, FileText, Info, Loader2, LogOut, Pencil, Phone, UserPlus, Video, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
-import { Composer, type SendPayload } from './Composer';
-import { type ChatMessage, type ThreadResponse, chatJson, dayLabel, formatBytes, lastSeenLabel, messageTypeFor, uploadChatFile } from './chat-client';
+import { Composer, type ComposerExtra, type SendPayload } from './Composer';
+import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
+import { type ChatMessage, type ThreadResponse, chatJson, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 
-export function ChatWindow({ conversationId, onBack, onChanged }: { conversationId: string; onBack: () => void; onChanged: () => void }) {
+export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const key = `/api/chat/conversations/${conversationId}/messages`;
   const { data, error, isLoading, mutate } = useSWR<ThreadResponse>(key, authedJson, { refreshInterval: 2500, revalidateOnFocus: true });
   const [older, setOlder] = useState<ChatMessage[]>([]);
@@ -26,6 +27,22 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [showJump, setShowJump] = useState(false);
+  const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
+  const [extra, setExtra] = useState<'poll' | 'contact' | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const [results, setResults] = useState<{ id: string; body: string; createdAt: string; sender: { name: string } }[] | null>(null);
+  const [resultIdx, setResultIdx] = useState(0);
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [wallpaper, setWallpaperId] = useState('dots');
+  useEffect(() => {
+    const sync = () => setWallpaperId(getWallpaper());
+    sync();
+    window.addEventListener('universe:wallpaper', sync);
+    return () => window.removeEventListener('universe:wallpaper', sync);
+  }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
 
@@ -75,6 +92,101 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
     }
   };
 
+  const patchMsg = (id: string, fn: (x: ChatMessage) => ChatMessage) => {
+    mutate((prev) => (prev ? { ...prev, messages: prev.messages.map((x) => (x.id === id ? fn(x) : x)) } : prev), { revalidate: false });
+    setOlder((cur) => cur.map((x) => (x.id === id ? fn(x) : x)));
+  };
+
+  const star = async (m: ChatMessage) => {
+    const next = !m.starred;
+    patchMsg(m.id, (x) => ({ ...x, starred: next }));
+    try { await chatJson(`/api/chat/messages/${m.id}/state`, { method: 'POST', body: JSON.stringify({ starred: next }) }); if (next) toast('Starred', { description: 'Find it under Starred messages.' }); }
+    catch (e: any) { toast.error(e.message); patchMsg(m.id, (x) => ({ ...x, starred: !next })); }
+  };
+
+  const deleteForMe = async (m: ChatMessage) => {
+    mutate((prev) => (prev ? { ...prev, messages: prev.messages.filter((x) => x.id !== m.id) } : prev), { revalidate: false });
+    setOlder((cur) => cur.filter((x) => x.id !== m.id));
+    let undone = false;
+    toast('Message deleted for you', {
+      action: { label: 'Undo', onClick: () => { undone = true; mutate(); } },
+      onAutoClose: () => { if (!undone) chatJson(`/api/chat/messages/${m.id}/state`, { method: 'POST', body: JSON.stringify({ hidden: true }) }).then(() => onChanged()).catch((e) => { toast.error(e.message); mutate(); }); },
+      onDismiss: () => { if (!undone) chatJson(`/api/chat/messages/${m.id}/state`, { method: 'POST', body: JSON.stringify({ hidden: true }) }).then(() => onChanged()).catch(() => mutate()); },
+    });
+  };
+
+  const vote = async (m: ChatMessage, option: number) => {
+    const multiple = !!m.metadata?.multiple;
+    patchMsg(m.id, (x) => {
+      const mine = x.poll?.mine ?? [];
+      const counts = [...(x.poll?.counts ?? (x.metadata?.options ?? []).map(() => 0))];
+      let nextMine: number[];
+      if (mine.includes(option)) { nextMine = mine.filter((o) => o !== option); counts[option]--; }
+      else { if (!multiple) mine.forEach((o) => counts[o]--); nextMine = multiple ? [...mine, option] : [option]; counts[option]++; }
+      return { ...x, poll: { counts, mine: nextMine, voters: Math.max(x.poll?.voters ?? 0, nextMine.length ? 1 : 0) } };
+    });
+    try { await chatJson(`/api/chat/messages/${m.id}/vote`, { method: 'POST', body: JSON.stringify({ option }) }); mutate(); }
+    catch (e: any) { toast.error(e.message); mutate(); }
+  };
+
+  const openContact = async (userId: string) => {
+    try {
+      const { id } = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId }) });
+      onOpenChat?.(id);
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const sendSpecial = async (body: Record<string, unknown>) => {
+    try {
+      const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify(body) });
+      appendSent(msg, '');
+      haptic('success');
+    } catch (e: any) { toast.error(e.message); throw e; }
+  };
+
+  const onExtra = (kind: ComposerExtra) => {
+    if (kind !== 'location') return setExtra(kind);
+    if (!navigator.geolocation) return void toast.error('Location isn’t available in this browser.');
+    const t = toast.loading('Getting your location…');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        toast.dismiss(t);
+        if (!(await confirmDialog({ title: 'Send your current location?', message: `Everyone in this chat will see where you are (±${Math.round(pos.coords.accuracy)} m).`, confirmLabel: 'Send location' }))) return;
+        sendSpecial({ type: 'LOCATION', location: { lat: pos.coords.latitude, lng: pos.coords.longitude } }).catch(() => {});
+      },
+      () => { toast.dismiss(t); toast.error('Location permission was denied. Allow it in your browser settings to share where you are.'); },
+      { enableHighAccuracy: true, timeout: 12_000 },
+    );
+  };
+
+  // Search in this chat, then jump to a result (loading older history if needed).
+  const runSearch = async (q: string) => {
+    if (!q.trim()) { setResults(null); return; }
+    try {
+      const r = await chatJson<{ results: { id: string; body: string; createdAt: string; sender: { name: string } }[] }>(`${key}?q=${encodeURIComponent(q.trim())}`);
+      setResults(r.results); setResultIdx(0);
+      if (r.results[0]) jump(r.results[0].id);
+    } catch (e: any) { toast.error(e.message); }
+  };
+  const jump = async (messageId: string) => {
+    let guard = 0;
+    let list = messages;
+    while (!list.some((m) => m.id === messageId) && guard++ < 10) {
+      const first = list[0];
+      if (!first) break;
+      const res = await authedJson<ThreadResponse>(`${key}?before=${encodeURIComponent(first.createdAt)}`).catch(() => null);
+      if (!res || !res.messages.length) break;
+      list = [...res.messages, ...list];
+      setOlder((cur) => [...res.messages, ...cur]);
+      setHasMoreOlder(res.hasMore);
+      if (!res.hasMore) break;
+    }
+    setHighlight(messageId);
+    setTimeout(() => document.getElementById(`msg-${messageId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 80);
+    setTimeout(() => setHighlight((h) => (h === messageId ? null : h)), 2200);
+  };
+  useEffect(() => { if (jumpTo && data) jump(jumpTo); }, [jumpTo, !!data]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const appendSent = (msg: ChatMessage, tempId: string) => {
     setPending((p) => p.filter((x) => x.id !== tempId));
     mutate((prev) => (prev ? { ...prev, messages: [...prev.messages.filter((x) => x.id !== msg.id), msg] } : prev), { revalidate: false });
@@ -118,8 +230,7 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
     if (!editing) return;
     try {
       const msg = await chatJson<ChatMessage>(`/api/chat/messages/${editing.id}`, { method: 'PATCH', body: JSON.stringify({ body: text }) });
-      mutate((prev) => (prev ? { ...prev, messages: prev.messages.map((x) => (x.id === msg.id ? msg : x)) } : prev), { revalidate: false });
-      setOlder((cur) => cur.map((x) => (x.id === msg.id ? msg : x)));
+      patchMsg(msg.id, (x) => ({ ...x, ...msg, starred: x.starred, poll: x.poll }));
       setEditing(null);
     } catch (e: any) {
       toast.error(e.message);
@@ -180,13 +291,14 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
     return others.length > 0 && readers.length === others.length ? 'read' : 'sent';
   };
 
-  const subtitle = data?.typing.length
+  const subtitleBase = data?.typing.length
     ? `${convo?.isGroup ? data.typing.join(', ') + ' ' : ''}typing…`
     : convo?.isOfficial
       ? 'Official account'
       : convo?.isGroup
         ? others.map((o) => o.name.split(' ')[0]).slice(0, 5).join(', ') + (others.length > 5 ? ` +${others.length - 5}` : '') + ', you'
         : other ? lastSeenLabel(other.online, other.lastSeenAt) : '';
+  const subtitle = convo?.disappearingSec && !data?.typing.length ? `⏱ ${disappearingLabel(convo.disappearingSec)} · ${subtitleBase}` : subtitleBase;
 
   if (error) return <div className="flex-1 flex items-center justify-center text-sm text-rose-500 p-6 text-center">{(error as Error).message}</div>;
   if (isLoading || !convo) return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>;
@@ -201,7 +313,7 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
             <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />
             <div className="min-w-0">
               <p className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1">
-                {convo.title} {convo.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}
+                {convo.title} {convo.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />} {convo.muted && <BellOff className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
               </p>
               <p className={cn('text-xs truncate', data?.typing.length ? 'text-emerald-500 font-medium' : 'text-zinc-500')}>{subtitle}</p>
             </div>
@@ -212,16 +324,41 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
               <button onClick={() => call('video')} aria-label="Video call" title="Video call" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Video className="w-5 h-5" /></button>
             </>
           )}
+          <button onClick={() => { setSearchOpen((v) => !v); setResults(null); setSearchQ(''); }} aria-label="Search in chat" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', searchOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Search className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} aria-label="Chat info" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', infoOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Info className="w-5 h-5" /></button>
         </div>
 
+        {searchOpen && (
+          <div className="flex items-center gap-2 px-3 md:px-5 py-2 border-b border-zinc-200/80 dark:border-white/[0.06] bg-white/70 dark:bg-white/[0.02]">
+            <Search className="w-4 h-4 text-zinc-400 shrink-0" />
+            <input
+              autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') runSearch(searchQ); if (e.key === 'Escape') setSearchOpen(false); }}
+              placeholder="Search messages and files, press Enter"
+              className="flex-1 min-w-0 bg-transparent text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none"
+            />
+            {results && <span className="text-xs text-zinc-500 tabular-nums shrink-0">{results.length ? `${resultIdx + 1} of ${results.length}` : 'No results'}</span>}
+            <button disabled={!results?.length} onClick={() => { const i = Math.min(resultIdx + 1, (results?.length ?? 1) - 1); setResultIdx(i); jump(results![i].id); }} aria-label="Older result" className="p-1.5 rounded-lg text-zinc-500 disabled:opacity-30 hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronUp className="w-4 h-4" /></button>
+            <button disabled={!results?.length} onClick={() => { const i = Math.max(resultIdx - 1, 0); setResultIdx(i); jump(results![i].id); }} aria-label="Newer result" className="p-1.5 rounded-lg text-zinc-500 disabled:opacity-30 hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronDown className="w-4 h-4" /></button>
+            <button onClick={() => { setSearchOpen(false); setResults(null); }} aria-label="Close search" className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
         {/* Messages */}
         <div
+          onDragOver={(e) => { if (!convo.isOfficial && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragOver(true); } }}
+          onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f && !convo.isOfficial) send({ file: f }).catch(() => {}); }}
           ref={scrollRef}
           onScroll={(e) => { const el = e.currentTarget; setShowJump(el.scrollHeight - el.scrollTop - el.clientHeight > 400); }}
           className="relative flex-1 overflow-y-auto px-3 md:px-6 py-4 space-y-1.5"
-          style={{ backgroundImage: 'radial-gradient(rgba(99,102,241,0.08) 1px, transparent 1px)', backgroundSize: '22px 22px' }}
+          style={WALLPAPERS.find((w) => w.id === wallpaper)?.style}
         >
+          {dragOver && (
+            <div className="pointer-events-none absolute inset-3 z-30 rounded-3xl border-2 border-dashed border-indigo-400 bg-indigo-500/10 backdrop-blur-sm flex flex-col items-center justify-center text-indigo-600 dark:text-indigo-300">
+              <Upload className="w-8 h-8 mb-2" /><p className="font-semibold">Drop to send</p>
+            </div>
+          )}
           {(hasMoreOlder ?? data?.hasMore) && (
             <div className="flex justify-center pb-2">
               <button onClick={loadOlder} disabled={loadingOlder} className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-white/[0.06] border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1.5">
@@ -247,7 +384,7 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
                     <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/90 dark:bg-[#161b2e]/90 backdrop-blur border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(m.createdAt)}</span>
                   </div>
                 )}
-                <div className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
+                <div id={`msg-${m.id}`} className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
                   <MessageBubble
                     m={m}
                     mine={m.senderId === me}
@@ -255,9 +392,16 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
                     showSender={showSender}
                     readState={readState(m)}
                     canModerate={!!canModerate}
+                    highlight={highlight === m.id}
                     onReply={() => { setEditing(null); setReplyTo(m); }}
                     onEdit={() => { setReplyTo(null); setEditing(m); }}
-                    onDelete={() => remove(m)}
+                    onDelete={async () => { if (await confirmDialog({ title: 'Delete for everyone?', message: 'The message will be removed for everyone in this chat.', destructive: true })) remove(m); }}
+                    onDeleteForMe={() => deleteForMe(m)}
+                    onStar={() => star(m)}
+                    onForward={() => setForwarding(m)}
+                    onInfo={() => setInfoMsg(m)}
+                    onVote={(o) => vote(m, o)}
+                    onOpenContact={openContact}
                     onReact={(e) => react(m, e)}
                     onOpenImage={setLightbox}
                   />
@@ -287,6 +431,8 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
           onSend={send}
           onSaveEdit={saveEdit}
           onTyping={typing}
+          onExtra={onExtra}
+          mentionables={convo.isGroup ? others.map((o) => ({ id: o.id, name: o.name })) : []}
         />
       </div>
 
@@ -302,6 +448,11 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
           />
         )}
       </AnimatePresence>
+
+      {forwarding && <ForwardDialog message={forwarding} onClose={() => setForwarding(null)} onDone={() => { setForwarding(null); onChanged(); }} />}
+      {infoMsg && <MessageInfo message={infoMsg} members={convo.members} me={me} onClose={() => setInfoMsg(null)} />}
+      {extra === 'poll' && <PollDialog onClose={() => setExtra(null)} onCreate={(poll) => sendSpecial({ type: 'POLL', poll })} />}
+      {extra === 'contact' && <ContactPicker onClose={() => setExtra(null)} onPick={(contactId) => sendSpecial({ type: 'CONTACT', contactId })} />}
 
       <AnimatePresence>
         {lightbox && (
@@ -322,6 +473,18 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
   const [adding, setAdding] = useState(false);
   const isAdmin = convo.isGroup && convo.myRole === 'ADMIN';
   const media = messages.filter((m) => m.type === 'IMAGE' && m.attachmentUrl).slice(-12).reverse();
+  const starredHere = messages.filter((m) => m.starred);
+  const [wp, setWp] = useState(getWallpaper());
+  const canSetTimer = !convo.isOfficial && (!convo.isGroup || isAdmin);
+
+  const setPref = async (body: Record<string, unknown>, ok: string) => {
+    try { await chatJson(`/api/chat/conversations/${convo.id}/prefs`, { method: 'PATCH', body: JSON.stringify(body) }); toast.success(ok); onChanged(); }
+    catch (e: any) { toast.error(e.message); }
+  };
+  const setTimer = async (sec: number) => {
+    try { await chatJson(`/api/chat/conversations/${convo.id}/settings`, { method: 'PATCH', body: JSON.stringify({ disappearingSec: sec }) }); onChanged(); }
+    catch (e: any) { toast.error(e.message); }
+  };
   const files = messages.filter((m) => (m.type === 'FILE' || m.type === 'VIDEO' || m.type === 'AUDIO') && m.attachmentUrl).slice(-10).reverse();
 
   const rename = async () => {
@@ -358,6 +521,52 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
           <button onClick={rename} className="mt-3 text-xs font-semibold text-indigo-500 inline-flex items-center gap-1"><Pencil className="w-3.5 h-3.5" /> Rename group</button>
         )}
       </div>
+
+      {!convo.isOfficial && (
+        <div className="p-5 border-b border-zinc-200/80 dark:border-white/[0.06] space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-zinc-800 dark:text-zinc-200 flex items-center gap-2"><BellOff className="w-4 h-4 text-zinc-500" /> Mute notifications</span>
+            {convo.muted
+              ? <button onClick={() => setPref({ muted: false }, 'Unmuted')} className="text-xs font-semibold text-indigo-500">Unmute</button>
+              : (
+                <select aria-label="Mute for" defaultValue="" onChange={(e) => e.target.value && setPref({ muted: e.target.value }, 'Chat muted')} className="text-xs rounded-lg bg-zinc-100 dark:bg-white/10 px-2 py-1.5 text-zinc-700 dark:text-zinc-200">
+                  <option value="" disabled>Mute for…</option><option value="8h">8 hours</option><option value="1w">1 week</option><option value="always">Always</option>
+                </select>
+              )}
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-zinc-800 dark:text-zinc-200 flex items-center gap-2"><Timer className="w-4 h-4 text-zinc-500" /> Disappearing messages</span>
+            {canSetTimer ? (
+              <select aria-label="Disappearing messages" value={convo.disappearingSec ?? 0} onChange={(e) => setTimer(Number(e.target.value))} className="text-xs rounded-lg bg-zinc-100 dark:bg-white/10 px-2 py-1.5 text-zinc-700 dark:text-zinc-200">
+                {DISAPPEARING_OPTIONS.map((o) => <option key={o.sec} value={o.sec}>{o.label}</option>)}
+              </select>
+            ) : <span className="text-xs text-zinc-500">{disappearingLabel(convo.disappearingSec)}</span>}
+          </div>
+          <div>
+            <p className="text-sm text-zinc-800 dark:text-zinc-200 mb-2">Chat wallpaper</p>
+            <div className="grid grid-cols-6 gap-1.5">
+              {WALLPAPERS.map((w) => (
+                <button key={w.id} onClick={() => { setWallpaper(w.id); setWp(w.id); }} aria-label={w.label} title={w.label}
+                  className={cn('aspect-square rounded-lg border-2 bg-white dark:bg-[#0f1322]', wp === w.id ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10')}
+                  style={w.style} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {starredHere.length > 0 && (
+        <div className="p-5 border-b border-zinc-200/80 dark:border-white/[0.06]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><Star className="w-3.5 h-3.5 text-amber-500" /> Starred in this chat</p>
+          <div className="space-y-1.5">
+            {starredHere.slice(-5).reverse().map((m) => (
+              <button key={m.id} onClick={() => document.getElementById(`msg-${m.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })} className="w-full text-left text-sm text-zinc-700 dark:text-zinc-300 truncate p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
+                {m.body || m.attachmentName || 'Attachment'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {(media.length > 0 || files.length > 0) && (
         <div className="p-5 border-b border-zinc-200/80 dark:border-white/[0.06]">

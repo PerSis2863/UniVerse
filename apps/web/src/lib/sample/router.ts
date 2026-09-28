@@ -19,6 +19,12 @@ function getDb(): SampleDb {
 }
 export function resetSampleDb() { db = null; }
 
+/** Sample payments for pages that load transactions through a server action. */
+export function sampleTransactions(onlyMine = false) {
+  const d = getDb();
+  return onlyMine ? d.transactions.filter((t) => t.user.id === d.people.aarav.id).map((t) => ({ ...t, user: { id: d.me.id, name: d.me.name, email: d.me.email } })) : d.transactions;
+}
+
 type Ctx = { db: SampleDb; m: RegExpMatchArray; q: URLSearchParams; body: any };
 type Result = { status: number; data: any };
 const ok = (data: any, status = 200): Result => ({ status, data });
@@ -28,15 +34,36 @@ const pct = (s: number, m: number) => (m > 0 ? (s / m) * 100 : 0);
 const course = (d: SampleDb, id: string) => d.courses.find((c) => c.id === id);
 const counts = (d: SampleDb, id: string) => ({ materials: d.board[id]?.materials.length ?? 0, quizzes: d.quizzes.filter((x) => x.courseId === id).length });
 
+function decorateMsg(d: SampleDb, m: any) {
+  const out: any = { ...m, starred: d.starred.has(m.id), poll: null };
+  if (m.type === 'POLL') {
+    const votes = d.pollVotes[m.id] ?? {};
+    const options: string[] = m.metadata?.options ?? [];
+    out.poll = {
+      counts: options.map((_, i) => Object.values(votes).filter((v) => v.includes(i)).length),
+      mine: votes[d.me.id] ?? [],
+      voters: Object.values(votes).filter((v) => v.length).length,
+    };
+  }
+  return out;
+}
+const visible = (d: SampleDb, c: any) => c.messages.filter((m: any) => !d.hiddenMsgs.has(m.id));
+function findMsg(d: SampleDb, id: string) {
+  for (const c of d.conversations) { const m = c.messages.find((x: any) => x.id === id); if (m) return { c, m }; }
+  return null;
+}
+
 function summary(d: SampleDb, c: any) {
-  const last = c.messages[c.messages.length - 1];
+  const msgs = visible(d, c);
+  const last = msgs[msgs.length - 1];
   const other = c.members.find((x: any) => x.id !== d.me.id);
   return {
     id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, title: c.title, avatarUrl: null,
     otherUserId: c.isGroup ? null : other?.id ?? null, online: !c.isGroup && !c.isOfficial && other?.id !== d.people.meera.id,
     lastSeenAt: at(0, 8), memberCount: c.members.length, typing: [],
     lastMessage: last ? { id: last.id, body: last.body.slice(0, 140), type: last.type, senderId: last.senderId, createdAt: last.createdAt, deletedAt: last.deletedAt, attachmentName: last.attachmentName, mine: last.senderId === d.me.id } : null,
-    unread: c.unread ?? (last && last.senderId !== d.me.id && c.id !== 'sample-conv-welcome' ? 1 : 0),
+    unread: Math.max(c.unread ?? (last && last.senderId !== d.me.id && c.id !== 'sample-conv-welcome' ? 1 : 0), c.prefs?.markedUnread ? 1 : 0),
+    markedUnread: !!c.prefs?.markedUnread, pinned: !!c.prefs?.pinned, muted: !!c.prefs?.muted, archived: !!c.prefs?.archived,
     activityAt: last?.createdAt ?? at(-1),
   };
 }
@@ -160,14 +187,18 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   })],
 
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
-  [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => +new Date(b.activityAt) - +new Date(a.activityAt)), me: d.me.id })],
+  [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
+  [/^\/api\/chat\/starred$/, ({ db: d }) => ok(d.conversations.flatMap((c) => visible(d, c).filter((m: any) => d.starred.has(m.id)).map((m: any) => ({ ...decorateMsg(d, m), chat: { id: c.id, title: c.title } }))))],
   [/^\/api\/chat\/conversations\/([^/]+)\/messages$/, ({ db: d, m, q }) => {
     const c = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);
+    const term = q.get('q')?.toLowerCase();
+    if (term) return ok({ results: visible(d, c).filter((m: any) => m.type !== 'DELETED' && `${m.body} ${m.attachmentName ?? ''}`.toLowerCase().includes(term)).reverse().map((m: any) => ({ id: m.id, body: m.body, type: m.type, attachmentName: m.attachmentName, createdAt: m.createdAt, sender: { id: m.sender.id, name: m.sender.name } })) });
     c.unread = 0;
+    if (c.prefs) c.prefs.markedUnread = false;
     if (q.get('before')) return ok({ conversation: null, typing: [], messages: [], hasMore: false, me: d.me.id });
     return ok({
-      conversation: { id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, title: c.title, avatarUrl: null, myRole: 'ADMIN', members: c.members.map((u: any) => ({ id: u.id, name: u.name, avatar: null, role: u.role, groupRole: u.id === d.me.id ? 'ADMIN' : 'MEMBER', online: u.id !== d.people.meera.id, lastSeenAt: at(0, 8), lastReadAt: new Date().toISOString() })) },
-      typing: [], messages: c.messages, hasMore: false, me: d.me.id,
+      conversation: { id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, title: c.title, avatarUrl: null, myRole: 'ADMIN', disappearingSec: c.disappearingSec ?? null, pinned: !!c.prefs?.pinned, muted: !!c.prefs?.muted, archived: !!c.prefs?.archived, members: c.members.map((u: any) => ({ id: u.id, name: u.name, avatar: null, role: u.role, groupRole: u.id === d.me.id ? 'ADMIN' : 'MEMBER', online: u.id !== d.people.meera.id, lastSeenAt: at(0, 8), lastReadAt: new Date().toISOString() })) },
+      typing: [], messages: visible(d, c).map((m: any) => decorateMsg(d, m)), hasMore: false, me: d.me.id,
     });
   }],
   [/^\/api\/chat\/users$/, ({ db: d, q }) => { const s = (q.get('q') ?? '').toLowerCase(); return ok(d.directory.filter((u) => u.name.toLowerCase().includes(s)).map((u) => ({ id: u.id, name: u.name, avatar: null, role: u.role, online: u.role === 'STUDENT' }))); }],
@@ -208,6 +239,24 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/scholarships\/my-applications$/, ({ db: d }) => ok(d.myScholarships)],
   [/^\/api\/campus-items$/, ({ db: d, q }) => ok(d.campusItems.filter((c) => !q.get('kind') || c.kind === q.get('kind')))],
   [/^\/api\/me$/, ({ db: d }) => ok(d.profile)],
+
+  // ── Admin ──
+  [/^\/users$/, ({ db: d, q }) => ok(d.users.filter((u) => !q.get('role') || u.role === q.get('role')))],
+  [/^\/courses\/admin\/all$/, ({ db: d }) => ok(d.courses.map((c) => ({ ...c, teacher: { id: c.teacher.id, name: c.teacher.name }, _count: { enrollments: d.classmates.length + 1, ...counts(d, c.id) } })))],
+  [/^\/announcements$/, ({ db: d }) => ok(d.adminAnnouncements)],
+  [/^\/quizzes$/, ({ db: d }) => ok(d.quizzes.map((x) => ({ id: x.id, title: x.title, status: x.status, dueDate: x.dueDate, timeLimit: x.timeLimit, courseId: x.courseId, course: { name: course(d, x.courseId)?.name } })))],
+  [/^\/impact\/certificates\/pending$/, ({ db: d }) => ok(d.pendingCertificates)],
+  [/^\/impact\/blockchain-credentials\/pending$/, ({ db: d }) => ok(d.pendingCredentials)],
+  [/^\/collaborations\/projects$/, ({ db: d }) => ok(d.projects)],
+  [/^\/collaborations\/projects\/([^/]+)$/, ({ db: d, m }) => { const p = d.projects.find((x) => x.id === m[1]); return p ? ok({ ...p, members: [], milestones: [] }) : fail('Not found', 404); }],
+  [/^\/partners\/partnerships$/, ({ db: d }) => ok(d.partnerships)],
+  [/^\/api\/admin\/rooms$/, ({ db: d }) => ok(d.adminRooms)],
+  [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map(({ reservations, ...r }) => r))],
+  [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
+  [/^\/api\/premium\/analytics$/, ({ db: d }) => ok(d.analytics)],
+  [/^\/api\/billing\/subscription$/, () => ok({ organization: { id: 'sample-org', name: 'Sample University' }, plan: 'ENTERPRISE', subscribedPlan: 'ENTERPRISE', status: 'active', interval: 'year', currentPeriodEnd: at(200), cancelAtPeriodEnd: false, hasBillingAccount: false })],
+  [/^\/api\/admin\/impact$/, ({ db: d }) => ok(d.adminImpact)],
+  [/^\/documents$/, ({ db: d }) => ok(d.documents.map((doc) => ({ ...doc, issuedAt: doc.createdAt, user: { name: d.people.aarav.name } })))],
 ];
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
@@ -245,15 +294,62 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     const c = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);
     if (c.isOfficial) return fail('This is an announcements-only channel.', 403);
     const reply = body.replyToId ? c.messages.find((x: any) => x.id === body.replyToId) : null;
+    let extra: any = {};
+    if (body.forwardOf) {
+      const src = findMsg(d, body.forwardOf)?.m;
+      if (!src) return fail('Message not found.', 404);
+      extra = { type: src.type, body: src.body, attachmentUrl: src.attachmentUrl, attachmentName: src.attachmentName, attachmentSize: src.attachmentSize, attachmentMime: src.attachmentMime, metadata: src.metadata, forwarded: true };
+    } else if (body.type === 'POLL') {
+      extra = { type: 'POLL', body: body.poll?.question, metadata: { question: body.poll?.question, options: body.poll?.options ?? [], multiple: !!body.poll?.multiple } };
+    } else if (body.type === 'LOCATION') {
+      extra = { type: 'LOCATION', body: body.location?.label || 'Location', metadata: { lat: body.location?.lat, lng: body.location?.lng, label: body.location?.label ?? null } };
+    } else if (body.type === 'CONTACT') {
+      const u = d.directory.find((x) => x.id === body.contactId);
+      if (!u) return fail('Contact not found.', 404);
+      extra = { type: 'CONTACT', body: u.name, metadata: { userId: u.id, name: u.name, role: u.role, avatar: null } };
+    } else if (body.type === 'CALL') {
+      return fail('Calls aren’t available in sample mode — exit sample mode to call real people.');
+    }
     const message = {
       id: sid('msg'), conversationId: c.id, senderId: d.me.id, body: body.body ?? '', type: body.type ?? (body.attachmentUrl ? 'FILE' : 'TEXT'),
       attachmentUrl: body.attachmentUrl ?? null, attachmentName: body.attachmentName ?? null, attachmentSize: body.attachmentSize ?? null, attachmentMime: body.attachmentMime ?? null,
       metadata: body.metadata ?? null, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null,
       replyTo: reply ? { id: reply.id, body: reply.body, type: reply.type, sender: { id: reply.senderId, name: reply.sender.name } } : null,
       reactions: {}, sender: { id: d.me.id, name: d.me.name, avatar: null },
+      expiresAt: c.disappearingSec ? new Date(Date.now() + c.disappearingSec * 1000).toISOString() : null,
+      ...extra,
     };
     c.messages.push(message);
-    return ok(message, 201);
+    return ok(decorateMsg(d, message), 201);
+  }],
+  ['PATCH', /^\/api\/chat\/conversations\/([^/]+)\/prefs$/, ({ db: d, m, body }) => {
+    const c: any = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);
+    if (typeof body.pinned === 'boolean') c.prefs.pinned = body.pinned;
+    if ('muted' in body) c.prefs.muted = !!body.muted;
+    if (typeof body.archived === 'boolean') { c.prefs.archived = body.archived; if (body.archived) c.prefs.pinned = false; }
+    if (typeof body.unread === 'boolean') { c.prefs.markedUnread = body.unread; if (!body.unread) c.unread = 0; }
+    return ok({ ok: true });
+  }],
+  ['PATCH', /^\/api\/chat\/conversations\/([^/]+)\/settings$/, ({ db: d, m, body }) => {
+    const c: any = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);
+    const sec = Number(body.disappearingSec) || 0;
+    c.disappearingSec = sec || null;
+    const label = ({ 86400: '24 hours', 604800: '7 days', 7776000: '90 days' } as any)[sec];
+    c.messages.push({ id: sid('msg'), conversationId: c.id, senderId: d.me.id, type: 'SYSTEM', body: sec ? `You turned on disappearing messages. New messages will disappear after ${label}.` : 'You turned off disappearing messages.', attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null, metadata: null, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, replyTo: null, reactions: {}, sender: { id: d.me.id, name: d.me.name, avatar: null } });
+    return ok({ ok: true });
+  }],
+  ['POST', /^\/api\/chat\/messages\/([^/]+)\/state$/, ({ db: d, m, body }) => {
+    if (typeof body.starred === 'boolean') { if (body.starred) d.starred.add(m[1]); else d.starred.delete(m[1]); }
+    if (body.hidden) { d.hiddenMsgs.add(m[1]); d.starred.delete(m[1]); }
+    return ok({ ok: true });
+  }],
+  ['POST', /^\/api\/chat\/messages\/([^/]+)\/vote$/, ({ db: d, m, body }) => {
+    const found = findMsg(d, m[1]); if (!found || found.m.type !== 'POLL') return fail('Poll not found.', 404);
+    const votes = (d.pollVotes[m[1]] ??= {});
+    const mine = votes[d.me.id] ?? [];
+    const option = Number(body.option);
+    votes[d.me.id] = mine.includes(option) ? mine.filter((o) => o !== option) : found.m.metadata?.multiple ? [...mine, option] : [option];
+    return ok({ ok: true });
   }],
   ['POST', /^\/api\/chat\/messages\/([^/]+)\/reactions$/, ({ db: d, m, body }) => {
     for (const c of d.conversations) {
@@ -303,6 +399,32 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['DELETE', /^\/groups\/([^/]+)\/leave$/, ({ db: d, m }) => { const g = d.groups.find((x) => x.id === m[1]); if (g) { g.joined = false; g.members = g.members.filter((u: any) => u.id !== d.me.id); } return ok({ ok: true }); }],
   ['POST', /^\/groups$/, ({ db: d, body }) => { const g = { id: sid('grp'), name: body.name, description: body.description ?? null, category: body.category ?? 'Study', isPublic: true, createdAt: new Date().toISOString(), members: [d.meCard], joined: true }; d.groups.unshift(g); return ok(groupOut(d, g), 201); }],
   ['POST', /^\/impact\/summits\/([^/]+)\/register$/, ({ db: d, m }) => { if (!d.summitRegs.includes(m[1])) d.summitRegs.push(m[1]); return ok({ ok: true }); }],
+  ['POST', /^\/impact\/certificates\/([^/]+)\/(approve|reject)$/, ({ db: d, m }) => { d.pendingCertificates.splice(d.pendingCertificates.findIndex((x) => x.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
+  ['POST', /^\/impact\/blockchain-credentials\/([^/]+)\/(verify|approve|reject|issue)$/, ({ db: d, m }) => { d.pendingCredentials.splice(d.pendingCredentials.findIndex((x) => x.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
+  ['PATCH', /^\/impact\/blockchain-credentials\/([^/]+)(\/[a-z-]+)?$/, ({ db: d, m }) => { d.pendingCredentials.splice(d.pendingCredentials.findIndex((x) => x.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
+  ['PATCH', /^\/collaborations\/projects\/([^/]+)\/review$/, ({ db: d, m, body }) => { const p = d.projects.find((x) => x.id === m[1]); if (p) p.status = body.status ?? p.status; return ok(p ?? { ok: true }); }],
+  ['POST', /^\/announcements$/, ({ db: d, body }) => { const a = { id: sid('ann'), title: body.title, body: body.body ?? body.content ?? '', content: body.body ?? body.content ?? '', createdAt: new Date().toISOString(), author: { name: d.me.name }, course: null }; d.adminAnnouncements.unshift(a); return ok(a, 201); }],
+  ['DELETE', /^\/announcements\/([^/]+)$/, ({ db: d, m }) => { d.adminAnnouncements.splice(d.adminAnnouncements.findIndex((x) => x.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
+  ['DELETE', /^\/users\/([^/]+)$/, ({ db: d, m }) => { d.users.splice(d.users.findIndex((x) => x.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
+  ['PATCH', /^\/users\/([^/]+)(\/status)?$/, ({ db: d, m, body }) => { const u = d.users.find((x) => x.id === m[1]); if (u) Object.assign(u, body.status ? { status: body.status } : {}, body.role ? { role: body.role } : {}); return ok(u ?? { ok: true }); }],
+  ['DELETE', /^\/api\/admin\/rooms$/, ({ db: d, q }) => { for (const r of d.adminRooms) r.reservations = r.reservations.filter((x: any) => x.id !== q.get('reservationId')); return ok({ ok: true }); }],
+  ['DELETE', /^\/api\/admin\/timetable$/, ({ db: d, q }) => { d.slots.splice(d.slots.findIndex((x) => x.id === q.get('id')) >>> 0, 1); return ok({ ok: true }); }],
+  ['POST', /^\/api\/premium\/ai-report$/, () => ok({ report: [
+    '## Executive summary (sample)',
+    'Engagement grew steadily this term: sign-ups peaked in the enrolment month and impact points are up about 10% month over month.',
+    '',
+    '## Highlights',
+    '- 842 of 1,326 members were active in the last 30 days (63%).',
+    '- 118 NGO applications were accepted; Education and Environment lead with 16 of 23 active projects.',
+    '- Top contributors are earning Level 4–5 impact badges.',
+    '',
+    '## Recommendations',
+    '1. Promote Health projects — only 4 are active despite high student interest.',
+    '2. Follow up the 42 pending applications within a week to keep momentum.',
+    '3. Recognise top contributors at the next campus event.',
+    '',
+    '_This is an example report generated in sample mode._',
+  ].join('\n') })],
   ['POST', /^\/api\/upload$/, () => ok({ url: '/icon-512x512.png' })],
   ['POST', /^\/api\/(billing|create-checkout-session)/, () => fail('Payments aren’t available in sample mode. Exit sample mode to subscribe.')],
 ];

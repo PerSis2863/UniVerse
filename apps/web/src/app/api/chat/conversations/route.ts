@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
-import { ensureWelcome, getSystemUser, isOnline, touchPresence, userCard } from '@/lib/chat';
+import { ensureWelcome, getSystemUser, isOnline, touchPresence, userCard, visibleTo } from '@/lib/chat';
 
 // GET: the caller's conversations (newest activity first) with unread counts and presence.
 export async function GET(req: Request) {
@@ -21,8 +21,9 @@ export async function GET(req: Request) {
       name: true,
       avatarUrl: true,
       updatedAt: true,
-      participants: { select: { userId: true, role: true, typingUntil: true, user: userCard } },
+      participants: { select: { userId: true, role: true, typingUntil: true, pinnedAt: true, mutedUntil: true, archivedAt: true, markedUnread: true, user: userCard } },
       messages: {
+        where: visibleTo(user.id),
         orderBy: { createdAt: 'desc' },
         take: 1,
         select: { id: true, body: true, type: true, senderId: true, createdAt: true, deletedAt: true, attachmentName: true },
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
   const list = conversations
     .map((c) => {
       const others = c.participants.filter((p) => p.userId !== user.id);
+      const mine = c.participants.find((p) => p.userId === user.id);
       const last = c.messages[0] ?? null;
       const other = others[0]?.user;
       return {
@@ -58,11 +60,19 @@ export async function GET(req: Request) {
         lastMessage: last
           ? { ...last, body: last.deletedAt ? '' : last.body.slice(0, 140), mine: last.senderId === user.id }
           : null,
-        unread: unread.get(c.id) ?? 0,
+        unread: Math.max(unread.get(c.id) ?? 0, mine?.markedUnread ? 1 : 0),
+        markedUnread: !!mine?.markedUnread,
+        pinned: !!mine?.pinnedAt,
+        pinnedAt: mine?.pinnedAt ?? null,
+        muted: !!mine?.mutedUntil && mine.mutedUntil.getTime() > now,
+        archived: !!mine?.archivedAt,
         activityAt: last?.createdAt ?? c.updatedAt,
       };
     })
-    .sort((a, b) => new Date(b.activityAt).getTime() - new Date(a.activityAt).getTime());
+    // Pinned chats first (most recently pinned on top), then by latest activity.
+    .sort((a, b) => (a.pinnedAt || b.pinnedAt)
+      ? new Date(b.pinnedAt ?? 0).getTime() - new Date(a.pinnedAt ?? 0).getTime()
+      : new Date(b.activityAt).getTime() - new Date(a.activityAt).getTime());
 
   return NextResponse.json({ conversations: list, me: user.id }, { headers: { 'Cache-Control': 'no-store' } });
 }
