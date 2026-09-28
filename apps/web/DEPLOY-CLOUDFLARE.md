@@ -19,12 +19,12 @@ and allowed by the CSP. Keep the Vercel Blob store until those files are copied 
 
 1. **Domain.** Buy or transfer the domain in Cloudflare (Domain Registration). It's then a zone in your account.
 2. **R2 bucket for uploads.** R2 → Create bucket, e.g. `universe-files`.
-   - Settings → **Custom Domains** → connect `files.<your-domain>`. This is `NEXT_PUBLIC_FILES_URL`.
+   - Settings → **Custom Domains** → connect `files.universeimpact.com`. This is `NEXT_PUBLIC_FILES_URL`.
    - Settings → **CORS policy**, so browsers can upload chat files over 4 MB straight to R2:
      ```json
      [
        {
-         "AllowedOrigins": ["https://<your-domain>", "https://www.<your-domain>", "http://localhost:3000"],
+         "AllowedOrigins": ["https://universeimpact.com", "https://www.universeimpact.com", "http://localhost:3000"],
          "AllowedMethods": ["PUT", "GET", "HEAD"],
          "AllowedHeaders": ["content-type"],
          "MaxAgeSeconds": 3600
@@ -43,7 +43,7 @@ and allowed by the CSP. Keep the Vercel Blob store until those files are copied 
 
    Build variables (Settings → Build → Variables and secrets):
    - `NEXT_PUBLIC_API_URL`: the Render API, e.g. `https://<api>.onrender.com/api`
-   - `NEXT_PUBLIC_FILES_URL`: `https://files.<your-domain>`
+   - `NEXT_PUBLIC_FILES_URL`: `https://files.universeimpact.com`
    - `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`,
      `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`,
      `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `NEXT_PUBLIC_DEMO_LOGIN` (whichever you use today)
@@ -58,11 +58,11 @@ and allowed by the CSP. Keep the Vercel Blob store until those files are copied 
    - `RESEND_API_KEY`, `RESEND_FROM`, `SUPPORT_INBOX_EMAIL`
 
    Copy the values from Vercel → Project → Settings → Environment Variables.
-5. **Custom domain for the app.** Worker → Settings → Domains & Routes → add `<your-domain>` and `www.<your-domain>`.
+5. **Custom domain for the app.** Worker → Settings → Domains & Routes → add `universeimpact.com` and `www.universeimpact.com`.
 6. **Outside Cloudflare**, add the new domain:
    - Firebase console → Authentication → Settings → **Authorized domains**
    - Google Cloud console → OAuth client → authorized origins / redirect URIs
-   - Stripe → Webhooks → endpoint `https://<your-domain>/api/webhooks/stripe` (new signing secret → `STRIPE_WEBHOOK_SECRET`)
+   - Stripe → Webhooks → endpoint `https://universeimpact.com/api/webhooks/stripe` (new signing secret → `STRIPE_WEBHOOK_SECRET`)
    - The Render API's CORS allow-list, if it has one
 7. **Analytics** (optional). Worker → Settings → turn on Web Analytics.
 
