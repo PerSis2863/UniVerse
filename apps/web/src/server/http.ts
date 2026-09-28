@@ -1,5 +1,5 @@
 // HTTP errors with the same names, status codes and JSON shape ({ statusCode, message, error })
-// as NestJS, so code ported from the old API (apps/api) behaves the same for the web client.
+// as NestJS, so code ported from the old NestJS API behaves the same for the web client.
 
 const REASONS: Record<number, string> = {
   400: 'Bad Request',

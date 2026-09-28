@@ -4,7 +4,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { ForbiddenException, HttpException, NotFoundException } from './http';
 import { extractBearer, resolveUser } from './auth';
 
-// A small router for the API that used to run as a NestJS app on Render (apps/api). Routes keep
+// A small router for the API that used to run as a NestJS app on Render. Routes keep
 // their NestJS paths, guards (sign-in + @Roles) and response conventions, and are served from
 // /api/core/* by src/app/api/core/[...path]/route.ts.
 

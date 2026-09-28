@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import { Role } from '@prisma/client';
 
-// Ported from apps/api/src/dashboard/dashboard.controller.ts.
+// Ported from the old NestJS API's dashboard controller.
 export class DashboardService {
   async getStudentDashboard(user: { id: string }) {
     const enrollments = await prisma.enrollment.findMany({

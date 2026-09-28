@@ -34,7 +34,7 @@ import health from './modules/health';
 import dashboard from './modules/dashboard';
 import blackboard from './modules/blackboard';
 
-// The platform API (formerly the NestJS app in apps/api), served at /api/core/*. Modules are
+// The platform API (formerly a NestJS app on Render), served at /api/core/*. Modules are
 // registered in the old AppModule's order. Not ported: the Clerk webhook (the app signs in with
 // Firebase) and the socket.io chat gateway (the web chat uses /api/chat).
 export const api = new Router();

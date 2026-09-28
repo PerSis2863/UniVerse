@@ -3,7 +3,7 @@ import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
 import { UnauthorizedException } from './http';
 
-// Turns a bearer token into a platform user (ported from apps/api/src/auth/token-auth.service.ts).
+// Turns a bearer token into a platform user (ported from the old NestJS API).
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
 // for allowlisted demo accounts only when demo login is enabled, "mock-token-<email|id>" tokens.
 
@@ -38,7 +38,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<FirebaseClai
   return { ...payload, uid: payload.sub };
 }
 
-// ─── Demo login (apps/api/src/auth/demo-accounts.ts) ────────────────────────────────────────────
+// ─── Demo login ────────────────────────────────────────────
 
 const DEFAULT_DEMO_EMAILS = ['demo@student.com', 'demo@teacher.com', 'demo@admin.com', 'it-support@universe.com'];
 
