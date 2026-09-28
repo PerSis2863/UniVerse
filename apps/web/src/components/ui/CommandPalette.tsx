@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { BookOpen, ChevronRight, Command, CornerDownLeft, Loader2, MessageSquarePlus, Moon, Search, Sun, User, type LucideIcon } from 'lucide-react';
+import { BookOpen, ChevronRight, Command, CornerDownLeft, FlaskConical, Loader2, MessageSquarePlus, Moon, Search, Sun, User, type LucideIcon } from 'lucide-react';
+import { isSampleMode } from '@/lib/sample-mode';
+import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { navByRole } from '@/components/layout/Sidebar';
@@ -97,6 +99,9 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
         id: 'act:theme', label: dark ? 'Switch to light mode' : 'Switch to dark mode', icon: dark ? Sun : Moon, group: 'Actions', keywords: 'theme appearance dark light night',
         run: () => { applyTheme(dark ? 'light' : 'dark'); window.dispatchEvent(new Event('universe:theme')); },
       },
+      isSampleMode()
+        ? { id: 'act:sample-off', label: 'Exit sample mode', hint: 'Back to your real account', icon: FlaskConical, group: 'Actions', keywords: 'demo example sample data exit', run: stopSampleMode }
+        : { id: 'act:sample-on', label: 'Explore with sample data', hint: 'Try every feature with example data — nothing is saved', icon: FlaskConical, group: 'Actions', keywords: 'demo example sample data try tour', run: startSampleMode },
     ];
   }, [base, go, open]); // eslint-disable-line react-hooks/exhaustive-deps
 

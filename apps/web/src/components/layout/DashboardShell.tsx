@@ -1,5 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
+import { SampleModeBar } from '@/components/SampleMode';
+import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
 import {
   LayoutDashboard, BookOpen, MessageSquare, Bell, Search, Globe2, Users, ShieldCheck, Menu,
@@ -118,6 +120,7 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
+  const sampleMode = useSampleMode();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuthStore();
   const pathname = usePathname();
@@ -159,7 +162,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </header>
 
         <main className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip">
-          {children}
+          <SampleModeBar />
+          {/* Re-mount pages when switching between sample and real data so they reload from the right source */}
+          <Fragment key={sampleMode ? 'sample' : 'real'}>{children}</Fragment>
         </main>
       </div>
 

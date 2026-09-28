@@ -34,7 +34,7 @@ export function KpiCard({ title, value, icon: Icon, change, color = 'indigo' }: 
         <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', colors[color])}>
           <Icon className="w-5 h-5" />
         </div>
-        {change !== undefined && (
+        {change !== undefined && change !== 0 && (
           <div className={cn('flex items-center gap-1 text-xs font-medium', isPositive ? 'text-green-400' : 'text-rose-400')}>
             {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             {Math.abs(change)}%

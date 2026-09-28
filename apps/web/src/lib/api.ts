@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getAuthToken } from './auth-token';
+import { isSampleMode } from './sample-mode';
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://universe-xsku.onrender.com/api';
 
@@ -10,6 +11,20 @@ export const api = axios.create({
 
 // Attach a fresh token to every request.
 api.interceptors.request.use(async (config) => {
+  // Sample mode: answer from example data instead of the server (loaded only when needed).
+  if (isSampleMode()) {
+    const { resolveSample } = await import('./sample/router');
+    const hit = resolveSample(config.method ?? 'get', config.url ?? '', config.data);
+    if (hit) {
+      config.adapter = async () => {
+        if (hit.status >= 400) {
+          throw new AxiosError(hit.data?.message ?? 'Request failed', String(hit.status), config, null, { data: hit.data, status: hit.status, statusText: 'Error', headers: {}, config } as any);
+        }
+        return { data: hit.data, status: hit.status, statusText: 'OK', headers: {}, config, request: null };
+      };
+      return config;
+    }
+  }
   const token = await getAuthToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;

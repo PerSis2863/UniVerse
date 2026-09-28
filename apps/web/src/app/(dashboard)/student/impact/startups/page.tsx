@@ -99,7 +99,11 @@ export default function StartupIncubatorPage() {
                 <p className="text-zinc-400 text-sm max-w-xl">Launch social impact startups, find co-founders, pitch to CSR partners, and earn backing — all from within UniVerse.</p>
               </div>
               <div className="grid grid-cols-3 gap-3 flex-shrink-0">
-                {[{ v: startups.length || '0', l: 'Active Startups' }, { v: '$168K', l: 'Grants Available', c: 'text-emerald-400' }, { v: '24', l: 'Open Roles' }].map(s => (
+                {[
+                  { v: String(startups.length), l: 'Active startups' },
+                  { v: String(startups.reduce((n: number, x: any) => n + (x._count?.applications ?? 0), 0)), l: 'Applications', c: 'text-emerald-400' },
+                  { v: String(new Set(startups.map((x: any) => x.sector).filter(Boolean)).size), l: 'Sectors' },
+                ].map(s => (
                   <div key={s.l} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 text-center">
                     <div className={cn("text-xl font-black text-white", s.c)}>{s.v}</div>
                     <div className="text-[10px] text-zinc-500">{s.l}</div>
@@ -141,9 +145,6 @@ export default function StartupIncubatorPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {filtered.map((startup, i) => {
-                const target = startup.target || 50000;
-                const raised = startup.raised || 0;
-                const pct = Math.round((raised / target) * 100);
                 const isJoined = joined.includes(startup.id);
                 return (
                   <motion.div key={startup.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
@@ -154,30 +155,18 @@ export default function StartupIncubatorPage() {
                           {startup.name?.slice(0, 2) || 'ST'}
                         </div>
                         <div className="flex gap-2 flex-wrap justify-end">
-                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", STAGE_COLORS[startup.stage || 'Idea'])}>{startup.stage || 'Idea'}</span>
-                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>SDG {startup.sdg || 4}</span>
+                          {startup.stage && <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", STAGE_COLORS[startup.stage] ?? STAGE_COLORS.Idea)}>{startup.stage}</span>}
+                          {startup.impactPoints > 0 && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-500 border-emerald-500/30">+{startup.impactPoints} XP</span>}
                         </div>
                       </div>
                       <div>
                         <h3 className="font-bold text-zinc-900 dark:text-white group-hover:text-indigo-500 transition-colors">{startup.name}</h3>
-                        <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{startup.tagline}</p>
+                        {(startup.tagline || startup.description) && <p className="text-xs text-zinc-500 mt-1 line-clamp-3">{startup.tagline || startup.description}</p>}
                       </div>
-                      <div className="text-xs text-zinc-500 flex items-center gap-1">
-                        <Building2 className="w-3.5 h-3.5" /> <span className="font-medium text-zinc-700 dark:text-zinc-300">{startup.sector || 'Tech'}</span>
-                        <span className="mx-1">•</span>
-                        <Users className="w-3.5 h-3.5" /> {startup.teamSize || 2} members
-                      </div>
-                      {/* Funding Bar */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-zinc-500">Raised: <strong className="text-emerald-400">{startup.currency || '$'}{raised.toLocaleString()}</strong></span>
-                          <span className="text-zinc-500">Goal: {startup.currency || '$'}{target.toLocaleString()}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: Math.min(i, 6) * 0.03 + 0.3, duration: 0.8 }}
-                            className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500" />
-                        </div>
-                        <div className="text-[10px] text-zinc-500 text-right">{pct}% funded</div>
+                      <div className="text-xs text-zinc-500 flex flex-wrap items-center gap-1">
+                        {startup.sector && <><Building2 className="w-3.5 h-3.5" /> <span className="font-medium text-zinc-700 dark:text-zinc-300">{startup.sector}</span><span className="mx-1">•</span></>}
+                        <Users className="w-3.5 h-3.5" /> {startup._count?.applications ?? 0} applicant{startup._count?.applications === 1 ? '' : 's'}
+                        {startup.foundedBy?.name && <><span className="mx-1">•</span>Founded by {startup.foundedBy.name}</>}
                       </div>
                       {/* Open Roles */}
                       {(startup.openRoles && startup.openRoles.length > 0) && (
@@ -187,11 +176,6 @@ export default function StartupIncubatorPage() {
                           ))}
                         </div>
                       )}
-                      {/* Sponsors */}
-                      <div className="text-[10px] text-zinc-500">
-                        <span className="font-semibold text-zinc-400">Sponsors: </span>
-                        {(startup.sponsors || ['UniVerse Incubator']).join(' · ')}
-                      </div>
                     </div>
                     <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800 flex gap-2">
                       <button onClick={() => setSelected(startup)} className="flex-1 btn-secondary text-xs py-2">Details</button>
@@ -221,36 +205,30 @@ export default function StartupIncubatorPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex gap-2 mb-2">
-                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", STAGE_COLORS[selected.stage || 'Idea'])}>{selected.stage || 'Idea'}</span>
-                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>SDG {selected.sdg || 4}</span>
+                    {selected.stage && <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", STAGE_COLORS[selected.stage] ?? STAGE_COLORS.Idea)}>{selected.stage}</span>}
+                    {selected.impactPoints > 0 && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-500 border-emerald-500/30">+{selected.impactPoints} XP</span>}
                   </div>
                   <h2 className="text-2xl font-black text-zinc-900 dark:text-white">{selected.name}</h2>
-                  <p className="text-sm text-zinc-500 mt-1">{selected.tagline}</p>
+                  {selected.tagline && <p className="text-sm text-zinc-500 mt-1">{selected.tagline}</p>}
                 </div>
                 <button onClick={() => setSelected(null)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
               </div>
               <div className="grid grid-cols-3 gap-3 p-4 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs">
-                <div><div className="text-zinc-500 mb-1">Founder</div><div className="font-semibold text-zinc-900 dark:text-white">{selected.foundedBy?.name || 'Founder'}</div></div>
-                <div><div className="text-zinc-500 mb-1">Sector</div><div className="font-semibold text-zinc-900 dark:text-white">{selected.sector || 'Tech'}</div></div>
-                <div><div className="text-zinc-500 mb-1">Team Size</div><div className="font-semibold text-zinc-900 dark:text-white">{selected.teamSize || 2} people</div></div>
+                <div><div className="text-zinc-500 mb-1">Founder</div><div className="font-semibold text-zinc-900 dark:text-white">{selected.foundedBy?.name || '—'}</div></div>
+                <div><div className="text-zinc-500 mb-1">Sector</div><div className="font-semibold text-zinc-900 dark:text-white">{selected.sector || '—'}</div></div>
+                <div><div className="text-zinc-500 mb-1">Applicants</div><div className="font-semibold text-zinc-900 dark:text-white">{selected._count?.applications ?? 0}</div></div>
               </div>
-              <div>
-                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Impact Goal</h4>
-                <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl text-sm text-emerald-600 dark:text-emerald-400 font-medium">{selected.impactGoal || 'Solve social challenges.'}</div>
-              </div>
-              <div>
-                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Open Co-founder Roles</h4>
-                <div className="flex flex-wrap gap-2">
-                  {(selected.openRoles || ['General Member']).map((r: string) => (
-                    <button key={r} onClick={() => setRole(r)} className={cn("text-xs px-3 py-1.5 rounded-lg border font-medium transition-all", role === r ? "bg-indigo-600 text-white border-indigo-600" : "border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-indigo-500")}>{r}</button>
-                  ))}
+              {selected.description && (
+                <div>
+                  <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">About</h4>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{selected.description}</p>
                 </div>
-              </div>
+              )}
+              {selected.websiteUrl && <a href={selected.websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-sm font-semibold text-indigo-500 hover:underline">Visit website →</a>}
               <div>
-                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">CSR Sponsors</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {(selected.sponsors || ['UniVerse Incubator']).map((s: string) => <span key={s} className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-medium">{s}</span>)}
-                </div>
+                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">The role you'd like</h4>
+                <input value={role} onChange={(e) => setRole(e.target.value)} maxLength={120} placeholder="e.g. Developer, Designer, Marketing"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
               </div>
               <div className="flex gap-2 pt-2">
                 <button onClick={() => setSelected(null)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>

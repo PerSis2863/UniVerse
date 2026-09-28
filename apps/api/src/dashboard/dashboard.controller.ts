@@ -102,52 +102,51 @@ export class DashboardController {
       where: { course: { teacherId: user.id }, status: 'PENDING' }
     });
 
-    const gradesAggr = await this.prisma.grade.aggregate({
-      _avg: { score: true },
-      where: { course: { teacherId: user.id } }
+    // Everything below comes from recorded grades — no placeholder numbers.
+    const grades = await this.prisma.grade.findMany({
+      where: { course: { teacherId: user.id }, status: 'GRADED' },
+      orderBy: { gradedAt: 'desc' },
+      select: { studentId: true, courseId: true, score: true, maxScore: true, gradedAt: true, student: { select: { name: true } }, course: { select: { name: true } } },
     });
-    const avgClassScore = gradesAggr._avg.score || 0;
+    const pct = (g: { score: number; maxScore: number }) => (g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0);
+    const avgClassScore = grades.length ? Math.round(grades.reduce((sum, g) => sum + pct(g), 0) / grades.length) : 0;
 
-    // Courses with student count and completion rate
+    const palette = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
     const myCoursesRaw = await this.prisma.course.findMany({
       where: { teacherId: user.id },
-      include: {
-        enrollments: true,
-      },
-      take: 5
+      select: { id: true, name: true, code: true, color: true, enrollments: { select: { studentId: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+    // "completion" = share of enrolled students who have at least one grade in the course.
+    const myCourses = myCoursesRaw.map((c, i) => {
+      const graded = new Set(grades.filter((g) => g.courseId === c.id).map((g) => g.studentId));
+      const students = c.enrollments.length;
+      return {
+        id: c.id, name: c.name, code: c.code, students,
+        completion: students ? Math.round((c.enrollments.filter((e) => graded.has(e.studentId)).length / students) * 100) : 0,
+        color: c.color || palette[i % palette.length],
+      };
     });
 
-    const myCourses = myCoursesRaw.map(c => ({
-      id: c.id,
-      name: c.name,
-      code: c.code,
-      students: c.enrollments.length,
-      completion: Math.floor(Math.random() * 40) + 60, // MOCK
-      color: ['#6366f1', '#06b6d4', '#10b981'][Math.floor(Math.random() * 3)]
-    }));
+    const letter = (p: number) => (p >= 90 ? 'A' : p >= 80 ? 'B' : p >= 70 ? 'C' : p >= 60 ? 'D' : 'F');
+    const gradeDistributionData = ['A', 'B', 'C', 'D', 'F'].map((grade) => ({ grade, count: grades.filter((g) => letter(pct(g)) === grade).length }));
 
-    // Mock data for graphs
-    const gradeDistributionData = [
-      { grade: 'A', count: 24 },
-      { grade: 'B', count: 45 },
-      { grade: 'C', count: 32 },
-      { grade: 'D', count: 12 },
-      { grade: 'F', count: 3 },
-    ];
-    
-    const performanceTrendData = [
-      { month: 'Sep', avgScore: 76 },
-      { month: 'Oct', avgScore: 78 },
-      { month: 'Nov', avgScore: 82 },
-      { month: 'Dec', avgScore: 84 },
-    ];
+    // Average score per month for the last 6 months that have grades.
+    const byMonth = new Map<string, { label: string; sum: number; n: number; t: number }>();
+    for (const g of grades) {
+      const d = new Date(g.gradedAt);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const m = byMonth.get(key) ?? { label: d.toLocaleString('en', { month: 'short' }), sum: 0, n: 0, t: new Date(d.getFullYear(), d.getMonth(), 1).getTime() };
+      m.sum += pct(g); m.n += 1;
+      byMonth.set(key, m);
+    }
+    const performanceTrendData = [...byMonth.values()].sort((a, b) => a.t - b.t).slice(-6).map((m) => ({ month: m.label, avgScore: Math.round(m.sum / m.n) }));
 
-    const recentStudents = [
-      { name: 'Aditya Bhatt', course: 'Data Structures', score: 94, status: 'excellent' },
-      { name: 'Priya Sharma', course: 'Algorithms', score: 87, status: 'good' },
-      { name: 'Rahul Kumar', course: 'Database', score: 72, status: 'needs-help' },
-      { name: 'Sneha Patel', course: 'OS', score: 91, status: 'excellent' },
-    ];
+    const recentStudents = grades.slice(0, 5).map((g) => {
+      const score = Math.round(pct(g));
+      return { name: g.student.name, course: g.course.name, score, status: score >= 85 ? 'excellent' : score >= 70 ? 'good' : 'needs-help' };
+    });
 
     return {
       activeCourses,
@@ -237,14 +236,12 @@ export class DashboardController {
       where: { status: 'COMPLETED' }
     });
     const revenue = revenueObj._sum.amount || 0;
-    const uptime = "99.9%";
 
     return {
       totalStudents,
       totalTeachers,
       totalCourses,
       revenue,
-      uptime,
       departments,
       recentPayments,
       pendingUsers

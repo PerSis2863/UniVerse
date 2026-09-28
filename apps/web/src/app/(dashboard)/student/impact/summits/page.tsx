@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState, useEffect } from 'react';
@@ -62,7 +63,7 @@ export default function GlobalSummitsPage() {
         rightNode={
           <div className="flex items-center gap-2">
             <span className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold flex items-center gap-1.5">
-              <Trophy className="w-3.5 h-3.5" /> $165K Total Innovation Grants
+              <Trophy className="w-3.5 h-3.5" /> {summits.length} upcoming event{summits.length === 1 ? '' : 's'}
             </span>
           </div>
         }
@@ -83,9 +84,9 @@ export default function GlobalSummitsPage() {
                 Need a teammate from another university? Team up with students from other campuses who share your cause and bring complementary skills.
               </p>
             </div>
-            <button className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 whitespace-nowrap">
-              <Users className="w-4 h-4" /> Find Inter-College Teammates
-            </button>
+            <Link href="/student/groups" className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 whitespace-nowrap">
+              <Users className="w-4 h-4" /> Find teammates in Groups
+            </Link>
           </div>
 
           {/* Summits List */}
@@ -102,7 +103,7 @@ export default function GlobalSummitsPage() {
               summits.map((summit, index) => {
                 const isRegistered = registeredSummits.includes(summit.id);
                 const format = summit.isVirtual ? 'Online Worldwide' : (summit.location || 'Hybrid');
-                const prizePool = '$' + (summit.impactPoints * 1000).toLocaleString() + ' Fund';
+                const prizePool = `+${summit.impactPoints} XP`;
                 const daysRemaining = Math.max(0, Math.ceil((new Date(summit.startDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
                 const teamsRegistered = summit._count?.registrations || 0;
                 

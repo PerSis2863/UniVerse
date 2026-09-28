@@ -129,7 +129,7 @@ export default function AssociationsPage() {
                 <div className="relative z-10 flex items-center justify-between mt-auto pt-4 border-t border-white/[0.05]">
                   <div className="flex items-center gap-1.5 text-zinc-400 text-sm">
                     <Users className="w-4 h-4" />
-                    <span>{club.members}</span>
+                    <span>{club.members ?? club._count?.memberships ?? 0}</span>
                   </div>
                   <button 
                     onClick={() => handleJoin(club.id, club.name)}

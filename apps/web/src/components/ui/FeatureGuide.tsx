@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Sparkles, type LucideIcon } from 'lucide-react';
+import { FlaskConical, Sparkles, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSampleMode } from '@/lib/sample-mode';
+import { startSampleMode } from '@/components/SampleMode';
 
 export interface FeatureGuideProps {
   icon: LucideIcon;
@@ -23,6 +25,7 @@ export interface FeatureGuideProps {
  */
 export function FeatureGuide({ icon: Icon, title, description, steps, example, action, className }: FeatureGuideProps) {
   const ActionEl = action?.href ? Link : 'button';
+  const sampleOn = useSampleMode();
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -51,15 +54,26 @@ export function FeatureGuide({ icon: Icon, title, description, steps, example, a
               ))}
             </ol>
           )}
-          {action && (
-            <ActionEl
-              href={action.href as string}
-              onClick={action.onClick}
-              className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-bold shadow-lg shadow-indigo-500/25 hover:opacity-95 active:scale-[0.98] transition"
-            >
-              {action.label}
-            </ActionEl>
-          )}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {action && (
+              <ActionEl
+                href={action.href as string}
+                onClick={action.onClick}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-bold shadow-lg shadow-indigo-500/25 hover:opacity-95 transition"
+              >
+                {action.label}
+              </ActionEl>
+            )}
+            {!sampleOn && (
+              <button
+                onClick={startSampleMode}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-amber-400/60 bg-amber-400/10 text-amber-700 dark:text-amber-300 text-sm font-bold hover:bg-amber-400/20 transition"
+              >
+                <FlaskConical className="w-4 h-4" /> Try it with sample data
+              </button>
+            )}
+          </div>
+          {!sampleOn && <p className="mt-2 text-xs text-zinc-500">Fills the whole app with example data so you can click around. Nothing is saved.</p>}
         </div>
         {example && (
           <div className="relative">

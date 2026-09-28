@@ -361,7 +361,7 @@ export default function GradesPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <KpiCard title="Cumulative GPA" value={semGPA} icon={TrendingUp} change={0} color="indigo" />
-          <KpiCard title="Credits Earned" value={gradesData.reduce((acc: number, r: any) => acc + r.credits, 0).toString()} icon={Award} change={0} color="emerald" />
+          <KpiCard title="Credits Earned" value={byCourse.reduce((acc, c) => acc + (c.credits || 0), 0).toString()} icon={Award} change={0} color="emerald" />
           <KpiCard title="Average Score" value={`${Math.round(avg)}%`} icon={BookOpen} change={0} color="fuchsia" />
         </div>
 

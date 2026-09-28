@@ -1,7 +1,13 @@
 import { getAuthToken } from './auth-token';
+import { isSampleMode } from './sample-mode';
 
 /** fetch() against this app's own /api routes with the signed-in user's bearer token attached. */
 export async function authedFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  if (isSampleMode()) {
+    const { resolveSample } = await import('./sample/router');
+    const hit = resolveSample(init.method ?? 'GET', input, init.body);
+    if (hit) return new Response(JSON.stringify(hit.data), { status: hit.status, headers: { 'Content-Type': 'application/json' } });
+  }
   const token = await getAuthToken();
   const headers = new Headers(init.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
