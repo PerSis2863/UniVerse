@@ -1,86 +1,79 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { AppSkeleton } from '@/components/layout/AppSkeleton';
 import { useAuthStore } from '@/store/auth';
-import { Role } from '@/types';
+import { Role, UserStatus } from '@/types';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
 
+type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null };
+
+const toUser = (me: MeResponse, photoURL?: string | null) => ({
+  id: me.id,
+  name: me.name || 'Student',
+  email: me.email,
+  role: me.role as Role,
+  status: (me.status || 'ACTIVE') as UserStatus,
+  createdAt: me.createdAt || new Date().toISOString(),
+  avatar: me.avatar || photoURL || undefined,
+});
+
+const RESYNC_MS = 5 * 60 * 1000;
+const noopSubscribe = () => () => {};
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user: demoUser, setUser } = useAuthStore();
+  const demoUser = useAuthStore((s) => s.user);
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  // false during server rendering and hydration, true afterwards
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    let cancelled = false;
+    let signedIn = false;
+    let lastSync = 0;
 
-  useEffect(() => {
-    const checkSync = async () => {
-      const token = localStorage.getItem('accessToken');
-      if (token && demoUser && demoUser.id.includes('@')) {
-        try {
-          const res = await api.get('/users/me');
-          if (res.data) {
-            setUser({
-              id: res.data.id,
-              name: res.data.name || 'Student',
-              email: res.data.email,
-              role: res.data.role as Role,
-              status: res.data.status || 'ACTIVE',
-              createdAt: res.data.createdAt || new Date().toISOString(),
-              avatar: res.data.avatar || undefined,
-            });
-          }
-        } catch (e) {
-          console.error("Failed to sync user data", e);
-        }
+    // Loads the profile (name, role, avatar) from the server, so changes made on another device or
+    // by an admin show up here. The saved copy is shown meanwhile.
+    const syncProfile = async () => {
+      lastSync = Date.now();
+      try {
+        const res = await api.get<MeResponse>('/users/me');
+        if (!cancelled && res.data) useAuthStore.getState().setUser(toUser(res.data, auth.currentUser?.photoURL));
+      } catch (e) {
+        console.error('Failed to fetch user data', e);
       }
     };
-    checkSync();
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setIsSignedIn(true);
-        // Sync Firebase User to our local store
-        if (!demoUser || demoUser.id.includes('@')) {
-          try {
-            const res = await api.get('/users/me');
-            if (res.data) {
-              setUser({
-                id: res.data.id,
-                name: res.data.name || 'Student',
-                email: res.data.email,
-                role: res.data.role as Role,
-                status: res.data.status || 'ACTIVE',
-                createdAt: res.data.createdAt || new Date().toISOString(),
-                avatar: res.data.avatar || firebaseUser.photoURL || undefined,
-              });
-            }
-          } catch (e) {
-             console.error("Failed to fetch user data", e);
-          }
-        }
-      } else {
-        // If not firebase user, but we have a mock token, we consider them signed in
-        const token = localStorage.getItem('accessToken');
-        if (token && token.startsWith('mock-token-')) {
-          setIsSignedIn(true);
-        } else {
-          setIsSignedIn(false);
-        }
+      const token = localStorage.getItem('accessToken');
+      signedIn = !!firebaseUser || !!token?.startsWith('mock-token-');
+      if (!cancelled) setIsSignedIn(signedIn);
+      if (signedIn) {
+        // With a saved profile the app shows right away and refreshes it in the background;
+        // without one, wait for it so the navigation knows the role.
+        if (useAuthStore.getState().user) void syncProfile();
+        else await syncProfile();
       }
-      setIsLoaded(true);
+      if (!cancelled) setIsLoaded(true);
     });
 
-    return () => unsubscribe();
-  }, [demoUser, setUser]);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && signedIn && Date.now() - lastSync > RESYNC_MS) void syncProfile();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn && !demoUser) {
@@ -90,6 +83,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Show the app skeleton while the session is restored (static markup, so no hydration mismatch)
   if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return <AppSkeleton />;
-  
+
   return <DashboardShell>{children}</DashboardShell>;
 }

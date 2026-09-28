@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import { ApiWarmup } from '@/components/ApiWarmup';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           'radial-gradient(90% 55% at 0% 0%, rgba(79,70,229,0.30), transparent 70%), radial-gradient(90% 55% at 100% 100%, rgba(192,38,211,0.22), transparent 70%), #0a0d13',
       }}
     >
+      <ApiWarmup />
       {/* ── Left Panel — always dark ─────────────────── */}
       <div
         className="hidden lg:flex w-[52%] relative overflow-hidden flex-col"

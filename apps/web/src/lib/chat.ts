@@ -16,7 +16,13 @@ export function isOnline(lastSeenAt: Date | null | undefined) {
 }
 
 /** Record that the user is active (at most one write every 30s). */
+// Per Worker instance: when each user's lastSeenAt was last written, so polling doesn't write every time.
+const lastTouched = new Map<string, number>();
+
 export async function touchPresence(userId: string) {
+  if (Date.now() - (lastTouched.get(userId) ?? 0) < 30_000) return;
+  lastTouched.set(userId, Date.now());
+  if (lastTouched.size > 5000) lastTouched.clear();
   const cutoff = new Date(Date.now() - 30_000);
   await prisma.user.updateMany({
     where: { id: userId, OR: [{ lastSeenAt: null }, { lastSeenAt: { lt: cutoff } }] },
@@ -25,13 +31,18 @@ export async function touchPresence(userId: string) {
 }
 
 /** The official "UniVerse Impact" account that sends welcome messages. */
+let systemUserId: string | null = null;
+
 export async function getSystemUser() {
-  return prisma.user.upsert({
+  if (systemUserId) return { id: systemUserId };
+  const system = await prisma.user.upsert({
     where: { email: SYSTEM_EMAIL },
     update: {},
     create: { email: SYSTEM_EMAIL, firebaseUid: SYSTEM_FIREBASE_UID, name: 'UniVerse Impact', role: 'ADMIN', status: 'ACTIVE' },
     select: { id: true },
   });
+  systemUserId = system.id;
+  return system;
 }
 
 function welcomeText(user: SessionUser) {
@@ -59,20 +70,28 @@ function welcomeText(user: SessionUser) {
 }
 
 /** Creates the one-time welcome conversation for a user if they don't have it yet. */
+// Users known to already have the welcome conversation (per Worker instance).
+const welcomed = new Set<string>();
+
 export async function ensureWelcome(user: SessionUser) {
+  if (welcomed.has(user.id)) return;
   const system = await getSystemUser();
   if (system.id === user.id) return;
   const existing = await prisma.conversation.findFirst({
     where: { isGroup: false, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: system.id } } }] },
     select: { id: true },
   });
-  if (existing) return;
+  if (existing) {
+    welcomed.add(user.id);
+    return;
+  }
   await prisma.conversation.create({
     data: {
       participants: { create: [{ userId: user.id }, { userId: system.id, lastReadAt: new Date() }] },
       messages: { create: { senderId: system.id, body: welcomeText(user), type: 'TEXT' } },
     },
   });
+  welcomed.add(user.id);
 }
 
 /** The caller's membership in a conversation, or null. */

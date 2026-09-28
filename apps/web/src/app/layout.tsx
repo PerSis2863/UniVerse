@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import ErrorMonitorBootstrap from '@/components/ErrorMonitorBootstrap';
 import { MotionProvider } from '@/components/MotionProvider';
+import { UpdateNotifier } from '@/components/pwa/UpdateNotifier';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} ${outfit.variable} min-h-screen antialiased`} style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
           <ErrorMonitorBootstrap />
+          <UpdateNotifier />
           <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
           <MotionProvider>{children}</MotionProvider>
           <Toaster 

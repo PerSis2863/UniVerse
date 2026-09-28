@@ -1,7 +1,7 @@
 import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { UnauthorizedException } from '../http';
-import { isDemoAccount, isDemoLoginEnabled } from '../auth';
+import { forgetUser, isDemoAccount, isDemoLoginEnabled } from '../auth';
 
 const userSelect = {
   id: true, name: true, email: true, role: true, status: true, avatar: true,
@@ -29,7 +29,10 @@ export default function auth(router: Router) {
     const data: { name?: string; role?: 'STUDENT' | 'TEACHER' } = {};
     if (body.name && String(body.name).trim()) data.name = String(body.name).trim();
     if (body.role === 'STUDENT' || body.role === 'TEACHER') data.role = body.role;
-    if (Object.keys(data).length > 0) await prisma.user.update({ where: { id: user.id }, data });
+    if (Object.keys(data).length > 0) {
+      await prisma.user.update({ where: { id: user.id }, data });
+      forgetUser(user.id);
+    }
     return getMe(user.id);
   });
 }

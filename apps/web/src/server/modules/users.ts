@@ -3,6 +3,7 @@ import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { pick } from '../pick';
 import { ConflictException, NotFoundException } from '../http';
+import { forgetUser } from '../auth';
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
@@ -66,16 +67,21 @@ export default function users(router: Router) {
   });
 
   // Only profile fields: the old API passed the whole body through, which let users change their role.
-  r.patch('me', ({ user, body }) =>
-    prisma.user.update({ where: { id: user.id }, data: pick(body, ['name', 'phone', 'avatar'] as const), select: safeSelect }),
-  );
+  r.patch('me', async ({ user, body }) => {
+    const updated = await prisma.user.update({ where: { id: user.id }, data: pick(body, ['name', 'phone', 'avatar'] as const), select: safeSelect });
+    forgetUser(user.id);
+    return updated;
+  });
 
-  r.patch<{ id: string }>(':id/status', { roles: ['ADMIN'] }, ({ params, body }) =>
-    prisma.user.update({ where: { id: params.id }, data: { status: body.status as UserStatus }, select: safeSelect }),
-  );
+  r.patch<{ id: string }>(':id/status', { roles: ['ADMIN'] }, async ({ params, body }) => {
+    const updated = await prisma.user.update({ where: { id: params.id }, data: { status: body.status as UserStatus }, select: safeSelect });
+    forgetUser(params.id);
+    return updated;
+  });
 
   r.delete<{ id: string }>(':id', { roles: ['ADMIN'] }, async ({ params }) => {
     await prisma.user.delete({ where: { id: params.id } });
+    forgetUser(params.id);
     return { success: true };
   });
 }
