@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { membership } from '@/lib/chat';
+import { publishChat } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -25,5 +26,6 @@ export async function POST(req: Request, { params }: Ctx) {
     if (!meta.multiple) await prisma.pollVote.deleteMany({ where: { messageId: id, userId: user.id } });
     await prisma.pollVote.create({ data: { messageId: id, userId: user.id, option } });
   }
+  publishChat(msg.conversationId);
   return NextResponse.json({ ok: true });
 }

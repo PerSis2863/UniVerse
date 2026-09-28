@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
 import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
-import { UnauthorizedException } from './http';
+import { ForbiddenException, UnauthorizedException } from './http';
 
 // Turns a bearer token into a platform user (ported from the old NestJS API).
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
@@ -64,8 +64,58 @@ export function extractBearer(value: string | undefined | null): string | null {
   return trimmed || null;
 }
 
+// Verified tokens → user, kept for up to a minute per Worker instance so each API call doesn't
+// pay a database round trip just to identify the caller. Entries never outlive the token itself,
+// and are dropped when that user's role, status or profile changes (forgetUser).
+const CACHE_MS = 60_000;
+const MAX_ENTRIES = 1000;
+const verified = new Map<string, { user: User; until: number }>();
+
+function remember(token: string, user: User, tokenExp?: number) {
+  const until = Math.min(Date.now() + CACHE_MS, tokenExp ? tokenExp * 1000 : Infinity);
+  if (verified.size >= MAX_ENTRIES) verified.delete(verified.keys().next().value as string);
+  verified.set(token, { user, until });
+}
+
+/** Call after changing a user's role, status or profile so the next request reloads it. */
+export function forgetUser(userId: string) {
+  for (const [token, entry] of verified) if (entry.user.id === userId) verified.delete(token);
+}
+
+/** Fetches Google's signing keys ahead of the first sign-in (used by the warm-up call). */
+export async function warmFirebaseKeys() {
+  try {
+    await FIREBASE_KEYS.reload();
+  } catch {
+    // best effort
+  }
+}
+
 export async function resolveUser(token: string | null): Promise<User> {
   if (!token) throw new UnauthorizedException('Missing authentication token');
+  const cached = verified.get(token);
+  let user: User;
+  if (cached && cached.until > Date.now()) {
+    user = cached.user;
+  } else {
+    user = await resolveUserUncached(token);
+    remember(token, user, token.startsWith('mock-token-') ? undefined : decodeExp(token));
+  }
+  // An admin can suspend an account (Users → Deactivate); it then can't use the platform.
+  if (user.status === 'SUSPENDED') throw new ForbiddenException('Your account has been suspended. Please contact your administrator.');
+  return user;
+}
+
+function decodeExp(token: string): number | undefined {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof payload.exp === 'number' ? payload.exp : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function resolveUserUncached(token: string): Promise<User> {
 
   if (token.startsWith('mock-token-')) {
     if (!isDemoLoginEnabled()) throw new UnauthorizedException('Demo login is disabled');

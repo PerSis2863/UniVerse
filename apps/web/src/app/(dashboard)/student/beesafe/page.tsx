@@ -18,15 +18,20 @@ export default function BeeSafeReporting() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('https://ipapi.co/json/')
+    fetch('/api/geo')
       .then(res => res.json())
-      .then(data => {
-        if (data.country_code) {
-          setCountryName(data.country_name);
-          if (EU_COUNTRIES.includes(data.country_code)) {
+      .then((data: { countryCode: string | null }) => {
+        const code = data.countryCode;
+        if (code) {
+          try {
+            setCountryName(new Intl.DisplayNames(['en'], { type: 'region' }).of(code) ?? code);
+          } catch {
+            setCountryName(code);
+          }
+          if (EU_COUNTRIES.includes(code)) {
             setEmergencyNumber('112');
           } else {
-            setEmergencyNumber(EMERGENCY_NUMBERS[data.country_code] || '911 (or local emergency number)');
+            setEmergencyNumber(EMERGENCY_NUMBERS[code] || '911 (or local emergency number)');
           }
         }
       })

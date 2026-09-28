@@ -641,6 +641,27 @@ model Notification {
   @@map("notifications")
 }
 
+/// Who did what: role and status changes, grades, credential decisions, deletions, ...
+/// Actor name and role are copied so entries stay readable after a user is deleted.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorName  String?
+  actorRole  String?
+  action     String // e.g. "user.role_changed", "grade.posted"
+  targetType String? // "user", "course", "grade", "credential", ...
+  targetId   String?
+  summary    String // human-readable, e.g. "Changed Bob Smith's role to TEACHER"
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
 model Payment {
   id              String        @id @default(cuid())
   userId          String

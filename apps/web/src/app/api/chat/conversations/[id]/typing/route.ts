@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { membership } from '@/lib/chat';
+import { publishChat } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -13,5 +14,6 @@ export async function POST(req: Request, { params }: Ctx) {
   const me = await membership(id, user.id);
   if (!me) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
   await prisma.conversationParticipant.update({ where: { id: me.id }, data: { typingUntil: new Date(Date.now() + 6000) } });
+  publishChat(id);
   return NextResponse.json({ ok: true });
 }

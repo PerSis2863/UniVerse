@@ -2,11 +2,15 @@ import type { Role, UserStatus } from '@prisma/client';
 import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { pick } from '../pick';
-import { ConflictException, NotFoundException } from '../http';
+import { BadRequestException, ConflictException, NotFoundException } from '../http';
+import { forgetUser } from '../auth';
+import { audit } from '../audit';
+
+const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
-  avatar: true, phone: true, googleId: true, createdAt: true, updatedAt: true,
+  avatar: true, phone: true, googleId: true, emailNotifications: true, createdAt: true, updatedAt: true,
   studentProfile: true, teacherProfile: true,
 };
 
@@ -51,7 +55,7 @@ export default function users(router: Router) {
 
   r.get<{ id: string }>(':id', ({ params }) => findOne(params.id));
 
-  r.post('invitations', { roles: ['ADMIN'] }, async ({ body }) => {
+  r.post('invitations', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
     const email = String(body.email ?? '');
     const role = body.role as Role;
     if (await prisma.user.findUnique({ where: { email } })) throw new ConflictException('User with this email already exists');
@@ -62,20 +66,36 @@ export default function users(router: Router) {
       update: { role, status: 'PENDING', expiresAt },
       create: { email, role, status: 'PENDING', expiresAt },
     });
+    audit(user, { action: 'user.invited', summary: `Invited ${email} as ${role}`, targetType: 'invitation', targetId: invitation.id, metadata: { email, role } }, req);
     return { success: true, invitation };
   });
 
   // Only profile fields: the old API passed the whole body through, which let users change their role.
-  r.patch('me', ({ user, body }) =>
-    prisma.user.update({ where: { id: user.id }, data: pick(body, ['name', 'phone', 'avatar'] as const), select: safeSelect }),
-  );
+  r.patch('me', async ({ user, body }) => {
+    const data: Record<string, unknown> = pick(body, ['name', 'phone', 'avatar'] as const);
+    if (typeof body?.emailNotifications === 'boolean') data.emailNotifications = body.emailNotifications;
+    const updated = await prisma.user.update({ where: { id: user.id }, data, select: safeSelect });
+    forgetUser(user.id);
+    return updated;
+  });
 
-  r.patch<{ id: string }>(':id/status', { roles: ['ADMIN'] }, ({ params, body }) =>
-    prisma.user.update({ where: { id: params.id }, data: { status: body.status as UserStatus }, select: safeSelect }),
-  );
+  r.patch<{ id: string }>(':id/status', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
+    const status = body.status as UserStatus;
+    if (!USER_STATUSES.includes(status)) throw new BadRequestException(`status must be one of ${USER_STATUSES.join(', ')}`);
+    if (params.id === user.id) throw new BadRequestException("You can't change the status of your own account.");
+    const updated = await prisma.user.update({ where: { id: params.id }, data: { status }, select: safeSelect });
+    forgetUser(params.id);
+    audit(user, { action: 'user.status_changed', summary: `Set ${updated.name}'s account to ${status}`, targetType: 'user', targetId: params.id, metadata: { status } }, req);
+    return updated;
+  });
 
-  r.delete<{ id: string }>(':id', { roles: ['ADMIN'] }, async ({ params }) => {
+  r.delete<{ id: string }>(':id', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
+    if (params.id === user.id) throw new BadRequestException("You can't delete your own account here.");
+    const target = await prisma.user.findUnique({ where: { id: params.id }, select: { name: true, email: true, role: true } });
+    if (!target) throw new NotFoundException('User not found');
     await prisma.user.delete({ where: { id: params.id } });
+    forgetUser(params.id);
+    audit(user, { action: 'user.deleted', summary: `Deleted ${target.name} (${target.email})`, targetType: 'user', targetId: params.id, metadata: target }, req);
     return { success: true };
   });
 }

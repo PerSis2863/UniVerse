@@ -13,12 +13,14 @@ import { Avatar } from './MessageBubble';
 import { ChatWindow } from './ChatWindow';
 import { NewChatDialog } from './NewChatDialog';
 import { type ConversationSummary, chatJson, previewText, timeLabel } from './chat-client';
+import { useLiveInterval } from '@/lib/realtime-client';
 
 type Filter = 'all' | 'unread' | 'groups';
 
 export function MessagingHub() {
+  const refreshInterval = useLiveInterval(5000, 30_000);
   const { data, error, isLoading, mutate } = useSWR<{ conversations: ConversationSummary[]; me: string }>('/api/chat/conversations', authedJson, {
-    refreshInterval: 5000,
+    refreshInterval,
     revalidateOnFocus: true,
   });
   const [activeId, setActiveId] = useState<string | null>(null);

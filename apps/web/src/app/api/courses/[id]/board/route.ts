@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { courseAccess } from '@/lib/course-access';
 import { isAppFileUrl } from '@/lib/storage';
+import { publish } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
@@ -85,6 +86,7 @@ export async function POST(req: Request, { params }: Ctx) {
         await prisma.notification.createMany({
           data: students.map((s) => ({ userId: s.studentId, title: `${access.course.code}: ${title}`, body: body.slice(0, 200), type: 'announcement', link: '/student/blackboard' })),
         });
+        publish(students.map((s) => s.studentId), { type: 'notification' });
       }
       return NextResponse.json(item, { status: 201 });
     }

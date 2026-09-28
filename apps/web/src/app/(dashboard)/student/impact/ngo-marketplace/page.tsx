@@ -8,9 +8,11 @@ import { Globe, Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin,
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';
+import { useInitialSearch } from '@/hooks/useInitialSearch';
 
 export default function NGOMarketplacePage() {
   const [search, setSearch] = useState('');
+  useInitialSearch(setSearch);
   const [selectedType, setSelectedType] = useState('ALL');
   const [selected, setSelected] = useState<any | null>(null);
   const [applied, setApplied] = useState<string[]>([]);

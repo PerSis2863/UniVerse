@@ -8,9 +8,11 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 import Image from 'next/image';
+import { useInitialSearch } from '@/hooks/useInitialSearch';
 
 export default function StudentInternships() {
   const [searchTerm, setSearchTerm] = useState('');
+  useInitialSearch(setSearchTerm);
   const [bookmarkedIds, setBookmarkedIds] = useState<number[]>([]);
   
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);

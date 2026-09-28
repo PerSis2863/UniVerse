@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { membership, REACTIONS } from '@/lib/chat';
+import { publishChat } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -21,5 +22,6 @@ export async function POST(req: Request, { params }: Ctx) {
   const existing = await prisma.messageReaction.findUnique({ where: key, select: { id: true } });
   if (existing) await prisma.messageReaction.delete({ where: key });
   else await prisma.messageReaction.create({ data: { messageId: id, userId: user.id, emoji } });
+  publishChat(msg.conversationId);
   return NextResponse.json({ reacted: !existing });
 }

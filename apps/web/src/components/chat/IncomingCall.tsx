@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Phone, PhoneOff, Video } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from './MessageBubble';
+import { useLiveInterval } from '@/lib/realtime-client';
 
 type IncomingCallItem = {
   id: string;
@@ -24,7 +25,8 @@ function readDismissed(): string[] {
 
 /** Shows a ringing card anywhere in the app when someone starts a call in one of your chats. */
 export function IncomingCall({ inboxPath }: { inboxPath: string }) {
-  const { data } = useSWR<IncomingCallItem[]>('/api/chat/incoming', authedJson, { refreshInterval: 8000, revalidateOnFocus: true, shouldRetryOnError: false });
+  const refreshInterval = useLiveInterval(8000, 30_000);
+  const { data } = useSWR<IncomingCallItem[]>('/api/chat/incoming', authedJson, { refreshInterval, revalidateOnFocus: true, shouldRetryOnError: false });
   const [dismissed, setDismissed] = useState<string[]>([]);
   useEffect(() => setDismissed(readDismissed()), []);
 

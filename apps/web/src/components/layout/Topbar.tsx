@@ -12,6 +12,7 @@ import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
+import { useLiveInterval } from '@/lib/realtime-client';
 
 type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
 const NOTIF_ICON: Record<string, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔', message: '💬', grade: '🎓', event: '📅' };
@@ -53,10 +54,11 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
     return () => window.removeEventListener('universe:open-notifications', open);
   }, []);
 
+  const notificationPoll = useLiveInterval(60_000, 5 * 60_000);
   const { data: apiNotifications, mutate: refreshNotifications } = useSWR<ApiNotification[]>(
     user ? '/api/notifications' : null,
     authedJson,
-    { refreshInterval: 60_000, revalidateOnFocus: true, dedupingInterval: 15_000 },
+    { refreshInterval: notificationPoll, revalidateOnFocus: true, dedupingInterval: 15_000 },
   );
   const notifications = (apiNotifications ?? []).map((n) => ({
     id: n.id,

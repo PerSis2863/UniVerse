@@ -32,7 +32,7 @@ export default function AdminUsers() {
 
   const handleDeactivate = async (userId: string) => {
     try {
-      await api.patch(`/users/${userId}/status`, { status: 'INACTIVE' });
+      await api.patch(`/users/${userId}/status`, { status: 'SUSPENDED' });
       toast.success('User deactivated.');
       mutateUsers();
     } catch (e) {
@@ -164,12 +164,12 @@ export default function AdminUsers() {
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${
-                          user.status !== 'INACTIVE'
+                          user.status !== 'SUSPENDED'
                             ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                             : 'bg-red-500/10 text-red-400 border border-red-500/20'
                         }`}>
-                          {user.status !== 'INACTIVE' ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
-                          {user.status !== 'INACTIVE' ? 'ACTIVE' : 'INACTIVE'}
+                          {user.status !== 'SUSPENDED' ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                          {user.status !== 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED'}
                         </span>
                       </td>
                       <td className="p-4 text-zinc-600 dark:text-zinc-400 text-sm">
@@ -196,7 +196,7 @@ export default function AdminUsers() {
                             >
                               <Mail className="w-3.5 h-3.5" /> Send Email
                             </button>
-                            {user.status !== 'INACTIVE' ? (
+                            {user.status !== 'SUSPENDED' ? (
                               <button
                                 onClick={() => handleDeactivate(user.id)}
                                 className="w-full px-4 py-2 text-sm text-amber-400 hover:bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2"
@@ -263,8 +263,8 @@ export default function AdminUsers() {
                 </div>
                 <div className="p-3 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl">
                   <div className="text-zinc-500 dark:text-zinc-500 text-xs mb-1">Status</div>
-                  <div className={`font-semibold ${selectedUser.status !== 'INACTIVE' ? 'text-green-400' : 'text-red-400'}`}>
-                    {selectedUser.status !== 'INACTIVE' ? 'Active' : 'Inactive'}
+                  <div className={`font-semibold ${selectedUser.status !== 'SUSPENDED' ? 'text-green-400' : 'text-red-400'}`}>
+                    {selectedUser.status !== 'SUSPENDED' ? 'Active' : 'Suspended'}
                   </div>
                 </div>
                 <div className="p-3 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl col-span-2">

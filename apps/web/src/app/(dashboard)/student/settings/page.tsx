@@ -43,10 +43,17 @@ export default function StudentSettings() {
   const handleToggleEmail = async () => {
     if (!user) return;
     setSaving(true);
-    await new Promise(r => setTimeout(r, 600));
-    setUser({ ...user, emailNotifications: !user.emailNotifications });
-    setSaving(false);
-    toast.success(t('settings.notifications') + ' updated!');
+    const next = !(user.emailNotifications ?? true);
+    setUser({ ...user, emailNotifications: next });
+    try {
+      await api.patch('/users/me', { emailNotifications: next });
+      toast.success(next ? 'Email notifications turned on' : 'Email notifications turned off');
+    } catch {
+      setUser({ ...user, emailNotifications: !next });
+      toast.error('Could not save your email preference');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const sections = [
@@ -208,9 +215,7 @@ export default function StudentSettings() {
                         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Email & In-App</p>
                       </div>
                       {[
-                        { label: 'Email Notifications', desc: 'Receive announcements and updates via email.', icon: Mail, key: 'emailNotifications' },
-                        { label: 'Grade Alerts', desc: 'Get notified when new grades are posted.', icon: Bell, key: 'gradeAlerts' },
-                        { label: 'Project Invites', desc: 'Notifications for NGO and impact project invitations.', icon: Globe, key: 'projectInvites' },
+                        { label: 'Email Notifications', desc: 'Email me about new grades, credential decisions, messages I miss and quizzes due tomorrow.', icon: Mail, key: 'emailNotifications' },
                       ].map(item => (
                         <div key={item.key} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] rounded-xl">
                           <div className="flex items-start gap-3">
