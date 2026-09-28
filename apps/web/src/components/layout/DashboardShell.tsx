@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { AIStudyAssistant } from '@/components/ui/AIStudyAssistant';
-import { CommandPalette } from '@/components/ui/CommandPalette';
+import { CommandPalette, openCommandPalette } from '@/components/ui/CommandPalette';
 import { useAuthStore } from '@/store/auth';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -128,7 +128,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   }, [pathname]);
 
   const openSearch = () => {
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true }));
+    openCommandPalette();
   };
   const openNotifications = () => {
     window.dispatchEvent(new CustomEvent('universe:open-notifications'));

@@ -17,7 +17,7 @@ import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
 import { auth } from '@/lib/firebase';
 
-type NavItem = {
+export type NavItem = {
   href?: string;
   label: string;
   icon: any;
@@ -25,7 +25,7 @@ type NavItem = {
   action?: string;
 };
 
-const navByRole: Record<string, NavItem[]> = {
+export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
     { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard },
     { href: '/student/information', label: 'nav.information', icon: Info },

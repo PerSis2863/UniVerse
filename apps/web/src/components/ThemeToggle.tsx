@@ -3,24 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-type Theme = 'dark' | 'light' | 'system';
-
-function getSystemTheme(): 'dark' | 'light' {
-  if (typeof window === 'undefined') return 'dark';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function applyTheme(theme: Theme) {
-  const resolved = theme === 'system' ? getSystemTheme() : theme;
-  const html = document.documentElement;
-  if (resolved === 'dark') {
-    html.classList.add('dark');
-  } else {
-    html.classList.remove('dark');
-  }
-  try { localStorage.setItem('theme', theme); } catch {}
-}
+import { applyTheme, getSavedTheme, watchSystemTheme, type Theme } from '@/lib/theme';
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>('dark');
@@ -29,10 +12,14 @@ export function ThemeToggle() {
 
   useEffect(() => {
     // On mount, read saved preference or default to dark
-    const saved = (localStorage.getItem('theme') as Theme | null) ?? 'dark';
+    const saved = getSavedTheme();
     setTheme(saved);
-    applyTheme(saved);
+    applyTheme(saved, { animate: false });
+    watchSystemTheme();
     setMounted(true);
+    const sync = () => setTheme(getSavedTheme());
+    window.addEventListener('universe:theme', sync);
+    return () => window.removeEventListener('universe:theme', sync);
   }, []);
 
   const handleSet = (t: Theme) => {
@@ -48,8 +35,6 @@ export function ThemeToggle() {
   return (
     <div className="relative">
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
         className="btn-ghost p-2"
         aria-label="Toggle theme"

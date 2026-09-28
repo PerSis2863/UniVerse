@@ -737,6 +737,9 @@ html, body { overflow-x: clip; max-width: 100%; }
   .flex.overflow-x-auto { scrollbar-width: none; overscroll-behavior-x: contain; scroll-padding-inline: 1rem; }
   .flex.overflow-x-auto::-webkit-scrollbar { display: none; }
   .flex.overflow-x-auto > button, .flex.overflow-x-auto > a { flex-shrink: 0; white-space: nowrap; }
+  /* Rows glide and settle on an item, like iOS carousels */
+  .flex.overflow-x-auto { scroll-snap-type: x proximity; scroll-behavior: smooth; }
+  .flex.overflow-x-auto > * { scroll-snap-align: start; scroll-margin-inline: 1rem; }
 }
 
 /* Desktop-sized padding (p-8 / px-8) wastes a sixth of a phone screen; tighten it inside the app on phones */
@@ -805,6 +808,18 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 .dark .skeleton { background-color: rgb(255 255 255 / 0.05); background-image: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.06) 50%, transparent 80%); }
 @keyframes skeleton-sweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background-image: none; } }
+
+/* Shared-element page transitions (course card → Blackboard): quick, springy morph */
+::view-transition-group(*) { animation-duration: 380ms; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+::view-transition-old(root) { animation: 180ms ease-out both vt-fade-out; }
+::view-transition-new(root) { animation: 260ms cubic-bezier(0.22, 1, 0.36, 1) both vt-fade-in; }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
+
+/* Theme switch: one soft crossfade of the whole page (View Transitions) */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 320ms; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+.theme-fading * { transition: none !important; }
 
 /* Content that fades in once data arrives (replaces per-row staggering) */
 @keyframes fade-up { from { opacity: 0; transform: translate3d(0, 6px, 0); } }

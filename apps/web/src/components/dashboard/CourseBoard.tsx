@@ -8,6 +8,7 @@ import useSWR, { type KeyedMutator } from 'swr';
 import { haptic } from '@/lib/haptics';
 import { motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
+import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
@@ -142,9 +143,9 @@ export function CourseBoard({ role }: { role: Role }) {
         {/* Header */}
         <div className="px-4 sm:px-8 py-4 border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: course?.color || '#4f46e5' }}>{course?.code?.slice(-2)}</div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: course?.color || '#4f46e5', viewTransitionName: course ? vtName('course', course.id) : undefined }}>{course?.code?.slice(-2)}</div>
             <div className="min-w-0">
-              <h2 className="font-bold text-zinc-900 dark:text-white truncate">{course?.name}</h2>
+              <h2 className="font-bold text-zinc-900 dark:text-white truncate" style={{ viewTransitionName: course ? vtName('course-title', course.id) : undefined }}>{course?.name}</h2>
               <p className="text-xs text-zinc-500">{course?.teacher?.name ?? 'Instructor'}{board ? ` · ${board.course._count.enrollments} student${board.course._count.enrollments === 1 ? '' : 's'}` : ''}</p>
             </div>
           </div>

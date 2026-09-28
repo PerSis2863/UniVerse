@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { openCommandPalette } from '@/components/ui/CommandPalette';
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Plus, CheckCircle2, X, Archive, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
@@ -119,10 +120,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
-          onClick={() => {
-            const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true, bubbles: true });
-            document.dispatchEvent(event);
-          }}
+          onClick={openCommandPalette}
           className="hidden sm:flex items-center gap-2 bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.07] border border-zinc-200 dark:border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 transition-colors"
         >
           <Search className="w-3.5 h-3.5" />
