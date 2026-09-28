@@ -2,6 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "universe-web",
   "main": ".open-next/worker.js",
+  // Keeps the upload under the Workers size limit (3 MB gzipped on the free plan).
+  "minify": true,
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
