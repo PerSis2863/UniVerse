@@ -4,25 +4,33 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { Pool } from 'pg';
 
 // On Cloudflare Workers, Prisma talks to Postgres through the `pg` driver adapter, and a database
-// connection can't be shared between requests, so each request gets its own client. In Node
-// (`next dev`, scripts) one client is shared as before.
+// connection can't be shared between requests, so each request gets its own client. When the
+// HYPERDRIVE binding is configured (wrangler.jsonc), connections go through Cloudflare Hyperdrive,
+// which pools them and caches reads near the Worker; otherwise straight to DATABASE_URL.
+// In Node (`next dev`, scripts) one client is shared as before.
+declare global {
+  interface CloudflareEnv {
+    HYPERDRIVE?: { connectionString: string };
+  }
+}
+
 const onWorkers = typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers';
 
-function createWorkerClient(): PrismaClient {
+function createWorkerClient(connectionString: string | undefined): PrismaClient {
   // Workers can't run Prisma's native engine, so load its WebAssembly build explicitly (the bundler
   // would otherwise pick the Node build). Required lazily so `next dev` never loads it.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PrismaClient: WasmPrismaClient } = require('@prisma/client/wasm') as typeof import('@prisma/client');
-  return new WasmPrismaClient({ adapter: new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL, max: 5 })) });
+  return new WasmPrismaClient({ adapter: new PrismaPg(new Pool({ connectionString, max: 5 })) });
 }
 
 const perRequest = new WeakMap<object, PrismaClient>();
 
 function workerClient(): PrismaClient {
-  const { ctx } = getCloudflareContext();
+  const { env, ctx } = getCloudflareContext();
   let client = perRequest.get(ctx);
   if (!client) {
-    client = createWorkerClient();
+    client = createWorkerClient(env.HYPERDRIVE?.connectionString ?? process.env.DATABASE_URL);
     perRequest.set(ctx, client);
   }
   return client;

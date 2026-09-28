@@ -69,6 +69,23 @@ and allowed by the CSP. Keep the Vercel Blob store until those files are copied 
 When the Cloudflare deployment works on the new domain, remove the project from Vercel. Keep the
 Vercel **Blob store** until its files are copied to R2.
 
+## Faster database access with Hyperdrive
+
+Hyperdrive keeps pooled connections to Neon open near Cloudflare's servers and caches reads, so
+each request doesn't pay for a new database connection. `src/lib/db.ts` uses it automatically when
+the `HYPERDRIVE` binding exists, and falls back to `DATABASE_URL` otherwise.
+
+1. Neon dashboard → your project → **Connect**. Turn **Connection pooling off** and copy the connection
+   string (the host without `-pooler`). Hyperdrive does the pooling itself.
+2. Cloudflare → **Storage & databases → Hyperdrive** → **Create configuration**. Name it `universe-db`
+   and paste the Neon connection string.
+3. Copy the configuration **ID** and add it to `wrangler.jsonc`:
+   ```jsonc
+   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<ID>" }],
+   ```
+4. Push to `main`; the next build deploys with Hyperdrive. Keep the `DATABASE_URL` secret: the
+   build-time schema sync and `next dev` still use it.
+
 ## Local commands (from `apps/web`)
 
 - `pnpm dev`: Next dev server, as before
@@ -79,5 +96,4 @@ Vercel **Blob store** until its files are copied to R2.
 
 - The Worker bundle is about 2.5 MB gzipped. The Workers **free** plan allows 3 MB, the paid plan ($5/month) 10 MB.
   If the free-plan limit is hit as the app grows, switch to the paid plan.
-- Each request opens its own database connection. If database latency becomes an issue, Cloudflare
-  **Hyperdrive** can be added later to pool connections.
+- Without Hyperdrive, each request opens its own database connection (see the Hyperdrive section).
