@@ -1,4 +1,6 @@
 import type { Role, User } from '@prisma/client';
+import type { RateLimit } from '@cloudflare/workers-types';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { ForbiddenException, HttpException, NotFoundException } from './http';
 import { extractBearer, resolveUser } from './auth';
 
@@ -78,6 +80,9 @@ export class Router {
 
   async handle(req: Request, path: string): Promise<Response> {
     try {
+      if (await rateLimited(req)) {
+        return Response.json({ statusCode: 429, message: 'ThrottlerException: Too Many Requests' }, { status: 429 });
+      }
       const { route, params } = this.match(req.method, path);
       if (!route) throw new NotFoundException(`Cannot ${req.method} /api/${path}`);
 
@@ -95,6 +100,26 @@ export class Router {
       return Response.json({ statusCode: 500, message: 'Internal server error' }, { status: 500 });
     }
   }
+}
+
+declare global {
+  interface CloudflareEnv {
+    API_RATE_LIMITER?: RateLimit;
+  }
+}
+
+/** 100 requests/minute per client IP (the old API's global ThrottlerGuard). Off where the binding is missing. */
+async function rateLimited(req: Request) {
+  let limiter: RateLimit | undefined;
+  try {
+    limiter = getCloudflareContext().env.API_RATE_LIMITER;
+  } catch {
+    return false;
+  }
+  const ip = req.headers.get('cf-connecting-ip');
+  if (!limiter || !ip) return false;
+  const { success } = await limiter.limit({ key: ip });
+  return !success;
 }
 
 function split(path: string) {
