@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { Calendar as CalendarIcon, Clock, Users, ChevronLeft, ChevronRight, Download, X, Plus, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
@@ -320,7 +321,7 @@ export default function TeacherCalendarPage() {
               <div className="flex [--col-width:280px] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
                 {loading ? (
                   <div className="w-full h-64 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                    <ContentSkeleton variant="list" />
                   </div>
                 ) : generatedDates.map((date, index) => {
                   const scheduleForDate = getScheduleForDate(date);

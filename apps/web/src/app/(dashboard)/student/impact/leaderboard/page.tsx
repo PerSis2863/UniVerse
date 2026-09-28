@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { useAuthStore } from '@/store/auth';
 import { useState, useEffect } from 'react';
@@ -253,7 +254,7 @@ export default function LeaderboardPage() {
 
           {/* Podium */}
           {loading ? (
-            <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>
+            <div className="flex justify-center py-20"><ContentSkeleton variant="list" /></div>
           ) : search === '' && top3.length >= 3 && (
             <div className="flex items-end justify-center gap-2 sm:gap-6 pt-10 pb-6 px-4">
               {/* 2nd Place */}

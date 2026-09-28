@@ -784,6 +784,28 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 .sheet-in { animation: sheet-in 340ms var(--ease-ios); }
 @media (min-width: 640px) { .sheet-in { animation: pop-in 240ms var(--ease-ios); } }
 
+/* Grabber on bottom sheets (phones) — hints that the sheet can be swiped down */
+@media (max-width: 639px) {
+  .items-end > :is(.sheet-in, [data-sheet]) { position: relative; }
+  .items-end > :is(.sheet-in, [data-sheet])::before {
+    content: ''; position: absolute; top: 6px; left: 50%; z-index: 30;
+    width: 36px; height: 5px; margin-left: -18px; border-radius: 999px;
+    background: currentColor; opacity: 0.22; pointer-events: none;
+  }
+}
+
+/* Skeleton shimmer: a soft light sweep, like iOS placeholders */
+.skeleton {
+  background-color: rgb(148 163 184 / 0.16);
+  background-image: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.45) 50%, transparent 80%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+.dark .skeleton { background-color: rgb(255 255 255 / 0.05); background-image: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.06) 50%, transparent 80%); }
+@keyframes skeleton-sweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background-image: none; } }
+
 /* Content that fades in once data arrives (replaces per-row staggering) */
 @keyframes fade-up { from { opacity: 0; transform: translate3d(0, 6px, 0); } }
 .fade-up { animation: fade-up 260ms var(--ease-out-soft); }

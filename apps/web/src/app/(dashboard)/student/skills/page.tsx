@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import Link from 'next/link';
@@ -52,7 +53,7 @@ export default function StudentSkills() {
     } catch { toast.error('Could not save the skill.'); } finally { setSavingSkill(false); }
   };
   const deleteSkill = async () => {
-    if (!editor?.id || !confirm(`Remove ${editor.name}?`)) return;
+    if (!editor?.id || !(await confirmDialog({ title: `Remove ${editor.name}?`, message: 'It will disappear from your profile.', confirmLabel: 'Remove', destructive: true }))) return;
     try { await api.delete(`/skills/${editor.id}`); toast.success('Skill removed'); setEditor(null); refreshSkills(); } catch { toast.error('Could not remove the skill.'); }
   };
   const openSkill = (skill: any) => setEditor({ id: skill.id, name: skill.name, category: skill.category || 'Technical', level: skill.level || 'BEGINNER' });

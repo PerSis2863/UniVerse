@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import useSWR from 'swr';
+import useSWR, { type KeyedMutator } from 'swr';
+import { haptic } from '@/lib/haptics';
 import { motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { toast } from 'sonner';
@@ -201,16 +202,33 @@ export function CourseBoard({ role }: { role: Role }) {
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
-type SectionProps = { board: Board; canManage: boolean; refresh: () => void };
+type SectionProps = { board: Board; canManage: boolean; refresh: KeyedMutator<Board> };
 
-function useRemove(courseId: string, refresh: () => void) {
-  return async (kind: string, itemId: string, label: string) => {
-    if (!confirm(`Remove "${label}"?`)) return;
-    try {
-      await authedJson(`/api/courses/${courseId}/board?kind=${kind}&itemId=${itemId}`, { method: 'DELETE' });
-      refresh();
-      toast.success('Removed');
-    } catch (e: any) { toast.error(e.message); }
+const LIST_OF = { announcement: 'announcements', material: 'materials', reading: 'readings', event: 'events' } as const;
+
+/** Removes an item at once and offers Undo for a few seconds; the server delete happens only if it isn't undone. */
+function useRemove(courseId: string, refresh: KeyedMutator<Board>) {
+  return (kind: keyof typeof LIST_OF, itemId: string, label: string) => {
+    const list = LIST_OF[kind];
+    let settled = false;
+    haptic('tap');
+    refresh((cur) => cur && { ...cur, [list]: (cur[list] as { id: string }[]).filter((x) => x.id !== itemId) }, { revalidate: false });
+    const commit = async () => {
+      if (settled) return;
+      settled = true;
+      try {
+        await authedJson(`/api/courses/${courseId}/board?kind=${kind}&itemId=${itemId}`, { method: 'DELETE' });
+      } catch (e: any) {
+        toast.error(e.message || 'Could not remove it');
+        refresh();
+      }
+    };
+    toast(`Removed “${label}”`, {
+      duration: 5000,
+      action: { label: 'Undo', onClick: () => { settled = true; refresh(); } },
+      onAutoClose: commit,
+      onDismiss: commit,
+    });
   };
 }
 

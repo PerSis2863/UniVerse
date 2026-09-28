@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -123,7 +124,7 @@ export function CampusItemManager({ kind, label, categories }: { kind: CampusKin
   };
 
   const remove = async (it: CampusItem) => {
-    if (!confirm(`Delete "${it.title}"?`)) return;
+    if (!(await confirmDialog({ title: `Delete "${it.title}"?`, destructive: true }))) return;
     try {
       await authedJson(`/api/campus-items/${it.id}`, { method: 'DELETE' });
       mutate();

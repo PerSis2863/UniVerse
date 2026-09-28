@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -32,7 +33,7 @@ export default function CourseDetail() {
       <>
         <Topbar title="Loading Course..." />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          <ContentSkeleton variant="dashboard" />
         </div>
       </>
     );

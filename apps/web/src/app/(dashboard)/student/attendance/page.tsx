@@ -1,4 +1,5 @@
 "use client";
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -17,7 +18,7 @@ export default function AttendancePage() {
       <>
         <Topbar title="Attendance" subtitle="Track your class presence and absences." />
         <div className="flex-1 p-8 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+          <ContentSkeleton variant="list" />
         </div>
       </>
     );

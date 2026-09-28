@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2, X, FileSearch, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -120,7 +121,7 @@ export default function DocumentsPage() {
       <>
         <Topbar title="School Documents" subtitle="Manage your official academic and administrative files." />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          <ContentSkeleton variant="grid" />
         </div>
       </>
     );

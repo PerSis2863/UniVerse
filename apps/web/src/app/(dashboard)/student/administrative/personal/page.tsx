@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -51,7 +52,7 @@ export default function PersonalDataPage() {
   };
 
   const removeContact = async (i: number) => {
-    if (!data || !confirm(`Remove ${data.emergencyContacts[i].name}?`)) return;
+    if (!data || !(await confirmDialog({ title: `Remove ${data.emergencyContacts[i].name}?`, message: 'They will no longer be listed as an emergency contact.', confirmLabel: 'Remove', destructive: true }))) return;
     await patch({ emergencyContacts: data.emergencyContacts.filter((_, j) => j !== i) }, 'Contact removed');
   };
 

@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
@@ -60,7 +61,7 @@ export default function TeacherGradesPage() {
   };
 
   const removeGrade = async (g: Grade) => {
-    if (!confirm(`Delete "${g.assignmentName}" (${g.score}/${g.maxScore})?`)) return;
+    if (!(await confirmDialog({ title: `Delete "${g.assignmentName}"?`, message: `${g.score}/${g.maxScore} will be removed from the student’s record.`, destructive: true }))) return;
     try { await api.delete(`/grades/${g.id}`); await mutate(); toast.success('Grade deleted'); } catch (e: any) { toast.error(e.response?.data?.message || 'Could not delete'); }
   };
 

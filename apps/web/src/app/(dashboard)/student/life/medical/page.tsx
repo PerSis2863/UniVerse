@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { HeartPulse, Stethoscope, Activity, X, CheckCircle2, Loader2, Save } from 'lucide-react';
@@ -110,7 +111,7 @@ export default function MedicalPage() {
       <>
         <Topbar title="Medical & Health Services" subtitle="Manage your health profile and emergency contacts" />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+          <ContentSkeleton variant="list" />
         </div>
       </>
     );

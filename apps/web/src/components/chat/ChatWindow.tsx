@@ -1,4 +1,6 @@
 'use client';
+import { haptic } from '@/lib/haptics';
+import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
@@ -80,6 +82,7 @@ export function ChatWindow({ conversationId, onBack, onChanged }: { conversation
   };
 
   const send = async ({ text, file, voice }: SendPayload) => {
+    haptic('tap');
     const tempId = `temp-${Date.now()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
     const replyToId = replyTo?.id;
@@ -322,7 +325,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
   const files = messages.filter((m) => (m.type === 'FILE' || m.type === 'VIDEO' || m.type === 'AUDIO') && m.attachmentUrl).slice(-10).reverse();
 
   const rename = async () => {
-    const name = prompt('New group name', convo.title)?.trim();
+    const name = (await promptDialog({ title: 'Rename group', defaultValue: convo.title, placeholder: 'Group name', confirmLabel: 'Rename', maxLength: 80 }))?.trim();
     if (!name || name === convo.title) return;
     try {
       await chatJson(`/api/chat/conversations/${convo.id}/members`, { method: 'PATCH', body: JSON.stringify({ name }) });
@@ -330,7 +333,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
     } catch (e: any) { toast.error(e.message); }
   };
   const leave = async () => {
-    if (!confirm(`Leave "${convo.title}"?`)) return;
+    if (!(await confirmDialog({ title: `Leave "${convo.title}"?`, message: 'You won’t get new messages from this group.', confirmLabel: 'Leave', destructive: true }))) return;
     try {
       await chatJson(`/api/chat/conversations/${convo.id}/members`, { method: 'DELETE' });
       toast.success(`You left ${convo.title}`);

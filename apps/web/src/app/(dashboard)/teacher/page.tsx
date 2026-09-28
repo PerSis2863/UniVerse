@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
@@ -55,7 +56,7 @@ export default function TeacherDashboard() {
       <>
         <Topbar title={t('teacher.title')} subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`} />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          <ContentSkeleton variant="dashboard" />
         </div>
       </>
     );

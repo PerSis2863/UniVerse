@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { ShieldCheck, ToggleRight, ToggleLeft, AlertCircle, X, ChevronRight, Info, Loader2 } from 'lucide-react';
@@ -94,7 +95,7 @@ export default function StudentConsents() {
       <>
         <Topbar title="My Consents" subtitle="Manage your data privacy and sharing preferences" />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          <ContentSkeleton variant="list" />
         </div>
       </>
     );

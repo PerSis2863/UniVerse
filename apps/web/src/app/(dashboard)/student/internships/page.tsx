@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { Briefcase, Building, MapPin, DollarSign, Search, Filter, Bookmark, ExternalLink, X, FileText, Check, Edit2, Trash2, Loader2 } from 'lucide-react';
@@ -132,9 +133,8 @@ export default function StudentInternships() {
           </div>
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
-              <Loader2 className="w-8 h-8 animate-spin mb-4 text-indigo-500" />
-              <p>Loading internships...</p>
+            <div>
+              <ContentSkeleton variant="grid" />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">

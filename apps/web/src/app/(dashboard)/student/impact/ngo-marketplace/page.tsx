@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -106,7 +107,7 @@ export default function NGOMarketplacePage() {
           {/* Grid */}
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+              <ContentSkeleton variant="grid" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-20 bg-white dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800">

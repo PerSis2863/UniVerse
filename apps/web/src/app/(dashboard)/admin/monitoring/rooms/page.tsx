@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -31,7 +32,7 @@ export default function RoomBookingsPage() {
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
   const cancel = async (id: string) => {
-    if (!confirm('Cancel this booking?')) return;
+    if (!(await confirmDialog({ title: 'Cancel this booking?', message: 'The room becomes free for others to book.', confirmLabel: 'Cancel booking', cancelLabel: 'Keep', destructive: true }))) return;
     try { await authedJson(`/api/admin/rooms?reservationId=${id}`, { method: 'DELETE' }); mutate(); } catch (e: any) { toast.error(e.message); }
   };
 

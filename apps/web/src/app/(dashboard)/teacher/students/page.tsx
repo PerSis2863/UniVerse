@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { Search, Filter, MoreVertical, Mail, GraduationCap, X, Loader2 } from 'lucide-react';
 import { useState } from 'react';
@@ -91,7 +92,7 @@ export default function TeacherStudents() {
         <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden min-h-[400px] flex flex-col">
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              <ContentSkeleton variant="table" />
             </div>
           ) : (
           <div className="overflow-x-auto">

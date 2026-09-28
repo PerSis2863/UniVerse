@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink, Edit2, Trash2, Check, Image as ImageIcon, BarChart2, Contact, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -186,9 +187,8 @@ export default function GroupsPage() {
 
             {/* Group Cards */}
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-12 bg-white/50 dark:bg-zinc-900/20 rounded-2xl border border-zinc-200 dark:border-white/[0.06]">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-4" />
-                <p className="text-sm text-zinc-500">Loading your groups...</p>
+              <div>
+                <ContentSkeleton variant="grid" />
               </div>
             ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

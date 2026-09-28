@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Plus, CheckCircle2, X, Archive, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
@@ -25,6 +26,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobileTitle }: TopbarProps) {
+  const router = useRouter();
   const { user } = useAuthStore();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -206,7 +208,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
                 ) : (
                   filteredNotifications.map(n => (
                     <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                      key={n.id} onClick={() => { if (n.unread) markRead([n.id]); if (n.link?.startsWith("/")) { setShowNotifications(false); window.location.assign(n.link); } }}
+                      key={n.id} onClick={() => { if (n.unread) markRead([n.id]); if (n.link?.startsWith("/")) { setShowNotifications(false); router.push(n.link); } }}
                       className={cn("p-4 rounded-2xl border transition-all cursor-pointer group flex items-start gap-3",
                         n.unread ? "bg-white dark:bg-zinc-900 border-indigo-500/30 shadow-sm" : "bg-zinc-50 dark:bg-zinc-900/30 border-transparent hover:border-zinc-200 dark:hover:border-zinc-800"
                       )}

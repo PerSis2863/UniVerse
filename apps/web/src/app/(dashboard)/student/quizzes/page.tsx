@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Target, Trophy, Clock, CheckCircle2, ChevronRight, BrainCircuit, AlertCircle, Loader2 } from 'lucide-react';
@@ -117,7 +118,7 @@ export default function QuizzesPage() {
 
         {isLoading ? (
           <div className="flex justify-center p-8">
-             <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+             <ContentSkeleton variant="grid" />
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

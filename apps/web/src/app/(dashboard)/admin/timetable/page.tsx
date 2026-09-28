@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -30,7 +31,7 @@ export default function TimetableManagementPage() {
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
   const remove = async (id: string) => {
-    if (!confirm('Remove this class from the timetable?')) return;
+    if (!(await confirmDialog({ title: 'Remove this class?', message: 'It will be taken off the timetable for everyone.', confirmLabel: 'Remove', destructive: true }))) return;
     try { await authedJson(`/api/admin/timetable?id=${id}`, { method: 'DELETE' }); mutate(); } catch (e: any) { toast.error(e.message); }
   };
 

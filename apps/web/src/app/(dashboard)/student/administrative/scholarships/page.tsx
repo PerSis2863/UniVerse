@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -86,7 +87,7 @@ export default function Scholarships() {
       <>
         <Topbar title="Scholarships" subtitle="View and apply for financial aid and scholarships" />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          <ContentSkeleton variant="grid" />
         </div>
       </>
     );

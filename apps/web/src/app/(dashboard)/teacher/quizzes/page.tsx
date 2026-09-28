@@ -1,4 +1,6 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Plus, Search, FileText, CheckCircle2, PlayCircle, MoreVertical, Clock, Filter, Check, Trash2, Edit, X, Loader2 } from 'lucide-react';
@@ -41,7 +43,7 @@ export default function TeacherQuizzes() {
   };
 
   const handleDeleteQuiz = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this quiz?')) return;
+    if (!(await confirmDialog({ title: 'Delete this quiz?', message: 'Its questions and student submissions will be removed too.', destructive: true }))) return;
     try {
       await api.delete(`/quizzes/${id}`);
       await mutateQuizzes();
@@ -100,7 +102,7 @@ export default function TeacherQuizzes() {
         {/* Quizzes List */}
         {loadingQuizzes ? (
           <div className="flex-1 flex items-center justify-center min-h-[400px]">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            <ContentSkeleton variant="grid" />
           </div>
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">

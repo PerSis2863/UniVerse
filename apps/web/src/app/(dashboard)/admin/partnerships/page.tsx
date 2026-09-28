@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -61,7 +62,7 @@ export default function AdminPartnershipsPage() {
   };
 
   const removePartner = async (p: Partner) => {
-    if (!confirm(`Remove ${p.name} from the partner list?`)) return;
+    if (!(await confirmDialog({ title: `Remove ${p.name}?`, message: 'They will be taken off the partner list.', confirmLabel: 'Remove', destructive: true }))) return;
     try {
       await api.patch(`/partners/${p.id}`, { isActive: false });
       toast.success(`${p.name} removed`);

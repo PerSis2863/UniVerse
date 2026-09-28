@@ -234,8 +234,10 @@ export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboa
   };
 
   const clear = () => {
-    if (!shapes.length || !confirm('Clear the whole whiteboard? You can undo this.')) return;
+    if (!shapes.length) return;
+    const before = shapes;
     commit([]);
+    toast('Whiteboard cleared', { action: { label: 'Undo', onClick: () => commit(before, []) } });
   };
 
   const iconBtn = 'w-9 h-9 shrink-0 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40';

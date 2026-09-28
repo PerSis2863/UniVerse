@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -91,7 +92,7 @@ export default function GlobalSummitsPage() {
           <div className="space-y-6">
             {loading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                <ContentSkeleton variant="grid" />
               </div>
             ) : summits.length === 0 ? (
               <div className="text-center py-12 text-zinc-500">

@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 import useSWR from 'swr';
 import { toast } from 'sonner';
@@ -16,7 +17,7 @@ export default function AdminQuizzesPage() {
   const quizzes = Array.isArray(data) ? data : [];
 
   const remove = async (q: Quiz) => {
-    if (!confirm(`Delete "${q.title}"? Student submissions will be removed too.`)) return;
+    if (!(await confirmDialog({ title: `Delete "${q.title}"?`, message: 'Student submissions will be removed too.', destructive: true }))) return;
     try { await api.delete(`/quizzes/${q.id}`); toast.success('Quiz deleted'); mutate(); } catch { toast.error('Could not delete the quiz.'); }
   };
 

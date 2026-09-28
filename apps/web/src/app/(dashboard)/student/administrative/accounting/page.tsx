@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight, Clock, X, Calendar, User, Search, Filter, ChevronRight, Loader2 } from 'lucide-react';
@@ -412,7 +413,7 @@ export default function AccountingPage() {
   return (
     <Suspense fallback={
       <div className="flex-1 min-h-[50vh] p-8 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+        <ContentSkeleton variant="table" />
       </div>
     }>
       <AccountingContent />

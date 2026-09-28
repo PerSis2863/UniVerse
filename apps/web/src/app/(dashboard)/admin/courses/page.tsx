@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 import { Topbar } from '@/components/layout/Topbar';
 import { Plus, Edit2, Trash2, X, BookOpen, Users, FileText, LayoutGrid } from 'lucide-react';
 import { useState } from 'react';
@@ -49,7 +50,7 @@ export default function AdminCoursesPage() {
   };
   
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this course?")) {
+    if (await confirmDialog({ title: 'Delete this course?', message: 'Its materials, quizzes, grades and enrollments will be deleted too. This can’t be undone.', destructive: true })) {
       try {
         await api.delete(`/courses/${id}`);
         toast.success('Course deleted');

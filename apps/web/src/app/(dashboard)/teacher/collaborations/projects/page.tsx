@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState, useMemo, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -312,7 +313,7 @@ export default function NGOMentorshipPage() {
             <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <button
                 onClick={async () => {
-                  if (!confirm(`Remove "${selectedProject.title}"? Its members and milestones will be removed too.`)) return;
+                  if (!(await confirmDialog({ title: `Remove "${selectedProject.title}"?`, message: 'Its members and milestones will be removed too.', confirmLabel: 'Remove', destructive: true }))) return;
                   try {
                     await api.delete(`/collaborations/projects/${selectedProject.id}`);
                     setProjects((ps) => ps.filter((p) => p.id !== selectedProject.id));

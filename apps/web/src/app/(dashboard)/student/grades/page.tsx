@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
@@ -235,7 +236,7 @@ export default function GradesPage() {
       <>
         <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
         <div className="flex-1 p-8 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+          <ContentSkeleton variant="table" />
         </div>
       </>
     );

@@ -1,4 +1,5 @@
 'use client';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState, useMemo, useRef } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -52,7 +53,7 @@ export default function AdminUsers() {
   };
 
   const handleDelete = async (userId: string) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
+    if (await confirmDialog({ title: 'Delete this user?', message: 'Their account and data will be removed. This can’t be undone.', destructive: true })) {
       try {
         await api.delete(`/users/${userId}`);
         toast.success('User removed from system.');

@@ -1,4 +1,6 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { BookOpen, Users, FileText, ChevronRight, Edit, Trash2, Plus, X, Upload, Loader2 } from 'lucide-react';
@@ -49,7 +51,7 @@ export default function TeacherCourses() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this course?')) return;
+    if (!(await confirmDialog({ title: 'Delete this course?', message: 'Its materials, quizzes, grades and enrollments will be deleted too. This can’t be undone.', destructive: true }))) return;
     try {
       await api.delete(`/courses/${id}`);
       await mutate();
@@ -74,7 +76,7 @@ export default function TeacherCourses() {
 
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            <ContentSkeleton variant="grid" />
           </div>
         ) : courses.length === 0 ? (
           <div className="card text-center py-12">
