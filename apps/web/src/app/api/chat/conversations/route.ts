@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       name: true,
       avatarUrl: true,
       updatedAt: true,
-      participants: { select: { userId: true, role: true, typingUntil: true, pinnedAt: true, mutedUntil: true, archivedAt: true, markedUnread: true, user: userCard } },
+      participants: { select: { userId: true, role: true, lastReadAt: true, joinedAt: true, typingUntil: true, pinnedAt: true, mutedUntil: true, archivedAt: true, markedUnread: true, user: userCard } },
       messages: {
         where: visibleTo(user.id),
         orderBy: { createdAt: 'desc' },
@@ -31,13 +31,18 @@ export async function GET(req: Request) {
     },
   });
 
-  const unreadRows = await prisma.$queryRaw<{ conversationId: string; count: bigint }[]>`
-    SELECT m."conversationId", COUNT(*) AS count
-    FROM "messages" m
-    JOIN "conversation_participants" p ON p."conversationId" = m."conversationId" AND p."userId" = ${user.id}
-    WHERE m."senderId" <> ${user.id} AND m."deletedAt" IS NULL AND m."createdAt" > COALESCE(p."lastReadAt", p."joinedAt" - interval '1 second')
-    GROUP BY m."conversationId"`;
-  const unread = new Map(unreadRows.map((r) => [r.conversationId, Number(r.count)]));
+  // Unread = others' messages newer than the caller's last read (or join, minus a second so the
+  // "added you" message counts).
+  const unreadCounts = await Promise.all(
+    conversations.map((c) => {
+      const mine = c.participants.find((p) => p.userId === user.id);
+      const since = mine?.lastReadAt ?? new Date((mine?.joinedAt ?? new Date(0)).getTime() - 1000);
+      return prisma.message.count({
+        where: { conversationId: c.id, senderId: { not: user.id }, deletedAt: null, createdAt: { gt: since } },
+      });
+    }),
+  );
+  const unread = new Map(conversations.map((c, i) => [c.id, unreadCounts[i]]));
   const now = Date.now();
 
   const list = conversations

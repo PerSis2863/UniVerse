@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { byMonth } from '@/lib/month-buckets';
 import { requireAdmin } from '@/lib/billing';
 
-type MonthRow = { month: Date; value: bigint | number };
 
 // Live impact figures for the (free) Impact Analytics page. Deeper analytics live behind
 // the Pro plan at /api/premium/analytics.
@@ -14,18 +14,18 @@ export async function GET(req: Request) {
   since.setUTCMonth(since.getUTCMonth() - 7, 1);
   since.setUTCHours(0, 0, 0, 0);
 
-  const [students, ngos, activeProjects, impact, sectors, byMonth] = await Promise.all([
+  const [students, ngos, activeProjects, impact, sectors, monthly] = await Promise.all([
     prisma.user.count({ where: { role: 'STUDENT' } }),
     prisma.nGO.count(),
     prisma.nGOProject.count({ where: { isActive: true } }),
     prisma.impactPoint.aggregate({ _sum: { points: true } }),
     prisma.nGO.groupBy({ by: ['sector'], _count: { _all: true } }),
-    prisma.$queryRaw<MonthRow[]>`
-      SELECT date_trunc('month', "awardedAt") AS month, COALESCE(SUM("points"), 0) AS value
-      FROM "impact_points" WHERE "awardedAt" >= ${since} GROUP BY 1`,
+    prisma.impactPoint
+      .findMany({ where: { awardedAt: { gte: since } }, select: { awardedAt: true, points: true } })
+      .then((rows) => byMonth(rows, (r) => r.awardedAt, (r) => r.points)),
   ]);
 
-  const byKey = new Map(byMonth.map((r) => [r.month.toISOString().slice(0, 7), Number(r.value)]));
+  const byKey = new Map<string, number>(monthly.map((r) => [r.month.toISOString().slice(0, 7), r.value]));
   const months: { month: string; value: number }[] = [];
   const now = new Date();
   for (let i = 7; i >= 0; i--) {

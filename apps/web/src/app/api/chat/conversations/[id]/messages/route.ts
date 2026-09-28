@@ -27,7 +27,7 @@ export async function GET(req: Request, { params }: Ctx) {
   const q = sp.get('q')?.trim();
   if (q) {
     const results = await prisma.message.findMany({
-      where: { conversationId: id, deletedAt: null, type: { in: ['TEXT', 'POLL', 'FILE'] }, AND: [visibleTo(user.id), { OR: [{ body: { contains: q.slice(0, 100), mode: 'insensitive' } }, { attachmentName: { contains: q.slice(0, 100), mode: 'insensitive' } }] }] },
+      where: { conversationId: id, deletedAt: null, type: { in: ['TEXT', 'POLL', 'FILE'] }, AND: [visibleTo(user.id), { OR: [{ body: { contains: q.slice(0, 100) } }, { attachmentName: { contains: q.slice(0, 100) } }] }] },
       orderBy: { createdAt: 'desc' },
       take: 40,
       select: { id: true, body: true, type: true, attachmentName: true, createdAt: true, sender: { select: { id: true, name: true } } },

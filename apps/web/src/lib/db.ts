@@ -1,53 +1,46 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaD1 } from '@prisma/adapter-d1';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { Pool } from 'pg';
+import type { D1Database } from '@cloudflare/workers-types';
 
-// On Cloudflare Workers, Prisma talks to Postgres through the `pg` driver adapter, and a database
-// connection can't be shared between requests, so each request gets its own client. When the
-// HYPERDRIVE binding is configured (wrangler.jsonc), connections go through Cloudflare Hyperdrive,
-// which pools them and caches reads near the Worker; otherwise straight to DATABASE_URL.
-// In Node (`next dev`, scripts) one client is shared as before.
+// The database is Cloudflare D1 (SQLite), reached through its `DB` binding (wrangler.jsonc).
+// In `next dev` the binding is a local D1 provided by wrangler (see initOpenNextCloudflareForDev
+// in next.config.ts). The binding can be reused across requests, so one client per binding.
 declare global {
   interface CloudflareEnv {
-    HYPERDRIVE?: { connectionString: string };
+    DB: D1Database;
   }
 }
 
 const onWorkers = typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers';
 
-function createWorkerClient(connectionString: string | undefined): PrismaClient {
+function createClient(db: D1Database): PrismaClient {
+  const adapter = new PrismaD1(db);
+  if (!onWorkers) return new PrismaClient({ adapter });
   // Workers can't run Prisma's native engine, so load its WebAssembly build explicitly (the bundler
   // would otherwise pick the Node build). Required lazily so `next dev` never loads it.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PrismaClient: WasmPrismaClient } = require('@prisma/client/wasm') as typeof import('@prisma/client');
-  return new WasmPrismaClient({ adapter: new PrismaPg(new Pool({ connectionString, max: 5 })) });
+  return new WasmPrismaClient({ adapter });
 }
 
-const perRequest = new WeakMap<object, PrismaClient>();
+const clients = new WeakMap<D1Database, PrismaClient>();
 
-function workerClient(): PrismaClient {
-  const { env, ctx } = getCloudflareContext();
-  let client = perRequest.get(ctx);
+export function getPrisma(): PrismaClient {
+  const { env } = getCloudflareContext();
+  if (!env.DB) throw new Error('D1 binding "DB" is missing; check wrangler.jsonc');
+  let client = clients.get(env.DB);
   if (!client) {
-    client = createWorkerClient(env.HYPERDRIVE?.connectionString ?? process.env.DATABASE_URL);
-    perRequest.set(ctx, client);
+    client = createClient(env.DB);
+    clients.set(env.DB, client);
   }
   return client;
 }
 
-declare global {
-  var prismaGlobal: undefined | PrismaClient;
-}
-
-function nodeClient(): PrismaClient {
-  globalThis.prismaGlobal ??= new PrismaClient();
-  return globalThis.prismaGlobal;
-}
-
+// `prisma.user.findMany(...)` etc. resolve the client lazily, on first use inside a request.
 const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
-    const client = onWorkers ? workerClient() : nodeClient();
+    const client = getPrisma();
     const value = Reflect.get(client, prop, client);
     return typeof value === 'function' ? value.bind(client) : value;
   },

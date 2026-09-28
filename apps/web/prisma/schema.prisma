@@ -1,12 +1,12 @@
+// Database for the web app: Cloudflare D1 (SQLite). Migrations live in ./migrations and are
+// applied with `wrangler d1 migrations apply`; see DEPLOY-CLOUDFLARE.md.
 generator client {
-  provider        = "prisma-client-js"
-  // The web app runs on Cloudflare Workers, where Prisma connects through a driver adapter.
-  previewFeatures = ["driverAdapters"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ─── ENUMS ─────────────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@ model Attendance {
   student   User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   courseId  String
   course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  date      DateTime         @db.Date
+  date      DateTime         
   status    AttendanceStatus @default(PRESENT)
   note      String?
   createdAt DateTime         @default(now())
@@ -890,8 +890,8 @@ model CareerProfile {
   linkedinUrl   String?
   portfolioUrl  String?
   githubUrl     String?
-  targetRoles   String[] // array of target job titles
-  targetSectors String[]
+  targetRoles   Json    @default("[]") // string[] — array of target job titles
+  targetSectors Json    @default("[]") // string[]
   cvUrl         String?
   isPublic      Boolean  @default(false)
   createdAt     DateTime @default(now())
@@ -947,7 +947,7 @@ model Internship {
   isPaid      Boolean        @default(true)
   salary      String?
   openings    Int            @default(1)
-  skills      String[]
+  skills      Json    @default("[]") // string[]
   deadline    DateTime?
   startDate   DateTime?
   isActive    Boolean        @default(true)
@@ -1057,7 +1057,7 @@ model NGO {
   logoUrl     String?
   websiteUrl  String?
   sector      String? // "Education", "Health", etc.
-  sdgNumbers  Int[] // UN SDG goals e.g. [4, 13]
+  sdgNumbers  Json @default("[]") // int[] — UN SDG goals e.g. [4, 13]
   location    String?
   isVerified  Boolean  @default(false)
   createdAt   DateTime @default(now())
@@ -1079,7 +1079,7 @@ model NGOProject {
   duration       String?
   openings       Int       @default(1)
   impactPoints   Int       @default(50)
-  skillsRequired String[]
+  skillsRequired Json    @default("[]") // string[]
   sdgNumber      Int?
   deadline       DateTime?
   isActive       Boolean   @default(true)
@@ -1320,9 +1320,9 @@ model MedicalRecord {
   doctorName       String?
   doctorPhone      String?
   bloodType        String?
-  allergies        String[]
-  conditions       String[]
-  medications      String[]
+  allergies        Json    @default("[]") // string[]
+  conditions       Json    @default("[]") // string[]
+  medications      Json    @default("[]") // string[]
   emergencyContact String?
   emergencyPhone   String?
   updatedAt        DateTime @updatedAt
@@ -1433,7 +1433,7 @@ model MentorProfile {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   company        String?
   jobTitle       String?
-  skills         String[]
+  skills         Json    @default("[]") // string[]
   hoursCommitted Int      @default(0)
   isAvailable    Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -1470,7 +1470,7 @@ model CollaborationProject {
   ngo                String?
   status             String   @default("PendingReview") // PendingReview, Recruiting, Active, Completed, Rejected
   deadline           DateTime?
-  tags               String[]
+  tags               Json    @default("[]") // string[]
   contactEmail       String?
   supervisingTeacherId String?
   supervisingTeacher User?    @relation("TeacherProjects", fields: [supervisingTeacherId], references: [id])
