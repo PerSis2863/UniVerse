@@ -1,5 +1,11 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 import withPWAInit from '@ducanh2912/next-pwa';
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+import { securityHeaders } from './security-headers';
+
+// Lets `next dev` read Cloudflare bindings from wrangler.jsonc (no effect on production builds).
+if (process.env.NODE_ENV === 'development') initOpenNextCloudflareForDev();
 
 const withPWA = withPWAInit({
   dest: 'public',
@@ -43,10 +49,16 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Dependencies are installed by pnpm at the workspace root; trace server files from there so the
+  // Cloudflare build (OpenNext) finds every file it needs.
+  outputFileTracingRoot: path.join(__dirname, '../..'),
   typescript: {
     ignoreBuildErrors: false,
   },
   images: {
+    // Cloudflare Workers have no built-in image optimizer (it would need the paid Images binding),
+    // so images are served as-is.
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: '**' },
@@ -54,6 +66,9 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api',
+  },
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }];
   },
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';

@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/server-auth';
 
 
 // gemini-1.5-flash (used before) has been shut down by Google. The model is configurable so it
-// can be updated from Vercel settings without a code change; if the primary model is unavailable
+// can be updated from the hosting settings without a code change; if the primary model is unavailable
 // (404/400 "model not found"), the fallback is tried once.
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return plainTextStream("I'm your AI Study Assistant! The assistant isn't configured yet — an administrator needs to add a GEMINI_API_KEY in the Vercel settings.");
+    return plainTextStream("I'm your AI Study Assistant! The assistant isn't configured yet — an administrator needs to add a GEMINI_API_KEY in the hosting settings.");
   }
 
   const history = Array.isArray(payload.history) ? payload.history.slice(-MAX_HISTORY) : [];

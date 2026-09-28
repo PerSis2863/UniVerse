@@ -205,7 +205,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         const type = voice ? 'AUDIO' : messageTypeFor(upload.type);
         setPending((p) => [...p, { ...base, type, body: '', attachmentUrl: null, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type } as ChatMessage]);
         setUploadProgress(0);
-        const url = await uploadChatFile(upload, me, setUploadProgress);
+        const url = await uploadChatFile(upload, setUploadProgress);
         setUploadProgress(null);
         const msg = await chatJson<ChatMessage>(key, {
           method: 'POST',

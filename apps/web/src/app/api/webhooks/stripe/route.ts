@@ -5,6 +5,7 @@ import { syncSubscription } from '@/lib/billing';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-06-20' as any,
+  httpClient: Stripe.createFetchHttpClient(), // fetch works on Cloudflare Workers
 });
 
 export async function POST(req: Request) {
@@ -14,7 +15,8 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    // The async variant uses Web Crypto, which is what Cloudflare Workers provide.
+    event = await stripe.webhooks.constructEventAsync(
       payload,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET as string

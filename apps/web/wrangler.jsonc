@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "universe-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      // Self-reference, required by OpenNext; must match "name" above.
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "universe-web"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+  // Secrets (DATABASE_URL, STRIPE_SECRET_KEY, R2_*, GEMINI_API_KEY, …) are set with
+  // `wrangler secret put` or in the Cloudflare dashboard — never here. See DEPLOY-CLOUDFLARE.md.
+}

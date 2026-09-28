@@ -1,17 +1,16 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getSessionUser } from '@/lib/server-auth';
+import { isStorageHostUrl } from '@/lib/file-urls';
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const MAX_BYTES = 10 * 1024 * 1024;
 
-// Only summarize files uploaded to this app's Vercel Blob store (prevents fetching arbitrary URLs).
+// Only summarize files uploaded to this app's storage (prevents fetching arbitrary URLs).
 function isAllowedFileUrl(raw: string): URL | null {
   try {
     const url = new URL(raw);
-    if (url.protocol !== 'https:') return null;
-    if (!url.hostname.endsWith('.public.blob.vercel-storage.com')) return null;
-    return url;
+    return isStorageHostUrl(url) ? url : null;
   } catch {
     return null;
   }

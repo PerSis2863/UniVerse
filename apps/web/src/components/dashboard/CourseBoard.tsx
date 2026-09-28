@@ -21,6 +21,7 @@ import { uploadChatFile } from '@/components/chat/chat-client';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
+import { isUploadedFileUrl } from '@/lib/file-urls';
 
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -323,7 +324,7 @@ function Materials({ board, canManage, refresh }: SectionProps) {
     if (!file || !form) return;
     setUploading(1);
     try {
-      const url = await uploadChatFile(file, board.course.id, (p) => setUploading(Math.max(1, p)));
+      const url = await uploadChatFile(file, (p) => setUploading(Math.max(1, p)));
       const size = file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`;
       setForm((f) => f && { ...f, url, fileName: file.name, size, title: f.title || file.name.replace(/\.[^.]+$/, '') });
     } catch (e: any) { toast.error(e.message); } finally { setUploading(0); }
@@ -347,7 +348,7 @@ function Materials({ board, canManage, refresh }: SectionProps) {
         <div className="space-y-2">
           {board.materials.map((m) => {
             const Icon = TYPE_ICON[m.type] ?? Paperclip;
-            const external = !m.fileUrl.startsWith('/api/files/') && !m.fileUrl.includes('blob.vercel-storage.com');
+            const external = !isUploadedFileUrl(m.fileUrl);
             return (
               <div key={m.id} className={`${card} p-4 flex items-center gap-3 hover:border-indigo-500/40 transition-colors`}>
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-indigo-500" /></div>

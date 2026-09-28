@@ -138,7 +138,7 @@ export default function AdminFinances() {
               </div>
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Stripe payments</h2>
               <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-                Stripe is connected through your server settings (STRIPE_SECRET_KEY in Vercel). Payouts, refunds and disputes are managed in your Stripe dashboard.
+                Stripe is connected through your server settings (STRIPE_SECRET_KEY). Payouts, refunds and disputes are managed in your Stripe dashboard.
               </p>
               <button 
                 onClick={() => { window.open('https://dashboard.stripe.com', '_blank', 'noopener,noreferrer'); setIsStripeModalOpen(false); }}

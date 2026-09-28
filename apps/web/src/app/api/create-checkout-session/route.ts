@@ -5,6 +5,7 @@ import { getSessionUser } from '@/lib/server-auth';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-06-20' as any,
+  httpClient: Stripe.createFetchHttpClient(), // fetch works on Cloudflare Workers
 });
 
 export async function POST(req: Request) {

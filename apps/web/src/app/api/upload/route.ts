@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
 import { saveFile, SERVER_UPLOAD_MAX } from '@/lib/storage';
 
-// Upload a file (raw request body, ?filename=...). Stored in Vercel Blob when connected,
+// Upload a file (raw request body, ?filename=...). Stored in Cloudflare R2 when configured,
 // otherwise in the database. Returns { url }.
 
 const MIME_BY_EXT: Record<string, string> = {

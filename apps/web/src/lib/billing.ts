@@ -8,7 +8,7 @@ let stripeClient: Stripe | null = null;
 
 export function getStripe(): Stripe | null {
   if (!process.env.STRIPE_SECRET_KEY) return null;
-  stripeClient ??= new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' as any });
+  stripeClient ??= new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' as any, httpClient: Stripe.createFetchHttpClient() });
   return stripeClient;
 }
 

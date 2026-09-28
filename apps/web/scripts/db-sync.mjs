@@ -1,10 +1,15 @@
-// Applies additive schema changes to the production database during Vercel production builds.
+// Applies additive schema changes to the production database during production builds
+// (Cloudflare Workers Builds on the main branch, or Vercel production).
 // `prisma db push` without --accept-data-loss refuses anything destructive (the build fails
 // instead), so production data is never dropped. Preview/local builds are skipped so a feature
 // branch can never change the production schema.
 import { execSync } from 'node:child_process';
 
-if (process.env.VERCEL_ENV !== 'production') {
+const isProduction =
+  process.env.DB_SYNC === '1' ||
+  process.env.VERCEL_ENV === 'production' ||
+  (process.env.WORKERS_CI === '1' && process.env.WORKERS_CI_BRANCH === 'main');
+if (!isProduction) {
   console.log('[db-sync] Skipping schema sync (not a production build).');
   process.exit(0);
 }
