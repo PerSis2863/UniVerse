@@ -2,7 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getAuthToken } from './auth-token';
 import { isSampleMode } from './sample-mode';
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://universe-xsku.onrender.com/api';
+/** The platform API, served by this app on Cloudflare (src/app/api/core, src/server). */
+export const API_URL = '/api/core';
 
 export const api = axios.create({
   baseURL: API_URL,

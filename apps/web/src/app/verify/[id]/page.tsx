@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Clock, Globe2, Building2, ChevronDown, ChevronUp, Copy, Link2, ExternalLink } from 'lucide-react';
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'https://universe-xsku.onrender.com/api').replace(/\/+$/, '');
+import { API_URL } from '@/lib/api';
 
 type VerifyResult = 'VALID' | 'REVOKED' | 'TAMPERED' | 'UNKNOWN_KEY' | 'NOT_FOUND';
 

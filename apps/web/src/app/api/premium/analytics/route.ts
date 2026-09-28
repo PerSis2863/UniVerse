@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { byMonth } from '@/lib/month-buckets';
 import { requireFeature } from '@/lib/billing';
 
 type MonthRow = { month: Date; value: bigint | number };
@@ -31,12 +32,12 @@ export async function GET(req: Request) {
     prisma.enrollment.count(),
     prisma.impactPoint.aggregate({ _sum: { points: true } }),
     prisma.nGOProjectApplication.groupBy({ by: ['status'], _count: { _all: true } }),
-    prisma.$queryRaw<MonthRow[]>`
-      SELECT date_trunc('month', "createdAt") AS month, COUNT(*) AS value
-      FROM "users" WHERE "createdAt" >= ${since} GROUP BY 1`,
-    prisma.$queryRaw<MonthRow[]>`
-      SELECT date_trunc('month', "awardedAt") AS month, COALESCE(SUM("points"), 0) AS value
-      FROM "impact_points" WHERE "awardedAt" >= ${since} GROUP BY 1`,
+    prisma.user
+      .findMany({ where: { createdAt: { gte: since } }, select: { createdAt: true } })
+      .then((rows) => byMonth(rows, (r) => r.createdAt)),
+    prisma.impactPoint
+      .findMany({ where: { awardedAt: { gte: since } }, select: { awardedAt: true, points: true } })
+      .then((rows) => byMonth(rows, (r) => r.awardedAt, (r) => r.points)),
     prisma.user.findMany({
       where: { role: 'STUDENT', impactXP: { gt: 0 } },
       orderBy: { impactXP: 'desc' },

@@ -27,9 +27,15 @@ export async function POST(req: Request, { params }: Ctx) {
   const ids: string[] = Array.isArray(body.userIds) ? body.userIds.filter((x: unknown) => typeof x === 'string' && x !== system.id).slice(0, 100) : [];
   const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } });
   if (users.length === 0) return NextResponse.json({ error: 'No valid users to add.' }, { status: 400 });
-  await prisma.conversationParticipant.createMany({ data: users.map((u) => ({ conversationId: id, userId: u.id })), skipDuplicates: true });
+  // SQLite has no skipDuplicates: only insert people who aren't members yet.
+  const existing = new Set(
+    (await prisma.conversationParticipant.findMany({ where: { conversationId: id, userId: { in: users.map((u) => u.id) } }, select: { userId: true } })).map((p) => p.userId),
+  );
+  const toAdd = users.filter((u) => !existing.has(u.id));
+  if (toAdd.length === 0) return NextResponse.json({ ok: true });
+  await prisma.conversationParticipant.createMany({ data: toAdd.map((u) => ({ conversationId: id, userId: u.id })) });
   await prisma.message.create({
-    data: { conversationId: id, senderId: r.user.id, type: 'SYSTEM', body: `${r.user.name} added ${users.map((u) => u.name).join(', ')}` },
+    data: { conversationId: id, senderId: r.user.id, type: 'SYSTEM', body: `${r.user.name} added ${toAdd.map((u) => u.name).join(', ')}` },
   });
   await prisma.conversation.update({ where: { id }, data: { updatedAt: new Date() } });
   return NextResponse.json({ ok: true });

@@ -79,7 +79,7 @@ export default function DocumentsPage() {
     try {
       await api.post('/documents', {
         title: fileName,
-        fileUrl: process.env.NEXT_PUBLIC_API_URL + fileUrl,
+        fileUrl,
         type: 'OTHER'
       });
       toast.success(`Successfully uploaded ${fileName}`);

@@ -5,9 +5,8 @@ import useSWR from 'swr';
 import { CheckCircle, Clock, Search, XCircle, Award, Download } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { api, API_URL } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
 interface PendingCertificate {

@@ -18,12 +18,12 @@ export async function saveFile(opts: { ownerId: string; name: string; mime: stri
     return r2Put(`uploads/${opts.ownerId}/${key}/${safeName}`, opts.bytes, opts.mime || 'application/octet-stream');
   }
   await prisma.storedFile.create({
-    data: { key, ownerId: opts.ownerId, name: safeName, mime: opts.mime || 'application/octet-stream', size: opts.bytes.length, data: opts.bytes },
+    data: { key, ownerId: opts.ownerId, name: safeName, mime: opts.mime || 'application/octet-stream', size: opts.bytes.length, data: new Uint8Array(opts.bytes) },
   });
   return `/api/files/${key}/${encodeURIComponent(safeName)}`;
 }
 
-/** True for URLs of files uploaded through this app (R2, the old Vercel Blob store, or database storage). */
+/** True for URLs of files uploaded through this app (R2 or database storage). */
 export function isAppFileUrl(url: unknown): url is string {
   if (typeof url !== 'string') return false;
   if (/^\/api\/files\/[A-Za-z0-9_-]{16,}(\/|$)/.test(url)) return true;

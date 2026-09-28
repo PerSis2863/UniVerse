@@ -14,7 +14,7 @@ export async function GET(req: Request) {
       id: { not: user.id },
       email: { not: SYSTEM_EMAIL },
       status: { not: 'SUSPENDED' },
-      ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] } : {}),
+      ...(q ? { OR: [{ name: { contains: q } }, { email: { contains: q } }] } : {}),
     },
     orderBy: [{ lastSeenAt: { sort: 'desc', nulls: 'last' } }, { name: 'asc' }],
     take: 25,

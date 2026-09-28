@@ -1,4 +1,3 @@
-import { ApiWarmup } from '@/components/ApiWarmup';
 import type { Metadata, Viewport } from 'next';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
@@ -72,7 +71,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} ${outfit.variable} min-h-screen antialiased`} style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
           <ErrorMonitorBootstrap />
-          <ApiWarmup />
           <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
           <MotionProvider>{children}</MotionProvider>
           <Toaster 
