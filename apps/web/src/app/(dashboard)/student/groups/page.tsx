@@ -11,6 +11,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { authedJson } from '@/lib/authed-fetch';
 import { GroupChat } from '@/components/groups/GroupChat';
 import { GroupDetailBody } from '@/components/groups/GroupDetailBody';
+import { useInitialSearch } from '@/hooks/useInitialSearch';
 
 type GroupItem = {
   id: string | number;
@@ -84,6 +85,7 @@ export default function GroupsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
+  useInitialSearch(setSearch);
   const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<number | string | null>(null);
   const [inviteGroup, setInviteGroup] = useState<GroupItem | null>(null);

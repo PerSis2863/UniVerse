@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { BookOpen, ChevronRight, Command, CornerDownLeft, FlaskConical, Loader2, MessageSquarePlus, Moon, Search, Sun, User, type LucideIcon } from 'lucide-react';
+import { BookOpen, Briefcase, ChevronRight, Command, CornerDownLeft, FlaskConical, HeartHandshake, Library, Loader2, MessageSquarePlus, Moon, Search, Sun, User, Users, type LucideIcon } from 'lucide-react';
 import { isSampleMode } from '@/lib/sample-mode';
 import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,16 @@ import { spring } from '@/lib/motion';
 
 type Item = { id: string; label: string; hint?: string; icon: LucideIcon; group: string; keywords?: string; run: () => void | Promise<void> };
 type Person = { id: string; name: string; role: string; online?: boolean };
+type SearchResult = { type: 'course' | 'group' | 'project' | 'internship' | 'resource'; id: string; title: string; subtitle?: string; href: string };
+
+// How platform search results (/api/search) are shown.
+const RESULT_KIND: Record<SearchResult['type'], { group: string; icon: LucideIcon }> = {
+  course: { group: 'Courses', icon: BookOpen },
+  group: { group: 'Groups', icon: Users },
+  project: { group: 'NGO projects', icon: HeartHandshake },
+  internship: { group: 'Internships', icon: Briefcase },
+  resource: { group: 'Resources', icon: Library },
+};
 
 const ROLE_BASE: Record<string, string> = { STUDENT: '/student', TEACHER: '/teacher', ADMIN: '/admin' };
 const RECENTS_KEY = 'universe_recent_commands';
@@ -58,6 +68,9 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const { data: myCourses } = useSWR<any[]>(open && role !== 'ADMIN' ? '/courses/my' : null, fetcher);
   const peopleKey = open && debounced.length >= 2 ? `/api/chat/users?q=${encodeURIComponent(debounced)}` : null;
   const { data: people, isLoading: peopleLoading } = useSWR<Person[]>(peopleKey, authedJson);
+  const searchKey = open && debounced.length >= 2 ? `/api/search?q=${encodeURIComponent(debounced)}` : null;
+  const { data: found, isLoading: searchLoading } = useSWR<{ results: SearchResult[] }>(searchKey, authedJson, { keepPreviousData: true });
+  const busy = peopleLoading || searchLoading;
 
   useEffect(() => { try { setRecents(JSON.parse(localStorage.getItem(RECENTS_KEY) ?? '[]')); } catch { /* ignore */ } }, []);
   useEffect(() => { const id = setTimeout(() => setDebounced(query.trim()), 220); return () => clearTimeout(id); }, [query]);
@@ -121,6 +134,13 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     },
   })), [people, base, router]);
 
+  const foundItems: Item[] = useMemo(() => {
+    const mine = new Set(courses.map((c) => c.id));
+    return (found?.results ?? [])
+      .filter((r) => !(r.type === 'course' && mine.has(`course:${r.id}`)))
+      .map((r) => ({ id: `${r.type}:${r.id}`, label: r.title, hint: r.subtitle, icon: RESULT_KIND[r.type].icon, group: RESULT_KIND[r.type].group, run: go(r.href) }));
+  }, [found, courses, go]);
+
   const results = useMemo(() => {
     const q = debounced.toLowerCase();
     const all = [...pages, ...courses, ...actions];
@@ -140,9 +160,9 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       .sort((a, b) => b.s - a.s)
       .map((x) => x.i);
     // Group in a fixed order so the list doesn't jump around while typing.
-    const order = ['Courses', 'Pages', 'People', 'Actions'];
-    return [...ranked, ...peopleItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
-  }, [debounced, pages, courses, actions, peopleItems, recents]);
+    const order = ['Courses', 'Pages', 'People', 'Groups', 'NGO projects', 'Internships', 'Resources', 'Actions'];
+    return [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
+  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents]);
 
   useEffect(() => { setIndex(0); }, [debounced]);
   useEffect(() => {
@@ -179,13 +199,13 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
           >
             <div className="glass-sidebar border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3.5 border-b border-zinc-200/70 dark:border-white/[0.07]">
-                {peopleLoading ? <Loader2 className="w-5 h-5 text-zinc-400 animate-spin shrink-0" /> : <Search className="w-5 h-5 text-zinc-400 shrink-0" />}
+                {busy ? <Loader2 className="w-5 h-5 text-zinc-400 animate-spin shrink-0" /> : <Search className="w-5 h-5 text-zinc-400 shrink-0" />}
                 <input
                   ref={inputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onKeyDown}
-                  placeholder="Search pages, courses and people…"
+                  placeholder="Search courses, people, groups, projects, internships…"
                   aria-controls="palette-list"
                   className="flex-1 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none text-base"
                 />
@@ -195,7 +215,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
               <div id="palette-list" ref={listRef} role="listbox" className="max-h-[min(60dvh,420px)] overflow-y-auto overscroll-contain p-2">
                 {results.length === 0 ? (
                   <p className="py-10 text-center text-sm text-zinc-500">
-                    {debounced.length >= 2 && peopleLoading ? 'Searching…' : <>No results for &ldquo;{query}&rdquo;</>}
+                    {debounced.length >= 2 && busy ? 'Searching…' : <>No results for &ldquo;{query}&rdquo;</>}
                   </p>
                 ) : results.map((item, i) => {
                   const header = item.group !== lastGroup ? (lastGroup = item.group) : null;
@@ -227,7 +247,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
               </div>
 
               <div className="hidden sm:flex px-4 py-2.5 border-t border-zinc-200/70 dark:border-white/[0.07] items-center justify-between text-[11px] text-zinc-400">
-                <span><kbd className="font-mono">↑↓</kbd> move · <kbd className="font-mono">↵</kbd> open · type a name to find people</span>
+                <span><kbd className="font-mono">↑↓</kbd> move · <kbd className="font-mono">↵</kbd> open · search anything on the platform</span>
                 <span className="flex items-center gap-1"><Command className="w-3 h-3" />K</span>
               </div>
             </div>
