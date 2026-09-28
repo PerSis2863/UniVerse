@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 
-// Same thresholds as the API's impact levels (apps/api/src/impact/impact.service.ts).
+// Same thresholds as the impact levels in src/server/services/impact.service.ts.
 const LEVELS = [
   { level: 1, title: 'Changemaker Seed', minXP: 0, emoji: '🌱' },
   { level: 2, title: 'Impact Explorer', minXP: 100, emoji: '🌿' },

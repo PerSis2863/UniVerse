@@ -1,13 +1,13 @@
 # Deploying UniVerse to Cloudflare
 
 Everything runs on Cloudflare: the website and its API on **Workers** (via [OpenNext](https://opennext.js.org/cloudflare)),
-the database on **D1**, uploaded files on **R2**. The old NestJS API (`apps/api`, on Render) and the Neon
-Postgres database are no longer used.
+the database on **D1**, uploaded files on **R2**. The old NestJS API on Render and the Neon
+Postgres database have been removed.
 
 | What | Before | Now |
 |---|---|---|
 | Hosting | Vercel | Cloudflare Workers (`wrangler.jsonc`, `open-next.config.ts`) |
-| API | NestJS on Render (`apps/api`) | Same routes served by the web app at `/api/core/*` (`src/server`) |
+| API | NestJS on Render | Same routes served by the web app at `/api/core/*` (`src/server`) |
 | Database | Neon Postgres | Cloudflare D1 (SQLite) via Prisma's D1 adapter (`src/lib/db.ts`, `prisma/`) |
 | Sign-in check | `firebase-admin` on Render | Firebase ID tokens verified with Google's public keys (`src/server/auth.ts`) |
 | File uploads | Vercel Blob / Render disk | R2 bucket served from `NEXT_PUBLIC_FILES_URL` (`src/lib/r2.ts`) |

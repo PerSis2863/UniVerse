@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { AnnouncementTarget, QuizStatus } from '@prisma/client';
 import { BadRequestException } from './http';
 
-// Request body rules from the old API's class-validator DTOs (apps/api/src/*/dto). Like its
+// Request body rules from the old NestJS API's class-validator DTOs. Like its
 // ValidationPipe (whitelist + forbidNonWhitelisted), unknown properties are rejected.
 
 const isoDate = z.string().refine((s) => !Number.isNaN(Date.parse(s)), { message: 'must be a valid ISO 8601 date string' });
