@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // The web app runs on Cloudflare Workers, where Prisma connects through a driver adapter.
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

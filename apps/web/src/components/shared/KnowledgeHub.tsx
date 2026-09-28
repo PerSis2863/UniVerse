@@ -90,7 +90,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
       let fileUrl = formData.url;
 
       if (formData.type !== 'Link' && selectedFile) {
-        const uploaded = await uploadChatFile(selectedFile, 'knowledge-hub');
+        const uploaded = await uploadChatFile(selectedFile);
         fileUrl = uploaded.startsWith('/') ? `${window.location.origin}${uploaded}` : uploaded;
       }
 

@@ -1,7 +1,5 @@
 'use client';
 
-import { upload } from '@vercel/blob/client';
-import { getAuthToken } from '@/lib/auth-token';
 import { authedFetch } from '@/lib/authed-fetch';
 
 export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
@@ -91,10 +89,10 @@ const SERVER_MAX = 4 * 1024 * 1024;
 
 /**
  * Uploads a chat attachment and returns its URL.
- * Files up to 4 MB go through the server (stored in Vercel Blob if connected, otherwise in the
- * database). Larger files upload straight to Vercel Blob, which needs Blob to be connected.
+ * Files up to 4 MB go through the server (stored in Cloudflare R2 if configured, otherwise in the
+ * database). Larger files upload straight to R2 with a signed URL, which needs R2 to be configured.
  */
-export async function uploadChatFile(file: File, userId: string, onProgress?: (pct: number) => void) {
+export async function uploadChatFile(file: File, onProgress?: (pct: number) => void) {
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('Files must be 25 MB or smaller.');
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100) || 'file';
 
@@ -111,22 +109,31 @@ export async function uploadChatFile(file: File, userId: string, onProgress?: (p
     return json.url as string;
   }
 
-  const token = await getAuthToken();
-  try {
-    const blob = await upload(`chat/${userId}/${safe}`, file, {
-      access: 'public',
-      handleUploadUrl: '/api/upload/token',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      contentType: file.type || undefined,
-      onUploadProgress: onProgress ? ({ percentage }) => onProgress(Math.round(percentage)) : undefined,
-    });
-    return blob.url;
-  } catch (e: any) {
-    const msg = String(e?.message ?? '');
-    if (/client token|not set up/i.test(msg)) throw new Error('Files over 4 MB need cloud storage (Vercel Blob) to be connected. Try a smaller file.');
-    if (/content type|not allowed/i.test(msg)) throw new Error('This file type can’t be shared.');
-    throw new Error('Upload failed. Please check your connection and try again.');
+  const res = await authedFetch('/api/upload/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: safe, contentType: file.type, size: file.size }),
+  });
+  const grant = await res.json().catch(() => ({}));
+  if (res.status === 503) throw new Error('Files over 4 MB need cloud storage to be connected. Try a smaller file.');
+  if (!res.ok || !grant.uploadUrl) {
+    if (res.status === 400 && /type/i.test(grant.error ?? '')) throw new Error('This file type can’t be shared.');
+    throw new Error(grant.error || 'Upload failed. Please try again.');
   }
+
+  // XHR rather than fetch so we can report upload progress.
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', grant.uploadUrl);
+    xhr.setRequestHeader('Content-Type', grant.contentType);
+    if (onProgress) xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`status ${xhr.status}`)));
+    xhr.onerror = () => reject(new Error('network'));
+    xhr.send(file);
+  }).catch(() => {
+    throw new Error('Upload failed. Please check your connection and try again.');
+  });
+  return grant.url as string;
 }
 
 export function messageTypeFor(mime: string): MessageType {

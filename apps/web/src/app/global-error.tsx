@@ -22,7 +22,7 @@ export default function GlobalError({
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Configuration Error</h2>
           <p className="text-zinc-400 text-sm mb-6">
-            It looks like your Clerk API keys are invalid or missing in Vercel. Please ensure you have added the correct <code className="bg-zinc-800 px-1 rounded text-rose-400">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> and <code className="bg-zinc-800 px-1 rounded text-rose-400">CLERK_SECRET_KEY</code> from your Clerk Dashboard to your Vercel Environment Variables.
+            It looks like your Clerk API keys are invalid or missing in your hosting settings. Please ensure you have added the correct <code className="bg-zinc-800 px-1 rounded text-rose-400">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> and <code className="bg-zinc-800 px-1 rounded text-rose-400">CLERK_SECRET_KEY</code> from your Clerk Dashboard to your hosting environment variables.
           </p>
           <div className="w-full bg-black/50 p-4 rounded-lg overflow-x-auto text-left text-xs font-mono text-zinc-300 mb-6 border border-zinc-800">
             {error.message || "Unknown Error"}

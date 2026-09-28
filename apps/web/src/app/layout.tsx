@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from 'next';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 
-import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from 'sonner';
 import ErrorMonitorBootstrap from '@/components/ErrorMonitorBootstrap';
 import { MotionProvider } from '@/components/MotionProvider';
@@ -84,7 +83,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               style: { background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }
             }}
           />
-          <Analytics />
       </body>
     </html>
   );

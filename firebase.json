@@ -6,7 +6,7 @@
       "googleSignIn": {
         "oAuthBrandDisplayName": "UniVerse",
         "supportEmail": "adityabhatt2863@gmail.com",
-        "authorizedRedirectUris": ["https://universe.example.com"]
+        "authorizedRedirectUris": ["https://universeimpact.com", "https://www.universeimpact.com"]
       }
     }
   }
