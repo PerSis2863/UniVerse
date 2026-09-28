@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { BookOpen, ChevronRight, Command, CornerDownLeft, Loader2, MessageSquarePlus, Moon, Search, Sun, User, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { navByRole } from '@/components/layout/Sidebar';
 import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
@@ -149,7 +150,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     setRecents(next);
     try { localStorage.setItem(RECENTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
     setOpen(false);
-    try { await item.run(); } catch { /* the target page shows its own errors */ }
+    try { await item.run(); } catch (e: any) { toast.error(e?.message || 'Could not open that. Please try again.'); }
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
