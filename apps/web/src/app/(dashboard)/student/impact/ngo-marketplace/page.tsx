@@ -119,7 +119,7 @@ export default function NGOMarketplacePage() {
               {filtered.map((project, i) => {
                 const isApplied = applied.includes(project.id);
                 return (
-                  <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                  <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                     className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/40 transition-all group flex flex-col justify-between">
                     <div className="space-y-4">
                       <div className="flex justify-between items-start">

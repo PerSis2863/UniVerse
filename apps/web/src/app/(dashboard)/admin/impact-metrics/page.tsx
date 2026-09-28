@@ -77,7 +77,7 @@ export default function ImpactMetricsPage() {
                   key={kpi.title}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.06 }}
+                  transition={{ delay: Math.min(i, 6) * 0.03 }}
                   whileHover={{ y: -4 }}
                   className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.04] p-5 rounded-2xl"
                 >
@@ -103,7 +103,7 @@ export default function ImpactMetricsPage() {
                   <motion.div
                     initial={{ height: 0 }}
                     animate={{ height: `${(m.value / maxMonth) * 85}%` }}
-                    transition={{ duration: 0.9, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.9, delay: Math.min(i, 6) * 0.03, ease: [0.22, 1, 0.36, 1] }}
                     className="w-full min-h-[2px] bg-indigo-500/70 group-hover:bg-indigo-500 rounded-t-[4px] transition-colors"
                   />
                   <span className="text-xs text-zinc-500">{m.month}</span>

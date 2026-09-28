@@ -180,7 +180,7 @@ export default function DocumentsPage() {
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: Math.min(i, 6) * 0.03 }}
                   key={doc.id} 
                   className="group relative p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all"
                 >

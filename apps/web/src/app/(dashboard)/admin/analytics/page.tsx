@@ -130,7 +130,7 @@ function AnalyticsDashboard() {
             key={k.label}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
+            transition={{ delay: Math.min(i, 6) * 0.03 }}
             className={card}
           >
             <k.icon className="w-5 h-5 text-indigo-500 mb-4" />

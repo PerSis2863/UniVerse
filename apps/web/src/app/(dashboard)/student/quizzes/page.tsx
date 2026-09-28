@@ -131,7 +131,7 @@ export default function QuizzesPage() {
                 <div className="space-y-4">
                   {activeQuizzesList.map((quiz: any, i: number) => (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                       key={quiz.id}
                       className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-6 hover:border-indigo-500/30 transition-all group relative overflow-hidden"
                     >
@@ -178,7 +178,7 @@ export default function QuizzesPage() {
                 <div className="card space-y-2">
                   {(showAllResults ? completedQuizzesList : completedQuizzesList.slice(0, 3)).map((quiz: any, i: number) => (
                     <motion.div
-                      initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+                      initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                       key={quiz.id}
                       className="p-4 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-between border border-transparent hover:border-zinc-200 dark:hover:border-white/[0.04] cursor-pointer"
                       onClick={() => setReviewing(quiz.id)}

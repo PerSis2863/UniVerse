@@ -36,8 +36,8 @@ export function RequestAssociationModal({ onClose, onSuccess }: RequestAssociati
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-[#0e1427] border border-white/[0.1] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
+    <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="sheet-in bg-[#0e1427] border border-white/[0.1] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-white/[0.05]">
           <h2 className="text-xl font-bold text-white">Request New Association</h2>
           <button onClick={onClose} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors">

@@ -299,8 +299,8 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
       </div>
 
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5">
+        <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="sheet-in bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-bold text-white">Add New Resource</h2>
@@ -387,8 +387,8 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
         </div>
       )}
       {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5">
+        <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="sheet-in bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-bold text-white">Share Knowledge Hub</h2>

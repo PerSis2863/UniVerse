@@ -336,7 +336,7 @@ export default function LeaderboardPage() {
 
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
               {rest.map((user, i) => (
-                <motion.div key={user.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
+                <motion.div key={user.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                   className={cn('grid grid-cols-4 sm:grid-cols-12 gap-4 p-4 items-center transition-colors hover:bg-zinc-50 dark:hover:bg-white/[0.02]',
                     user.isCurrentUser ? 'bg-indigo-50/50 dark:bg-indigo-500/5' : '')}>
 

@@ -189,8 +189,8 @@ export default function TeacherRoomReservationPage() {
       </div>
 
       {confirmBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
+        <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Confirm Booking</h2>
               <button onClick={() => setConfirmBooking(null)} className="p-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white"><X className="w-5 h-5" /></button>

@@ -10,6 +10,8 @@ import { CommandPalette } from '@/components/ui/CommandPalette';
 import { useAuthStore } from '@/store/auth';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
@@ -81,12 +83,20 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
               href={item.href}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'pressable flex flex-col items-center justify-center gap-0.5 select-none',
+                'pressable relative flex flex-col items-center justify-center gap-0.5 select-none transition-colors',
                 active ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400',
               )}
             >
-              <item.icon className="w-[22px] h-[22px]" strokeWidth={active ? 2.4 : 1.9} />
-              <span className={cn('text-[10px] leading-none tracking-tight', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
+              {active && (
+                <motion.span
+                  layoutId="tabbar-pill"
+                  transition={spring.snappy}
+                  aria-hidden
+                  className="absolute top-1 h-8 w-14 rounded-full bg-indigo-500/12 dark:bg-indigo-400/15"
+                />
+              )}
+              <item.icon className="relative w-[22px] h-[22px]" strokeWidth={active ? 2.4 : 1.9} />
+              <span className={cn('relative text-[10px] leading-none tracking-tight', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
             </Link>
           );
         })}

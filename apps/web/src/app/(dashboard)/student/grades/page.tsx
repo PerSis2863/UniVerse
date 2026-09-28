@@ -454,7 +454,7 @@ export default function GradesPage() {
                   <motion.tr
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
+                    transition={{ delay: Math.min(i, 6) * 0.03 }}
                     key={`${semester}-${i}`}
                     className="border-b border-zinc-100 dark:border-white/[0.03] hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors group cursor-pointer"
                     onClick={() => record.courseId && router.push(`/student/blackboard?course=${record.courseId}&tab=grades`)}
@@ -471,7 +471,7 @@ export default function GradesPage() {
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${record.percentage}%` }}
-                          transition={{ delay: i * 0.05 + 0.2, duration: 0.6 }}
+                          transition={{ delay: Math.min(i, 6) * 0.03 + 0.2, duration: 0.6 }}
                           className="h-full rounded-full bg-indigo-500"
                         />
                       </div>

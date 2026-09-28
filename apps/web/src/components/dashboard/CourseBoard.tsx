@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import useSWR from 'swr';
+import { motion } from 'framer-motion';
+import { spring } from '@/lib/motion';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
@@ -163,10 +165,11 @@ export function CourseBoard({ role }: { role: Role }) {
         {/* Tabs */}
         <div className="flex overflow-x-auto scrollbar-none border-b border-zinc-200/70 dark:border-white/[0.06] px-4 sm:px-8">
           {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={cn('flex items-center gap-1.5 px-3 py-3.5 text-xs font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors',
-                tab === t.id ? 'border-indigo-500 text-indigo-600 dark:text-indigo-300' : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white')}>
+            <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined}
+              className={cn('relative flex items-center gap-1.5 px-3 py-3.5 text-xs font-semibold whitespace-nowrap transition-colors',
+                tab === t.id ? 'text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white')}>
               <t.icon className="w-3.5 h-3.5" /> {t.label}
+              {tab === t.id && <motion.span layoutId="board-tab" transition={spring.snappy} className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-indigo-500" />}
             </button>
           ))}
         </div>
@@ -175,7 +178,7 @@ export function CourseBoard({ role }: { role: Role }) {
           {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
             : isLoading || !board ? <div className="max-w-3xl mx-auto space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-2xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>
             : (
-              <div className={cn('mx-auto', tab === 'whiteboard' ? 'max-w-6xl' : 'max-w-3xl')}>
+              <div key={`${courseId}-${tab}`} className={cn('fade-up mx-auto', tab === 'whiteboard' ? 'max-w-6xl' : 'max-w-3xl')}>
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
@@ -473,8 +476,8 @@ export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () =>
     questions: { id: string; question: string; options: string[]; points: number; yourAnswer: string | null; correct?: boolean; correctAnswer?: string }[];
   }>(`/api/quizzes/${quizId}/result`, authedJson);
   return (
-    <div className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full sm:max-w-2xl max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl">
+    <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet-in w-full sm:max-w-2xl max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl">
         <div className="sticky top-0 flex items-center justify-between gap-3 px-6 py-4 border-b border-zinc-200/70 dark:border-white/[0.07] bg-white/70 dark:bg-[#0f1322]/80 backdrop-blur-xl">
           <div className="min-w-0"><h3 className="font-bold text-zinc-900 dark:text-white truncate">{data?.title ?? 'Quiz review'}</h3>{data && <p className="text-xs text-zinc-500">Score {data.score ?? 0}/{data.maxScore ?? 0}</p>}</div>
           <button onClick={onClose} aria-label="Close" className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300"><X className="w-5 h-5" /></button>

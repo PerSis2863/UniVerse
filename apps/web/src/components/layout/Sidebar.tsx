@@ -12,7 +12,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
 import { auth } from '@/lib/firebase';
 
@@ -195,66 +196,72 @@ function NavItemComponent({
   if (item.subItems) {
     return (
       <div className="space-y-1">
-        <motion.button
-          whileHover={{ x: 4 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={onToggle}
+          aria-expanded={isOpen}
           className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active text-indigo-400')}
         >
           <div className="flex items-center gap-3">
             <item.icon className="w-4 h-4 flex-shrink-0" />
             <span>{t(item.label)}</span>
           </div>
-          {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </motion.button>
-        {isOpen && (
-          <div className="pl-9 space-y-1 mt-1">
-            {item.subItems.map(sub => (
-              <Link key={sub.href} href={sub.href} onClick={onClose} passHref legacyBehavior>
-                <motion.a 
-                  whileHover={{ x: 4 }}
-                  className={cn('sidebar-item block text-sm py-1.5', pathname === sub.href && 'active text-indigo-400')}>
-                  <span>{t(sub.label)}</span>
-                </motion.a>
-              </Link>
-            ))}
-          </div>
-        )}
+          <ChevronDown className={cn('w-4 h-4 transition-transform duration-300', !isOpen && '-rotate-90')} />
+        </button>
+        <AnimatePresence initial={false}>
+          {isOpen && (
+            <motion.div
+              key="sub"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={spring.smooth}
+              className="overflow-hidden"
+            >
+              <div className="pl-9 space-y-1 pt-1">
+                {item.subItems.map(sub => {
+                  const on = pathname === sub.href;
+                  return (
+                    <Link key={sub.href} href={sub.href} onClick={onClose} aria-current={on ? 'page' : undefined}
+                      className={cn('sidebar-item pill-host relative block text-sm py-1.5', on && 'active text-indigo-400')}>
+                      {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
+                      <span className="relative">{t(sub.label)}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
 
   if (item.action) {
     return (
-      <motion.button 
-        whileHover={{ x: 4 }}
-        whileTap={{ scale: 0.98 }}
-        className="sidebar-item w-full justify-start text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white">
+      <button className="sidebar-item w-full justify-start text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
         <item.icon className="w-4 h-4 flex-shrink-0" />
         <span>{t(item.label)}</span>
-      </motion.button>
+      </button>
     );
   }
 
   if (item.href) {
+    const on = pathname === item.href;
     return (
-      <Link href={item.href} onClick={onClose} passHref legacyBehavior>
-        <motion.a 
-          whileHover={{ x: 4 }}
-          whileTap={{ scale: 0.98 }}
-          className={cn('sidebar-item block', pathname === item.href && 'active')}
-        >
-          <div className="flex items-center gap-3">
-            <item.icon className="w-4 h-4 flex-shrink-0" />
-            <span>{t(item.label)}</span>
-          </div>
-        </motion.a>
+      <Link href={item.href} onClick={onClose} aria-current={on ? 'page' : undefined}
+        className={cn('sidebar-item pill-host relative block', on && 'active')}>
+        {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
+        <div className="relative flex items-center gap-3">
+          <item.icon className="w-4 h-4 flex-shrink-0" />
+          <span>{t(item.label)}</span>
+        </div>
       </Link>
     );
   }
 
   return null;
 }
+
 
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();

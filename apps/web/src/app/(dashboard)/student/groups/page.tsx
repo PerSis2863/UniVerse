@@ -197,7 +197,7 @@ export default function GroupsPage() {
                   key={group.id}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.06 }}
+                  transition={{ delay: Math.min(i, 6) * 0.03 }}
                   onClick={() => setSelectedGroup(group)}
                   className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 transition-all cursor-pointer group"
                 >

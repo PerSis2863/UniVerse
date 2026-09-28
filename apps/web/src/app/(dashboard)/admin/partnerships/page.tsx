@@ -196,8 +196,8 @@ export default function AdminPartnershipsPage() {
       </div>
 
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => !saving && setShowAddModal(false)}>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-lg rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => !saving && setShowAddModal(false)}>
+          <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-lg rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div>
               <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Add a partner</h3>
               <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">Add an organization you actually work with. Students will see it on the Partner Network page.</p>

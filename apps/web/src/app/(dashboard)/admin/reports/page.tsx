@@ -43,7 +43,7 @@ function Exports() {
           key={e.type}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.06 }}
+          transition={{ delay: Math.min(i, 6) * 0.03 }}
           whileHover={{ y: -4 }}
           onClick={() => download(e.type)}
           disabled={busy !== null}

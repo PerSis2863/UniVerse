@@ -422,8 +422,8 @@ function AddMembers({ conversationId, existing, onClose, onDone }: { conversatio
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
   return (
-    <div className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-sm max-h-[70vh] flex flex-col rounded-3xl bg-white dark:bg-[#11152a] border border-zinc-200 dark:border-white/10 shadow-2xl">
+    <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet-in w-full max-w-sm max-h-[70vh] flex flex-col rounded-3xl bg-white dark:bg-[#11152a] border border-zinc-200 dark:border-white/10 shadow-2xl">
         <div className="p-4 flex items-center gap-2 border-b border-zinc-200 dark:border-white/10">
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people to add" className="flex-1 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none" />
           <button onClick={onClose} aria-label="Close" className="p-1.5 text-zinc-500"><X className="w-5 h-5" /></button>

@@ -102,7 +102,7 @@ export default function AssociationsPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: Math.min(i, 6) * 0.03 }}
                 key={club.id}
                 className="group relative bg-[#0e1427] border border-white/[0.06] rounded-3xl p-6 hover:border-indigo-500/30 transition-all overflow-hidden flex flex-col h-full"
               >

@@ -54,7 +54,7 @@ export function PricingCards({ interval, onIntervalChange, onSelect, currentPlan
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ delay: idx * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ delay: Math.min(idx, 6) * 0.03, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ y: -6 }}
               className={cn(
                 'relative flex flex-col rounded-[2rem] p-8 border transition-shadow',

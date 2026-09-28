@@ -262,7 +262,7 @@ function AccountingContent() {
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: Math.min(i, 6) * 0.03 }}
                 key={i}
                 onClick={() => setActiveModal(action.id)}
                 className={`bg-[#0e1427] border border-white/[0.08] rounded-2xl p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition-all cursor-pointer group ${action.border}`}
@@ -309,7 +309,7 @@ function AccountingContent() {
                   <motion.tr 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
+                    transition={{ delay: Math.min(i, 6) * 0.03 }}
                     key={record.id} 
                     className="border-b border-zinc-100 dark:border-white/[0.03] hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors group"
                   >
@@ -372,7 +372,7 @@ function AccountingContent() {
 
       <AnimatePresence>
         {activeModal && getModalConfig() && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

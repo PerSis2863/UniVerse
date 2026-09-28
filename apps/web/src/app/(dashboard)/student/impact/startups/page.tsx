@@ -145,7 +145,7 @@ export default function StartupIncubatorPage() {
                 const pct = Math.round((raised / target) * 100);
                 const isJoined = joined.includes(startup.id);
                 return (
-                  <motion.div key={startup.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                  <motion.div key={startup.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                     className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 transition-all group flex flex-col justify-between">
                     <div className="space-y-4">
                       <div className="flex items-start justify-between gap-3">
@@ -173,7 +173,7 @@ export default function StartupIncubatorPage() {
                           <span className="text-zinc-500">Goal: {startup.currency || '$'}{target.toLocaleString()}</span>
                         </div>
                         <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: i * 0.05 + 0.3, duration: 0.8 }}
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: Math.min(i, 6) * 0.03 + 0.3, duration: 0.8 }}
                             className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500" />
                         </div>
                         <div className="text-[10px] text-zinc-500 text-right">{pct}% funded</div>
