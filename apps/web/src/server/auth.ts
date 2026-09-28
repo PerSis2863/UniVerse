@@ -1,0 +1,125 @@
+import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
+import type { User } from '@prisma/client';
+import prisma from '@/lib/db';
+import { UnauthorizedException } from './http';
+
+// Turns a bearer token into a platform user (ported from apps/api/src/auth/token-auth.service.ts).
+// Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
+// for allowlisted demo accounts only when demo login is enabled, "mock-token-<email|id>" tokens.
+
+const FIREBASE_KEYS = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
+);
+
+function firebaseProjectId() {
+  return process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'universe-71e68';
+}
+
+interface FirebaseClaims extends JWTPayload {
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  picture?: string;
+  phone_number?: string;
+}
+
+/** Verifies a Firebase ID token the same way firebase-admin's verifyIdToken does. */
+export async function verifyFirebaseIdToken(token: string): Promise<FirebaseClaims & { uid: string }> {
+  const projectId = firebaseProjectId();
+  const { payload } = await jwtVerify<FirebaseClaims>(token, FIREBASE_KEYS, {
+    issuer: `https://securetoken.google.com/${projectId}`,
+    audience: projectId,
+    algorithms: ['RS256'],
+  });
+  if (!payload.sub) throw new Error('Token has no subject');
+  if (typeof payload.auth_time === 'number' && payload.auth_time * 1000 > Date.now() + 60_000) {
+    throw new Error('Token auth_time is in the future');
+  }
+  return { ...payload, uid: payload.sub };
+}
+
+// ─── Demo login (apps/api/src/auth/demo-accounts.ts) ────────────────────────────────────────────
+
+const DEFAULT_DEMO_EMAILS = ['demo@student.com', 'demo@teacher.com', 'demo@admin.com', 'it-support@universe.com'];
+
+export function isDemoLoginEnabled(): boolean {
+  const flag = process.env.DEMO_LOGIN_ENABLED;
+  if (flag !== undefined) return flag.trim().toLowerCase() === 'true';
+  return process.env.NODE_ENV !== 'production';
+}
+
+export function isDemoAccount(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const raw = process.env.DEMO_ACCOUNT_EMAILS;
+  const list = (raw && raw.trim() ? raw.split(',') : DEFAULT_DEMO_EMAILS).map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return list.includes(email.trim().toLowerCase());
+}
+
+// ─── Token → user ───────────────────────────────────────────────────────────────────────────────
+
+export function extractBearer(value: string | undefined | null): string | null {
+  if (!value || typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed.toLowerCase().startsWith('bearer ')) return trimmed.slice(7).trim() || null;
+  return trimmed || null;
+}
+
+export async function resolveUser(token: string | null): Promise<User> {
+  if (!token) throw new UnauthorizedException('Missing authentication token');
+
+  if (token.startsWith('mock-token-')) {
+    if (!isDemoLoginEnabled()) throw new UnauthorizedException('Demo login is disabled');
+    const identifier = token.slice('mock-token-'.length);
+    const user = identifier.includes('@')
+      ? await prisma.user.findUnique({ where: { email: identifier } })
+      : await prisma.user.findUnique({ where: { id: identifier } });
+    if (!user || !isDemoAccount(user.email)) throw new UnauthorizedException('Invalid demo token');
+    return user;
+  }
+
+  let decoded: Awaited<ReturnType<typeof verifyFirebaseIdToken>>;
+  try {
+    decoded = await verifyFirebaseIdToken(token);
+  } catch (error) {
+    const expired = error instanceof joseErrors.JWTExpired;
+    if (!expired) console.warn(`Token verification failed: ${(error as Error).message}`);
+    throw new UnauthorizedException(expired ? 'Authentication token expired' : 'Invalid authentication token');
+  }
+
+  const firebaseUid = decoded.uid;
+  let user = await prisma.user.findUnique({ where: { firebaseUid } });
+
+  if (!user && decoded.email) {
+    // Link an existing account (e.g. created before Google sign-in) by email, but only when the
+    // sign-in proves ownership of the email and the account isn't tied to another sign-in.
+    // Otherwise anyone could claim an existing account (including an admin's) by registering
+    // with its email address.
+    const byEmail = await prisma.user.findUnique({ where: { email: decoded.email } });
+    if (byEmail) {
+      if (byEmail.firebaseUid && byEmail.firebaseUid !== firebaseUid) {
+        throw new UnauthorizedException('This email is already linked to a different sign-in method.');
+      }
+      if (!decoded.email_verified) {
+        throw new UnauthorizedException('Please sign in with Google or verify your email address to access this account.');
+      }
+      user = await prisma.user.update({ where: { email: decoded.email }, data: { firebaseUid } });
+    }
+  }
+
+  if (!user) {
+    if (!decoded.email && !decoded.phone_number) {
+      throw new UnauthorizedException('No email or phone associated with Firebase account');
+    }
+    user = await prisma.user.create({
+      data: {
+        firebaseUid,
+        email: decoded.email || `${firebaseUid}@phone.local`,
+        name: decoded.name || decoded.email?.split('@')[0] || 'User',
+        role: 'STUDENT',
+        avatar: decoded.picture || null,
+      },
+    });
+  }
+
+  return user;
+}

@@ -1,7 +1,7 @@
-// Server-side (route handler) helper: confirms the caller is a signed-in UniVerse user by
-// asking the API who the bearer token belongs to. Keeps paid services (Gemini, file storage)
-// from being used anonymously by anyone who finds the endpoint.
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://universe-xsku.onrender.com/api';
+// Server-side (route handler) helper: confirms the caller is a signed-in UniVerse user from the
+// bearer token. Keeps paid services (Gemini, file storage) from being used anonymously by anyone
+// who finds the endpoint.
+import { extractBearer, resolveUser } from '@/server/auth';
 
 export interface SessionUser {
   id: string;
@@ -11,16 +11,11 @@ export interface SessionUser {
 }
 
 export async function getSessionUser(request: Request): Promise<SessionUser | null> {
-  const header = request.headers.get('authorization');
-  if (!header || !header.startsWith('Bearer ')) return null;
+  const token = extractBearer(request.headers.get('authorization'));
+  if (!token) return null;
   try {
-    const res = await fetch(`${API_URL}/auth/me`, {
-      headers: { Authorization: header },
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    const user = (await res.json()) as SessionUser | null;
-    return user && user.id ? user : null;
+    const user = await resolveUser(token);
+    return { id: user.id, name: user.name, email: user.email, role: user.role };
   } catch {
     return null;
   }
