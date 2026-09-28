@@ -19,10 +19,10 @@
   ],
   "d1_databases": [
     {
-      // The app's database. Replace database_id with the ID from `wrangler d1 create universe-db`.
+      // The app's database (Cloudflare D1).
       "binding": "DB",
       "database_name": "universe-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "a48e71c9-d645-416c-a5b4-35a997dd0f79",
       "migrations_dir": "prisma/migrations"
     }
   ],

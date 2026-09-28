@@ -19,7 +19,7 @@ const csp = `
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: ${FILES_ORIGIN} ${LEGACY_BLOB} https://images.unsplash.com https://ui-avatars.com https://lh3.googleusercontent.com https://*.googleusercontent.com;
     font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
-    connect-src 'self' ${FILES_ORIGIN} https://*.r2.cloudflarestorage.com https://cloudflareinsights.com https://*.onrender.com http://localhost:* https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com;
+    connect-src 'self' ${FILES_ORIGIN} https://*.r2.cloudflarestorage.com https://cloudflareinsights.com http://localhost:* https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com;
     media-src 'self' blob: ${FILES_ORIGIN} ${LEGACY_BLOB};
     object-src 'none';
     base-uri 'self';
