@@ -33,6 +33,7 @@ import calendar from './modules/calendar';
 import health from './modules/health';
 import dashboard from './modules/dashboard';
 import blackboard from './modules/blackboard';
+import audit from './modules/audit';
 
 // The platform API (formerly a NestJS app on Render), served at /api/core/*. Modules are
 // registered in the old AppModule's order. Not ported: the Clerk webhook (the app signs in with
@@ -42,7 +43,7 @@ for (const register of [
   auth, users, courses, attendance, grades, quizzes, announcements, files, notifications, knowledgeHub,
   messages, career, schedule, associations, rooms, tickets, timetable, internships, electives, skills,
   groups, impact, partners, documents, scholarships, consents, medical, safety, mentorship, collaborations,
-  calendar, health, dashboard, blackboard,
+  calendar, health, dashboard, blackboard, audit,
 ]) {
   register(api);
 }

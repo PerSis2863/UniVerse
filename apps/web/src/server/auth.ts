@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
 import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
-import { UnauthorizedException } from './http';
+import { ForbiddenException, UnauthorizedException } from './http';
 
 // Turns a bearer token into a platform user (ported from the old NestJS API).
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
@@ -94,9 +94,15 @@ export async function warmFirebaseKeys() {
 export async function resolveUser(token: string | null): Promise<User> {
   if (!token) throw new UnauthorizedException('Missing authentication token');
   const cached = verified.get(token);
-  if (cached && cached.until > Date.now()) return cached.user;
-  const user = await resolveUserUncached(token);
-  remember(token, user, token.startsWith('mock-token-') ? undefined : decodeExp(token));
+  let user: User;
+  if (cached && cached.until > Date.now()) {
+    user = cached.user;
+  } else {
+    user = await resolveUserUncached(token);
+    remember(token, user, token.startsWith('mock-token-') ? undefined : decodeExp(token));
+  }
+  // An admin can suspend an account (Users → Deactivate); it then can't use the platform.
+  if (user.status === 'SUSPENDED') throw new ForbiddenException('Your account has been suspended. Please contact your administrator.');
   return user;
 }
 

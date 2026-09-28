@@ -2,6 +2,7 @@ import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { UnauthorizedException } from '../http';
 import { forgetUser, isDemoAccount, isDemoLoginEnabled } from '../auth';
+import { audit } from '../audit';
 
 const userSelect = {
   id: true, name: true, email: true, role: true, status: true, avatar: true,
@@ -25,13 +26,16 @@ export default function auth(router: Router) {
   });
 
   // Update name/role after Firebase sign-up. ADMIN can never be self-assigned.
-  r.post('register', async ({ user, body }) => {
+  r.post('register', async ({ user, body, req }) => {
     const data: { name?: string; role?: 'STUDENT' | 'TEACHER' } = {};
     if (body.name && String(body.name).trim()) data.name = String(body.name).trim();
     if (body.role === 'STUDENT' || body.role === 'TEACHER') data.role = body.role;
     if (Object.keys(data).length > 0) {
       await prisma.user.update({ where: { id: user.id }, data });
       forgetUser(user.id);
+      if (data.role && data.role !== user.role) {
+        audit(user, { action: 'user.role_changed', summary: `${data.name ?? user.name} signed up as ${data.role}`, targetType: 'user', targetId: user.id, metadata: { from: user.role, to: data.role } }, req);
+      }
     }
     return getMe(user.id);
   });

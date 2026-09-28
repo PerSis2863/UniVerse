@@ -18,9 +18,9 @@ Postgres database have been removed.
 - Schema: `prisma/schema.prisma`. Migrations: `prisma/migrations/*.sql`, applied in order by wrangler.
   `0002_sample_data.sql` loads the sample data (demo accounts, courses, grades, messages, ...).
 - Deploys apply new migrations before publishing (see the deploy command below).
-- To change the schema: edit `schema.prisma`, then create the next migration file with
-  `npx prisma migrate diff --from-local-d1 --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/0003_<name>.sql`
-  (after `pnpm db:migrate:local`), and commit it.
+- To change the schema: edit `schema.prisma`, run `pnpm db:migrate:local`, then write the next migration with
+  `npx prisma migrate diff --from-url "file:$(ls .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite | grep -v metadata)" --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/0004_<name>.sql`
+  and commit it. The next deploy applies it.
 - D1 has no transactions: Prisma runs grouped writes one by one.
 
 ## One-time setup (Cloudflare dashboard)
