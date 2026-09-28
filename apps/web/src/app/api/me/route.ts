@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 
-// The signed-in user's account-setup details, and updating phone / department.
+// The signed-in user's account-setup details, and updating phone / department / email preference.
 
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const me = await prisma.user.findUnique({
     where: { id: user.id },
     select: {
-      name: true, email: true, phone: true, role: true, status: true, emergencyContacts: true, createdAt: true,
+      name: true, email: true, phone: true, role: true, status: true, emergencyContacts: true, emailNotifications: true, createdAt: true,
       studentProfile: { select: { department: true } },
       teacherProfile: { select: { department: true } },
     },
@@ -25,6 +25,7 @@ export async function GET(req: Request) {
       status: me.status,
       department: me.studentProfile?.department ?? me.teacherProfile?.department ?? null,
       emergencyContacts: Array.isArray(me.emergencyContacts) ? me.emergencyContacts : [],
+      emailNotifications: me.emailNotifications,
       memberSince: me.createdAt,
     },
     { headers: { 'Cache-Control': 'no-store' } },
@@ -58,6 +59,10 @@ export async function PATCH(req: Request) {
     }));
     if (contacts.some((c: any) => !c.name || !c.phone)) return NextResponse.json({ error: 'Each contact needs a name and phone number.' }, { status: 400 });
     await prisma.user.update({ where: { id: user.id }, data: { emergencyContacts: contacts } });
+  }
+
+  if (typeof body.emailNotifications === 'boolean') {
+    await prisma.user.update({ where: { id: user.id }, data: { emailNotifications: body.emailNotifications } });
   }
 
   return NextResponse.json({ ok: true });

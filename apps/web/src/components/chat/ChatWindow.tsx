@@ -13,10 +13,14 @@ import { Avatar, MessageBubble } from './MessageBubble';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
 import { type ChatMessage, type ThreadResponse, chatJson, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
+import { useLiveInterval } from '@/lib/realtime-client';
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const key = `/api/chat/conversations/${conversationId}/messages`;
-  const { data, error, isLoading, mutate } = useSWR<ThreadResponse>(key, authedJson, { refreshInterval: 2500, revalidateOnFocus: true });
+  // Live updates refresh the thread on every change; the slower poll keeps "typing…" and
+  // "online" fresh.
+  const refreshInterval = useLiveInterval(2500, 8000);
+  const { data, error, isLoading, mutate } = useSWR<ThreadResponse>(key, authedJson, { refreshInterval, revalidateOnFocus: true });
   const [older, setOlder] = useState<ChatMessage[]>([]);
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);

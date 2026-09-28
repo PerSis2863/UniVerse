@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
+import { later, notify } from '@/server/email';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
+import { publishChat } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
@@ -177,5 +179,49 @@ export async function POST(req: Request, { params }: Ctx) {
     prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: new Date(), typingUntil: null } }),
   ]);
   const [out] = await decorate([serializeMessage(message)], user.id);
+  publishChat(id);
+  later(() => notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? '')));
   return NextResponse.json(out, { status: 201 });
+}
+
+const AWAY_MS = 5 * 60_000;
+const EMAIL_GAP_MS = 60 * 60_000;
+const PREVIEW: Record<string, string> = { IMAGE: '📷 Photo', FILE: '📎 File', AUDIO: '🎤 Voice message', VIDEO: '🎬 Video', CALL: '📞 Call', POLL: '📊 Poll', LOCATION: '📍 Location', CONTACT: '👤 Contact' };
+
+// Members who haven't been active for a few minutes get a notification (and an email if they
+// have them on), at most once an hour per chat, so a busy chat doesn't flood their inbox.
+async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string) {
+  const now = new Date();
+  const [convo, members] = await Promise.all([
+    prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true } }),
+    prisma.conversationParticipant.findMany({
+      where: {
+        conversationId,
+        userId: { notIn: [from.id, systemUserId] },
+        OR: [{ mutedUntil: null }, { mutedUntil: { lt: now } }],
+        user: { status: 'ACTIVE', OR: [{ lastSeenAt: null }, { lastSeenAt: { lt: new Date(now.getTime() - AWAY_MS) } }] },
+      },
+      select: { userId: true, user: { select: { role: true } } },
+    }),
+  ]);
+  if (!convo || members.length === 0) return;
+  const recent = await prisma.notification.findMany({
+    where: { userId: { in: members.map((m) => m.userId) }, type: 'chat', link: { endsWith: `?c=${conversationId}` }, createdAt: { gt: new Date(now.getTime() - EMAIL_GAP_MS) } },
+    select: { userId: true },
+  });
+  const skip = new Set(recent.map((r) => r.userId));
+  const text = (type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
+  const title = convo.isGroup ? `New messages in ${convo.name ?? 'a group chat'}` : `New message from ${from.name}`;
+  await Promise.all(
+    members
+      .filter((m) => !skip.has(m.userId))
+      .map((m) =>
+        notify(m.userId, {
+          type: 'chat',
+          title,
+          body: convo.isGroup ? `${from.name}: ${text}` : text,
+          link: `/${m.user.role === 'ADMIN' ? 'admin' : m.user.role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`,
+        }),
+      ),
+  );
 }

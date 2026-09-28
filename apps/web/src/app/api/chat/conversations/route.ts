@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { ensureWelcome, getSystemUser, isOnline, touchPresence, userCard, visibleTo } from '@/lib/chat';
+import { publishChat } from '@/server/realtime';
 
 // GET: the caller's conversations (newest activity first) with unread counts and presence.
 export async function GET(req: Request) {
@@ -123,5 +124,6 @@ export async function POST(req: Request) {
     },
     select: { id: true },
   });
+  publishChat(group.id);
   return NextResponse.json({ id: group.id }, { status: 201 });
 }

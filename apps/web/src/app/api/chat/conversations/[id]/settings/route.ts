@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { membership } from '@/lib/chat';
+import { publishChat } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 const ALLOWED = new Set([0, 86_400, 604_800, 7_776_000]); // off, 24h, 7d, 90d
@@ -24,5 +25,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
   await prisma.message.create({
     data: { conversationId: id, senderId: user.id, type: 'SYSTEM', body: sec ? `${user.name} turned on disappearing messages. New messages will disappear after ${LABEL[sec]}.` : `${user.name} turned off disappearing messages.` },
   });
+  publishChat(id);
   return NextResponse.json({ ok: true });
 }

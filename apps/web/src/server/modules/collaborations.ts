@@ -20,6 +20,7 @@ export default function collaborationsModule(router: Router) {
     const project = await collaborations.reviewProject(params.id, body.status);
     audit(user, { action: 'project.reviewed', summary: `Set project “${(project as { title?: string }).title ?? params.id}” to ${body.status}`, targetType: 'project', targetId: params.id, metadata: { status: body.status } }, req);
     return project;
-  });  r.post<{ id: string }>('projects/:id/milestones', ({ params, user, body }) => collaborations.createMilestone(params.id, user, body));
+  });
+  r.post<{ id: string }>('projects/:id/milestones', ({ params, user, body }) => collaborations.createMilestone(params.id, user, body));
   r.patch<{ milestoneId: string }>('projects/milestones/:milestoneId', ({ params, user, body }) => collaborations.updateMilestone(params.milestoneId, user, body));
 }

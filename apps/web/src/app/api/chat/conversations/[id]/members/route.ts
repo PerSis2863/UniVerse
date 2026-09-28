@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { getSystemUser, membership } from '@/lib/chat';
+import { publishChat } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -38,6 +39,7 @@ export async function POST(req: Request, { params }: Ctx) {
     data: { conversationId: id, senderId: r.user.id, type: 'SYSTEM', body: `${r.user.name} added ${toAdd.map((u) => u.name).join(', ')}` },
   });
   await prisma.conversation.update({ where: { id }, data: { updatedAt: new Date() } });
+  publishChat(id);
   return NextResponse.json({ ok: true });
 }
 
@@ -50,6 +52,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!name) return NextResponse.json({ error: 'Name is required.' }, { status: 400 });
   await prisma.conversation.update({ where: { id }, data: { name } });
   await prisma.message.create({ data: { conversationId: id, senderId: r.user.id, type: 'SYSTEM', body: `${r.user.name} renamed the group to "${name}"` } });
+  publishChat(id);
   return NextResponse.json({ ok: true });
 }
 
@@ -69,6 +72,7 @@ export async function DELETE(req: Request, { params }: Ctx) {
     // Keep at least one admin in the group.
     if (!remaining.some((p) => p.role === 'ADMIN')) await prisma.conversationParticipant.update({ where: { id: remaining[0].id }, data: { role: 'ADMIN' } });
     await prisma.message.create({ data: { conversationId: id, senderId: user.id, type: 'SYSTEM', body: `${user.name} left the group` } });
+    publishChat(id, [user.id]);
   }
   return NextResponse.json({ ok: true });
 }

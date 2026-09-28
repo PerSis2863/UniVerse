@@ -9,6 +9,7 @@ import { Role, UserStatus } from '@/types';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
+import { RealtimeSync } from '@/components/RealtimeSync';
 
 type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null };
 
@@ -84,5 +85,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Show the app skeleton while the session is restored (static markup, so no hydration mismatch)
   if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return <AppSkeleton />;
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <DashboardShell>
+      <RealtimeSync />
+      {children}
+    </DashboardShell>
+  );
 }

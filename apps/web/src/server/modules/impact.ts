@@ -4,6 +4,21 @@ import { extractBearer, resolveUser } from '../auth';
 import { CredentialDecisionDto, IssueCredentialDto, RequestCredentialDto, validate } from '../dto';
 import prisma from '@/lib/db';
 import { audit } from '../audit';
+import { later, notify } from '../email';
+
+/** Tells the credential's owner about an admin decision (in-app + email). */
+const notifyCredential = (id: string, verb: 'approved' | 'rejected' | 'revoked', reason?: string) =>
+  later(async () => {
+    const c = await prisma.impactCertificate.findUnique({ where: { id }, select: { userId: true, title: true } });
+    if (!c) return;
+    const title = { approved: 'Your credential was approved', rejected: 'Your credential request was not approved', revoked: 'A credential was revoked' }[verb];
+    await notify(c.userId, {
+      type: 'credential',
+      title,
+      body: `“${c.title}”${verb === 'approved' ? ' is now verified and signed. You can share it from your credentials page.' : reason ? `\nReason: ${reason}` : ''}`,
+      link: '/student/credentials',
+    });
+  });
 
 const credentialLabel = async (id: string) => {
   const c = await prisma.impactCertificate.findUnique({ where: { id }, select: { title: true, certificateCode: true, user: { select: { name: true } } } });
@@ -66,18 +81,21 @@ export default function impactModule(router: Router) {
   r.post<{ id: string }>('blockchain-credentials/:id/approve', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
     const result = await impact.approveCredential(params.id, { id: user.id, name: user.name });
     audit(user, async () => ({ action: 'credential.approved', summary: `Approved and signed ${await credentialLabel(params.id)}`, targetType: 'credential', targetId: params.id }), req);
+    notifyCredential(params.id, 'approved');
     return result;
   });
   r.post<{ id: string }>('blockchain-credentials/:id/reject', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
     const { reason } = validate<CredentialDecisionDto>(CredentialDecisionDto, body);
     const result = await impact.rejectCredential(params.id, reason);
     audit(user, async () => ({ action: 'credential.rejected', summary: `Rejected ${await credentialLabel(params.id)}${reason ? `: ${reason}` : ''}`, targetType: 'credential', targetId: params.id }), req);
+    notifyCredential(params.id, 'rejected', reason);
     return result;
   });
   r.post<{ id: string }>('blockchain-credentials/:id/revoke', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
     const { reason } = validate<CredentialDecisionDto>(CredentialDecisionDto, body);
     const result = await impact.revokeCredential(params.id, reason);
     audit(user, async () => ({ action: 'credential.revoked', summary: `Revoked ${await credentialLabel(params.id)}${reason ? `: ${reason}` : ''}`, targetType: 'credential', targetId: params.id }), req);
+    notifyCredential(params.id, 'revoked', reason);
     return result;
   });
 

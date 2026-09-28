@@ -10,7 +10,7 @@ const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
-  avatar: true, phone: true, googleId: true, createdAt: true, updatedAt: true,
+  avatar: true, phone: true, googleId: true, emailNotifications: true, createdAt: true, updatedAt: true,
   studentProfile: true, teacherProfile: true,
 };
 
@@ -72,7 +72,9 @@ export default function users(router: Router) {
 
   // Only profile fields: the old API passed the whole body through, which let users change their role.
   r.patch('me', async ({ user, body }) => {
-    const updated = await prisma.user.update({ where: { id: user.id }, data: pick(body, ['name', 'phone', 'avatar'] as const), select: safeSelect });
+    const data: Record<string, unknown> = pick(body, ['name', 'phone', 'avatar'] as const);
+    if (typeof body?.emailNotifications === 'boolean') data.emailNotifications = body.emailNotifications;
+    const updated = await prisma.user.update({ where: { id: user.id }, data, select: safeSelect });
     forgetUser(user.id);
     return updated;
   });

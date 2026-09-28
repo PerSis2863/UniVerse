@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { MAX_BODY, membership, messageSelect, serializeMessage } from '@/lib/chat';
+import { publishChat } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -26,6 +27,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const text = String(body.body ?? '').trim().slice(0, MAX_BODY);
   if (!text) return NextResponse.json({ error: 'Message is empty.' }, { status: 400 });
   const updated = await prisma.message.update({ where: { id }, data: { body: text, editedAt: new Date() }, select: { ...messageSelect, sender: { select: { id: true, name: true, avatar: true } } } });
+  publishChat(msg.conversationId);
   return NextResponse.json(serializeMessage(updated));
 }
 
@@ -42,5 +44,6 @@ export async function DELETE(req: Request, { params }: Ctx) {
   }
   await prisma.message.update({ where: { id }, data: { deletedAt: new Date() } });
   await prisma.messageReaction.deleteMany({ where: { messageId: id } });
+  publishChat(msg.conversationId);
   return NextResponse.json({ ok: true });
 }

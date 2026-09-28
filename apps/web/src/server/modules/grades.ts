@@ -2,6 +2,7 @@ import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { GradesService } from '../services/grades.service';
 import { audit } from '../audit';
+import { later, notify } from '../email';
 
 const grades = new GradesService();
 
@@ -29,6 +30,15 @@ export default function gradesModule(router: Router) {
         metadata: { courseId: params.courseId, studentId: grade.studentId, score: grade.score, maxScore: grade.maxScore },
       };
     }, req);
+    later(async () => {
+      const g = await gradeLabel(grade.id);
+      await notify(grade.studentId, {
+        type: 'grade',
+        title: `New grade in ${g?.course.code ?? 'your course'}`,
+        body: `${grade.assignmentName}: ${grade.score}/${grade.maxScore}`,
+        link: '/student/grades',
+      });
+    });
     return grade;
   });
 

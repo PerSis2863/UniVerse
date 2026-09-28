@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "universe-web",
-  "main": ".open-next/worker.js",
+  // Wraps the Next.js app (.open-next/worker.js) and adds live updates and the daily cron job.
+  "main": "cloudflare/worker.ts",
   // Keeps the upload under the Workers size limit (3 MB gzipped on the free plan).
   "minify": true,
   "compatibility_date": "2026-09-01",
@@ -38,6 +39,20 @@
       "simple": { "limit": 100, "period": 60 }
     }
   ],
+  "durable_objects": {
+    "bindings": [
+      {
+        // Live updates: one per signed-in user, holding their open tabs' WebSockets.
+        "name": "REALTIME",
+        "class_name": "RealtimeHub"
+      }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeHub"] }],
+  "triggers": {
+    // Daily at 08:00 UTC (13:30 in India): reminders for quizzes due in the next 24 hours.
+    "crons": ["0 8 * * *"]
+  },
   "observability": {
     "enabled": true
   }

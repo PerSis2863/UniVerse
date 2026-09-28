@@ -50,7 +50,11 @@ Postgres database have been removed.
    Runtime variables and secrets (Settings → Variables and secrets):
    - `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `NEXT_PUBLIC_FILES_URL`
    - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `GEMINI_API_KEY` (optional `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`)
-   - `RESEND_API_KEY`, `RESEND_FROM`, `SUPPORT_INBOX_EMAIL` (optional)
+   - `RESEND_API_KEY`, `RESEND_FROM`, `SUPPORT_INBOX_EMAIL` (optional). With `RESEND_API_KEY` set, people who
+     have "Email notifications" on also get emails for new grades, credential decisions, chat messages they
+     miss and quizzes due within 24 hours. `RESEND_FROM` must use a domain verified in Resend, e.g.
+     `UniVerse <notifications@universeimpact.com>`. Optional `PUBLIC_APP_URL` (default `https://universeimpact.com`)
+     sets the links in those emails.
    - `CREDENTIAL_SIGNING_PRIVATE_KEY`: Ed25519 key that signs impact credentials (optional; without it,
      issuing credentials is refused). Generate one with
      `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))"`
@@ -71,6 +75,23 @@ Postgres database have been removed.
 - `pnpm db:migrate:remote`: apply migrations to the production D1
 - `pnpm db:seed:local`: run `prisma/seed.ts` against the local D1
 - `pnpm deploy`: build, migrate and deploy from your machine (after `npx wrangler login`)
+
+## Worker entry, live updates and the daily job
+
+`cloudflare/worker.ts` is the Worker's entry (`main` in `wrangler.jsonc`). It wraps the Next.js app that
+OpenNext builds and adds:
+
+- **Live updates** at `/realtime`: each signed-in user has a `RealtimeHub` Durable Object holding their
+  open tabs' WebSockets. The API calls `publish()` / `publishChat()` (`src/server/realtime.ts`) after
+  chat messages, reactions, polls, typing and new notifications, and the browser
+  (`src/lib/realtime-client.ts`) refetches at once. While connected, pages poll far less often; without
+  the connection they keep polling as before. Browsers get a one-time ticket from `/api/realtime/ticket`.
+- **Daily job** (`triggers.crons`, 08:00 UTC): quiz reminders, run through `src/app/api/cron/daily/route.ts`.
+  Test locally with `npx wrangler dev --test-scheduled` and `curl "http://localhost:8787/__scheduled?cron=0+8+*+*+*"`.
+
+The Durable Object is created by the first **production** deploy (the `migrations` block in
+`wrangler.jsonc`). Preview builds (`opennextjs-cloudflare upload`) can't create it, so a preview build of
+a branch fails until that change has been deployed from `main` once.
 
 ## Notes
 
