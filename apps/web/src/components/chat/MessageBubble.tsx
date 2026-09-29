@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes } from './chat-client';
+import { safeHref } from '@/lib/safe-href';
 
 const URL_SPLIT = /(https?:\/\/[^\s]+)/g;
 const MENTION_SPLIT = /(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)/g;
@@ -163,7 +164,7 @@ export function MessageBubble(p: Props) {
     content = <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} />;
   } else if (m.type === 'FILE' && m.attachmentUrl) {
     content = (
-      <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 min-w-[14rem]">
+      <a href={safeHref(m.attachmentUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 min-w-[14rem]">
         <span className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', mine ? 'bg-white/15' : 'bg-indigo-500/10 text-indigo-500')}>
           <FileText className="w-5 h-5" />
         </span>
@@ -187,7 +188,7 @@ export function MessageBubble(p: Props) {
           <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`}</span>
         </span>
         {m.metadata?.url && fresh && (
-          <a href={m.metadata.url} target="_blank" rel="noopener noreferrer" className={cn('px-3 py-1.5 rounded-full text-xs font-bold', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
+          <a href={safeHref(m.metadata.url)} target="_blank" rel="noopener noreferrer" className={cn('px-3 py-1.5 rounded-full text-xs font-bold', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
             Join
           </a>
         )}

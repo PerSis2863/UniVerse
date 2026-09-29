@@ -3,6 +3,29 @@ import prisma from '@/lib/db';
 import { isStorageHostUrl } from '@/lib/file-urls';
 import { hasR2Storage, r2Put } from '@/lib/r2';
 
+// File types people may upload. Anything that a browser could run as a page (HTML, SVG, JS)
+// is refused, so uploads can't be used to host phishing pages or scripts on our domains.
+const MIME_BY_EXT: Record<string, string> = {
+  '.pdf': 'application/pdf', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif',
+  '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.txt': 'text/plain', '.csv': 'text/csv', '.zip': 'application/zip',
+  '.webm': 'audio/webm', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav',
+  '.mp4': 'video/mp4', '.mov': 'video/quicktime',
+};
+
+/** The content type to store an upload with, or null when that kind of file isn't allowed. */
+export function uploadMime(filename: string, sentType?: string | null): string | null {
+  const dot = filename.lastIndexOf('.');
+  const extMime = dot >= 0 ? MIME_BY_EXT[filename.toLowerCase().slice(dot)] : undefined;
+  if (!extMime) return null;
+  // Voice notes recorded as .webm/.mp4 may be video containers holding audio; keep the browser's
+  // type when it's the same family and not something a browser would render as a page.
+  const sent = (sentType ?? '').split(';')[0].trim().toLowerCase();
+  return sent && sent.split('/')[0] === extMime.split('/')[0] && !/(html|svg|xml|javascript)/.test(sent) ? sent : extMime;
+}
+
 /** Max size for files stored through the server; larger chat files upload straight to R2. */
 export const SERVER_UPLOAD_MAX = 4 * 1024 * 1024;
 

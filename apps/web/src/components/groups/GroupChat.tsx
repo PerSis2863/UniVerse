@@ -8,6 +8,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { Check, Edit2, Hash, ImageIcon, Loader2, Paperclip, Send, Trash2, X } from 'lucide-react';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
+import { safeHref } from '@/lib/safe-href';
 
 interface Post {
   id: string;
@@ -193,7 +194,7 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
                     )}
                     <div className={`rounded-2xl text-sm overflow-hidden ${mine ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-tl-sm'}`}>
                       {p.imageUrl && (
-                        <a href={p.imageUrl} target="_blank" rel="noopener noreferrer">
+                        <a href={safeHref(p.imageUrl)} target="_blank" rel="noopener noreferrer">
                           <img src={p.imageUrl} alt="Shared image" loading="lazy" className="max-h-64 w-auto object-cover" />
                         </a>
                       )}

@@ -7,7 +7,12 @@ import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useAuthStore } from '@/store/auth';
 import { Users, BookOpen, FileText, BarChart3, X, Plus, ChevronRight, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import dynamic from 'next/dynamic';
+
+// The charting library is large, so the charts load after the rest of the dashboard.
+const chartSkeleton = () => <div className="h-full w-full rounded-xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />;
+const GradeDistributionChart = dynamic(() => import('./TeacherCharts').then((m) => m.GradeDistributionChart), { ssr: false, loading: chartSkeleton });
+const PerformanceTrendChart = dynamic(() => import('./TeacherCharts').then((m) => m.PerformanceTrendChart), { ssr: false, loading: chartSkeleton });
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { useLanguageStore } from '@/store/language';
@@ -105,18 +110,7 @@ export default function TeacherDashboard() {
               <BarChart3 className="w-4 h-4 text-indigo-500" /> {t('teacher.grade_distribution')}
             </h2>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={gradeDistributionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10 dark:opacity-20 text-zinc-300 dark:text-zinc-700" />
-                  <XAxis dataKey="grade" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
-                    cursor={{ fill: 'var(--tw-colors-zinc-100)', opacity: 0.5 }}
-                  />
-                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
+              <GradeDistributionChart data={gradeDistributionData} />
             </div>
           </div>
           <div className="card">
@@ -124,17 +118,7 @@ export default function TeacherDashboard() {
               <TrendingUp className="w-4 h-4 text-emerald-500" /> {t('teacher.performance_trend')}
             </h2>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={performanceTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10 dark:opacity-20 text-zinc-300 dark:text-zinc-700" />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
-                  <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
-                  />
-                  <Line type="monotone" dataKey="avgScore" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                </LineChart>
-              </ResponsiveContainer>
+              <PerformanceTrendChart data={performanceTrendData} />
             </div>
           </div>
         </div>

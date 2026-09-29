@@ -8,6 +8,7 @@ import { PlusCircle, CheckCircle, XCircle, ExternalLink, Loader2, Handshake, Tra
 import { Topbar } from '@/components/layout/Topbar';
 import { api } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
+import { safeHref } from '@/lib/safe-href';
 
 interface Partner {
   id: string;
@@ -144,7 +145,7 @@ export default function AdminPartnershipsPage() {
                         {p.country && <span>{p.country}</span>}
                         <span>{p.partnerships?.length ?? 0} partnership{p.partnerships?.length === 1 ? '' : 's'}</span>
                         {p.websiteUrl && (
-                          <a href={p.websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-400">
+                          <a href={safeHref(p.websiteUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-400">
                             Website <ExternalLink className="w-3 h-3" />
                           </a>
                         )}

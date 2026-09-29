@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { CalendarDays, Clock, ExternalLink, Loader2, MapPin, Pencil, Plus, Trash2, X, type LucideIcon } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { safeHref } from '@/lib/safe-href';
 
 export type CampusKind = 'SERVICE' | 'LINK' | 'EVENT';
 export interface CampusItem {
@@ -66,7 +67,7 @@ export function CampusItemList({ kind, guide }: {
                 <div className="flex items-start justify-between gap-3">
                   <h4 className="font-bold text-zinc-900 dark:text-white">{it.title}</h4>
                   {it.url && (
-                    <a href={it.url} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:text-indigo-400">
+                    <a href={safeHref(it.url)} target="_blank" rel="noopener noreferrer" className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-indigo-500 hover:text-indigo-400">
                       Open <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}

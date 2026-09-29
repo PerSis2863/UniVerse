@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Clock, Globe2, Building2, ChevronDown, ChevronUp, Copy, Link2, ExternalLink } from 'lucide-react';
 
 import { API_URL } from '@/lib/api';
+import { safeHref } from '@/lib/safe-href';
 
 type VerifyResult = 'VALID' | 'REVOKED' | 'TAMPERED' | 'UNKNOWN_KEY' | 'NOT_FOUND';
 
@@ -156,7 +157,7 @@ export default function VerifyCredentialPage() {
                     : 'The signature check above does not depend on this record.'}
                 </p>
                 {data.blockchain.explorerUrl && (
-                  <a href={data.blockchain.explorerUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 break-all">
+                  <a href={safeHref(data.blockchain.explorerUrl)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 break-all">
                     View transaction <ExternalLink className="w-3 h-3 flex-shrink-0" />
                   </a>
                 )}

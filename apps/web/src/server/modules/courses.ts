@@ -36,6 +36,6 @@ export default function coursesModule(router: Router) {
     return course;
   });
 
-  r.post<{ id: string }>(':id/enroll', ({ params, user }) => courses.enroll(params.id, user.id));
+  r.post<{ id: string }>(':id/enroll', { roles: ['STUDENT'] }, ({ params, user }) => courses.enroll(params.id, user.id));
   r.post<{ id: string }>(':id/unenroll', ({ params, user }) => courses.unenroll(params.id, user.id));
 }

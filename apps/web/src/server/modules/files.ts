@@ -1,6 +1,6 @@
 import type { Router } from '../router';
 import { BadRequestException, PayloadTooLargeException } from '../http';
-import { saveFile } from '@/lib/storage';
+import { saveFile, uploadMime } from '@/lib/storage';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -14,7 +14,9 @@ export default function filesModule(router: Router) {
     const file = form?.get('file');
     if (!file || typeof file === 'string') throw new BadRequestException('No file uploaded');
     if (file.size > MAX_BYTES) throw new PayloadTooLargeException('File too large');
-    const url = await saveFile({ ownerId: user.id, name: file.name, mime: file.type, bytes: Buffer.from(await file.arrayBuffer()) });
-    return { url, originalName: file.name, mimeType: file.type, size: file.size };
+    const mime = uploadMime(file.name, file.type);
+    if (!mime) throw new BadRequestException('This file type can’t be uploaded.');
+    const url = await saveFile({ ownerId: user.id, name: file.name, mime, bytes: Buffer.from(await file.arrayBuffer()) });
+    return { url, originalName: file.name, mimeType: mime, size: file.size };
   });
 }

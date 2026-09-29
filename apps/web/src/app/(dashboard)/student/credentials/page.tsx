@@ -21,6 +21,7 @@ const LinkedinIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 import { Topbar } from '@/components/layout/Topbar';
+import { safeHref } from '@/lib/safe-href';
 
 type CredentialStatus = 'PENDING' | 'ISSUED' | 'REVOKED' | 'REJECTED' | 'UNVERIFIED_LEGACY';
 
@@ -279,7 +280,7 @@ function CredentialCard({ cred }: { cred: Credential }) {
                 <div className="flex items-start justify-between text-xs gap-4">
                   <span className="text-zinc-500 flex-shrink-0">Blockchain</span>
                   {cred.blockchain?.status === 'CONFIRMED' && cred.blockchain.explorerUrl ? (
-                    <a href={cred.blockchain.explorerUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 text-right inline-flex items-center gap-1">
+                    <a href={safeHref(cred.blockchain.explorerUrl)} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 text-right inline-flex items-center gap-1">
                       Anchored on {cred.blockchain.network} <ExternalLink className="w-3 h-3" />
                     </a>
                   ) : cred.blockchain?.status === 'PENDING' ? (

@@ -13,6 +13,7 @@ import useSWR from 'swr';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
+import { EmailNotificationsSwitch } from '@/components/notifications/EmailNotificationsSwitch';
 
 type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
 const NOTIF_ICON: Record<string, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔', message: '💬', grade: '🎓', event: '📅' };
@@ -137,6 +138,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowNotifications(true)}
+            aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
             className={cn("btn-ghost p-2 relative", showNotifications && "bg-white/[0.06] text-zinc-900 dark:text-white")}
           >
             <Bell className="w-4 h-4" />
@@ -231,6 +233,8 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
                   ))
                 )}
               </div>
+
+              <EmailNotificationsSwitch compact />
 
               {/* Footer */}
               <div className="p-4 sheet-safe-bottom border-t border-zinc-200/70 dark:border-white/[0.06] bg-white/40 dark:bg-white/[0.03] flex justify-between items-center">

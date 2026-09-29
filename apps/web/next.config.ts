@@ -65,7 +65,13 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    const csp = securityHeaders.filter((h) => h.key === 'Content-Security-Policy');
+    const rest = securityHeaders.filter((h) => h.key !== 'Content-Security-Policy');
+    return [
+      { source: '/:path*', headers: rest },
+      // Uploaded files and certificate pages send their own, stricter policy.
+      { source: '/((?!api/files/|api/core/impact/certificates/).*)', headers: csp },
+    ];
   },
 };
 

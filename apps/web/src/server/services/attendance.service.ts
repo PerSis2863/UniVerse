@@ -1,5 +1,5 @@
-
 import prisma from '@/lib/db';
+import { BadRequestException } from '../http';
 
 export class AttendanceService {
   async getStudentAttendance(studentId: string) {
@@ -26,7 +26,7 @@ export class AttendanceService {
     // Get all students enrolled in the course
     const enrollments = await prisma.enrollment.findMany({
       where: { courseId },
-      include: { student: true }
+      include: { student: { select: { id: true, name: true, email: true, avatar: true } } }
     });
 
     // Get attendance for the specific date
@@ -42,6 +42,8 @@ export class AttendanceService {
 
   async markAttendance(courseId: string, date: string, studentId: string, status: any) {
     const targetDate = new Date(date);
+    const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId } }, select: { id: true } });
+    if (!enrolled) throw new BadRequestException('That student is not enrolled in this course');
     
     return prisma.attendance.upsert({
       where: {

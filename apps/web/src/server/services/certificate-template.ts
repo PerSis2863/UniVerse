@@ -1,3 +1,6 @@
+// Everything inserted into the page is escaped: names and titles come from users.
+const esc = (v: string) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
 export const getCertificateHtml = (data: {
   studentName: string;
   certificateTitle: string;
@@ -184,10 +187,10 @@ export const getCertificateHtml = (data: {
                 
                 <div class="presented-to">This is proudly presented to</div>
                 
-                <h2 class="student-name">${data.studentName}</h2>
+                <h2 class="student-name">${esc(data.studentName)}</h2>
                 
                 <div class="description">
-                    In recognition of achieving the distinguished <strong>${data.certificateTitle}</strong>. 
+                    In recognition of achieving the distinguished <strong>${esc(data.certificateTitle)}</strong>. 
                     Your dedication, hard work, and commitment to driving positive social change 
                     within the global community serve as an inspiration to all.
                 </div>
@@ -200,7 +203,7 @@ export const getCertificateHtml = (data: {
                     </div>
                     
                     <div class="signature-block">
-                        <div class="signature-text">${data.issuedAt}</div>
+                        <div class="signature-text">${esc(data.issuedAt)}</div>
                         <div class="signature-line"></div>
                         <div class="signature-title">Date of Issue</div>
                     </div>
@@ -208,7 +211,7 @@ export const getCertificateHtml = (data: {
             </div>
             
             <div class="meta-info">
-                Certificate ID: ${data.id} <br>
+                Certificate ID: ${esc(data.id)} <br>
                 Verify authentic credentials at universe.edu/verify
             </div>
         </div>

@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { FileText, ImageIcon, Loader2, ExternalLink } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
+import { safeHref } from '@/lib/safe-href';
 
 interface GroupDetail {
   description: string | null;
@@ -59,7 +60,7 @@ export function GroupDetailBody({ groupId }: { groupId: string | number }) {
             {data.files.map((f) => {
               const url = f.imageUrl ?? f.body.replace(/^📎 /, '').trim();
               return (
-                <a key={f.id} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors border border-zinc-200 dark:border-zinc-800">
+                <a key={f.id} href={safeHref(url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors border border-zinc-200 dark:border-zinc-800">
                   {f.imageUrl ? <ImageIcon className="w-4 h-4 text-indigo-400 shrink-0" /> : <FileText className="w-4 h-4 text-indigo-400 shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-zinc-700 dark:text-zinc-300 truncate">{fileName(url)}</div>

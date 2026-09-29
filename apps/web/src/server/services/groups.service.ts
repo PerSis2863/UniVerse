@@ -1,4 +1,4 @@
-import { NotFoundException, ForbiddenException } from '../http';
+import { BadRequestException, NotFoundException, ForbiddenException } from '../http';
 import prisma from '@/lib/db';
 
 export class GroupsService {
@@ -131,8 +131,11 @@ export class GroupsService {
 
   async inviteMembers(groupId: string, userId: string, emails: string[]) {
     await this.checkMembership(groupId, userId); // Only members can invite
+    const list = Array.isArray(emails) ? emails.filter((e): e is string => typeof e === 'string').map((e) => e.trim().toLowerCase()).slice(0, 50) : [];
+    if (list.length === 0) throw new BadRequestException('Add at least one email address');
     const users = await prisma.user.findMany({
-      where: { email: { in: emails } }
+      where: { email: { in: list }, status: 'ACTIVE' },
+      select: { id: true },
     });
 
     if (users.length > 0) {

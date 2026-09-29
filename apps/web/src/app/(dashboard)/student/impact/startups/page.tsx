@@ -8,6 +8,7 @@ import { Rocket, Users, DollarSign, Globe2, Sparkles, Heart, CheckCircle2, X, Se
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';
+import { safeHref } from '@/lib/safe-href';
 
 const STAGE_COLORS: Record<string, string> = {
   'Idea': 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
@@ -224,7 +225,7 @@ export default function StartupIncubatorPage() {
                   <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{selected.description}</p>
                 </div>
               )}
-              {selected.websiteUrl && <a href={selected.websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-sm font-semibold text-indigo-500 hover:underline">Visit website →</a>}
+              {selected.websiteUrl && <a href={safeHref(selected.websiteUrl)} target="_blank" rel="noopener noreferrer" className="inline-block text-sm font-semibold text-indigo-500 hover:underline">Visit website →</a>}
               <div>
                 <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">The role you'd like</h4>
                 <input value={role} onChange={(e) => setRole(e.target.value)} maxLength={120} placeholder="e.g. Developer, Designer, Marketing"

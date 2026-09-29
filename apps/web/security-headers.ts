@@ -13,13 +13,15 @@ const FILES_ORIGIN = (() => {
 
 const csp = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://www.gstatic.com https://apis.google.com https://www.google.com https://www.googletagmanager.com;
+    script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.gstatic.com https://apis.google.com https://www.google.com https://www.googletagmanager.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: ${FILES_ORIGIN} https://images.unsplash.com https://ui-avatars.com https://lh3.googleusercontent.com https://*.googleusercontent.com;
     font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
-    connect-src 'self' ${FILES_ORIGIN} https://*.r2.cloudflarestorage.com https://cloudflareinsights.com http://localhost:* https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com;
+    connect-src 'self' ${FILES_ORIGIN} https://*.r2.cloudflarestorage.com https://cloudflareinsights.com ${process.env.NODE_ENV === 'production' ? '' : 'http://localhost:* ws://localhost:*'} https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com;
     media-src 'self' blob: ${FILES_ORIGIN};
     object-src 'none';
+    worker-src 'self' blob:;
+    manifest-src 'self';
     base-uri 'self';
     form-action 'self';
     frame-src 'self' https://universe-71e68.firebaseapp.com https://accounts.google.com https://appleid.apple.com https://www.google.com https://www.openstreetmap.org;
@@ -32,6 +34,10 @@ export const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  // Camera and microphone for chat photos and voice notes, location for BeeSafe: this site only.
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()' },
+  // Google sign-in opens a popup, so popups keep a link back; nothing else can reach this window.
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+  { key: 'X-DNS-Prefetch-Control', value: 'on' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
 ];

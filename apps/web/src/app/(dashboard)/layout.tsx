@@ -10,6 +10,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
+import { DataConfig } from '@/components/DataConfig';
 
 type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null };
 
@@ -86,9 +87,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return <AppSkeleton />;
 
   return (
-    <DashboardShell>
-      <RealtimeSync />
-      {children}
-    </DashboardShell>
+    <DataConfig>
+      <DashboardShell>
+        <RealtimeSync />
+        {children}
+      </DashboardShell>
+    </DataConfig>
   );
 }
