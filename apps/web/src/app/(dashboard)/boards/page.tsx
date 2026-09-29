@@ -152,7 +152,7 @@ export default function BoardsPage() {
                         : <PenTool className="w-10 h-10 text-zinc-300 dark:text-zinc-700" />}
                     </div>
                     <div className="p-4">
-                      <p className="font-bold text-zinc-900 dark:text-white truncate pr-8">{b.title}</p>
+                      <p className="font-bold text-zinc-900 dark:text-white truncate">{b.title}</p>
                       <p className="mt-0.5 text-xs text-zinc-500 truncate">
                         {b.mine ? 'You' : b.owner.name} · edited {ago(b.updatedAt)}
                       </p>
@@ -169,11 +169,11 @@ export default function BoardsPage() {
                     </div>
                   </Link>
                   <button onClick={(e) => { e.stopPropagation(); setMenu(menu === b.id ? null : b.id); }} aria-label={`More for ${b.title}`}
-                    className="absolute right-3 bottom-[4.6rem] w-8 h-8 rounded-lg inline-flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10">
+                    className="absolute right-3 top-3 w-9 h-9 rounded-xl inline-flex items-center justify-center text-zinc-700 dark:text-zinc-200 bg-white/85 dark:bg-zinc-900/75 backdrop-blur border border-zinc-200 dark:border-white/10 shadow-sm hover:bg-white dark:hover:bg-zinc-800">
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {menu === b.id && (
-                    <div onClick={(e) => e.stopPropagation()} className="absolute right-3 bottom-[2rem] z-10 w-44 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm">
+                    <div onClick={(e) => e.stopPropagation()} className="absolute right-3 top-14 z-10 w-44 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm">
                       <button onClick={() => copy(b)} className="w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-white/5 text-zinc-700 dark:text-zinc-200"><Copy className="w-4 h-4" /> Make a copy</button>
                       {b.mine
                         ? <button onClick={() => remove(b)} className="w-full px-3 py-2 flex items-center gap-2 hover:bg-rose-500/10 text-rose-500"><Trash2 className="w-4 h-4" /> Delete</button>

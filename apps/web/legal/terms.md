@@ -2,7 +2,7 @@
 
 **Last Updated: September 29, 2026**
 
-These Terms and Conditions ("Terms") form a legally binding agreement between you ("User", "you", or "your") and UniVerse Impact ("we", "us", "our", or the "Company") governing your access to and use of the UniVerse Impact platform, accessible at universeimpact.com, including any mobile applications, APIs, and associated services (collectively, the "Platform").
+These Terms and Conditions ("Terms") form a legally binding agreement between you ("User", "you", or "your") and Universe Impact, located at Rue de la Patouillerie, 44700 Orvault (Nantes), France ("UniVerse Impact", "we", "us", "our", or the "Company") governing your access to and use of the UniVerse Impact platform, accessible at universeimpact.com, including any mobile applications, APIs, and associated services (collectively, the "Platform").
 
 By registering an account, accessing, or using the Platform, you acknowledge that you have read, understood, and agree to be bound by these Terms and by our Privacy Policy. If you do not agree to these Terms, you must not access or use the Platform.
 
@@ -162,7 +162,7 @@ Furthermore, we make no warranties regarding the absolute accuracy of AI-generat
 
 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW IN YOUR JURISDICTION, IN NO EVENT SHALL UNIVERSE IMPACT, ITS DIRECTORS, OFFICERS, EMPLOYEES, AFFILIATES, AGENTS, OR LICENSORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING WITHOUT LIMITATION, LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES.
 
-IN NO EVENT SHALL OUR AGGREGATE CUMULATIVE LIABILITY TO YOU FOR ALL CLAIMS RELATING TO THE PLATFORM EXCEED THE GREATER OF (I) THE TOTAL AMOUNTS PAID BY YOU (OR YOUR INSTITUTION ON YOUR BEHALF) TO UNIVERSE IMPACT IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE CLAIM, OR (II) ONE HUNDRED US DOLLARS ($100 USD) OR ITS EQUIVALENT IN YOUR LOCAL CURRENCY.
+IN NO EVENT SHALL OUR AGGREGATE CUMULATIVE LIABILITY TO YOU FOR ALL CLAIMS RELATING TO THE PLATFORM EXCEED THE GREATER OF (I) THE TOTAL AMOUNTS PAID BY YOU (OR YOUR INSTITUTION ON YOUR BEHALF) TO UNIVERSE IMPACT IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE CLAIM, OR (II) ONE HUNDRED EUROS (€100) OR ITS EQUIVALENT IN YOUR LOCAL CURRENCY.
 
 *Note for Users in Certain Jurisdictions:* Some states in the USA, countries in the EU, or India do not allow the exclusion or limitation of incidental or consequential damages, so the above limitation or exclusion may not apply to you.
 
@@ -181,16 +181,15 @@ You may end this agreement at any time by asking us to delete your account: emai
 
 Upon termination, your right to use the Platform will immediately cease. All provisions of these Terms which by their nature should survive termination shall survive, including, without limitation, ownership provisions, warranty disclaimers, indemnity, and limitations of liability.
 
-## 14. Global Governing Law and Dispute Resolution
+## 14. Governing Law and Dispute Resolution
 
-The governing law and dispute resolution mechanisms applicable to these Terms depend on your country of residence:
+UniVerse Impact is established in France. These Terms are governed by French law, subject to the following:
 
-- **For Users in the United States:** These Terms are governed by the laws of the State of Delaware, USA, without regard to conflict of law principles. Any dispute shall be resolved exclusively in the state or federal courts located in Delaware.
-- **For Users in India:** These Terms are governed by the laws of India. Any dispute shall be subject to the exclusive jurisdiction of the courts located in New Delhi, India.
-- **For Users in the European Union (EU) and United Kingdom (UK):** These Terms are governed by the laws of the country where you reside, and you may bring legal proceedings in your local courts.
-- **For Users in the Rest of the World:** These Terms are governed by the laws of the State of Delaware, USA, unless local mandatory consumer protection laws require otherwise.
+- **Consumers in the European Union, EEA, United Kingdom or Switzerland:** you also keep the protection of the mandatory consumer laws of the country where you live, and you may bring proceedings in the courts of that country.
+- **Consumers elsewhere (including India and the United States):** nothing in these Terms removes rights you have under mandatory laws of the country or state where you live.
+- **Institutions and business users:** any dispute is subject to the exclusive jurisdiction of the competent courts of Nantes, France.
 
-In the event of a dispute, you agree to first attempt to resolve the matter amicably by contacting our legal department at legal@universeimpact.com.
+Before starting any proceedings, please contact us at legal@universeimpact.com so we can try to resolve the matter amicably. We aim to reply within 30 days.
 
 ## 15. Changes to These Terms
 
@@ -211,7 +210,8 @@ By continuing to access or use our Platform after any revisions become effective
 
 If you have any questions, concerns, or legal notices regarding these Terms, please contact us at:
 
-**UniVerse Impact Legal Department**<br>
+**Universe Impact — Legal Department**<br>
+Rue de la Patouillerie, 44700 Orvault (Nantes), France<br>
 Email: legal@universeimpact.com<br>
 Support: support@universeimpact.com<br>
 Website: universeimpact.com

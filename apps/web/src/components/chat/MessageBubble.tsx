@@ -47,10 +47,12 @@ function RichText({ text, mine }: { text: string; mine: boolean }) {
 
 export function Avatar({ name, src, size = 40, online }: { name: string; src?: string | null; size?: number; online?: boolean }) {
   const letters = name.split(/\s+/).filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
+  // A photo that fails to load (deleted, blocked, offline) falls back to the initials.
+  const [failed, setFailed] = useState<string | null>(null);
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
-      {src ? (
-        <img src={src} alt="" className="w-full h-full rounded-full object-cover" />
+      {src && failed !== src ? (
+        <img src={src} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
       ) : (
         <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-bold" style={{ fontSize: size * 0.36 }}>
           {letters}

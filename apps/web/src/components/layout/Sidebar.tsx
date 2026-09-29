@@ -382,6 +382,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         <div className="px-3 pt-2 pb-1 flex gap-3 text-[11px] text-zinc-400 dark:text-zinc-600">
           <Link href="/terms" target="_blank" className="hover:text-indigo-400">Terms</Link>
           <Link href="/privacy" target="_blank" className="hover:text-indigo-400">Privacy</Link>
+          <Link href="/policies" target="_blank" className="hover:text-indigo-400">Policies</Link>
+          <Link href="/contact" target="_blank" className="hover:text-indigo-400">Contact</Link>
         </div>
       </div>
     </aside>

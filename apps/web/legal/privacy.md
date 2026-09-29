@@ -2,7 +2,7 @@
 
 **Last Updated: September 29, 2026**
 
-UniVerse Impact ("we," "our," or "us") is deeply committed to protecting your privacy and ensuring the security of your personal data globally. This Privacy Policy outlines our practices regarding the collection, use, sharing, and safeguarding of personal information processed through the UniVerse Impact platform at universeimpact.com (the "Platform").
+Universe Impact, located at Rue de la Patouillerie, 44700 Orvault (Nantes), France ("UniVerse Impact," "we," "our," or "us"), is deeply committed to protecting your privacy and ensuring the security of your personal data globally. This Privacy Policy outlines our practices regarding the collection, use, sharing, and safeguarding of personal information processed through the UniVerse Impact platform at universeimpact.com (the "Platform").
 
 This policy has been designed to comply with global privacy frameworks, including but not limited to:
 
@@ -15,7 +15,7 @@ This policy has been designed to comply with global privacy frameworks, includin
 
 ## 1. Data Controller and Joint Controllership
 
-UniVerse Impact acts as the primary Data Controller (or Data Fiduciary under the DPDPA) for the personal data processed through the Platform regarding user registration, platform security, and core functionality.
+Universe Impact (Rue de la Patouillerie, 44700 Orvault (Nantes), France) acts as the primary Data Controller (or Data Fiduciary under the DPDPA) for the personal data processed through the Platform regarding user registration, platform security, and core functionality. Because we are established in France, our lead supervisory authority under the GDPR is the Commission Nationale de l'Informatique et des Libertés (CNIL).
 
 Where an educational institution ("Institution") deploys the Platform for its students, faculty, and staff, UniVerse Impact and the Institution act as Joint Controllers or UniVerse Impact acts as a Data Processor on behalf of the Institution, depending on the specific data processing context (e.g., official academic records, grading).
 
@@ -188,10 +188,11 @@ Depending on your jurisdiction (including the EU, UK, USA/California, India, Bra
 - **Right to Erasure / Deletion ("Right to be Forgotten"):** Request the deletion of your personal data where no overriding legal obligation requires its retention.
 - **Right to Restrict Processing:** Request a temporary halt to the processing of your data under specific conditions.
 - **Right to Data Portability:** Receive a copy of your data in a structured, commonly used, machine-readable format (e.g., JSON export).
+- **Instructions After Death (France):** Give instructions on what should happen to your personal data after your death.
 - **Right to Object / Opt-Out:** Object to processing based on legitimate interests, including the generation of AI-based recommendations, and opt-out of any marketing communications. (Under CCPA, you have the right to opt out of the "sale" or "sharing" of personal data, though we do not engage in such practices).
 - **Right to Non-Discrimination:** You will not receive discriminatory treatment for exercising your privacy rights.
 - **Right to Withdraw Consent:** Revoke consent previously granted for medical data processing or marketing communications.
-- **Right to Lodge a Complaint:** File a formal complaint with your national or state Data Protection Authority (e.g., CNIL, ICO, California Privacy Protection Agency, Data Protection Board of India).
+- **Right to Lodge a Complaint:** File a formal complaint with a Data Protection Authority: our lead authority, the CNIL (France, www.cnil.fr), or the authority where you live (e.g., ICO, California Privacy Protection Agency, Data Protection Board of India).
 
 To exercise any of these rights, please submit a written request to privacy@universeimpact.com. We will process and respond to your request within the timeframe mandated by your local law (typically 30-45 days).
 
@@ -203,7 +204,7 @@ The Platform relies minimally on client-side storage to function securely:
 - **Local Storage:** Utilized to cache authentication tokens, user interface preferences (e.g., dark mode), and temporary state to improve performance.
 - **Push Tokens:** Stored only if you explicitly grant the browser permission to receive push notifications.
 
-We do not utilize tracking cookies, advertising pixels, or third-party behavioral analytics trackers.
+We do not utilize tracking cookies, advertising pixels, or third-party behavioral analytics trackers. Because only strictly necessary storage is used, no cookie consent banner is required. See also universeimpact.com/privacy-choices.
 
 ## 11. Data Security
 
@@ -236,7 +237,8 @@ We may update this Privacy Policy periodically to reflect changes in our global 
 
 If you have questions, concerns, or wish to exercise your data protection rights globally, please contact our privacy team:
 
-**UniVerse Impact — Privacy & Data Protection Team**<br>
+**Universe Impact — Privacy & Data Protection Team**<br>
+Rue de la Patouillerie, 44700 Orvault (Nantes), France<br>
 Email: privacy@universeimpact.com<br>
 Legal Department: legal@universeimpact.com<br>
 Website: universeimpact.com

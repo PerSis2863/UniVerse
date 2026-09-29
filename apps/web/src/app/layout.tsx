@@ -66,9 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
         {/* PWA: iOS touch icon */}
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        {/* PWA: iOS splash screens (portrait iPhone sizes) */}
-        <link rel="apple-touch-startup-image" href="/icon-512x512.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
       </head>
       <body className={`${inter.variable} ${outfit.variable} min-h-screen antialiased`} style={{ backgroundColor: 'var(--background)', color: 'var(--text-primary)' }}>
           <ErrorMonitorBootstrap />

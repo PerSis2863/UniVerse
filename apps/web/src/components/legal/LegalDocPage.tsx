@@ -3,6 +3,7 @@ import Link from '@/components/ui/Link';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { LEGAL_DOCS, type LegalDocId } from '@/lib/legal';
+import { COMPANY } from '@/lib/company';
 
 /** Shows one of UniVerse's legal documents (a PDF) inside the site, with open and download links. */
 export function LegalDocPage({ doc }: { doc: LegalDocId }) {
@@ -50,7 +51,8 @@ export function LegalDocPage({ doc }: { doc: LegalDocId }) {
 
           <p className="mt-6 text-sm text-zinc-500">
             Questions about this document? Email{' '}
-            <a href="mailto:myuniverseimpact@gmail.com" className="text-indigo-400 hover:underline">myuniverseimpact@gmail.com</a>.
+            <a href={`mailto:${COMPANY.email.legal}`} className="text-indigo-400 hover:underline">{COMPANY.email.legal}</a>, or see all our{' '}
+            <Link href="/policies" className="text-indigo-400 hover:underline">policies</Link>.
           </p>
         </div>
       </main>

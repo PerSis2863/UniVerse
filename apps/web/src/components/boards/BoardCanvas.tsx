@@ -116,6 +116,7 @@ export default function BoardCanvas({
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const ws = useRef<WebSocket | null>(null);
   const ready = useRef(false); // received the board from the room
+  const framed = useRef(false); // zoomed to the drawing once, when the board first opens
   const known = useRef(new Map<string, number>()); // element id → version the room has
   const roomFiles = useRef(new Set<string>());
   const uploading = useRef(new Set<string>());
@@ -311,6 +312,11 @@ export default function BoardCanvas({
             showPeers(msg.peers);
             void loadRoomFiles(msg.files).then(() => uploadFiles(api.getFiles()));
             flush(); // anything drawn while offline
+            // Open on the drawing, whatever the screen size (not on an empty corner of the canvas).
+            if (!framed.current) {
+              framed.current = true;
+              if (api.getSceneElements().length) api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
+            }
             break;
           case 'update':
             merge(msg.elements);

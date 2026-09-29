@@ -162,9 +162,7 @@ export function AIStudyAssistant() {
                 </motion.div>
               )}
             </AnimatePresence>
-            
-            {/* Notification dot */}
-            <span className="absolute top-0 right-0 w-3 h-3 bg-rose-500 border-2 border-white dark:border-zinc-900 rounded-full animate-pulse" />
+
             </motion.button>
           </motion.div>
         )}
