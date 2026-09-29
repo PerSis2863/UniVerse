@@ -56,16 +56,16 @@ export function PremiumGate({ feature, children }: { feature: PremiumFeature; ch
           </ul>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href={`/admin/billing?plan=${plan.id}`}
+              href={plan.contactSales ? `/admin/billing?contact=${plan.id}` : `/admin/billing?plan=${plan.id}`}
               className="group inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 transition-all"
             >
-              Start 14-day free trial <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              {plan.contactSales ? `Contact us about ${plan.name}` : 'Start 14-day free trial'} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <Link href="/pricing" className="inline-flex items-center justify-center h-12 px-6 rounded-full border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors">
+            <Link href="/admin/billing" className="inline-flex items-center justify-center h-12 px-6 rounded-full border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors">
               Compare plans
             </Link>
           </div>
-          <p className="mt-5 text-xs text-zinc-500">From {formatPrice(plan.monthlyPrice.year)}/month billed yearly · cancel anytime</p>
+          <p className="mt-5 text-xs text-zinc-500">{plan.contactSales ? 'Priced for your institution · our team will get back to you' : `From ${formatPrice(plan.monthlyPrice.year)}/month billed yearly · cancel anytime`}</p>
         </div>
       </motion.div>
     </div>

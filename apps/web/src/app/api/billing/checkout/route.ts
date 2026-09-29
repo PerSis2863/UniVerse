@@ -18,6 +18,7 @@ export async function POST(req: Request) {
   const interval: BillingInterval = body.interval === 'year' ? 'year' : 'month';
   const payByInvoice = body.payBy === 'invoice';
   if (!isPaidPlan(planId)) return NextResponse.json({ error: 'Choose a paid plan.' }, { status: 400 });
+  if (PLANS[planId].contactSales) return NextResponse.json({ error: `The ${PLANS[planId].name} plan is arranged with our team. Use “Contact us” on the Billing page.`, contactSales: true }, { status: 400 });
   if (payByInvoice && planId !== 'ENTERPRISE') {
     return NextResponse.json({ error: 'Invoiced billing is available on the Enterprise plan.' }, { status: 400 });
   }

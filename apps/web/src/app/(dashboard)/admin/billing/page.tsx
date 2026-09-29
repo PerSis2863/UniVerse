@@ -8,6 +8,7 @@ import { CreditCard, Crown, Loader2, ShieldCheck, CalendarClock, AlertTriangle, 
 import { Topbar } from '@/components/layout/Topbar';
 import { PricingCards } from '@/components/billing/PricingCards';
 import { SupportPanel } from '@/components/billing/SupportPanel';
+import { ContactSalesDialog } from '@/components/billing/ContactSalesDialog';
 import { useSubscription } from '@/hooks/useSubscription';
 import { authedJson } from '@/lib/authed-fetch';
 import { PLANS, isPaidPlan, type BillingInterval, type PlanId } from '@/lib/plans';
@@ -28,6 +29,11 @@ function BillingContent() {
   const [interval, setInterval] = useState<BillingInterval>('year');
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  // Plans we quote individually open a "Contact us" form (also from ?contact=ENTERPRISE links).
+  const [contact, setContact] = useState<PlanId | null>(() => {
+    const c = params.get('contact');
+    return c && c in PLANS && PLANS[c as PlanId].contactSales ? (c as PlanId) : null;
+  });
   const handledStatus = useRef(false);
 
   useEffect(() => {
@@ -137,30 +143,28 @@ function BillingContent() {
         onIntervalChange={setInterval}
         currentPlan={plan}
         loadingPlan={loadingPlan}
-        onSelect={(id) => (id === 'STARTER' || subscription?.hasBillingAccount && plan !== 'STARTER' ? openPortal() : startCheckout(id))}
+        onSelect={(id) => (PLANS[id].contactSales ? setContact(id) : id === 'STARTER' || subscription?.hasBillingAccount && plan !== 'STARTER' ? openPortal() : startCheckout(id))}
       />
 
-      {plan === 'STARTER' && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 p-5">
-          <div className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-300">
-            <FileText className="w-5 h-5 text-fuchsia-500 shrink-0" />
-            <span><strong className="text-zinc-900 dark:text-white">Need to pay by invoice?</strong> Enterprise can be billed by emailed invoice with 30-day terms — no card required.</span>
-          </div>
-          <button
-            onClick={() => startCheckout('ENTERPRISE', 'invoice')}
-            disabled={loadingPlan !== null}
-            className="shrink-0 inline-flex items-center gap-2 h-10 px-5 rounded-full border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300 font-bold text-sm hover:bg-fuchsia-500/10 disabled:opacity-50"
-          >
-            {loadingPlan === 'ENTERPRISE' && <Loader2 className="w-4 h-4 animate-spin" />} Start Enterprise with invoicing
-          </button>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-dashed border-zinc-300 dark:border-white/10 p-5">
+        <div className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-300">
+          <FileText className="w-5 h-5 text-fuchsia-500 shrink-0" />
+          <span><strong className="text-zinc-900 dark:text-white">Need a custom plan or invoiced billing?</strong> We tailor Enterprise to your institution: campuses, number of students and how you pay.</span>
         </div>
-      )}
+        <button
+          onClick={() => setContact('ENTERPRISE')}
+          className="shrink-0 inline-flex items-center gap-2 h-10 px-5 rounded-full border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300 font-bold text-sm hover:bg-fuchsia-500/10"
+        >
+          Contact us
+        </button>
+      </div>
 
       <SupportPanel plan={plan} />
+      {contact && <ContactSalesDialog plan={contact} onClose={() => setContact(null)} />}
 
       <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-zinc-500 pb-6">
         <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Payments processed securely by Stripe</span>
-        <span>14-day free trial on paid plans</span>
+        <span>14-day free trial on Pro</span>
         <span>Cancel anytime</span>
       </div>
     </div>
