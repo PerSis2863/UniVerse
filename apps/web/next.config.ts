@@ -17,7 +17,7 @@ const withPWA = withPWAInit({
   // OfflineBar refetches the data on screen instead.
   reloadOnOnline: false,
   // The whiteboard's fonts (14 MB, mostly Chinese/Japanese glyphs) load on demand, not at install.
-  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!legal/**/*'],
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!sitemap.xml', '!.well-known/**/*'],
   fallbacks: {
     document: '/offline',
   },

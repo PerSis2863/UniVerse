@@ -101,9 +101,13 @@ export function useLiveInterval(normal: number, live: number) {
   return useUserActive() ? (connected ? live : normal) : 0;
 }
 
+let helloCount = 0;
+
 function handle(event: ServerEvent) {
   switch (event.type) {
-    case 'hello': // (re)connected: catch up on anything missed while offline
+    case 'hello': // reconnected: catch up on anything missed while disconnected
+      // (not on the first connection of the page: that data was just loaded)
+      if (helloCount++ === 0) break;
       void mutate(startsWith('/api/chat/'));
       void mutate('/api/notifications');
       break;

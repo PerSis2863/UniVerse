@@ -42,8 +42,10 @@ type ServerMessage =
   | { type: 'peers'; peers: BoardPeer[] }
   | { type: 'cursor'; sid: string; x: number; y: number; tool: 'pointer' | 'laser'; button: 'up' | 'down'; selected: string[] };
 
-const SEND_EVERY_MS = 40;
-const CURSOR_EVERY_MS = 50;
+// Messages to the board's Durable Object are billed (20 messages = 1 request), so they're batched:
+// changes at most ~16×/s while drawing, cursors ~12×/s and only when the pointer actually moved.
+const SEND_EVERY_MS = 60;
+const CURSOR_EVERY_MS = 80;
 const THUMBNAIL_AFTER_MS = 12_000;
 const BATCH = 200;
 const UPLOAD_MIME: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' };
@@ -132,6 +134,7 @@ export default function BoardCanvas({
   const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thumbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCursor = useRef(0);
+  const lastPos = useRef<{ x: number; y: number; button: string }>({ x: NaN, y: NaN, button: 'up' });
   const callbacks = useRef({ onPeers, onStatus, onRole, onGone, onError, onBackground });
   useLayoutEffect(() => {
     editable.current = canEdit;
@@ -424,7 +427,10 @@ export default function BoardCanvas({
     (p: { pointer: { x: number; y: number; tool: 'pointer' | 'laser' }; button: 'down' | 'up' }) => {
       const now = Date.now();
       if (!ready.current || now - lastCursor.current < CURSOR_EVERY_MS) return;
+      const moved = Math.abs(p.pointer.x - lastPos.current.x) + Math.abs(p.pointer.y - lastPos.current.y) > 0.5;
+      if (!moved && p.button === lastPos.current.button) return;
       lastCursor.current = now;
+      lastPos.current = { x: p.pointer.x, y: p.pointer.y, button: p.button };
       send({ type: 'cursor', x: p.pointer.x, y: p.pointer.y, tool: p.pointer.tool, button: p.button, selected: Object.keys(api?.getAppState().selectedElementIds ?? {}) });
     },
     [api, send],

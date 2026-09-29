@@ -107,6 +107,14 @@ export default function users(router: Router) {
   // Only profile fields: the old API passed the whole body through, which let users change their role.
   r.patch('me', async ({ user, body }) => {
     const data: Record<string, unknown> = pick(body, ['name', 'phone', 'avatar'] as const);
+    // A profile photo must be an uploaded file or an https image address (a letter or other text
+    // was being stored and loaded as an image, failing on every page that shows the person).
+    if (data.avatar !== undefined && data.avatar !== null) {
+      const a = String(data.avatar).trim();
+      if (a === '') data.avatar = null;
+      else if (a.length > 1000 || !(/^https:\/\/\S+$/.test(a) || /^\/api\/files\/[A-Za-z0-9_-]{16,}(\/\S*)?$/.test(a))) throw new BadRequestException('Upload a photo, or use an https image link.');
+      else data.avatar = a;
+    }
     if (typeof body?.emailNotifications === 'boolean') data.emailNotifications = body.emailNotifications;
     const updated = await prisma.user.update({ where: { id: user.id }, data, select: safeSelect });
     forgetUser(user.id);
