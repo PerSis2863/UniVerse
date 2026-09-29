@@ -696,6 +696,25 @@ model RoleApplication {
   @@map("role_applications")
 }
 
+/// Every change the platform owner makes in the owner console, with the record before and after,
+/// so any of them can be undone. Only the owner can see this table.
+model OwnerChange {
+  id         String    @id @default(cuid())
+  ownerId    String
+  action     String // UPDATE, DELETE, RESTORE
+  model      String // Prisma model name, e.g. "User", "Message"
+  recordId   String
+  summary    String
+  before     Json?
+  after      Json?
+  undoneAt   DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([model, recordId])
+  @@map("owner_changes")
+}
+
 /// Sign-ins and app opens: when, how, and from where (for the owner's console).
 model LoginEvent {
   id        String   @id @default(cuid())

@@ -1,7 +1,7 @@
 import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { UnauthorizedException } from '../http';
-import { extractBearer, forgetUser, isDemoAccount, isDemoLoginEnabled, verifyFirebaseIdToken } from '../auth';
+import { extractBearer, forgetUser, isDemoAccount, isDemoLoginEnabled, isOwner, verifyFirebaseIdToken } from '../auth';
 import { REQUESTABLE_ROLES, approveInvited, currentApplication, startSignupApplication } from './applications';
 import { audit } from '../audit';
 import { recordLogin } from '../logins';
@@ -17,7 +17,7 @@ const getMe = (id: string) => prisma.user.findUnique({ where: { id }, select: us
 export default function auth(router: Router) {
   const r = router.controller('auth');
 
-  r.get('me', async ({ user }) => ({ ...(await getMe(user.id)), application: await currentApplication(user.id) }));
+  r.get('me', async ({ user }) => ({ ...(await getMe(user.id)), application: await currentApplication(user.id), ...(isOwner(user) ? { owner: true } : {}) }));
 
   // Sign-in history (Settings → Privacy): the app reports sign-ins, sign-ups and app opens.
   r.post('session', async ({ user, body, req }) => {

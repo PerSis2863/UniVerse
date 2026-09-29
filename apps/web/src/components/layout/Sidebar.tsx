@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Compass } from 'lucide-react';
+import { Compass, ShieldCheck } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
@@ -290,7 +290,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
 
   if (!user) return null;
 
-  const nav = navByRole[user.role] ?? [];
+  // The owner console link exists only for the owner (the console itself answers "not found" to anyone else).
+  const nav = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }, ...(navByRole[user.role] ?? [])] : navByRole[user.role] ?? [];
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = async () => {

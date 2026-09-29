@@ -12,6 +12,8 @@ export interface User {
   createdAt: string;
   studentProfile?: StudentProfile;
   teacherProfile?: TeacherProfile;
+  /** Only set (true) for the platform owner; the server decides and re-checks on every call. */
+  owner?: boolean;
   /** Latest application to become a teacher / NGO representative, if any. */
   application?: ApplicationSummary | null;
 }

@@ -34,9 +34,10 @@ export default function LoginPage() {
         status: user.status || 'ACTIVE',
         createdAt: user.createdAt || new Date().toISOString(),
         avatar: user.avatar,
+        owner: user.owner === true,
       });
       reportSession('SIGN_IN', token.startsWith('mock-token-') ? 'demo' : method);
-      router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
+      router.push(user.owner ? '/console' : user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Login successful, but failed to retrieve user data. Please contact support.');

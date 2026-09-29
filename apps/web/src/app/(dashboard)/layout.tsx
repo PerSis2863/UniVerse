@@ -13,7 +13,7 @@ import { RealtimeSync } from '@/components/RealtimeSync';
 import { DataConfig } from '@/components/DataConfig';
 import { reportSession } from '@/lib/sign-in-history';
 
-type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null };
+type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean };
 
 const toUser = (me: MeResponse, photoURL?: string | null) => ({
   id: me.id,
@@ -24,6 +24,7 @@ const toUser = (me: MeResponse, photoURL?: string | null) => ({
   createdAt: me.createdAt || new Date().toISOString(),
   avatar: me.avatar || photoURL || undefined,
   application: me.application ?? null,
+  owner: me.owner === true,
 });
 
 const RESYNC_MS = 5 * 60 * 1000;
