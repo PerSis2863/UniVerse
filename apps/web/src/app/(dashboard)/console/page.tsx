@@ -1,31 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Crown, Database, History, LayoutDashboard, Loader2, LogIn, MessageSquare, Search, Undo2, Users } from 'lucide-react';
+import { Activity, Bug, Crown, Database, History, LayoutDashboard, Loader2, LogIn, MessageSquare, Search, Undo2, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, card, fetcher, field, formatValue, summarize, undoChange } from './shared';
 import { PersonPanel } from './person';
+import { ErrorsPanel } from './errors';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'activity' | 'people' | 'data' | 'changes';
+type Tab = 'overview' | 'activity' | 'people' | 'data' | 'changes' | 'errors';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'activity', label: 'Live activity', icon: Activity },
   { id: 'people', label: 'People', icon: Users },
   { id: 'data', label: 'All data', icon: Database },
   { id: 'changes', label: 'Changes & undo', icon: History },
+  { id: 'errors', label: 'Errors', icon: Bug },
 ];
 
 export default function OwnerConsole() {
   const owner = useAuthStore((s) => s.user?.owner === true);
   const [tab, setTab] = useState<Tab>('overview');
   const [person, setPerson] = useState<string | null>(null);
+  // Links such as /console?tab=errors (from the error digest email) open that tab.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    if (t && TABS.some((x) => x.id === t)) setTab(t as Tab); // eslint-disable-line react-hooks/set-state-in-effect
+  }, []);
   const { data: tables } = useSWR<{ tables: { name: string; title: string; count: number }[]; schema: Schema }>(owner ? '/owner/tables' : null, fetcher);
 
   if (!owner) {
@@ -67,6 +74,8 @@ export default function OwnerConsole() {
           person ? <PersonPanel id={person} schema={tables.schema} onBack={() => setPerson(null)} /> : <People onPerson={setPerson} />
         ) : tab === 'data' ? (
           <Data tables={tables.tables} schema={tables.schema} />
+        ) : tab === 'errors' ? (
+          <ErrorsPanel />
         ) : (
           <Changes />
         )}

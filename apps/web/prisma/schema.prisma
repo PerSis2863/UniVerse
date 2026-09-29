@@ -96,24 +96,24 @@ enum TicketPriority {
 // ─── MODELS ────────────────────────────────────────────────────────────────
 
 model User {
-  id        String     @id @default(cuid())
-  name      String
-  email     String     @unique
-  firebaseUid String?  @unique
-  role      Role       @default(STUDENT)
-  status    UserStatus @default(PENDING)
-  avatar    String?
-  googleId  String?    @unique
-  phone     String?
+  id          String     @id @default(cuid())
+  name        String
+  email       String     @unique
+  firebaseUid String?    @unique
+  role        Role       @default(STUDENT)
+  status      UserStatus @default(PENDING)
+  avatar      String?
+  googleId    String?    @unique
+  phone       String?
   dateOfBirth DateTime?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  emailNotifications Boolean @default(true)
+  emailNotifications Boolean   @default(true)
   termsVersion       String? // version of the Terms & Privacy the person accepted
   termsAcceptedAt    DateTime?
   lastSeenAt         DateTime?
-  emergencyContacts  Json?     // [{ name, relation, phone, email }] (max 5)
+  emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
 
   // Profiles
   studentProfile StudentProfile?
@@ -134,12 +134,12 @@ model User {
   calendarEvents        CalendarEvent[]
 
   // Messaging & Notifications
-  sentMessages  Message[]                 @relation("MessageSender")
+  sentMessages     Message[]                 @relation("MessageSender")
   messageReactions MessageReaction[]
   messageStates    MessageUserState[]
   pollVotes        PollVote[]
-  conversations ConversationParticipant[]
-  notifications Notification[]
+  conversations    ConversationParticipant[]
+  notifications    Notification[]
 
   // Files & Payments
   uploadedFiles    File[]
@@ -158,15 +158,15 @@ model User {
   medicalRecord          MedicalRecord?
   safetyAlerts           SafetyAlert[]           @relation("SafetyReporter")
 
-  loginEvents            LoginEvent[]
+  loginEvents LoginEvent[]
 
   // Whiteboards
-  boardsOwned            Board[]                 @relation("BoardOwner")
-  boardMemberships       BoardMember[]
+  boardsOwned      Board[]       @relation("BoardOwner")
+  boardMemberships BoardMember[]
 
   // Applications to become a teacher / NGO representative (approved by an admin)
-  roleApplications       RoleApplication[]       @relation("RoleApplicant")
-  reviewedApplications   RoleApplication[]       @relation("RoleReviewer")
+  roleApplications     RoleApplication[] @relation("RoleApplicant")
+  reviewedApplications RoleApplication[] @relation("RoleReviewer")
 
   // Career & Internships
   careerProfile           CareerProfile?
@@ -190,20 +190,20 @@ model User {
   partnerCollaborations   TeacherCollaboration[] @relation("CollaborationPartner")
 
   // Phase 3: Mentorship & Collaborations
-  mentorProfile          MentorProfile?
-  studentBookings        MentorshipBooking[]     @relation("StudentBookings")
-  teacherProjects        CollaborationProject[]  @relation("TeacherProjects")
-  projectMemberships     CollaborationMember[]   @relation("ProjectMemberships")
+  mentorProfile      MentorProfile?
+  studentBookings    MentorshipBooking[]    @relation("StudentBookings")
+  teacherProjects    CollaborationProject[] @relation("TeacherProjects")
+  projectMemberships CollaborationMember[]  @relation("ProjectMemberships")
 
   // PWA Push Notifications
-  pushSubscriptions  PushSubscription[]
+  pushSubscriptions PushSubscription[]
 
   // Feature 7: Proof of Work
-  proofOfWork        ProofOfWork[]
+  proofOfWork ProofOfWork[]
 
   // Feature 9: Gamification
-  impactLevel        Int        @default(1)
-  impactXP           Int        @default(0)
+  impactLevel Int @default(1)
+  impactXP    Int @default(0)
 
   // Feature 10: Certificates
   impactCertificates ImpactCertificate[]
@@ -225,20 +225,20 @@ enum OrgPlan {
 }
 
 model Organization {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   name                 String
-  ownerId              String   @unique
-  owner                User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  plan                 OrgPlan  @default(STARTER)
+  ownerId              String    @unique
+  owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  plan                 OrgPlan   @default(STARTER)
   // Mirrors Stripe's subscription status: active, trialing, past_due, canceled, incomplete...
   subscriptionStatus   String?
   billingInterval      String? // "month" | "year"
-  stripeCustomerId     String?  @unique
-  stripeSubscriptionId String?  @unique
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
   currentPeriodEnd     DateTime?
-  cancelAtPeriodEnd    Boolean  @default(false)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@map("organizations")
 }
@@ -336,7 +336,7 @@ model Attendance {
   student   User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   courseId  String
   course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  date      DateTime         
+  date      DateTime
   status    AttendanceStatus @default(PRESENT)
   note      String?
   createdAt DateTime         @default(now())
@@ -489,14 +489,14 @@ model Announcement {
 }
 
 model Conversation {
-  id          String   @id @default(cuid())
-  isGroup     Boolean  @default(false)
-  name        String?
-  avatarUrl   String?
-  createdById String?
-  disappearingSec Int?  // new messages expire after this many seconds (null = off)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  isGroup         Boolean  @default(false)
+  name            String?
+  avatarUrl       String?
+  createdById     String?
+  disappearingSec Int? // new messages expire after this many seconds (null = off)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   participants ConversationParticipant[]
   messages     Message[]
@@ -537,25 +537,26 @@ model Message {
   createdAt      DateTime     @default(now())
 
   // Rich messages (messaging hub)
-  type           String       @default("TEXT") // TEXT, IMAGE, FILE, AUDIO, VIDEO, CALL, SYSTEM
+  type           String             @default("TEXT") // TEXT, IMAGE, FILE, AUDIO, VIDEO, CALL, SYSTEM
   attachmentUrl  String?
   attachmentName String?
   attachmentSize Int?
   attachmentMime String?
-  metadata       Json?        // e.g. call room + kind
+  metadata       Json? // e.g. call room + kind
   replyToId      String?
-  replyTo        Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies        Message[]    @relation("MessageReplies")
+  replyTo        Message?           @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]          @relation("MessageReplies")
   editedAt       DateTime?
   deletedAt      DateTime?
-  expiresAt      DateTime?    // disappearing messages
-  forwarded      Boolean      @default(false)
+  expiresAt      DateTime? // disappearing messages
+  forwarded      Boolean            @default(false)
   reactions      MessageReaction[]
   userStates     MessageUserState[]
   pollVotes      PollVote[]
 
-  pinnedAt       DateTime?    // pinned to the top of the chat
-  pinnedById     String?
+  pinnedAt   DateTime? // pinned to the top of the chat
+  pinnedById String?
+
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@map("messages")
@@ -656,8 +657,8 @@ model Notification {
 }
 
 enum RoleApplicationStatus {
-  DRAFT      // account created as "teacher", details not sent yet
-  PENDING    // waiting for an admin
+  DRAFT // account created as "teacher", details not sent yet
+  PENDING // waiting for an admin
   NEEDS_INFO // an admin asked for more information
   APPROVED
   REJECTED
@@ -712,7 +713,7 @@ model Board {
   ownerId    String
   owner      User          @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   linkAccess String        @default("NONE") // NONE, VIEW, EDIT: what anyone signed in with the link can do
-  thumbnail  String?       // small PNG preview (data URL) for the boards list
+  thumbnail  String? // small PNG preview (data URL) for the boards list
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   members    BoardMember[]
@@ -738,16 +739,16 @@ model BoardMember {
 /// Every change the platform owner makes in the owner console, with the record before and after,
 /// so any of them can be undone. Only the owner can see this table.
 model OwnerChange {
-  id         String    @id @default(cuid())
-  ownerId    String
-  action     String // UPDATE, DELETE, RESTORE
-  model      String // Prisma model name, e.g. "User", "Message"
-  recordId   String
-  summary    String
-  before     Json?
-  after      Json?
-  undoneAt   DateTime?
-  createdAt  DateTime  @default(now())
+  id        String    @id @default(cuid())
+  ownerId   String
+  action    String // UPDATE, DELETE, RESTORE
+  model     String // Prisma model name, e.g. "User", "Message"
+  recordId  String
+  summary   String
+  before    Json?
+  after     Json?
+  undoneAt  DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([createdAt(sort: Desc)])
   @@index([model, recordId])
@@ -815,13 +816,13 @@ model Payment {
 }
 
 model Invitation {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String     @id @default(cuid())
+  email     String     @unique
   role      Role
   status    UserStatus @default(PENDING)
   expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@map("invitations")
 }
@@ -846,15 +847,15 @@ model Ticket {
 // ─── STUDENT LIFE ──────────────────────────────────────────────────────────
 
 model Association {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   name        String
   category    String
   description String
-  members     Int      @default(0)
+  members     Int               @default(0)
   status      AssociationStatus @default(PENDING)
-  budget      Float    @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  budget      Float             @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   memberships AssociationMembership[]
 
@@ -1044,8 +1045,8 @@ model CareerProfile {
   linkedinUrl   String?
   portfolioUrl  String?
   githubUrl     String?
-  targetRoles   Json    @default("[]") // string[] — array of target job titles
-  targetSectors Json    @default("[]") // string[]
+  targetRoles   Json     @default("[]") // string[] — array of target job titles
+  targetSectors Json     @default("[]") // string[]
   cvUrl         String?
   isPublic      Boolean  @default(false)
   createdAt     DateTime @default(now())
@@ -1101,7 +1102,7 @@ model Internship {
   isPaid      Boolean        @default(true)
   salary      String?
   openings    Int            @default(1)
-  skills      Json    @default("[]") // string[]
+  skills      Json           @default("[]") // string[]
   deadline    DateTime?
   startDate   DateTime?
   isActive    Boolean        @default(true)
@@ -1211,7 +1212,7 @@ model NGO {
   logoUrl     String?
   websiteUrl  String?
   sector      String? // "Education", "Health", etc.
-  sdgNumbers  Json @default("[]") // int[] — UN SDG goals e.g. [4, 13]
+  sdgNumbers  Json     @default("[]") // int[] — UN SDG goals e.g. [4, 13]
   location    String?
   isVerified  Boolean  @default(false)
   createdAt   DateTime @default(now())
@@ -1233,14 +1234,14 @@ model NGOProject {
   duration       String?
   openings       Int       @default(1)
   impactPoints   Int       @default(50)
-  skillsRequired Json    @default("[]") // string[]
+  skillsRequired Json      @default("[]") // string[]
   sdgNumber      Int?
   deadline       DateTime?
   isActive       Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  applications NGOProjectApplication[]
+  applications         NGOProjectApplication[]
   collaborationProject CollaborationProject?
 
   @@index([ngoId])
@@ -1474,9 +1475,9 @@ model MedicalRecord {
   doctorName       String?
   doctorPhone      String?
   bloodType        String?
-  allergies        Json    @default("[]") // string[]
-  conditions       Json    @default("[]") // string[]
-  medications      Json    @default("[]") // string[]
+  allergies        Json     @default("[]") // string[]
+  conditions       Json     @default("[]") // string[]
+  medications      Json     @default("[]") // string[]
   emergencyContact String?
   emergencyPhone   String?
   updatedAt        DateTime @updatedAt
@@ -1587,7 +1588,7 @@ model MentorProfile {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   company        String?
   jobTitle       String?
-  skills         Json    @default("[]") // string[]
+  skills         Json     @default("[]") // string[]
   hoursCommitted Int      @default(0)
   isAvailable    Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -1599,17 +1600,17 @@ model MentorProfile {
 }
 
 model MentorshipBooking {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   mentorId  String
   mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
   studentId String
-  student   User     @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  student   User          @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
   date      DateTime
   time      String
   topic     String?
-  status    String   @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String        @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@index([mentorId])
   @@index([studentId])
@@ -1617,21 +1618,21 @@ model MentorshipBooking {
 }
 
 model CollaborationProject {
-  id                 String   @id @default(cuid())
-  title              String
-  description        String
-  partner            String?
-  ngo                String?
-  status             String   @default("PendingReview") // PendingReview, Recruiting, Active, Completed, Rejected
-  deadline           DateTime?
-  tags               Json    @default("[]") // string[]
-  contactEmail       String?
+  id                   String      @id @default(cuid())
+  title                String
+  description          String
+  partner              String?
+  ngo                  String?
+  status               String      @default("PendingReview") // PendingReview, Recruiting, Active, Completed, Rejected
+  deadline             DateTime?
+  tags                 Json        @default("[]") // string[]
+  contactEmail         String?
   supervisingTeacherId String?
-  supervisingTeacher User?    @relation("TeacherProjects", fields: [supervisingTeacherId], references: [id])
-  ngoProjectId       String?  @unique
-  ngoProject         NGOProject? @relation(fields: [ngoProjectId], references: [id])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  supervisingTeacher   User?       @relation("TeacherProjects", fields: [supervisingTeacherId], references: [id])
+  ngoProjectId         String?     @unique
+  ngoProject           NGOProject? @relation(fields: [ngoProjectId], references: [id])
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   milestones ProjectMilestone[]
   members    CollaborationMember[]
@@ -1641,13 +1642,13 @@ model CollaborationProject {
 }
 
 model CollaborationMember {
-  id        String   @id @default(cuid())
+  id        String               @id @default(cuid())
   projectId String
   project   CollaborationProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation("ProjectMemberships", fields: [userId], references: [id], onDelete: Cascade)
-  role      String   @default("STUDENT") // STUDENT, LEAD
-  joinedAt  DateTime @default(now())
+  user      User                 @relation("ProjectMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  role      String               @default("STUDENT") // STUDENT, LEAD
+  joinedAt  DateTime             @default(now())
 
   @@unique([projectId, userId])
   @@index([projectId])
@@ -1656,15 +1657,15 @@ model CollaborationMember {
 }
 
 model ProjectMilestone {
-  id          String   @id @default(cuid())
+  id          String               @id @default(cuid())
   projectId   String
   project     CollaborationProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title       String
   description String?
-  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  status      String               @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   @@index([projectId])
   @@map("project_milestones")
@@ -1679,21 +1680,21 @@ enum ProofStatus {
 }
 
 model ProofOfWork {
-  id              String      @id @default(cuid())
-  userId          String
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectName     String
-  organization    String
-  description     String?
-  hoursCompleted  Int         @default(0)
-  codeCommits     Int         @default(0)
-  ngoVerified     Boolean     @default(false)
-  blockchainHash  String?
-  status          ProofStatus @default(PENDING)
-  evidenceUrl     String?
-  verifiedAt      DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectName    String
+  organization   String
+  description    String?
+  hoursCompleted Int         @default(0)
+  codeCommits    Int         @default(0)
+  ngoVerified    Boolean     @default(false)
+  blockchainHash String?
+  status         ProofStatus @default(PENDING)
+  evidenceUrl    String?
+  verifiedAt     DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@index([userId])
   @@map("proof_of_work")
@@ -1702,17 +1703,17 @@ model ProofOfWork {
 // ─── FEATURE 8: SOCIAL PROOF FEED ──────────────────────────────────────────
 
 model ActivityFeedItem {
-  id          String   @id @default(cuid())
-  userId      String?
-  userName    String
-  userAvatar  String?
-  university  String?
-  emoji       String   @default("⭐")
-  title       String
-  subtitle    String?
-  category    String   @default("general") // volunteer, milestone, hackathon, partnership, badge
-  metadata    Json?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String?
+  userName   String
+  userAvatar String?
+  university String?
+  emoji      String   @default("⭐")
+  title      String
+  subtitle   String?
+  category   String   @default("general") // volunteer, milestone, hackathon, partnership, badge
+  metadata   Json?
+  createdAt  DateTime @default(now())
 
   @@index([createdAt(sort: Desc)])
   @@map("activity_feed_items")
@@ -1745,27 +1746,53 @@ model ImpactCertificate {
 
   // Verification & signing (Phase 1: trustworthy credentials)
   // DRAFT = requested by student, awaiting admin verification.
-  evidenceUrl     String?
-  requestedAt     DateTime          @default(now())
-  verifiedById    String?
-  verifiedByName  String?
-  signature       String?           // Ed25519 signature (base64url) over the canonical credential payload
-  signatureAlg    String?           // e.g. "Ed25519"
-  signingKeyId    String?           // fingerprint of the public key that signed it
-  revokedAt       DateTime?
-  revokedReason   String?
+  evidenceUrl    String?
+  requestedAt    DateTime  @default(now())
+  verifiedById   String?
+  verifiedByName String?
+  signature      String? // Ed25519 signature (base64url) over the canonical credential payload
+  signatureAlg   String? // e.g. "Ed25519"
+  signingKeyId   String? // fingerprint of the public key that signed it
+  revokedAt      DateTime?
+  revokedReason  String?
 
   // Public blockchain anchoring (Polygon): the credential hash is written into a transaction
-  anchorStatus    String?           // PENDING | CONFIRMED | FAILED
-  anchorTxHash    String?
-  anchorChainId   Int?
-  anchorNetwork   String?           // e.g. "Polygon Amoy (testnet)"
-  anchoredAt      DateTime?
-  anchorError     String?
+  anchorStatus  String? // PENDING | CONFIRMED | FAILED
+  anchorTxHash  String?
+  anchorChainId Int?
+  anchorNetwork String? // e.g. "Polygon Amoy (testnet)"
+  anchoredAt    DateTime?
+  anchorError   String?
 
   @@index([userId])
   @@index([certificateCode])
   @@index([status])
   @@index([anchorStatus])
   @@map("impact_certificates")
+}
+
+/// Errors seen in browsers and on the server, grouped: the same problem is one row with a count.
+/// Diagnosed by AI (the daily job or the owner console) and shown to the owner at /console.
+model ErrorReport {
+  id          String    @id @default(cuid())
+  fingerprint String    @unique // hash of source + kind + normalised message + first stack frame
+  source      String // CLIENT, SERVER
+  kind        String // runtime, promise, render, api, chunk
+  message     String
+  stack       String?
+  path        String? // page or API path, no query string
+  userAgent   String?
+  lastUserId  String?
+  count       Int       @default(1)
+  users       Int       @default(1) // rough number of different people affected
+  status      String    @default("NEW") // NEW, DIAGNOSED, RESOLVED, IGNORED
+  diagnosis   String? // AI: likely cause, where to look, suggested fix
+  severity    String? // AI: low, medium, high
+  diagnosedAt DateTime?
+  resolvedAt  DateTime?
+  firstSeen   DateTime  @default(now())
+  lastSeen    DateTime  @default(now())
+
+  @@index([status, lastSeen])
+  @@map("error_reports")
 }
