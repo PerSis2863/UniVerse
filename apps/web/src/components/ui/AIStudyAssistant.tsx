@@ -2,32 +2,68 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, X, Send, Sparkles, User, Minimize2 } from 'lucide-react';
+import { Bot, X, Send, Sparkles, User, Minimize2, Zap, WifiOff, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAiStore } from '@/store/ai';
+import { useAuthStore } from '@/store/auth';
 import { authFetch } from '@/lib/auth-token';
+import Link from '@/components/ui/Link';
+import { linkFor, type HelpEntry, type Role } from '@/lib/help/knowledge';
+import { searchHelp, suggestions, tokens } from '@/lib/help/search';
 
 type Message = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  /** instant: built-in answer (works offline); saved: an earlier AI answer replayed offline */
+  source?: 'instant' | 'saved' | 'ai';
+  links?: { label: string; href: string }[];
+  related?: HelpEntry[];
 };
 
-const SUGGESTIONS = [
-  "Summarize Week 3 notes",
-  "When is my next assignment due?",
-  "Explain Big O notation",
-  "Help me practice for midterms"
-];
+// Earlier AI answers, kept on this device so the same question can be answered again offline.
+const CACHE_KEY = 'universe-assistant-answers';
+const CACHE_MAX = 60;
+const cacheKey = (q: string) => tokens(q).sort().join(' ');
+function readCache(q: string): string | null {
+  try {
+    const all = JSON.parse(localStorage.getItem(CACHE_KEY) ?? '{}') as Record<string, { a: string; t: number }>;
+    return all[cacheKey(q)]?.a ?? null;
+  } catch {
+    return null;
+  }
+}
+function writeCache(q: string, a: string) {
+  try {
+    const key = cacheKey(q);
+    if (!key || a.length > 6000) return;
+    const all = JSON.parse(localStorage.getItem(CACHE_KEY) ?? '{}') as Record<string, { a: string; t: number }>;
+    all[key] = { a, t: Date.now() };
+    const keep = Object.entries(all).sort((x, y) => y[1].t - x[1].t).slice(0, CACHE_MAX);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(keep)));
+  } catch {
+    /* storage full or blocked: answers just aren't saved */
+  }
+}
 
 export function AIStudyAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const { isChatbotEnabled } = useAiStore();
+  const role = useAuthStore((st) => st.user?.role) as Role | undefined;
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', role: 'assistant', content: "Hi! I'm your Gemini AI Study Assistant. How can I help you today?" }
+    { id: '1', role: 'assistant', content: "Hi! Ask me how to do anything on UniVerse and I'll answer instantly, even offline. For study questions, Gemini AI helps out." }
   ]);
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
+  const quick = [...suggestions(role, 3).map((h) => h.q[0]), 'Explain Big O notation'];
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -60,12 +96,39 @@ export function AIStudyAssistant() {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  const reply = (m: Omit<Message, 'id' | 'role'>) =>
+    setMessages((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'assistant', ...m }]);
+
   const handleSend = async (text: string = inputValue) => {
     if (!text.trim()) return;
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
+
+    // 1. Questions about using UniVerse: answered on the device, instantly, online or not.
+    const { matches, confident } = searchHelp(text, role);
+    if (confident) {
+      const e = matches[0].entry;
+      reply({ content: e.a, source: 'instant', links: e.links?.map((l) => ({ label: l.label, href: linkFor(l.href, role) })), related: matches.slice(1).filter((m) => m.score >= 3).map((m) => m.entry) });
+      return;
+    }
+    const related = matches.filter((m) => m.score >= 2).map((m) => m.entry);
+
+    // 2. Offline: replay a saved answer to the same question, or point to built-in topics.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const saved = readCache(text);
+      if (saved) reply({ content: saved, source: 'saved' });
+      else reply({
+        content: related.length
+          ? "You're offline, so I can't reach Gemini right now. These built-in answers might help:"
+          : "You're offline, so I can't reach Gemini right now. I can still answer questions about using UniVerse, like the ones below, and I'll remember Gemini's answers for next time.",
+        related: related.length ? related : suggestions(role, 4),
+      });
+      return;
+    }
+
+    // 3. Everything else: Gemini.
     setIsTyping(true);
 
     // Add a placeholder for streaming
@@ -85,8 +148,9 @@ export function AIStudyAssistant() {
       if (!res.ok || !res.body) {
         let msg = "Sorry, I'm having trouble connecting right now. Please try again.";
         try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* not JSON */ }
+        const saved = readCache(text);
         setIsTyping(false);
-        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: msg } : m));
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? (saved ? { ...m, content: saved, source: 'saved' } : { ...m, content: msg, related }) : m));
         return;
       }
 
@@ -104,11 +168,15 @@ export function AIStudyAssistant() {
 
       if (!accumulated.trim()) {
         setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: "I couldn't generate a response. Please try again." } : m));
+      } else {
+        writeCache(text, accumulated);
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, source: 'ai', related: related.slice(0, 2) } : m));
       }
     } catch {
+      const saved = readCache(text);
       setIsTyping(false);
       setMessages(prev => prev.map(m => m.id === aiMsgId
-        ? { ...m, content: "Sorry, I'm having trouble connecting right now. Please try again." }
+        ? (saved ? { ...m, content: saved, source: 'saved' } : { ...m, content: "Sorry, I'm having trouble connecting right now. Please try again.", related })
         : m
       ));
     }
@@ -187,7 +255,9 @@ export function AIStudyAssistant() {
                     Study Assistant
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   </h3>
-                  <p className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400">Powered by Gemini</p>
+                  <p className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                    {online ? 'Instant help · Gemini AI' : <><WifiOff className="w-3 h-3" /> Offline · built-in answers</>}
+                  </p>
                 </div>
               </div>
               <button 
@@ -214,12 +284,36 @@ export function AIStudyAssistant() {
                     {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
                   <div className={cn(
-                    "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                    "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm whitespace-pre-wrap break-words",
                     msg.role === 'user' 
                       ? "bg-indigo-500 text-white rounded-br-sm" 
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-sm"
                   )}>
+                    {(msg.source === 'instant' || msg.source === 'saved') && (
+                      <span className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                        {msg.source === 'instant' ? <><Zap className="w-3 h-3" /> Instant answer · works offline</> : <><WifiOff className="w-3 h-3" /> Saved answer</>}
+                      </span>
+                    )}
                     {msg.content}
+                    {!!msg.links?.length && (
+                      <span className="mt-2 flex flex-wrap gap-1.5">
+                        {msg.links.map((l) => (
+                          <Link key={l.href} href={l.href} onClick={() => setIsOpen(false)} className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20">
+                            {l.label} <ArrowUpRight className="w-3 h-3" />
+                          </Link>
+                        ))}
+                      </span>
+                    )}
+                    {!!msg.related?.length && (
+                      <span className="mt-2 flex flex-col items-start gap-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Related</span>
+                        {msg.related.map((h) => (
+                          <button key={h.id} type="button" onClick={() => handleSend(h.q[0])} className="text-left text-xs font-medium text-indigo-600 dark:text-indigo-300 hover:underline">
+                            {h.q[0]}
+                          </button>
+                        ))}
+                      </span>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -242,7 +336,7 @@ export function AIStudyAssistant() {
             {/* Suggestions */}
             {messages.length === 1 && (
               <div className="px-4 pb-2 flex flex-wrap gap-2">
-                {SUGGESTIONS.map((s, i) => (
+                {quick.map((s, i) => (
                   <button 
                     key={i}
                     onClick={() => handleSend(s)}
@@ -264,7 +358,8 @@ export function AIStudyAssistant() {
                   type="text" 
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask Gemini anything..."
+                  placeholder={online ? 'Ask anything…' : 'Ask how to use UniVerse…'}
+                  aria-label="Message the assistant"
                   className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full px-4 py-2.5 text-sm outline-none focus:border-indigo-500 text-zinc-900 dark:text-white placeholder:text-zinc-400"
                 />
                 <button 

@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Mail, Lock, Loader2 } from 'lucide-react';
+import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
 import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
+import { authErrorMessage } from '@/lib/auth-errors';
 import { api } from '@/lib/api';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { reportSession } from '@/lib/sign-in-history';
@@ -18,6 +19,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
 
@@ -52,9 +55,31 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const token = await userCredential.user.getIdToken();
       await handleLoginSuccess(token, 'password');
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to sign in. Please check your credentials.');
+      setError(authErrorMessage(err, 'Failed to sign in. Please check your email and password.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Emails a password reset link. Firebase doesn't say whether the address has an account, so
+  // the message is the same either way (no one can use this to find out who is registered).
+  const handleForgotPassword = async () => {
+    setError('');
+    setNotice('');
+    if (!email.trim()) {
+      setError('Enter your email address above, then choose “Forgot password?” again.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setNotice(`If ${email.trim()} has a UniVerse account with a password, we’ve sent it a reset link. Check your inbox and spam folder.`);
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code === 'auth/user-not-found') setNotice(`If ${email.trim()} has a UniVerse account with a password, we’ve sent it a reset link.`);
+      else setError(authErrorMessage(err, 'Couldn’t send the reset email. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -68,9 +93,9 @@ export default function LoginPage() {
       const userCredential = await signInWithPopup(auth, provider);
       const token = await userCredential.user.getIdToken();
       await handleLoginSuccess(token, 'google');
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to sign in with Google.');
+      setError(authErrorMessage(err, 'Failed to sign in with Google.'));
     } finally {
       setIsLoading(false);
     }
@@ -84,9 +109,9 @@ export default function LoginPage() {
       const userCredential = await signInWithPopup(auth, provider);
       const token = await userCredential.user.getIdToken();
       await handleLoginSuccess(token, 'apple');
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to sign in with Apple.');
+      setError(authErrorMessage(err, 'Failed to sign in with Apple.'));
     } finally {
       setIsLoading(false);
     }
@@ -109,8 +134,13 @@ export default function LoginPage() {
           <h2 className="text-xl font-bold text-white mb-6">Sign In</h2>
 
           {error && !showPhoneFlow && (
-            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+            <div role="alert" className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
               {error}
+            </div>
+          )}
+          {notice && !showPhoneFlow && (
+            <div role="status" className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-300 text-sm">
+              {notice}
             </div>
           )}
 
@@ -178,6 +208,7 @@ export default function LoginPage() {
                     <input
                       type="email"
                       required
+                      autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
@@ -187,17 +218,27 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 text-sm font-medium mb-1.5">Password</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="login-password" className="block text-zinc-400 text-sm font-medium">Password</label>
+                    <button type="button" onClick={handleForgotPassword} disabled={isLoading} className="text-xs font-medium text-indigo-400 hover:text-indigo-300 disabled:opacity-50">
+                      Forgot password?
+                    </button>
+                  </div>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                     <input
-                      type="password"
+                      id="login-password"
+                      type={showPassword ? 'text' : 'password'}
                       required
+                      autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                      className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-11 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                       placeholder="••••••••"
                     />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 inline-flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-300">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 

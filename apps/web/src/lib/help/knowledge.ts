@@ -1,0 +1,183 @@
+// Built-in answers for the assistant: common "how do I…" questions about UniVerse. They're part of
+// the app bundle, so they answer instantly and keep working offline. `{base}` in a link becomes the
+// person's portal (/student, /teacher or /admin). Keep answers short and true to the app.
+
+export type Role = 'STUDENT' | 'TEACHER' | 'ADMIN';
+
+export interface HelpEntry {
+  id: string;
+  /** Ways people ask it. The first is shown as a suggestion. */
+  q: string[];
+  a: string;
+  links?: { label: string; href: string }[];
+  /** Only for these roles (all when omitted). */
+  roles?: Role[];
+  /** Extra words that should match. */
+  tags?: string;
+}
+
+export const HELP: HelpEntry[] = [
+  // ── Account ──
+  { id: 'password', q: ['How do I reset my password?', 'forgot password', 'change my password', 'cant log in'], tags: 'reset login sign in locked',
+    a: 'On the sign-in page, choose “Forgot password?” and we’ll email you a reset link. If you’re signed in, go to Settings → Privacy & Security → Change Password. Accounts that use Google or phone sign-in don’t have a UniVerse password: sign in with the same method.',
+    links: [{ label: 'Privacy & Security', href: '/student/settings?section=privacy' }], roles: ['STUDENT'] },
+  { id: 'password-staff', q: ['How do I reset my password?', 'forgot password', 'change my password'], tags: 'reset login sign in locked',
+    a: 'On the sign-in page, choose “Forgot password?” and we’ll email you a reset link. If you signed up with Google, sign in with Google instead.',
+    links: [{ label: 'Sign in page', href: '/login' }], roles: ['TEACHER', 'ADMIN'] },
+  { id: 'profile', q: ['How do I edit my profile?', 'change my name', 'update profile photo', 'change avatar'], tags: 'picture bio phone department',
+    a: 'Open Settings → Profile Details to change your name, photo, phone number and department.',
+    links: [{ label: 'Profile settings', href: '/student/settings?section=profile' }], roles: ['STUDENT'] },
+  { id: 'language', q: ['How do I change the language?', 'switch to French', 'change language to Hindi', 'Spanish'], tags: 'francais espanol hindi translate',
+    a: 'Go to Settings → Language & Region. UniVerse is available in English, French, Spanish and Hindi.',
+    links: [{ label: 'Language settings', href: '/student/settings?section=language' }], roles: ['STUDENT'] },
+  { id: 'theme', q: ['How do I turn on dark mode?', 'light mode', 'change theme'], tags: 'dark light appearance night',
+    a: 'Use the moon/sun button at the top of the page, or press Ctrl+K (⌘K on Mac) and choose “Switch to dark mode”.' },
+  { id: 'notifications', q: ['How do I stop email notifications?', 'turn off emails', 'too many notifications', 'push notifications'], tags: 'email alerts unsubscribe mute',
+    a: 'Settings → Notifications lets you switch email notifications off and allow or block push notifications on this device. You’ll still see everything in the bell menu. To mute a single chat, open it and choose Mute.',
+    links: [{ label: 'Notification settings', href: '/student/settings?section=notifications' }], roles: ['STUDENT'] },
+  { id: 'signins', q: ['Who signed in to my account?', 'sign-in history', 'suspicious login', 'was my account hacked'], tags: 'security devices location',
+    a: 'Settings → Privacy & Security shows your recent sign-ins with the device, browser and approximate location. If one isn’t you, change your password and email security@universeimpact.com.',
+    links: [{ label: 'Recent sign-ins', href: '/student/settings?section=privacy' }], roles: ['STUDENT'] },
+  { id: 'delete-account', q: ['How do I delete my account?', 'close my account', 'remove my data', 'download my data'], tags: 'erase gdpr export privacy',
+    a: 'Email privacy@universeimpact.com from your account’s email address and say whether you want a copy of your data or your account deleted. We reply within 30 days. If your school manages your account, you can also ask its administrator.',
+    links: [{ label: 'Your privacy choices', href: '/privacy-choices' }] },
+  { id: 'teacher-account', q: ['How do I get a teacher account?', 'I am a teacher but I see the student portal', 'become a teacher', 'NGO account'], tags: 'staff approval application verify role',
+    a: 'Choose “Teacher” or “NGO representative” when you sign up, or apply later from Settings. An administrator checks your details (you may be asked for a staff page or ID); until then your account works like a student account. You can follow your application at any time.',
+    links: [{ label: 'My application', href: '/application' }] },
+
+  // ── Learning ──
+  { id: 'courses', q: ['Where are my courses?', 'how do I join a course', 'enroll in a course', 'course materials'], tags: 'class subject enrol register lectures',
+    a: 'Your courses are under Schooling → My Courses. Open a course to see its materials, announcements and quizzes. Your institution or teacher enrols you; ask them if a course is missing.',
+    links: [{ label: 'My courses', href: '/student/courses' }], roles: ['STUDENT'] },
+  { id: 'grades', q: ['Where can I see my grades?', 'my marks', 'my results', 'GPA'], tags: 'score transcript report card',
+    a: 'Open Schooling → Grades to see every published grade by course. You’ll also get a notification when a new grade is posted.',
+    links: [{ label: 'My grades', href: '/student/grades' }], roles: ['STUDENT'] },
+  { id: 'attendance', q: ['How do I check my attendance?', 'am I marked absent', 'attendance record'], tags: 'present absent late excused',
+    a: 'Schooling → Attendance shows your attendance for each course. If something is wrong, message your teacher.',
+    links: [{ label: 'My attendance', href: '/student/attendance' }], roles: ['STUDENT'] },
+  { id: 'quizzes', q: ['How do I take a quiz?', 'where are my quizzes', 'quiz deadline', 'exam'], tags: 'test assessment due submit',
+    a: 'Open Schooling → Quizzes. Available quizzes show their due date; open one and submit before the deadline. You get a reminder the day before a quiz is due if you haven’t taken it.',
+    links: [{ label: 'My quizzes', href: '/student/quizzes' }], roles: ['STUDENT'] },
+  { id: 'timetable', q: ['Where is my timetable?', 'class schedule', 'when is my next class', 'calendar'], tags: 'schedule lectures agenda',
+    a: 'Your timetable and events are in the Calendar.',
+    links: [{ label: 'Calendar', href: '{base}/calendar' }], roles: ['STUDENT', 'TEACHER'] },
+  { id: 'teacher-grades', q: ['How do I enter grades?', 'grade students', 'publish marks'], tags: 'score mark assess',
+    a: 'Go to Schooling → Grades, pick the course, and enter or update grades. Students are notified when grades are published.',
+    links: [{ label: 'Grades', href: '/teacher/grades' }], roles: ['TEACHER'] },
+  { id: 'teacher-attendance', q: ['How do I take attendance?', 'mark students absent', 'register'], tags: 'present absent roll call',
+    a: 'Open Schooling → Attendance, choose the course and session, and mark each student present, absent, late or excused.',
+    links: [{ label: 'Attendance', href: '/teacher/attendance' }], roles: ['TEACHER'] },
+  { id: 'teacher-quiz', q: ['How do I create a quiz?', 'make a test', 'publish a quiz'], tags: 'questions assessment exam',
+    a: 'Go to Schooling → Quizzes and create a quiz for one of your courses, add questions and a due date, then publish it. Students who haven’t taken it are reminded a day before it’s due.',
+    links: [{ label: 'Quizzes', href: '/teacher/quizzes' }], roles: ['TEACHER'] },
+
+  // ── Collaboration ──
+  { id: 'message', q: ['How do I message someone?', 'start a chat', 'send a message', 'create a group chat'], tags: 'dm inbox conversation group',
+    a: 'Open Messages and tap the new-chat button. Search for a person to start a direct chat, or choose several people to create a group. You can send photos, files and voice notes, react, reply, pin messages and @mention people in groups.',
+    links: [{ label: 'Messages', href: '{base}/inbox' }] },
+  { id: 'call', q: ['How do I make a video call?', 'voice call', 'call a classmate'], tags: 'video audio meeting jitsi',
+    a: 'Open a chat and tap the phone (voice) or camera (video) icon at the top. The other person gets a call notification.',
+    links: [{ label: 'Messages', href: '{base}/inbox' }] },
+  { id: 'format', q: ['How do I make text bold in chat?', 'formatting messages', 'italic', 'mention someone'], tags: 'bold italic strike code @ tag',
+    a: 'In chat, wrap text in *stars* for bold, _underscores_ for italics, ~tildes~ for strikethrough and `backticks` for code. Type @ and a name in a group to mention someone; they get notified.' },
+  { id: 'pin', q: ['How do I pin a message?', 'pinned messages'], tags: 'pin important top',
+    a: 'Open the message menu and choose Pin. Up to three messages stay pinned at the top of the chat. In groups, only admins can pin.' },
+  { id: 'whiteboard', q: ['How do I create a whiteboard?', 'draw together', 'online whiteboard', 'canvas'], tags: 'board draw sketch collaborate diagram',
+    a: 'Open Whiteboards in the menu and choose New board. You get every drawing tool: shapes, arrows, text, pen, laser pointer, and you can export the board as an image.',
+    links: [{ label: 'Whiteboards', href: '/boards' }] },
+  { id: 'whiteboard-share', q: ['How do I share a whiteboard?', 'invite classmates to a board', 'edit a board together'], tags: 'board collaborate live link teacher',
+    a: 'Open the board and tap Share. Search for classmates, teachers or anyone on UniVerse and choose “Can edit” or “Can view”. You can also turn on link sharing. Everyone who opens it sees changes and cursors live.',
+    links: [{ label: 'Whiteboards', href: '/boards' }] },
+  { id: 'whiteboard-photo', q: ['How do I add a photo to a whiteboard?', 'background image on board', 'annotate a picture'], tags: 'image picture background board',
+    a: 'In a board, tap Photo to add a picture you can move and resize, or Background to put a photo behind everything (locked, so you can draw on top). Remove it with Remove background.',
+    links: [{ label: 'Whiteboards', href: '/boards' }] },
+  { id: 'knowledge', q: ['Where can I find study resources?', 'knowledge hub', 'notes and documents'], tags: 'resources library materials links',
+    a: 'The Knowledge Hub has resources shared by teachers and students.',
+    links: [{ label: 'Knowledge Hub', href: '{base}/knowledge-hub' }], roles: ['STUDENT', 'ADMIN'] },
+  { id: 'groups', q: ['How do I join a study group?', 'community groups', 'create a group'], tags: 'club community study',
+    a: 'Open Community to browse and join groups, or create your own.',
+    links: [{ label: 'Community', href: '/student/community' }], roles: ['STUDENT'] },
+
+  // ── Impact ──
+  { id: 'ngo', q: ['How do I volunteer with an NGO?', 'find a project', 'NGO marketplace', 'apply to a project'], tags: 'volunteer impact social project apply',
+    a: 'Browse Global Impact → NGO Marketplace, or try AI Project Match for projects that fit your skills. Apply from the project page; the organisation sees your profile and skills.',
+    links: [{ label: 'NGO Marketplace', href: '/student/impact/ngo-marketplace' }, { label: 'AI Project Match', href: '/student/impact/ai-match' }], roles: ['STUDENT'] },
+  { id: 'credentials', q: ['What are verified credentials?', 'how do I get a certificate', 'share my certificate'], tags: 'credential certificate badge blockchain verify linkedin',
+    a: 'When you complete a project or certification, you receive a digitally signed credential. Open My Credentials to view it and copy its public verification link for your CV or LinkedIn. Anyone can check it’s genuine.',
+    links: [{ label: 'My credentials', href: '/student/credentials' }], roles: ['STUDENT'] },
+  { id: 'verify', q: ['How do I verify a certificate?', 'check a credential is real'], tags: 'verify credential authentic employer',
+    a: 'Open the credential’s verification link (it looks like universeimpact.com/verify/…). The page shows whether it’s valid, who issued it, and when.' },
+  { id: 'xp', q: ['How do impact points work?', 'XP', 'leaderboard', 'impact level'], tags: 'points score rank level',
+    a: 'You earn impact points (XP) for verified actions such as completing projects and proof-of-work. Your level rises as you earn more; see how you compare on the Impact Leaderboard.',
+    links: [{ label: 'Leaderboard', href: '/student/impact/leaderboard' }], roles: ['STUDENT'] },
+  { id: 'internships', q: ['How do I find an internship?', 'apply for internships', 'jobs'], tags: 'career job placement work',
+    a: 'Open Internships to browse and apply, and build your career profile under Career.',
+    links: [{ label: 'Internships', href: '/student/internships' }, { label: 'Career', href: '/student/career' }], roles: ['STUDENT'] },
+
+  // ── Campus life ──
+  { id: 'emergency', q: ['Emergency', 'I need help now', 'report an incident', 'BeeSafe', 'I feel unsafe'], tags: 'danger safety harassment urgent police ambulance',
+    a: 'If anyone is in immediate danger, call your local emergency number now (112 in Europe and India, 911 in the US). To report a campus safety incident to your institution, use BeeSafe.',
+    links: [{ label: 'BeeSafe', href: '/student/beesafe' }], roles: ['STUDENT'] },
+  { id: 'rooms', q: ['How do I book a room?', 'reserve a study room', 'room reservation'], tags: 'booking space classroom library',
+    a: 'Use Student Life → Room Reservation to see free rooms and book one.',
+    links: [{ label: 'Room reservation', href: '/student/life/rooms' }], roles: ['STUDENT'] },
+  { id: 'teacher-rooms', q: ['How do I book a room?', 'reserve a classroom'], tags: 'booking space',
+    a: 'Use Campus Services → Room Reservation.',
+    links: [{ label: 'Room reservation', href: '/teacher/services/rooms' }], roles: ['TEACHER'] },
+  { id: 'medical', q: ['How do I add medical information?', 'allergies', 'emergency contact', 'remove my medical data'], tags: 'health blood type medication disability',
+    a: 'Student Life → Medical lets you add or clear optional health information and emergency contacts. Only you, your institution’s medical staff and authorised administrators (in an emergency) can see it.',
+    links: [{ label: 'Medical', href: '/student/life/medical' }], roles: ['STUDENT'] },
+  { id: 'scholarships', q: ['How do I apply for a scholarship?', 'financial aid', 'funding'], tags: 'grant money bursary financing',
+    a: 'See Administrative → Scholarships to apply, and Student Life → Financing for other support.',
+    links: [{ label: 'Scholarships', href: '/student/administrative/scholarships' }], roles: ['STUDENT'] },
+  { id: 'fees', q: ['How do I pay my fees?', 'tuition payment', 'receipt'], tags: 'pay tuition invoice accounting money',
+    a: 'Administrative → Accounting shows your fees and payments. Payments are processed securely by Stripe, and each one has a receipt.',
+    links: [{ label: 'Accounting', href: '/student/administrative/accounting' }], roles: ['STUDENT'] },
+  { id: 'documents', q: ['Where are my documents?', 'upload a document', 'certificate of enrollment'], tags: 'files papers admin',
+    a: 'Administrative → Documents holds your documents and lets you upload new ones.',
+    links: [{ label: 'Documents', href: '/student/administrative/documents' }], roles: ['STUDENT'] },
+
+  // ── Admin ──
+  { id: 'approve', q: ['How do I approve a teacher?', 'pending staff applications', 'approve NGO account'], tags: 'approval verify staff application',
+    a: 'Open Management → Approvals. Review each application, then approve, ask for more information, or decline with a reason. The applicant is notified.',
+    links: [{ label: 'Approvals', href: '/admin/approvals' }], roles: ['ADMIN'] },
+  { id: 'users', q: ['How do I add users?', 'invite a teacher', 'deactivate an account', 'change someone’s role'], tags: 'invite suspend role manage',
+    a: 'Management → Users lets you invite people with a role, change roles, and deactivate or reactivate accounts. Every change is recorded in the Activity Log.',
+    links: [{ label: 'Users', href: '/admin/users' }], roles: ['ADMIN'] },
+  { id: 'announce', q: ['How do I send an announcement?', 'message all students'], tags: 'broadcast news notice',
+    a: 'Open Announcements to post a message to everyone or a specific audience.',
+    links: [{ label: 'Announcements', href: '/admin/announcements' }], roles: ['ADMIN'] },
+  { id: 'plans', q: ['How do I upgrade our plan?', 'pricing', 'Enterprise plan', 'free trial'], tags: 'billing subscription pro price cost',
+    a: 'Admins manage plans in Premium → Billing & Plans. Pro comes with a 14-day free trial; for Enterprise, use “Contact us” there and our team will send a quote.',
+    links: [{ label: 'Billing & Plans', href: '/admin/billing' }], roles: ['ADMIN'] },
+  { id: 'export', q: ['How do I export data?', 'download CSV', 'reports'], tags: 'csv excel export report',
+    a: 'Premium → Reports & Exports lets you download data as CSV (Pro plan).',
+    links: [{ label: 'Reports', href: '/admin/reports' }], roles: ['ADMIN'] },
+  { id: 'audit', q: ['Who changed this?', 'activity log', 'audit trail'], tags: 'history log changes',
+    a: 'Management → Activity Log lists every administrative action with who did it and when.',
+    links: [{ label: 'Activity log', href: '/admin/audit' }], roles: ['ADMIN'] },
+
+  // ── App & help ──
+  { id: 'install', q: ['How do I install the app?', 'download the app', 'add to home screen', 'iPhone app', 'Android app'], tags: 'pwa install mobile ios android desktop',
+    a: 'UniVerse installs straight from the browser. On iPhone: open universeimpact.com in Safari, tap Share → Add to Home Screen. On Android or a computer: open it in Chrome or Edge and choose Install app from the menu.' },
+  { id: 'offline', q: ['Does UniVerse work offline?', 'no internet'], tags: 'offline connection network',
+    a: 'Pages you’ve opened recently are available offline, and I can still answer common questions like this one. Messages and changes need a connection; they sync as soon as you’re back online.' },
+  { id: 'search', q: ['How do I search?', 'find a person', 'find a page'], tags: 'search find command palette shortcut',
+    a: 'Press Ctrl+K (⌘K on Mac) or tap the search icon at the top to search people, courses and pages from anywhere.' },
+  { id: 'support', q: ['How do I contact support?', 'talk to a human', 'report a bug', 'something is broken'], tags: 'help support contact problem issue bug',
+    a: 'Signed in, use Support in the menu to send us a message with details. You can also email support@universeimpact.com.',
+    links: [{ label: 'Support', href: '/student/support' }, { label: 'Contact', href: '/contact' }], roles: ['STUDENT'] },
+  { id: 'support-staff', q: ['How do I contact support?', 'talk to a human', 'report a bug'], tags: 'help support contact problem issue bug',
+    a: 'Email support@universeimpact.com with the page and what happened, or see the Contact page for other options.',
+    links: [{ label: 'Contact', href: '/contact' }], roles: ['TEACHER', 'ADMIN'] },
+  { id: 'privacy', q: ['Who can see my data?', 'privacy policy', 'is my data sold'], tags: 'privacy data gdpr sell share',
+    a: 'Your teachers and institution see what they need for your courses; people you chat or share with see what you share. We never sell your data and use no advertising trackers. The Privacy Policy has the details.',
+    links: [{ label: 'Privacy Policy', href: '/privacy' }, { label: 'Your privacy choices', href: '/privacy-choices' }] },
+  { id: 'ai-privacy', q: ['Is the AI assistant private?', 'what does the AI do with my questions'], tags: 'gemini ai data google',
+    a: 'Common questions like this one are answered on your device. Other questions are sent to Google’s Gemini to write an answer. Don’t include passwords or other people’s personal information. You can turn the assistant off in Settings → AI Features.' },
+];
+
+export function linkFor(href: string, role: Role | undefined) {
+  const base = role === 'TEACHER' ? '/teacher' : role === 'ADMIN' ? '/admin' : '/student';
+  return href.replace('{base}', base);
+}

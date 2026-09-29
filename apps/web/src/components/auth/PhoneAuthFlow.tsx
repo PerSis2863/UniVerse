@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { authErrorMessage } from '@/lib/auth-errors';
 import { Loader2, KeyRound, ArrowLeft, User, Globe } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
@@ -94,7 +95,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
           window.grecaptcha.reset(widgetId);
         });
       }
-      setError(err.message || 'Failed to send SMS code. Make sure the phone number includes the country code (e.g. +1).');
+      setError(authErrorMessage(err, 'Failed to send SMS code. Make sure the phone number includes the country code (e.g. +1).'));
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +118,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
       await onSuccess(token, isRegister ? name : undefined);
     } catch (err: any) {
       console.error('Error verifying code:', err);
-      setError(err.message || 'Invalid verification code.');
+      setError(authErrorMessage(err, 'Invalid verification code.'));
     } finally {
       setIsLoading(false);
     }

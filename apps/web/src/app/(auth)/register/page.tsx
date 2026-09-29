@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { authErrorMessage } from '@/lib/auth-errors';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check } from 'lucide-react';
 import Link from '@/components/ui/Link';
@@ -88,7 +89,7 @@ export default function RegisterPage() {
       const token = await userCredential.user.getIdToken();
       await handleRegisterSuccess(token, name, 'password');
     } catch (err: any) {
-      setError(err.message || 'Failed to create account. Please try again.');
+      setError(authErrorMessage(err, 'Failed to create account. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +104,7 @@ export default function RegisterPage() {
       const token = await userCredential.user.getIdToken();
       await handleRegisterSuccess(token, userCredential.user.displayName || '', 'google');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign up with Google.');
+      setError(authErrorMessage(err, 'Failed to sign up with Google.'));
     } finally {
       setIsLoading(false);
     }
