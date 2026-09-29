@@ -379,6 +379,10 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
           <LogOut className="w-4 h-4" />
           <span>{t('nav.logout')}</span>
         </button>
+        <div className="px-3 pt-2 pb-1 flex gap-3 text-[11px] text-zinc-400 dark:text-zinc-600">
+          <Link href="/terms" target="_blank" className="hover:text-indigo-400">Terms</Link>
+          <Link href="/privacy" target="_blank" className="hover:text-indigo-400">Privacy</Link>
+        </div>
       </div>
     </aside>
     </>

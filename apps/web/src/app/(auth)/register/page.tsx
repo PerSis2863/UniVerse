@@ -293,9 +293,9 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-center text-xs text-zinc-600">
         By joining, you agree to our{' '}
-        <Link href="#" className="text-indigo-400 hover:underline">Terms</Link>
-        {' & '}
-        <Link href="#" className="text-indigo-400 hover:underline">Privacy Policy</Link>.
+        <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link>
+        {' and '}
+        <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.
       </p>
     </div>
   );

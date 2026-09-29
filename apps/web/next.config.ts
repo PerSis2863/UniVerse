@@ -15,7 +15,7 @@ const withPWA = withPWAInit({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
   // The whiteboard's fonts (14 MB, mostly Chinese/Japanese glyphs) load on demand, not at install.
-  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*'],
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!legal/**/*'],
   fallbacks: {
     document: '/offline',
   },
