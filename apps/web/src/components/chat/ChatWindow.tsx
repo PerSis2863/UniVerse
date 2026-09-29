@@ -544,6 +544,9 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
     catch (e: any) { toast.error(e.message); }
   };
   const files = messages.filter((m) => (m.type === 'FILE' || m.type === 'VIDEO' || m.type === 'AUDIO') && m.attachmentUrl).slice(-10).reverse();
+  const links = messages
+    .flatMap((m) => (m.type === 'TEXT' && m.body ? [...new Set(m.body.match(/https?:\/\/[^\s<>"')]+/g) ?? [])].map((url) => ({ id: `${m.id}-${url}`, url })) : []))
+    .slice(-10).reverse();
 
   const rename = async () => {
     const name = (await promptDialog({ title: 'Rename group', defaultValue: convo.title, placeholder: 'Group name', confirmLabel: 'Rename', maxLength: 80 }))?.trim();
@@ -626,7 +629,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
         </div>
       )}
 
-      {(media.length > 0 || files.length > 0) && (
+      {(media.length > 0 || files.length > 0 || links.length > 0) && (
         <div className="p-5 border-b border-zinc-200/80 dark:border-white/[0.06]">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Media, files & links</p>
           {media.length > 0 && (
@@ -644,6 +647,12 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
                 <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
                 <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate flex-1">{f.attachmentName || 'File'}</span>
                 <span className="text-[11px] text-zinc-400">{formatBytes(f.attachmentSize)}</span>
+              </a>
+            ))}
+            {links.map((l) => (
+              <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
+                <Link2 className="w-4 h-4 text-sky-500 shrink-0" />
+                <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate flex-1">{l.url.replace(/^https?:\/\//, '')}</span>
               </a>
             ))}
           </div>

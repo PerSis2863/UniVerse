@@ -14,6 +14,8 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
+  // The whiteboard's fonts (14 MB, mostly Chinese/Japanese glyphs) load on demand, not at install.
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*'],
   fallbacks: {
     document: '/offline',
   },
@@ -63,6 +65,14 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: '**' },
     ],
+  },
+  webpack(config) {
+    // The whiteboard (Excalidraw) loads its fonts from this site instead of its CDN.
+    config.module.rules.push({
+      test: /[\\/]@excalidraw[\\/]excalidraw[\\/]dist[\\/](prod|dev)[\\/].*\.js$/,
+      loader: path.join(__dirname, 'scripts/excalidraw-assets-loader.cjs'),
+    });
+    return config;
   },
   async headers() {
     const csp = securityHeaders.filter((h) => h.key === 'Content-Security-Policy');

@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# whiteboard fonts, copied from node_modules at build time (scripts/copy-excalidraw-assets.mjs)
+/public/excalidraw-assets

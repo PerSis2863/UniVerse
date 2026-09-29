@@ -57,10 +57,18 @@
         // Live updates: one per signed-in user, holding their open tabs' WebSockets.
         "name": "REALTIME",
         "class_name": "RealtimeHub"
+      },
+      {
+        // Live whiteboards: one per board, holding its drawing and everyone editing it.
+        "name": "BOARDS",
+        "class_name": "BoardRoom"
       }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeHub"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["RealtimeHub"] },
+    { "tag": "v2", "new_sqlite_classes": ["BoardRoom"] }
+  ],
   "triggers": {
     // Daily at 08:00 UTC (13:30 in India): reminders for quizzes due in the next 24 hours.
     "crons": ["0 8 * * *"]

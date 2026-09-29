@@ -1,6 +1,7 @@
 // The Worker's entry point (wrangler.jsonc "main"). It wraps the Next.js app built by OpenNext
 // and adds what a Next.js app can't do on its own:
 //   - /realtime: WebSockets for live updates, held by a RealtimeHub Durable Object per user
+//   - /board-live: live whiteboards, one BoardRoom Durable Object per board
 //   - scheduled(): the daily cron job (quiz reminders), see src/app/api/cron/daily/route.ts
 import { DurableObject } from 'cloudflare:workers';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- the file only exists after a build
@@ -13,6 +14,7 @@ export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from '../.open-ne
 
 interface Env {
   REALTIME: DurableObjectNamespace<RealtimeHub>;
+  BOARDS?: DurableObjectNamespace<BoardRoom>;
   API_RATE_LIMITER?: RateLimit; // per signed-in user (or per IP when signed out)
   IP_RATE_LIMITER?: RateLimit; // per IP, generous: stops floods from one address
   COSTLY_RATE_LIMITER?: RateLimit; // per user, for AI, email and uploads
@@ -48,7 +50,7 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     // Stripe's webhook is signed and comes from Stripe's servers, so it's never rate limited.
-    if ((url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/webhooks/')) || url.pathname === '/realtime') {
+    if ((url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/webhooks/')) || url.pathname === '/realtime' || url.pathname === '/board-live') {
       if (await rateLimited(request, url, env)) return tooMany();
     }
     if (url.pathname === '/realtime') {
@@ -56,6 +58,12 @@ export default {
       const user = url.searchParams.get('user');
       if (!user || !url.searchParams.get('ticket') || !env.REALTIME) return new Response('Forbidden', { status: 403 });
       return env.REALTIME.get(env.REALTIME.idFromName(user)).fetch(request);
+    }
+    if (url.pathname === '/board-live') {
+      if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('Expected a WebSocket', { status: 426 });
+      const board = url.searchParams.get('board');
+      if (!board || !url.searchParams.get('ticket') || !env.BOARDS) return new Response('Forbidden', { status: 403 });
+      return env.BOARDS.get(env.BOARDS.idFromName(board)).fetch(request);
     }
     return nextApp.fetch(request, env, ctx);
   },
@@ -142,4 +150,255 @@ export class RealtimeHub extends DurableObject<Env> {
       /* already closed */
     }
   }
+}
+
+// ─── Whiteboards ─────────────────────────────────────────────────────────────────────────────────
+
+/** Who is on a board socket (kept on the socket so it survives hibernation). */
+interface BoardPeer {
+  sid: string; // this connection
+  userId: string;
+  name: string;
+  avatar: string | null;
+  color: string;
+  canEdit: boolean;
+}
+
+/** The parts of an Excalidraw element the server needs to merge edits. */
+interface BoardElement {
+  id: string;
+  version: number;
+  versionNonce: number;
+  isDeleted?: boolean;
+  [key: string]: unknown;
+}
+
+interface BoardFile {
+  id: string;
+  mimeType: string;
+  url: string; // an uploaded file (/api/files/...), never inline data
+  created: number;
+}
+
+const MAX_ELEMENTS = 20_000;
+const MAX_ELEMENT_BYTES = 256 * 1024; // one shape (a long freehand stroke is the biggest)
+const MAX_FILES = 300;
+const MAX_BOARD_SOCKETS = 60;
+const PEER_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#0ea5e9', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#84cc16'];
+
+/**
+ * One per whiteboard: holds the board's shapes and pictures and everyone who has it open.
+ * People edit locally and send the shapes they changed; the room keeps the newest version of each
+ * shape (Excalidraw's version / versionNonce rules, so everyone ends up with the same drawing) and
+ * passes the changes and live cursors on to the others. Viewers can watch but their edits are
+ * ignored. Access is checked by the app, which hands out one-time tickets (/api/boards/[id]/ticket).
+ */
+export class BoardRoom extends DurableObject<Env> {
+  private elementCount: number | undefined; // counted on first need after each wake-up
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+  }
+
+  private peers(): { ws: WebSocket; peer: BoardPeer }[] {
+    const out: { ws: WebSocket; peer: BoardPeer }[] = [];
+    for (const ws of this.ctx.getWebSockets()) {
+      const peer = ws.deserializeAttachment() as BoardPeer | null;
+      if (peer) out.push({ ws, peer });
+    }
+    return out;
+  }
+
+  private broadcast(message: unknown, except?: WebSocket) {
+    const text = JSON.stringify(message);
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws === except) continue;
+      try {
+        ws.send(text);
+      } catch {
+        /* closing */
+      }
+    }
+  }
+
+  private presence() {
+    return this.peers().map(({ peer }) => ({ sid: peer.sid, userId: peer.userId, name: peer.name, avatar: peer.avatar, color: peer.color, canEdit: peer.canEdit }));
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+
+    // From the app: a one-time ticket for someone allowed on the board.
+    if (url.pathname === '/ticket' && request.method === 'POST') {
+      const who = (await request.json()) as Omit<BoardPeer, 'sid' | 'color'>;
+      const now = Date.now();
+      const stale = [...(await this.ctx.storage.list<{ exp: number }>({ prefix: 'ticket:' }))].filter(([, t]) => t.exp < now).map(([k]) => k);
+      if (stale.length) await this.ctx.storage.delete(stale.slice(0, 128));
+      const ticket = crypto.randomUUID();
+      await this.ctx.storage.put(`ticket:${ticket}`, { ...who, exp: now + TICKET_TTL_MS });
+      return Response.json({ ticket });
+    }
+
+    // From the app: access changed (someone removed, a role or the link setting changed) or the
+    // board was deleted. Matching people are disconnected; the app reconnects them if still allowed.
+    if (url.pathname === '/kick' && request.method === 'POST') {
+      const { userIds, all, wipe } = (await request.json()) as { userIds?: string[]; all?: boolean; wipe?: boolean };
+      for (const { ws, peer } of this.peers()) {
+        if (all || userIds?.includes(peer.userId)) {
+          try {
+            ws.close(wipe ? 4004 : 4003, wipe ? 'Board deleted' : 'Access changed');
+          } catch {
+            /* closed */
+          }
+        }
+      }
+      if (wipe) {
+        await this.ctx.storage.deleteAll();
+        this.elementCount = 0;
+      }
+      return Response.json({ ok: true });
+    }
+
+    // From the app: the drawing, for a copy of the board.
+    if (url.pathname === '/snapshot' && request.method === 'GET') {
+      return Response.json(await this.snapshot());
+    }
+
+    // From the app: fill a new board (a copy).
+    if (url.pathname === '/seed' && request.method === 'POST') {
+      const { elements, files } = (await request.json()) as { elements: BoardElement[]; files: BoardFile[] };
+      const batch: Record<string, unknown> = {};
+      for (const el of elements.slice(0, MAX_ELEMENTS)) if (validElement(el)) batch[`el:${el.id}`] = el;
+      for (const f of files.slice(0, MAX_FILES)) if (validFile(f)) batch[`file:${f.id}`] = f;
+      const entries = Object.entries(batch);
+      for (let i = 0; i < entries.length; i += 128) await this.ctx.storage.put(Object.fromEntries(entries.slice(i, i + 128)));
+      this.elementCount = undefined;
+      return Response.json({ ok: true });
+    }
+
+    if (url.pathname === '/board-live') {
+      const key = `ticket:${url.searchParams.get('ticket')}`;
+      const who = await this.ctx.storage.get<Omit<BoardPeer, 'sid' | 'color'> & { exp: number }>(key);
+      if (!who) return new Response('Forbidden', { status: 403 });
+      await this.ctx.storage.delete(key); // single use
+      if (who.exp < Date.now()) return new Response('Forbidden', { status: 403 });
+
+      const open = this.ctx.getWebSockets();
+      if (open.length >= MAX_BOARD_SOCKETS) return new Response('This board is full', { status: 429 });
+      const used = new Set(this.peers().map(({ peer }) => peer.color));
+      const color = PEER_COLORS.find((c) => !used.has(c)) ?? PEER_COLORS[open.length % PEER_COLORS.length];
+      const peer: BoardPeer = { sid: crypto.randomUUID().slice(0, 8), userId: who.userId, name: who.name, avatar: who.avatar, color, canEdit: who.canEdit };
+
+      const { 0: client, 1: server } = new WebSocketPair();
+      this.ctx.acceptWebSocket(server);
+      server.serializeAttachment(peer);
+      const { elements, files } = await this.snapshot();
+      server.send(JSON.stringify({ type: 'init', me: peer, elements, files, peers: this.presence() }));
+      this.broadcast({ type: 'peers', peers: this.presence() }, server);
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
+    return new Response('Not found', { status: 404 });
+  }
+
+  private async snapshot() {
+    const [els, files] = await Promise.all([
+      this.ctx.storage.list<BoardElement>({ prefix: 'el:' }),
+      this.ctx.storage.list<BoardFile>({ prefix: 'file:' }),
+    ]);
+    return { elements: [...els.values()], files: [...files.values()] };
+  }
+
+  async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
+    const peer = ws.deserializeAttachment() as BoardPeer | null;
+    if (!peer || typeof raw !== 'string') return;
+    let msg: { type?: string; [key: string]: unknown };
+    try {
+      msg = JSON.parse(raw);
+    } catch {
+      return;
+    }
+
+    if (msg.type === 'cursor') {
+      // Where someone's pointer is: passed on, never stored.
+      const { x, y, tool, button, selected } = msg as { x?: unknown; y?: unknown; tool?: unknown; button?: unknown; selected?: unknown };
+      if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) return;
+      this.broadcast({
+        type: 'cursor',
+        sid: peer.sid,
+        x,
+        y,
+        tool: tool === 'laser' ? 'laser' : 'pointer',
+        button: button === 'down' ? 'down' : 'up',
+        selected: Array.isArray(selected) ? selected.filter((s) => typeof s === 'string').slice(0, 200) : [],
+      }, ws);
+      return;
+    }
+
+    if (!peer.canEdit) return; // viewers watch only
+
+    if (msg.type === 'update' && Array.isArray(msg.elements)) {
+      const incoming = (msg.elements as BoardElement[]).filter(validElement);
+      if (!incoming.length) return;
+      const current = new Map<string, BoardElement>();
+      for (let i = 0; i < incoming.length; i += 128) {
+        for (const [k, v] of await this.ctx.storage.get<BoardElement>(incoming.slice(i, i + 128).map((e) => `el:${e.id}`))) current.set(k, v);
+      }
+      const accepted: BoardElement[] = [];
+      for (const el of incoming) {
+        const have = current.get(`el:${el.id}`);
+        if (!have) {
+          this.elementCount ??= (await this.ctx.storage.list({ prefix: 'el:' })).size;
+          if (this.elementCount >= MAX_ELEMENTS) continue;
+          this.elementCount++;
+        } else if (!(el.version > have.version || (el.version === have.version && el.versionNonce < have.versionNonce))) {
+          continue; // we already have this edit or a newer one
+        }
+        accepted.push(el);
+      }
+      if (!accepted.length) return;
+      for (let i = 0; i < accepted.length; i += 128) {
+        await this.ctx.storage.put(Object.fromEntries(accepted.slice(i, i + 128).map((e) => [`el:${e.id}`, e])));
+      }
+      this.broadcast({ type: 'update', elements: accepted }, ws);
+      await this.ctx.storage.put('meta:editedAt', Date.now());
+      return;
+    }
+
+    if (msg.type === 'file' && msg.file && validFile(msg.file as BoardFile)) {
+      const f = msg.file as BoardFile;
+      const file: BoardFile = { id: f.id, mimeType: f.mimeType, url: f.url, created: Date.now() };
+      if ((await this.ctx.storage.get(`file:${f.id}`)) == null) {
+        if ((await this.ctx.storage.list({ prefix: 'file:' })).size >= MAX_FILES) return;
+        await this.ctx.storage.put(`file:${f.id}`, file);
+      }
+      this.broadcast({ type: 'file', file }, ws);
+    }
+  }
+
+  async webSocketClose(ws: WebSocket, code: number) {
+    try {
+      ws.close(code === 1005 || code === 1006 ? 1000 : code);
+    } catch {
+      /* already closed */
+    }
+    this.broadcast({ type: 'peers', peers: this.presence().filter((p) => p.sid !== (ws.deserializeAttachment() as BoardPeer | null)?.sid) });
+  }
+}
+
+function validElement(el: unknown): el is BoardElement {
+  if (!el || typeof el !== 'object') return false;
+  const e = el as BoardElement;
+  if (typeof e.id !== 'string' || e.id.length > 64 || typeof e.version !== 'number' || typeof e.versionNonce !== 'number' || typeof e.type !== 'string') return false;
+  // Pictures must point at an uploaded file, never carry the image inline.
+  return JSON.stringify(e).length <= MAX_ELEMENT_BYTES;
+}
+
+function validFile(f: BoardFile): boolean {
+  return (
+    !!f && typeof f.id === 'string' && f.id.length <= 128 &&
+    typeof f.mimeType === 'string' && /^image\/(png|jpeg|gif|webp|svg\+xml)$/.test(f.mimeType) &&
+    typeof f.url === 'string' && /^\/api\/files\/[A-Za-z0-9_-]{16,}\/[^?#]*$/.test(f.url)
+  );
 }
