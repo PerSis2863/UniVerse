@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff } from 'lucide-react';
+import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2 } from 'lucide-react';
+import { languageName } from '@/lib/languages';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes } from './chat-client';
@@ -120,7 +121,15 @@ interface Props {
   onOpenContact: (userId: string) => void;
   onReact: (emoji: string) => void;
   onOpenImage: (url: string) => void;
+  /** Translation of this message, when one was asked for or auto-translate is on. */
+  translation?: TranslationState;
+  /** The reader chose to see the original instead of the translation. */
+  showOriginal?: boolean;
+  onTranslate?: () => void;
+  onToggleOriginal?: () => void;
 }
+
+export type TranslationState = { status: 'pending' } | { status: 'error'; message?: string } | { status: 'done'; text: string; from: string; same: boolean };
 
 const FORWARDABLE = new Set(['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'LOCATION', 'CONTACT']);
 
@@ -280,7 +289,24 @@ export function MessageBubble(p: Props) {
       </div>
     );
   } else {
-    content = <div className="px-3.5 py-2.5"><RichText text={m.body} mine={mine} /></div>;
+    const t = p.translation;
+    const translated = t?.status === 'done' && !t.same && !!t.text;
+    const showing = translated && !p.showOriginal;
+    content = (
+      <div className="px-3.5 py-2.5">
+        <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} />
+        {translated && (
+          <button onClick={p.onToggleOriginal} className={cn('mt-1.5 flex items-center gap-1 text-[11px] font-medium', mine ? 'text-white/75 hover:text-white' : 'text-indigo-500 dark:text-indigo-300 hover:underline')}>
+            <Languages className="w-3 h-3" />
+            {p.showOriginal ? 'Show translation' : <>Translated from {languageName((t as { from: string }).from)} · Show original</>}
+          </button>
+        )}
+        {t?.status === 'pending' && <p className={cn('mt-1.5 flex items-center gap-1 text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}><Loader2 className="w-3 h-3 animate-spin" /> Translating…</p>}
+        {t?.status === 'error' && (
+          <button onClick={p.onTranslate} className="mt-1.5 flex items-center gap-1 text-[11px] text-rose-500 hover:underline"><Languages className="w-3 h-3" /> {t.message ?? 'Couldn’t translate'} · Try again</button>
+        )}
+      </div>
+    );
   }
 
   const startPress = () => {
@@ -351,6 +377,11 @@ export function MessageBubble(p: Props) {
                   {FORWARDABLE.has(m.type) && <MenuItem icon={CornerUpRight} label="Forward" onClick={() => { p.onForward(); close(); }} />}
                   <MenuItem icon={m.starred ? StarOff : Star} label={m.starred ? 'Unstar' : 'Star'} onClick={() => { p.onStar(); close(); }} />
                   {p.onPin && <MenuItem icon={m.pinnedAt ? PinOff : Pin} label={m.pinnedAt ? 'Unpin' : 'Pin'} onClick={() => { p.onPin!(); close(); }} />}
+                  {m.type === 'TEXT' && p.onTranslate && (
+                    p.translation?.status === 'done' && !p.translation.same
+                      ? <MenuItem icon={Languages} label={p.showOriginal ? 'Show translation' : 'Show original'} onClick={() => { p.onToggleOriginal?.(); close(); }} />
+                      : <MenuItem icon={Languages} label="Translate" onClick={() => { p.onTranslate!(); close(); }} />
+                  )}
                   {m.type === 'TEXT' && <MenuItem icon={Copy} label="Copy" onClick={() => { navigator.clipboard.writeText(m.body); close(); }} />}
                   {canEdit && <MenuItem icon={Pencil} label="Edit" onClick={() => { p.onEdit(); close(); }} />}
                   {mine && <MenuItem icon={Info} label="Info" onClick={() => { p.onInfo(); close(); }} />}

@@ -519,6 +519,7 @@ model ConversationParticipant {
   mutedUntil     DateTime?
   archivedAt     DateTime?
   markedUnread   Boolean      @default(false)
+  translateTo    String? // auto-translate incoming messages into this language (ISO 639-1); null = off
 
   @@unique([conversationId, userId])
   @@index([conversationId])
@@ -537,22 +538,23 @@ model Message {
   createdAt      DateTime     @default(now())
 
   // Rich messages (messaging hub)
-  type           String             @default("TEXT") // TEXT, IMAGE, FILE, AUDIO, VIDEO, CALL, SYSTEM
+  type           String               @default("TEXT") // TEXT, IMAGE, FILE, AUDIO, VIDEO, CALL, SYSTEM
   attachmentUrl  String?
   attachmentName String?
   attachmentSize Int?
   attachmentMime String?
   metadata       Json? // e.g. call room + kind
   replyToId      String?
-  replyTo        Message?           @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies        Message[]          @relation("MessageReplies")
+  replyTo        Message?             @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]            @relation("MessageReplies")
   editedAt       DateTime?
   deletedAt      DateTime?
   expiresAt      DateTime? // disappearing messages
-  forwarded      Boolean            @default(false)
+  forwarded      Boolean              @default(false)
   reactions      MessageReaction[]
   userStates     MessageUserState[]
   pollVotes      PollVote[]
+  translations   MessageTranslation[]
 
   pinnedAt   DateTime? // pinned to the top of the chat
   pinnedById String?
@@ -1795,4 +1797,19 @@ model ErrorReport {
 
   @@index([status, lastSeen])
   @@map("error_reports")
+}
+
+/// Machine translations of chat messages, one per message and language, shared by everyone in the
+/// conversation (so a group of 30 costs one translation, not 30). Deleted when the message is edited.
+model MessageTranslation {
+  id         String   @id @default(cuid())
+  messageId  String
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  lang       String // target language (ISO 639-1)
+  sourceLang String // detected language of the original
+  text       String // the translation; empty when the message was already in `lang`
+  createdAt  DateTime @default(now())
+
+  @@unique([messageId, lang])
+  @@map("message_translations")
 }

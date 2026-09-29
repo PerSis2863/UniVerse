@@ -130,7 +130,7 @@ When you actively submit an application for an NGO project, internship, startup 
 We utilize industry-leading technology partners bound by strict Data Processing Agreements (DPAs):
 
 - **Google LLC (Firebase Authentication):** Authentication and identity infrastructure.
-- **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, and data included in AI impact reports are sent to Google to produce a response.
+- **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, data included in AI impact reports, and chat messages you choose to translate (or that are translated because you or another member of the chat turned on auto-translate) are sent to Google to produce a response. Translations are stored with the message so each one is only produced once, and are deleted when the message is edited or deleted.
 - **Cloudflare, Inc.:** Hosting and serverless computing (Workers), database (D1), file storage (R2), and real-time features.
 - **Stripe, Inc.:** PCI-compliant payment processing.
 - **Resend, Inc.:** Delivery of notification and account emails.

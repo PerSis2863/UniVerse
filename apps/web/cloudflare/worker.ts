@@ -22,7 +22,7 @@ interface Env {
 }
 
 // Endpoints that cost money or send email per call.
-const COSTLY = /^\/api\/(ai|summarize|premium\/ai-report|support|upload|core\/files\/upload)(\/|$)/;
+const COSTLY = /^\/api\/(ai|summarize|premium\/ai-report|support|upload|core\/files\/upload|chat\/translate-draft|chat\/conversations\/[^/]+\/translate)(\/|$)/;
 
 const tooMany = () =>
   Response.json({ error: 'Too many requests. Please wait a minute and try again.' }, { status: 429, headers: { 'Retry-After': '60' } });
