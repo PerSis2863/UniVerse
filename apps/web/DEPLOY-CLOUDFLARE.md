@@ -93,7 +93,8 @@ OpenNext builds and adds:
   Access (owner, people it's shared with as editor or viewer, and optional "anyone with the link") is
   checked by `/api/boards/[id]/ticket`, which hands out one-time tickets; changing someone's access
   disconnects them so they rejoin with their new rights. Pictures are uploaded like other files and
-  shared as links. Excalidraw's fonts are copied into `public/excalidraw-assets` at build time
+  shared as links (the R2 CORS policy in step 3 must allow GET, or boards can show pictures but not
+  include them in exported images). Excalidraw's fonts are copied into `public/excalidraw-assets` at build time
   (`scripts/copy-excalidraw-assets.mjs`, git-ignored) because the CSP blocks its CDN.
 - **Daily job** (`triggers.crons`, 08:00 UTC): quiz reminders, run through `src/app/api/cron/daily/route.ts`.
   Test locally with `npx wrangler dev --test-scheduled` and `curl "http://localhost:8787/__scheduled?cron=0+8+*+*+*"`.

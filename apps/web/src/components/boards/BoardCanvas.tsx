@@ -17,6 +17,7 @@ import type { AppState, BinaryFileData, BinaryFiles, Collaborator, DataURL, Exca
 import type { ExcalidrawElement, FileId, OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
+import { isUploadedFileUrl } from '@/lib/file-urls';
 
 // The live whiteboard: Excalidraw (every drawing tool, shapes, text, arrows, pictures, laser
 // pointer, export) connected to the board's room (BoardRoom in cloudflare/worker.ts). Each change
@@ -218,13 +219,15 @@ export default function BoardCanvas({
       await Promise.all(
         files.map(async (f) => {
           roomFiles.current.add(f.id);
-          if (have[f.id]) return;
+          if (have[f.id] || !isUploadedFileUrl(f.url)) return; // only pictures from our own storage
           try {
             const res = await fetch(f.url);
-            if (!res.ok) return;
+            if (!res.ok) throw new Error(String(res.status));
             loaded.push({ id: f.id as FileId, mimeType: f.mimeType as BinaryFileData['mimeType'], dataURL: (await blobToDataURL(await res.blob())) as DataURL, created: f.created });
           } catch {
-            /* shown as a placeholder */
+            // e.g. the files domain doesn't allow downloads from this site (R2 CORS): show the
+            // picture by its address instead. It still displays; exporting may skip it.
+            if (f.url.startsWith('https://')) loaded.push({ id: f.id as FileId, mimeType: f.mimeType as BinaryFileData['mimeType'], dataURL: f.url as DataURL, created: f.created });
           }
         }),
       );
