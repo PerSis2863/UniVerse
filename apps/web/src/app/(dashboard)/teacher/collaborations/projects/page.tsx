@@ -136,7 +136,7 @@ export default function NGOMentorshipPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowFilterDropdown(p => !p)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap"
                 >
                   <Filter className="w-4 h-4" />
                   {statusFilter === 'All' ? 'Filter' : statusFilter}
@@ -149,7 +149,7 @@ export default function NGOMentorshipPage() {
                         key={s}
                         onClick={() => { setStatusFilter(s); setShowFilterDropdown(false); }}
                         className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                          statusFilter === s ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800'
+                          statusFilter === s ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                         }`}
                       >
                         {s}
@@ -161,7 +161,7 @@ export default function NGOMentorshipPage() {
 
               <button
                 onClick={() => setShowProposeModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-zinc-900 dark:text-white rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap"
               >
                 <Briefcase className="w-4 h-4" /> Propose Project
               </button>
@@ -264,7 +264,7 @@ export default function NGOMentorshipPage() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{selectedProject.title}</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{selectedProject.partner || selectedProject.ngoProject?.ngo?.name}</p>
               </div>
-              <button onClick={() => setSelectedProject(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+              <button onClick={() => setSelectedProject(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -330,7 +330,7 @@ export default function NGOMentorshipPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setSelectedProject(null)}
-                  className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors"
+                  className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
                 >
                   Close
                 </button>
@@ -349,7 +349,7 @@ export default function NGOMentorshipPage() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Propose New NGO Project</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Submit a new mentorship initiative for consortium review.</p>
               </div>
-              <button onClick={() => setShowProposeModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+              <button onClick={() => setShowProposeModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -401,12 +401,12 @@ export default function NGOMentorshipPage() {
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowProposeModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">
+              <button onClick={() => setShowProposeModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
                 Cancel
               </button>
               <button
                 onClick={handlePropose}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all"
+                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all"
               >
                 <Send className="w-4 h-4" /> Submit for Review
               </button>

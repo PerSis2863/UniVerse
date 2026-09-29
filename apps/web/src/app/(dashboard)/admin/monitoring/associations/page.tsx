@@ -12,7 +12,9 @@ export default function AdminAssociationsMonitoringPage() {
   const { data: associationsData, isLoading, mutate } = useSWR('/associations', fetcher);
   const [managingAssociation, setManagingAssociation] = useState<any>(null);
 
-  const associations = associationsData || [];
+  const allAssociations = associationsData || [];
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const associations = pendingOnly ? allAssociations.filter((a: { status: string }) => a.status === 'PENDING') : allAssociations;
 
   const updateStatus = async (id: string, status: string) => {
     try {
@@ -33,8 +35,8 @@ export default function AdminAssociationsMonitoringPage() {
           
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Registered Associations</h2>
-            <button className="bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-              Approve New Association
+            <button onClick={() => setPendingOnly((v) => !v)} aria-pressed={pendingOnly} className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+              {pendingOnly ? 'Show all associations' : `Review pending (${allAssociations.filter((a: { status: string }) => a.status === 'PENDING').length})`}
             </button>
           </div>
 

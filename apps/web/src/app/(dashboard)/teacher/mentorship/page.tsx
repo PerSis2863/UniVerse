@@ -56,6 +56,11 @@ export default function MentorshipPage() {
     }
   };
 
+  const [skill, setSkill] = useState('');
+  const shown = mentors.filter((m) => {
+    const q = skill.trim().toLowerCase();
+    return !q || [m.user?.name, m.company, m.jobTitle, ...(m.skills ?? [])].some((v) => v?.toLowerCase().includes(q));
+  });
   const totalHours = mentors.reduce((acc, m) => acc + m.hoursCommitted, 0);
 
   return (
@@ -116,7 +121,13 @@ export default function MentorshipPage() {
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Available Mentors</h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Industry professionals ready to collaborate.</p>
             </div>
-            <button className="btn-secondary text-sm">Filter by Skill</button>
+            <input
+              value={skill}
+              onChange={(e) => setSkill(e.target.value)}
+              placeholder="Filter by skill, company or name"
+              aria-label="Filter mentors"
+              className="w-56 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 px-3 py-1.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+            />
           </div>
 
           {loading ? (
@@ -127,7 +138,7 @@ export default function MentorshipPage() {
             <div className="text-center py-10 text-zinc-500">No mentors available at the moment.</div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {mentors.map((mentor, i) => (
+              {shown.map((mentor, i) => (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}

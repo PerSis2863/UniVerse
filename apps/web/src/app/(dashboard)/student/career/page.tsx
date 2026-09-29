@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Briefcase, Calendar, MapPin, Building, ChevronRight, Loader2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -10,6 +11,25 @@ export default function CareerPage() {
   const [opportunities, setOpportunities] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  // Bookmarked opportunities, kept on this device.
+  const [saved, setSaved] = useState<string[]>(() => {
+    try {
+      return typeof window === 'undefined' ? [] : JSON.parse(localStorage.getItem('universe-saved-jobs') ?? '[]');
+    } catch {
+      return [];
+    }
+  });
+  const toggleSaved = (id: string) =>
+    setSaved((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try {
+        localStorage.setItem('universe-saved-jobs', JSON.stringify(next));
+      } catch {
+        /* storage unavailable */
+      }
+      return next;
+    });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,8 +99,8 @@ export default function CareerPage() {
                       </div>
                     </div>
                     <div className="px-6 py-3 bg-white/[0.02] border-t border-white/[0.05] flex justify-end gap-3">
-                      <button className="text-sm font-medium text-zinc-300 hover:text-zinc-900 dark:text-white transition-colors">Save</button>
-                      <button className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors">Apply Now</button>
+                      <button onClick={() => toggleSaved(job.id)} aria-pressed={saved.includes(job.id)} className={`text-sm font-medium transition-colors ${saved.includes(job.id) ? 'text-indigo-500' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}>{saved.includes(job.id) ? 'Saved' : 'Save'}</button>
+                      <button onClick={() => router.push(`/student/internships?q=${encodeURIComponent(job.title)}`)} className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors">Apply Now</button>
                     </div>
                   </div>
                 ))}
@@ -115,7 +135,7 @@ export default function CareerPage() {
                     </div>
                   ))}
                 </div>
-                <button className="w-full mt-4 py-2 border border-zinc-200 dark:border-white/10 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-white/5 transition-colors flex items-center justify-center group">
+                <button onClick={() => router.push('/student/calendar')} className="w-full mt-4 py-2 border border-zinc-200 dark:border-white/10 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center justify-center group">
                   View All Events <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>

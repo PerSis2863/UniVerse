@@ -101,7 +101,7 @@ export default function TeacherRoomReservationPage() {
             </div>
             <button
               onClick={() => { setSearched(true); toast.success('Showing available rooms!'); }}
-              className="w-full bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white font-medium py-3 rounded-lg transition-colors"
+              className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-3 rounded-lg transition-colors"
             >
               Search Availability
             </button>
@@ -193,7 +193,7 @@ export default function TeacherRoomReservationPage() {
           <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Confirm Booking</h2>
-              <button onClick={() => setConfirmBooking(null)} className="p-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white"><X className="w-5 h-5" /></button>
+              <button onClick={() => setConfirmBooking(null)} className="p-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl space-y-2 text-sm">
               <div className="flex items-center gap-2 text-zinc-300"><Map className="w-4 h-4 text-indigo-400" />{confirmBooking.room.name}</div>
@@ -207,7 +207,7 @@ export default function TeacherRoomReservationPage() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setConfirmBooking(null)} className="flex-1 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors">Cancel</button>
-              <button onClick={handleBook} className="flex-1 px-4 py-2 text-sm font-bold text-zinc-900 dark:text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors">Confirm</button>
+              <button onClick={handleBook} className="flex-1 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors">Confirm</button>
             </div>
           </div>
         </div>

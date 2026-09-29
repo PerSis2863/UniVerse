@@ -87,7 +87,7 @@ export default function AdminUsers() {
           <div className="flex gap-2 w-full sm:w-auto relative">
             <button
               onClick={() => setShowFilterDropdown(p => !p)}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors whitespace-nowrap"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap"
             >
               <Filter className="w-4 h-4" />
               {roleFilter === 'All' ? 'Filter by Role' : roleFilter}
@@ -100,7 +100,7 @@ export default function AdminUsers() {
                     key={r}
                     onClick={() => { setRoleFilter(r); setShowFilterDropdown(false); }}
                     className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                      roleFilter === r ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800'
+                      roleFilter === r ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                     }`}
                   >
                     {r === 'All' ? 'All Roles' : r.charAt(0) + r.slice(1).toLowerCase()}
@@ -178,7 +178,7 @@ export default function AdminUsers() {
                       <td className="p-4 text-right relative" ref={openMenuId === user.id ? menuRef : null}>
                         <button
                           onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
-                          className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors"
+                          className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                         >
                           <MoreVertical className="w-4 h-4" />
                         </button>
@@ -186,27 +186,27 @@ export default function AdminUsers() {
                           <div className="absolute right-4 top-12 z-30 bg-white dark:bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl w-44 py-1 text-left animate-in fade-in duration-150">
                             <button
                               onClick={() => { setSelectedUser(user); setOpenMenuId(null); }}
-                              className="w-full px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
                             >
                               <User className="w-3.5 h-3.5" /> View Profile
                             </button>
                             <button
                               onClick={() => { window.location.href = `mailto:${user.email}`; setOpenMenuId(null); }}
-                              className="w-full px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2"
+                              className="w-full px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
                             >
                               <Mail className="w-3.5 h-3.5" /> Send Email
                             </button>
                             {user.status !== 'SUSPENDED' ? (
                               <button
                                 onClick={() => handleDeactivate(user.id)}
-                                className="w-full px-4 py-2 text-sm text-amber-400 hover:bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2"
+                                className="w-full px-4 py-2 text-sm text-amber-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
                               >
                                 <UserX className="w-3.5 h-3.5" /> Deactivate
                               </button>
                             ) : (
                               <button
                                 onClick={() => handleActivate(user.id)}
-                                className="w-full px-4 py-2 text-sm text-green-400 hover:bg-zinc-100 dark:bg-zinc-800 flex items-center gap-2"
+                                className="w-full px-4 py-2 text-sm text-green-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
                               >
                                 <UserCheck className="w-3.5 h-3.5" /> Reactivate
                               </button>
@@ -241,7 +241,7 @@ export default function AdminUsers() {
           <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white">User Profile</h2>
-              <button onClick={() => setSelectedUser(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+              <button onClick={() => setSelectedUser(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -281,10 +281,10 @@ export default function AdminUsers() {
                 <Trash2 className="w-4 h-4" /> Delete Account
               </button>
               <div className="flex gap-2">
-                <button onClick={() => setSelectedUser(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Close</button>
+                <button onClick={() => setSelectedUser(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Close</button>
                 <button
                   onClick={() => { window.location.href = `mailto:${selectedUser.email}`; }}
-                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 >
                   <Mail className="w-4 h-4" /> Send Email
                 </button>

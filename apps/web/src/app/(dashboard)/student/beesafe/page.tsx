@@ -4,6 +4,9 @@ import { Topbar } from '@/components/layout/Topbar';
 import { AlertTriangle, ShieldAlert, Phone, Send, Info, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
+// Campus security's number (NEXT_PUBLIC_CAMPUS_SECURITY_PHONE); the national emergency number otherwise.
+const SECURITY_PHONE = process.env.NEXT_PUBLIC_CAMPUS_SECURITY_PHONE || '112';
+
 const EMERGENCY_NUMBERS: Record<string, string> = {
   US: '911', CA: '911', GB: '999', AU: '000', 
   NZ: '111', IN: '112', CN: '110', JP: '119',
@@ -65,9 +68,9 @@ export default function BeeSafeReporting() {
                 </p>
               </div>
             </div>
-            <button className="flex-shrink-0 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-zinc-900 dark:text-white px-6 py-3 rounded-lg font-bold transition-colors w-full md:w-auto">
-              <Phone className="w-5 h-5" /> Call Campus Security
-            </button>
+            <a href={`tel:${SECURITY_PHONE.replace(/[^+\d]/g, '')}`} className="flex-shrink-0 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-bold transition-colors w-full md:w-auto">
+              <Phone className="w-5 h-5" /> {process.env.NEXT_PUBLIC_CAMPUS_SECURITY_PHONE ? 'Call Campus Security' : `Call emergency (${SECURITY_PHONE})`}
+            </a>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -125,7 +128,7 @@ export default function BeeSafeReporting() {
                     </label>
                   </div>
 
-                  <button className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-6 py-3.5 rounded-lg font-medium transition-colors">
+                  <button className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3.5 rounded-lg font-medium transition-colors">
                     <Send className="w-5 h-5" /> Submit Report Securely
                   </button>
                 </form>
@@ -148,13 +151,13 @@ export default function BeeSafeReporting() {
               <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
                 <h3 className="font-semibold text-zinc-900 dark:text-white mb-4">Other Resources</h3>
                 <div className="space-y-3">
-                  <a href="#" className="block p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:text-white transition-colors text-sm">
+                  <a href="#" className="block p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors text-sm">
                     Counseling & Psychological Services
                   </a>
-                  <a href="#" className="block p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:text-white transition-colors text-sm">
+                  <a href="#" className="block p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors text-sm">
                     Title IX Office
                   </a>
-                  <a href="#" className="block p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:text-white transition-colors text-sm">
+                  <a href="#" className="block p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors text-sm">
                     Student Ombuds Services
                   </a>
                 </div>

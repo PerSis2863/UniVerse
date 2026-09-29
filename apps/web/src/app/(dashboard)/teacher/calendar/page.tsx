@@ -235,7 +235,7 @@ export default function TeacherCalendarPage() {
         title="Teaching Timetable" 
         subtitle="Manage your classes and office hours" 
         rightNode={
-          <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={exportIcs}>
+          <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={exportIcs}>
             <Download className="w-4 h-4" /> Export
           </button>
         }
@@ -251,13 +251,13 @@ export default function TeacherCalendarPage() {
                 Today
               </button>
               <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-                <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
+                <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
                   <ChevronLeft className="w-6 h-6 sm:w-5 sm:h-5" />
                 </button>
                 <div className="relative">
                   <button 
                     onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="flex items-center gap-2 px-2 sm:px-4 py-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-900 dark:text-white font-medium transition-colors min-w-[180px] sm:min-w-[220px] justify-center text-sm sm:text-base"
+                    className="flex items-center gap-2 px-2 sm:px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-900 dark:text-white font-medium transition-colors min-w-[180px] sm:min-w-[220px] justify-center text-sm sm:text-base"
                   >
                     <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
                     {currentRangeString()}
@@ -280,7 +280,7 @@ export default function TeacherCalendarPage() {
                     </div>
                   )}
                 </div>
-                <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
+                <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
                   <ChevronRight className="w-6 h-6 sm:w-5 sm:h-5" />
                 </button>
               </div>
@@ -288,10 +288,10 @@ export default function TeacherCalendarPage() {
             
             <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
               <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg w-full xl:w-auto justify-between xl:justify-start overflow-x-auto scrollbar-none">
-                <button onClick={() => setView('Day')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Day' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Day</button>
-                <button onClick={() => setView('Week')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Week' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Week</button>
-                <button onClick={() => setView('Month')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Month' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Month</button>
-                <button onClick={() => setView('Semester')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Semester' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'}`}>Semester</button>
+                <button onClick={() => setView('Day')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Day' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>Day</button>
+                <button onClick={() => setView('Week')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Week' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>Week</button>
+                <button onClick={() => setView('Month')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Month' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>Month</button>
+                <button onClick={() => setView('Semester')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Semester' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>Semester</button>
               </div>
               <div className="hidden xl:block w-px h-8 bg-zinc-200 dark:bg-zinc-700"></div>
               <button className="w-full xl:w-auto px-4 py-3 sm:py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-lg text-sm font-medium transition-colors" onClick={() => setShowOfficeModal(true)}>

@@ -185,7 +185,7 @@ export default function GlobalSummitsPage() {
                           className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                             isRegistered
                               ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30'
+                              : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'
                           }`}
                         >
                           {applying ? (

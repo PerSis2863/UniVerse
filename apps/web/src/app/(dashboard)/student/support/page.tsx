@@ -177,8 +177,8 @@ export default function StudentSupport() {
                     </div>
                   ))}
                 </div>
-                <button className="mt-4 text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
-                  View all FAQs <ChevronRight className="w-4 h-4" />
+                <button onClick={() => document.getElementById('support-ticket')?.scrollIntoView({ behavior: 'smooth' })} className="mt-4 text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
+                  Didn&apos;t find your answer? Ask us <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
 
@@ -215,7 +215,7 @@ export default function StudentSupport() {
             </div>
 
             {/* Right Column: Contact Form */}
-            <div>
+            <div id="support-ticket" className="scroll-mt-24">
               <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 sticky top-8">
                 <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-6">Submit a Ticket (IT Helpdesk)</h3>
                 <form className="space-y-4" onSubmit={handleSubmitTicket}>
@@ -258,7 +258,7 @@ export default function StudentSupport() {
 
                   <button 
                     disabled={isSubmitting}
-                    className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-zinc-900 dark:text-white px-6 py-3 rounded-lg font-medium transition-colors mt-2"
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-medium transition-colors mt-2"
                   >
                     {isSubmitting ? 'Submitting...' : <><Send className="w-4 h-4" /> Send Ticket</>}
                   </button>

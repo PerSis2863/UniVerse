@@ -64,7 +64,7 @@ export default function TeacherStudents() {
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <div className="relative" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setShowFilterDropdown(!showFilterDropdown)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors whitespace-nowrap">
+              <button onClick={() => setShowFilterDropdown(!showFilterDropdown)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap">
                 <Filter className="w-4 h-4" /> {courseFilter === 'All' ? 'Filter' : 'Filtered'}
               </button>
               {showFilterDropdown && (
@@ -74,7 +74,7 @@ export default function TeacherStudents() {
                     <button
                       key={course}
                       onClick={() => { setCourseFilter(course); setShowFilterDropdown(false); }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${courseFilter === course ? 'bg-indigo-500/10 text-indigo-400' : 'text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800'}`}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${courseFilter === course ? 'bg-indigo-500/10 text-indigo-400' : 'text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                     >
                       {course}
                     </button>
@@ -152,14 +152,14 @@ export default function TeacherStudents() {
                       </div>
                     </td>
                     <td className="p-4 text-right relative">
-                      <button onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === student.id ? null : student.id); }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-100 dark:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 border border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50">
+                      <button onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === student.id ? null : student.id); }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 border border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                       {actionMenuOpen === student.id && (
                         <div className="absolute right-8 top-10 w-48 bg-white dark:bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1 text-left" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => handleAction('profile', student)} className="px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-left">View Profile</button>
-                          <button onClick={() => handleAction('message', student)} className="px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-left">Message Student</button>
-                          <button onClick={() => handleAction('warning', student)} className="px-3 py-2 text-sm text-amber-400 hover:bg-zinc-100 dark:bg-zinc-800 rounded-lg text-left">Issue Warning</button>
+                          <button onClick={() => handleAction('profile', student)} className="px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">View Profile</button>
+                          <button onClick={() => handleAction('message', student)} className="px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Message Student</button>
+                          <button onClick={() => handleAction('warning', student)} className="px-3 py-2 text-sm text-amber-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Issue Warning</button>
                         </div>
                       )}
                     </td>
@@ -185,7 +185,7 @@ export default function TeacherStudents() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Email All Students</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Send a message to {filteredStudents.length} students.</p>
               </div>
-              <button onClick={() => setShowEmailModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+              <button onClick={() => setShowEmailModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -200,13 +200,13 @@ export default function TeacherStudents() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
+              <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
               <button onClick={() => {
                 const to = filteredStudents.map((st: any) => st.email).filter(Boolean).join(',');
                 if (!to) return void toast.error('None of these students have an email address.');
                 window.location.href = `mailto:?bcc=${encodeURIComponent(to)}&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
                 setShowEmailModal(false);
-              }} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg transition-all">
+              }} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all">
                 Open in email app ({filteredStudents.length})
               </button>
             </div>
@@ -225,7 +225,7 @@ export default function TeacherStudents() {
                  </h2>
                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{activeModal.student.name} • {activeModal.student.course}</p>
               </div>
-              <button onClick={() => setActiveModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+              <button onClick={() => setActiveModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -265,7 +265,7 @@ export default function TeacherStudents() {
 
             {activeModal.type !== 'profile' && (
               <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex justify-end gap-3">
-                <button onClick={() => setActiveModal(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
+                <button onClick={() => setActiveModal(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
                 <button onClick={submitModal} className={`px-5 py-2 rounded-xl text-sm font-bold text-zinc-900 dark:text-white shadow-lg transition-all ${activeModal.type === 'warning' ? 'bg-red-600 hover:bg-red-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
                   {activeModal.type === 'warning' ? 'Send Warning' : 'Send Message'}
                 </button>

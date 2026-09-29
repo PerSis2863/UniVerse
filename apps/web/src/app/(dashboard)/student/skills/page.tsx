@@ -134,7 +134,7 @@ export default function StudentSkills() {
                   <div key={i} className="group cursor-pointer" onClick={() => openSkill(skill)}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <Icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors" />
+                        <Icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:hover:text-white transition-colors" />
                         <span className="text-sm font-semibold text-zinc-200">{skill.name}</span>
                       </div>
                       <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -170,7 +170,7 @@ export default function StudentSkills() {
                     <div key={i} className="group cursor-pointer" onClick={() => openSkill(skill)}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <Icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:text-white transition-colors" />
+                          <Icon className="w-5 h-5 text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:hover:text-white transition-colors" />
                           <span className="text-sm font-semibold text-zinc-200">{skill.name}</span>
                         </div>
                         <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
