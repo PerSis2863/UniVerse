@@ -12,6 +12,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { GroupChat } from '@/components/groups/GroupChat';
 import { GroupDetailBody } from '@/components/groups/GroupDetailBody';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
+import { useLiveInterval } from '@/lib/realtime-client';
 
 type GroupItem = {
   id: string | number;
@@ -141,7 +142,8 @@ export default function GroupsPage() {
   
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const { data: activityData } = useSWR<ActivityItem[]>('/api/groups/activity?limit=30', authedJson, { refreshInterval: 30_000 });
+  const activityPoll = useLiveInterval(60_000, 60_000);
+  const { data: activityData } = useSWR<ActivityItem[]>('/api/groups/activity?limit=30', authedJson, { refreshInterval: activityPoll });
   const activity = Array.isArray(activityData) ? activityData : [];
 
   const openMeeting = (group: GroupItem) => {

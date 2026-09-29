@@ -11,7 +11,7 @@ import { AIStudyAssistant } from '@/components/ui/AIStudyAssistant';
 import { CommandPalette, openCommandPalette } from '@/components/ui/CommandPalette';
 import { useAuthStore } from '@/store/auth';
 import { usePathname } from 'next/navigation';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';

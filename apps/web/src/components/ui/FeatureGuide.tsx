@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { motion } from 'framer-motion';
 import { FlaskConical, Sparkles, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';

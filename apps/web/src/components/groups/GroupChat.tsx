@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Check, Edit2, Hash, ImageIcon, Loader2, Paperclip, Send, Trash2, X } from 'lucide-react';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
+import { useLiveInterval } from '@/lib/realtime-client';
 
 interface Post {
   id: string;
@@ -48,8 +49,9 @@ function initials(name: string) {
 
 export function GroupChat({ group, onClose }: { group: { id: string | number; name: string; members: number }; onClose: () => void }) {
   const key = `/api/groups/${group.id}/posts`;
+  const refreshInterval = useLiveInterval(10_000, 10_000);
   const { data, error, isLoading, mutate } = useSWR<PostsResponse>(key, authedJson, {
-    refreshInterval: 4000,
+    refreshInterval,
     revalidateOnFocus: true,
   });
   const [text, setText] = useState('');

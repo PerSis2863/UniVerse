@@ -4,7 +4,7 @@ import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Users, BookOpen, DollarSign, GraduationCap, ArrowRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { formatCurrency } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';

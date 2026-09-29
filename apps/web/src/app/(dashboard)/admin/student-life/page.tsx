@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { ArrowRight, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { CampusItemManager } from '@/components/campus/CampusItems';

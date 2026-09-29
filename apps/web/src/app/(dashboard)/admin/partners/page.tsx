@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { toast } from 'sonner';
 import { Handshake, Loader2, Plus, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';

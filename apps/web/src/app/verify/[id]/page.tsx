@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { useParams } from 'next/navigation';
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Clock, Globe2, Building2, ChevronDown, ChevronUp, Copy, Link2, ExternalLink } from 'lucide-react';
 

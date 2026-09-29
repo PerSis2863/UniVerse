@@ -69,14 +69,17 @@ export class RealtimeHub extends DurableObject<Env> {
 
     if (url.pathname === '/publish' && request.method === 'POST') {
       const message = await request.text();
+      let sockets = 0;
       for (const ws of this.ctx.getWebSockets()) {
         try {
           ws.send(message);
+          sockets++;
         } catch {
           /* closing */
         }
       }
-      return new Response(null, { status: 204 });
+      // How many tabs got it: > 0 means the user has UniVerse open right now.
+      return Response.json({ sockets });
     }
 
     if (url.pathname === '/realtime') {

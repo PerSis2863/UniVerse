@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import useSWR, { type KeyedMutator } from 'swr';
 import { haptic } from '@/lib/haptics';
 import { motion } from 'framer-motion';

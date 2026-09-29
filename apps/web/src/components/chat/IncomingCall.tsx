@@ -25,7 +25,7 @@ function readDismissed(): string[] {
 
 /** Shows a ringing card anywhere in the app when someone starts a call in one of your chats. */
 export function IncomingCall({ inboxPath }: { inboxPath: string }) {
-  const refreshInterval = useLiveInterval(8000, 30_000);
+  const refreshInterval = useLiveInterval(15_000, 0);
   const { data } = useSWR<IncomingCallItem[]>('/api/chat/incoming', authedJson, { refreshInterval, revalidateOnFocus: true, shouldRetryOnError: false });
   const [dismissed, setDismissed] = useState<string[]>([]);
   useEffect(() => setDismissed(readDismissed()), []);

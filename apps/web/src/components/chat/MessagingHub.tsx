@@ -18,7 +18,7 @@ import { useLiveInterval } from '@/lib/realtime-client';
 type Filter = 'all' | 'unread' | 'groups';
 
 export function MessagingHub() {
-  const refreshInterval = useLiveInterval(5000, 30_000);
+  const refreshInterval = useLiveInterval(15_000, 0);
   const { data, error, isLoading, mutate } = useSWR<{ conversations: ConversationSummary[]; me: string }>('/api/chat/conversations', authedJson, {
     refreshInterval,
     revalidateOnFocus: true,

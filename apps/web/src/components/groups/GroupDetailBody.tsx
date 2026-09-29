@@ -3,6 +3,7 @@
 import useSWR from 'swr';
 import { FileText, ImageIcon, Loader2, ExternalLink } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
+import { useLiveInterval } from '@/lib/realtime-client';
 
 interface GroupDetail {
   description: string | null;
@@ -17,7 +18,8 @@ function fileName(url: string) {
 
 /** Real members and files shared in the group's chat. */
 export function GroupDetailBody({ groupId }: { groupId: string | number }) {
-  const { data, isLoading, error } = useSWR<GroupDetail>(`/api/groups/${groupId}`, authedJson, { refreshInterval: 30_000 });
+  const refreshInterval = useLiveInterval(60_000, 60_000);
+  const { data, isLoading, error } = useSWR<GroupDetail>(`/api/groups/${groupId}`, authedJson, { refreshInterval });
 
   if (isLoading) return <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>;
   if (error) return <p className="text-sm text-zinc-500">{(error as Error).message}</p>;

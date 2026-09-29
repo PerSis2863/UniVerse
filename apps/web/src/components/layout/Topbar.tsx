@@ -4,7 +4,7 @@ import { openCommandPalette } from '@/components/ui/CommandPalette';
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Plus, CheckCircle2, X, Archive, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,7 +54,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
     return () => window.removeEventListener('universe:open-notifications', open);
   }, []);
 
-  const notificationPoll = useLiveInterval(60_000, 5 * 60_000);
+  const notificationPoll = useLiveInterval(120_000, 0);
   const { data: apiNotifications, mutate: refreshNotifications } = useSWR<ApiNotification[]>(
     user ? '/api/notifications' : null,
     authedJson,

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { motion } from 'framer-motion';
 import { Lock, Sparkles, ArrowRight, Check } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';

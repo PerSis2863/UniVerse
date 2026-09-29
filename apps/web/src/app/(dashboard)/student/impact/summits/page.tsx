@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState, useEffect } from 'react';

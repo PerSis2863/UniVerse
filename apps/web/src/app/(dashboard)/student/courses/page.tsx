@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition, vtName } from '@/lib/view-transition';
 import useSWR from 'swr';

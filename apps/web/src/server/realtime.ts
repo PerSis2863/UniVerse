@@ -30,18 +30,38 @@ function hub(userId: string) {
   return ns ? ns.get(ns.idFromName(userId)) : null;
 }
 
+/**
+ * Sends an event to every open tab of these users. Resolves to the users who have UniVerse open
+ * right now (null when live updates aren't available). Never rejects.
+ */
+export async function deliver(userIds: Iterable<string>, event: RealtimeEvent): Promise<Set<string> | null> {
+  const ids = [...new Set(userIds)];
+  const body = JSON.stringify(event);
+  let available = true;
+  const online = new Set<string>();
+  await Promise.all(
+    ids.map(async (id) => {
+      const stub = hub(id);
+      if (!stub) {
+        available = false;
+        return;
+      }
+      try {
+        const res = await stub.fetch('https://realtime/publish', { method: 'POST', body });
+        if (res.ok && ((await res.json()) as { sockets?: number }).sockets) online.add(id);
+      } catch (e) {
+        console.error('realtime publish failed:', e);
+      }
+    }),
+  );
+  return available ? online : null;
+}
+
 /** Sends an event to every open tab of these users, after the response. Never throws. */
 export function publish(userIds: Iterable<string>, event: RealtimeEvent) {
   const ids = [...new Set(userIds)];
   if (ids.length === 0) return;
-  const body = JSON.stringify(event);
-  const send = Promise.all(
-    ids.map((id) =>
-      hub(id)
-        ?.fetch('https://realtime/publish', { method: 'POST', body })
-        .catch((e) => console.error('realtime publish failed:', e)),
-    ),
-  );
+  const send = deliver(ids, event);
   try {
     getCloudflareContext().ctx.waitUntil(send);
   } catch {
