@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { AppSkeleton } from '@/components/layout/AppSkeleton';
 import { useAuthStore } from '@/store/auth';
-import { Role, UserStatus } from '@/types';
+import { Role, UserStatus, awaitingApproval, type ApplicationSummary } from '@/types';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
 import { DataConfig } from '@/components/DataConfig';
 
-type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null };
+type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null };
 
 const toUser = (me: MeResponse, photoURL?: string | null) => ({
   id: me.id,
@@ -22,6 +22,7 @@ const toUser = (me: MeResponse, photoURL?: string | null) => ({
   status: (me.status || 'ACTIVE') as UserStatus,
   createdAt: me.createdAt || new Date().toISOString(),
   avatar: me.avatar || photoURL || undefined,
+  application: me.application ?? null,
 });
 
 const RESYNC_MS = 5 * 60 * 1000;
@@ -30,6 +31,8 @@ const noopSubscribe = () => () => {};
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const demoUser = useAuthStore((s) => s.user);
   const router = useRouter();
+  const pathname = usePathname();
+  const waiting = awaitingApproval(demoUser);
   // false during server rendering and hydration, true afterwards
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -83,8 +86,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoaded, isSignedIn, demoUser, router]);
 
+  // Signed up as a teacher / NGO and not approved yet: only the application page is available.
+  useEffect(() => {
+    if (waiting && pathname !== '/application') router.replace('/application');
+  }, [waiting, pathname, router]);
+
   // Show the app skeleton while the session is restored (static markup, so no hydration mismatch)
   if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return <AppSkeleton />;
+
+  if (waiting) {
+    return (
+      <DataConfig>
+        <RealtimeSync />
+        {pathname === '/application' ? children : <AppSkeleton />}
+      </DataConfig>
+    );
+  }
 
   return (
     <DataConfig>

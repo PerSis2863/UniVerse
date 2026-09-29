@@ -156,6 +156,10 @@ model User {
   medicalRecord          MedicalRecord?
   safetyAlerts           SafetyAlert[]           @relation("SafetyReporter")
 
+  // Applications to become a teacher / NGO representative (approved by an admin)
+  roleApplications       RoleApplication[]       @relation("RoleApplicant")
+  reviewedApplications   RoleApplication[]       @relation("RoleReviewer")
+
   // Career & Internships
   careerProfile           CareerProfile?
   skills                  StudentSkill[]
@@ -639,6 +643,55 @@ model Notification {
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, read])
   @@map("notifications")
+}
+
+enum RoleApplicationStatus {
+  DRAFT      // account created as "teacher", details not sent yet
+  PENDING    // waiting for an admin
+  NEEDS_INFO // an admin asked for more information
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// A request to become a teacher (or NGO representative). The role is only granted when an admin
+/// approves it; until then the account has student permissions.
+model RoleApplication {
+  id            String                @id @default(cuid())
+  userId        String
+  user          User                  @relation("RoleApplicant", fields: [userId], references: [id], onDelete: Cascade)
+  requestedRole Role                  @default(TEACHER)
+  status        RoleApplicationStatus @default(DRAFT)
+  source        String                @default("SIGNUP") // SIGNUP (chose the role when signing up) or UPGRADE (existing student)
+
+  // What the applicant tells us
+  institution     String?
+  department      String?
+  position        String? // e.g. Lecturer, Professor, Programme officer
+  staffId         String?
+  workEmail       String?
+  phone           String?
+  subjects        String?
+  experienceYears Int?
+  profileUrl      String? // staff page / LinkedIn
+  message         String?
+  proofUrl        String? // uploaded ID card / appointment letter
+  proofName       String?
+
+  // Review
+  adminNote    String? // shown to the applicant: what's missing, or why it was declined
+  reviewedById String?
+  reviewedBy   User?     @relation("RoleReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  submittedAt  DateTime?
+  history      Json? // [{ at, by, byName, type, note }]: submitted, updated, info_requested, approved, ...
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, submittedAt])
+  @@index([userId, createdAt])
+  @@map("role_applications")
 }
 
 /// Who did what: role and status changes, grades, credential decisions, deletions, ...

@@ -12,7 +12,22 @@ export interface User {
   createdAt: string;
   studentProfile?: StudentProfile;
   teacherProfile?: TeacherProfile;
+  /** Latest application to become a teacher / NGO representative, if any. */
+  application?: ApplicationSummary | null;
 }
+
+export type ApplicationStatus = 'DRAFT' | 'PENDING' | 'NEEDS_INFO' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
+export interface ApplicationSummary {
+  id: string;
+  status: ApplicationStatus;
+  source: 'SIGNUP' | 'UPGRADE' | string;
+  requestedRole: 'TEACHER' | 'ADMIN' | string;
+  adminNote?: string | null;
+}
+
+/** Signed up as a teacher/NGO and still waiting: the app shows the application page instead of the student area. */
+export const awaitingApproval = (u: Pick<User, 'role' | 'application'> | null | undefined) =>
+  !!u && u.role === 'STUDENT' && u.application?.source === 'SIGNUP' && ['DRAFT', 'PENDING', 'NEEDS_INFO'].includes(u.application.status);
 
 export interface StudentProfile {
   id: string;

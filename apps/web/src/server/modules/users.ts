@@ -5,6 +5,7 @@ import { pick } from '../pick';
 import { BadRequestException, ConflictException, NotFoundException } from '../http';
 import { forgetUser } from '../auth';
 import { audit } from '../audit';
+import { currentApplication } from './applications';
 
 const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
@@ -51,7 +52,7 @@ export default function users(router: Router) {
     return { total, students, teachers, pending };
   });
 
-  r.get('me', ({ user }) => findOne(user.id));
+  r.get('me', async ({ user }) => ({ ...(await findOne(user.id)), application: await currentApplication(user.id) }));
 
   // Other people's contact details and grades (GPA) are for admins; everyone else gets a public card.
   r.get<{ id: string }>(':id', async ({ params, user }) => {

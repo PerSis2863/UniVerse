@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/auth';
 import { auth } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
 import { api } from '@/lib/api';
+import { awaitingApproval } from '@/types';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 
 const ROLES = [
@@ -24,7 +25,7 @@ const ROLES = [
   {
     id: 'TEACHER',
     label: 'University Staff',
-    description: 'Manage courses, students, and academic content',
+    description: 'Manage courses, students, and academic content. An admin approves staff accounts.',
     icon: Building2,
     color: 'emerald',
     gradient: 'from-emerald-500/20 to-teal-500/20',
@@ -34,7 +35,7 @@ const ROLES = [
   {
     id: 'ADMIN',
     label: 'NGO Representative',
-    description: 'Post projects, collaborate with universities',
+    description: 'Post projects, collaborate with universities. An admin approves NGO accounts.',
     icon: Globe,
     color: 'amber',
     gradient: 'from-amber-500/20 to-orange-500/20',
@@ -63,8 +64,11 @@ export default function RegisterPage() {
       localStorage.setItem('accessToken', token);
       setTokens(token);
       const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole });
-      setUser({ id: user.id, name: user.name, email: user.email, role: user.role, status: user.status || 'ACTIVE', createdAt: user.createdAt || new Date().toISOString() });
-      router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
+      const me = { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status || 'ACTIVE', createdAt: user.createdAt || new Date().toISOString(), application: user.application ?? null };
+      setUser(me);
+      // Teacher / NGO accounts wait for an admin: they continue on the application form.
+      if (awaitingApproval(me)) router.push('/application');
+      else router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Registration successful, but failed to setup profile. Please try logging in.');

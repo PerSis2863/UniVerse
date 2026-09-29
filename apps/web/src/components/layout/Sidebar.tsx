@@ -144,6 +144,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.management', icon: Settings,
       subItems: [
         { href: '/admin/users', label: 'nav.users' },
+        { href: '/admin/approvals', label: 'Approvals' },
         { href: '/admin/audit', label: 'Activity Log' },
         { href: '/admin/courses', label: 'nav.courses' },
         { href: '/admin/administrative', label: 'nav.administrative' },

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import Link from '@/components/ui/Link';
 import { api } from '@/lib/api';
 import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -131,6 +132,13 @@ export default function StudentSettings() {
                           </div>
                         ))}
                       </div>
+                      <Link href="/application" className="flex items-center justify-between gap-4 p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.06] hover:border-indigo-500/40 transition-colors">
+                        <div>
+                          <p className="font-semibold text-sm text-zinc-900 dark:text-white">Teach or represent an NGO on UniVerse</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">Apply for a staff account, or check an application you already sent.</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-indigo-500 shrink-0" />
+                      </Link>
                     </motion.div>
                   )}
 

@@ -11,8 +11,8 @@ import { audit } from '@/server/audit';
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
-  const [pendingTeachers, suspended] = await Promise.all([
-    prisma.user.count({ where: { role: 'TEACHER', createdAt: { gt: new Date(Date.now() - 7 * 86_400_000) } } }),
+  const [pendingApplications, suspended] = await Promise.all([
+    prisma.roleApplication.count({ where: { status: 'PENDING' } }),
     prisma.user.count({ where: { status: 'SUSPENDED' } }),
   ]);
   return NextResponse.json(
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
         email: !!process.env.RESEND_API_KEY,
         credentialSigning: !!process.env.CREDENTIAL_SIGNING_PRIVATE_KEY,
         fileStorage: hasR2Storage(),
-        newTeachersThisWeek: pendingTeachers,
+        pendingApplications,
         suspendedAccounts: suspended,
       },
     },

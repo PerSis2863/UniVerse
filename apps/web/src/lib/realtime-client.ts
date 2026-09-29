@@ -114,6 +114,8 @@ function handle(event: ServerEvent) {
       break;
     case 'notification':
       void mutate('/api/notifications');
+      // Application decisions and new applications arrive as notifications.
+      void mutate(startsWith('/applications'));
       break;
     case 'refresh':
       for (const k of event.keys) void mutate(k.endsWith('*') ? startsWith(k.slice(0, -1)) : k);
