@@ -9,6 +9,7 @@ import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
+import { reportSession } from '@/lib/sign-in-history';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
 
-  const handleLoginSuccess = async (token: string) => {
+  const handleLoginSuccess = async (token: string, method?: 'google' | 'password' | 'phone' | 'apple') => {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
@@ -33,8 +34,10 @@ export default function LoginPage() {
         status: user.status || 'ACTIVE',
         createdAt: user.createdAt || new Date().toISOString(),
         avatar: user.avatar,
+        owner: user.owner === true,
       });
-      router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
+      reportSession('SIGN_IN', token.startsWith('mock-token-') ? 'demo' : method);
+      router.push(user.owner ? '/console' : user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Login successful, but failed to retrieve user data. Please contact support.');
@@ -48,7 +51,7 @@ export default function LoginPage() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const token = await userCredential.user.getIdToken();
-      await handleLoginSuccess(token);
+      await handleLoginSuccess(token, 'password');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to sign in. Please check your credentials.');
@@ -64,7 +67,7 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       const token = await userCredential.user.getIdToken();
-      await handleLoginSuccess(token);
+      await handleLoginSuccess(token, 'google');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to sign in with Google.');
@@ -80,7 +83,7 @@ export default function LoginPage() {
       const provider = new OAuthProvider('apple.com');
       const userCredential = await signInWithPopup(auth, provider);
       const token = await userCredential.user.getIdToken();
-      await handleLoginSuccess(token);
+      await handleLoginSuccess(token, 'apple');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to sign in with Apple.');
@@ -114,7 +117,7 @@ export default function LoginPage() {
           {showPhoneFlow ? (
             <PhoneAuthFlow
               isRegister={false}
-              onSuccess={handleLoginSuccess}
+              onSuccess={(token: string) => handleLoginSuccess(token, 'phone')}
               onCancel={() => setShowPhoneFlow(false)}
             />
           ) : (

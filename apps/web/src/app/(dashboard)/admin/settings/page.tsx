@@ -8,10 +8,11 @@ import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { useState } from 'react';
 import { EmailNotificationsSwitch } from '@/components/notifications/EmailNotificationsSwitch';
+import { RecentSignIns } from '@/components/security/RecentSignIns';
 
 type Settings = {
   organization: { name: string };
-  security: { demoLogin: boolean; email: boolean; credentialSigning: boolean; fileStorage: boolean; newTeachersThisWeek: number; suspendedAccounts: number };
+  security: { demoLogin: boolean; email: boolean; credentialSigning: boolean; fileStorage: boolean; pendingApplications: number; suspendedAccounts: number };
 };
 
 function StatusRow({ ok, neutral, title, detail }: { ok: boolean; neutral?: boolean; title: string; detail: string }) {
@@ -70,7 +71,7 @@ export default function AdminSettings() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
-                  activeTab === tab.id ? 'text-indigo-400' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white'
+                  activeTab === tab.id ? 'text-indigo-400' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -131,9 +132,11 @@ export default function AdminSettings() {
                     <StatusRow ok={data.security.credentialSigning} title={data.security.credentialSigning ? 'Credentials are digitally signed' : 'Credential signing key missing'} detail={data.security.credentialSigning ? 'Issued credentials can be verified by anyone.' : 'Set CREDENTIAL_SIGNING_PRIVATE_KEY to issue verifiable credentials.'} />
                     <StatusRow ok={data.security.email} title={data.security.email ? 'Email notifications on' : 'Email not set up'} detail={data.security.email ? 'Sent through Resend.' : 'Add RESEND_API_KEY to send emails.'} />
                     <StatusRow ok={data.security.suspendedAccounts === 0} neutral title={`${data.security.suspendedAccounts} suspended account${data.security.suspendedAccounts === 1 ? '' : 's'}`} detail="Suspended people can't sign in or use the API." />
-                    <StatusRow ok={data.security.newTeachersThisWeek === 0} neutral title={`${data.security.newTeachersThisWeek} new teacher account${data.security.newTeachersThisWeek === 1 ? '' : 's'} this week`} detail="Anyone can sign up as a teacher. Check new ones in Users and suspend any you don't recognise." />
+                    <StatusRow ok title="Staff accounts need approval" detail="Choosing “teacher” or “NGO” when signing up only sends an application; the role is granted when an admin approves it." />
+                    <StatusRow ok={data.security.pendingApplications === 0} neutral title={`${data.security.pendingApplications} application${data.security.pendingApplications === 1 ? '' : 's'} waiting`} detail="Review them in Approvals." />
                   </ul>
                 )}
+                <RecentSignIns />
                 <Link href="/admin/audit" className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-500 hover:text-indigo-400">
                   See who changed what in the Activity Log →
                 </Link>
@@ -145,7 +148,7 @@ export default function AdminSettings() {
                 <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-4">Notifications</h3>
                 <EmailNotificationsSwitch />
                 <p className="text-sm text-zinc-500">
-                  As an admin you&apos;re also notified (in the app, and by email when this is on) whenever someone signs up as a teacher, so you can check the account in Users.
+                  As an admin you&apos;re also notified (in the app, and by email when this is on) about every new teacher or NGO application, so you can review it in Approvals.
                 </p>
               </div>
             )}

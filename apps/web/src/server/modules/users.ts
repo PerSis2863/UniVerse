@@ -2,15 +2,17 @@ import type { Role, UserStatus } from '@prisma/client';
 import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { pick } from '../pick';
-import { BadRequestException, ConflictException, NotFoundException } from '../http';
-import { forgetUser } from '../auth';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '../http';
+import { forgetUser, isOwner, isOwnerEmail } from '../auth';
 import { audit } from '../audit';
+import { currentApplication } from './applications';
+import { TERMS_VERSION } from '@/lib/terms-version';
 
 const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
-  avatar: true, phone: true, googleId: true, emailNotifications: true, createdAt: true, updatedAt: true,
+  avatar: true, phone: true, googleId: true, emailNotifications: true, termsVersion: true, termsAcceptedAt: true, createdAt: true, updatedAt: true,
   studentProfile: true, teacherProfile: true,
 };
 
@@ -51,7 +53,8 @@ export default function users(router: Router) {
     return { total, students, teachers, pending };
   });
 
-  r.get('me', ({ user }) => findOne(user.id));
+  // `owner` is only ever present (true) for the platform owner, so the app can open the console.
+  r.get('me', async ({ user }) => ({ ...(await findOne(user.id)), application: await currentApplication(user.id), ...(isOwner(user) ? { owner: true } : {}) }));
 
   // Other people's contact details and grades (GPA) are for admins; everyone else gets a public card.
   r.get<{ id: string }>(':id', async ({ params, user }) => {
@@ -79,6 +82,14 @@ export default function users(router: Router) {
     return { success: true, invitation };
   });
 
+  // Accepting the Terms of Use & Privacy Notice (first sign-in, or after they change).
+  r.post('me/terms', async ({ user, body }) => {
+    if (body?.version !== TERMS_VERSION) throw new BadRequestException('Please reload the page to see the latest terms.');
+    const updated = await prisma.user.update({ where: { id: user.id }, data: { termsVersion: TERMS_VERSION, termsAcceptedAt: new Date() }, select: safeSelect });
+    forgetUser(user.id);
+    return updated;
+  });
+
   // Only profile fields: the old API passed the whole body through, which let users change their role.
   r.patch('me', async ({ user, body }) => {
     const data: Record<string, unknown> = pick(body, ['name', 'phone', 'avatar'] as const);
@@ -92,6 +103,7 @@ export default function users(router: Router) {
     const status = body.status as UserStatus;
     if (!USER_STATUSES.includes(status)) throw new BadRequestException(`status must be one of ${USER_STATUSES.join(', ')}`);
     if (params.id === user.id) throw new BadRequestException("You can't change the status of your own account.");
+    await assertNotOwner(params.id);
     const updated = await prisma.user.update({ where: { id: params.id }, data: { status }, select: safeSelect });
     forgetUser(params.id);
     audit(user, { action: 'user.status_changed', summary: `Set ${updated.name}'s account to ${status}`, targetType: 'user', targetId: params.id, metadata: { status } }, req);
@@ -100,6 +112,7 @@ export default function users(router: Router) {
 
   r.delete<{ id: string }>(':id', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
     if (params.id === user.id) throw new BadRequestException("You can't delete your own account here.");
+    await assertNotOwner(params.id);
     const target = await prisma.user.findUnique({ where: { id: params.id }, select: { name: true, email: true, role: true } });
     if (!target) throw new NotFoundException('User not found');
     await prisma.user.delete({ where: { id: params.id } });
@@ -107,4 +120,10 @@ export default function users(router: Router) {
     audit(user, { action: 'user.deleted', summary: `Deleted ${target.name} (${target.email})`, targetType: 'user', targetId: params.id, metadata: target }, req);
     return { success: true };
   });
+}
+
+/** The platform owner's account can't be suspended or deleted by other admins. */
+async function assertNotOwner(id: string) {
+  const target = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+  if (target && isOwnerEmail(target.email)) throw new ForbiddenException('This account is protected.');
 }

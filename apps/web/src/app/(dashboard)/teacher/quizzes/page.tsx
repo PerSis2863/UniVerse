@@ -93,7 +93,7 @@ export default function TeacherQuizzes() {
           </div>
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center justify-center w-full md:w-auto gap-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 whitespace-nowrap"
+            className="flex items-center justify-center w-full md:w-auto gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 whitespace-nowrap"
           >
             <Plus className="w-4 h-4" /> Create New Quiz
           </button>
@@ -114,10 +114,10 @@ export default function TeacherQuizzes() {
                     {quiz.status === 'PUBLISHED' ? 'Published' : quiz.status === 'CLOSED' ? 'Closed' : 'Draft'}
                   </span>
                   <div className="flex gap-1">
-                    <button onClick={() => setManaging(quiz.id)} aria-label="Edit quiz" className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:bg-zinc-800">
+                    <button onClick={() => setManaging(quiz.id)} aria-label="Edit quiz" className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeleteQuiz(quiz.id)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-red-400 rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:bg-zinc-800">
+                    <button onClick={() => handleDeleteQuiz(quiz.id)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-red-400 rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -145,7 +145,7 @@ export default function TeacherQuizzes() {
               <div className="mt-auto p-4 border-t border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-900/30">
                 <button 
                   onClick={() => setManaging(quiz.id)}
-                  className="w-full py-2 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:bg-white/10 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
+                  className="w-full py-2 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
                 >
                   Manage Quiz
                 </button>
@@ -172,7 +172,7 @@ export default function TeacherQuizzes() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Create New Quiz</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Set up a new assessment for your students.</p>
               </div>
-              <button onClick={() => setShowCreateModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+              <button onClick={() => setShowCreateModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -221,8 +221,8 @@ export default function TeacherQuizzes() {
             </div>
             
             <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex justify-end gap-3">
-              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
-              <button onClick={handleCreateQuiz} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg transition-all flex items-center gap-2">
+              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
+              <button onClick={handleCreateQuiz} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2">
                 <Check className="w-4 h-4" /> Create Draft
               </button>
             </div>

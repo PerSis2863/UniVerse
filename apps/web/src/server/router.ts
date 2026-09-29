@@ -1,7 +1,7 @@
 import type { Role, User } from '@prisma/client';
 import type { RateLimit } from '@cloudflare/workers-types';
 import { ForbiddenException, HttpException, NotFoundException } from './http';
-import { extractBearer, resolveUser, demoWriteBlocked } from './auth';
+import { extractBearer, resolveUser, demoWriteBlocked, isOwner } from './auth';
 
 // A small router for the API that used to run as a NestJS app on Render. Routes keep
 // their NestJS paths, guards (sign-in + @Roles) and response conventions, and are served from
@@ -25,6 +25,8 @@ export interface RouteOptions {
   roles?: Role[];
   /** Response status on success (NestJS default: 201 for POST, otherwise 200). */
   status?: number;
+  /** Only the platform owner (see isOwner). Everyone else gets 404, as if the route didn't exist. */
+  owner?: boolean;
 }
 
 interface Route extends RouteOptions {
@@ -83,6 +85,10 @@ export class Router {
       if (!route) throw new NotFoundException(`Cannot ${req.method} /api/${path}`);
 
       const token = extractBearer(req.headers.get('authorization'));
+      if (route.owner) {
+        const owner = token ? await resolveUser(token).catch(() => null) : null;
+        if (!isOwner(owner)) throw new NotFoundException(`Cannot ${req.method} /api/${path}`);
+      }
       const user = route.public ? null : await resolveUser(token);
       if (route.roles && (!user || !route.roles.includes(user.role))) throw new ForbiddenException('Forbidden resource');
       if (user && demoWriteBlocked(req, user, token)) throw new ForbiddenException('The demo admin account is read-only.');

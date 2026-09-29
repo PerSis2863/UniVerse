@@ -68,7 +68,7 @@ export default function TeacherCourses() {
         <div className="flex justify-end mb-6">
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
           >
             <Plus className="w-4 h-4" /> Create Course
           </button>
@@ -91,10 +91,10 @@ export default function TeacherCourses() {
                 
                 {/* Actions Overlay */}
                 <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => openEdit(course)} className="p-2 bg-black/60 hover:bg-black text-zinc-300 hover:text-zinc-900 dark:text-white rounded-md backdrop-blur-md transition-colors">
+                  <button onClick={() => openEdit(course)} className="p-2 bg-black/60 hover:bg-black text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(course.id)} className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-zinc-900 dark:text-white rounded-md backdrop-blur-md transition-colors">
+                  <button onClick={() => handleDelete(course.id)} className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -220,7 +220,7 @@ export default function TeacherCourses() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{showEditModal ? 'Edit Course' : 'Create New Course'}</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Fill in the details for this course.</p>
               </div>
-              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white hover:bg-zinc-100 dark:bg-zinc-800 transition-colors">
+              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -251,8 +251,8 @@ export default function TeacherCourses() {
             </div>
             
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Cancel</button>
-              <button onClick={showEditModal ? handleEdit : handleCreate} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg flex items-center gap-2 transition-all">
+              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
+              <button onClick={showEditModal ? handleEdit : handleCreate} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
                 <Upload className="w-4 h-4" /> {showEditModal ? 'Save Changes' : 'Create Course'}
               </button>
             </div>

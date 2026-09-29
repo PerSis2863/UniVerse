@@ -152,7 +152,7 @@ export default function AdminAttendance() {
                       Object.assign(document.createElement('a'), { href: url, download: `attendance-${new Date().toISOString().slice(0, 10)}.csv` }).click();
                       URL.revokeObjectURL(url);
                     }}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:text-white hover:bg-zinc-700 rounded-xl text-sm font-medium transition-colors border border-zinc-700/50"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-700 rounded-xl text-sm font-medium transition-colors border border-zinc-700/50"
                   >
                     <Download className="w-4 h-4" /> Export CSV
                   </button>
@@ -162,7 +162,7 @@ export default function AdminAttendance() {
                     disabled={!hasUnsavedChanges || isSaving}
                     className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                       hasUnsavedChanges 
-                        ? 'bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]' 
+                        ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]' 
                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-500 cursor-not-allowed border border-zinc-700/50'
                     }`}
                   >
@@ -319,7 +319,7 @@ export default function AdminAttendance() {
                     <span className="text-sm font-medium text-indigo-400">You have unsaved attendance changes.</span>
                     <button 
                       onClick={handleSave}
-                      className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-zinc-900 dark:text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
+                      className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
                     >
                       Save Now
                     </button>

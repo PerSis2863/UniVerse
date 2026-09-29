@@ -60,7 +60,7 @@ export function isDemoAccount(email: string | null | undefined): boolean {
  * must not be able to change real people's roles, accounts, grades or credentials. It can still
  * browse, chat and read notifications.
  */
-const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/)/;
+const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$)/;
 export function demoWriteBlocked(req: Request, user: { role: string }, token: string | null): boolean {
   if (!token?.startsWith('mock-token-') || user.role !== 'ADMIN') return false;
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return false;
@@ -183,5 +183,35 @@ async function resolveUserUncached(token: string): Promise<User> {
     });
   }
 
+  // The platform owner: an email listed in the SUPER_ADMIN_EMAILS secret, proven by this sign-in
+  // (Google marks the email verified). Never a demo token. The owner is always an active admin.
+  if (decoded.email_verified === true && isOwnerEmail(decoded.email)) {
+    if (user.role !== 'ADMIN' || user.status !== 'ACTIVE') {
+      user = await prisma.user.update({ where: { id: user.id }, data: { role: 'ADMIN', status: 'ACTIVE' } });
+    }
+    OWNERS.add(user);
+  }
+
   return user;
+}
+
+// ─── Owner (super admin) ────────────────────────────────────────────────────────────────────────
+
+/** Emails of the platform owner(s), from the SUPER_ADMIN_EMAILS secret (comma separated). */
+function ownerEmails(): string[] {
+  return (process.env.SUPER_ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+}
+
+/** Whether this email belongs to the owner (used to protect the account from other admins). */
+export function isOwnerEmail(email: string | null | undefined): boolean {
+  return !!email && ownerEmails().includes(email.trim().toLowerCase());
+}
+
+// User objects resolved from an owner's verified sign-in (kept with the cached user, so it lasts
+// exactly as long as that sign-in does).
+const OWNERS = new WeakSet<User>();
+
+/** True only for a request signed in as the owner with a verified Google sign-in. */
+export function isOwner(user: User | null | undefined): boolean {
+  return !!user && OWNERS.has(user) && isOwnerEmail(user.email);
 }

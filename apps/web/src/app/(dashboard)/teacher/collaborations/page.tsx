@@ -66,7 +66,7 @@ export default function TeacherCollaborationsPage() {
         rightNode={
           <button
             onClick={() => setShowNewProposalModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
           >
             <PlusCircle className="w-4 h-4" /> Propose Joint Research Initiative
           </button>
@@ -214,7 +214,7 @@ export default function TeacherCollaborationsPage() {
                   </div>
 
                   <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
-                    <button onClick={() => setSquadModal(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors">Close</button>
+                    <button onClick={() => setSquadModal(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Close</button>
                   </div>
                 </div>
               </div>
@@ -273,13 +273,13 @@ export default function TeacherCollaborationsPage() {
                     <button
                       type="button"
                       onClick={() => setShowNewProposalModal(false)}
-                      className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:text-white"
+                      className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-zinc-900 dark:text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2"
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2"
                     >
                       <Send className="w-3.5 h-3.5" /> Submit proposal
                     </button>

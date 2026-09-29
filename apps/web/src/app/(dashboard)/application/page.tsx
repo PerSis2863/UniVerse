@@ -1,0 +1,584 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
+import { toast } from 'sonner';
+import { format, formatDistanceToNow } from 'date-fns';
+import {
+  AlertTriangle, ArrowRight, BadgeCheck, Building2, CheckCircle2, Clock, FileText, Globe, GraduationCap, Loader2, LogOut, MessageSquareWarning,
+  Paperclip, Send, ShieldCheck, Trash2, Undo2, Upload, XCircle,
+} from 'lucide-react';
+import { Topbar } from '@/components/layout/Topbar';
+import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import { confirmDialog } from '@/components/ui/Dialogs';
+import { api } from '@/lib/api';
+import { authedFetch } from '@/lib/authed-fetch';
+import { auth } from '@/lib/firebase';
+import { safeHref } from '@/lib/safe-href';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth';
+import { awaitingApproval, type ApplicationStatus, type Role, type UserStatus } from '@/types';
+
+// Applying to become a teacher or NGO representative, and following the application.
+// People who picked "teacher" when signing up land here until an admin decides; students can
+// apply from Settings. The role is only granted when an admin approves (server-side).
+
+type Requested = 'TEACHER' | 'ADMIN';
+interface HistoryEvent { at: string; byName?: string | null; type: string; note?: string | null }
+interface Application {
+  id: string;
+  status: ApplicationStatus;
+  source: string;
+  requestedRole: Requested;
+  institution: string | null;
+  department: string | null;
+  position: string | null;
+  staffId: string | null;
+  workEmail: string | null;
+  phone: string | null;
+  subjects: string | null;
+  experienceYears: number | null;
+  profileUrl: string | null;
+  message: string | null;
+  proofUrl: string | null;
+  proofName: string | null;
+  adminNote: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  history: HistoryEvent[];
+}
+interface Mine { application: Application | null; canApply: boolean; reapplyAfter: string | null }
+
+type Form = Record<'institution' | 'department' | 'position' | 'staffId' | 'workEmail' | 'phone' | 'subjects' | 'profileUrl' | 'message' | 'experienceYears', string> & {
+  requestedRole: Requested;
+  proofUrl: string | null;
+  proofName: string | null;
+};
+
+const ROLE_INFO: Record<Requested, { label: string; icon: typeof GraduationCap; blurb: string }> = {
+  TEACHER: { label: 'Teacher / university staff', icon: Building2, blurb: 'Create courses, post grades and materials, run quizzes and take attendance.' },
+  ADMIN: { label: 'NGO representative', icon: Globe, blurb: 'Post projects and work with universities. This gives admin access, so it is reviewed carefully.' },
+};
+
+const EVENT_LABEL: Record<string, string> = {
+  created: 'Application started',
+  submitted: 'Sent for review',
+  updated: 'Details updated',
+  info_requested: 'An admin asked for more information',
+  info_provided: 'You sent the extra information',
+  approved: 'Approved',
+  rejected: 'Not approved',
+  withdrawn: 'Withdrawn',
+  invited: 'Approved from an invitation',
+};
+
+const fetcher = (url: string) => api.get(url).then((r) => r.data);
+const input =
+  'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40';
+
+const toForm = (a: Application | null | undefined, fallbackRole: Requested): Form => ({
+  requestedRole: a?.requestedRole ?? fallbackRole,
+  institution: a?.institution ?? '',
+  department: a?.department ?? '',
+  position: a?.position ?? '',
+  staffId: a?.staffId ?? '',
+  workEmail: a?.workEmail ?? '',
+  phone: a?.phone ?? '',
+  subjects: a?.subjects ?? '',
+  profileUrl: a?.profileUrl ?? '',
+  message: a?.message ?? '',
+  experienceYears: a?.experienceYears != null ? String(a.experienceYears) : '',
+  proofUrl: a?.proofUrl ?? null,
+  proofName: a?.proofName ?? null,
+});
+
+const errorMessage = (e: unknown) => {
+  const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+  return Array.isArray(m) ? m.join(', ') : m || (e as Error)?.message || 'Something went wrong';
+};
+
+export default function ApplicationPage() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const logout = useAuthStore((s) => s.logout);
+  const standalone = awaitingApproval(user);
+  const { data, error, isLoading, mutate } = useSWR<Mine>('/applications/mine', fetcher, { revalidateOnFocus: true });
+
+  const app = data?.application ?? null;
+  const open = !!app && ['DRAFT', 'PENDING', 'NEEDS_INFO'].includes(app.status);
+  const [editing, setEditing] = useState(false);
+  const [starting, setStarting] = useState<Requested | null>(null);
+
+  const refreshProfile = async () => {
+    try {
+      const { data: me } = await api.get('/users/me');
+      if (user) setUser({ ...user, role: me.role as Role, status: (me.status || 'ACTIVE') as UserStatus, application: me.application ?? null });
+      return me as { role: string };
+    } catch {
+      return null;
+    }
+  };
+
+  const signOut = async () => {
+    await auth.signOut().catch(() => {});
+    logout();
+    router.push('/login');
+  };
+
+  const withdraw = async () => {
+    const yes = await confirmDialog({
+      title: 'Withdraw your application?',
+      message: app?.source === 'SIGNUP' ? 'You can keep using UniVerse as a student and apply again later from Settings.' : 'You can apply again later from Settings.',
+      confirmLabel: 'Withdraw',
+      destructive: true,
+    });
+    if (!yes) return;
+    try {
+      await api.post('/applications/mine/withdraw');
+      await mutate();
+      await refreshProfile();
+      toast.success('Application withdrawn');
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
+
+  const continueAsStudent = async () => {
+    await refreshProfile();
+    router.push('/student');
+  };
+
+  const openDashboard = async () => {
+    const me = await refreshProfile();
+    router.push(me?.role === 'TEACHER' ? '/teacher' : me?.role === 'ADMIN' ? '/admin' : '/student');
+  };
+
+  let body: React.ReactNode;
+  if (isLoading) {
+    body = <div className="py-24 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>;
+  } else if (error) {
+    body = <p className="py-24 text-center text-sm text-rose-500">Could not load your application. Please refresh.</p>;
+  } else if (!app || (!open && data?.canApply && starting)) {
+    // No application yet (or starting a new one after a closed one)
+    body = starting || !data?.canApply ? (
+      data?.canApply ? (
+        <ApplicationForm initial={toForm(null, starting ?? 'TEACHER')} isNew onSaved={async () => { setStarting(null); await mutate(); await refreshProfile(); }} onCancel={() => setStarting(null)} />
+      ) : (
+        <Notice icon={ShieldCheck} tone="neutral" title="Your account already has staff access" text="Applications are for student accounts that want to teach or represent an NGO." />
+      )
+    ) : (
+      <Intro onPick={setStarting} />
+    );
+  } else if (open && (app.status === 'DRAFT' || app.status === 'NEEDS_INFO' || editing)) {
+    body = (
+      <div className="space-y-6">
+        <StatusSteps status={app.status} />
+        {app.status === 'NEEDS_INFO' && app.adminNote && (
+          <Notice icon={MessageSquareWarning} tone="warning" title="An admin needs a bit more information" text={app.adminNote} />
+        )}
+        {app.status === 'DRAFT' && app.source === 'SIGNUP' && (
+          <Notice
+            icon={ShieldCheck}
+            tone="info"
+            title={`Your ${ROLE_INFO[app.requestedRole]?.label.toLowerCase() ?? 'staff'} account needs approval`}
+            text="To keep students safe, an admin checks every staff account. Tell us where you work and how we can confirm it. It usually takes a day or two; we'll notify you by email and in the app."
+          />
+        )}
+        <ApplicationForm
+          initial={toForm(app, app.requestedRole)}
+          canChangeRole={app.status === 'DRAFT'}
+          submitLabel={app.status === 'NEEDS_INFO' ? 'Send updated application' : app.status === 'PENDING' ? 'Save changes' : 'Send for review'}
+          onSaved={async () => { setEditing(false); await mutate(); await refreshProfile(); }}
+          onCancel={editing ? () => setEditing(false) : undefined}
+        />
+        <div className="flex justify-end">
+          <button onClick={withdraw} className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-rose-500"><Undo2 className="w-4 h-4" /> Withdraw application</button>
+        </div>
+        <History events={app.history} />
+      </div>
+    );
+  } else {
+    body = (
+      <div className="space-y-6">
+        <StatusSteps status={app.status} />
+        {app.status === 'PENDING' && (
+          <Notice
+            icon={Clock}
+            tone="info"
+            title="Your application is being reviewed"
+            text={`Sent ${app.submittedAt ? formatDistanceToNow(new Date(app.submittedAt), { addSuffix: true }) : ''}. An admin will check your details, and may contact you at your work email. We'll let you know by email and in the app as soon as there's a decision.`}
+          />
+        )}
+        {app.status === 'APPROVED' && (
+          <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 sm:p-8 text-center">
+            <BadgeCheck className="w-12 h-12 mx-auto text-emerald-500" />
+            <h2 className="mt-3 text-xl font-bold text-zinc-900 dark:text-white">You&apos;re approved!</h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Your account now has {ROLE_INFO[app.requestedRole]?.label.toLowerCase() ?? 'staff'} access.</p>
+            {app.adminNote && <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300 italic">“{app.adminNote}”</p>}
+            <button onClick={openDashboard} className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold">
+              Open your dashboard <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {app.status === 'REJECTED' && (
+          <>
+            <Notice icon={XCircle} tone="danger" title="Your application wasn't approved" text={app.adminNote || 'No reason was given.'} />
+            <div className="flex flex-wrap gap-3">
+              <button onClick={continueAsStudent} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold">
+                Continue as a student <ArrowRight className="w-4 h-4" />
+              </button>
+              {data?.canApply ? (
+                <button onClick={() => setStarting(app.requestedRole)} className="px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Apply again</button>
+              ) : data?.reapplyAfter ? (
+                <p className="self-center text-sm text-zinc-500">You can apply again on {format(new Date(data.reapplyAfter), 'd MMM yyyy')}.</p>
+              ) : null}
+            </div>
+          </>
+        )}
+        {app.status === 'WITHDRAWN' && (
+          <>
+            <Notice icon={Undo2} tone="neutral" title="You withdrew your application" text="Your account works as a student account." />
+            <div className="flex flex-wrap gap-3">
+              <button onClick={continueAsStudent} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold">Continue as a student <ArrowRight className="w-4 h-4" /></button>
+              {data?.canApply && <button onClick={() => setStarting(app.requestedRole)} className="px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Apply again</button>}
+            </div>
+          </>
+        )}
+        <Summary app={app} />
+        {app.status === 'PENDING' && (
+          <div className="flex flex-wrap justify-between gap-3">
+            <button onClick={() => setEditing(true)} className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Edit details</button>
+            <button onClick={withdraw} className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-rose-500"><Undo2 className="w-4 h-4" /> Withdraw application</button>
+          </div>
+        )}
+        <History events={app.history} />
+      </div>
+    );
+  }
+
+  const content = <div className="max-w-3xl mx-auto w-full">{body}</div>;
+
+  if (standalone) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-[#070b17]">
+        <header className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 h-16 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#070b17]/80 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <UniverseLogo className="w-8 h-8" />
+            <span className="font-bold text-zinc-900 dark:text-white">Staff application</span>
+          </div>
+          <button onClick={signOut} className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"><LogOut className="w-4 h-4" /> Sign out</button>
+        </header>
+        <main className="px-4 sm:px-8 py-8">{content}</main>
+      </div>
+    );
+  }
+  return (
+    <>
+      <Topbar title="Staff application" subtitle="Apply to teach or represent an NGO on UniVerse" />
+      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">{content}</div>
+    </>
+  );
+}
+
+// ─── Pieces ────────────────────────────────────────────────────────────────────────────────────
+
+function Intro({ onPick }: { onPick: (r: Requested) => void }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Teach or represent an NGO on UniVerse</h2>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Staff accounts can see and change students&apos; work, so an admin checks every application. You keep your student account while you wait.
+        </p>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {(Object.keys(ROLE_INFO) as Requested[]).map((r) => {
+          const Icon = ROLE_INFO[r].icon;
+          return (
+            <button key={r} onClick={() => onPick(r)} className="text-left p-5 rounded-2xl border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-zinc-900/50 hover:border-indigo-500/50 transition-colors">
+              <Icon className="w-6 h-6 text-indigo-500" />
+              <p className="mt-3 font-semibold text-zinc-900 dark:text-white">{ROLE_INFO[r].label}</p>
+              <p className="mt-1 text-sm text-zinc-500">{ROLE_INFO[r].blurb}</p>
+            </button>
+          );
+        })}
+      </div>
+      <ol className="grid sm:grid-cols-3 gap-3 text-sm">
+        {['Tell us where you work and how to confirm it', 'An admin reviews it (usually within 1–2 days)', 'You get staff access, or a clear reason why not'].map((t, i) => (
+          <li key={t} className="flex gap-3 p-4 rounded-2xl bg-zinc-100/70 dark:bg-white/[0.03]">
+            <span className="w-6 h-6 shrink-0 rounded-full bg-indigo-500/15 text-indigo-500 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+            <span className="text-zinc-600 dark:text-zinc-300">{t}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function StatusSteps({ status }: { status: ApplicationStatus }) {
+  const steps = ['Your details', 'Sent', 'Admin review', 'Decision'];
+  const at = status === 'DRAFT' ? 0 : status === 'PENDING' ? 2 : status === 'NEEDS_INFO' ? 2 : 3;
+  const failed = status === 'REJECTED' || status === 'WITHDRAWN';
+  return (
+    <ol className="flex items-center gap-2" aria-label="Application progress">
+      {steps.map((s, i) => {
+        const done = i < at || (i === 3 && status === 'APPROVED');
+        const current = i === at && !done;
+        return (
+          <li key={s} className="flex-1 min-w-0">
+            <div className={cn('h-1.5 rounded-full', done ? (failed && i === 3 ? 'bg-rose-500' : 'bg-emerald-500') : current ? (status === 'NEEDS_INFO' ? 'bg-amber-500' : failed ? 'bg-rose-500' : 'bg-indigo-500') : 'bg-zinc-200 dark:bg-white/10')} />
+            <p className={cn('mt-1.5 text-[11px] font-semibold truncate', current ? 'text-zinc-900 dark:text-white' : 'text-zinc-400')}>
+              {i === 2 && status === 'NEEDS_INFO' ? 'Waiting for you' : i === 3 && status === 'REJECTED' ? 'Not approved' : i === 3 && status === 'WITHDRAWN' ? 'Withdrawn' : s}
+            </p>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function Notice({ icon: Icon, tone, title, text }: { icon: typeof Clock; tone: 'info' | 'warning' | 'danger' | 'neutral'; title: string; text: string }) {
+  const colors = {
+    info: 'border-indigo-500/25 bg-indigo-500/[0.07] text-indigo-500',
+    warning: 'border-amber-500/30 bg-amber-500/10 text-amber-500',
+    danger: 'border-rose-500/30 bg-rose-500/10 text-rose-500',
+    neutral: 'border-zinc-200 dark:border-white/10 bg-zinc-100/70 dark:bg-white/[0.03] text-zinc-500',
+  }[tone];
+  return (
+    <div className={cn('flex gap-3 p-4 sm:p-5 rounded-2xl border', colors)}>
+      <Icon className="w-5 h-5 shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="font-semibold text-zinc-900 dark:text-white">{title}</p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap break-words">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function Summary({ app }: { app: Application }) {
+  const rows: [string, React.ReactNode][] = [
+    ['Applying as', ROLE_INFO[app.requestedRole]?.label ?? app.requestedRole],
+    [app.requestedRole === 'ADMIN' ? 'Organization' : 'Institution', app.institution],
+    ['Department', app.department],
+    ['Position', app.position],
+    ['Staff ID', app.staffId],
+    ['Work email', app.workEmail],
+    ['Phone', app.phone],
+    ['Subjects', app.subjects],
+    ['Experience', app.experienceYears != null ? `${app.experienceYears} year${app.experienceYears === 1 ? '' : 's'}` : null],
+    ['Profile', app.profileUrl && <a href={safeHref(app.profileUrl)} target="_blank" rel="noopener noreferrer" className="text-indigo-500 break-all">{app.profileUrl}</a>],
+    ['Document', app.proofUrl && <a href={safeHref(app.proofUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-500"><Paperclip className="w-3.5 h-3.5" />{app.proofName || 'Attachment'}</a>],
+  ];
+  return (
+    <div className="rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-5">
+      <h3 className="font-semibold text-zinc-900 dark:text-white mb-3">What you sent</h3>
+      <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        {rows.filter(([, v]) => v).map(([k, v]) => (
+          <div key={k} className="min-w-0">
+            <dt className="text-xs text-zinc-500">{k}</dt>
+            <dd className="text-zinc-900 dark:text-zinc-100 break-words">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {app.message && <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap border-t border-zinc-100 dark:border-white/[0.05] pt-3">{app.message}</p>}
+    </div>
+  );
+}
+
+function History({ events }: { events: HistoryEvent[] }) {
+  if (!events?.length) return null;
+  return (
+    <div className="rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-5">
+      <h3 className="font-semibold text-zinc-900 dark:text-white mb-4">History</h3>
+      <ol className="space-y-4">
+        {[...events].reverse().map((e, i) => (
+          <li key={i} className="flex gap-3">
+            <span className={cn('mt-1.5 w-2 h-2 rounded-full shrink-0', e.type === 'approved' || e.type === 'invited' ? 'bg-emerald-500' : e.type === 'rejected' ? 'bg-rose-500' : e.type === 'info_requested' ? 'bg-amber-500' : 'bg-indigo-500')} />
+            <div className="min-w-0">
+              <p className="text-sm text-zinc-900 dark:text-white">{EVENT_LABEL[e.type] ?? e.type}</p>
+              {e.note && <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap break-words">“{e.note}”</p>}
+              <p className="text-xs text-zinc-400">{format(new Date(e.at), 'd MMM yyyy, HH:mm')}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        {label}
+        {required && <span className="text-rose-500"> *</span>}
+      </span>
+      {children}
+      {hint && <span className="block text-xs text-zinc-500">{hint}</span>}
+    </label>
+  );
+}
+
+function ApplicationForm({
+  initial, isNew, canChangeRole = true, submitLabel = 'Send for review', onSaved, onCancel,
+}: {
+  initial: Form; isNew?: boolean; canChangeRole?: boolean; submitLabel?: string; onSaved: () => Promise<void> | void; onCancel?: () => void;
+}) {
+  const [f, setF] = useState<Form>(initial);
+  const [busy, setBusy] = useState<'save' | 'submit' | 'upload' | null>(null);
+  const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF((p) => ({ ...p, [k]: e.target.value }));
+  const ngo = f.requestedRole === 'ADMIN';
+
+  const missing = useMemo(() => {
+    const m: string[] = [];
+    if (!f.institution.trim()) m.push(ngo ? 'organization' : 'institution');
+    if (!ngo && !f.department.trim()) m.push('department');
+    if (!f.position.trim()) m.push(ngo ? 'your role' : 'position');
+    if (ngo && !f.message.trim()) m.push('about your organization');
+    if (!f.staffId.trim() && !f.workEmail.trim() && !f.proofUrl) m.push('a staff ID, work email or document');
+    return m;
+  }, [f, ngo]);
+
+  const upload = async (file: File) => {
+    if (file.size > 4 * 1024 * 1024) return toast.error('The document must be 4 MB or smaller.');
+    setBusy('upload');
+    try {
+      const res = await authedFetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Upload failed');
+      setF((p) => ({ ...p, proofUrl: body.url, proofName: file.name }));
+      toast.success('Document attached');
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const save = async (submit: boolean) => {
+    setBusy(submit ? 'submit' : 'save');
+    try {
+      const payload = { ...f, experienceYears: f.experienceYears === '' ? null : Number(f.experienceYears), submit };
+      if (isNew) await api.post('/applications', payload);
+      else await api.patch('/applications/mine', payload);
+      toast.success(submit ? 'Application sent. We’ll let you know when an admin has reviewed it.' : 'Saved');
+      await onSaved();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save(true);
+      }}
+      className="space-y-6 rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-5 sm:p-7"
+    >
+      {canChangeRole && (
+        <fieldset>
+          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">I&apos;m applying as</legend>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {(Object.keys(ROLE_INFO) as Requested[]).map((r) => {
+              const Icon = ROLE_INFO[r].icon;
+              const on = f.requestedRole === r;
+              return (
+                <button type="button" key={r} onClick={() => setF((p) => ({ ...p, requestedRole: r }))} aria-pressed={on}
+                  className={cn('flex items-center gap-3 p-3 rounded-xl border text-left text-sm', on ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-200 dark:border-white/10')}>
+                  <Icon className={cn('w-5 h-5', on ? 'text-indigo-500' : 'text-zinc-400')} />
+                  <span className="font-semibold text-zinc-900 dark:text-white">{ROLE_INFO[r].label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
+
+      <section className="space-y-4">
+        <h3 className="font-semibold text-zinc-900 dark:text-white">{ngo ? 'Your organization' : 'Where you teach'}</h3>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Field label={ngo ? 'Organization' : 'Institution'} required>
+            <input className={input} value={f.institution} onChange={set('institution')} maxLength={150} placeholder={ngo ? 'e.g. Green Earth Foundation' : 'e.g. Delhi University'} />
+          </Field>
+          <Field label="Department" required={!ngo}>
+            <input className={input} value={f.department} onChange={set('department')} maxLength={120} placeholder={ngo ? 'e.g. Partnerships' : 'e.g. Computer Science'} />
+          </Field>
+          <Field label={ngo ? 'Your role' : 'Position'} required>
+            <input className={input} value={f.position} onChange={set('position')} maxLength={100} placeholder={ngo ? 'e.g. Programme officer' : 'e.g. Assistant professor'} />
+          </Field>
+          <Field label="Years of experience">
+            <input className={input} type="number" min={0} max={60} value={f.experienceYears} onChange={set('experienceYears')} />
+          </Field>
+          {!ngo && (
+            <Field label="Subjects you teach" hint="Separate with commas">
+              <input className={cn(input, 'sm:col-span-2')} value={f.subjects} onChange={set('subjects')} maxLength={300} placeholder="e.g. Algorithms, Databases" />
+            </Field>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-zinc-900 dark:text-white">How we can confirm it&apos;s you</h3>
+          <p className="text-sm text-zinc-500 mt-0.5">Give at least one. A work email or a document gets you approved fastest.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Field label="Work email" hint="Your address at the institution; an admin may write to you there.">
+            <input className={input} type="email" value={f.workEmail} onChange={set('workEmail')} maxLength={150} placeholder="name@university.edu" />
+          </Field>
+          <Field label={ngo ? 'Registration / staff ID' : 'Staff / employee ID'}>
+            <input className={input} value={f.staffId} onChange={set('staffId')} maxLength={60} />
+          </Field>
+          <Field label="Phone">
+            <input className={input} type="tel" value={f.phone} onChange={set('phone')} maxLength={30} placeholder="+91 98765 43210" />
+          </Field>
+          <Field label="Public profile" hint="Staff page, LinkedIn or organization website">
+            <input className={input} type="url" value={f.profileUrl} onChange={set('profileUrl')} maxLength={300} placeholder="https://" />
+          </Field>
+        </div>
+        <div>
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Document</span>
+          <p className="text-xs text-zinc-500 mb-2">Staff ID card, appointment letter or NGO registration. PDF or photo, up to 4 MB. Only admins can see it.</p>
+          {f.proofUrl ? (
+            <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-zinc-200 dark:border-white/10">
+              <a href={safeHref(f.proofUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-indigo-500 min-w-0"><FileText className="w-4 h-4 shrink-0" /><span className="truncate">{f.proofName || 'Document'}</span></a>
+              <button type="button" onClick={() => setF((p) => ({ ...p, proofUrl: null, proofName: null }))} className="text-zinc-400 hover:text-rose-500" aria-label="Remove document"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          ) : (
+            <label className={cn('flex items-center justify-center gap-2 p-4 rounded-xl border border-dashed border-zinc-300 dark:border-white/15 text-sm text-zinc-500 cursor-pointer hover:border-indigo-500/60', busy === 'upload' && 'opacity-60 pointer-events-none')}>
+              {busy === 'upload' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} {busy === 'upload' ? 'Uploading…' : 'Choose a file'}
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only" onChange={(e) => { const file = e.target.files?.[0]; if (file) void upload(file); e.target.value = ''; }} />
+            </label>
+          )}
+        </div>
+      </section>
+
+      <Field label={ngo ? 'About your organization' : 'Anything else we should know?'} required={ngo} hint={ngo ? 'What you do and how you want to work with universities.' : 'Optional. E.g. which courses you plan to run.'}>
+        <textarea className={cn(input, 'min-h-[110px]')} value={f.message} onChange={set('message')} maxLength={2000} />
+      </Field>
+
+      {ngo && (
+        <p className="flex gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="w-4 h-4 shrink-0" /> NGO representatives get admin access to the platform, so these applications are checked especially carefully.</p>
+      )}
+
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-zinc-100 dark:border-white/[0.05]">
+        <p className="text-xs text-zinc-500">{missing.length ? `Still needed: ${missing.join(', ')}` : <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5" /> Ready to send</span>}</p>
+        <div className="flex gap-2">
+          {onCancel && <button type="button" onClick={onCancel} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300">Cancel</button>}
+          <button type="button" onClick={() => void save(false)} disabled={!!busy} className="px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
+            {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save draft'}
+          </button>
+          <button type="submit" disabled={!!busy || missing.length > 0} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50">
+            {busy === 'submit' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {submitLabel}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}

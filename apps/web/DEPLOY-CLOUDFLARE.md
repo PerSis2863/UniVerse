@@ -100,6 +100,20 @@ a branch fails until that change has been deployed from `main` once.
   20 a minute per user for AI, uploads and support emails. Stripe's webhook is exempt.
 - **Demo login** (`DEMO_LOGIN_ENABLED`): leave it off for a real school. When it's on, the demo admin
   is read-only. Admin → Settings → Security shows whether it's on.
+- **Staff accounts need approval.** Picking "teacher" or "NGO representative" when signing up (or applying
+  from Settings) creates an application (`role_applications`, `src/server/modules/applications.ts`); the
+  account keeps student permissions until an admin approves it in Admin → Approvals. Admins can also
+  ask for more information or decline with a reason; applicants see every step at `/application` and
+  can reapply 7 days after a decline. People an admin invites (Users → Invite) with a role get it as
+  soon as they sign up with that email address, once it's verified.
+- **Owner console** (`/console`, `src/server/modules/owner.ts`): for the platform owner only. Set the secret
+  `SUPER_ADMIN_EMAILS` (comma separated) in Cloudflare → universe-web → Settings → Variables and secrets.
+  An account becomes owner only when it signs in with Google (verified email) as one of those addresses;
+  demo logins never do. Everyone else gets "not found" for the page and its API. The owner can see
+  every account, all linked records, private conversations and calls, sign-ins and actions, and edit or
+  delete any record; every change is kept in `owner_changes` and can be undone. Other admins can't
+  suspend or delete the owner account. `src/server/owner-schema.json` (table descriptions for the
+  editor) is regenerated from the schema by `pnpm build`.
 - **Permissions** are checked on the server for every change (course teacher, author or admin); the
   shared checks live in `src/server/access.ts`.
 - **Uploads** only accept documents, images, audio and video (`uploadMime` in `src/lib/storage.ts`).

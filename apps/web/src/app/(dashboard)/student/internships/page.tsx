@@ -238,7 +238,7 @@ export default function StudentInternships() {
                   </div>
                 </div>
                 <div className="pt-4 mt-4 border-t border-zinc-200 dark:border-zinc-800">
-                  <button onClick={() => { setSelectedType('All'); setShowFilterDrawer(false); toast.success('Filters cleared'); }} className="w-full py-2.5 px-4 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors">Clear All Filters</button>
+                  <button onClick={() => { setSelectedType('All'); setShowFilterDrawer(false); toast.success('Filters cleared'); }} className="w-full py-2.5 px-4 bg-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors">Clear All Filters</button>
                 </div>
               </div>
             </motion.div>
@@ -374,7 +374,7 @@ export default function StudentInternships() {
                             setFormData({ resume: app.cvUrl || '', coverLetter: app.coverLetter || '' });
                             setShowMyApplications(false);
                           }} 
-                          className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                          className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                         >
                           <Edit2 className="w-4 h-4" /> Edit Details
                         </button>
