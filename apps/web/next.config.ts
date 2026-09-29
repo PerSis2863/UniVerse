@@ -11,8 +11,10 @@ const withPWA = withPWAInit({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
   register: true,
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
+  // Off: these fetched every page a second time in the background, just to store it for offline
+  // use, doubling the Worker requests of each click. Pages are still cached as they load.
+  cacheOnFrontEndNav: false,
+  aggressiveFrontEndNavCaching: false,
   // Don't reload the page when the connection comes back (it wiped whatever people were typing);
   // OfflineBar refetches the data on screen instead.
   reloadOnOnline: false,
@@ -46,6 +48,21 @@ const withPWA = withPWAInit({
         // so nothing leaks between people sharing a computer and plan changes show immediately.
         urlPattern: /\/api\//,
         handler: 'NetworkOnly',
+      },
+      {
+        // Pages as they load (full loads): kept for offline use. No extra requests: the copy is
+        // saved from the normal response. Pages hold no personal data (that comes from /api).
+        urlPattern: ({ request, url, sameOrigin }: { request: Request; url: URL; sameOrigin: boolean }) =>
+          sameOrigin && request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
+        handler: 'NetworkFirst',
+        options: { cacheName: 'pages', networkTimeoutSeconds: 8, expiration: { maxEntries: 80, maxAgeSeconds: 14 * 24 * 60 * 60 } },
+      },
+      {
+        // In-app navigation (React Server Component payloads), likewise kept for offline use.
+        urlPattern: ({ request, url, sameOrigin }: { request: Request; url: URL; sameOrigin: boolean }) =>
+          sameOrigin && request.headers.get('RSC') === '1' && request.headers.get('Next-Router-Prefetch') !== '1' && !url.pathname.startsWith('/api/'),
+        handler: 'NetworkFirst',
+        options: { cacheName: 'pages-rsc', networkTimeoutSeconds: 8, matchOptions: { ignoreSearch: true }, expiration: { maxEntries: 80, maxAgeSeconds: 14 * 24 * 60 * 60 } },
       },
     ],
   },

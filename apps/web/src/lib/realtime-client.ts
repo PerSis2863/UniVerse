@@ -136,10 +136,20 @@ export function startRealtime(): () => void {
   let retry: ReturnType<typeof setTimeout> | undefined;
   let ping: ReturnType<typeof setInterval> | undefined;
   let attempt = 0;
+  let openedAt = 0;
+  // Each attempt costs two requests (ticket + connection), so retries back off (1 s … 5 min, with
+  // jitter) and stop after MAX_ATTEMPTS failures in a row until the tab is used again. The counter
+  // only resets once a connection has stayed up for a while: a connection that opens and drops at
+  // once used to reset it and retry every second, forever.
+  const MAX_ATTEMPTS = 8;
+  const STABLE_MS = 60_000;
+  const backoff = () => Math.min(5 * 60_000, 1000 * 2 ** attempt++) * (0.8 + Math.random() * 0.4);
 
   const schedule = (ms: number) => {
     clearTimeout(retry);
-    if (!stopped) retry = setTimeout(connect, ms);
+    if (stopped) return;
+    if (attempt > MAX_ATTEMPTS) return; // give up for now; polling covers it; onVisible restarts
+    retry = setTimeout(connect, ms);
   };
 
   async function connect() {
@@ -151,14 +161,14 @@ export function startRealtime(): () => void {
       if (!res.ok) throw new Error(String(res.status));
       path = ((await res.json()) as { path: string }).path;
     } catch {
-      return schedule(Math.min(30_000, 1000 * 2 ** attempt++));
+      return schedule(backoff());
     }
     if (stopped || ws) return;
 
     const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${path}`);
     ws = socket;
     socket.onopen = () => {
-      attempt = 0;
+      openedAt = Date.now();
       setConnected(true);
       clearInterval(ping);
       ping = setInterval(() => socket.readyState === WebSocket.OPEN && socket.send('ping'), 25_000);
@@ -175,15 +185,17 @@ export function startRealtime(): () => void {
       if (ws === socket) ws = null;
       clearInterval(ping);
       setConnected(false);
-      schedule(Math.min(30_000, 1000 * 2 ** attempt++));
+      if (openedAt && Date.now() - openedAt > STABLE_MS) attempt = 0; // it was working: retry soon
+      openedAt = 0;
+      schedule(backoff());
     };
   }
 
   // Phones suspend background tabs: reconnect as soon as the tab is visible again.
   const onVisible = () => {
     if (document.visibilityState === 'visible' && !ws) {
-      attempt = 0;
-      schedule(0);
+      attempt = Math.min(attempt, 3); // someone is here: try again, without restarting the backoff
+      schedule(500);
     }
   };
   const onOnline = () => onVisible();

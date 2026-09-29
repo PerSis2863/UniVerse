@@ -284,6 +284,7 @@ export default function BoardCanvas({
     let retry: ReturnType<typeof setTimeout> | null = null;
     let ping: ReturnType<typeof setInterval> | null = null;
     let attempt = 0;
+    let openedAt = 0;
 
     const connect = async () => {
       if (stopped) return;
@@ -312,7 +313,7 @@ export default function BoardCanvas({
         }
         switch (msg.type) {
           case 'init':
-            attempt = 0;
+            openedAt = Date.now();
             me.current = msg.me;
             known.current = new Map();
             roomFiles.current = new Set();
@@ -367,7 +368,10 @@ export default function BoardCanvas({
         if (stopped) return;
         if (ev.code === 4004) return callbacks.current.onGone('deleted');
         // 4003: access changed. Reconnect straight away with a fresh ticket (it says what we may do now).
-        if (ev.code === 4003) attempt = 0;
+        // Otherwise only retry quickly if the connection had been working for a while (each attempt
+        // costs two requests; a room that drops people at once must not be retried in a loop).
+        if (ev.code === 4003 || (openedAt && Date.now() - openedAt > 30_000)) attempt = 0;
+        openedAt = 0;
         schedule();
       };
     };
@@ -375,14 +379,17 @@ export default function BoardCanvas({
     const schedule = () => {
       if (stopped) return;
       callbacks.current.onStatus('offline');
-      const wait = [300, 1000, 2000, 5000, 10000][Math.min(attempt, 4)];
+      if (attempt >= 10) return; // stays "Reconnecting…"; coming back to the tab or going online retries
+      const wait = [500, 1000, 2000, 5000, 10000, 30000, 60000][Math.min(attempt, 6)];
       attempt++;
       retry = setTimeout(connect, wait);
     };
 
     // Reconnect at once when the device comes back online or the tab is shown again.
     const wake = () => {
-      if (!ws.current && retry) {
+      if (document.visibilityState === 'hidden') return;
+      if (!ws.current && (retry || attempt >= 10)) {
+        attempt = Math.min(attempt, 3);
         clearTimeout(retry);
         retry = null;
         void connect();

@@ -140,6 +140,43 @@ preview build of a branch that adds one fails until that change has been deploye
 - **Uploads** only accept documents, images, audio and video (`uploadMime` in `src/lib/storage.ts`).
 - User-supplied links are rendered through `safeHref` (`src/lib/safe-href.ts`).
 
+## Staying on the free plan (100,000 Worker requests a day)
+
+Only requests that run the Worker count: pages, API calls, live-update connections. Pictures, code, fonts
+and other files in `public/` are served free by Cloudflare and never count. Measured on a local build:
+opening the dashboard costs ~9 requests, each page opened from the menu ~2 (the page and its data),
+and an open tab that nobody is using costs nothing. A student who signs in and opens 20 pages uses about
+50–60 requests, so the free plan covers roughly 1,500 active people a day. Beyond that, upgrade to Workers
+Paid ($5/month, 10 million requests a month included).
+
+What keeps the count low (don't undo these without measuring): links don't prefetch
+(`src/components/ui/Link.tsx`), the service worker saves pages as they load instead of fetching them again
+(`next.config.ts`), polling stops while live updates are connected and in idle tabs
+(`src/lib/realtime-client.ts`), reconnects back off and give up after repeated failures, and robots.txt keeps
+crawlers out of the app.
+
+**Block bots before they reach the Worker** (blocked requests don't count). In the Cloudflare dashboard, open
+the universeimpact.com zone:
+
+1. **Security → Bots:** turn on **Block AI bots**. Leave *Bot Fight Mode* off: on the free plan it can't be
+   bypassed for Stripe's payment webhooks.
+2. **Security → WAF → Custom rules → Create rule** (the free plan allows 5):
+   - *Block scanners*, action **Block**, expression:
+     ```
+     (http.request.uri.path contains ".php") or (http.request.uri.path contains "/wp-") or
+     (starts_with(http.request.uri.path, "/.env")) or (starts_with(http.request.uri.path, "/.git")) or
+     (http.request.uri.path contains "/cgi-bin") or (http.request.uri.path contains "phpmyadmin") or
+     (http.request.uri.path contains "xmlrpc") or (http.request.uri.path contains "/actuator") or
+     (http.request.uri.path contains ".asp")
+     ```
+   - *Block empty user agents*, action **Block**, expression:
+     `(http.user_agent eq "") and not starts_with(http.request.uri.path, "/api/webhooks/")`
+3. **Security → WAF → Rate limiting rules** (1 free rule): *API floods*: when
+   `starts_with(http.request.uri.path, "/api/")`, count by IP, **300 requests per 10 seconds**, action **Block**
+   for 10 seconds. (Generous because a whole campus can share one IP address.)
+4. **Security → Settings:** keep **Browser Integrity Check** on.
+5. Check the effect in **Security → Events** (what was blocked) and **Workers & Pages → universe-web → Metrics**.
+
 ## Notes
 
-- The Worker is about 3.4 MB gzipped (minified). The Workers free plan allows 3 MB, the paid plan ($5/month) 10 MB.
+- The Worker is about 3.4 MB gzipped (minified). Cloudflare's documented script limit is 3 MB on the free plan and 10 MB on paid; deployments have been succeeding, but if one fails with a size error, that's the cause.
