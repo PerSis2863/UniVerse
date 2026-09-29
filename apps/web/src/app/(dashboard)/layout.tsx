@@ -11,6 +11,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
 import { DataConfig } from '@/components/DataConfig';
+import { reportSession } from '@/lib/sign-in-history';
 
 type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null };
 
@@ -60,6 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       signedIn = !!firebaseUser || !!token?.startsWith('mock-token-');
       if (!cancelled) setIsSignedIn(signedIn);
       if (signedIn) {
+        reportSession('SESSION');
         // With a saved profile the app shows right away and refreshes it in the background;
         // without one, wait for it so the navigation knows the role.
         if (useAuthStore.getState().user) void syncProfile();

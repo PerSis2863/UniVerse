@@ -8,6 +8,7 @@ import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { useState } from 'react';
 import { EmailNotificationsSwitch } from '@/components/notifications/EmailNotificationsSwitch';
+import { RecentSignIns } from '@/components/security/RecentSignIns';
 
 type Settings = {
   organization: { name: string };
@@ -135,6 +136,7 @@ export default function AdminSettings() {
                     <StatusRow ok={data.security.pendingApplications === 0} neutral title={`${data.security.pendingApplications} application${data.security.pendingApplications === 1 ? '' : 's'} waiting`} detail="Review them in Approvals." />
                   </ul>
                 )}
+                <RecentSignIns />
                 <Link href="/admin/audit" className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-500 hover:text-indigo-400">
                   See who changed what in the Activity Log →
                 </Link>

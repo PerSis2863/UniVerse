@@ -2,6 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
+import { Compass } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
@@ -96,6 +97,7 @@ export const navByRole: Record<string, NavItem[]> = {
     { href: '/student/support', label: 'nav.support', icon: Settings },
     { href: '/student/beesafe', label: 'nav.beesafe', icon: AlertTriangle },
     { href: '/student/settings?section=language', label: 'nav.settings', icon: Globe },
+    { href: '/explore', label: 'Explore modes', icon: Compass },
   ],
   TEACHER: [
     { href: '/teacher', label: 'nav.dashboard', icon: LayoutDashboard },
@@ -127,6 +129,7 @@ export const navByRole: Record<string, NavItem[]> = {
     },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
     { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
+    { href: '/explore', label: 'Explore modes', icon: Compass },
   ],
   ADMIN: [
     { href: '/admin', label: 'nav.overview', icon: LayoutDashboard },
@@ -175,6 +178,7 @@ export const navByRole: Record<string, NavItem[]> = {
     { href: '/admin/announcements', label: 'nav.announcements', icon: Bell },
     { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
+    { href: '/explore', label: 'Explore modes', icon: Compass },
   ],
 };
 

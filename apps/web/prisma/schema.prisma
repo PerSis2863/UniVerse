@@ -156,6 +156,8 @@ model User {
   medicalRecord          MedicalRecord?
   safetyAlerts           SafetyAlert[]           @relation("SafetyReporter")
 
+  loginEvents            LoginEvent[]
+
   // Applications to become a teacher / NGO representative (approved by an admin)
   roleApplications       RoleApplication[]       @relation("RoleApplicant")
   reviewedApplications   RoleApplication[]       @relation("RoleReviewer")
@@ -692,6 +694,25 @@ model RoleApplication {
   @@index([status, submittedAt])
   @@index([userId, createdAt])
   @@map("role_applications")
+}
+
+/// Sign-ins and app opens: when, how, and from where (for the owner's console).
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String   @default("SIGN_IN") // SIGN_IN (typed credentials / Google), SIGN_UP, SESSION (opened the app while signed in)
+  method    String? // google, password, phone, demo
+  ip        String?
+  country   String?
+  city      String?
+  userAgent String?
+  device    String? // "Chrome on Android", ...
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("login_events")
 }
 
 /// Who did what: role and status changes, grades, credential decisions, deletions, ...

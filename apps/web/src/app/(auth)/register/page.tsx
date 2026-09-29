@@ -10,6 +10,7 @@ import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, up
 import { api } from '@/lib/api';
 import { awaitingApproval } from '@/types';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
+import { reportSession } from '@/lib/sign-in-history';
 
 const ROLES = [
   {
@@ -59,13 +60,14 @@ export default function RegisterPage() {
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);
 
-  const handleRegisterSuccess = async (token: string, displayName: string) => {
+  const handleRegisterSuccess = async (token: string, displayName: string, method?: 'google' | 'password' | 'phone') => {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
       const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole });
       const me = { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status || 'ACTIVE', createdAt: user.createdAt || new Date().toISOString(), application: user.application ?? null };
       setUser(me);
+      reportSession('SIGN_UP', method);
       // Teacher / NGO accounts wait for an admin: they continue on the application form.
       if (awaitingApproval(me)) router.push('/application');
       else router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
@@ -84,7 +86,7 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
       const token = await userCredential.user.getIdToken();
-      await handleRegisterSuccess(token, name);
+      await handleRegisterSuccess(token, name, 'password');
     } catch (err: any) {
       setError(err.message || 'Failed to create account. Please try again.');
     } finally {
@@ -99,7 +101,7 @@ export default function RegisterPage() {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       const token = await userCredential.user.getIdToken();
-      await handleRegisterSuccess(token, userCredential.user.displayName || '');
+      await handleRegisterSuccess(token, userCredential.user.displayName || '', 'google');
     } catch (err: any) {
       setError(err.message || 'Failed to sign up with Google.');
     } finally {
@@ -190,7 +192,7 @@ export default function RegisterPage() {
         {step === 'credentials' && (
           <>
             {showPhoneFlow ? (
-              <PhoneAuthFlow isRegister={true} onSuccess={handleRegisterSuccess} onCancel={() => setShowPhoneFlow(false)} />
+              <PhoneAuthFlow isRegister={true} onSuccess={(token, n) => handleRegisterSuccess(token, n ?? '', 'phone')} onCancel={() => setShowPhoneFlow(false)} />
             ) : (
               <>
                 {/* Role badge */}

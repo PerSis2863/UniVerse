@@ -11,6 +11,7 @@ import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { toast } from 'sonner';
 import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermissionPrompt';
+import { RecentSignIns } from '@/components/security/RecentSignIns';
 
 export default function StudentSettings() {
   const [user, setUser] = useState<any>(null);
@@ -290,6 +291,9 @@ export default function StudentSettings() {
                       }} className="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2">
                         <Shield className="w-4 h-4" /> Change Password
                       </button>
+                      <div className="pt-2">
+                        <RecentSignIns />
+                      </div>
                     </motion.div>
                   )}
 

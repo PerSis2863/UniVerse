@@ -4,6 +4,7 @@ import { UnauthorizedException } from '../http';
 import { extractBearer, forgetUser, isDemoAccount, isDemoLoginEnabled, verifyFirebaseIdToken } from '../auth';
 import { REQUESTABLE_ROLES, approveInvited, currentApplication, startSignupApplication } from './applications';
 import { audit } from '../audit';
+import { recordLogin } from '../logins';
 
 const userSelect = {
   id: true, name: true, email: true, role: true, status: true, avatar: true,
@@ -17,6 +18,22 @@ export default function auth(router: Router) {
   const r = router.controller('auth');
 
   r.get('me', async ({ user }) => ({ ...(await getMe(user.id)), application: await currentApplication(user.id) }));
+
+  // Sign-in history (Settings → Privacy): the app reports sign-ins, sign-ups and app opens.
+  r.post('session', async ({ user, body, req }) => {
+    const kind = body?.kind === 'SIGN_UP' ? 'SIGN_UP' : body?.kind === 'SIGN_IN' ? 'SIGN_IN' : 'SESSION';
+    const token = extractBearer(req.headers.get('authorization'));
+    await recordLogin(user.id, req, kind, token?.startsWith('mock-token-') ? 'demo' : body?.method);
+    return { ok: true };
+  });
+  r.get('sessions', ({ user }) =>
+    prisma.loginEvent.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, kind: true, method: true, ip: true, country: true, city: true, device: true, createdAt: true },
+    }),
+  );
 
   r.post('login', { public: true }, async ({ body }) => {
     if (isDemoLoginEnabled() && isDemoAccount(body?.email)) {
