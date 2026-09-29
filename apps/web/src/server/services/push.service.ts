@@ -19,8 +19,8 @@ export class PushService {
     });
   }
 
-  async unsubscribe(endpoint: string) {
-    await prisma.pushSubscription.deleteMany({ where: { endpoint } });
+  async unsubscribe(endpoint: string, userId: string) {
+    await prisma.pushSubscription.deleteMany({ where: { endpoint, userId } });
   }
 
   async sendToUser(userId: string, payload: { title: string; body: string; icon?: string; url?: string }) {

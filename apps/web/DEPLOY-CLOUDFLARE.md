@@ -93,6 +93,18 @@ The Durable Object is created by the first **production** deploy (the `migration
 `wrangler.jsonc`). Preview builds (`opennextjs-cloudflare upload`) can't create it, so a preview build of
 a branch fails until that change has been deployed from `main` once.
 
+## Security
+
+- **Rate limits** (`ratelimits` in `wrangler.jsonc`, enforced in `cloudflare/worker.ts` before a request
+  reaches the app): 300 API calls a minute per signed-in user, 1,500 a minute per IP address, and
+  20 a minute per user for AI, uploads and support emails. Stripe's webhook is exempt.
+- **Demo login** (`DEMO_LOGIN_ENABLED`): leave it off for a real school. When it's on, the demo admin
+  is read-only. Admin → Settings → Security shows whether it's on.
+- **Permissions** are checked on the server for every change (course teacher, author or admin); the
+  shared checks live in `src/server/access.ts`.
+- **Uploads** only accept documents, images, audio and video (`uploadMime` in `src/lib/storage.ts`).
+- User-supplied links are rendered through `safeHref` (`src/lib/safe-href.ts`).
+
 ## Notes
 
 - The Worker is about 3.2 MB gzipped (minified). The Workers free plan allows 3 MB, the paid plan ($5/month) 10 MB.

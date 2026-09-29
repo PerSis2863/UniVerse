@@ -9,7 +9,7 @@ export async function GET(req: Request, { params }: Ctx) {
   const file = await prisma.storedFile.findUnique({ where: { key }, select: { name: true, mime: true, size: true, data: true } });
   if (!file) return new Response('Not found', { status: 404 });
 
-  const safeInline = /^(image|audio|video)\//.test(file.mime) || file.mime === 'application/pdf' || file.mime === 'text/plain';
+  const safeInline = (/^(image|audio|video)\//.test(file.mime) && !/svg|xml/.test(file.mime)) || file.mime === 'application/pdf' || file.mime === 'text/plain';
   const headers: Record<string, string> = {
     'Content-Type': file.mime,
     'Content-Length': String(file.size),
@@ -17,6 +17,9 @@ export async function GET(req: Request, { params }: Ctx) {
     'Content-Disposition': `${safeInline ? 'inline' : 'attachment'}; filename="${file.name.replace(/"/g, '')}"`,
     'X-Content-Type-Options': 'nosniff',
   };
+  // A file can never run scripts on this site, whatever it contains. (Not for PDFs: Chrome won't
+  // show a sandboxed PDF, and its viewer is isolated anyway.)
+  if (file.mime !== 'application/pdf') headers['Content-Security-Policy'] = "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox";
 
   // Support range requests so audio/video can be played and scrubbed.
   const range = req.headers.get('range');

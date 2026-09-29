@@ -8,8 +8,8 @@ export default function notificationsModule(router: Router) {
     await pushService.subscribe(user.id, body.subscription);
     return { success: true, message: 'Subscribed to push notifications' };
   });
-  r.post('unsubscribe', async ({ body }) => {
-    await pushService.unsubscribe(body.endpoint);
+  r.post('unsubscribe', async ({ body, user }) => {
+    if (typeof body?.endpoint === 'string') await pushService.unsubscribe(body.endpoint, user.id);
     return { success: true, message: 'Unsubscribed from push notifications' };
   });
   r.get('vapid-public-key', { public: true }, () => ({ publicKey: process.env.VAPID_PUBLIC_KEY || '' }));

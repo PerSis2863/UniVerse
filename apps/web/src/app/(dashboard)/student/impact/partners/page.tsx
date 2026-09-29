@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Topbar } from '@/components/layout/Topbar';
 import { Building2, HandHeart, Globe2, Handshake, MapPin, ExternalLink, Search } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
+import { safeHref } from '@/lib/safe-href';
 
 interface Partner {
   id: string;
@@ -152,7 +153,7 @@ export default function GlobalPartnersPage() {
                       <strong className="text-zinc-900 dark:text-white">{p.partnerships?.length ?? 0}</strong> active partnership{p.partnerships?.length === 1 ? '' : 's'}
                     </span>
                     {p.websiteUrl && (
-                      <a href={p.websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-indigo-500 hover:text-indigo-400 font-semibold">
+                      <a href={safeHref(p.websiteUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-indigo-500 hover:text-indigo-400 font-semibold">
                         Website <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     )}

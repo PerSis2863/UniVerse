@@ -120,8 +120,8 @@ export class ImpactService {
     };
   }
 
-  async awardPoints(userId: string, data: any) {
-    const result = await prisma.impactPoint.create({ data: { userId, ...data } });
+  async awardPoints(userId: string, data: { points: number; reason: string; sourceType: string; sourceId?: string | null }) {
+    const result = await prisma.impactPoint.create({ data: { userId, points: data.points, reason: data.reason, sourceType: data.sourceType, sourceId: data.sourceId ?? null } });
     // Update XP
     const total = await prisma.impactPoint.aggregate({ where: { userId }, _sum: { points: true } });
     const xp = total._sum.points || 0;
@@ -527,9 +527,9 @@ export class ImpactService {
    * The certificate as a print-ready page (the old API rendered a PDF with a headless browser,
    * which Workers can't run). It opens the browser's print dialog, where "Save as PDF" gives the file.
    */
-  async generateCertificateHtml(id: string) {
-    const doc = await prisma.studentDocument.findUnique({ where: { id }, include: { user: true } });
-    if (!doc || !doc.isVerified) throw new Error('Certificate not found or not verified');
+  async generateCertificateHtml(id: string, viewer: { id: string; role: string }) {
+    const doc = await prisma.studentDocument.findUnique({ where: { id }, include: { user: { select: { name: true } } } });
+    if (!doc || !doc.isVerified || (doc.userId !== viewer.id && viewer.role !== 'ADMIN')) throw new Error('Certificate not found or not verified');
     const html = getCertificateHtml({
       studentName: doc.user.name || 'Student',
       certificateTitle: doc.title,

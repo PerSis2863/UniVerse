@@ -1,6 +1,6 @@
 'use client';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { motion } from 'framer-motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import {

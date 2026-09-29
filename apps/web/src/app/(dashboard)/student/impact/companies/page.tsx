@@ -2,12 +2,13 @@
 
 import { useMemo } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { motion } from 'framer-motion';
 import { Building2, ExternalLink, MapPin } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { fetcher } from '@/lib/fetcher';
+import { safeHref } from '@/lib/safe-href';
 
 type Partner = { id: string; name: string; type: string; description: string | null; websiteUrl: string | null; logoUrl: string | null; country: string | null };
 type Internship = { id: string; title: string; location: string | null; company: { id: string; name: string; logoUrl: string | null; websiteUrl: string | null; sector: string | null; description: string | null } };
@@ -58,7 +59,7 @@ export default function CorporatePartnersPage() {
                       <h3 className="font-bold text-zinc-900 dark:text-white truncate">{c.name}</h3>
                       <p className="text-xs text-zinc-500 inline-flex items-center gap-1">{c.sector ?? 'Company'}{c.country && <><MapPin className="w-3 h-3 ml-1" />{c.country}</>}</p>
                     </div>
-                    {c.websiteUrl && <a href={c.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-500" aria-label="Website"><ExternalLink className="w-4 h-4" /></a>}
+                    {c.websiteUrl && <a href={safeHref(c.websiteUrl)} target="_blank" rel="noopener noreferrer" className="text-indigo-500" aria-label="Website"><ExternalLink className="w-4 h-4" /></a>}
                   </div>
                   {c.description && <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{c.description}</p>}
                   {c.roles.length > 0 ? (

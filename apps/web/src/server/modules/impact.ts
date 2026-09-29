@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import type { Router } from '../router';
 import { impactService as impact } from '../services/impact.service';
 import { extractBearer, resolveUser } from '../auth';
 import { CredentialDecisionDto, IssueCredentialDto, RequestCredentialDto, validate } from '../dto';
 import prisma from '@/lib/db';
+import { BadRequestException, ForbiddenException } from '../http';
 import { audit } from '../audit';
 import { later, notify } from '../email';
 
@@ -34,8 +36,24 @@ export default function impactModule(router: Router) {
   r.get('dashboard/stats', ({ user }) => impact.getDashboardStats(user.id));
   r.get('my-points', ({ user }) => impact.getMyPoints(user.id));
   r.get('my-level', ({ user }) => impact.getMyLevel(user.id));
+  // Teachers can award up to 500 points at a time, only to students in their own courses.
   r.post('award-points', { roles: ['ADMIN', 'TEACHER'] }, async ({ body, user, req }) => {
-    const result = await impact.awardPoints(body.userId, body);
+    const points = Number(body?.points);
+    const max = user.role === 'ADMIN' ? 10_000 : 500;
+    if (!Number.isInteger(points) || points === 0 || Math.abs(points) > max) throw new BadRequestException(`points must be a whole number between -${max} and ${max}`);
+    const reason = typeof body?.reason === 'string' ? body.reason.trim().slice(0, 200) : '';
+    if (!reason) throw new BadRequestException('reason is required');
+    if (typeof body?.userId !== 'string') throw new BadRequestException('userId is required');
+    if (user.role !== 'ADMIN') {
+      const teaches = await prisma.enrollment.findFirst({ where: { studentId: body.userId, course: { teacherId: user.id } }, select: { id: true } });
+      if (!teaches) throw new ForbiddenException('You can only award points to students in your courses.');
+    }
+    const result = await impact.awardPoints(body.userId, {
+      points,
+      reason,
+      sourceType: typeof body.sourceType === 'string' ? body.sourceType.slice(0, 40) : 'MANUAL',
+      sourceId: typeof body.sourceId === 'string' ? body.sourceId.slice(0, 100) : null,
+    });
     audit(user, async () => ({
       action: 'impact.points_awarded',
       summary: `Awarded ${result.points} impact points to ${await userName(result.userId)}${result.reason ? ` (${result.reason})` : ''}`,
@@ -114,10 +132,19 @@ export default function impactModule(router: Router) {
 
   // Opened in a new tab (window.open), so the token may come as ?token= instead of a header.
   r.get<{ id: string }>('certificates/:id/pdf', { public: true }, async ({ params, req, query }) => {
-    await resolveUser(extractBearer(req.headers.get('authorization')) ?? (typeof query.token === 'string' ? query.token : null));
+    const viewer = await resolveUser(extractBearer(req.headers.get('authorization')) ?? (typeof query.token === 'string' ? query.token : null));
     try {
-      const html = await impact.generateCertificateHtml(params.id);
-      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      const html = await impact.generateCertificateHtml(params.id, viewer);
+      // Only the page's own print script may run (plus its fonts and styles).
+      const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
+      return new Response(html, {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'private, no-store',
+          'Referrer-Policy': 'no-referrer',
+          'Content-Security-Policy': `default-src 'none'; script-src ${scripts.join(' ') || "'none'"}; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+        },
+      });
     } catch (error) {
       return new Response((error as Error).message, { status: 404 });
     }

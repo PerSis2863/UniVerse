@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Mail, Lock, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
 import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider } from 'firebase/auth';

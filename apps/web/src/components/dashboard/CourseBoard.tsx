@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import useSWR, { type KeyedMutator } from 'swr';
 import { haptic } from '@/lib/haptics';
 import { motion } from 'framer-motion';
@@ -22,6 +22,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { isUploadedFileUrl } from '@/lib/file-urls';
+import { safeHref } from '@/lib/safe-href';
 
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -394,7 +395,7 @@ function Readings({ board, canManage, refresh }: SectionProps) {
           {board.readings.map((r) => (
             <div key={r.id} className={`${card} p-5 flex items-start gap-3`}>
               <div className="flex-1 min-w-0">
-                {r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer" className="font-bold text-sm text-zinc-900 dark:text-white hover:text-indigo-500 inline-flex items-center gap-1.5">{r.title} <ExternalLink className="w-3.5 h-3.5" /></a>
+                {r.url ? <a href={safeHref(r.url)} target="_blank" rel="noopener noreferrer" className="font-bold text-sm text-zinc-900 dark:text-white hover:text-indigo-500 inline-flex items-center gap-1.5">{r.title} <ExternalLink className="w-3.5 h-3.5" /></a>
                   : <p className="font-bold text-sm text-zinc-900 dark:text-white">{r.title}</p>}
                 {r.description && <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{r.description}</p>}
                 {r.category && <span className="inline-block mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">{r.category}</span>}

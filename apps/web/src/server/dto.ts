@@ -51,7 +51,7 @@ export const CreateKnowledgeHubDto = z
     title: z.string(),
     description: z.string().optional(),
     category: z.string().optional(),
-    url: z.string().url().optional(),
+    url: z.string().url().refine((u) => /^https?:\/\//i.test(u), 'must start with http:// or https://').optional(),
     courseId: z.string().optional(),
     isPublic: z.boolean().optional(),
   })

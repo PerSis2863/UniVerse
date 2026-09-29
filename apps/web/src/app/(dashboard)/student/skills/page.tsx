@@ -2,7 +2,7 @@
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { Target, Award, CheckCircle2, ChevronRight, BookOpen, Code, Terminal, Monitor, Layout, Database, MessageSquare, Users, Brain, Clock } from 'lucide-react';
 import { toast } from 'sonner';

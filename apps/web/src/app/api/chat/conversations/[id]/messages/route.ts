@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { later, notify } from '@/server/email';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
-import { publishChat } from '@/server/realtime';
+import { deliver } from '@/server/realtime';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
@@ -179,7 +179,6 @@ export async function POST(req: Request, { params }: Ctx) {
     prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: new Date(), typingUntil: null } }),
   ]);
   const [out] = await decorate([serializeMessage(message)], user.id);
-  publishChat(id);
   later(() => notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? '')));
   return NextResponse.json(out, { status: 201 });
 }
@@ -188,11 +187,14 @@ const AWAY_MS = 5 * 60_000;
 const EMAIL_GAP_MS = 60 * 60_000;
 const PREVIEW: Record<string, string> = { IMAGE: '📷 Photo', FILE: '📎 File', AUDIO: '🎤 Voice message', VIDEO: '🎬 Video', CALL: '📞 Call', POLL: '📊 Poll', LOCATION: '📍 Location', CONTACT: '👤 Contact' };
 
-// Members who haven't been active for a few minutes get a notification (and an email if they
-// have them on), at most once an hour per chat, so a busy chat doesn't flood their inbox.
+// Pushes the message to everyone's open tabs. Members who don't have UniVerse open get a
+// notification (and an email if they have them on), at most once an hour per chat, so a busy chat
+// doesn't flood their inbox.
 async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string) {
+  const everyone = await prisma.conversationParticipant.findMany({ where: { conversationId }, select: { userId: true } });
+  const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId });
   const now = new Date();
-  const [convo, members] = await Promise.all([
+  const [convo, allMembers] = await Promise.all([
     prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true } }),
     prisma.conversationParticipant.findMany({
       where: {
@@ -204,6 +206,8 @@ async function notifyAway(conversationId: string, from: { id: string; name: stri
       select: { userId: true, user: { select: { role: true } } },
     }),
   ]);
+  // With live updates, "away" means no open tab; without them, no activity for a few minutes.
+  const members = online ? allMembers.filter((m) => !online.has(m.userId)) : allMembers;
   if (!convo || members.length === 0) return;
   const recent = await prisma.notification.findMany({
     where: { userId: { in: members.map((m) => m.userId) }, type: 'chat', link: { endsWith: `?c=${conversationId}` }, createdAt: { gt: new Date(now.getTime() - EMAIL_GAP_MS) } },

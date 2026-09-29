@@ -1,7 +1,7 @@
 import { getReceipt } from '@/lib/receipts';
 import { notFound } from 'next/navigation';
 import ReceiptActions from './ReceiptActions';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

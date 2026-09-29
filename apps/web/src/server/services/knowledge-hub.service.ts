@@ -12,9 +12,11 @@ export class KnowledgeHubService {
     });
   }
 
-  findAll() {
+  /** Public resources plus your own (admins see everything). */
+  findAll(user: { id: string; role: string }) {
     return prisma.knowledgeHubResource.findMany({
-      include: { author: { select: { name: true, email: true } }, course: { select: { name: true } } },
+      where: user.role === 'ADMIN' ? {} : { OR: [{ isPublic: true }, { authorId: user.id }] },
+      include: { author: { select: { name: true } }, course: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -24,17 +26,17 @@ export class KnowledgeHubService {
       where: {
         isPublic: true,
       },
-      include: { author: { select: { name: true, email: true } } },
+      include: { author: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: { id: string; role: string }) {
     const resource = await prisma.knowledgeHubResource.findUnique({
       where: { id },
-      include: { author: { select: { name: true, email: true } } },
+      include: { author: { select: { name: true } } },
     });
-    if (!resource) throw new NotFoundException('Resource not found');
+    if (!resource || (!resource.isPublic && resource.authorId !== user.id && user.role !== 'ADMIN')) throw new NotFoundException('Resource not found');
     return resource;
   }
 

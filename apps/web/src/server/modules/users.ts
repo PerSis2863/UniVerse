@@ -53,7 +53,16 @@ export default function users(router: Router) {
 
   r.get('me', ({ user }) => findOne(user.id));
 
-  r.get<{ id: string }>(':id', ({ params }) => findOne(params.id));
+  // Other people's contact details and grades (GPA) are for admins; everyone else gets a public card.
+  r.get<{ id: string }>(':id', async ({ params, user }) => {
+    if (user.role === 'ADMIN' || params.id === user.id) return findOne(params.id);
+    const card = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: { id: true, name: true, avatar: true, role: true, studentProfile: { select: { department: true, year: true } }, teacherProfile: { select: { department: true } } },
+    });
+    if (!card) throw new NotFoundException('User not found');
+    return card;
+  });
 
   r.post('invitations', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
     const email = String(body.email ?? '');

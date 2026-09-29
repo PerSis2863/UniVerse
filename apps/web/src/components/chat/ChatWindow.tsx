@@ -17,10 +17,15 @@ import { useLiveInterval } from '@/lib/realtime-client';
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const key = `/api/chat/conversations/${conversationId}/messages`;
-  // Live updates refresh the thread on every change; the slower poll keeps "typing…" and
-  // "online" fresh.
-  const refreshInterval = useLiveInterval(2500, 8000);
+  // Live updates refresh the thread on every change, so it only polls without them.
+  const refreshInterval = useLiveInterval(5000, 0);
   const { data, error, isLoading, mutate } = useSWR<ThreadResponse>(key, authedJson, { refreshInterval, revalidateOnFocus: true });
+  // "typing…" lasts 6 seconds on the server; check again once it would have run out.
+  useEffect(() => {
+    if (!data?.typing.length) return;
+    const t = setTimeout(() => void mutate(), 7000);
+    return () => clearTimeout(t);
+  }, [data, mutate]);
   const [older, setOlder] = useState<ChatMessage[]>([]);
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);

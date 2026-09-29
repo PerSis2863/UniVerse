@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { CheckCircle, Clock, ExternalLink, Loader2, ShieldCheck, XCircle, History, Link2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { api } from '@/lib/api';
+import { safeHref } from '@/lib/safe-href';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -140,7 +141,7 @@ export default function AdminCredentialVerificationPage() {
                     <span className="text-zinc-500">Hours <b className="text-zinc-900 dark:text-white">{item.hoursCompleted}</b></span>
                     <span className="text-zinc-500">People impacted <b className="text-zinc-900 dark:text-white">{item.peopleImpacted.toLocaleString()}</b></span>
                     {item.evidenceUrl && (
-                      <a href={item.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1">
+                      <a href={safeHref(item.evidenceUrl)} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1">
                         Evidence <ExternalLink className="w-3 h-3" />
                       </a>
                     )}

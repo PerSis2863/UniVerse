@@ -157,6 +157,8 @@ export class CoursesService {
   }
 
   async enroll(courseId: string, studentId: string) {
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { status: true } });
+    if (!course || course.status !== 'PUBLISHED') throw new NotFoundException('Course not found');
     return prisma.enrollment.upsert({
       where: { studentId_courseId: { studentId, courseId } },
       create: { studentId, courseId },

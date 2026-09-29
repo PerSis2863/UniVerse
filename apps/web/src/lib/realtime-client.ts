@@ -6,9 +6,11 @@ import { authedFetch } from './authed-fetch';
 import { isSampleMode } from './sample-mode';
 
 // Live updates in the browser: one WebSocket per tab (see cloudflare/worker.ts). Server events make
-// the matching SWR data refetch at once; while connected, pages poll much less often.
+// the matching SWR data refetch at once; while connected, chat and notifications don't poll.
 
 type ServerEvent = { type: 'hello' } | { type: 'chat'; conversationId: string } | { type: 'notification' } | { type: 'refresh'; keys: string[] };
+
+const startsWith = (prefix: string) => (key: unknown) => typeof key === 'string' && key.startsWith(prefix);
 
 let connected = false;
 const listeners = new Set<() => void>();
@@ -30,12 +32,74 @@ export function useRealtimeConnected() {
   );
 }
 
-/** Polling interval: `normal` without live updates, `live` while connected. */
-export function useLiveInterval(normal: number, live: number) {
-  return useRealtimeConnected() ? live : normal;
+// Is someone actually using this tab? Visible, focused and touched in the last few minutes.
+// Polling stops otherwise: a tab left open all day used to cost ~65,000 requests.
+const IDLE_MS = 3 * 60_000;
+let lastInput = Date.now();
+let active = false;
+const activeListeners = new Set<() => void>();
+let tracking = false;
+
+function computeActive() {
+  return document.visibilityState === 'visible' && document.hasFocus() && Date.now() - lastInput < IDLE_MS;
+}
+function refreshActive() {
+  const next = computeActive();
+  if (next === active) return;
+  active = next;
+  activeListeners.forEach((l) => l());
+  // Back after a break: catch up once instead of having polled all along.
+  if (next) {
+    void mutate(startsWith('/api/chat/'));
+    void mutate('/api/notifications');
+  }
+}
+function startTracking() {
+  if (tracking || typeof window === 'undefined') return;
+  tracking = true;
+  active = computeActive();
+  let last = 0;
+  const onInput = () => {
+    lastInput = Date.now();
+    if (!active && Date.now() - last > 500) {
+      last = Date.now();
+      refreshActive();
+    }
+  };
+  for (const e of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll']) window.addEventListener(e, onInput, { passive: true, capture: true });
+  window.addEventListener('focus', () => {
+    lastInput = Date.now();
+    refreshActive();
+  });
+  window.addEventListener('blur', refreshActive);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') lastInput = Date.now();
+    refreshActive();
+  });
+  setInterval(refreshActive, 15_000);
 }
 
-const startsWith = (prefix: string) => (key: unknown) => typeof key === 'string' && key.startsWith(prefix);
+/** True while someone is using this tab. */
+export function useUserActive() {
+  return useSyncExternalStore(
+    (l) => {
+      startTracking();
+      activeListeners.add(l);
+      return () => activeListeners.delete(l);
+    },
+    () => active,
+    () => false,
+  );
+}
+
+/**
+ * Polling interval for SWR: `normal` without live updates, `live` while connected (0 = rely on
+ * live updates alone), and no polling at all while nobody is using the tab.
+ */
+export function useLiveInterval(normal: number, live: number) {
+  const connected = useRealtimeConnected();
+  return useUserActive() ? (connected ? live : normal) : 0;
+}
 
 function handle(event: ServerEvent) {
   switch (event.type) {

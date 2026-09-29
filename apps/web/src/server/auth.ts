@@ -55,6 +55,18 @@ export function isDemoAccount(email: string | null | undefined): boolean {
   return list.includes(email.trim().toLowerCase());
 }
 
+/**
+ * The demo admin account is read-only: anyone can sign in as it when demo login is on, so it
+ * must not be able to change real people's roles, accounts, grades or credentials. It can still
+ * browse, chat and read notifications.
+ */
+const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/)/;
+export function demoWriteBlocked(req: Request, user: { role: string }, token: string | null): boolean {
+  if (!token?.startsWith('mock-token-') || user.role !== 'ADMIN') return false;
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return false;
+  return !DEMO_ADMIN_WRITABLE.test(new URL(req.url).pathname);
+}
+
 // ─── Token → user ───────────────────────────────────────────────────────────────────────────────
 
 export function extractBearer(value: string | undefined | null): string | null {
