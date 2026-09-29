@@ -7,6 +7,7 @@ import { forgetUser, isOwner, isOwnerEmail } from '../auth';
 import { audit } from '../audit';
 import { currentApplication } from './applications';
 import { TERMS_VERSION } from '@/lib/terms-version';
+import { exportUserData } from '../export';
 
 const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
@@ -83,6 +84,19 @@ export default function users(router: Router) {
   });
 
   // Accepting the Terms of Use & Privacy Notice (first sign-in, or after they change).
+  // "Download my data": a JSON file of everything that belongs to the signed-in person.
+  r.get('me/export', async ({ user, req }) => {
+    const data = await exportUserData(user.id);
+    audit(user, { action: 'user.data_exported', summary: `${user.name} downloaded their personal data`, targetType: 'User', targetId: user.id }, req);
+    return new Response(JSON.stringify(data, null, 2), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': `attachment; filename="universe-my-data-${new Date().toISOString().slice(0, 10)}.json"`,
+        'Cache-Control': 'no-store',
+      },
+    });
+  });
+
   r.post('me/terms', async ({ user, body }) => {
     if (body?.version !== TERMS_VERSION) throw new BadRequestException('Please reload the page to see the latest terms.');
     const updated = await prisma.user.update({ where: { id: user.id }, data: { termsVersion: TERMS_VERSION, termsAcceptedAt: new Date() }, select: safeSelect });

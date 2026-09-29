@@ -5,13 +5,14 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { ArrowLeft, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, PenTool, Share2, Trash2, Wallpaper } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { Avatar } from '@/components/chat/MessageBubble';
 import { ShareBoardDialog, type BoardMeta } from '@/components/boards/ShareBoardDialog';
 import type { BoardControls, BoardGone, BoardPeer, LiveStatus } from '@/components/boards/BoardCanvas';
+import type { TemplateId } from '@/components/boards/templates';
 import { cn } from '@/lib/utils';
 
 const BoardCanvas = dynamic(() => import('@/components/boards/BoardCanvas'), {
@@ -54,6 +55,8 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const fileInput = useRef<HTMLInputElement>(null);
   const photoMode = useRef<'background' | 'photo'>('photo');
   const [hasBg, setHasBg] = useState(false);
+  // ?template=… from "New board": used once, on the first open of the empty board.
+  const template = useSearchParams().get('template') as TemplateId | null;
 
   const myRole = role ?? board?.myRole ?? 'VIEWER';
   const canEdit = myRole !== 'VIEWER';
@@ -196,6 +199,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             boardId={id}
             title={board.title}
             canEdit={canEdit}
+            template={template}
             theme={dark ? 'dark' : 'light'}
             onControls={onControls}
             onBackground={setHasBg}

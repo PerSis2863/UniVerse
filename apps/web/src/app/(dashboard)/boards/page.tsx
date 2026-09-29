@@ -8,7 +8,9 @@ import { Copy, Globe2, Loader2, LogOut, MoreHorizontal, PenTool, Plus, Search, T
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
-import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
+import { confirmDialog } from '@/components/ui/Dialogs';
+import { NewBoardDialog } from '@/components/boards/NewBoardDialog';
+import type { TemplateId } from '@/components/boards/templates';
 import { Avatar } from '@/components/chat/MessageBubble';
 import { cn } from '@/lib/utils';
 
@@ -48,13 +50,13 @@ export default function BoardsPage() {
   const [creating, setCreating] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
 
-  const create = async () => {
-    const title = await promptDialog({ title: 'New whiteboard', placeholder: 'e.g. Biology revision map', confirmLabel: 'Create', maxLength: 120 });
-    if (title === null) return;
+  const [newOpen, setNewOpen] = useState(false);
+  const create = () => setNewOpen(true);
+  const createBoard = async (title: string, template: TemplateId) => {
     setCreating(true);
     try {
       const board = await authedJson<{ id: string }>('/api/boards', { method: 'POST', body: JSON.stringify({ title }) });
-      router.push(`/boards/${board.id}`);
+      router.push(`/boards/${board.id}${template !== 'blank' ? `?template=${template}` : ''}`);
     } catch (e) {
       toast.error((e as Error).message);
       setCreating(false);
@@ -186,6 +188,7 @@ export default function BoardsPage() {
           )}
         </div>
       </div>
+      {newOpen && <NewBoardDialog onCreate={createBoard} onClose={() => setNewOpen(false)} />}
     </>
   );
 }

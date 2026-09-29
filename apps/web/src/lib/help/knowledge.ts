@@ -39,7 +39,7 @@ export const HELP: HelpEntry[] = [
     a: 'Settings → Privacy & Security shows your recent sign-ins with the device, browser and approximate location. If one isn’t you, change your password and email security@universeimpact.com.',
     links: [{ label: 'Recent sign-ins', href: '/student/settings?section=privacy' }], roles: ['STUDENT'] },
   { id: 'delete-account', q: ['How do I delete my account?', 'close my account', 'remove my data', 'download my data'], tags: 'erase gdpr export privacy',
-    a: 'Email privacy@universeimpact.com from your account’s email address and say whether you want a copy of your data or your account deleted. We reply within 30 days. If your school manages your account, you can also ask its administrator.',
+    a: 'To get a copy of your data, use “Download my data” in Settings (Privacy & Security). To delete your account, email privacy@universeimpact.com from your account’s email address; we reply within 30 days. If your school manages your account, you can also ask its administrator.',
     links: [{ label: 'Your privacy choices', href: '/privacy-choices' }] },
   { id: 'teacher-account', q: ['How do I get a teacher account?', 'I am a teacher but I see the student portal', 'become a teacher', 'NGO account'], tags: 'staff approval application verify role',
     a: 'Choose “Teacher” or “NGO representative” when you sign up, or apply later from Settings. An administrator checks your details (you may be asked for a staff page or ID); until then your account works like a student account. You can follow your application at any time.',

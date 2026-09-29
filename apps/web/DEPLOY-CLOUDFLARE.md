@@ -96,6 +96,14 @@ OpenNext builds and adds:
   shared as links (the R2 CORS policy in step 3 must allow GET, or boards can show pictures but not
   include them in exported images). Excalidraw's fonts are copied into `public/excalidraw-assets` at build time
   (`scripts/copy-excalidraw-assets.mjs`, git-ignored) because the CSP blocks its CDN.
+- **Error monitoring** (`src/server/errors.ts`): browsers report crashes to `/api/errors` and the platform
+  API records its 500s. Problems are grouped (ids, numbers and build hashes ignored); the daily job asks
+  Gemini to diagnose new ones and emails a digest to `SUPER_ADMIN_EMAILS`. Review them in /console → Errors
+  (resolve, ignore; a resolved problem reopens if it happens again). Nothing is fixed in code automatically.
+  Pages broken by a new deploy (missing code chunk) reload themselves once.
+- **Help assistant**: common "how do I…" questions are answered on the device from `src/lib/help/knowledge.ts`
+  (instant, works offline); other questions go to Gemini, and answers are kept on the device for offline repeats.
+  Update the answers there when features change.
 - **Daily job** (`triggers.crons`, 08:00 UTC): quiz reminders, run through `src/app/api/cron/daily/route.ts`.
   Test locally with `npx wrangler dev --test-scheduled` and `curl "http://localhost:8787/__scheduled?cron=0+8+*+*+*"`.
 

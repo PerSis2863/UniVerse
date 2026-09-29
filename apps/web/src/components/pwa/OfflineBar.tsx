@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { WifiOff, Wifi } from 'lucide-react';
+import { mutate } from 'swr';
 
 export function OfflineBar() {
   const { isOnline, wasOffline } = useNetworkStatus();
@@ -12,8 +13,9 @@ export function OfflineBar() {
     if (!isOnline) {
       setVisible(true);
     } else if (wasOffline) {
-      // Show the "back online" message briefly
+      // Show the "back online" message briefly, and refetch whatever is on screen.
       setVisible(true);
+      void mutate(() => true);
       const t = setTimeout(() => setVisible(false), 3000);
       return () => clearTimeout(t);
     } else {
@@ -41,7 +43,7 @@ export function OfflineBar() {
       ) : (
         <>
           <WifiOff className="w-3.5 h-3.5" />
-          You&apos;re offline — some features may be limited
+          You&apos;re offline — pages you&apos;ve opened still work
         </>
       )}
     </div>

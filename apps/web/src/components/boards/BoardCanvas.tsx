@@ -18,6 +18,7 @@ import type { ExcalidrawElement, FileId, OrderedExcalidrawElement } from '@excal
 import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { isUploadedFileUrl } from '@/lib/file-urls';
+import { templateElements, type TemplateId } from './templates';
 
 // The live whiteboard: Excalidraw (every drawing tool, shapes, text, arrows, pictures, laser
 // pointer, export) connected to the board's room (BoardRoom in cloudflare/worker.ts). Each change
@@ -93,6 +94,7 @@ export default function BoardCanvas({
   boardId,
   title,
   canEdit,
+  template,
   theme,
   onControls,
   onBackground,
@@ -105,6 +107,8 @@ export default function BoardCanvas({
   boardId: string;
   title: string;
   canEdit: boolean;
+  /** For a brand-new board: a starting layout, added on first open if the board is empty. */
+  template?: TemplateId | null;
   theme: 'light' | 'dark';
   onControls: (controls: BoardControls | null) => void;
   onBackground: (has: boolean) => void;
@@ -318,6 +322,9 @@ export default function BoardCanvas({
             // Open on the drawing, whatever the screen size (not on an empty corner of the canvas).
             if (!framed.current) {
               framed.current = true;
+              if (template && template !== 'blank' && editable.current && msg.elements.length === 0 && !api.getSceneElements().length) {
+                api.updateScene({ elements: convertToExcalidrawElements(templateElements(template)), captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+              }
               if (api.getSceneElements().length) api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
             }
             break;
@@ -397,7 +404,7 @@ export default function BoardCanvas({
         void saveThumbnail(); // leaving right after an edit
       }
     };
-  }, [api, boardId, merge, showPeers, loadRoomFiles, uploadFiles, flush, saveThumbnail]);
+  }, [api, boardId, merge, showPeers, loadRoomFiles, uploadFiles, flush, saveThumbnail, template]);
 
   const onChange = useCallback(
     (elements: readonly OrderedExcalidrawElement[], _state: AppState, files: BinaryFiles) => {

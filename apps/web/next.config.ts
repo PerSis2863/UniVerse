@@ -13,7 +13,9 @@ const withPWA = withPWAInit({
   register: true,
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
-  reloadOnOnline: true,
+  // Don't reload the page when the connection comes back (it wiped whatever people were typing);
+  // OfflineBar refetches the data on screen instead.
+  reloadOnOnline: false,
   // The whiteboard's fonts (14 MB, mostly Chinese/Japanese glyphs) load on demand, not at install.
   publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!legal/**/*'],
   fallbacks: {

@@ -7,6 +7,7 @@ export const metadata: Metadata = { title: 'Your Privacy Choices', description: 
 const CHOICES = [
   { title: 'Email notifications', where: 'Settings → Notifications', text: 'Turn off emails about grades, credential decisions, missed messages and quiz reminders. You will still see them in the app.' },
   { title: 'Push notifications', where: 'Settings → Notifications, or your browser settings', text: 'Allow or block notifications on each device. You can change this at any time in your browser or phone settings.' },
+  { title: 'Download your data', where: 'Settings → Privacy & Security', text: 'Save a copy of your profile, grades, messages you sent, posts and boards as a JSON file, whenever you like.' },
   { title: 'Sign-in history', where: 'Settings → Privacy', text: 'See when and where your account was used (device, browser, approximate location). If you don’t recognise a sign-in, change your password and contact us.' },
   { title: 'Medical information', where: 'Student Life → Medical', text: 'Adding medical details is optional. You can change or clear them whenever you want.' },
   { title: 'Whiteboard sharing', where: 'Any whiteboard → Share', text: 'Choose exactly who can view or edit each board, and turn link sharing on or off.' },
@@ -56,7 +57,10 @@ export default function PrivacyChoicesPage() {
           'restrict or object to how we use your data, or withdraw consent you gave (for example for medical information).',
         ]} />
         <p>
-          Email <Mail to={COMPANY.email.privacy} /> from the address on your account, and say which request you are making. We may ask you to confirm
+          <strong>Download a copy right away:</strong> signed in, open Settings → Privacy &amp; Security → <em>Download my data</em>.
+        </p>
+        <p>
+          For anything else, email <Mail to={COMPANY.email.privacy} /> from the address on your account, and say which request you are making. We may ask you to confirm
           your identity. We reply within 30 days (45 days for California residents). If your account is managed by your school or university, you
           can also ask its administrator.
         </p>
