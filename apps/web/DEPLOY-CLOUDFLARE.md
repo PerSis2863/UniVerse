@@ -86,12 +86,21 @@ OpenNext builds and adds:
   chat messages, reactions, polls, typing and new notifications, and the browser
   (`src/lib/realtime-client.ts`) refetches at once. While connected, pages poll far less often; without
   the connection they keep polling as before. Browsers get a one-time ticket from `/api/realtime/ticket`.
+- **Whiteboards** at `/board-live`: each board (`/boards/[id]`, table `boards`) has a `BoardRoom` Durable
+  Object that holds its drawing (every shape, keyed by id) and everyone who has it open. Browsers draw with
+  Excalidraw (`src/components/boards/BoardCanvas.tsx`) and send the shapes they changed; the room keeps
+  the newest version of each shape and passes changes and live cursors on. Viewers' edits are ignored.
+  Access (owner, people it's shared with as editor or viewer, and optional "anyone with the link") is
+  checked by `/api/boards/[id]/ticket`, which hands out one-time tickets; changing someone's access
+  disconnects them so they rejoin with their new rights. Pictures are uploaded like other files and
+  shared as links. Excalidraw's fonts are copied into `public/excalidraw-assets` at build time
+  (`scripts/copy-excalidraw-assets.mjs`, git-ignored) because the CSP blocks its CDN.
 - **Daily job** (`triggers.crons`, 08:00 UTC): quiz reminders, run through `src/app/api/cron/daily/route.ts`.
   Test locally with `npx wrangler dev --test-scheduled` and `curl "http://localhost:8787/__scheduled?cron=0+8+*+*+*"`.
 
-The Durable Object is created by the first **production** deploy (the `migrations` block in
-`wrangler.jsonc`). Preview builds (`opennextjs-cloudflare upload`) can't create it, so a preview build of
-a branch fails until that change has been deployed from `main` once.
+The Durable Objects are created by **production** deploys (the `migrations` block in `wrangler.jsonc`:
+`v1` RealtimeHub, `v2` BoardRoom). Preview builds (`opennextjs-cloudflare upload`) can't create them, so a
+preview build of a branch that adds one fails until that change has been deployed from `main` once.
 
 ## Security
 
@@ -116,9 +125,12 @@ a branch fails until that change has been deployed from `main` once.
   editor) is regenerated from the schema by `pnpm build`.
 - **Permissions** are checked on the server for every change (course teacher, author or admin); the
   shared checks live in `src/server/access.ts`.
+- **Pricing is not public.** Plans are shown to organization admins in Admin → Billing & Plans. Plans
+  marked `contactSales` in `src/lib/plans.ts` (Enterprise) can't be bought online: "Contact us" sends a
+  high-priority "Platform sales" support ticket (and email, tagged `[SALES]`) to the UniVerse team.
 - **Uploads** only accept documents, images, audio and video (`uploadMime` in `src/lib/storage.ts`).
 - User-supplied links are rendered through `safeHref` (`src/lib/safe-href.ts`).
 
 ## Notes
 
-- The Worker is about 3.2 MB gzipped (minified). The Workers free plan allows 3 MB, the paid plan ($5/month) 10 MB.
+- The Worker is about 3.4 MB gzipped (minified). The Workers free plan allows 3 MB, the paid plan ($5/month) 10 MB.

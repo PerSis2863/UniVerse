@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const { user, org, plan } = auth;
 
   const body = await req.json().catch(() => ({}));
-  const kind = body.kind === 'onboarding' ? 'onboarding' : 'support';
+  const kind = body.kind === 'onboarding' ? 'onboarding' : body.kind === 'sales' ? 'sales' : 'support';
   const subject = String(body.subject ?? '').trim().slice(0, 150);
   const message = String(body.message ?? '').trim().slice(0, 5000);
 
@@ -35,16 +35,27 @@ export async function POST(req: Request) {
   });
   if (recent >= 5) return NextResponse.json({ error: 'You have sent several requests recently — we will get back to you soon.' }, { status: 429 });
 
-  const priority = plan === 'STARTER' ? 'MEDIUM' : 'HIGH';
+  // "Contact us" for plans we quote individually (Admin → Billing): who they are and what they need.
+  let salesPlan: string | null = null;
+  if (kind === 'sales') {
+    salesPlan = typeof body.plan === 'string' && body.plan in PLANS ? PLANS[body.plan as keyof typeof PLANS].name : 'Enterprise';
+    const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+    const phone = str(body.phone, 30);
+    const size = str(body.size, 40);
+    if (!message) return NextResponse.json({ error: 'Tell us a little about what you need.' }, { status: 400 });
+    const facts = [`Plan: ${salesPlan}`, size ? `Size: ${size}` : null, phone ? `Phone: ${phone}` : null].filter(Boolean);
+    body.details = `${facts.join('\n')}\n\n${message}`;
+  }
+  const priority = kind === 'sales' || plan !== 'STARTER' ? 'HIGH' : 'MEDIUM';
   const planName = PLANS[plan].name;
-  const title = kind === 'onboarding' ? 'Onboarding session request' : subject;
-  const details = kind === 'onboarding' ? message || 'Please get in touch to schedule our onboarding session.' : message;
+  const title = kind === 'onboarding' ? 'Onboarding session request' : kind === 'sales' ? `${salesPlan} plan enquiry: ${org.name}` : subject;
+  const details = kind === 'onboarding' ? message || 'Please get in touch to schedule our onboarding session.' : kind === 'sales' ? String(body.details) : message;
 
   const ticket = await prisma.ticket.create({
     data: {
       subject: title,
       description: details,
-      category: kind === 'onboarding' ? 'Platform onboarding' : 'Platform support',
+      category: kind === 'onboarding' ? 'Platform onboarding' : kind === 'sales' ? 'Platform sales' : 'Platform support',
       priority,
       authorId: user.id,
     },
@@ -52,7 +63,7 @@ export async function POST(req: Request) {
 
   let emailed = false;
   if (process.env.RESEND_API_KEY) {
-    const tag = plan === 'STARTER' ? '' : `[${planName.toUpperCase()} · PRIORITY] `;
+    const tag = kind === 'sales' ? '[SALES] ' : plan === 'STARTER' ? '' : `[${planName.toUpperCase()} · PRIORITY] `;
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },

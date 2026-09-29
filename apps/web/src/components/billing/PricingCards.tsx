@@ -85,13 +85,13 @@ export function PricingCards({ interval, onIntervalChange, onSelect, currentPlan
                       transition={{ duration: 0.25 }}
                       className={cn('text-5xl font-black tracking-tight', dark ? 'text-white' : 'text-zinc-900 dark:text-white')}
                     >
-                      {price === 0 ? 'Free' : formatPrice(price)}
+                      {plan.contactSales ? 'Custom' : price === 0 ? 'Free' : formatPrice(price)}
                     </motion.span>
                   </AnimatePresence>
-                  {price > 0 && <span className={cn('pb-2 text-sm', dark ? 'text-zinc-500' : 'text-zinc-500')}>/month</span>}
+                  {price > 0 && !plan.contactSales && <span className={cn('pb-2 text-sm', dark ? 'text-zinc-500' : 'text-zinc-500')}>/month</span>}
                 </div>
                 <p className="text-xs text-zinc-500 h-4">
-                  {price === 0 ? 'Free forever' : interval === 'year' ? `${formatPrice(price * 12)} billed yearly` : 'Billed monthly'}
+                  {plan.contactSales ? 'Talk to us for a quote' : price === 0 ? 'Free forever' : interval === 'year' ? `${formatPrice(price * 12)} billed yearly` : 'Billed monthly'}
                 </p>
 
                 <button
@@ -109,7 +109,7 @@ export function PricingCards({ interval, onIntervalChange, onSelect, currentPlan
                   )}
                 >
                   {loadingPlan === id && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {isCurrent ? 'Current plan' : id === 'STARTER' ? 'Get started free' : 'Start 14-day free trial'}
+                  {isCurrent ? 'Current plan' : plan.contactSales ? 'Contact us' : id === 'STARTER' ? 'Get started free' : 'Start 14-day free trial'}
                 </button>
 
                 <ul className="mt-8 space-y-3">

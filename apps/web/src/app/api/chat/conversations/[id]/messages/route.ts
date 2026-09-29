@@ -69,7 +69,16 @@ export async function GET(req: Request, { params }: Ctx) {
   }
 
   const hasMore = rows.length > PAGE;
-  const messages = await decorate(rows.slice(0, PAGE).reverse().map(serializeMessage), user.id);
+  const [messages, pinnedRows] = await Promise.all([
+    decorate(rows.slice(0, PAGE).reverse().map(serializeMessage), user.id),
+    // Pinned messages (up to 3) for the bar at the top of the chat.
+    prisma.message.findMany({
+      where: { conversationId: id, pinnedAt: { not: null }, deletedAt: null, AND: [visibleTo(user.id)] },
+      orderBy: { pinnedAt: 'desc' },
+      take: 3,
+      select: { id: true, body: true, type: true, attachmentName: true, createdAt: true, pinnedAt: true, sender: { select: { id: true, name: true } } },
+    }),
+  ]);
   const others = convo.participants.filter((p) => p.userId !== user.id);
 
   return NextResponse.json(
@@ -97,6 +106,7 @@ export async function GET(req: Request, { params }: Ctx) {
         })),
       },
       typing: others.filter((p) => p.typingUntil && p.typingUntil > now).map((p) => p.user.name.split(' ')[0]),
+      pinned: pinnedRows,
       messages,
       hasMore,
       me: user.id,
@@ -180,6 +190,7 @@ export async function POST(req: Request, { params }: Ctx) {
   ]);
   const [out] = await decorate([serializeMessage(message)], user.id);
   later(() => notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? '')));
+  if (data.type === 'TEXT' && String(data.body ?? '').includes('@')) later(() => notifyMentions(id, user, String(data.body)));
   return NextResponse.json(out, { status: 201 });
 }
 
@@ -227,5 +238,34 @@ async function notifyAway(conversationId: string, from: { id: string; name: stri
           link: `/${m.user.role === 'ADMIN' ? 'admin' : m.user.role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`,
         }),
       ),
+  );
+}
+
+/**
+ * "@Name" in a message pings that member (in the app and live), even if they muted the chat.
+ * Matches a member's full name or first name after "@".
+ */
+async function notifyMentions(conversationId: string, from: { id: string; name: string }, body: string) {
+  const text = body.toLowerCase();
+  const [convo, members] = await Promise.all([
+    prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true } }),
+    prisma.conversationParticipant.findMany({ where: { conversationId, userId: { not: from.id } }, select: { userId: true, user: { select: { name: true, role: true } } } }),
+  ]);
+  if (!convo?.isGroup) return; // in a 1:1 chat the other person already gets every message
+  const mentioned = members.filter(({ user }) => {
+    const full = user.name.toLowerCase();
+    const first = full.split(' ')[0];
+    return text.includes(`@${full}`) || new RegExp(`@${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`).test(text);
+  });
+  await Promise.all(
+    mentioned.map((m) =>
+      notify(m.userId, {
+        type: 'mention',
+        title: `${from.name} mentioned you in ${convo.name ?? 'a group'}`,
+        body: body.slice(0, 200),
+        link: `/${m.user.role === 'ADMIN' ? 'admin' : m.user.role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`,
+        email: false,
+      }),
+    ),
   );
 }

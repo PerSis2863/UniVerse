@@ -14,6 +14,8 @@ export interface Plan {
   /** Price in USD cents per month, for each billing interval (yearly is billed as 12x this). */
   monthlyPrice: Record<BillingInterval, number>;
   highlight?: boolean;
+  /** Not sold online: admins send us a request and we quote a price (Admin → Billing → Contact us). */
+  contactSales?: boolean;
   features: string[];
   unlocks: PremiumFeature[];
 }
@@ -51,8 +53,9 @@ export const PLANS: Record<PlanId, Plan> = {
   ENTERPRISE: {
     id: 'ENTERPRISE',
     name: 'Enterprise',
-    tagline: 'AI-powered reporting for networks and NGOs.',
+    tagline: 'AI-powered reporting for networks and NGOs. Priced for your institution.',
     monthlyPrice: { month: 44900, year: 35900 },
+    contactSales: true,
     features: [
       'Everything in Pro',
       'AI executive impact reports',

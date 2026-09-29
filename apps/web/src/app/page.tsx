@@ -15,8 +15,6 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
-import { PricingCards } from '@/components/billing/PricingCards';
-import type { BillingInterval } from '@/lib/plans';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -67,7 +65,7 @@ const SECURITY = [
 
 const FAQ = [
   { q: 'Is UniVerse free to use?', a: 'Yes. The Starter plan is free forever and includes the full student, teacher and admin portals, the NGO marketplace, messaging and verified credentials. Organizations upgrade only when they want premium analytics, exports or AI reporting.' },
-  { q: 'What does the 14-day free trial include?', a: 'Every feature of the plan you choose. You can cancel any time during the trial from the billing page, and you will not be charged.' },
+  { q: 'How does an organization upgrade?', a: 'Admins see the plans in Billing & Plans inside the admin portal. Pro can be started there with a 14-day free trial; Enterprise is tailored to each institution, so admins contact our team from the same page for a quote.' },
   { q: 'Can we switch plans or cancel later?', a: 'Any time. Admins manage their subscription, payment method and invoices from Billing & Plans inside the admin dashboard.' },
   { q: 'Who pays — students or organizations?', a: 'Organizations. Students never pay to use UniVerse. Premium plans are purchased by a university, NGO or company admin for their organization.' },
   { q: 'How are credentials verified?', a: 'Each certificate is fingerprinted and anchored on the Polygon blockchain. Anyone can open its public verification link to confirm it is genuine and unaltered.' },
@@ -282,7 +280,6 @@ export default function ShowcasePage() {
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [installed, setInstalled] = useState(false);
-  const [interval, setInterval] = useState<BillingInterval>('year');
 
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30 });
@@ -343,14 +340,14 @@ export default function ShowcasePage() {
           <section className="px-6 pt-36 md:pt-44 pb-16">
             <motion.div style={{ y: heroY, opacity: heroOpacity }} className="max-w-5xl mx-auto flex flex-col items-center text-center">
               <motion.a
-                href="#pricing"
+                href="#product"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: EASE }}
                 className="group inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-colors mb-8"
               >
                 <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white text-[10px] font-black uppercase tracking-wider">New</span>
-                <span className="text-zinc-300">AI impact reports for organizations</span>
+                <span className="text-zinc-300">Live whiteboards: draw together with your class</span>
                 <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
               </motion.a>
 
@@ -386,8 +383,8 @@ export default function ShowcasePage() {
                   <span className="relative">Get started free</span>
                   <ArrowRight className="relative w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
-                <a href="#pricing" className="inline-flex items-center gap-2 h-14 px-8 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold text-sm transition-colors">
-                  View pricing
+                <a href="#product" className="inline-flex items-center gap-2 h-14 px-8 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold text-sm transition-colors">
+                  Explore features
                 </a>
                 <button onClick={handleInstallClick} className="inline-flex items-center gap-2 h-14 px-6 rounded-full text-zinc-300 hover:text-white font-semibold text-sm transition-colors">
                   <Smartphone className="w-4 h-4" /> {installed ? 'Open app' : 'Download app'}
@@ -488,17 +485,6 @@ export default function ShowcasePage() {
                   </Reveal>
                 ))}
               </div>
-            </div>
-          </section>
-
-          {/* ── Pricing ────────────────────────────────────────── */}
-          <section id="pricing" className="px-6 pb-32 scroll-mt-24">
-            <SectionHeading eyebrow="Pricing" title="Simple pricing that scales with you" sub="Free for students, forever. Organizations unlock premium analytics, exports and AI reporting." />
-            <div className="max-w-6xl mx-auto">
-              <PricingCards interval={interval} onIntervalChange={setInterval} onSelect={() => router.push('/register')} />
-              <Reveal className="text-center mt-8">
-                <Link href="/pricing" className="text-sm font-semibold text-indigo-300 hover:text-white inline-flex items-center gap-1">Compare all features <ArrowRight className="w-3.5 h-3.5" /></Link>
-              </Reveal>
             </div>
           </section>
 

@@ -27,6 +27,7 @@ export interface ChatMessage {
   reactions: Record<string, string[]>;
   sender: { id: string; name: string; avatar: string | null };
   expiresAt?: string | null;
+  pinnedAt?: string | null;
   forwarded?: boolean;
   starred?: boolean;
   poll?: { counts: number[]; mine: number[]; voters: number } | null;
@@ -70,6 +71,7 @@ export interface ThreadResponse {
     disappearingSec?: number | null; pinned?: boolean; muted?: boolean; archived?: boolean;
   };
   typing: string[];
+  pinned?: { id: string; body: string; type: string; attachmentName: string | null; createdAt: string; pinnedAt: string; sender: { id: string; name: string } | null }[];
   messages: ChatMessage[];
   hasMore: boolean;
   me: string;

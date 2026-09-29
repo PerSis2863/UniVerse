@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
-import {
-  Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle,
-  MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video,
-} from 'lucide-react';
+import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes } from './chat-client';
@@ -13,6 +10,22 @@ import { safeHref } from '@/lib/safe-href';
 
 const URL_SPLIT = /(https?:\/\/[^\s]+)/g;
 const MENTION_SPLIT = /(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)/g;
+
+// WhatsApp-style formatting: *bold*, _italic_, ~strikethrough~ and `code`.
+const FORMAT_SPLIT = /(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~|`[^`\n]+`)/g;
+function Formatted({ text, mine }: { text: string; mine: boolean }) {
+  return (
+    <>
+      {text.split(FORMAT_SPLIT).map((t, k) => {
+        if (t.length > 2 && t.startsWith('*') && t.endsWith('*')) return <strong key={k}>{t.slice(1, -1)}</strong>;
+        if (t.length > 2 && t.startsWith('_') && t.endsWith('_')) return <em key={k}>{t.slice(1, -1)}</em>;
+        if (t.length > 2 && t.startsWith('~') && t.endsWith('~')) return <s key={k}>{t.slice(1, -1)}</s>;
+        if (t.length > 2 && t.startsWith('`') && t.endsWith('`')) return <code key={k} className={cn('px-1 py-0.5 rounded font-mono text-[0.85em]', mine ? 'bg-white/15' : 'bg-zinc-200/70 dark:bg-white/10')}>{t.slice(1, -1)}</code>;
+        return <span key={k}>{t}</span>;
+      })}
+    </>
+  );
+}
 
 function RichText({ text, mine }: { text: string; mine: boolean }) {
   return (
@@ -24,7 +37,7 @@ function RichText({ text, mine }: { text: string; mine: boolean }) {
           </a>
         ) : (
           part.split(MENTION_SPLIT).map((p, j) =>
-            /^@[A-Za-z]/.test(p) ? <span key={`${i}-${j}`} className={cn('font-semibold', mine ? 'text-sky-200' : 'text-indigo-500 dark:text-indigo-300')}>{p}</span> : <span key={`${i}-${j}`}>{p}</span>,
+            /^@[A-Za-z]/.test(p) ? <span key={`${i}-${j}`} className={cn('font-semibold', mine ? 'text-sky-200' : 'text-indigo-500 dark:text-indigo-300')}>{p}</span> : <Formatted key={`${i}-${j}`} text={p} mine={mine} />,
           )
         ),
       )}
@@ -97,6 +110,8 @@ interface Props {
   onDelete: () => void;
   onDeleteForMe: () => void;
   onStar: () => void;
+  /** Present when this person may pin messages here. */
+  onPin?: () => void;
   onForward: () => void;
   onInfo: () => void;
   onVote: (option: number) => void;
@@ -333,6 +348,7 @@ export function MessageBubble(p: Props) {
                   <MenuItem icon={CornerUpLeft} label="Reply" onClick={() => { p.onReply(); close(); }} />
                   {FORWARDABLE.has(m.type) && <MenuItem icon={CornerUpRight} label="Forward" onClick={() => { p.onForward(); close(); }} />}
                   <MenuItem icon={m.starred ? StarOff : Star} label={m.starred ? 'Unstar' : 'Star'} onClick={() => { p.onStar(); close(); }} />
+                  {p.onPin && <MenuItem icon={m.pinnedAt ? PinOff : Pin} label={m.pinnedAt ? 'Unpin' : 'Pin'} onClick={() => { p.onPin!(); close(); }} />}
                   {m.type === 'TEXT' && <MenuItem icon={Copy} label="Copy" onClick={() => { navigator.clipboard.writeText(m.body); close(); }} />}
                   {canEdit && <MenuItem icon={Pencil} label="Edit" onClick={() => { p.onEdit(); close(); }} />}
                   {mine && <MenuItem icon={Info} label="Info" onClick={() => { p.onInfo(); close(); }} />}

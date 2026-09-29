@@ -107,6 +107,7 @@ export { isAppFileUrl as isOwnBlobUrl } from '@/lib/storage';
 
 export const messageSelect = {
   id: true,
+  pinnedAt: true,
   conversationId: true,
   senderId: true,
   body: true,
@@ -144,7 +145,7 @@ export function serializeMessage<T extends RawMessage>(m: T) {
   const reactions: Record<string, string[]> = {};
   for (const r of m.reactions) (reactions[r.emoji] ??= []).push(r.userId);
   if (m.deletedAt) {
-    return { ...m, type: 'DELETED', body: '', attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null, metadata: null, replyTo: null, reactions: {} };
+    return { ...m, type: 'DELETED', body: '', pinnedAt: null, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null, metadata: null, replyTo: null, reactions: {} };
   }
   return {
     ...m,

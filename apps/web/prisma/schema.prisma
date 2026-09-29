@@ -160,6 +160,10 @@ model User {
 
   loginEvents            LoginEvent[]
 
+  // Whiteboards
+  boardsOwned            Board[]                 @relation("BoardOwner")
+  boardMemberships       BoardMember[]
+
   // Applications to become a teacher / NGO representative (approved by an admin)
   roleApplications       RoleApplication[]       @relation("RoleApplicant")
   reviewedApplications   RoleApplication[]       @relation("RoleReviewer")
@@ -550,6 +554,8 @@ model Message {
   userStates     MessageUserState[]
   pollVotes      PollVote[]
 
+  pinnedAt       DateTime?    // pinned to the top of the chat
+  pinnedById     String?
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@map("messages")
@@ -696,6 +702,37 @@ model RoleApplication {
   @@index([status, submittedAt])
   @@index([userId, createdAt])
   @@map("role_applications")
+}
+
+/// A collaborative whiteboard. The drawing itself lives in the board's Durable Object
+/// (cloudflare/worker.ts → BoardRoom); this row holds who can open it.
+model Board {
+  id         String        @id @default(cuid())
+  title      String
+  ownerId    String
+  owner      User          @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  linkAccess String        @default("NONE") // NONE, VIEW, EDIT: what anyone signed in with the link can do
+  thumbnail  String?       // small PNG preview (data URL) for the boards list
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  members    BoardMember[]
+
+  @@index([ownerId, updatedAt])
+  @@map("boards")
+}
+
+model BoardMember {
+  id      String   @id @default(cuid())
+  boardId String
+  board   Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    String   @default("EDITOR") // EDITOR or VIEWER
+  addedAt DateTime @default(now())
+
+  @@unique([boardId, userId])
+  @@index([userId])
+  @@map("board_members")
 }
 
 /// Every change the platform owner makes in the owner console, with the record before and after,

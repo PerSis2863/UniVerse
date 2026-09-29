@@ -2,7 +2,7 @@ import Link from '@/components/ui/Link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 
 const COLUMNS = [
-  { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#solutions', label: 'Solutions' }, { href: '/pricing', label: 'Pricing' }, { href: '/#security', label: 'Security' }] },
+  { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#solutions', label: 'Solutions' }, { href: '/#security', label: 'Security' }] },
   { title: 'For', links: [{ href: '/#solutions', label: 'Students' }, { href: '/#solutions', label: 'Universities' }, { href: '/#solutions', label: 'NGOs & organizations' }] },
   { title: 'Company', links: [{ href: '/#faq', label: 'FAQ' }, { href: 'mailto:myuniverseimpact@gmail.com', label: 'Contact' }, { href: 'mailto:myuniverseimpact@gmail.com?subject=Enterprise%20enquiry', label: 'Talk to sales' }] },
 ];

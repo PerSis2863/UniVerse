@@ -6,7 +6,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
@@ -69,6 +69,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const others = convo?.members.filter((m) => m.id !== me) ?? [];
   const other = !convo?.isGroup ? others[0] : undefined;
   const canModerate = convo?.isGroup && convo.myRole === 'ADMIN';
+  const canPin = !!convo && !convo.isOfficial && (!convo.isGroup || convo.myRole === 'ADMIN');
+  const pins = data?.pinned ?? [];
 
   // Keep the newest message in view (unless the user scrolled up to read history).
   useEffect(() => {
@@ -111,6 +113,20 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     patchMsg(m.id, (x) => ({ ...x, starred: next }));
     try { await chatJson(`/api/chat/messages/${m.id}/state`, { method: 'POST', body: JSON.stringify({ starred: next }) }); if (next) toast('Starred', { description: 'Find it under Starred messages.' }); }
     catch (e: any) { toast.error(e.message); patchMsg(m.id, (x) => ({ ...x, starred: !next })); }
+  };
+
+  const [pinIndex, setPinIndex] = useState(0);
+  const pin = async (m: ChatMessage) => {
+    const next = !m.pinnedAt;
+    patchMsg(m.id, (x) => ({ ...x, pinnedAt: next ? new Date().toISOString() : null }));
+    try {
+      await chatJson(`/api/chat/messages/${m.id}/pin`, { method: 'POST', body: JSON.stringify({ pinned: next }) });
+      toast(next ? 'Pinned to the top of the chat' : 'Unpinned');
+      mutate();
+    } catch (e: any) {
+      toast.error(e.message);
+      patchMsg(m.id, (x) => ({ ...x, pinnedAt: next ? null : m.pinnedAt ?? null }));
+    }
   };
 
   const deleteForMe = async (m: ChatMessage) => {
@@ -337,6 +353,38 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           <button onClick={() => setInfoOpen((v) => !v)} aria-label="Chat info" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', infoOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Info className="w-5 h-5" /></button>
         </div>
 
+        {pins.length > 0 && (() => {
+          const current = pins[pinIndex % pins.length];
+          const preview = current.type === 'TEXT' ? current.body : current.attachmentName || current.body || current.type.toLowerCase();
+          return (
+            <div className="flex items-center gap-2 px-3 md:px-5 py-2 border-b border-zinc-200/80 dark:border-white/[0.06] bg-indigo-50/70 dark:bg-indigo-500/[0.07]">
+              <button
+                onClick={() => {
+                  document.getElementById(`msg-${current.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  setPinIndex((i) => i + 1);
+                }}
+                className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                aria-label="Go to pinned message"
+              >
+                <Pin className="w-4 h-4 text-indigo-500 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[11px] font-semibold text-indigo-600 dark:text-indigo-300">Pinned{pins.length > 1 ? ` · ${(pinIndex % pins.length) + 1} of ${pins.length}` : ''}{current.sender ? ` · ${current.sender.name}` : ''}</span>
+                  <span className="block text-sm text-zinc-700 dark:text-zinc-200 truncate">{preview}</span>
+                </span>
+              </button>
+              {canPin && (
+                <button
+                  aria-label="Unpin"
+                  onClick={() => { const m = messages.find((x) => x.id === current.id); if (m) void pin(m); else void chatJson(`/api/chat/messages/${current.id}/pin`, { method: 'POST', body: JSON.stringify({ pinned: false }) }).then(() => mutate()); }}
+                  className="p-1.5 rounded-full text-zinc-400 hover:text-rose-500 hover:bg-white/60 dark:hover:bg-white/10"
+                >
+                  <PinOff className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
         {searchOpen && (
           <div className="flex items-center gap-2 px-3 md:px-5 py-2 border-b border-zinc-200/80 dark:border-white/[0.06] bg-white/70 dark:bg-white/[0.02]">
             <Search className="w-4 h-4 text-zinc-400 shrink-0" />
@@ -407,6 +455,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                     onDelete={async () => { if (await confirmDialog({ title: 'Delete for everyone?', message: 'The message will be removed for everyone in this chat.', destructive: true })) remove(m); }}
                     onDeleteForMe={() => deleteForMe(m)}
                     onStar={() => star(m)}
+                    onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
                     onForward={() => setForwarding(m)}
                     onInfo={() => setInfoMsg(m)}
                     onVote={(o) => vote(m, o)}
@@ -495,6 +544,9 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
     catch (e: any) { toast.error(e.message); }
   };
   const files = messages.filter((m) => (m.type === 'FILE' || m.type === 'VIDEO' || m.type === 'AUDIO') && m.attachmentUrl).slice(-10).reverse();
+  const links = messages
+    .flatMap((m) => (m.type === 'TEXT' && m.body ? [...new Set(m.body.match(/https?:\/\/[^\s<>"')]+/g) ?? [])].map((url) => ({ id: `${m.id}-${url}`, url })) : []))
+    .slice(-10).reverse();
 
   const rename = async () => {
     const name = (await promptDialog({ title: 'Rename group', defaultValue: convo.title, placeholder: 'Group name', confirmLabel: 'Rename', maxLength: 80 }))?.trim();
@@ -577,7 +629,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
         </div>
       )}
 
-      {(media.length > 0 || files.length > 0) && (
+      {(media.length > 0 || files.length > 0 || links.length > 0) && (
         <div className="p-5 border-b border-zinc-200/80 dark:border-white/[0.06]">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Media, files & links</p>
           {media.length > 0 && (
@@ -595,6 +647,12 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
                 <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
                 <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate flex-1">{f.attachmentName || 'File'}</span>
                 <span className="text-[11px] text-zinc-400">{formatBytes(f.attachmentSize)}</span>
+              </a>
+            ))}
+            {links.map((l) => (
+              <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
+                <Link2 className="w-4 h-4 text-sky-500 shrink-0" />
+                <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate flex-1">{l.url.replace(/^https?:\/\//, '')}</span>
               </a>
             ))}
           </div>
