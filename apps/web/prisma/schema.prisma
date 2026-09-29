@@ -110,6 +110,8 @@ model User {
   updatedAt DateTime   @updatedAt
 
   emailNotifications Boolean @default(true)
+  termsVersion       String? // version of the Terms & Privacy the person accepted
+  termsAcceptedAt    DateTime?
   lastSeenAt         DateTime?
   emergencyContacts  Json?     // [{ name, relation, phone, email }] (max 5)
 

@@ -6,12 +6,13 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { forgetUser, isOwner, isOwnerEmail } from '../auth';
 import { audit } from '../audit';
 import { currentApplication } from './applications';
+import { TERMS_VERSION } from '@/lib/terms-version';
 
 const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
-  avatar: true, phone: true, googleId: true, emailNotifications: true, createdAt: true, updatedAt: true,
+  avatar: true, phone: true, googleId: true, emailNotifications: true, termsVersion: true, termsAcceptedAt: true, createdAt: true, updatedAt: true,
   studentProfile: true, teacherProfile: true,
 };
 
@@ -79,6 +80,14 @@ export default function users(router: Router) {
     });
     audit(user, { action: 'user.invited', summary: `Invited ${email} as ${role}`, targetType: 'invitation', targetId: invitation.id, metadata: { email, role } }, req);
     return { success: true, invitation };
+  });
+
+  // Accepting the Terms of Use & Privacy Notice (first sign-in, or after they change).
+  r.post('me/terms', async ({ user, body }) => {
+    if (body?.version !== TERMS_VERSION) throw new BadRequestException('Please reload the page to see the latest terms.');
+    const updated = await prisma.user.update({ where: { id: user.id }, data: { termsVersion: TERMS_VERSION, termsAcceptedAt: new Date() }, select: safeSelect });
+    forgetUser(user.id);
+    return updated;
   });
 
   // Only profile fields: the old API passed the whole body through, which let users change their role.
