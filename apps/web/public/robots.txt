@@ -1,0 +1,17 @@
+# UniVerse: public pages can be indexed; the app, API and files are private.
+User-agent: *
+Allow: /$
+Allow: /terms
+Allow: /privacy
+Allow: /privacy-choices
+Allow: /accessibility
+Allow: /policies
+Allow: /security
+Allow: /contact
+Allow: /legal-notice
+Allow: /login
+Allow: /register
+Allow: /verify/
+Disallow: /
+
+Sitemap: https://universeimpact.com/sitemap.xml

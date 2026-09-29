@@ -176,7 +176,7 @@ interface BoardElement {
 interface BoardFile {
   id: string;
   mimeType: string;
-  url: string; // an uploaded file (/api/files/...), never inline data
+  url: string; // an uploaded file (/api/files/… or the R2 files domain), never inline data
   created: number;
 }
 
@@ -399,6 +399,9 @@ function validFile(f: BoardFile): boolean {
   return (
     !!f && typeof f.id === 'string' && f.id.length <= 128 &&
     typeof f.mimeType === 'string' && /^image\/(png|jpeg|gif|webp|svg\+xml)$/.test(f.mimeType) &&
-    typeof f.url === 'string' && /^\/api\/files\/[A-Za-z0-9_-]{16,}\/[^?#]*$/.test(f.url)
+    typeof f.url === 'string' && f.url.length <= 600 &&
+    // An upload of ours: database storage (/api/files/…) or the R2 files domain (https). Browsers
+    // only load these from our own storage (BoardCanvas + the Content-Security-Policy).
+    (/^\/api\/files\/[A-Za-z0-9_-]{16,}\/[^?#\s]*$/.test(f.url) || /^https:\/\/[a-z0-9.-]+\/[^\s"'<>]+$/i.test(f.url))
   );
 }

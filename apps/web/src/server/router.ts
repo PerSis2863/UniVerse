@@ -1,4 +1,6 @@
 import type { Role, User } from '@prisma/client';
+import { recordServerError } from './errors';
+import { later } from './email';
 import type { RateLimit } from '@cloudflare/workers-types';
 import { ForbiddenException, HttpException, NotFoundException } from './http';
 import { extractBearer, resolveUser, demoWriteBlocked, isOwner } from './auth';
@@ -101,6 +103,7 @@ export class Router {
     } catch (error) {
       if (error instanceof HttpException) return Response.json(error.toJSON(), { status: error.getStatus() });
       console.error(`${req.method} /api/core/${path} failed:`, error);
+      later(() => recordServerError(error, req));
       return Response.json({ statusCode: 500, message: 'Internal server error' }, { status: 500 });
     }
   }

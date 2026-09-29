@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://universeimpact.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://universeimpact.com/register</loc><priority>0.8</priority></url>
+  <url><loc>https://universeimpact.com/login</loc><priority>0.5</priority></url>
+  <url><loc>https://universeimpact.com/terms</loc><priority>0.3</priority></url>
+  <url><loc>https://universeimpact.com/privacy</loc><priority>0.3</priority></url>
+  <url><loc>https://universeimpact.com/privacy-choices</loc><priority>0.3</priority></url>
+  <url><loc>https://universeimpact.com/accessibility</loc><priority>0.3</priority></url>
+  <url><loc>https://universeimpact.com/policies</loc><priority>0.3</priority></url>
+  <url><loc>https://universeimpact.com/security</loc><priority>0.3</priority></url>
+  <url><loc>https://universeimpact.com/contact</loc><priority>0.4</priority></url>
+  <url><loc>https://universeimpact.com/legal-notice</loc><priority>0.2</priority></url>
+</urlset>

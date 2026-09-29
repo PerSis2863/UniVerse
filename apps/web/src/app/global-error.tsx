@@ -1,38 +1,30 @@
 'use client';
 
-import { Inter } from 'next/font/google';
+import { useEffect } from 'react';
+import { captureError } from '@/lib/error-monitor';
 
-const inter = Inter({ subsets: ['latin'] });
+// Last-resort screen when the whole app fails to render (the root layout itself crashed). It can't
+// rely on the app's styles or fonts, so it's styled inline. The error is reported automatically.
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => {
+    captureError(error, 'render', { global: true, ...(error.digest ? { digest: error.digest } : {}) });
+  }, [error]);
 
-export default function GlobalError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+  const button: React.CSSProperties = { height: 40, padding: '0 20px', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none' };
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6`}>
-        <div className="max-w-md w-full bg-zinc-900 border border-rose-500/30 rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center">
-          <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-6">
-            <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Configuration Error</h2>
-          <p className="text-zinc-400 text-sm mb-6">
-            It looks like your Clerk API keys are invalid or missing in your hosting settings. Please ensure you have added the correct <code className="bg-zinc-800 px-1 rounded text-rose-400">NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> and <code className="bg-zinc-800 px-1 rounded text-rose-400">CLERK_SECRET_KEY</code> from your Clerk Dashboard to your hosting environment variables.
+      <body style={{ margin: 0, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0a0d13', color: '#fff', fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif' }}>
+        <div style={{ maxWidth: 420, width: '100%', textAlign: 'center', background: '#121622', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: 32 }}>
+          <div style={{ fontSize: 40 }} aria-hidden>🛠️</div>
+          <h1 style={{ fontSize: 22, margin: '12px 0 8px' }}>UniVerse couldn’t load</h1>
+          <p style={{ color: '#a1a1aa', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+            Something went wrong on our side and we’ve been told about it automatically. Please try again in a moment.
           </p>
-          <div className="w-full bg-black/50 p-4 rounded-lg overflow-x-auto text-left text-xs font-mono text-zinc-300 mb-6 border border-zinc-800">
-            {error.message || "Unknown Error"}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
+            <button onClick={() => reset()} style={{ ...button, background: '#4f46e5', color: '#fff' }}>Try again</button>
+            <button onClick={() => window.location.reload()} style={{ ...button, background: 'transparent', color: '#e4e4e7', border: '1px solid rgba(255,255,255,0.15)' }}>Reload</button>
           </div>
-          <button
-            onClick={() => window.location.href = '/login'}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-colors"
-          >
-            Go back to Login
-          </button>
+          {error.digest && <p style={{ marginTop: 16, fontSize: 11, color: '#71717a' }}>Reference: {error.digest}</p>}
         </div>
       </body>
     </html>

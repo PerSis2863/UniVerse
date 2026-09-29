@@ -33,6 +33,16 @@ export async function r2Put(key: string, bytes: Uint8Array, contentType: string)
   return `${c.publicUrl}/${encodeKey(key)}`;
 }
 
+/** Deletes the file behind one of our public R2 URLs. False when it isn't an R2 file of ours. */
+export async function r2DeleteByUrl(url: string): Promise<boolean> {
+  const c = config();
+  if (!c || !url.startsWith(`${c.publicUrl}/`)) return false;
+  const client = new AwsClient({ accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey, service: 's3', region: 'auto' });
+  const res = await client.fetch(`${c.endpoint}/${url.slice(c.publicUrl.length + 1)}`, { method: 'DELETE' });
+  if (!res.ok && res.status !== 404) throw new Error(`R2 delete failed (${res.status})`);
+  return true;
+}
+
 /**
  * Returns a short-lived URL the browser can PUT the file to directly. The content type and exact
  * size are part of the signature, so R2 rejects any other file than the one that was approved.

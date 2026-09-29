@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
+import { DownloadMyData } from '@/components/settings/DownloadMyData';
 import { api } from '@/lib/api';
 import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -261,22 +262,14 @@ export default function StudentSettings() {
                           <p className="text-sm text-zinc-500">Control your data and security settings</p>
                         </div>
                       </div>
-                      {[
-                        { label: 'Public Profile', desc: 'Allow other students to view your profile and impact score.' },
-                        { label: 'Show in Leaderboard', desc: 'Appear on the Social Impact Leaderboard rankings.' },
-                        { label: 'Share Activity with NGOs', desc: 'Let partner NGOs see your volunteer history.' },
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] rounded-xl">
-                          <div>
-                            <h3 className="font-medium text-zinc-900 dark:text-white text-sm">{item.label}</h3>
-                            <p className="text-xs text-zinc-500 mt-0.5">{item.desc}</p>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" className="sr-only peer" defaultChecked={i === 0} />
-                            <div className="w-11 h-6 bg-zinc-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-                          </label>
+                      <Link href="/privacy-choices" target="_blank" className="flex items-center justify-between gap-3 p-4 bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] rounded-xl hover:border-indigo-500/40 transition-colors">
+                        <div>
+                          <h3 className="font-medium text-zinc-900 dark:text-white text-sm">Your privacy choices</h3>
+                          <p className="text-xs text-zinc-500 mt-0.5">What you control, and how to download or delete your data.</p>
                         </div>
-                      ))}
+                        <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
+                      </Link>
+                      <DownloadMyData />
                       <button onClick={async () => {
                         try {
                           const { auth } = await import('@/lib/firebase');

@@ -1,4 +1,5 @@
 import type { Router } from '../router';
+import { diagnoseErrors } from '../errors';
 import prisma from '@/lib/db';
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import { forgetUser, isOwnerEmail } from '../auth';
@@ -99,6 +100,29 @@ export default function ownerModule(router: Router) {
   const r = router.controller('owner', owned);
 
   // ── Overview & live activity ──
+
+  // ── Error monitoring (src/server/errors.ts) ──
+  r.get('errors', async ({ query }) => {
+    const status = typeof query.status === 'string' && ['NEW', 'DIAGNOSED', 'RESOLVED', 'IGNORED', 'OPEN'].includes(query.status) ? query.status : 'OPEN';
+    const where = status === 'OPEN' ? { status: { in: ['NEW', 'DIAGNOSED'] } } : { status };
+    const [items, counts] = await Promise.all([
+      prisma.errorReport.findMany({ where, orderBy: [{ lastSeen: 'desc' }], take: 200 }),
+      prisma.errorReport.groupBy({ by: ['status'], _count: { _all: true } }),
+    ]);
+    return { items, counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])) };
+  });
+
+  r.post('errors/diagnose', async ({ body }) => {
+    const ids = Array.isArray((body as { ids?: unknown })?.ids) ? ((body as { ids: unknown[] }).ids.filter((x) => typeof x === 'string') as string[]).slice(0, 10) : undefined;
+    if (!process.env.GEMINI_API_KEY) throw new BadRequestException('AI diagnosis needs the GEMINI_API_KEY secret.');
+    return { diagnosed: await diagnoseErrors(ids ? { ids } : { limit: 10 }) };
+  });
+
+  r.patch<{ id: string }>('errors/:id', async ({ params, body }) => {
+    const status = (body as { status?: unknown })?.status;
+    if (typeof status !== 'string' || !['NEW', 'RESOLVED', 'IGNORED'].includes(status)) throw new BadRequestException('Invalid status.');
+    return prisma.errorReport.update({ where: { id: params.id }, data: { status, resolvedAt: status === 'RESOLVED' ? new Date() : null } });
+  });
 
   r.get('overview', async () => {
     const now = Date.now();

@@ -17,6 +17,8 @@ import type { AppState, BinaryFileData, BinaryFiles, Collaborator, DataURL, Exca
 import type { ExcalidrawElement, FileId, OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
+import { isUploadedFileUrl } from '@/lib/file-urls';
+import { templateElements, type TemplateId } from './templates';
 
 // The live whiteboard: Excalidraw (every drawing tool, shapes, text, arrows, pictures, laser
 // pointer, export) connected to the board's room (BoardRoom in cloudflare/worker.ts). Each change
@@ -40,8 +42,10 @@ type ServerMessage =
   | { type: 'peers'; peers: BoardPeer[] }
   | { type: 'cursor'; sid: string; x: number; y: number; tool: 'pointer' | 'laser'; button: 'up' | 'down'; selected: string[] };
 
-const SEND_EVERY_MS = 40;
-const CURSOR_EVERY_MS = 50;
+// Messages to the board's Durable Object are billed (20 messages = 1 request), so they're batched:
+// changes at most ~16×/s while drawing, cursors ~12×/s and only when the pointer actually moved.
+const SEND_EVERY_MS = 60;
+const CURSOR_EVERY_MS = 80;
 const THUMBNAIL_AFTER_MS = 12_000;
 const BATCH = 200;
 const UPLOAD_MIME: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' };
@@ -92,6 +96,7 @@ export default function BoardCanvas({
   boardId,
   title,
   canEdit,
+  template,
   theme,
   onControls,
   onBackground,
@@ -104,6 +109,8 @@ export default function BoardCanvas({
   boardId: string;
   title: string;
   canEdit: boolean;
+  /** For a brand-new board: a starting layout, added on first open if the board is empty. */
+  template?: TemplateId | null;
   theme: 'light' | 'dark';
   onControls: (controls: BoardControls | null) => void;
   onBackground: (has: boolean) => void;
@@ -116,6 +123,7 @@ export default function BoardCanvas({
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const ws = useRef<WebSocket | null>(null);
   const ready = useRef(false); // received the board from the room
+  const framed = useRef(false); // zoomed to the drawing once, when the board first opens
   const known = useRef(new Map<string, number>()); // element id → version the room has
   const roomFiles = useRef(new Set<string>());
   const uploading = useRef(new Set<string>());
@@ -126,6 +134,7 @@ export default function BoardCanvas({
   const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thumbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCursor = useRef(0);
+  const lastPos = useRef<{ x: number; y: number; button: string }>({ x: NaN, y: NaN, button: 'up' });
   const callbacks = useRef({ onPeers, onStatus, onRole, onGone, onError, onBackground });
   useLayoutEffect(() => {
     editable.current = canEdit;
@@ -217,13 +226,15 @@ export default function BoardCanvas({
       await Promise.all(
         files.map(async (f) => {
           roomFiles.current.add(f.id);
-          if (have[f.id]) return;
+          if (have[f.id] || !isUploadedFileUrl(f.url)) return; // only pictures from our own storage
           try {
             const res = await fetch(f.url);
-            if (!res.ok) return;
+            if (!res.ok) throw new Error(String(res.status));
             loaded.push({ id: f.id as FileId, mimeType: f.mimeType as BinaryFileData['mimeType'], dataURL: (await blobToDataURL(await res.blob())) as DataURL, created: f.created });
           } catch {
-            /* shown as a placeholder */
+            // e.g. the files domain doesn't allow downloads from this site (R2 CORS): show the
+            // picture by its address instead. It still displays; exporting may skip it.
+            if (f.url.startsWith('https://')) loaded.push({ id: f.id as FileId, mimeType: f.mimeType as BinaryFileData['mimeType'], dataURL: f.url as DataURL, created: f.created });
           }
         }),
       );
@@ -273,6 +284,7 @@ export default function BoardCanvas({
     let retry: ReturnType<typeof setTimeout> | null = null;
     let ping: ReturnType<typeof setInterval> | null = null;
     let attempt = 0;
+    let openedAt = 0;
 
     const connect = async () => {
       if (stopped) return;
@@ -301,7 +313,7 @@ export default function BoardCanvas({
         }
         switch (msg.type) {
           case 'init':
-            attempt = 0;
+            openedAt = Date.now();
             me.current = msg.me;
             known.current = new Map();
             roomFiles.current = new Set();
@@ -311,6 +323,14 @@ export default function BoardCanvas({
             showPeers(msg.peers);
             void loadRoomFiles(msg.files).then(() => uploadFiles(api.getFiles()));
             flush(); // anything drawn while offline
+            // Open on the drawing, whatever the screen size (not on an empty corner of the canvas).
+            if (!framed.current) {
+              framed.current = true;
+              if (template && template !== 'blank' && editable.current && msg.elements.length === 0 && !api.getSceneElements().length) {
+                api.updateScene({ elements: convertToExcalidrawElements(templateElements(template)), captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+              }
+              if (api.getSceneElements().length) api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
+            }
             break;
           case 'update':
             merge(msg.elements);
@@ -348,7 +368,10 @@ export default function BoardCanvas({
         if (stopped) return;
         if (ev.code === 4004) return callbacks.current.onGone('deleted');
         // 4003: access changed. Reconnect straight away with a fresh ticket (it says what we may do now).
-        if (ev.code === 4003) attempt = 0;
+        // Otherwise only retry quickly if the connection had been working for a while (each attempt
+        // costs two requests; a room that drops people at once must not be retried in a loop).
+        if (ev.code === 4003 || (openedAt && Date.now() - openedAt > 30_000)) attempt = 0;
+        openedAt = 0;
         schedule();
       };
     };
@@ -356,14 +379,17 @@ export default function BoardCanvas({
     const schedule = () => {
       if (stopped) return;
       callbacks.current.onStatus('offline');
-      const wait = [300, 1000, 2000, 5000, 10000][Math.min(attempt, 4)];
+      if (attempt >= 10) return; // stays "Reconnecting…"; coming back to the tab or going online retries
+      const wait = [500, 1000, 2000, 5000, 10000, 30000, 60000][Math.min(attempt, 6)];
       attempt++;
       retry = setTimeout(connect, wait);
     };
 
     // Reconnect at once when the device comes back online or the tab is shown again.
     const wake = () => {
-      if (!ws.current && retry) {
+      if (document.visibilityState === 'hidden') return;
+      if (!ws.current && (retry || attempt >= 10)) {
+        attempt = Math.min(attempt, 3);
         clearTimeout(retry);
         retry = null;
         void connect();
@@ -388,7 +414,7 @@ export default function BoardCanvas({
         void saveThumbnail(); // leaving right after an edit
       }
     };
-  }, [api, boardId, merge, showPeers, loadRoomFiles, uploadFiles, flush, saveThumbnail]);
+  }, [api, boardId, merge, showPeers, loadRoomFiles, uploadFiles, flush, saveThumbnail, template]);
 
   const onChange = useCallback(
     (elements: readonly OrderedExcalidrawElement[], _state: AppState, files: BinaryFiles) => {
@@ -408,7 +434,10 @@ export default function BoardCanvas({
     (p: { pointer: { x: number; y: number; tool: 'pointer' | 'laser' }; button: 'down' | 'up' }) => {
       const now = Date.now();
       if (!ready.current || now - lastCursor.current < CURSOR_EVERY_MS) return;
+      const moved = Math.abs(p.pointer.x - lastPos.current.x) + Math.abs(p.pointer.y - lastPos.current.y) > 0.5;
+      if (!moved && p.button === lastPos.current.button) return;
       lastCursor.current = now;
+      lastPos.current = { x: p.pointer.x, y: p.pointer.y, button: p.button };
       send({ type: 'cursor', x: p.pointer.x, y: p.pointer.y, tool: p.pointer.tool, button: p.button, selected: Object.keys(api?.getAppState().selectedElementIds ?? {}) });
     },
     [api, send],

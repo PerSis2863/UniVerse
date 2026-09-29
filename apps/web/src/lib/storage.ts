@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
 import { isStorageHostUrl } from '@/lib/file-urls';
-import { hasR2Storage, r2Put } from '@/lib/r2';
+import { hasR2Storage, r2DeleteByUrl, r2Put } from '@/lib/r2';
 
 // File types people may upload. Anything that a browser could run as a page (HTML, SVG, JS)
 // is refused, so uploads can't be used to host phishing pages or scripts on our domains.
@@ -56,4 +56,14 @@ export function isAppFileUrl(url: unknown): url is string {
   } catch {
     return false;
   }
+}
+
+/** Permanently deletes an uploaded file (database or R2 storage). Unknown URLs are ignored. */
+export async function deleteFile(url: string): Promise<void> {
+  const key = url.match(/^\/api\/files\/([A-Za-z0-9_-]{16,})(\/|$)/)?.[1];
+  if (key) {
+    await prisma.storedFile.deleteMany({ where: { key } });
+    return;
+  }
+  await r2DeleteByUrl(url);
 }
