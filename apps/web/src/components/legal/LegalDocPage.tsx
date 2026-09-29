@@ -44,7 +44,7 @@ export function LegalDocPage({ doc }: { doc: LegalDocId }) {
             <span className="w-12 h-12 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0"><FileText className="w-6 h-6" /></span>
             <span className="min-w-0">
               <span className="block font-bold">Read the {d.title}</span>
-              <span className="block text-sm text-zinc-400">Opens the PDF · 6 pages</span>
+              <span className="block text-sm text-zinc-400">Opens the PDF</span>
             </span>
           </a>
 

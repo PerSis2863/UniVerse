@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { notify } from '@/server/email';
+import { deleteFile } from '@/lib/storage';
 
 // Daily job, run by the Worker's cron trigger (cloudflare/worker.ts → wrangler.jsonc "triggers").
 // It isn't reachable from outside: the scheduled handler calls it in-process with a random
@@ -16,7 +17,46 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   const reminders = await quizReminders();
-  return NextResponse.json({ reminders });
+  const deleted = await enforceRetention();
+  return NextResponse.json({ reminders, deleted });
+}
+
+const DAY = 24 * 60 * 60_000;
+
+/**
+ * Deletes records older than the retention periods promised in the Privacy Policy (section 8,
+ * public/legal/UniVerse-Privacy-Policy.pdf): technical / sign-in logs after 90 days, audit and
+ * security logs after 2 years, and the proof documents of staff applications 12 months after the
+ * decision. Change both together.
+ */
+async function enforceRetention() {
+  const now = Date.now();
+  const [signIns, audit, ownerChanges] = await Promise.all([
+    prisma.loginEvent.deleteMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) } } }),
+    prisma.auditLog.deleteMany({ where: { createdAt: { lt: new Date(now - 730 * DAY) } } }),
+    prisma.ownerChange.deleteMany({ where: { createdAt: { lt: new Date(now - 730 * DAY) } } }),
+  ]);
+
+  const decided = await prisma.roleApplication.findMany({
+    where: {
+      status: { in: ['APPROVED', 'REJECTED', 'WITHDRAWN'] },
+      proofUrl: { not: null },
+      updatedAt: { lt: new Date(now - 365 * DAY) },
+    },
+    select: { id: true, proofUrl: true },
+    take: 200,
+  });
+  let proofs = 0;
+  for (const a of decided) {
+    try {
+      await deleteFile(a.proofUrl!);
+      await prisma.roleApplication.update({ where: { id: a.id }, data: { proofUrl: null, proofName: null } });
+      proofs++;
+    } catch (e) {
+      console.error('Could not delete application document', a.id, e);
+    }
+  }
+  return { signIns: signIns.count, audit: audit.count, ownerChanges: ownerChanges.count, applicationDocuments: proofs };
 }
 
 /** Reminds students about published quizzes due in the next 24 hours that they haven't taken. */

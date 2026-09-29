@@ -1,6 +1,8 @@
 // UniVerse's Terms and Conditions and Privacy Policy, published as PDFs in public/legal.
-// To update one, replace the PDF (same file name) and change `updated`. If people must agree to
-// the new version, also bump TERMS_VERSION in src/lib/terms-version.ts.
+// Their editable text is in legal/terms.md and legal/privacy.md. To update one, edit the Markdown,
+// export it to PDF under the same file name, and update "Last Updated" inside. If people must agree
+// to the new version, also bump TERMS_VERSION in src/lib/terms-version.ts. The Privacy Policy's
+// retention periods are enforced by the daily job (src/app/api/cron/daily/route.ts).
 export const LEGAL_DOCS = {
   terms: {
     title: 'Terms and Conditions',
