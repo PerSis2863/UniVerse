@@ -229,7 +229,14 @@ function People({ onPerson }: { onPerson: (id: string) => void }) {
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{p.phone ?? '—'}</td>
                 <td className="px-4 py-3">{p.role}</td>
                 <td className={cn('px-4 py-3', p.status === 'SUSPENDED' && 'text-rose-500')}>{p.status}</td>
-                <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">{p.lastSignIn ? `${formatDistanceToNow(new Date(p.lastSignIn.createdAt), { addSuffix: true })}${p.lastSignIn.device ? ` · ${p.lastSignIn.device}` : ''}` : '—'}</td>
+                <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">
+                  {p.lastSignIn ? (
+                    <span title={formatDistanceToNow(new Date(p.lastSignIn.createdAt), { addSuffix: true })}>
+                      <span className="block text-zinc-700 dark:text-zinc-300">{format(new Date(p.lastSignIn.createdAt), 'd MMM yyyy, HH:mm')}</span>
+                      <span className="block text-xs">{[p.lastSignIn.device ?? 'Unknown device', p.lastSignIn.country].filter(Boolean).join(' · ')}</span>
+                    </span>
+                  ) : '—'}
+                </td>
                 <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">{format(new Date(p.createdAt), 'd MMM yyyy')}</td>
               </tr>
             ))}
