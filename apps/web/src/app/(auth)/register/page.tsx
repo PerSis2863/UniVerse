@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check } from 'lucide-react';
@@ -12,12 +12,14 @@ import { api } from '@/lib/api';
 import { awaitingApproval } from '@/types';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { reportSession } from '@/lib/sign-in-history';
+import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
+import { TERMS_VERSION } from '@/lib/terms-version';
 
 const ROLES = [
   {
     id: 'STUDENT',
-    label: 'Student',
-    description: 'Access courses, grades, and social impact projects',
+    label: 'Individual',
+    description: 'Students and anyone who wants to learn, join projects and earn verified credentials.',
     icon: GraduationCap,
     color: 'indigo',
     gradient: 'from-indigo-500/20 to-purple-500/20',
@@ -26,8 +28,8 @@ const ROLES = [
   },
   {
     id: 'TEACHER',
-    label: 'University Staff',
-    description: 'Manage courses, students, and academic content. An admin approves staff accounts.',
+    label: 'Staff',
+    description: 'Teachers and university staff: manage courses, students and content. An admin approves staff accounts.',
     icon: Building2,
     color: 'emerald',
     gradient: 'from-emerald-500/20 to-teal-500/20',
@@ -36,8 +38,8 @@ const ROLES = [
   },
   {
     id: 'ADMIN',
-    label: 'NGO Representative',
-    description: 'Post projects, collaborate with universities. An admin approves NGO accounts.',
+    label: 'Organization',
+    description: 'NGOs, companies and institutions: post projects and partner with universities. An admin approves organizations.',
     icon: Globe,
     color: 'amber',
     gradient: 'from-amber-500/20 to-orange-500/20',
@@ -50,7 +52,10 @@ export default function RegisterPage() {
   const router = useRouter();
   const { setUser, setTokens } = useAuthStore();
 
-  const [step, setStep] = useState<'role' | 'credentials'>('role');
+  const [step, setStep] = useState<'role' | 'credentials' | 'verify'>('role');
+  // "Finish registration": signed in with Google / Apple / phone on the sign-in page, but never
+  // registered. They pick a role and name here; no second sign-in needed.
+  const [finishing, setFinishing] = useState<{ email: string; name: string; method: 'google' | 'phone' | 'apple' | 'password' } | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -58,14 +63,48 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
+  const [individual, setIndividual] = useState<'STUDENT' | 'INDEPENDENT' | null>(null); // for Individual sign-ups
+  const [agreed, setAgreed] = useState(false); // Terms and Privacy Policy, required to create the account
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);
+
+  useEffect(() => {
+    if (!new URLSearchParams(location.search).has('continue')) return;
+    let cancelled = false;
+    (async () => {
+      const { auth } = await import('@/lib/firebase');
+      await auth.authStateReady();
+      const u = auth.currentUser;
+      if (cancelled || !u) return;
+      const provider = u.providerData[0]?.providerId ?? '';
+      setFinishing({ email: u.email ?? u.phoneNumber ?? '', name: u.displayName ?? '', method: provider.includes('google') ? 'google' : provider.includes('apple') ? 'apple' : provider === 'phone' ? 'phone' : 'password' });
+      setName((n) => n || u.displayName || '');
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const finishRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!finishing || needAgreement()) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const { auth } = await import('@/lib/firebase');
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Please sign in again.');
+      await handleRegisterSuccess(token, name.trim() || finishing.name, finishing.method === 'password' ? 'password' : finishing.method === 'phone' ? 'phone' : 'google');
+    } catch (err) {
+      setError(authErrorMessage(err, 'Couldn’t finish creating your account. Please try again.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleRegisterSuccess = async (token: string, displayName: string, method?: 'google' | 'password' | 'phone') => {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
-      const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole });
+      const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole, accountType: selectedRole === 'STUDENT' ? individual : undefined, acceptTerms: agreed ? TERMS_VERSION : undefined });
       const me = { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status || 'ACTIVE', createdAt: user.createdAt || new Date().toISOString(), application: user.application ?? null };
       setUser(me);
       reportSession('SIGN_UP', method);
@@ -79,16 +118,23 @@ export default function RegisterPage() {
     }
   };
 
+  const needAgreement = () => {
+    if (agreed) return false;
+    setError('Please accept the Terms and Conditions and the Privacy Policy to create your account.');
+    return true;
+  };
+
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (needAgreement()) return;
     setIsLoading(true);
     setError('');
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: name });
-      const token = await userCredential.user.getIdToken();
-      await handleRegisterSuccess(token, name, 'password');
-    } catch (err: any) {
+      // The address must be confirmed before the account can be used (see EmailVerifyPanel).
+      setStep('verify');
+    } catch (err) {
       setError(authErrorMessage(err, 'Failed to create account. Please try again.'));
     } finally {
       setIsLoading(false);
@@ -96,6 +142,7 @@ export default function RegisterPage() {
   };
 
   const handleGoogleRegister = async () => {
+    if (needAgreement()) return;
     setIsLoading(true);
     setError('');
     try {
@@ -103,7 +150,7 @@ export default function RegisterPage() {
       const userCredential = await signInWithPopup(auth, provider);
       const token = await userCredential.user.getIdToken();
       await handleRegisterSuccess(token, userCredential.user.displayName || '', 'google');
-    } catch (err: any) {
+    } catch (err) {
       setError(authErrorMessage(err, 'Failed to sign up with Google.'));
     } finally {
       setIsLoading(false);
@@ -119,19 +166,19 @@ export default function RegisterPage() {
           Join the Network
         </div>
         <h1 className="text-3xl font-black text-white mb-2">Create an account</h1>
-        <p className="text-zinc-400 text-sm">Start your journey as a student, teacher, or organization.</p>
+        <p className="text-zinc-400 text-sm">{finishing ? 'You’re signed in — choose how you’ll use UniVerse to finish creating your account.' : 'Join as an individual, a staff member or an organization.'}</p>
       </div>
 
       {/* Step indicator */}
       <div className="flex items-center gap-3 mb-6">
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${step === 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
-          {step === 'credentials' ? <Check className="w-3 h-3" /> : <span>1</span>}
+          {step !== 'role' ? <Check className="w-3 h-3" /> : <span>1</span>}
           Choose Role
         </div>
         <div className="flex-1 h-px bg-zinc-800" />
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${step === 'credentials' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${step !== 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
           <span>2</span>
-          Create Account
+          {finishing ? 'Your details' : 'Create Account'}
         </div>
       </div>
 
@@ -177,20 +224,72 @@ export default function RegisterPage() {
                 );
               })}
             </div>
+            {selectedRole === 'STUDENT' && (
+              <fieldset className="mb-6 -mt-2">
+                <legend className="text-zinc-400 text-sm mb-3 font-medium">Which describes you?</legend>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {([
+                    ['STUDENT', 'I’m a student', 'At a university or school. You’ll add your details and your student card or enrolment certificate; an admin verifies it before your account opens.'],
+                    ['INDEPENDENT', 'I’m independent', 'Freelancer, professional or lifelong learner, not enrolled anywhere. No documents needed: start straight away.'],
+                  ] as const).map(([id, title, text]) => (
+                    <button key={id} type="button" onClick={() => setIndividual(id)} aria-pressed={individual === id}
+                      className={`text-left p-3.5 rounded-xl border-2 transition-all ${individual === id ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>
+                      <span className="flex items-center gap-2 font-semibold text-sm text-white">{individual === id && <Check className="w-4 h-4 text-indigo-400" />}{title}</span>
+                      <span className="block text-xs text-zinc-400 mt-1 leading-relaxed">{text}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <button
               type="button"
-              disabled={!selectedRole}
+              disabled={!selectedRole || (selectedRole === 'STUDENT' && !individual)}
               onClick={() => setStep('credentials')}
               className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 text-sm shadow-md transition-colors flex items-center justify-center gap-2"
             >
-              Continue as {selectedRoleData?.label || '...'}
+              Continue as {selectedRole === 'STUDENT' && individual ? (individual === 'STUDENT' ? 'a student' : 'an independent') : selectedRoleData?.label || '...'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         )}
 
+        {/* Email verification (email + password sign-up) */}
+        {step === 'verify' && (
+          <EmailVerifyPanel email={email} sendOnMount onVerified={(token) => handleRegisterSuccess(token, name, 'password')} onCancel={async () => { const { auth } = await import('@/lib/firebase'); await auth.signOut().catch(() => {}); setStep('credentials'); }} />
+        )}
+
+        {/* STEP 2 for people already signed in: just their name */}
+        {step === 'credentials' && finishing && (
+          <form onSubmit={finishRegistration} className="space-y-4">
+            {selectedRoleData && (
+              <div className={`flex items-center gap-2 p-3 rounded-xl border bg-gradient-to-r ${selectedRoleData.gradient} ${selectedRoleData.border}`}>
+                <selectedRoleData.icon className="w-4 h-4 text-white" />
+                <span className="text-white text-sm font-semibold">Joining as {selectedRoleData.label}</span>
+                <button type="button" onClick={() => setStep('role')} className="ml-auto text-white/60 hover:text-white text-xs underline">Change</button>
+              </div>
+            )}
+            <p className="text-sm text-zinc-400">Signed in as <span className="text-white font-medium">{finishing.email}</span></p>
+            <div>
+              <label className="block text-zinc-400 text-sm font-medium mb-1.5">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} maxLength={100}
+                  className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  placeholder="Your name" />
+              </div>
+            </div>
+            <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
+              <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setError(''); }} required className="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0" />
+              <span>I have read and agree to the <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link> and the <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.</span>
+            </label>
+            <button type="submit" disabled={isLoading || !name.trim() || !agreed} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Finish creating my account'}
+            </button>
+          </form>
+        )}
+
         {/* STEP 2: Credentials */}
-        {step === 'credentials' && (
+        {step === 'credentials' && !finishing && (
           <>
             {showPhoneFlow ? (
               <PhoneAuthFlow isRegister={true} onSuccess={(token, n) => handleRegisterSuccess(token, n ?? '', 'phone')} onCancel={() => setShowPhoneFlow(false)} />
@@ -204,6 +303,13 @@ export default function RegisterPage() {
                     <button onClick={() => setStep('role')} className="ml-auto text-white/60 hover:text-white text-xs underline">Change</button>
                   </div>
                 )}
+
+                <div className="mb-5 p-3 rounded-xl border border-white/10 bg-white/[0.03]">
+                  <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
+                    <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setError(''); }} required className="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0" />
+                    <span>I have read and agree to the <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link> and the <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.</span>
+                  </label>
+                </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   <button
@@ -222,7 +328,7 @@ export default function RegisterPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowPhoneFlow(true)}
+                    onClick={() => { if (!needAgreement()) setShowPhoneFlow(true); }}
                     disabled={isLoading}
                     className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50"
                   >
@@ -273,7 +379,7 @@ export default function RegisterPage() {
                       className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors">
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
-                    <button type="submit" disabled={isLoading}
+                    <button type="submit" disabled={isLoading || !agreed}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}
                     </button>
@@ -293,7 +399,7 @@ export default function RegisterPage() {
       </div>
 
       <p className="mt-6 text-center text-xs text-zinc-600">
-        By joining, you agree to our{' '}
+        Read our{' '}
         <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link>
         {' and '}
         <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.

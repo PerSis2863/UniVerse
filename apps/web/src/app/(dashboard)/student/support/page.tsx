@@ -5,7 +5,7 @@ import { LifeBuoy, FileText, MessageCircle, ChevronRight, Search, Send, Book, Wi
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 
 const FAQS = [

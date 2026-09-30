@@ -1,4 +1,6 @@
 'use client';
+import { Combobox } from '@/components/ui/Combobox';
+import { DEPARTMENTS } from '@/lib/options/academic';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState } from 'react';
@@ -33,8 +35,8 @@ export default function PersonalDataPage() {
       await mutate();
       toast.success(ok);
       return true;
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
       return false;
     } finally {
       setBusy(false);
@@ -64,7 +66,11 @@ export default function PersonalDataPage() {
         <p className="text-xs text-zinc-500">{label}</p>
         {editing === edit && edit ? (
           <div className="flex gap-2 mt-1.5">
-            <input autoFocus className={input} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveField()} placeholder={edit === 'phone' ? '+91 98765 43210' : 'e.g. Computer Science'} />
+            {edit === 'department' ? (
+              <Combobox autoFocus className="flex-1 min-w-0" value={value} onChange={setValue} onEnter={saveField} options={DEPARTMENTS} maxLength={120} placeholder="e.g. Computer Science" aria-label="Department" />
+            ) : (
+              <input autoFocus className={input} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveField()} placeholder="+91 98765 43210" />
+            )}
             <button onClick={saveField} disabled={busy || !value.trim()} className="px-3 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}</button>
             <button onClick={() => setEditing(null)} aria-label="Cancel" className="px-2 text-zinc-500"><X className="w-4 h-4" /></button>
           </div>

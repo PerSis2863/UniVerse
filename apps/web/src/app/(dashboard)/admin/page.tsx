@@ -58,7 +58,6 @@ export default function AdminDashboard() {
     <>
       <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} action={{ label: t('admin.send_announcement'), onClick: handleSendAnnouncement }} />
       <div className="flex-1 p-8 space-y-8">
-        <AccountSetupCard />
 
         {/* KPIs */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -67,6 +66,8 @@ export default function AdminDashboard() {
           <KpiCard title={t('admin.active_courses')} value={data?.totalCourses || 0} icon={BookOpen} color="cyan" />
           <KpiCard title={t('admin.revenue')} value={formatCurrency(data?.revenue || 0)} icon={DollarSign} color="green" />
         </div>
+        {/* Below the main figures, so it never pushes them down when it appears. */}
+        <AccountSetupCard />
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Departments */}

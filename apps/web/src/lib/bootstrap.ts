@@ -40,6 +40,7 @@ export function startBootstrap(pathname: string, send: (body: string) => Promise
 
 /** Whether `key` (a URL as the app requests it) can still be answered from the bundle. */
 export function inBootstrap(key: string) {
+  adoptEarlyBootstrap(); // the head script may have started it before anything else ran
   return !!pending && keys.has(key) && !used.has(key) && (!doneAt || Date.now() - doneAt < FRESH_MS);
 }
 
@@ -54,8 +55,41 @@ export async function fromBootstrap<T = unknown>(key: string): Promise<T | undef
 
 /** The live-updates address from the bundle (used once, while still valid), or undefined. */
 export async function bootstrapTicket(): Promise<string | undefined> {
+  adoptEarlyBootstrap();
   if (!pending || !ticketAsked || used.has('ticket')) return undefined;
   used.add('ticket');
   const bundle = await pending;
   return bundle?.ticket && Date.now() - doneAt < TICKET_MS ? bundle.ticket : undefined;
 }
+
+/**
+ * The inline script in the page's <head> (see bootstrapPrefetchScript) starts the startup bundle
+ * before the app's JavaScript has even downloaded. Adopt it if it ran.
+ */
+export function adoptEarlyBootstrap(): boolean {
+  if (pending || typeof window === 'undefined') return !!pending;
+  const early = (window as Window & { __universeBoot?: { keys: string[]; ticket: boolean; promise: Promise<Bundle | null> } }).__universeBoot;
+  if (!early) return false;
+  keys = new Set(early.keys);
+  ticketAsked = early.ticket;
+  pending = early.promise.then((b) => { doneAt = Date.now(); return b; }, () => { doneAt = Date.now(); return null; });
+  return true;
+}
+
+/**
+ * Inline script for the page's <head>: on dashboard pages with a saved, unexpired sign-in, it asks
+ * for the startup bundle straight away, in parallel with downloading the app's JavaScript (the
+ * first screen's data arrives about a second sooner on slow connections). Must stay in step with
+ * startBootstrap above (same keys).
+ */
+export const bootstrapPrefetchScript = `(function(){try{
+var p=location.pathname;if(!/^\\/(student|teacher|admin|boards|explore|application|console)(\\/|$)/.test(p))return;
+if(sessionStorage.getItem('universe:sample-mode')==='1')return;
+var t=localStorage.getItem('accessToken');if(!t||!localStorage.getItem('universe-auth'))return;
+if(!/^(mock-token-|ut1\\.)/.test(t)){var b=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(!b.exp||b.exp*1000<Date.now()+60000)return;}
+var dow=(new Date().getDay()+6)%7;
+var keys=['/api/core/users/me','/api/me','/api/notifications','/api/chat/incoming'].concat(({'/student':['/api/student/overview?dow='+dow],'/teacher':['/api/core/dashboard/teacher'],'/admin':['/api/core/dashboard/admin']})[p]||[]);
+var session=!sessionStorage.getItem('universe-session-reported');if(session)sessionStorage.setItem('universe-session-reported','1');
+var ticket='WebSocket' in window;
+window.__universeBoot={keys:keys,ticket:ticket,promise:fetch('/api/bootstrap',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+t},body:JSON.stringify({keys:keys,ticket:ticket,session:session})}).then(function(r){return r.ok?r.json():null},function(){return null})};
+}catch(e){}})();`;

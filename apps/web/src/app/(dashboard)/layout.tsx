@@ -6,18 +6,16 @@ import { DashboardShell } from '@/components/layout/DashboardShell';
 import { AppSkeleton } from '@/components/layout/AppSkeleton';
 import { useAuthStore } from '@/store/auth';
 import { Role, UserStatus, awaitingApproval, type ApplicationSummary } from '@/types';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
 import { DataConfig } from '@/components/DataConfig';
 import { LowDataSync } from '@/components/settings/LowDataToggle';
 import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
-import { startBootstrap } from '@/lib/bootstrap';
+import { adoptEarlyBootstrap, startBootstrap } from '@/lib/bootstrap';
 import { authedJson } from '@/lib/authed-fetch';
 import { isSampleMode } from '@/lib/sample-mode';
 
-type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean };
+type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean; onboardedAt?: string | null };
 
 const toUser = (me: MeResponse, photoURL?: string | null) => ({
   id: me.id,
@@ -57,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Ask for everything the first screen needs in one request (see lib/bootstrap.ts). Started while
   // rendering, before the page's own data hooks run, so they can use its answers. Runs once.
-  if (mounted && hasSession() && !isSampleMode()) {
+  if (mounted && hasSession() && !isSampleMode() && !adoptEarlyBootstrap()) {
     startBootstrap(pathname, (body) => authedJson('/api/bootstrap', { method: 'POST', body }), { session: claimSessionReportOnce() });
   }
 
@@ -72,15 +70,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       lastSync = Date.now();
       try {
         const res = await api.get<MeResponse>('/users/me');
-        if (!cancelled && res.data) useAuthStore.getState().setUser(toUser(res.data, auth.currentUser?.photoURL));
+        if (!cancelled && res.data) {
+          // Signed in but never registered (e.g. first Google sign-in): finish registration first.
+          if (!res.data.onboardedAt && !res.data.owner) { router.replace('/register?continue=1'); return; }
+          useAuthStore.getState().setUser(toUser(res.data, photoURL));
+        }
       } catch (e) {
         console.error('Failed to fetch user data', e);
       }
     };
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let photoURL: string | null | undefined;
+    let unsubscribe = () => {};
+    const onSession = async (firebaseSignedIn: boolean) => {
       const token = localStorage.getItem('accessToken');
-      signedIn = !!firebaseUser || !!token?.startsWith('mock-token-') || !!token?.startsWith('ut1.');
+      signedIn = firebaseSignedIn || !!token?.startsWith('mock-token-') || !!token?.startsWith('ut1.');
       if (!cancelled) setIsSignedIn(signedIn);
       if (signedIn) {
         reportSession('SESSION');
@@ -90,7 +94,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         else await syncProfile();
       }
       if (!cancelled) setIsLoaded(true);
-    });
+    };
+    // Demo and LMS (LTI) sessions don't use Firebase: skip loading it (about 30 kB) for them.
+    // Everyone else loads it here, after the page has rendered, not before.
+    const stored = (() => { try { return localStorage.getItem('accessToken'); } catch { return null; } })();
+    if (stored?.startsWith('mock-token-') || stored?.startsWith('ut1.')) void onSession(false);
+    else {
+      void Promise.all([import('@/lib/firebase'), import('firebase/auth')]).then(([{ auth }, { onAuthStateChanged }]) => {
+        if (cancelled) return;
+        unsubscribe = onAuthStateChanged(auth, (u) => { photoURL = u?.photoURL; void onSession(!!u); });
+      });
+    }
 
     const onVisible = () => {
       if (document.visibilityState === 'visible' && signedIn && Date.now() - lastSync > RESYNC_MS) void syncProfile();

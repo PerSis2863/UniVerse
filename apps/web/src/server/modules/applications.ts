@@ -16,13 +16,13 @@ import { later, notify } from '../email';
 // involved. Admins can skip the review by inviting someone (Users → Invite): an invited person who
 // signs up with that (verified) email address gets the role straight away.
 
-export const REQUESTABLE_ROLES = ['TEACHER', 'ADMIN'] as const;
+export const REQUESTABLE_ROLES = ['STUDENT', 'TEACHER', 'ADMIN'] as const;
 type RequestableRole = (typeof REQUESTABLE_ROLES)[number];
 const OPEN: RoleApplicationStatus[] = ['DRAFT', 'PENDING', 'NEEDS_INFO'];
 const REAPPLY_AFTER_DAYS = 7;
 const FREE_MAIL = /@(gmail|googlemail|yahoo|ymail|outlook|hotmail|live|msn|icloud|me|aol|proton(mail)?|gmx|mail|yandex|zoho)\.[a-z.]+$/i;
 
-export const ROLE_LABEL: Record<RequestableRole, string> = { TEACHER: 'teacher', ADMIN: 'NGO representative' };
+export const ROLE_LABEL: Record<RequestableRole, string> = { STUDENT: 'verified student', TEACHER: 'teacher', ADMIN: 'organization representative' };
 
 type HistoryEvent = { at: string; by?: string | null; byName?: string | null; type: string; note?: string | null };
 type Actor = { id: string; name?: string | null; role: string };
@@ -102,6 +102,12 @@ function applicantFields(body: Record<string, any> | null | undefined) { // esli
 function missingForSubmit(app: { requestedRole: string; [k: string]: unknown }): string[] {
   const missing: string[] = [];
   const need = (k: string, label: string) => { if (!app[k]) missing.push(label); };
+  if (app.requestedRole === 'STUDENT') {
+    need('institution', 'university or school');
+    need('department', 'programme');
+    if (!app.proofUrl && !app.workEmail) missing.push('your student card or enrolment certificate (or your university email)');
+    return missing;
+  }
   if (app.requestedRole === 'ADMIN') {
     need('institution', 'organization');
     need('position', 'your role at the organization');
@@ -168,13 +174,23 @@ export default function applicationsModule(router: Router) {
     return body?.submit ? submit(updated.id, user) : updated;
   });
 
-  /** Withdraw your application. If you signed up as a teacher you carry on as a student. */
+  /**
+   * Withdraw your application. Withdrawing the application made at sign-up cancels the account
+   * setup: the account gets no access (not even as a student) and the person goes through
+   * registration again if they come back. An application made later from an existing account just
+   * closes, and the account carries on as before.
+   */
   r.post('mine/withdraw', async ({ user, req }) => {
     const app = await prisma.roleApplication.findFirst({ where: { userId: user.id, status: { in: OPEN } }, orderBy: { createdAt: 'desc' } });
     if (!app) throw new NotFoundException('You have no open application.');
-    const done = await prisma.roleApplication.update({ where: { id: app.id }, data: { status: 'WITHDRAWN', history: withEvent(app.history, { by: user.id, byName: user.name, type: 'withdrawn' }) } });
+    const signup = app.source === 'SIGNUP' && user.role === 'STUDENT';
+    const [done] = await prisma.$transaction([
+      prisma.roleApplication.update({ where: { id: app.id }, data: { status: 'WITHDRAWN', history: withEvent(app.history, { by: user.id, byName: user.name, type: 'withdrawn' }) } }),
+      ...(signup ? [prisma.user.update({ where: { id: user.id }, data: { onboardedAt: null, accountType: null } })] : []),
+    ]);
+    if (signup) forgetUser(user.id);
     audit(user, { action: 'application.withdrawn', summary: `${user.name} withdrew their ${ROLE_LABEL[app.requestedRole as RequestableRole] ?? 'staff'} application`, targetType: 'role_application', targetId: app.id }, req);
-    return done;
+    return { ...done, setupCancelled: signup };
   });
 
   // ── For admins ──
@@ -218,7 +234,10 @@ export default function applicationsModule(router: Router) {
     const app = await openForReview(params.id, user);
     const note = typeof body?.note === 'string' ? body.note.trim().slice(0, 1000) : '';
     const role = app.requestedRole as RequestableRole;
-    await prisma.user.update({ where: { id: app.userId }, data: { role, status: 'ACTIVE' } });
+    await prisma.user.update({ where: { id: app.userId }, data: { role, status: 'ACTIVE', accountType: role === 'STUDENT' ? 'STUDENT' : role === 'TEACHER' ? 'STAFF' : 'ORGANIZATION' } });
+    if (role === 'STUDENT') {
+      await prisma.studentProfile.upsert({ where: { userId: app.userId }, update: { department: app.department ?? undefined }, create: { userId: app.userId, department: app.department ?? null } });
+    }
     if (role === 'TEACHER') {
       await prisma.teacherProfile.upsert({
         where: { userId: app.userId },
@@ -236,7 +255,7 @@ export default function applicationsModule(router: Router) {
       type: 'application',
       title: `You're approved as a ${ROLE_LABEL[role]}`,
       body: `Your application was approved${note ? `: ${note}` : '.'} Sign out and back in if you don't see your new dashboard.`,
-      link: role === 'TEACHER' ? '/teacher' : '/admin',
+      link: role === 'TEACHER' ? '/teacher' : role === 'ADMIN' ? '/admin' : '/student',
     }));
     return done;
   });

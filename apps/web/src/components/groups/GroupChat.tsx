@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Check, Edit2, Hash, ImageIcon, Loader2, Paperclip, Send, Trash2, X } from 'lucide-react';

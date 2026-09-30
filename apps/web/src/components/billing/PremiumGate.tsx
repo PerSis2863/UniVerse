@@ -1,7 +1,7 @@
 'use client';
 
 import Link from '@/components/ui/Link';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Lock, Sparkles, ArrowRight, Check } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { FEATURE_INFO, PLANS, formatPrice, type PremiumFeature } from '@/lib/plans';

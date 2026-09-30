@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Topbar } from '@/components/layout/Topbar';
 import { Building2, HandHeart, Globe2, Handshake, MapPin, ExternalLink, Search } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';

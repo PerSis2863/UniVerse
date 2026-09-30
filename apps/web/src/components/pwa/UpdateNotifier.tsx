@@ -6,36 +6,51 @@ import { toast } from 'sonner';
 const CHECK_EVERY_MS = 30 * 60 * 1000;
 
 /**
- * Keeps the installed app (PWA) on the same version as the website. The service worker switches to
- * a new deployment on its own, but an open app keeps running the old code until it reloads, so
- * offer a refresh as soon as the new version takes over. Also checks for new versions when the
- * app comes back to the foreground.
+ * Keeps the app on the same version as the website, without ever breaking an open tab.
+ *
+ * The service worker keeps a copy of every file of the version it belongs to. A new deployment
+ * installs a new service worker, but it WAITS (skipWaiting is off in next.config.ts): switching
+ * at once would delete the old version's files while open tabs still run the old code, and the
+ * next page they open would fail to load (a blank white page until a manual refresh). Instead we
+ * offer a refresh; accepting it activates the new version and reloads. Tabs that ignore it keep
+ * working on the old version, and the new one takes over once they're all closed.
  */
 export function UpdateNotifier() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     const sw = navigator.serviceWorker;
-    const hadController = !!sw.controller; // first install isn't an "update"
     let notified = false;
+    let reloading = false;
+    let reg: ServiceWorkerRegistration | undefined;
 
-    const onControllerChange = () => {
-      if (!hadController || notified) return;
+    const activate = () => {
+      const waiting = reg?.waiting;
+      if (!waiting) return window.location.reload();
+      reloading = true;
+      waiting.postMessage({ type: 'SKIP_WAITING' });
+      setTimeout(() => window.location.reload(), 3000); // in case controllerchange never fires
+    };
+    const offer = () => {
+      if (notified || !sw.controller) return; // the first install isn't an update
       notified = true;
-      toast('UniVerse has been updated', {
-        description: 'Refresh to use the latest version.',
+      toast('A new version of UniVerse is ready', {
+        description: 'Refresh to get the latest improvements.',
         duration: Infinity,
-        action: { label: 'Refresh', onClick: () => window.location.reload() },
+        action: { label: 'Refresh', onClick: activate },
       });
     };
-    const check = () => {
-      sw.getRegistration()
-        .then((reg) => reg?.update())
-        .catch(() => {});
+    const watch = (r: ServiceWorkerRegistration) => {
+      if (r.waiting) offer();
+      r.addEventListener('updatefound', () => {
+        const next = r.installing;
+        next?.addEventListener('statechange', () => { if (next.state === 'installed') offer(); });
+      });
     };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') check();
-    };
+    const onControllerChange = () => { if (reloading) window.location.reload(); };
+    const check = () => { reg?.update().catch(() => {}); };
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
 
+    sw.getRegistration().then((r) => { if (r) { reg = r; watch(r); } }).catch(() => {});
     sw.addEventListener('controllerchange', onControllerChange);
     document.addEventListener('visibilitychange', onVisible);
     const timer = setInterval(check, CHECK_EVERY_MS);

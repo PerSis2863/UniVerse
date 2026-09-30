@@ -5,8 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
-  AlertTriangle, ArrowLeft, BadgeCheck, Building2, CheckCircle2, Clock, Globe, Inbox, Loader2, Mail, MessageSquareWarning, Paperclip, Phone, Search, UserCheck, X, XCircle,
-} from 'lucide-react';
+  AlertTriangle, ArrowLeft, BadgeCheck, Building2, CheckCircle2, Clock, Globe, Inbox, Loader2, Mail, MessageSquareWarning, Paperclip, Phone, Search, UserCheck, X, XCircle, GraduationCap } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
@@ -19,7 +18,7 @@ type Status = 'PENDING' | 'NEEDS_INFO' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 interface Applicant { id: string; name: string; email: string; avatar: string | null; role: string; status: string; createdAt: string; phone: string | null }
 interface HistoryEvent { at: string; byName?: string | null; type: string; note?: string | null }
 interface Application {
-  id: string; status: Status | 'DRAFT'; source: string; requestedRole: 'TEACHER' | 'ADMIN';
+  id: string; status: Status | 'DRAFT'; source: string; requestedRole: 'STUDENT' | 'TEACHER' | 'ADMIN';
   institution: string | null; department: string | null; position: string | null; staffId: string | null; workEmail: string | null; phone: string | null;
   subjects: string | null; experienceYears: number | null; profileUrl: string | null; message: string | null; proofUrl: string | null; proofName: string | null;
   adminNote: string | null; submittedAt: string | null; reviewedAt: string | null; createdAt: string;
@@ -35,7 +34,7 @@ const TABS: { id: Status; label: string }[] = [
   { id: 'REJECTED', label: 'Declined' },
   { id: 'WITHDRAWN', label: 'Withdrawn' },
 ];
-const ROLE = { TEACHER: { label: 'Teacher', icon: Building2 }, ADMIN: { label: 'NGO representative', icon: Globe } } as const;
+const ROLE = { STUDENT: { label: 'Student verification', icon: GraduationCap }, TEACHER: { label: 'Staff', icon: Building2 }, ADMIN: { label: 'Organization', icon: Globe } } as const;
 const EVENT_LABEL: Record<string, string> = {
   created: 'Started', submitted: 'Sent for review', updated: 'Details updated', info_requested: 'More information requested', info_provided: 'Applicant answered',
   approved: 'Approved', rejected: 'Declined', withdrawn: 'Withdrawn by applicant', invited: 'Approved from an invitation',
@@ -173,7 +172,7 @@ function ApplicationDetail({ id, onBack, onDecided }: { id: string; onBack: () =
   };
 
   const rows: [string, React.ReactNode][] = [
-    [a.requestedRole === 'ADMIN' ? 'Organization' : 'Institution', a.institution],
+    [a.requestedRole === 'ADMIN' ? 'Organization' : a.requestedRole === 'STUDENT' ? 'University or school' : 'Institution', a.institution],
     ['Department', a.department],
     ['Position', a.position],
     ['Staff ID', a.staffId],

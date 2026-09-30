@@ -41,7 +41,7 @@ export default function PublicReportPage() {
             <p className="mt-1 text-sm text-zinc-500">The link may be wrong, or the report was withdrawn.</p>
           </div>
         ) : !r ? <div className="p-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div> : <ReportView d={r.data} verification={r.verification} />}
-        <p className="mt-8 text-center text-[11px] text-zinc-500">UniVerse Impact · Rue de la Patouillerie, 44700 Orvault (Nantes), France</p>
+        <p className="mt-8 text-center text-[11px] text-zinc-500">UniVerse Impact · Paris, France</p>
       </div>
     </main>
   );

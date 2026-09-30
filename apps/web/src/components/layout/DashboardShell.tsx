@@ -7,17 +7,16 @@ import {
   LayoutDashboard, BookOpen, MessageSquare, Bell, Search, Globe2, Users, ShieldCheck, Menu,
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { AIStudyAssistant } from '@/components/ui/AIStudyAssistant';
-import { CommandPalette, openCommandPalette } from '@/components/ui/CommandPalette';
+import { openCommandPalette } from '@/lib/palette';
+import { DeferredShell } from './DeferredShell';
 import { useAuthStore } from '@/store/auth';
 import { usePathname } from 'next/navigation';
 import Link from '@/components/ui/Link';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
-import { PushNotificationManager } from '@/components/pwa/PushNotificationManager';
 import { IncomingCall } from '@/components/chat/IncomingCall';
 
 interface DashboardShellProps {
@@ -169,12 +168,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
       </div>
 
       {/* The floating assistant would cover the chat composer on the Messages page */}
-      {!pathname.endsWith('/inbox') && <AIStudyAssistant />}
-      <CommandPalette role={user?.role} />
+      <DeferredShell role={user?.role} showAssistant={!pathname.endsWith('/inbox')} signedIn={!!user} />
       {user && <MobileTabBar role={user.role} onMore={() => setSidebarOpen((v) => !v)} moreOpen={sidebarOpen} />}
       <OfflineBar />
       <InstallBanner />
-      {user && <PushNotificationManager />}
       {user && <IncomingCall inboxPath={`${tabsForRole(user.role).base}/inbox`} />}
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { CreditCard, Crown, Loader2, ShieldCheck, CalendarClock, AlertTriangle, FileText } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';

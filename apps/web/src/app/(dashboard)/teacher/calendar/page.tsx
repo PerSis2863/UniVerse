@@ -5,7 +5,7 @@ import { Calendar as CalendarIcon, Clock, Users, ChevronLeft, ChevronRight, Down
 import { useState, useMemo, useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';

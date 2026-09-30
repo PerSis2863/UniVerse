@@ -49,7 +49,7 @@ export function MarketingFooter() {
           <div className="mt-6 pt-5 border-t border-white/[0.04] flex flex-col md:flex-row gap-3 md:items-center justify-between text-xs text-zinc-500">
             <p className="leading-relaxed">
               Copyright © {new Date().getFullYear()} {COMPANY.legalName}. All rights reserved.
-              <span className="block md:inline md:before:content-['·'] md:before:mx-2">{COMPANY.address.join(', ')}</span>
+              <span className="block md:inline md:before:content-['·'] md:before:mx-2">Paris, France</span>
             </p>
             <p className="inline-flex items-center gap-1.5 text-zinc-400">
               Made with

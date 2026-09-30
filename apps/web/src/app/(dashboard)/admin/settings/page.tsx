@@ -1,4 +1,6 @@
 'use client';
+import { AccountSecurity } from '@/components/settings/AccountSecurity';
+import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { LowDataToggle } from '@/components/settings/LowDataToggle';
 
 import { Topbar } from '@/components/layout/Topbar';
@@ -139,7 +141,9 @@ export default function AdminSettings() {
                   </ul>
                 )}
                 <RecentSignIns />
-                <DownloadMyData />
+                <AccountSecurity />
+                      <DownloadMyData />
+                      <DeleteAccount />
                 <Link href="/admin/audit" className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-500 hover:text-indigo-400">
                   See who changed what in the Activity Log →
                 </Link>

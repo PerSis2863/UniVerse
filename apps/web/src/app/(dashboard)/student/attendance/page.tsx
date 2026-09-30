@@ -7,7 +7,7 @@ import { fetcher } from '@/lib/fetcher';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 
 export default function AttendancePage() {
   const [selectedCourse, setSelectedCourse] = useState('All Courses');

@@ -6,6 +6,10 @@ import { Toaster } from 'sonner';
 import ErrorMonitorBootstrap from '@/components/ErrorMonitorBootstrap';
 import { MotionProvider } from '@/components/MotionProvider';
 import { UpdateNotifier } from '@/components/pwa/UpdateNotifier';
+import { Suspense } from 'react';
+import { NavProgress } from '@/components/layout/NavProgress';
+import { recoveryScript } from '@/lib/recovery-script';
+import { bootstrapPrefetchScript } from '@/lib/bootstrap';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -65,6 +69,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
+        {/* An old tab after a deploy can ask for page files that no longer exist: load the new
+            version (once), or show a Reload screen, never a blank or unstyled page. */}
+        <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />
+        {/* Dashboards: start loading the first screen's data now, in parallel with the app's code */}
+        <script dangerouslySetInnerHTML={{ __html: bootstrapPrefetchScript }} />
         {/* PWA: iOS touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
       </head>
@@ -73,6 +82,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <UpdateNotifier />
           <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
           <MotionProvider>{children}</MotionProvider>
+          <Suspense fallback={null}><NavProgress /></Suspense>
           <Toaster 
             position="bottom-right"
             mobileOffset={{ bottom: 'calc(var(--mobile-tabbar-h, 3.5rem) + env(safe-area-inset-bottom) + 12px)' }}

@@ -39,5 +39,12 @@ export const securityHeaders = [
   // Google sign-in opens a popup, so popups keep a link back; nothing else can reach this window.
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
+  // Other sites can't load this site's pages, API answers or files into their own pages
+  // (link previews and email images are fetched by servers, so they still work).
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-site' },
+  // Keeps this site in its own browser process group (defence against memory side-channel attacks).
+  { key: 'Origin-Agent-Cluster', value: '?1' },
+  // No Flash / Acrobat cross-domain policy files.
+  { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
 ];

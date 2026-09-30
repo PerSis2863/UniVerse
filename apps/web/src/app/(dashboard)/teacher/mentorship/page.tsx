@@ -1,7 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Users, Mail, CheckCircle2, Shield, HeartHandshake, Briefcase, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { LifeBuoy, Loader2, Rocket, Send, Zap } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';

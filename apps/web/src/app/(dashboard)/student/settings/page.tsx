@@ -1,4 +1,6 @@
 'use client';
+import { AccountSecurity } from '@/components/settings/AccountSecurity';
+import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { LowDataToggle } from '@/components/settings/LowDataToggle';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -6,7 +8,7 @@ import Link from '@/components/ui/Link';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
 import { api } from '@/lib/api';
 import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
@@ -272,21 +274,9 @@ export default function StudentSettings() {
                         </div>
                         <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
                       </Link>
+                      <AccountSecurity />
                       <DownloadMyData />
-                      <button onClick={async () => {
-                        try {
-                          const { auth } = await import('@/lib/firebase');
-                          const { sendPasswordResetEmail } = await import('firebase/auth');
-                          const email = auth.currentUser?.email;
-                          if (!email) return void toast.error('Your account signs in without a password (e.g. Google or phone).');
-                          await sendPasswordResetEmail(auth, email);
-                          toast.success('Password reset email sent', { description: `Check ${email} for the link.` });
-                        } catch (e: any) {
-                          toast.error(e?.code === 'auth/too-many-requests' ? 'Please wait a few minutes and try again.' : 'Could not send the reset email.');
-                        }
-                      }} className="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2">
-                        <Shield className="w-4 h-4" /> Change Password
-                      </button>
+                      <DeleteAccount />
                       <div className="pt-2">
                         <RecentSignIns />
                       </div>

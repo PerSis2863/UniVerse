@@ -6,8 +6,9 @@ import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useAuthStore } from '@/store/auth';
 import { Users, BookOpen, FileText, BarChart3, X, Plus, ChevronRight, TrendingUp } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import { WhenVisible } from '@/components/ui/WhenVisible';
 
 // The charting library is large, so the charts load after the rest of the dashboard.
 const chartSkeleton = () => <div className="h-full w-full rounded-xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />;
@@ -95,13 +96,14 @@ export default function TeacherDashboard() {
         action={{ label: t('teacher.new_course'), onClick: () => setShowCourseModal(true) }}
       />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
-        <AccountSetupCard />
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard title={t('teacher.total_students')} value={totalStudents.toString()} icon={Users} color="indigo" />
           <KpiCard title={t('teacher.active_courses')} value={activeCourses.toString()} icon={BookOpen} color="cyan" />
           <KpiCard title={t('teacher.pending_grades')} value={pendingGrades.toString()} icon={FileText} color="amber" />
           <KpiCard title={t('teacher.avg_class_score')} value={`${avgClassScore}%`} icon={BarChart3} color="green" />
         </div>
+        {/* Below the main figures, so it never pushes them down when it appears. */}
+        <AccountSetupCard />
 
         {/* Analytics Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -109,17 +111,17 @@ export default function TeacherDashboard() {
             <h2 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-indigo-500" /> {t('teacher.grade_distribution')}
             </h2>
-            <div className="h-64">
+            <WhenVisible className="h-64" placeholder={chartSkeleton()}>
               <GradeDistributionChart data={gradeDistributionData} />
-            </div>
+            </WhenVisible>
           </div>
           <div className="card">
             <h2 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-emerald-500" /> {t('teacher.performance_trend')}
             </h2>
-            <div className="h-64">
+            <WhenVisible className="h-64" placeholder={chartSkeleton()}>
               <PerformanceTrendChart data={performanceTrendData} />
-            </div>
+            </WhenVisible>
           </div>
         </div>
 

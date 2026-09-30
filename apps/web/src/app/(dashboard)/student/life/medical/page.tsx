@@ -5,7 +5,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { HeartPulse, Stethoscope, Activity, X, CheckCircle2, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 
 type MedicalRecord = {

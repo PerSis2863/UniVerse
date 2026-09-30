@@ -1,4 +1,5 @@
-import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
+import { errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
+import { jwksFor, keysMayHaveRotated } from './jwks-cache';
 import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
 import { ForbiddenException, UnauthorizedException } from './http';
@@ -8,9 +9,7 @@ import { isSessionToken, verifySessionToken } from './session-token';
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
 // for allowlisted demo accounts only when demo login is enabled, "mock-token-<email|id>" tokens.
 
-const FIREBASE_KEYS = createRemoteJWKSet(
-  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
-);
+const FIREBASE_JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 
 function firebaseProjectId() {
   return process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'universe-71e68';
@@ -22,16 +21,21 @@ interface FirebaseClaims extends JWTPayload {
   name?: string;
   picture?: string;
   phone_number?: string;
+  firebase?: { sign_in_provider?: string };
 }
 
 /** Verifies a Firebase ID token the same way firebase-admin's verifyIdToken does. */
 export async function verifyFirebaseIdToken(token: string): Promise<FirebaseClaims & { uid: string }> {
   const projectId = firebaseProjectId();
-  const { payload } = await jwtVerify<FirebaseClaims>(token, FIREBASE_KEYS, {
-    issuer: `https://securetoken.google.com/${projectId}`,
-    audience: projectId,
-    algorithms: ['RS256'],
-  });
+  const options = { issuer: `https://securetoken.google.com/${projectId}`, audience: projectId, algorithms: ['RS256'] };
+  let payload: FirebaseClaims;
+  try {
+    ({ payload } = await jwtVerify<FirebaseClaims>(token, await jwksFor(FIREBASE_JWKS_URL), options));
+  } catch (e) {
+    if (!keysMayHaveRotated(e)) throw e;
+    // Google rotates its keys every few hours: download them again once.
+    ({ payload } = await jwtVerify<FirebaseClaims>(token, await jwksFor(FIREBASE_JWKS_URL, true), options));
+  }
   if (!payload.sub) throw new Error('Token has no subject');
   if (typeof payload.auth_time === 'number' && payload.auth_time * 1000 > Date.now() + 60_000) {
     throw new Error('Token auth_time is in the future');
@@ -98,7 +102,7 @@ export function forgetUser(userId: string) {
 /** Fetches Google's signing keys ahead of the first sign-in (used by the warm-up call). */
 export async function warmFirebaseKeys() {
   try {
-    await FIREBASE_KEYS.reload();
+    await jwksFor(FIREBASE_JWKS_URL, true);
   } catch {
     // best effort
   }
@@ -156,6 +160,12 @@ async function resolveUserUncached(token: string): Promise<User> {
     throw new UnauthorizedException(expired ? 'Authentication token expired' : 'Invalid authentication token');
   }
 
+  // Email + password accounts must prove the address is theirs (the link Firebase emails them)
+  // before they can use UniVerse; otherwise anyone could sign up with any address.
+  if (decoded.firebase?.sign_in_provider === 'password' && decoded.email_verified !== true) {
+    throw new ForbiddenException({ message: `Please verify your email address first: open the link we sent to ${decoded.email ?? 'your inbox'}.`, code: 'EMAIL_NOT_VERIFIED', error: 'Forbidden' });
+  }
+
   const firebaseUid = decoded.uid;
   let user = await prisma.user.findUnique({ where: { firebaseUid } });
 
@@ -194,8 +204,8 @@ async function resolveUserUncached(token: string): Promise<User> {
   // The platform owner: an email listed in the SUPER_ADMIN_EMAILS secret, proven by this sign-in
   // (Google marks the email verified). Never a demo token. The owner is always an active admin.
   if (decoded.email_verified === true && isOwnerEmail(decoded.email)) {
-    if (user.role !== 'ADMIN' || user.status !== 'ACTIVE') {
-      user = await prisma.user.update({ where: { id: user.id }, data: { role: 'ADMIN', status: 'ACTIVE' } });
+    if (user.role !== 'ADMIN' || user.status !== 'ACTIVE' || !user.onboardedAt) {
+      user = await prisma.user.update({ where: { id: user.id }, data: { role: 'ADMIN', status: 'ACTIVE', onboardedAt: user.onboardedAt ?? new Date() } });
     }
     OWNERS.add(user);
   }
@@ -206,8 +216,11 @@ async function resolveUserUncached(token: string): Promise<User> {
 // ─── Owner (super admin) ────────────────────────────────────────────────────────────────────────
 
 /** Emails of the platform owner(s), from the SUPER_ADMIN_EMAILS secret (comma separated). */
+// Default when the secret isn't set: the platform owner's Google account. It still has to be proven
+// by a Google sign-in (verified email), so knowing the address isn't enough.
+const DEFAULT_OWNER_EMAILS = 'universeimpact1@gmail.com';
 function ownerEmails(): string[] {
-  return (process.env.SUPER_ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return (process.env.SUPER_ADMIN_EMAILS || DEFAULT_OWNER_EMAILS).split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 }
 
 /** Whether this email belongs to the owner (used to protect the account from other admins). */

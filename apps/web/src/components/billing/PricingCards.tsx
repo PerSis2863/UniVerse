@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { Check, Loader2, Sparkles } from 'lucide-react';
 import { PLANS, PLAN_ORDER, formatPrice, type BillingInterval, type PlanId } from '@/lib/plans';
 import { cn } from '@/lib/utils';

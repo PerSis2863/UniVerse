@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Send, Sparkles, User, Minimize2, Zap, WifiOff, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAiStore } from '@/store/ai';

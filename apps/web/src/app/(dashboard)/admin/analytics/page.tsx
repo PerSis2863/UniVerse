@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Users, UserCheck, BookOpen, Sparkles, Trophy } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Topbar } from '@/components/layout/Topbar';

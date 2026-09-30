@@ -21,7 +21,6 @@ export interface CapturedError {
 
 const STORAGE_KEY = 'universe_error_log';
 const MAX_ERRORS = 50;
-const RELOAD_KEY = 'universe_chunk_reload';
 const REPORT_EVERY_MS = 5000;
 const MAX_REPORTS_PER_PAGE = 20;
 
@@ -80,14 +79,11 @@ export function captureError(
     const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
 
-    // Self-recovery: an old tab after a deploy. Reload once (not in a loop) to get the new version.
+    // Self-recovery: an old tab after a deploy. Load the page the person was going to (not the one
+    // they were leaving), once per page per minute so it can't loop; if that's used up, show a
+    // "reload" screen rather than leaving a blank page.
     if (typeof window !== 'undefined' && isChunkError(message)) {
-      const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
-      if (Date.now() - last > 60_000) {
-        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
-        window.location.reload();
-        return;
-      }
+      if (recoverFromChunkError()) return;
       type = 'chunk';
     }
 
@@ -114,6 +110,13 @@ export function captureError(
   } catch {
     // Never crash the app when logging errors
   }
+}
+
+/** Recovery lives in an inline head script (src/lib/recovery-script.ts) so it works even when the
+ * app's own code failed to load; false when it's already been tried for this page. */
+function recoverFromChunkError(): boolean {
+  const recover = (window as unknown as { __uvRecover?: () => boolean }).__uvRecover;
+  return typeof recover === 'function' ? recover() : false;
 }
 
 export function getErrors(): CapturedError[] {
@@ -150,8 +153,6 @@ export function installErrorMonitor(): void {
     captureError(event.reason, 'promise');
   });
 
-  // A successful load clears the "just reloaded" marker after a minute.
-  setTimeout(() => { try { sessionStorage.removeItem(RELOAD_KEY); } catch { /* ignore */ } }, 60_000);
 
   const w = window as unknown as Record<string, unknown>;
   w.universeErrors = () => {

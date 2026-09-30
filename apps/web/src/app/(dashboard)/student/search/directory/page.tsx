@@ -4,7 +4,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Search, Mail, Filter, Building2, MapPin, X, User } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
 

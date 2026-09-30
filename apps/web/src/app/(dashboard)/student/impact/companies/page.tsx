@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import Link from '@/components/ui/Link';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Building2, ExternalLink, MapPin } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';

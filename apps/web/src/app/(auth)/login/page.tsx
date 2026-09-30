@@ -11,6 +11,7 @@ import { authErrorMessage } from '@/lib/auth-errors';
 import { api } from '@/lib/api';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { reportSession } from '@/lib/sign-in-history';
+import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,12 +24,24 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null); // password account whose email isn't confirmed yet
 
   const handleLoginSuccess = async (token: string, method?: 'google' | 'password' | 'phone' | 'apple') => {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
-      const { data: user } = await api.get('/auth/me');
+      let user;
+      try {
+        ({ data: user } = await api.get('/auth/me'));
+      } catch (err) {
+        // Email + password account that hasn't confirmed its address yet: show the verify step.
+        if ((err as { response?: { data?: { code?: string } } }).response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+          localStorage.removeItem('accessToken');
+          setVerifyEmail(auth.currentUser?.email ?? email);
+          return;
+        }
+        throw err;
+      }
       setUser({
         id: user.id,
         name: user.name,
@@ -40,6 +53,12 @@ export default function LoginPage() {
         owner: user.owner === true,
       });
       reportSession('SIGN_IN', token.startsWith('mock-token-') ? 'demo' : method);
+      // First time here (signed in with Google / Apple / phone but never registered): finish
+      // registration — choose Individual / Staff / Organization and a name — before anything else.
+      if (!user.onboardedAt && !user.owner) {
+        router.push('/register?continue=1');
+        return;
+      }
       router.push(user.owner ? '/console' : user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
     } catch (err) {
       console.error('Failed to sync user data', err);
@@ -131,6 +150,10 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white/[0.04] backdrop-blur-xl shadow-2xl shadow-indigo-950/40 border border-white/10 rounded-2xl p-6 sm:p-8">
+          {verifyEmail ? (
+            <EmailVerifyPanel email={verifyEmail} sendOnMount onVerified={(token) => { setVerifyEmail(null); return handleLoginSuccess(token, 'password'); }} onCancel={async () => { await auth.signOut().catch(() => {}); setVerifyEmail(null); }} />
+          ) : (
+          <>
           <h2 className="text-xl font-bold text-white mb-6">Sign In</h2>
 
           {error && !showPhoneFlow && (
@@ -260,6 +283,8 @@ export default function LoginPage() {
                 </p>
               </div>
             </>
+          )}
+          </>
           )}
         </div>
 
