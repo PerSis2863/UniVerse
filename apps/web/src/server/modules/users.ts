@@ -75,6 +75,12 @@ export default function users(router: Router) {
   // `owner` is only ever present (true) for the platform owner, so the app can open the console.
   r.get('me', async ({ user }) => ({ ...(await findOne(user.id)), application: await currentApplication(user.id), ...(isOwner(user) ? { owner: true } : {}) }));
 
+  // Pending invitations. Registered before ':id', which would otherwise match "invitations".
+  r.get('invitations', { roles: ['ADMIN'] }, async () => {
+    const rows = await prisma.invitation.findMany({ where: { status: 'PENDING', expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' }, take: 1000, select: { id: true, email: true, role: true, expiresAt: true, createdAt: true } });
+    return { items: rows, total: rows.length };
+  });
+
   // Other people's contact details and grades (GPA) are for admins; everyone else gets a public card.
   r.get<{ id: string }>(':id', async ({ params, user }) => {
     if (user.role === 'ADMIN' || params.id === user.id) return findOne(params.id);
@@ -127,11 +133,6 @@ export default function users(router: Router) {
     }
     audit(user, { action: 'user.invited', summary: `Invited ${toInvite.length} people as ${role}`, targetType: 'invitation', metadata: { count: toInvite.length, role } }, req);
     return { invited: toInvite.length, alreadyMembers: [...existing], invalid, expiresAt };
-  });
-
-  r.get('invitations', { roles: ['ADMIN'] }, async () => {
-    const rows = await prisma.invitation.findMany({ where: { status: 'PENDING', expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' }, take: 1000, select: { id: true, email: true, role: true, expiresAt: true, createdAt: true } });
-    return { items: rows, total: rows.length };
   });
 
   r.delete<{ id: string }>('invitations/:id', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
