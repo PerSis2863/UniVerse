@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Check, Loader2, Search, Users, X } from 'lucide-react';
 import { cn } from '@/lib/utils';

@@ -4,7 +4,7 @@ import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { useAuthStore } from '@/store/auth';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Trophy, Medal, Star, TrendingUp, Users, ArrowUp, ArrowDown, Minus, Search, Loader2, Zap, Shield, Share2, Copy } from 'lucide-react';
 

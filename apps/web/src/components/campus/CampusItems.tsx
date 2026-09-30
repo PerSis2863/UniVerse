@@ -3,7 +3,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { CalendarDays, Clock, ExternalLink, Loader2, MapPin, Pencil, Plus, Trash2, X, type LucideIcon } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';

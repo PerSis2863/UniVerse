@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Briefcase, MapPin } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';

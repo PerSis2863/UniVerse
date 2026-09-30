@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { CalendarClock, Loader2, MapPin, Sparkles, Users, type LucideIcon } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';

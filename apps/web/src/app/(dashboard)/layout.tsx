@@ -6,8 +6,6 @@ import { DashboardShell } from '@/components/layout/DashboardShell';
 import { AppSkeleton } from '@/components/layout/AppSkeleton';
 import { useAuthStore } from '@/store/auth';
 import { Role, UserStatus, awaitingApproval, type ApplicationSummary } from '@/types';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
 import { DataConfig } from '@/components/DataConfig';
@@ -72,15 +70,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       lastSync = Date.now();
       try {
         const res = await api.get<MeResponse>('/users/me');
-        if (!cancelled && res.data) useAuthStore.getState().setUser(toUser(res.data, auth.currentUser?.photoURL));
+        if (!cancelled && res.data) useAuthStore.getState().setUser(toUser(res.data, photoURL));
       } catch (e) {
         console.error('Failed to fetch user data', e);
       }
     };
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let photoURL: string | null | undefined;
+    let unsubscribe = () => {};
+    const onSession = async (firebaseSignedIn: boolean) => {
       const token = localStorage.getItem('accessToken');
-      signedIn = !!firebaseUser || !!token?.startsWith('mock-token-') || !!token?.startsWith('ut1.');
+      signedIn = firebaseSignedIn || !!token?.startsWith('mock-token-') || !!token?.startsWith('ut1.');
       if (!cancelled) setIsSignedIn(signedIn);
       if (signedIn) {
         reportSession('SESSION');
@@ -90,7 +90,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         else await syncProfile();
       }
       if (!cancelled) setIsLoaded(true);
-    });
+    };
+    // Demo and LMS (LTI) sessions don't use Firebase: skip loading it (about 30 kB) for them.
+    // Everyone else loads it here, after the page has rendered, not before.
+    const stored = (() => { try { return localStorage.getItem('accessToken'); } catch { return null; } })();
+    if (stored?.startsWith('mock-token-') || stored?.startsWith('ut1.')) void onSession(false);
+    else {
+      void Promise.all([import('@/lib/firebase'), import('firebase/auth')]).then(([{ auth }, { onAuthStateChanged }]) => {
+        if (cancelled) return;
+        unsubscribe = onAuthStateChanged(auth, (u) => { photoURL = u?.photoURL; void onSession(!!u); });
+      });
+    }
 
     const onVisible = () => {
       if (document.visibilityState === 'visible' && signedIn && Date.now() - lastSync > RESYNC_MS) void syncProfile();

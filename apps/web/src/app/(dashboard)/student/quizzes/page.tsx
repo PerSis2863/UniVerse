@@ -3,7 +3,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Target, Trophy, Clock, CheckCircle2, ChevronRight, BrainCircuit, AlertCircle, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import useSWR, { mutate } from 'swr';

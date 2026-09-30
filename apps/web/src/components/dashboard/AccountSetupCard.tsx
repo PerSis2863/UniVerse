@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { CheckCircle2, Circle, Loader2, ShieldCheck, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';

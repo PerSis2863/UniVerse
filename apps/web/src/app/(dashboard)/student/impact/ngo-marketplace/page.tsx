@@ -2,7 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Globe, Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin, Sparkles, Building, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';

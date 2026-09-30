@@ -4,7 +4,7 @@ import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';

@@ -6,6 +6,8 @@ import { Toaster } from 'sonner';
 import ErrorMonitorBootstrap from '@/components/ErrorMonitorBootstrap';
 import { MotionProvider } from '@/components/MotionProvider';
 import { UpdateNotifier } from '@/components/pwa/UpdateNotifier';
+import { Suspense } from 'react';
+import { NavProgress } from '@/components/layout/NavProgress';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -73,6 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <UpdateNotifier />
           <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
           <MotionProvider>{children}</MotionProvider>
+          <Suspense fallback={null}><NavProgress /></Suspense>
           <Toaster 
             position="bottom-right"
             mobileOffset={{ bottom: 'calc(var(--mobile-tabbar-h, 3.5rem) + env(safe-area-inset-bottom) + 12px)' }}

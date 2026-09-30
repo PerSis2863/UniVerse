@@ -1,7 +1,7 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { Search, Users, ExternalLink, Globe } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';

@@ -1,7 +1,7 @@
 'use client';
 
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { Clock, MapPin, Calendar as CalendarIcon, BookOpen, ExternalLink, Bell, FileText, Video, Users, X, ChevronRight as ChevronR } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';

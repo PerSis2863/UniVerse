@@ -3,7 +3,7 @@ import Link from '@/components/ui/Link';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition, vtName } from '@/lib/view-transition';
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { BookOpen, ChevronRight, FileText, GraduationCap, CheckCircle2 } from 'lucide-react';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';

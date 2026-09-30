@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { StarredPanel } from './ChatDialogs';

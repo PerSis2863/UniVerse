@@ -1,7 +1,7 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { Map, Calendar as CalendarIcon, Clock, Users, Search, X, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useState } from 'react';import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';

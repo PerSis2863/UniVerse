@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
 import useSWR, { type KeyedMutator } from 'swr';
 import { haptic } from '@/lib/haptics';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';

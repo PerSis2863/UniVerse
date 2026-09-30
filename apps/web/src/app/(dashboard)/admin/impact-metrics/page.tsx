@@ -2,7 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import useSWR from 'swr';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Users, HeartHandshake, FolderKanban, Sparkles, ArrowRight } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';

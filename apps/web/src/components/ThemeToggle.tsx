@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { applyTheme, getSavedTheme, watchSystemTheme, type Theme } from '@/lib/theme';
 
 export function ThemeToggle() {

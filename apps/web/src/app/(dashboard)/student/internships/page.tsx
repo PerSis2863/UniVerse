@@ -5,7 +5,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Briefcase, Building, MapPin, DollarSign, Search, Filter, Bookmark, ExternalLink, X, FileText, Check, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 import Image from 'next/image';
 import { useInitialSearch } from '@/hooks/useInitialSearch';

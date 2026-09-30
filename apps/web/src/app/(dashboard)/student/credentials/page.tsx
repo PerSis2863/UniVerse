@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   Shield, ExternalLink, Copy, CheckCircle2, Clock, Loader2, Plus, X,

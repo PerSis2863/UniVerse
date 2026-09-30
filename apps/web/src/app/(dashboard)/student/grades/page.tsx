@@ -4,7 +4,7 @@ import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { GraduationCap, TrendingUp, BookOpen, Award, FileBadge, Download, X, TrendingDown, Sparkles, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';

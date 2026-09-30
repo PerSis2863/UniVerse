@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { m as motion, useMotionValue, useTransform } from 'framer-motion';
 import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';

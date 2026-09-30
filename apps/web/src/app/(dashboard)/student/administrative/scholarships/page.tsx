@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Award, CheckCircle2, ChevronRight, GraduationCap, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 
 export default function Scholarships() {

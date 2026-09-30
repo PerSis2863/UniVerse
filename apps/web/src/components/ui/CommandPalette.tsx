@@ -2,7 +2,7 @@
 import { lowDataOn, useLowData } from '@/store/low-data';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { BookOpen, Briefcase, ChevronRight, Command, CornerDownLeft, FlaskConical, HeartHandshake, Library, Loader2, MessageSquarePlus, Moon, Search, Sun, User, Users, type LucideIcon, Gauge } from 'lucide-react';

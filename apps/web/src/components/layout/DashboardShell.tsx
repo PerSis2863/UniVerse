@@ -12,7 +12,7 @@ import { CommandPalette, openCommandPalette } from '@/components/ui/CommandPalet
 import { useAuthStore } from '@/store/auth';
 import { usePathname } from 'next/navigation';
 import Link from '@/components/ui/Link';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';

@@ -6,7 +6,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useAuthStore } from '@/store/auth';
 import { Users, BookOpen, FileText, BarChart3, X, Plus, ChevronRight, TrendingUp } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
 // The charting library is large, so the charts load after the rest of the dashboard.

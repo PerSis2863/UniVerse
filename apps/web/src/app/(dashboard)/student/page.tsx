@@ -1,7 +1,7 @@
 'use client';
 import useSWR from 'swr';
 import Link from '@/components/ui/Link';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import {
   ArrowUpRight, BookOpen, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, Clock, GraduationCap,

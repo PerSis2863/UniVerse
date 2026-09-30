@@ -13,10 +13,9 @@ import {
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
-import { auth } from '@/lib/firebase';
 
 export type NavItem = {
   href?: string;
@@ -306,6 +305,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
 
   const handleLogout = async () => {
     try {
+      const { auth } = await import('@/lib/firebase');
       await auth.signOut();
     } catch (error) {
       console.warn('Firebase signOut failed:', error);

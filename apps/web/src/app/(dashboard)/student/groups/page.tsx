@@ -2,7 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink, Edit2, Trash2, Check, Image as ImageIcon, BarChart2, Contact, Sparkles, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';

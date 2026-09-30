@@ -4,7 +4,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { ShieldCheck, ToggleRight, ToggleLeft, AlertCircle, X, ChevronRight, Info, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 

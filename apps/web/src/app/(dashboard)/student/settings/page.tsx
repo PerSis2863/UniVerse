@@ -6,7 +6,7 @@ import Link from '@/components/ui/Link';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
 import { api } from '@/lib/api';
 import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';

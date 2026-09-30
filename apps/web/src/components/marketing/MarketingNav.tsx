@@ -2,7 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { cn } from '@/lib/utils';

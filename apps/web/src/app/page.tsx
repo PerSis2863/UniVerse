@@ -4,7 +4,7 @@ import Link from '@/components/ui/Link';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  AnimatePresence, MotionConfig, motion, useMotionTemplate, useMotionValue, useScroll, useSpring, useTransform,
+  AnimatePresence, MotionConfig, m as motion, useMotionTemplate, useMotionValue, useScroll, useSpring, useTransform,
 } from 'framer-motion';
 import {
   ArrowRight, BadgeCheck, BarChart3, Bell, BookOpen, Brain, Building2, CalendarDays, Check, ChevronDown,
@@ -339,44 +339,36 @@ export default function ShowcasePage() {
           {/* ── Hero ─────────────────────────────────────────── */}
           <section className="px-6 pt-36 md:pt-44 pb-16">
             <motion.div style={{ y: heroY, opacity: heroOpacity }} className="max-w-5xl mx-auto flex flex-col items-center text-center">
-              <motion.a
+              <a
                 href="#product"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="group inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-colors mb-8"
+                style={{ animationDelay: '0ms' }}
+                className="hero-in group inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-colors mb-8"
               >
                 <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white text-[10px] font-black uppercase tracking-wider">New</span>
                 <span className="text-zinc-300">Live whiteboards: draw together with your class</span>
                 <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
-              </motion.a>
+              </a>
 
-              <motion.h1
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.9, delay: 0.1, ease: EASE }}
-                className="text-[2.75rem] leading-[1.05] sm:text-6xl md:text-7xl lg:text-[5.25rem] font-black tracking-[-0.035em]"
+              <h1
+                style={{ animationDelay: '80ms' }}
+                className="hero-in text-[2.75rem] leading-[1.05] sm:text-6xl md:text-7xl lg:text-[5.25rem] font-black tracking-[-0.035em]"
               >
                 The impact platform
                 <br />
                 for <RotatingWord />
-              </motion.h1>
+              </h1>
 
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.25, ease: EASE }}
-                className="mt-7 text-lg md:text-xl text-zinc-400 max-w-2xl leading-relaxed"
+              <p
+                style={{ animationDelay: '180ms' }}
+                className="hero-in mt-7 text-lg md:text-xl text-zinc-400 max-w-2xl leading-relaxed"
               >
                 UniVerse unifies academics, collaboration and social impact — connecting students,
                 universities and NGOs on one secure, AI-powered platform.
-              </motion.p>
+              </p>
 
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4, ease: EASE }}
-                className="mt-10 flex flex-wrap items-center justify-center gap-3"
+              <div
+                style={{ animationDelay: '280ms' }}
+                className="hero-in mt-10 flex flex-wrap items-center justify-center gap-3"
               >
                 <Link href="/register" className="group relative inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-zinc-900 font-bold text-sm overflow-hidden shadow-[0_0_40px_-8px_rgba(129,140,248,0.7)] hover:shadow-[0_0_60px_-6px_rgba(129,140,248,0.9)] transition-shadow">
                   <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-indigo-200/60 to-transparent" />
@@ -389,11 +381,11 @@ export default function ShowcasePage() {
                 <button onClick={handleInstallClick} className="inline-flex items-center gap-2 h-14 px-6 rounded-full text-zinc-300 hover:text-white font-semibold text-sm transition-colors">
                   <Smartphone className="w-4 h-4" /> {installed ? 'Open app' : 'Download app'}
                 </button>
-              </motion.div>
+              </div>
 
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-6 text-xs text-zinc-500">
+              <p style={{ animationDelay: '400ms' }} className="hero-in mt-6 text-xs text-zinc-500">
                 Free for students, forever · Premium plans for organizations · 14-day free trial
-              </motion.p>
+              </p>
             </motion.div>
           </section>
 
