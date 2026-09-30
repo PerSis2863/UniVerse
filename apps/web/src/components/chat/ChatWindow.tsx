@@ -343,7 +343,17 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         : other ? lastSeenLabel(other.online, other.lastSeenAt) : '';
   const subtitle = convo?.disappearingSec && !data?.typing.length ? `⏱ ${disappearingLabel(convo.disappearingSec)} · ${subtitleBase}` : subtitleBase;
 
-  if (error) return <div className="flex-1 flex items-center justify-center text-sm text-rose-500 p-6 text-center">{(error as Error).message}</div>;
+  // A failed refresh keeps the chat on screen (it retries by itself); only a chat that never loaded shows this.
+  if (error && !data) {
+    const status = (error as { status?: number }).status;
+    return (
+      <div role="alert" className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-white">{status === 404 ? 'This chat isn’t available' : 'Couldn’t open this chat'}</p>
+        <p className="text-sm text-zinc-500 max-w-xs">{status === 404 ? 'It may have been deleted, or you’re no longer in it.' : 'Something went wrong on our side. It’s been reported automatically.'}</p>
+        {status !== 404 && <button type="button" onClick={() => void mutate()} className="btn-secondary btn-sm">Try again</button>}
+      </div>
+    );
+  }
   if (isLoading || !convo) return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>;
 
   return (
