@@ -118,6 +118,7 @@ model User {
   // Profiles
   studentProfile StudentProfile?
   skillPassport  SkillPassport?
+  riskFlags      StudentRiskFlag[]
   teacherProfile TeacherProfile?
 
   // Core Academic
@@ -311,6 +312,7 @@ model Course {
   knowledgeHubResources KnowledgeHubResource[]
   electiveRequests      ElectiveRequest[]
   calendarEvents        CalendarEvent[]
+  riskFlags             StudentRiskFlag[]
 
   @@index([teacherId])
   @@index([status])
@@ -1833,4 +1835,32 @@ model SkillPassport {
   updatedAt       DateTime @updatedAt
 
   @@map("skill_passports")
+}
+
+// Early warning: students who may be struggling in a course, found each day from attendance,
+// grades, missed quizzes and inactivity (plain rules, no AI). Only teachers and admins see them,
+// and a person decides what to do — nothing happens to the student automatically.
+model StudentRiskFlag {
+  id            String    @id @default(cuid())
+  studentId     String
+  student       User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId      String
+  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  score         Int // 0–100
+  level         String // AT_RISK | WATCH | OK (improved since it was flagged)
+  reasons       Json // [{ code, text }]
+  status        String    @default("OPEN") // OPEN | CONTACTED | RESOLVED | DISMISSED
+  note          String?
+  handledById   String?
+  handledByName String?
+  handledAt     DateTime?
+  handledScore  Int? // score when it was last handled (reopens only if it gets clearly worse)
+  computedAt    DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([studentId, courseId])
+  @@index([courseId])
+  @@index([status])
+  @@map("student_risk_flags")
 }

@@ -117,6 +117,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/courses', label: 'nav.my_courses' },
         { href: '/teacher/blackboard', label: 'nav.blackboard' },
         { href: '/teacher/students', label: 'nav.students' },
+        { href: '/teacher/early-warning', label: '🛟 Early warning' },
         { href: '/teacher/attendance', label: 'nav.attendance' },
         { href: '/teacher/grades', label: 'nav.grades' },
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
@@ -150,6 +151,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.management', icon: Settings,
       subItems: [
         { href: '/admin/users', label: 'nav.users' },
+        { href: '/admin/early-warning', label: '🛟 Early warning' },
         { href: '/admin/approvals', label: 'Approvals' },
         { href: '/admin/audit', label: 'Activity Log' },
         { href: '/admin/courses', label: 'nav.courses' },
