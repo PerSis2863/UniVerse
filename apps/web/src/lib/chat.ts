@@ -98,7 +98,7 @@ export async function ensureWelcome(user: SessionUser) {
 export function membership(conversationId: string, userId: string) {
   return prisma.conversationParticipant.findUnique({
     where: { conversationId_userId: { conversationId, userId } },
-    select: { id: true, role: true, lastReadAt: true, joinedAt: true },
+    select: { id: true, role: true, lastReadAt: true, joinedAt: true, markedUnread: true },
   });
 }
 

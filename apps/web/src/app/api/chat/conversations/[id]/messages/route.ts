@@ -52,8 +52,8 @@ async function getThread(req: Request, { params }: Ctx) {
   // Housekeeping writes below never stop the chat from opening: a failure is only recorded.
   const quietly = (p: Promise<unknown>) => p.catch((e) => recordServerError(e, req, user.id).catch(() => {}));
 
-  // Disappearing messages: remove anything that has expired (they're hidden from reads anyway).
-  await quietly(prisma.message.deleteMany({ where: { conversationId: id, expiresAt: { lt: new Date() } } }));
+  // Expired disappearing messages are hidden here (visibleTo) and deleted by the daily job, not on
+  // every load: each load has to fit in the Worker's small CPU budget.
 
   const [rows, convo, system, prefs] = await Promise.all([
     prisma.message.findMany({
@@ -75,10 +75,13 @@ async function getThread(req: Request, { params }: Ctx) {
   if (!convo) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
 
   const now = new Date();
-  // Mark read (only when looking at the latest page) and record presence.
+  // Mark read (only when looking at the latest page, and only if something new arrived since the
+  // last time) and record presence.
+  const newest = rows[0]?.createdAt;
+  const unread = me.markedUnread || !me.lastReadAt || (!!newest && newest > me.lastReadAt);
   if (!beforeDate) {
     await Promise.all([
-      quietly(prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: now, markedUnread: false } })),
+      unread ? quietly(prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: now, markedUnread: false } })) : null,
       quietly(touchPresence(user.id)),
     ]);
   }

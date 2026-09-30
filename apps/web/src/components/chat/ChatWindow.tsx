@@ -13,7 +13,7 @@ import { Avatar, MessageBubble } from './MessageBubble';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
 import { type ChatMessage, type ThreadResponse, chatJson, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
-import { useLiveInterval } from '@/lib/realtime-client';
+import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
 import { useLanguageStore } from '@/store/language';
 import { LANGUAGES, languageName } from '@/lib/languages';
 import { LanguagePicker } from './LanguagePicker';
@@ -24,12 +24,16 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   // Live updates refresh the thread on every change, so it only polls without them.
   const refreshInterval = useLiveInterval(5000, 0);
   const { data, error, isLoading, mutate } = useSWR<ThreadResponse>(key, authedJson, { refreshInterval, revalidateOnFocus: true });
+  // "typing…": from live updates when connected, else from the last load (polling).
+  const live = useRealtimeConnected();
+  const liveTyping = useLiveTyping(conversationId);
+  const typingNames = live ? liveTyping : data?.typing ?? [];
   // "typing…" lasts 6 seconds on the server; check again once it would have run out.
   useEffect(() => {
-    if (!data?.typing.length) return;
+    if (live || !data?.typing.length) return;
     const t = setTimeout(() => void mutate(), 7000);
     return () => clearTimeout(t);
-  }, [data, mutate]);
+  }, [data, mutate, live]);
   const [older, setOlder] = useState<ChatMessage[]>([]);
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -334,14 +338,14 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     return others.length > 0 && readers.length === others.length ? 'read' : 'sent';
   };
 
-  const subtitleBase = data?.typing.length
-    ? `${convo?.isGroup ? data.typing.join(', ') + ' ' : ''}typing…`
+  const subtitleBase = typingNames.length
+    ? `${convo?.isGroup ? typingNames.join(', ') + ' ' : ''}typing…`
     : convo?.isOfficial
       ? 'Official account'
       : convo?.isGroup
         ? others.map((o) => o.name.split(' ')[0]).slice(0, 5).join(', ') + (others.length > 5 ? ` +${others.length - 5}` : '') + ', you'
         : other ? lastSeenLabel(other.online, other.lastSeenAt) : '';
-  const subtitle = convo?.disappearingSec && !data?.typing.length ? `⏱ ${disappearingLabel(convo.disappearingSec)} · ${subtitleBase}` : subtitleBase;
+  const subtitle = convo?.disappearingSec && !typingNames.length ? `⏱ ${disappearingLabel(convo.disappearingSec)} · ${subtitleBase}` : subtitleBase;
 
   // A failed refresh keeps the chat on screen (it retries by itself); only a chat that never loaded shows this.
   if (error && !data) {
@@ -368,7 +372,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <p className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1">
                 {convo.title} {convo.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />} {convo.muted && <BellOff className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
               </p>
-              <p className={cn('text-xs truncate', data?.typing.length ? 'text-emerald-500 font-medium' : 'text-zinc-500')}>{subtitle}</p>
+              <p className={cn('text-xs truncate', typingNames.length ? 'text-emerald-500 font-medium' : 'text-zinc-500')}>{subtitle}</p>
             </div>
           </button>
           {!convo.isOfficial && (

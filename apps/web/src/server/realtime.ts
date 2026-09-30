@@ -5,7 +5,8 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 // so they refetch right away instead of waiting for the next poll.
 
 export type RealtimeEvent =
-  | { type: 'chat'; conversationId: string } // new/edited message, reaction, poll vote, typing, members
+  | { type: 'chat'; conversationId: string } // new/edited message, reaction, poll vote, members
+  | { type: 'typing'; conversationId: string; name: string } // someone is typing (shown, nothing refetched)
   | { type: 'notification' } // a new in-app notification
   | { type: 'refresh'; keys: string[] }; // SWR keys (or prefixes ending in "*") to revalidate
 
@@ -85,6 +86,24 @@ export function publishChat(conversationId: string, alsoNotify: string[] = []) {
     const members = await prisma.conversationParticipant.findMany({ where: { conversationId }, select: { userId: true } });
     publish([...members.map((m) => m.userId), ...alsoNotify], { type: 'chat', conversationId });
   })().catch((e) => console.error('realtime publishChat failed:', e));
+  try {
+    getCloudflareContext().ctx.waitUntil(work);
+  } catch {
+    /* not on Workers */
+  }
+}
+
+/**
+ * Tells the other people in a chat that `name` is typing. Their tabs show it without refetching
+ * the chat: refetching everyone's whole thread every few seconds while someone typed was the
+ * busiest work the server did.
+ */
+export function publishTyping(conversationId: string, userId: string, name: string) {
+  const work = (async () => {
+    const { default: prisma } = await import('@/lib/db');
+    const members = await prisma.conversationParticipant.findMany({ where: { conversationId, userId: { not: userId } }, select: { userId: true } });
+    publish(members.map((m) => m.userId), { type: 'typing', conversationId, name });
+  })().catch((e) => console.error('realtime publishTyping failed:', e));
   try {
     getCloudflareContext().ctx.waitUntil(work);
   } catch {
