@@ -35,7 +35,10 @@ const tooMany = () =>
 async function rateLimited(request: Request, url: URL, env: Env): Promise<boolean> {
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
   const token = request.headers.get('authorization')?.slice(-40);
-  const who = token ? `u:${token}` : `ip:${ip}`;
+  // Live connections can't send headers: they carry the user (and a one-time ticket) in the
+  // address, so count them per user too, not per shared campus address.
+  const live = url.pathname === '/realtime' ? url.searchParams.get('user') : url.pathname === '/board-live' ? url.searchParams.get('ticket') : null;
+  const who = token ? `u:${token}` : live ? `live:${live.slice(0, 80)}` : `ip:${ip}`;
   const checks: Promise<{ success: boolean }>[] = [];
   if (env.IP_RATE_LIMITER) checks.push(env.IP_RATE_LIMITER.limit({ key: ip }));
   if (env.API_RATE_LIMITER) checks.push(env.API_RATE_LIMITER.limit({ key: who }));

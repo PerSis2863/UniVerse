@@ -5,11 +5,13 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
-  AlertTriangle, ArrowLeft, BadgeCheck, Building2, CheckCircle2, Clock, Globe, Inbox, Loader2, Mail, MessageSquareWarning, Paperclip, Phone, Search, UserCheck, X, XCircle, GraduationCap } from 'lucide-react';
+  AlertTriangle, ArrowLeft, UserPlus, CheckSquare, Square, BadgeCheck, Building2, CheckCircle2, Clock, Globe, Inbox, Loader2, Mail, MessageSquareWarning, Paperclip, Phone, Search, UserCheck, X, XCircle, GraduationCap } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
+import { confirmDialog } from '@/components/ui/Dialogs';
+import { InviteDialog } from './invite';
 
 // Admin → Approvals: review applications to become a teacher or NGO representative.
 // Approving grants the role; declining and "ask for more info" send the applicant your message.
@@ -58,6 +60,37 @@ export default function ApprovalsPage() {
 
   const listKey = `/applications?status=${tab}${debounced ? `&q=${encodeURIComponent(debounced)}` : ''}`;
   const { data, isLoading, error, mutate } = useSWR<List>(listKey, fetcher);
+  // Several at once (e.g. a class of students): tick them, then "Approve selected".
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const [approving, setApproving] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const canPick = tab === 'PENDING' || tab === 'NEEDS_INFO';
+  const shown = data?.items ?? [];
+  const allPicked = shown.length > 0 && shown.every((a) => picked.has(a.id));
+  const toggle = (id: string) => setPicked((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const approvePicked = async () => {
+    const ids = [...picked].filter((id) => shown.some((a) => a.id === id));
+    if (!ids.length) return;
+    if (!(await confirmDialog({ title: `Approve ${ids.length} application${ids.length === 1 ? '' : 's'}?`, message: 'Each person gets the access they asked for and a notification.', confirmLabel: 'Approve' }))) return;
+    setApproving(true);
+    try {
+      let done = 0; const failed: string[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const { data: r } = await api.post<{ approved: number; failed: { id: string; reason: string }[] }>('/applications/approve-many', { ids: ids.slice(i, i + 100) });
+        done += r.approved; failed.push(...r.failed.map((f) => f.reason));
+      }
+      if (done) toast.success(`${done} approved`);
+      if (failed.length) toast.error(`${failed.length} not approved: ${[...new Set(failed)].slice(0, 2).join(' ')}`);
+      setPicked(new Set());
+      await mutate();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const switchTab = (t: Status) => { setTab(t); setPicked(new Set()); };
 
   const select = (id: string | null) => {
     setSelected(id);
@@ -69,14 +102,18 @@ export default function ApprovalsPage() {
 
   return (
     <>
-      <Topbar title="Approvals" subtitle="Teacher and NGO applications waiting for a decision" />
+      <Topbar title="Approvals" subtitle="Students, staff and organizations waiting for a decision" />
+      {inviting && <InviteDialog onClose={() => setInviting(false)} />}
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
           {/* List */}
           <section className={cn('space-y-4', selected && 'hidden lg:block')}>
+            <button onClick={() => setInviting(true)} className="w-full inline-flex items-center justify-center gap-2 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">
+              <UserPlus className="w-4 h-4" /> Invite people (no review needed)
+            </button>
             <div className="flex flex-wrap gap-1">
               {TABS.map((t) => (
-                <button key={t.id} onClick={() => setTab(t.id)}
+                <button key={t.id} onClick={() => switchTab(t.id)}
                   className={cn('shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', tab === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
                   {t.label}
                   {!!data?.counts[t.id] && <span className={cn('ml-1.5', t.id === 'PENDING' && tab !== t.id && 'text-indigo-500')}>{data.counts[t.id]}</span>}
@@ -88,6 +125,18 @@ export default function ApprovalsPage() {
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email or institution" aria-label="Search applications"
                 className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
             </div>
+            {canPick && shown.length > 0 && (
+              <div className="flex items-center justify-between gap-2">
+                <button onClick={() => setPicked(allPicked ? new Set() : new Set(shown.map((a) => a.id)))} className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                  {allPicked ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4" />} {allPicked ? 'Clear selection' : `Select all ${shown.length}`}
+                </button>
+                {picked.size > 0 && (
+                  <button onClick={approvePicked} disabled={approving} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold disabled:opacity-60">
+                    {approving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Approve {picked.size}
+                  </button>
+                )}
+              </div>
+            )}
             <div className="rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 overflow-hidden">
               {isLoading ? (
                 <div className="p-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
@@ -104,8 +153,13 @@ export default function ApprovalsPage() {
                     const Icon = ROLE[a.requestedRole]?.icon ?? Building2;
                     const when = a.status === 'PENDING' || a.status === 'NEEDS_INFO' ? a.submittedAt : a.reviewedAt;
                     return (
-                      <li key={a.id}>
-                        <button onClick={() => select(a.id)} className={cn('w-full text-left p-4 flex gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', selected === a.id && 'bg-indigo-500/[0.06]')}>
+                      <li key={a.id} className="flex items-stretch">
+                        {canPick && (
+                          <button onClick={() => toggle(a.id)} aria-pressed={picked.has(a.id)} aria-label={`Select ${a.user.name}`} className="pl-3 pr-1 flex items-center text-zinc-400 hover:text-indigo-500">
+                            {picked.has(a.id) ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4" />}
+                          </button>
+                        )}
+                        <button onClick={() => select(a.id)} className={cn('flex-1 min-w-0 text-left p-4 flex gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', selected === a.id && 'bg-indigo-500/[0.06]')}>
                           <div className="w-9 h-9 shrink-0 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center text-sm font-bold text-zinc-600 dark:text-zinc-300">{a.user.name.charAt(0).toUpperCase()}</div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{a.user.name}</p>
@@ -123,7 +177,7 @@ export default function ApprovalsPage() {
               )}
             </div>
             <p className="text-xs text-zinc-500">
-              Tip: to skip the review for someone you know, invite them from Users with the role they need. They get it as soon as they sign up with that verified email.
+              Tip: for a whole class, use Invite people with their school email addresses. They&apos;re verified as soon as they sign up with that address, with nothing to approve here.
             </p>
           </section>
 

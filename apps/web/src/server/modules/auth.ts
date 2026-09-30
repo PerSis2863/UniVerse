@@ -70,7 +70,15 @@ export default function auth(router: Router) {
     const accountType = wanted === 'TEACHER' ? 'STAFF' : wanted === 'ADMIN' ? 'ORGANIZATION' : body?.accountType === 'STUDENT' ? 'STUDENT' : 'INDEPENDENT';
     if (!user.accountType) await prisma.user.update({ where: { id: user.id }, data: { accountType } });
     if (wanted === 'STUDENT' && accountType === 'STUDENT' && user.role === 'STUDENT' && !user.accountType) {
-      await startSignupApplication({ ...user, name: name ?? user.name }, 'STUDENT');
+      // A student the school invited (Approvals → Invite) is verified at once, when the sign-in
+      // proves they own the invited address; everyone else is checked by an admin.
+      const invitation = await prisma.invitation.findUnique({ where: { email: user.email.toLowerCase() } });
+      if (invitation && invitation.role === 'STUDENT' && invitation.status === 'PENDING' && invitation.expiresAt > new Date() && (await emailVerified(req))) {
+        await approveInvited({ ...user, name: name ?? user.name }, 'STUDENT', invitation.id);
+        audit(user, { action: 'user.role_changed', summary: `${name ?? user.name} joined as a verified student from an invitation`, targetType: 'user', targetId: user.id, metadata: { invitationId: invitation.id } }, req);
+      } else {
+        await startSignupApplication({ ...user, name: name ?? user.name }, 'STUDENT');
+      }
     } else if ((REQUESTABLE_ROLES as readonly string[]).includes(wanted) && wanted !== 'STUDENT' && user.role === 'STUDENT') {
       const role = wanted as (typeof REQUESTABLE_ROLES)[number];
       const invitation = await prisma.invitation.findUnique({ where: { email: user.email.toLowerCase() } });

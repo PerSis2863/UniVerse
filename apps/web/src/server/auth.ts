@@ -9,7 +9,13 @@ import { isSessionToken, verifySessionToken } from './session-token';
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
 // for allowlisted demo accounts only when demo login is enabled, "mock-token-<email|id>" tokens.
 
-const FIREBASE_JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+const GOOGLE_JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+/** Google's signing keys. For local testing only, FIREBASE_TEST_JWKS_URL may point at a key server
+ *  on this machine; deployed Workers can't reach localhost, so it has no effect in production. */
+const firebaseJwksUrl = () => {
+  const test = process.env.FIREBASE_TEST_JWKS_URL;
+  return test && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(test) ? test : GOOGLE_JWKS_URL;
+};
 
 function firebaseProjectId() {
   return process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'universe-71e68';
@@ -30,11 +36,11 @@ export async function verifyFirebaseIdToken(token: string): Promise<FirebaseClai
   const options = { issuer: `https://securetoken.google.com/${projectId}`, audience: projectId, algorithms: ['RS256'] };
   let payload: FirebaseClaims;
   try {
-    ({ payload } = await jwtVerify<FirebaseClaims>(token, await jwksFor(FIREBASE_JWKS_URL), options));
+    ({ payload } = await jwtVerify<FirebaseClaims>(token, await jwksFor(firebaseJwksUrl()), options));
   } catch (e) {
     if (!keysMayHaveRotated(e)) throw e;
     // Google rotates its keys every few hours: download them again once.
-    ({ payload } = await jwtVerify<FirebaseClaims>(token, await jwksFor(FIREBASE_JWKS_URL, true), options));
+    ({ payload } = await jwtVerify<FirebaseClaims>(token, await jwksFor(firebaseJwksUrl(), true), options));
   }
   if (!payload.sub) throw new Error('Token has no subject');
   if (typeof payload.auth_time === 'number' && payload.auth_time * 1000 > Date.now() + 60_000) {
@@ -102,7 +108,7 @@ export function forgetUser(userId: string) {
 /** Fetches Google's signing keys ahead of the first sign-in (used by the warm-up call). */
 export async function warmFirebaseKeys() {
   try {
-    await jwksFor(FIREBASE_JWKS_URL, true);
+    await jwksFor(firebaseJwksUrl(), true);
   } catch {
     // best effort
   }

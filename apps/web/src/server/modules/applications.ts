@@ -52,8 +52,9 @@ export async function startSignupApplication(user: Actor, requestedRole: Request
 
 /** Grants the role at once for someone an admin invited, and records it as an approved application. */
 export async function approveInvited(user: Actor & { email: string }, role: RequestableRole, invitationId: string) {
-  await prisma.user.update({ where: { id: user.id }, data: { role, status: 'ACTIVE' } });
+  await prisma.user.update({ where: { id: user.id }, data: { role, status: 'ACTIVE', accountType: role === 'STUDENT' ? 'STUDENT' : role === 'TEACHER' ? 'STAFF' : 'ORGANIZATION' } });
   await prisma.invitation.update({ where: { id: invitationId }, data: { status: 'ACTIVE' } });
+  if (role === 'STUDENT') await prisma.studentProfile.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
   await prisma.roleApplication.create({
     data: {
       userId: user.id, requestedRole: role, source: 'SIGNUP', status: 'APPROVED', submittedAt: new Date(), reviewedAt: new Date(),
@@ -230,34 +231,20 @@ export default function applicationsModule(router: Router) {
     return { ...app, history: historyOf(app.history), user: publicApplicant(app.user), previous, checks: reviewChecks(app, app.user, previous, sameStaffId) };
   });
 
-  r.post<{ id: string }>(':id/approve', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
-    const app = await openForReview(params.id, user);
-    const note = typeof body?.note === 'string' ? body.note.trim().slice(0, 1000) : '';
-    const role = app.requestedRole as RequestableRole;
-    await prisma.user.update({ where: { id: app.userId }, data: { role, status: 'ACTIVE', accountType: role === 'STUDENT' ? 'STUDENT' : role === 'TEACHER' ? 'STAFF' : 'ORGANIZATION' } });
-    if (role === 'STUDENT') {
-      await prisma.studentProfile.upsert({ where: { userId: app.userId }, update: { department: app.department ?? undefined }, create: { userId: app.userId, department: app.department ?? null } });
+  r.post<{ id: string }>(':id/approve', { roles: ['ADMIN'] }, async ({ params, body, user, req }) =>
+    approveApplication(params.id, typeof body?.note === 'string' ? body.note.trim().slice(0, 1000) : '', user, req));
+
+  /** Approve several at once (e.g. a class of students), up to 100 per call. */
+  r.post('approve-many', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
+    const ids: string[] = Array.isArray(body?.ids) ? [...new Set((body.ids as unknown[]).filter((x): x is string => typeof x === 'string'))] : [];
+    if (!ids.length) throw new BadRequestException('Choose at least one application.');
+    if (ids.length > 100) throw new BadRequestException('Approve up to 100 at a time.');
+    const failed: { id: string; reason: string }[] = [];
+    let approved = 0;
+    for (const id of ids) {
+      try { await approveApplication(id, '', user, req); approved++; } catch (e) { failed.push({ id, reason: (e as Error).message }); }
     }
-    if (role === 'TEACHER') {
-      await prisma.teacherProfile.upsert({
-        where: { userId: app.userId },
-        update: { department: app.department ?? undefined },
-        create: { userId: app.userId, department: app.department ?? null },
-      });
-    }
-    const done = await prisma.roleApplication.update({
-      where: { id: app.id },
-      data: { status: 'APPROVED', adminNote: note || null, reviewedById: user.id, reviewedAt: new Date(), history: withEvent(app.history, { by: user.id, byName: user.name, type: 'approved', note: note || null }) },
-    });
-    forgetUser(app.userId);
-    audit(user, { action: 'application.approved', summary: `Approved ${app.user.name} (${app.user.email}) as ${ROLE_LABEL[role]}`, targetType: 'user', targetId: app.userId, metadata: { applicationId: app.id, role } }, req);
-    later(() => notify(app.userId, {
-      type: 'application',
-      title: `You're approved as a ${ROLE_LABEL[role]}`,
-      body: `Your application was approved${note ? `: ${note}` : '.'} Sign out and back in if you don't see your new dashboard.`,
-      link: role === 'TEACHER' ? '/teacher' : role === 'ADMIN' ? '/admin' : '/student',
-    }));
-    return done;
+    return { approved, failed };
   });
 
   r.post<{ id: string }>(':id/reject', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
@@ -293,6 +280,36 @@ export default function applicationsModule(router: Router) {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────────────────────
+
+async function approveApplication(id: string, note: string, user: Actor, req: Request) {
+  const app = await openForReview(id, user);
+  const role = app.requestedRole as RequestableRole;
+  await prisma.user.update({ where: { id: app.userId }, data: { role, status: 'ACTIVE', accountType: role === 'STUDENT' ? 'STUDENT' : role === 'TEACHER' ? 'STAFF' : 'ORGANIZATION' } });
+  if (role === 'STUDENT') {
+    await prisma.studentProfile.upsert({ where: { userId: app.userId }, update: { department: app.department ?? undefined }, create: { userId: app.userId, department: app.department ?? null } });
+  }
+  if (role === 'TEACHER') {
+    await prisma.teacherProfile.upsert({
+      where: { userId: app.userId },
+      update: { department: app.department ?? undefined },
+      create: { userId: app.userId, department: app.department ?? null },
+    });
+  }
+  const done = await prisma.roleApplication.update({
+    where: { id: app.id },
+    data: { status: 'APPROVED', adminNote: note || null, reviewedById: user.id, reviewedAt: new Date(), history: withEvent(app.history, { by: user.id, byName: user.name, type: 'approved', note: note || null }) },
+  });
+  forgetUser(app.userId);
+  audit(user, { action: 'application.approved', summary: `Approved ${app.user.name} (${app.user.email}) as ${ROLE_LABEL[role]}`, targetType: 'user', targetId: app.userId, metadata: { applicationId: app.id, role } }, req);
+  later(() => notify(app.userId, {
+    type: 'application',
+    title: `You're approved as a ${ROLE_LABEL[role]}`,
+    body: `Your application was approved${note ? `: ${note}` : '.'} Sign out and back in if you don't see your new dashboard.`,
+    link: role === 'TEACHER' ? '/teacher' : role === 'ADMIN' ? '/admin' : '/student',
+  }));
+  return done;
+}
+
 
 async function submit(id: string, user: Actor) {
   const app = await prisma.roleApplication.findUniqueOrThrow({ where: { id } });
