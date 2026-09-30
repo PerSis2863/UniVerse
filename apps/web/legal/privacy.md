@@ -42,6 +42,8 @@ We collect and process the following categories of personal data globally:
 - Timetable scheduling, elective preferences, and major change requests.
 - Uploaded academic documents, certificates, and assignments.
 
+- **Learning platform (LMS) sign-in:** if your Institution connects UniVerse to its learning platform (e.g. Moodle or Canvas via LTI 1.3), that platform sends us your LMS user identifier, name, email address, role (student or teacher) and the course you opened, so we can sign you in and link the course.
+
 ### 2.3 Student Profile, Career, and Impact Data
 
 - Institution-specific identifiers (Student ID, department, year of study, GPA).
@@ -110,6 +112,8 @@ We process your data strictly to:
 8. Deliver in-app notifications, announcements, and strictly necessary administrative emails.
 9. Generate anonymized and aggregated analytics for institutional reporting and platform research.
 10. Detect abuse, mitigate fraud, and investigate security threats via comprehensive audit logging.
+11. **Early warning for students who may be struggling.** Once a day, simple published rules look at attendance, grades, quizzes not handed in and how recently you used the Platform in each course, and list students who may benefit from support, together with the reasons. The list is visible only to the teacher of the course and to your Institution's administrators. It is not an automated decision: no grade, status or access changes because of it, and a person decides whether to contact you. It uses no AI and no special-category data. The legal basis is your Institution's legitimate interest (or public task) in supporting student success; you may object at any time by contacting your Institution or us, and you can request to see any entry about you (it is included in "Download my data").
+12. **Translation of chat messages** when you or another member of a chat asks for it (see section 5.3).
 
 We unequivocally do not sell your personal data to third parties, nor do we utilize your personal data for third-party cross-context behavioral advertising (as defined under CCPA).
 
@@ -130,7 +134,7 @@ When you actively submit an application for an NGO project, internship, startup 
 We utilize industry-leading technology partners bound by strict Data Processing Agreements (DPAs):
 
 - **Google LLC (Firebase Authentication):** Authentication and identity infrastructure.
-- **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, and data included in AI impact reports are sent to Google to produce a response.
+- **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, data included in AI impact reports, chat messages you choose to translate (or that are translated because you or another member of the chat turned on auto-translate), questions you ask the course AI tutor together with the relevant passages of that course's materials, and course materials your teacher prepares for the tutor are sent to Google to produce a response. Tutor conversations are not stored by us; flashcards you create are saved to your account until you delete them. Translations are stored with the message so each one is only produced once, and are deleted when the message is edited or deleted.
 - **Cloudflare, Inc.:** Hosting and serverless computing (Workers), database (D1), file storage (R2), and real-time features.
 - **Stripe, Inc.:** PCI-compliant payment processing.
 - **Resend, Inc.:** Delivery of notification and account emails.
@@ -155,6 +159,8 @@ When an Impact Credential is successfully issued to you upon project completion,
 
 - **Public Verification:** The public verification endpoint (e.g., `/verify/[id]`) enables third parties to verify the authenticity of your credential. If you do not wish for your credential to be publicly verifiable, do not distribute the verification link.
 - **Immutability and Erasure:** Blockchain cryptographic hashes are, by definition, immutable records. Deleting a hash from the underlying audit chain would permanently compromise the mathematical integrity of all subsequent verifications. While the hash itself cannot be "deleted," upon receiving a valid request for erasure (under GDPR, CCPA, or DPDPA), we will immediately suppress the public display and accessibility of your credential through our interfaces.
+
+- **Skills Passport and Open Badges:** You can choose to publish a Skills Passport page, which shows only the sections you select (verified credentials, impact totals, skills, course names — never your email, phone, grades or date of birth). It is private until you publish it, you can make it private again or replace its link at any time, and search engines are asked not to index it. You can also download your credentials as Open Badges 3.0 files; these contain your name and a salted hash of your email address (not the address itself).
 
 ## 7. Medical and Special Category Data Protection
 

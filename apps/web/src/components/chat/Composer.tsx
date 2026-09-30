@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Camera, FileText, ImageIcon, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, Camera, FileText, ImageIcon, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ChatMessage } from './chat-client';
+import { type ChatMessage, chatJson } from './chat-client';
+import { LanguagePicker } from './LanguagePicker';
+import { languageName } from '@/lib/languages';
 
 const EMOJIS = ['😀', '😂', '😊', '😍', '🥳', '😎', '🤔', '😅', '😢', '😡', '👍', '👎', '🙏', '👏', '🙌', '💪', '🔥', '✨', '❤️', '💯', '🎉', '✅', '📚', '🌍', '🌱', '💡', '🚀', '⭐', '☕', '👋'];
 
@@ -28,15 +30,19 @@ interface Props {
   onTyping: () => void;
   onExtra: (kind: ComposerExtra) => void;
   mentionables?: { id: string; name: string }[];
+  /** Suggested languages for translating a draft (e.g. the ones others write in here). */
+  draftLanguages?: string[];
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [] }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [] }: Props) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [emoji, setEmoji] = useState(false);
   const [attach, setAttach] = useState(false);
+  const [translateOpen, setTranslateOpen] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [recording, setRecording] = useState<{ start: number } | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -54,6 +60,24 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     }
   }, [editing]);
   useEffect(() => { if (replyTo) areaRef.current?.focus(); }, [replyTo]);
+
+  // Replaces the draft with its translation; "Undo" puts the original back.
+  const translateDraft = async (to: string) => {
+    setTranslateOpen(false);
+    const original = text;
+    setTranslating(true);
+    try {
+      const r = await chatJson<{ text: string; from: string }>('/api/chat/translate-draft', { method: 'POST', body: JSON.stringify({ text: original, to }) });
+      if (r.text === original || r.from === to) { toast(`Your message is already in ${languageName(to)}.`); return; }
+      setText(r.text);
+      toast.success(`Translated into ${languageName(to)}`, { action: { label: 'Undo', onClick: () => { setText(original); areaRef.current?.focus(); } } });
+      areaRef.current?.focus();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   // Auto-grow the textarea.
   useEffect(() => {
@@ -176,7 +200,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
       ) : (
         <div className="flex items-end gap-2">
           <div className="relative">
-            <button onClick={() => { setEmoji((v) => !v); setAttach(false); }} aria-label="Emoji" className="p-2.5 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+            <button onClick={() => { setEmoji((v) => !v); setAttach(false); setTranslateOpen(false); }} aria-label="Emoji" className="p-2.5 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
               <Smile className="w-5 h-5" />
             </button>
             {emoji && (
@@ -187,9 +211,19 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               </div>
             )}
           </div>
+          {text.trim().length > 1 && (
+            <div className="relative">
+              <button onClick={() => { setTranslateOpen((v) => !v); setEmoji(false); setAttach(false); }} disabled={translating} aria-label="Translate before sending" title="Translate before sending" aria-expanded={translateOpen} className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60', translateOpen ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
+                {translating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Languages className="w-5 h-5" />}
+              </button>
+              {translateOpen && (
+                <LanguagePicker title="Translate my message into" placement="above" align="left" value={null} suggested={[...new Set(draftLanguages)]} onPick={(l) => l && void translateDraft(l)} onClose={() => setTranslateOpen(false)} />
+              )}
+            </div>
+          )}
           {!editing && (
             <div className="relative">
-              <button onClick={() => { setAttach((v) => !v); setEmoji(false); }} disabled={busy} aria-label="Attach" className="p-2.5 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-50">
+              <button onClick={() => { setAttach((v) => !v); setEmoji(false); setTranslateOpen(false); }} disabled={busy} aria-label="Attach" className="p-2.5 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-50">
                 <Paperclip className="w-5 h-5" />
               </button>
               {attach && (

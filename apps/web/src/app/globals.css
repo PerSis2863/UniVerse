@@ -41,6 +41,7 @@
     --sidebar-item-active-color: #4f46e5;
     --sidebar-item-active-border: #c7d2fe;
     --card-bg: #ffffff;
+    --toast-bg: #ffffff;
     --card-border: #e2e8f0;
     --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     --card-hover-bg: #f8fafc;
@@ -84,6 +85,7 @@
     --sidebar-item-active-color: #818cf8;
     --sidebar-item-active-border: rgba(99, 102, 241, 0.25);
     --card-bg: rgba(255, 255, 255, 0.05);
+    --toast-bg: #161b2e;
     --card-border: rgba(255, 255, 255, 0.1);
     --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.15), 0 3px 6px rgba(0, 0, 0, 0.10);
     --card-hover-bg: rgba(255, 255, 255, 0.08);
@@ -916,3 +918,17 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 .dark .glass-bar {
   background: linear-gradient(90deg, rgba(49, 46, 129, 0.30) 0%, rgba(11, 14, 26, 0.55) 45%, rgba(112, 26, 117, 0.22) 100%);
 }
+
+/* "Made with ❤" in the footer: a gentle heartbeat. */
+@keyframes heartbeat {
+  0%, 60%, 100% { transform: scale(1); }
+  10% { transform: scale(1.25); }
+  20% { transform: scale(1.05); }
+  30% { transform: scale(1.22); }
+}
+.animate-heartbeat { display: inline-block; animation: heartbeat 1.6s ease-in-out infinite; transform-origin: center; }
+@media (prefers-reduced-motion: reduce) { .animate-heartbeat { animation: none; } }
+
+/* Low-data mode: lighter visuals (no blur layers or looping decorative animations). */
+.low-data *, .low-data *::before, .low-data *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.low-data .animate-pulse, .low-data .animate-ping, .low-data .animate-float { animation: none !important; }

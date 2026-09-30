@@ -58,6 +58,11 @@ Postgres database have been removed.
    - `CREDENTIAL_SIGNING_PRIVATE_KEY`: Ed25519 key that signs impact credentials (optional; without it,
      issuing credentials is refused). Generate one with
      `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))"`
+     The same key signs Open Badges (skills passport) and verified impact reports. Keep it: badges and
+     reports signed with it stop verifying if it changes.
+   - `SESSION_SECRET`: a random string of 32+ characters, needed for sign-in from an LMS (LTI 1.3). Generate
+     one with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. Changing it signs
+     out everyone who came in from their LMS (they just open UniVerse from the course again).
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` for push notifications (optional)
    - `CHAIN_ANCHOR_ENABLED`, `CHAIN_ANCHOR_PRIVATE_KEY`, … to anchor credentials on Polygon (optional, see `src/server/services/chain-anchor.service.ts`)
    - `DEMO_LOGIN_ENABLED=true` only if the demo accounts should be able to sign in without a password
@@ -144,12 +149,16 @@ preview build of a branch that adds one fails until that change has been deploye
 
 Only requests that run the Worker count: pages, API calls, live-update connections. Pictures, code, fonts
 and other files in `public/` are served free by Cloudflare and never count. Measured on a local build:
-opening the dashboard costs ~9 requests, each page opened from the menu ~2 (the page and its data),
-and an open tab that nobody is using costs nothing. A student who signs in and opens 20 pages uses about
-50–60 requests, so the free plan covers roughly 1,500 active people a day. Beyond that, upgrade to Workers
+a visitor reading the home page costs 1 request, opening the dashboard 3 (the page, one startup bundle,
+the live-updates connection), each page opened from the menu ~2 (the page and its data), and an open tab
+that nobody is using costs nothing. A student who signs in and opens 20 pages uses about 40–45 requests,
+so the free plan covers roughly 2,000–2,500 active people a day. Beyond that, upgrade to Workers
 Paid ($5/month, 10 million requests a month included).
 
-What keeps the count low (don't undo these without measuring): links don't prefetch
+What keeps the count low (don't undo these without measuring): the app asks for everything its first
+screen needs in one request (`/api/bootstrap`, `src/lib/bootstrap.ts`), the offline page is a static file
+(`public/offline.html`), the service worker doesn't download the home page a second time
+(`cacheStartUrl` / `dynamicStartUrl` off in `next.config.ts`), links don't prefetch
 (`src/components/ui/Link.tsx`), the service worker saves pages as they load instead of fetching them again
 (`next.config.ts`), polling stops while live updates are connected and in idle tabs
 (`src/lib/realtime-client.ts`), reconnects back off and give up after repeated failures, and robots.txt keeps
@@ -180,3 +189,17 @@ the universeimpact.com zone:
 ## Notes
 
 - The Worker is about 3.4 MB gzipped (minified). Cloudflare's documented script limit is 3 MB on the free plan and 10 MB on paid; deployments have been succeeding, but if one fails with a size error, that's the cause.
+
+## Features that need a key or setup
+
+| Feature | Needs |
+| --- | --- |
+| Chat translation, AI tutor (answers, practice questions, flashcards, reading course PDFs), AI diagnosis of errors | `GEMINI_API_KEY`. Without it these show “isn’t set up yet” and everything else works. |
+| Open Badges downloads, verified impact reports | `CREDENTIAL_SIGNING_PRIVATE_KEY` (same key as verified credentials) |
+| Moodle / Canvas / other LMS (LTI 1.3) | `SESSION_SECRET`, then Admin → LMS integration (LTI): give the LMS the URLs shown there and register the LMS. Set the tool to open in a new window: UniVerse refuses to be framed by other sites. Only resource-link launches (single sign-on + course linking + enrolment) are supported for now; grade passback and deep linking aren’t. |
+| Early warning | Nothing: runs in the daily job (08:00 UTC) and on “Check now”. |
+| Low-data mode | Nothing: a per-device setting (Settings, Ctrl+K, or offered on slow connections). |
+
+Europass / European Digital Credentials: issuing EDC-format credentials requires a qualified electronic seal
+from a trust service provider, which can’t be done in code. The skills passport exports Open Badges 3.0,
+which employers and badge platforms can verify.

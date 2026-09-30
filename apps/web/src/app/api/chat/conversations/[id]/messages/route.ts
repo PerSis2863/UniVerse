@@ -5,6 +5,7 @@ import { getSessionUser } from '@/lib/server-auth';
 import { later, notify } from '@/server/email';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
 import { deliver } from '@/server/realtime';
+import { pretranslate, storedTranslations } from '@/server/translate';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
@@ -55,7 +56,7 @@ export async function GET(req: Request, { params }: Ctx) {
       },
     }),
     getSystemUser(),
-    prisma.conversationParticipant.findUnique({ where: { id: me.id }, select: { pinnedAt: true, mutedUntil: true, archivedAt: true } }),
+    prisma.conversationParticipant.findUnique({ where: { id: me.id }, select: { pinnedAt: true, mutedUntil: true, archivedAt: true, translateTo: true } }),
   ]);
   if (!convo) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
 
@@ -69,8 +70,9 @@ export async function GET(req: Request, { params }: Ctx) {
   }
 
   const hasMore = rows.length > PAGE;
-  const [messages, pinnedRows] = await Promise.all([
-    decorate(rows.slice(0, PAGE).reverse().map(serializeMessage), user.id),
+  const page = rows.slice(0, PAGE);
+  const [messages, pinnedRows, translations] = await Promise.all([
+    decorate([...page].reverse().map(serializeMessage), user.id),
     // Pinned messages (up to 3) for the bar at the top of the chat.
     prisma.message.findMany({
       where: { conversationId: id, pinnedAt: { not: null }, deletedAt: null, AND: [visibleTo(user.id)] },
@@ -78,6 +80,8 @@ export async function GET(req: Request, { params }: Ctx) {
       take: 3,
       select: { id: true, body: true, type: true, attachmentName: true, createdAt: true, pinnedAt: true, sender: { select: { id: true, name: true } } },
     }),
+    // Auto-translate on: include the translations already made, so they show at once.
+    prefs?.translateTo ? storedTranslations(page.filter((m) => m.senderId !== user.id).map((m) => m.id), prefs.translateTo) : Promise.resolve({}),
   ]);
   const others = convo.participants.filter((p) => p.userId !== user.id);
 
@@ -94,6 +98,7 @@ export async function GET(req: Request, { params }: Ctx) {
         pinned: !!prefs?.pinnedAt,
         muted: !!prefs?.mutedUntil && prefs.mutedUntil > now,
         archived: !!prefs?.archivedAt,
+        translateTo: prefs?.translateTo ?? null,
         members: convo.participants.map((p) => ({
           id: p.user.id,
           name: p.user.name,
@@ -107,6 +112,7 @@ export async function GET(req: Request, { params }: Ctx) {
       },
       typing: others.filter((p) => p.typingUntil && p.typingUntil > now).map((p) => p.user.name.split(' ')[0]),
       pinned: pinnedRows,
+      translations,
       messages,
       hasMore,
       me: user.id,
@@ -189,7 +195,11 @@ export async function POST(req: Request, { params }: Ctx) {
     prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: new Date(), typingUntil: null } }),
   ]);
   const [out] = await decorate([serializeMessage(message)], user.id);
-  later(() => notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? '')));
+  later(async () => {
+    // Members with auto-translate get the message already translated (a few seconds at most).
+    if (data.type === 'TEXT' && String(data.body ?? '').trim()) await pretranslate(id, message.id, String(data.body), user.id).catch(() => {});
+    await notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? ''));
+  });
   if (data.type === 'TEXT' && String(data.body ?? '').includes('@')) later(() => notifyMentions(id, user, String(data.body)));
   return NextResponse.json(out, { status: 201 });
 }

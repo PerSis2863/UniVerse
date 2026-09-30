@@ -69,7 +69,11 @@ export interface ThreadResponse {
   conversation: {
     id: string; isGroup: boolean; isOfficial: boolean; title: string; avatarUrl: string | null; myRole: string; members: Member[];
     disappearingSec?: number | null; pinned?: boolean; muted?: boolean; archived?: boolean;
+    /** Auto-translate incoming messages into this language (my setting); null = off. */
+    translateTo?: string | null;
   };
+  /** Stored translations (into `translateTo`) of messages on this page. */
+  translations?: Record<string, { text: string; from: string; same: boolean }>;
   typing: string[];
   pinned?: { id: string; body: string; type: string; attachmentName: string | null; createdAt: string; pinnedAt: string; sender: { id: string; name: string } | null }[];
   messages: ChatMessage[];

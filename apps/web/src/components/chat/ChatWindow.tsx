@@ -6,7 +6,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
@@ -14,6 +14,10 @@ import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
 import { type ChatMessage, type ThreadResponse, chatJson, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 import { useLiveInterval } from '@/lib/realtime-client';
+import { useLanguageStore } from '@/store/language';
+import { LANGUAGES, languageName } from '@/lib/languages';
+import { LanguagePicker } from './LanguagePicker';
+import { useChatTranslations } from './useChatTranslations';
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const key = `/api/chat/conversations/${conversationId}/messages`;
@@ -46,6 +50,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [highlight, setHighlight] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [wallpaper, setWallpaperId] = useState('dots');
+  const [translateOpen, setTranslateOpen] = useState(false);
+  const appLanguage = useLanguageStore((s) => s.language);
   useEffect(() => {
     const sync = () => setWallpaperId(getWallpaper());
     sync();
@@ -71,6 +77,18 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const canModerate = convo?.isGroup && convo.myRole === 'ADMIN';
   const canPin = !!convo && !convo.isOfficial && (!convo.isGroup || convo.myRole === 'ADMIN');
   const pins = data?.pinned ?? [];
+  const tr = useChatTranslations({ conversationId, messages, me, fromServer: data?.translations, autoTo: convo?.translateTo ?? null, appLanguage });
+
+  // Auto-translate for this chat (my own setting). Shown straight away, saved in the background.
+  const setAutoTranslate = async (lang: string | null) => {
+    setTranslateOpen(false);
+    mutate((prev) => (prev ? { ...prev, conversation: { ...prev.conversation, translateTo: lang } } : prev), { revalidate: false });
+    try {
+      await chatJson(`/api/chat/conversations/${conversationId}/prefs`, { method: 'PATCH', body: JSON.stringify({ translateTo: lang }) });
+      toast.success(lang ? `Messages in this chat will be translated into ${languageName(lang)}` : 'Auto-translate turned off');
+      mutate();
+    } catch (e) { toast.error((e as Error).message); mutate(); }
+  };
 
   // Keep the newest message in view (unless the user scrolled up to read history).
   useEffect(() => {
@@ -332,7 +350,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     <div className="flex-1 flex min-w-0 min-h-0">
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Header */}
-        <div className="flex items-center gap-3 px-3 md:px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl">
+        <div className="relative z-20 flex items-center gap-3 px-3 md:px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl">
           <button onClick={onBack} aria-label="Back" className="md:hidden p-2 -ml-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
             <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />
@@ -349,9 +367,28 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <button onClick={() => call('video')} aria-label="Video call" title="Video call" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Video className="w-5 h-5" /></button>
             </>
           )}
+          <div className="relative hidden sm:block">
+            <button onClick={() => setTranslateOpen((v) => !v)} aria-label="Translate messages" title={convo.translateTo ? `Auto-translating into ${languageName(convo.translateTo)}` : 'Translate messages'} aria-expanded={translateOpen} className={cn('relative p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', convo.translateTo || translateOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}>
+              <Languages className="w-5 h-5" />
+              {convo.translateTo && <span className="absolute -bottom-0.5 -right-0.5 text-[9px] font-black uppercase px-1 rounded bg-indigo-500 text-white">{convo.translateTo}</span>}
+            </button>
+            {translateOpen && (
+              <LanguagePicker title="Auto-translate messages into" offLabel="Off — show originals" value={convo.translateTo ?? null} suggested={[appLanguage]} onPick={setAutoTranslate} onClose={() => setTranslateOpen(false)} />
+            )}
+          </div>
           <button onClick={() => { setSearchOpen((v) => !v); setResults(null); setSearchQ(''); }} aria-label="Search in chat" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', searchOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Search className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} aria-label="Chat info" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', infoOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Info className="w-5 h-5" /></button>
         </div>
+
+        {convo.translateTo && (
+          <div className="flex items-center gap-2 px-3 md:px-5 py-1.5 border-b border-zinc-200/80 dark:border-white/[0.06] bg-sky-50/80 dark:bg-sky-500/[0.07] text-xs text-sky-800 dark:text-sky-200">
+            <Languages className="w-3.5 h-3.5 shrink-0" />
+            {tr.autoError
+              ? <span className="flex-1 min-w-0 truncate">Couldn’t translate new messages: {tr.autoError} <button onClick={tr.retryAuto} className="font-semibold underline">Try again</button></span>
+              : <span className="flex-1 min-w-0 truncate">Translating messages into <b>{languageName(convo.translateTo)}</b> — tap “Show original” on any message to see what was sent.</span>}
+            <button onClick={() => setAutoTranslate(null)} className="shrink-0 font-semibold text-sky-700 dark:text-sky-300 hover:underline">Turn off</button>
+          </div>
+        )}
 
         {pins.length > 0 && (() => {
           const current = pins[pinIndex % pins.length];
@@ -462,6 +499,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                     onOpenContact={openContact}
                     onReact={(e) => react(m, e)}
                     onOpenImage={setLightbox}
+                    {...(m.senderId !== me && m.type === 'TEXT' && !m.pending && m.body?.trim()
+                      ? { translation: tr.get(m.id), showOriginal: tr.showingOriginal(m.id), onTranslate: () => tr.translate(m.id), onToggleOriginal: () => tr.toggleOriginal(m.id) }
+                      : {})}
                   />
                 </div>
               </Fragment>
@@ -491,6 +531,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onTyping={typing}
           onExtra={onExtra}
           mentionables={convo.isGroup ? others.map((o) => ({ id: o.id, name: o.name })) : []}
+          draftLanguages={[...tr.detected, appLanguage]}
         />
       </div>
 
@@ -503,6 +544,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             onOpenImage={setLightbox}
             onChanged={() => { mutate(); onChanged(); }}
             onLeft={() => { onChanged(); onBack(); }}
+            onAutoTranslate={setAutoTranslate}
           />
         )}
       </AnimatePresence>
@@ -524,8 +566,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   );
 }
 
-function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: {
+function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, onAutoTranslate }: {
   data: ThreadResponse; messages: ChatMessage[]; onClose: () => void; onOpenImage: (u: string) => void; onChanged: () => void; onLeft: () => void;
+  onAutoTranslate: (lang: string | null) => void;
 }) {
   const convo = data.conversation;
   const [adding, setAdding] = useState(false);
@@ -615,6 +658,17 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft }: 
           </div>
         </div>
       )}
+
+      <div className="p-5 border-b border-zinc-200/80 dark:border-white/[0.06]">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-zinc-800 dark:text-zinc-200 flex items-center gap-2"><Languages className="w-4 h-4 text-zinc-500" /> Auto-translate</span>
+          <select aria-label="Auto-translate messages into" value={convo.translateTo ?? ''} onChange={(e) => onAutoTranslate(e.target.value || null)} className="text-xs rounded-lg bg-zinc-100 dark:bg-white/10 px-2 py-1.5 text-zinc-700 dark:text-zinc-200 max-w-[9rem]">
+            <option value="">Off</option>
+            {Object.entries(LANGUAGES).map(([code, l]) => <option key={code} value={code}>{l.name}</option>)}
+          </select>
+        </div>
+        <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">Messages from others appear in the language you choose. Only you see this setting. Messages are translated by AI (Google Gemini) and can contain mistakes — “Show original” shows what was sent.</p>
+      </div>
 
       {starredHere.length > 0 && (
         <div className="p-5 border-b border-zinc-200/80 dark:border-white/[0.06]">

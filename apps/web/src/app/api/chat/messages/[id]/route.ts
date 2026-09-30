@@ -26,7 +26,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const body = await req.json().catch(() => ({}));
   const text = String(body.body ?? '').trim().slice(0, MAX_BODY);
   if (!text) return NextResponse.json({ error: 'Message is empty.' }, { status: 400 });
-  const updated = await prisma.message.update({ where: { id }, data: { body: text, editedAt: new Date() }, select: { ...messageSelect, sender: { select: { id: true, name: true, avatar: true } } } });
+  const [updated] = await prisma.$transaction([
+    prisma.message.update({ where: { id }, data: { body: text, editedAt: new Date() }, select: { ...messageSelect, sender: { select: { id: true, name: true, avatar: true } } } }),
+    prisma.messageTranslation.deleteMany({ where: { messageId: id } }), // the old translations no longer match
+  ]);
   publishChat(msg.conversationId);
   return NextResponse.json(serializeMessage(updated));
 }

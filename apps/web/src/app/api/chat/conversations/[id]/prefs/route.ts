@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { membership } from '@/lib/chat';
+import { isLanguage } from '@/server/translate';
 
 type Ctx = { params: Promise<{ id: string }> };
 const MUTE_FOR: Record<string, number | null> = { '8h': 8 * 3600_000, '1w': 7 * 86_400_000, always: null };
 
-// PATCH { pinned?, muted?: '8h' | '1w' | 'always' | false, archived?, unread? } — the caller's own chat-list settings.
+// PATCH { pinned?, muted?: '8h' | '1w' | 'always' | false, archived?, unread?, translateTo?: lang | null }
+// — the caller's own settings for this chat.
 export async function PATCH(req: Request, { params }: Ctx) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
@@ -15,7 +17,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!me) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
 
   const b = await req.json().catch(() => ({}));
-  const data: { pinnedAt?: Date | null; mutedUntil?: Date | null; archivedAt?: Date | null; markedUnread?: boolean } = {};
+  const data: { pinnedAt?: Date | null; mutedUntil?: Date | null; archivedAt?: Date | null; markedUnread?: boolean; translateTo?: string | null } = {};
   if (typeof b.pinned === 'boolean') {
     if (b.pinned) {
       const pinnedCount = await prisma.conversationParticipant.count({ where: { userId: user.id, pinnedAt: { not: null }, NOT: { id: me.id } } });
@@ -30,6 +32,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
   }
   if (typeof b.archived === 'boolean') { data.archivedAt = b.archived ? new Date() : null; if (b.archived) data.pinnedAt = null; }
   if (typeof b.unread === 'boolean') data.markedUnread = b.unread;
+  if (b.translateTo === null || isLanguage(b.translateTo)) data.translateTo = b.translateTo;
+  else if (b.translateTo !== undefined) return NextResponse.json({ error: 'Unknown language.' }, { status: 400 });
 
   await prisma.conversationParticipant.update({ where: { id: me.id }, data });
   return NextResponse.json({ ok: true });

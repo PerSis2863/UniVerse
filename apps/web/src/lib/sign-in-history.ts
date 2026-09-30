@@ -14,3 +14,17 @@ export function reportSession(kind: 'SIGN_IN' | 'SIGN_UP' | 'SESSION', method?: 
   }
   api.post('/auth/session', { kind, method }).catch(() => {});
 }
+
+/**
+ * For the startup bundle: true if this tab hasn't reported the app opening yet (and marks it as
+ * reported, so reportSession('SESSION') won't send it again).
+ */
+export function claimSessionReport(): boolean {
+  try {
+    if (sessionStorage.getItem('universe-session-reported')) return false;
+    sessionStorage.setItem('universe-session-reported', '1');
+  } catch {
+    return false; // storage unavailable: reportSession() sends it instead
+  }
+  return true;
+}

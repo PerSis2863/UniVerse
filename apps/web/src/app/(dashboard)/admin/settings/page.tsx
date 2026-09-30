@@ -1,4 +1,5 @@
 'use client';
+import { LowDataToggle } from '@/components/settings/LowDataToggle';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { Save, Building, Shield, Bell, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
@@ -149,6 +150,7 @@ export default function AdminSettings() {
               <div className="space-y-6">
                 <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-4">Notifications</h3>
                 <EmailNotificationsSwitch />
+                <LowDataToggle />
                 <p className="text-sm text-zinc-500">
                   As an admin you&apos;re also notified (in the app, and by email when this is on) about every new teacher or NGO application, so you can review it in Approvals.
                 </p>

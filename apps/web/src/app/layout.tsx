@@ -78,7 +78,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             mobileOffset={{ bottom: 'calc(var(--mobile-tabbar-h, 3.5rem) + env(safe-area-inset-bottom) + 12px)' }}
             gap={8}
             toastOptions={{
-              style: { background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }
+              // Solid background: the page's card colour is see-through in dark mode, which let text show through.
+              style: { background: 'var(--toast-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', boxShadow: '0 12px 32px -12px rgba(0,0,0,.45)' }
             }}
           />
       </body>

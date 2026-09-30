@@ -117,6 +117,9 @@ model User {
 
   // Profiles
   studentProfile StudentProfile?
+  skillPassport  SkillPassport?
+  riskFlags      StudentRiskFlag[]
+  studyCards     StudyCard[]
   teacherProfile TeacherProfile?
 
   // Core Academic
@@ -310,6 +313,8 @@ model Course {
   knowledgeHubResources KnowledgeHubResource[]
   electiveRequests      ElectiveRequest[]
   calendarEvents        CalendarEvent[]
+  riskFlags             StudentRiskFlag[]
+  sources               CourseSource[]
 
   @@index([teacherId])
   @@index([status])
@@ -519,6 +524,7 @@ model ConversationParticipant {
   mutedUntil     DateTime?
   archivedAt     DateTime?
   markedUnread   Boolean      @default(false)
+  translateTo    String? // auto-translate incoming messages into this language (ISO 639-1); null = off
 
   @@unique([conversationId, userId])
   @@index([conversationId])
@@ -537,22 +543,23 @@ model Message {
   createdAt      DateTime     @default(now())
 
   // Rich messages (messaging hub)
-  type           String             @default("TEXT") // TEXT, IMAGE, FILE, AUDIO, VIDEO, CALL, SYSTEM
+  type           String               @default("TEXT") // TEXT, IMAGE, FILE, AUDIO, VIDEO, CALL, SYSTEM
   attachmentUrl  String?
   attachmentName String?
   attachmentSize Int?
   attachmentMime String?
   metadata       Json? // e.g. call room + kind
   replyToId      String?
-  replyTo        Message?           @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies        Message[]          @relation("MessageReplies")
+  replyTo        Message?             @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]            @relation("MessageReplies")
   editedAt       DateTime?
   deletedAt      DateTime?
   expiresAt      DateTime? // disappearing messages
-  forwarded      Boolean            @default(false)
+  forwarded      Boolean              @default(false)
   reactions      MessageReaction[]
   userStates     MessageUserState[]
   pollVotes      PollVote[]
+  translations   MessageTranslation[]
 
   pinnedAt   DateTime? // pinned to the top of the chat
   pinnedById String?
@@ -1795,4 +1802,185 @@ model ErrorReport {
 
   @@index([status, lastSeen])
   @@map("error_reports")
+}
+
+/// Machine translations of chat messages, one per message and language, shared by everyone in the
+/// conversation (so a group of 30 costs one translation, not 30). Deleted when the message is edited.
+model MessageTranslation {
+  id         String   @id @default(cuid())
+  messageId  String
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  lang       String // target language (ISO 639-1)
+  sourceLang String // detected language of the original
+  text       String // the translation; empty when the message was already in `lang`
+  createdAt  DateTime @default(now())
+
+  @@unique([messageId, lang])
+  @@map("message_translations")
+}
+
+// Skills passport: a public page a student can choose to share (verified credentials, skills,
+// courses), and Open Badges 3.0 exports of their credentials.
+model SkillPassport {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String   @unique // random, part of the public link
+  isPublic        Boolean  @default(false)
+  headline        String?
+  showSkills      Boolean  @default(true)
+  showCredentials Boolean  @default(true)
+  showCourses     Boolean  @default(false)
+  showImpact      Boolean  @default(true)
+  views           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("skill_passports")
+}
+
+// Early warning: students who may be struggling in a course, found each day from attendance,
+// grades, missed quizzes and inactivity (plain rules, no AI). Only teachers and admins see them,
+// and a person decides what to do — nothing happens to the student automatically.
+model StudentRiskFlag {
+  id            String    @id @default(cuid())
+  studentId     String
+  student       User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId      String
+  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  score         Int // 0–100
+  level         String // AT_RISK | WATCH | OK (improved since it was flagged)
+  reasons       Json // [{ code, text }]
+  status        String    @default("OPEN") // OPEN | CONTACTED | RESOLVED | DISMISSED
+  note          String?
+  handledById   String?
+  handledByName String?
+  handledAt     DateTime?
+  handledScore  Int? // score when it was last handled (reopens only if it gets clearly worse)
+  computedAt    DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([studentId, courseId])
+  @@index([courseId])
+  @@index([status])
+  @@map("student_risk_flags")
+}
+
+// Course AI tutor: the text the tutor answers from — course materials (read once) and teacher notes.
+model CourseSource {
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materialId String?  @unique // set for course materials; null for teacher notes
+  title      String
+  kind       String // material | note
+  text       String
+  chars      Int      @default(0)
+  status     String   @default("READY") // READY | FAILED
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([courseId])
+  @@map("course_sources")
+}
+
+// A student's flashcards, reviewed with spaced repetition (SM-2).
+model StudyCard {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String?
+  front       String
+  back        String
+  sourceTitle String?
+  due         DateTime @default(now())
+  interval    Int      @default(0) // days
+  ease        Float    @default(2.5)
+  reps        Int      @default(0)
+  lapses      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, due])
+  @@map("study_cards")
+}
+
+// Verified impact reports for sponsors / partners: figures from verified credentials for a period,
+// frozen and signed when issued (data + jwt), shared by an unguessable link.
+model ImpactReport {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  organization  String? // only credentials issued with this organisation; null = all
+  periodStart   DateTime
+  periodEnd     DateTime
+  data          Json
+  jwt           String // signed snapshot of `data`
+  isPublic      Boolean  @default(true)
+  views         Int      @default(0)
+  createdById   String
+  createdByName String
+  createdAt     DateTime @default(now())
+
+  @@map("impact_reports")
+}
+
+// LTI 1.3: LMS platforms (Moodle, Canvas…) registered by an admin, and the links between their
+// users / course contexts and UniVerse accounts / courses.
+model LtiPlatform {
+  id            String   @id @default(cuid())
+  name          String
+  issuer        String
+  clientId      String
+  deploymentIds Json     @default("[]") // string[]; empty = any
+  authLoginUrl  String
+  authTokenUrl  String?
+  jwksUrl       String
+  trustEmails   Boolean  @default(false) // link to existing accounts by email
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([issuer, clientId])
+  @@map("lti_platforms")
+}
+
+// One-time OIDC state + nonce for a launch in progress (valid 10 minutes).
+model LtiNonce {
+  id            String   @id @default(cuid())
+  platformId    String
+  state         String   @unique
+  nonce         String   @unique
+  targetLinkUri String?
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("lti_nonces")
+}
+
+model LtiUser {
+  id         String   @id @default(cuid())
+  platformId String
+  sub        String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  @@unique([platformId, sub])
+  @@index([userId])
+  @@map("lti_users")
+}
+
+model LtiContext {
+  id         String   @id @default(cuid())
+  platformId String
+  contextId  String
+  courseId   String
+  title      String
+  createdAt  DateTime @default(now())
+
+  @@unique([platformId, contextId])
+  @@map("lti_contexts")
 }

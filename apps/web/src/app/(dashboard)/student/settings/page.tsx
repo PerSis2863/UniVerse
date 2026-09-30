@@ -1,4 +1,5 @@
 'use client';
+import { LowDataToggle } from '@/components/settings/LowDataToggle';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
@@ -157,6 +158,8 @@ export default function StudentSettings() {
                         </div>
                       </div>
                       
+                      <LowDataToggle />
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {LANGUAGES.map(lang => {
                           const isSelected = language === lang.code;

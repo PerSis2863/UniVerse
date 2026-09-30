@@ -59,7 +59,8 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
   const { data: apiNotifications, mutate: refreshNotifications } = useSWR<ApiNotification[]>(
     user ? '/api/notifications' : null,
     authedJson,
-    { refreshInterval: notificationPoll, revalidateOnFocus: true, dedupingInterval: 15_000 },
+    // While live updates are connected they refresh this list, so remounting (e.g. another layout) doesn't refetch it.
+    { refreshInterval: notificationPoll, revalidateOnFocus: true, dedupingInterval: 15_000, revalidateIfStale: notificationPoll !== 0 },
   );
   const notifications = (apiNotifications ?? []).map((n) => ({
     id: n.id,

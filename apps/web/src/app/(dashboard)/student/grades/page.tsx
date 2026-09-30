@@ -227,7 +227,7 @@ export default function GradesPage() {
   const [transcriptType, setTranscriptType] = useState('full');
 
   const { data, isLoading, error } = useSWR('/grades/student', fetcher);
-  const { data: me } = useSWR<{ name: string; email: string }>('/api/me', authedJson);
+  const { data: me } = useSWR<{ name: string; email: string }>('/api/me', authedJson, { revalidateIfStale: false }); // name/email only
   const router = useRouter();
   const [requesting, setRequesting] = useState(false);
 
