@@ -28,8 +28,8 @@ const ROLES = [
   },
   {
     id: 'TEACHER',
-    label: 'Staff',
-    description: 'Teachers and university staff: manage courses, students and content. An admin approves staff accounts.',
+    label: 'Staff / Mentor',
+    description: 'Teachers, university staff and mentors: manage courses, students and content. An admin approves staff accounts.',
     icon: Building2,
     color: 'emerald',
     gradient: 'from-emerald-500/20 to-teal-500/20',
@@ -38,7 +38,7 @@ const ROLES = [
   },
   {
     id: 'ADMIN',
-    label: 'Organization',
+    label: 'Organisation',
     description: 'NGOs, companies and institutions: post projects and partner with universities. An admin approves organizations.',
     icon: Globe,
     color: 'amber',

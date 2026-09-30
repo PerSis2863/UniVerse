@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { awaitingApproval, type ApplicationStatus, type Role, type UserStatus } from '@/types';
 
-// Applying to become a teacher or NGO representative, and following the application.
+// Applying to become staff / mentor or an organisation (or, from sign-up, a verified student), and following the application.
 // People who picked "teacher" when signing up land here until an admin decides; students can
 // apply from Settings. The role is only granted when an admin approves (server-side).
 
@@ -62,8 +62,8 @@ type Form = Record<'institution' | 'department' | 'position' | 'staffId' | 'work
 
 const ROLE_INFO: Record<Requested, { label: string; icon: typeof GraduationCap; blurb: string }> = {
   STUDENT: { label: 'Verified student', icon: GraduationCap, blurb: 'Confirm you study at a university or school to get your student account and verified student badge.' },
-  TEACHER: { label: 'Teacher / university staff', icon: Building2, blurb: 'Create courses, post grades and materials, run quizzes and take attendance.' },
-  ADMIN: { label: 'NGO representative', icon: Globe, blurb: 'Post projects and work with universities. This gives admin access, so it is reviewed carefully.' },
+  TEACHER: { label: 'Staff / mentor', icon: Building2, blurb: 'Create courses, post grades and materials, run quizzes and take attendance.' },
+  ADMIN: { label: 'Organisation', icon: Globe, blurb: 'Post projects and work with universities. This gives admin access, so it is reviewed carefully.' },
 };
 
 const EVENT_LABEL: Record<string, string> = {
@@ -182,7 +182,7 @@ export default function ApplicationPage() {
       data?.canApply ? (
         <ApplicationForm initial={toForm(null, starting ?? 'TEACHER')} isNew onSaved={async () => { setStarting(null); await mutate(); await refreshProfile(); }} onCancel={() => setStarting(null)} />
       ) : (
-        <Notice icon={ShieldCheck} tone="neutral" title="Your account already has staff access" text="Applications are for student accounts that want to teach or represent an NGO." />
+        <Notice icon={ShieldCheck} tone="neutral" title="Your account already has staff access" text="Applications are for student accounts that want to join as staff / mentor or for an organisation." />
       )
     ) : (
       <Intro onPick={setStarting} />
@@ -199,12 +199,14 @@ export default function ApplicationPage() {
             icon={ShieldCheck}
             tone="info"
             title={`Your ${ROLE_INFO[app.requestedRole]?.label.toLowerCase() ?? 'staff'} account needs approval`}
-            text="To keep students safe, an admin checks every staff account. Tell us where you work and how we can confirm it. It usually takes a day or two; we'll notify you by email and in the app."
+            text={app.requestedRole === 'STUDENT'
+              ? "To keep the community safe, an admin checks every account. Tell us where you study and how we can confirm it. It usually takes a day or two; we'll notify you by email and in the app."
+              : "To keep students safe, an admin checks every staff account. Tell us where you work and how we can confirm it. It usually takes a day or two; we'll notify you by email and in the app."}
           />
         )}
         <ApplicationForm
           initial={toForm(app, app.requestedRole)}
-          canChangeRole={app.status === 'DRAFT'}
+          canChangeRole={app.status === 'DRAFT' && app.requestedRole !== 'STUDENT'}
           submitLabel={app.status === 'NEEDS_INFO' ? 'Send updated application' : app.status === 'PENDING' ? 'Save changes' : 'Send for review'}
           onSaved={async () => { setEditing(false); await mutate(); await refreshProfile(); }}
           onCancel={editing ? () => setEditing(false) : undefined}
@@ -274,6 +276,8 @@ export default function ApplicationPage() {
     );
   }
 
+  const studentApp = app?.requestedRole === 'STUDENT' && app.status !== 'WITHDRAWN';
+  const pageTitle = studentApp ? 'Student verification' : 'Staff application';
   const content = <div className="max-w-3xl mx-auto w-full">{body}</div>;
 
   if (standalone) {
@@ -282,7 +286,7 @@ export default function ApplicationPage() {
         <header className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 h-16 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#070b17]/80 backdrop-blur">
           <div className="flex items-center gap-2">
             <UniverseLogo className="w-8 h-8" />
-            <span className="font-bold text-zinc-900 dark:text-white">Staff application</span>
+            <span className="font-bold text-zinc-900 dark:text-white">{pageTitle}</span>
           </div>
           <button onClick={signOut} className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"><LogOut className="w-4 h-4" /> Sign out</button>
         </header>
@@ -292,7 +296,7 @@ export default function ApplicationPage() {
   }
   return (
     <>
-      <Topbar title="Staff application" subtitle="Apply to teach or represent an NGO on UniVerse" />
+      <Topbar title={pageTitle} subtitle={studentApp ? 'Confirm where you study to get your student account' : 'Apply as staff / mentor or for an organisation on UniVerse'} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">{content}</div>
     </>
   );
@@ -304,7 +308,7 @@ function Intro({ onPick }: { onPick: (r: Requested) => void }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Teach or represent an NGO on UniVerse</h2>
+        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Join as staff / mentor or for an organisation</h2>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
           Staff accounts can see and change students&apos; work, so an admin checks every application. You keep your student account while you wait.
         </p>
@@ -574,7 +578,7 @@ function ApplicationForm({
         </div>
         <div>
           <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Document</span>
-          <p className="text-xs text-zinc-500 mb-2">{stu ? 'Student card or enrolment certificate for this year.' : 'Staff ID card, appointment letter or NGO registration.'} PDF or photo, up to 4 MB. Only admins can see it.</p>
+          <p className="text-xs text-zinc-500 mb-2">{stu ? 'Student card or enrolment certificate for this year.' : 'Staff ID card, appointment letter or organisation registration.'} PDF or photo, up to 4 MB. Only admins can see it.</p>
           {f.proofUrl ? (
             <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-zinc-200 dark:border-white/10">
               <a href={safeHref(f.proofUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-indigo-500 min-w-0"><FileText className="w-4 h-4 shrink-0" /><span className="truncate">{f.proofName || 'Document'}</span></a>
@@ -594,7 +598,7 @@ function ApplicationForm({
       </Field>
 
       {ngo && (
-        <p className="flex gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="w-4 h-4 shrink-0" /> NGO representatives get admin access to the platform, so these applications are checked especially carefully.</p>
+        <p className="flex gap-2 text-xs text-amber-600 dark:text-amber-400"><AlertTriangle className="w-4 h-4 shrink-0" /> Organisation accounts get admin access to the platform, so these applications are checked especially carefully.</p>
       )}
 
       <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-zinc-100 dark:border-white/[0.05]">
