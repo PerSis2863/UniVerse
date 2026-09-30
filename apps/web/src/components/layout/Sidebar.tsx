@@ -349,7 +349,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
           </div>
           <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium tracking-wider flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            {user.role} PORTAL
+            {user.owner ? 'OWNER' : user.role} PORTAL
           </div>
         </div>
       </div>

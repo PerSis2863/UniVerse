@@ -43,7 +43,9 @@ async function enforceRetention() {
     prisma.auditLog.deleteMany({ where: { createdAt: { lt: new Date(now - 730 * DAY) } } }),
     prisma.ownerChange.deleteMany({ where: { createdAt: { lt: new Date(now - 730 * DAY) } } }),
   ]);
-  // Error groups nobody has seen for 90 days (technical logs).
+  // Pages opened and buttons clicked (technical / usage logs), and error groups nobody has seen
+  // for 90 days.
+  await prisma.uiEvent.deleteMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) } } });
   await prisma.errorReport.deleteMany({ where: { lastSeen: { lt: new Date(now - 90 * DAY) } } });
 
   const decided = await prisma.roleApplication.findMany({

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Bug, Crown, Database, History, LayoutDashboard, Loader2, LogIn, MessageSquare, Search, Trash2, Undo2, Users } from 'lucide-react';
+import { Activity, Bug, Crown, Database, History, LayoutDashboard, Loader2, LogIn, MessageSquare, MousePointerClick, Search, Trash2, Undo2, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, card, fetcher, field, formatValue, summarize, undoChange } from './shared';
@@ -151,7 +151,7 @@ function Overview({ onPerson }: { onPerson: (id: string) => void }) {
 
 // ─── Live activity ─────────────────────────────────────────────────────────────────────────────
 
-type FeedItem = { kind: 'signin' | 'action' | 'message'; at: string; user: { id: string | null; name: string | null; role: string | null } | null; data: Record<string, unknown> };
+type FeedItem = { kind: 'signin' | 'action' | 'message' | 'ui'; at: string; user: { id: string | null; name: string | null; role: string | null } | null; data: Record<string, unknown> };
 
 function Feed({ onPerson }: { onPerson: (id: string) => void }) {
   const [filter, setFilter] = useState<'' | FeedItem['kind']>('');
@@ -165,17 +165,19 @@ function Feed({ onPerson }: { onPerson: (id: string) => void }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-1">
-        {([['', 'Everything'], ['signin', 'Sign-ins'], ['action', 'Actions'], ['message', 'Messages']] as const).map(([k, l]) => (
+        {([['', 'Everything'], ['signin', 'Sign-ins'], ['action', 'Actions'], ['message', 'Messages'], ['ui', 'Clicks & pages']] as const).map(([k, l]) => (
           <button key={k} onClick={() => setFilter(k)} className={cn('px-3 py-1.5 rounded-full text-xs font-semibold', filter === k ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{l}</button>
         ))}
       </div>
       <ul className={cn(card, 'divide-y divide-zinc-100 dark:divide-white/[0.05]')}>
         {isLoading && <li className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></li>}
         {items.map((x, i) => {
-          const Icon = x.kind === 'signin' ? LogIn : x.kind === 'message' ? MessageSquare : Activity;
+          const Icon = x.kind === 'signin' ? LogIn : x.kind === 'message' ? MessageSquare : x.kind === 'ui' ? MousePointerClick : Activity;
           const d = x.data;
           const what = x.kind === 'signin'
             ? `${d.kind === 'SIGN_UP' ? 'signed up' : d.kind === 'SIGN_IN' ? 'signed in' : 'opened the app'}${d.method ? ` with ${d.method}` : ''} · ${[d.device, d.city, d.country, d.ip].filter(Boolean).join(' · ')}`
+            : x.kind === 'ui'
+              ? d.kind === 'VIEW' ? `opened ${String(d.path)}` : `clicked “${String(d.label ?? 'a button')}” on ${String(d.path)}`
             : x.kind === 'message'
               ? `${d.type === 'CALL' ? 'started a call' : 'sent a message'}${(d.conversation as { name?: string } | null)?.name ? ` in ${(d.conversation as { name: string }).name}` : ''}: “${String(d.body ?? '').slice(0, 120)}”`
               : String(d.summary);
@@ -187,7 +189,7 @@ function Feed({ onPerson }: { onPerson: (id: string) => void }) {
                 {x.user?.role && <span className="ml-1 text-[10px] font-bold uppercase text-zinc-400">{x.user.role}</span>}
                 <p className="text-zinc-600 dark:text-zinc-300 break-words">{what}</p>
               </div>
-              <time className="text-xs text-zinc-400 shrink-0" title={new Date(x.at).toLocaleString()}>{format(new Date(x.at), 'd MMM, HH:mm')}</time>
+              <time className="text-xs text-zinc-400 shrink-0" title={new Date(x.at).toLocaleString()}>{format(new Date(x.at), 'd MMM, HH:mm:ss')}</time>
             </li>
           );
         })}
@@ -227,7 +229,7 @@ function People({ onPerson }: { onPerson: (id: string) => void }) {
                 <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">{p.name} {p.owner && <Crown className="inline w-3.5 h-3.5 text-amber-500" />}</td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{p.email}</td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{p.phone ?? '—'}</td>
-                <td className="px-4 py-3">{p.role}</td>
+                <td className="px-4 py-3">{p.owner ? 'OWNER' : p.role}</td>
                 <td className={cn('px-4 py-3', p.status === 'SUSPENDED' && 'text-rose-500')}>{p.status}</td>
                 <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">
                   {p.lastSignIn ? (

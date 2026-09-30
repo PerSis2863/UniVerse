@@ -9,6 +9,7 @@ import { Role, UserStatus, awaitingApproval, type ApplicationSummary } from '@/t
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
 import { NavDataPreload } from '@/components/NavDataPreload';
+import { ActivityTracker } from '@/components/ActivityTracker';
 import { DataConfig } from '@/components/DataConfig';
 import { LowDataSync } from '@/components/settings/LowDataToggle';
 import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
@@ -148,6 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <RealtimeSync />
         <LowDataSync />
         <NavDataPreload />
+        <ActivityTracker />
         {children}
       </DashboardShell>
     </DataConfig>
