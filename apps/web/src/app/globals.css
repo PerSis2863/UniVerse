@@ -135,6 +135,84 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 }
 
+@layer components {
+  /* Buttons: one family for the whole app. Primary is the main action on a screen, secondary sits
+     beside it, ghost is for toolbars and quiet actions, danger is for deleting or leaving. */
+  .btn-primary, .btn-secondary, .btn-ghost, .btn-danger {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.625rem 1.125rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    user-select: none;
+    cursor: pointer;
+    transition: var(--transition);
+    transition-property: background-color, background-position, border-color, color, box-shadow, translate, scale, opacity, filter;
+  }
+  .btn-primary {
+    color: #fff;
+    border: 1px solid rgb(79 70 229 / 0.6);
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 55%, #8b5cf6 100%);
+    background-size: 160% 160%;
+    background-position: 0% 50%;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(15 23 42 / 0.2), 0 6px 16px -4px rgb(99 102 241 / 0.45);
+  }
+  .btn-primary:not(:disabled):hover {
+    background-position: 100% 50%;
+    translate: 0 -1px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 2px 4px rgb(15 23 42 / 0.2), 0 10px 24px -6px rgb(124 58 237 / 0.55);
+  }
+  .btn-primary:not(:disabled):active { translate: 0 0; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.15), 0 2px 8px -2px rgb(99 102 241 / 0.4); }
+
+  .btn-secondary {
+    color: var(--btn-secondary-color);
+    background-color: var(--btn-secondary-bg);
+    border: 1px solid var(--btn-secondary-border);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+    backdrop-filter: blur(8px);
+  }
+  .btn-secondary:not(:disabled):hover {
+    background-color: var(--card-hover-bg);
+    border-color: rgb(99 102 241 / 0.45);
+    box-shadow: 0 4px 12px -4px rgb(99 102 241 / 0.25);
+  }
+
+  .btn-ghost {
+    min-height: 2.25rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--btn-ghost-color);
+    font-weight: 500;
+  }
+  .btn-ghost:not(:disabled):hover { background-color: var(--btn-ghost-hover-bg); color: var(--btn-ghost-hover-color); }
+
+  .btn-danger {
+    color: #fff;
+    border: 1px solid rgb(225 29 72 / 0.6);
+    background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 1px 2px rgb(15 23 42 / 0.2), 0 6px 16px -4px rgb(225 29 72 / 0.45);
+  }
+  .btn-danger:not(:disabled):hover { translate: 0 -1px; filter: brightness(1.05); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 10px 24px -6px rgb(225 29 72 / 0.55); }
+
+  .btn-primary:disabled, .btn-secondary:disabled, .btn-ghost:disabled, .btn-danger:disabled {
+    opacity: 0.5; cursor: not-allowed; translate: none; box-shadow: none; filter: saturate(0.6);
+  }
+
+  /* Sizes: add to any of the above. */
+  .btn-sm { min-height: 2rem; padding: 0.375rem 0.75rem; font-size: 0.8125rem; border-radius: 0.625rem; gap: 0.375rem; }
+  .btn-lg { min-height: 3rem; padding: 0.75rem 1.5rem; font-size: 1rem; border-radius: 0.875rem; }
+  .btn-icon { min-height: 2.25rem; min-width: 2.25rem; padding: 0.5rem; }
+}
+
 @layer utilities {
   .glass {
     background-color: var(--card-bg);
@@ -165,63 +243,6 @@
     border-color: var(--card-hover-border);
     transform: translateY(-2px);
     box-shadow: 0 20px 40px -10px rgba(99,102,241,0.12);
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
-    color: white;
-    font-weight: 600;
-    padding: 0.625rem 1.25rem;
-    border-radius: 0.75rem;
-    border: none;
-    cursor: pointer;
-    transition: var(--transition);
-    display: inline-flex;
-    align-items: center;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-  }
-  .btn-primary:hover {
-    filter: brightness(1.06);
-    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.38);
-  }
-  .btn-primary:active { box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; filter: none; }
-  .btn-secondary:disabled, .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-primary, .btn-secondary, .btn-ghost { justify-content: center; gap: 0.5rem; white-space: nowrap; user-select: none; }
-
-  .btn-secondary {
-    background-color: var(--btn-secondary-bg);
-    color: var(--btn-secondary-color);
-    font-weight: 600;
-    padding: 0.625rem 1.25rem;
-    border-radius: 0.75rem;
-    border: 1px solid var(--btn-secondary-border);
-    cursor: pointer;
-    transition: var(--transition);
-    display: inline-flex;
-    align-items: center;
-  }
-  .btn-secondary:hover {
-    background-color: var(--card-hover-bg);
-    border-color: var(--card-hover-border);
-  }
-
-  .btn-ghost {
-    background: none;
-    border: none;
-    color: var(--btn-ghost-color);
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-  }
-  .btn-ghost:hover {
-    background-color: var(--btn-ghost-hover-bg);
-    color: var(--btn-ghost-hover-color);
   }
 
   .input {
@@ -789,6 +810,17 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
     opacity: 0.55;
   }
   :where(button, [role="button"])[aria-busy="true"] { cursor: progress; }
+  /* While a button is busy (aria-busy), show a spinner unless it already draws its own. */
+  :where(button, [role="button"])[aria-busy="true"]:not(:has(.animate-spin))::before {
+    content: "";
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: btn-spin 0.7s linear infinite;
+  }
   :where(button, [role="button"]) svg { flex-shrink: 0; }
 
   /* Visible focus ring for keyboard users only */
@@ -954,3 +986,5 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 @keyframes nav-progress-run { from { width: 0; } 20% { width: 45%; } 60% { width: 75%; } to { width: 92%; } }
 .nav-progress-run { animation: nav-progress-run 6s cubic-bezier(0.1, 0.7, 0.2, 1) forwards; box-shadow: 0 0 8px rgba(168, 85, 247, 0.6); }
 .nav-progress-done { width: 100%; opacity: 0; transition: width 0.2s ease, opacity 0.3s ease 0.15s; }
+
+@keyframes btn-spin { to { transform: rotate(360deg); } }

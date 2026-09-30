@@ -132,7 +132,7 @@ function AiReport() {
           )}
           <button
             onClick={generate}
-            disabled={loading}
+            aria-busy={loading || undefined} disabled={loading}
             className="inline-flex items-center gap-2 h-11 px-5 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white font-bold text-sm shadow-lg shadow-fuchsia-500/20 hover:opacity-95 disabled:opacity-70"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}

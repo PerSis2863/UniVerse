@@ -16,7 +16,7 @@ export default function ReceiptActions() {
     <div className="mt-8 flex gap-4 print:hidden">
       <button 
         onClick={() => window.print()}
-        className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-colors"
+        className="btn-primary"
       >
         Download PDF
       </button>

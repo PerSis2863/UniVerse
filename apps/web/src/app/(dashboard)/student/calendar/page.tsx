@@ -7,8 +7,13 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { ClassDetailModal, ClassData } from '@/components/dashboard/ClassDetailModal';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { courseColor } from '@/lib/course-color';
+import { cn } from '@/lib/utils';
 
 const HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+const VIEWS = ['Day', 'Week', 'Month', 'Semester'] as const;
+const SUBTITLE: Record<string, string> = { Day: 'Your classes for the day', Week: 'Your classes this week', Month: 'Your classes over the next four weeks', Semester: 'Your classes across the semester' };
+const STEP: Record<string, number> = { Day: 1, Week: 1, Month: 4, Semester: 8 };
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const formatTimeRange = (startTime: string, durationHours: number) => {
@@ -28,7 +33,7 @@ const formatTimeRange = (startTime: string, durationHours: number) => {
 
 export default function CalendarPage() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
-  const [view, setView] = useState('Semester');
+  const [view, setView] = useState('Week');
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -77,7 +82,7 @@ export default function CalendarPage() {
       subject: slot.course?.name || 'Unknown Course',
       location: slot.room?.name || 'TBD',
       type: slot.type || 'Lecture',
-      color: slot.course?.color || 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
+      color: courseColor(slot.course?.color, slot.course?.code ?? slot.course?.name ?? '')
     }));
   }, [timetableSlots]);
 
@@ -99,7 +104,7 @@ export default function CalendarPage() {
         subject: evt.title,
         location: evt.description || 'Virtual',
         type: evt.type,
-        color: evt.color || 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+        color: evt.color ? courseColor(evt.color, evt.title) : '#f43f5e',
         isSpecial: true
       };
     });
@@ -176,7 +181,7 @@ export default function CalendarPage() {
 
   return (
     <>
-      <Topbar title="My Timetable" subtitle={`View your ${view.toLowerCase()}ly class schedule`} />
+      <Topbar title="My Timetable" subtitle={SUBTITLE[view]} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         {!loading && timetableSlots.length === 0 && calendarEvents.length === 0 && (
           <FeatureGuide
@@ -192,20 +197,31 @@ export default function CalendarPage() {
           
           {/* Header Controls */}
           <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 xl:gap-4 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 xl:p-4">
-            <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto justify-between xl:justify-start">
-              <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                <ChevronLeft className="w-6 h-6 sm:w-5 sm:h-5" />
+            <div className="flex items-center gap-1 sm:gap-2 w-full xl:w-auto justify-between xl:justify-start">
+              <button onClick={() => setCurrentWeekOffset(prev => prev - STEP[view])} aria-label="Previous" className="btn-ghost btn-icon">
+                <ChevronLeft className="w-5 h-5" />
               </button>
-              <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-white min-w-[200px] sm:min-w-[220px] text-center">{currentRangeString()}</h2>
-              <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                <ChevronRight className="w-6 h-6 sm:w-5 sm:h-5" />
+              <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-white min-w-[200px] sm:min-w-[240px] text-center tabular-nums">{currentRangeString()}</h2>
+              <button onClick={() => setCurrentWeekOffset(prev => prev + STEP[view])} aria-label="Next" className="btn-ghost btn-icon">
+                <ChevronRight className="w-5 h-5" />
               </button>
+              <button onClick={() => setCurrentWeekOffset(0)} disabled={currentWeekOffset === 0} className="btn-secondary btn-sm ml-1">Today</button>
             </div>
-            <div className="flex flex-wrap gap-2 w-full xl:w-auto">
-              <button onClick={() => setView('Day')} className={`flex-1 xl:flex-none px-4 py-3 sm:py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Day' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>Day</button>
-              <button onClick={() => setView('Week')} className={`flex-1 xl:flex-none px-4 py-3 sm:py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Week' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>Week</button>
-              <button onClick={() => setView('Month')} className={`flex-1 xl:flex-none px-4 py-3 sm:py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Month' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>Month</button>
-              <button onClick={() => setView('Semester')} className={`flex-1 xl:flex-none px-4 py-3 sm:py-2 text-sm font-medium rounded-lg transition-colors ${view === 'Semester' ? 'bg-indigo-600 text-white shadow' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>Semester</button>
+            <div role="tablist" aria-label="Calendar view" className="flex w-full xl:w-auto gap-1 p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] border border-zinc-200/70 dark:border-white/[0.06]">
+              {VIEWS.map((v) => (
+                <button
+                  key={v}
+                  role="tab"
+                  aria-selected={view === v}
+                  onClick={() => { setView(v); setCurrentWeekOffset(0); }}
+                  className={cn(
+                    'flex-1 xl:flex-none px-4 py-2 rounded-xl text-sm font-semibold transition-colors',
+                    view === v ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white',
+                  )}
+                >
+                  {v}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -227,7 +243,10 @@ export default function CalendarPage() {
 
             {/* Scrollable Days */}
             <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2 snap-x snap-mandatory">
-              <div className="flex [--col-width:calc(100vw-6.5rem)] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
+              <div
+                className="flex [--col-width:calc(100vw-6.5rem)] sm:[--col-width:240px]"
+                style={{ width: generatedDates.length <= 5 ? undefined : `calc(${generatedDates.length} * var(--col-width))`, minWidth: generatedDates.length <= 5 ? `min(100%, calc(${generatedDates.length} * var(--col-width)))` : undefined }}
+              >
                 {loading ? (
                   <div className="w-full h-64 flex items-center justify-center">
                     <ContentSkeleton variant="list" />
@@ -245,7 +264,7 @@ export default function CalendarPage() {
                   const showCurrentTimeLine = isToday && mounted && currentHour >= 8 && currentHour <= 20;
                   
                   return (
-                    <div key={idx} className="flex-1 w-[var(--col-width)] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0 snap-start">
+                    <div key={idx} className={cn('flex-1 border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0 snap-start', generatedDates.length <= 5 ? 'min-w-[var(--col-width)] sm:min-w-[150px]' : 'w-[var(--col-width)]')}>
                       {/* Day Header */}
                       <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center sticky top-0 z-20 backdrop-blur-md ${isToday ? 'bg-indigo-50/90 dark:bg-indigo-500/20 border-b-indigo-200 dark:border-b-indigo-500/30' : 'bg-white/90 dark:bg-zinc-900/90'}`}>
                         <h3 className={`font-bold ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-900 dark:text-zinc-300'}`}>
@@ -275,7 +294,7 @@ export default function CalendarPage() {
                         )}
                         
                         {/* Schedule Blocks */}
-                        {scheduleForDate.length === 0 ? (
+                        {scheduleForDate.length === 0 ? (view !== 'Day' ? null :
                           <div className="absolute inset-0 flex flex-col items-center justify-center opacity-30 pointer-events-none">
                             <Clock className="w-8 h-8 mb-2 text-zinc-400" />
                             <span className="text-xs font-medium text-zinc-500">No classes</span>
@@ -290,8 +309,9 @@ export default function CalendarPage() {
                           return (
                             <div 
                               key={cls.id} 
-                              className={`absolute left-1 right-1 sm:left-2 sm:right-2 rounded-xl border p-2 sm:p-3 z-10 hover:z-30 transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-[1.02] overflow-hidden backdrop-blur-md shadow-sm ${cls.color}`}
-                              style={{ 
+                              className={`absolute left-1 right-1 sm:left-2 sm:right-2 rounded-xl border p-2 sm:p-3 z-10 hover:z-30 transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-[1.02] overflow-hidden backdrop-blur-md shadow-sm`}
+                              style={{ backgroundColor: `${cls.color}22`, borderColor: `${cls.color}66`, color: cls.color,
+                                
                                 top: `calc(${topOffsetHours} * var(--hour-height) + 4px)`, 
                                 height: `calc(${durationHours} * var(--hour-height) - 8px)` 
                               }}

@@ -182,7 +182,7 @@ export default function GroupsPage() {
               </div>
               <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] p-1 rounded-xl overflow-x-auto scrollbar-none">
                 {TABS.map(t => (
-                  <button key={t} onClick={() => setFilter(t)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}>
+                  <button key={t} role="tab" aria-selected={filter === t} onClick={() => setFilter(t)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}>
                     {t}
                   </button>
                 ))}
@@ -196,6 +196,12 @@ export default function GroupsPage() {
               </div>
             ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filtered.length === 0 && groupsList.length > 0 && (
+                <div className="md:col-span-2 rounded-2xl border border-dashed border-zinc-200 dark:border-white/[0.08] p-6 text-center">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">No groups match{search ? ` “${search}”` : ''}{filter !== 'All' ? ` in ${filter}` : ''}</p>
+                  <button onClick={() => { setSearch(''); setFilter('All'); }} className="btn-ghost btn-sm mt-2 mx-auto">Clear search and filters</button>
+                </div>
+              )}
               {filtered.map((group, i) => (
                 <motion.div
                   key={group.id}
@@ -203,6 +209,10 @@ export default function GroupsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i, 6) * 0.03 }}
                   onClick={() => setSelectedGroup(group)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open ${group.name}`}
+                  onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelectedGroup(group); } }}
                   className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 transition-all cursor-pointer group"
                 >
                   {/* Header */}
@@ -223,7 +233,7 @@ export default function GroupsPage() {
                         </span>
                       )}
                       <div className="relative">
-                        <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors opacity-0 group-hover:opacity-100" onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === group.id ? null : group.id); }}>
+                        <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" aria-label={`Options for ${group.name}`} onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === group.id ? null : group.id); }}>
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
                         {activeMenuId === group.id && (
@@ -476,7 +486,7 @@ export default function GroupsPage() {
               </div>
               <div className="flex gap-2 mt-6">
                 <button onClick={() => { setShowNewGroup(false); setInviteMembers([]); setInviteInput(''); setNewGroupName(''); }} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                <button disabled={creating} onClick={async () => {
+                <button aria-busy={creating || undefined} disabled={creating} onClick={async () => {
                   const name = newGroupName.trim();
                   if (!name) return toast.error('Group name is required');
                   setCreating(true);

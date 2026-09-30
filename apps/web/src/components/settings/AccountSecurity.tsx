@@ -79,7 +79,7 @@ export function AccountSecurity() {
               <p className="mt-1 flex items-center gap-1.5">
                 {info.verified ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <MailWarning className="w-4 h-4 text-amber-500" />}
                 {info.email} — {info.verified ? 'verified' : 'not verified'}
-                {!info.verified && <button onClick={resend} disabled={busy} className="ml-1 font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Send link</button>}
+                {!info.verified && <button onClick={resend} aria-busy={busy || undefined} disabled={busy} className="ml-1 font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Send link</button>}
               </p>
             )}
           </div>
@@ -88,7 +88,7 @@ export function AccountSecurity() {
               <input type="password" autoComplete="current-password" placeholder="Current password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} className={inputCls} required />
               <input type="password" autoComplete="new-password" placeholder="New password (8+ characters)" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} className={inputCls} required minLength={8} />
               <div className="sm:col-span-2 flex gap-2">
-                <button disabled={busy} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Change password</button>
+                <button aria-busy={busy || undefined} disabled={busy} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Change password</button>
                 <button type="button" onClick={() => setPw(null)} className="px-4 py-2 rounded-xl text-sm font-semibold text-zinc-500">Cancel</button>
                 <button type="button" onClick={sendReset} className="ml-auto text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Forgot it? Email me a reset link</button>
               </div>

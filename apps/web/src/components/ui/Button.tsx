@@ -14,13 +14,13 @@ const VARIANT: Record<Variant, string> = {
   primary: 'btn-primary',
   secondary: 'btn-secondary',
   ghost: 'btn-ghost',
-  danger: 'inline-flex items-center justify-center gap-2 rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm shadow-rose-500/30',
+  danger: 'btn-danger',
 };
 
 const SIZE: Record<Size, string> = {
-  sm: 'h-8 px-3 text-xs rounded-lg',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-12 px-6 text-base',
+  sm: 'btn-sm',
+  md: '',
+  lg: 'btn-lg',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -40,7 +40,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cn(VARIANT[variant], SIZE[size], 'relative', className)}
+      className={cn(VARIANT[variant], SIZE[size], className)}
       {...rest}
     >
       {loading && <Loader2 aria-hidden className="absolute w-4 h-4 animate-spin" />}

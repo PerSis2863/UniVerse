@@ -94,7 +94,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
           <option value="">All courses</option>
           {data?.courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
         </select>
-        <button onClick={refresh} disabled={refreshing} className="ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white disabled:opacity-60">
+        <button onClick={refresh} disabled={refreshing} className="btn-primary ml-auto">
           {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Check now
         </button>
       </div>
@@ -159,7 +159,7 @@ function FlagDetail({ f, onMessage, onUpdate }: { f: Flag; onMessage: () => void
         </label>
       </div>
       <div className="flex flex-col gap-2">
-        <button onClick={onMessage} className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold"><MessageSquare className="w-4 h-4" /> Message {f.student.name.split(' ')[0]}</button>
+        <button onClick={onMessage} className="btn-primary"><MessageSquare className="w-4 h-4" /> Message {f.student.name.split(' ')[0]}</button>
         {f.status !== 'CONTACTED' && <button onClick={() => onUpdate({ status: 'CONTACTED' }, 'Marked as contacted')} className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm font-semibold text-zinc-700 dark:text-zinc-200"><PhoneCall className="w-4 h-4" /> I reached out another way</button>}
         {f.status !== 'RESOLVED' && <button onClick={() => onUpdate({ status: 'RESOLVED' }, 'Marked as resolved')} className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-sm font-semibold"><CheckCircle2 className="w-4 h-4" /> Resolved</button>}
         {f.status !== 'DISMISSED' && <button onClick={() => onUpdate({ status: 'DISMISSED' }, 'Dismissed — it comes back only if things get clearly worse')} className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><EyeOff className="w-4 h-4" /> Not a concern</button>}

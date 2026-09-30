@@ -179,7 +179,7 @@ export default function RoomReservationPage() {
             <button 
               onClick={handleSearch}
               disabled={isSearching}
-              className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary btn-lg w-full"
             >
               <Search className={`w-5 h-5 ${isSearching ? 'animate-spin' : ''}`} /> 
               {isSearching ? 'Searching...' : 'Search Availability'}
@@ -304,15 +304,15 @@ export default function RoomReservationPage() {
                     <div className="flex gap-3">
                       <button 
                         onClick={closeBookingModal}
-                        disabled={bookingStatus === 'loading'}
+                        aria-busy={bookingStatus === 'loading' || undefined} disabled={bookingStatus === 'loading'}
                         className="flex-1 py-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium transition-colors disabled:opacity-50"
                       >
                         Cancel
                       </button>
                       <button 
                         onClick={confirmBooking}
-                        disabled={bookingStatus === 'loading'}
-                        className="flex-1 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-70"
+                        aria-busy={bookingStatus === 'loading' || undefined} disabled={bookingStatus === 'loading'}
+                        className="btn-primary btn-lg flex-1"
                       >
                         {bookingStatus === 'loading' ? (
                           <>

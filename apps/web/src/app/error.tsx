@@ -22,12 +22,12 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           We’ve been told about it automatically. Try again, and if it keeps happening, go back to the home page.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <button onClick={() => reset()} className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">
+          <button onClick={() => reset()} className="btn-primary">
             <RefreshCw className="w-4 h-4" /> Try again
           </button>
           {/* A full page load (not client navigation) so a broken page state can't carry over. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a href="/" className="inline-flex items-center gap-2 h-10 px-5 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+          <a href="/" className="btn-secondary">
             <Home className="w-4 h-4" /> Home
           </a>
         </div>

@@ -64,7 +64,7 @@ export default function SkillsPassportPage() {
                 <p className="font-bold text-zinc-900 dark:text-white">{data.isPublic ? 'Public' : 'Private'}</p>
                 <p className="text-xs text-zinc-500">{data.isPublic ? `Anyone with the link can see it · ${data.views} view${data.views === 1 ? '' : 's'}` : 'Only you can see it'}</p>
               </div>
-              <button role="switch" aria-checked={data.isPublic} aria-label="Public passport" disabled={saving} onClick={() => save({ isPublic: !data.isPublic }, data.isPublic ? 'Your passport is private again' : 'Your passport is public')}
+              <button role="switch" aria-checked={data.isPublic} aria-label="Public passport" aria-busy={saving || undefined} disabled={saving} onClick={() => save({ isPublic: !data.isPublic }, data.isPublic ? 'Your passport is private again' : 'Your passport is public')}
                 className={cn('relative w-11 h-6 rounded-full transition-colors shrink-0', data.isPublic ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-white/20')}>
                 <span className={cn('absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all', data.isPublic ? 'left-[22px]' : 'left-0.5')} />
               </button>
@@ -78,7 +78,7 @@ export default function SkillsPassportPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(data.url)}`} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#0a66c2] text-white">Share on LinkedIn</a>
-                  <button disabled={saving} onClick={async () => { if (await confirmDialog({ title: 'Make a new link?', message: 'The current link stops working. Use this if you shared it with someone who shouldn’t see it any more.', confirmLabel: 'New link' })) save({ resetLink: true }, 'New link created'); }}
+                  <button aria-busy={saving || undefined} disabled={saving} onClick={async () => { if (await confirmDialog({ title: 'Make a new link?', message: 'The current link stops working. Use this if you shared it with someone who shouldn’t see it any more.', confirmLabel: 'New link' })) save({ resetLink: true }, 'New link created'); }}
                     className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200 inline-flex items-center gap-1"><RefreshCw className="w-3.5 h-3.5" /> New link</button>
                 </div>
               </div>

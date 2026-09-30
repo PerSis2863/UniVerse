@@ -259,8 +259,8 @@ export default function StudentSupport() {
                   </div>
 
                   <button 
-                    disabled={isSubmitting}
-                    className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg font-medium transition-colors mt-2"
+                    aria-busy={isSubmitting || undefined} disabled={isSubmitting}
+                    className="btn-primary btn-lg w-full mt-2"
                   >
                     {isSubmitting ? 'Submitting...' : <><Send className="w-4 h-4" /> Send Ticket</>}
                   </button>
@@ -367,7 +367,7 @@ export default function StudentSupport() {
                   />
                   <button 
                     onClick={() => { handleCloseModal(); router.push('/student/links'); }}
-                    className="absolute inset-y-2 right-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl font-medium transition-colors">
+                    className="btn-primary absolute inset-y-2 right-2">
                     Open
                   </button>
                 </div>

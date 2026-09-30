@@ -135,7 +135,7 @@ export default function StudentDirectory() {
                     <option value="4">4</option>
                   </select>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors">
+                <button onClick={() => setActiveModal(null)} className="btn-primary btn-lg w-full">
                   Apply Filters
                 </button>
               </div>

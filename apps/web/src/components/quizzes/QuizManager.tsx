@@ -116,7 +116,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                 ))}
                 <div className="flex items-center justify-between gap-3">
                   <label className="text-xs text-zinc-500 flex items-center gap-2">Points <input type="number" min={0.5} max={100} step={0.5} value={draft.points} onChange={(e) => setDraft({ ...draft, points: Number(e.target.value) })} className="w-20 px-2 py-1.5 rounded-lg bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white" /></label>
-                  <button onClick={addQuestion} disabled={busy || !draft.question.trim()} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50"><Plus className="w-4 h-4" /> Add question</button>
+                  <button onClick={addQuestion} disabled={busy || !draft.question.trim()} className="btn-primary"><Plus className="w-4 h-4" /> Add question</button>
                 </div>
                 <p className="text-[11px] text-zinc-500">Select the circle next to the correct answer.</p>
               </div>

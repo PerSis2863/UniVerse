@@ -60,7 +60,7 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
               {(schema.enums.UserStatus ?? []).map((r) => <option key={r}>{r}</option>)}
             </select>
             <button onClick={() => setEditing({ model: 'User', record: u })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Pencil className="w-4 h-4" /> Edit all</button>
-            <button onClick={() => setChats(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold"><MessageSquare className="w-4 h-4" /> Messages & calls</button>
+            <button onClick={() => setChats(true)} className="btn-primary"><MessageSquare className="w-4 h-4" /> Messages & calls</button>
           </div>
         </div>
         <dl className="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">

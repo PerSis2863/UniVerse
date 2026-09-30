@@ -121,7 +121,7 @@ export default function BoardsPage() {
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search boards" aria-label="Search boards"
                 className="w-full h-10 pl-9 pr-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
             </label>
-            <button onClick={create} disabled={creating} className="sm:ml-auto inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold disabled:opacity-60">
+            <button onClick={create} aria-busy={creating || undefined} disabled={creating} className="btn-primary sm:ml-auto">
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} New board
             </button>
           </div>
@@ -141,7 +141,7 @@ export default function BoardsPage() {
               <p className="mt-1 text-sm text-zinc-500 max-w-md mx-auto">
                 Sketch ideas, annotate a photo of your notes, plan a project or solve problems with your class, all on one live canvas.
               </p>
-              <button onClick={create} className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold"><Plus className="w-4 h-4" /> New board</button>
+              <button onClick={create} className="btn-primary mt-5"><Plus className="w-4 h-4" /> New board</button>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">

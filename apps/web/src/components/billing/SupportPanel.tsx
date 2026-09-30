@@ -59,7 +59,7 @@ export function SupportPanel({ plan }: { plan: PlanId }) {
             <button
               onClick={() => send('support')}
               disabled={sending !== null || !subject.trim() || !message.trim()}
-              className="shrink-0 inline-flex items-center gap-2 h-11 px-5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm disabled:opacity-50 transition-colors"
+              className="btn-primary btn-lg shrink-0 rounded-full"
             >
               {sending === 'support' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Send
             </button>

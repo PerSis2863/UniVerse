@@ -207,7 +207,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="btn-primary flex-1"
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Code'}
             </button>
@@ -251,7 +251,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
             <button
               type="submit"
               disabled={isLoading || code.length < 6}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="btn-primary flex-1"
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Continue'}
             </button>

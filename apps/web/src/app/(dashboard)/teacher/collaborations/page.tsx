@@ -66,7 +66,7 @@ export default function TeacherCollaborationsPage() {
         rightNode={
           <button
             onClick={() => setShowNewProposalModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+            className="btn-primary btn-sm"
           >
             <PlusCircle className="w-4 h-4" /> Propose Joint Research Initiative
           </button>
@@ -208,7 +208,7 @@ export default function TeacherCollaborationsPage() {
                       </div>
                     </div>
 
-                    <a href="/teacher/inbox" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors">
+                    <a href="/teacher/inbox" className="btn-primary">
                       <MessageSquare className="w-4 h-4" /> Message the team in Inbox
                     </a>
                   </div>
@@ -279,7 +279,7 @@ export default function TeacherCollaborationsPage() {
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2"
+                      className="btn-primary btn-sm"
                     >
                       <Send className="w-3.5 h-3.5" /> Submit proposal
                     </button>

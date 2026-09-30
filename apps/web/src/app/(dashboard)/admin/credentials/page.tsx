@@ -155,11 +155,11 @@ export default function AdminCredentialVerificationPage() {
                       maxLength={500}
                       className="flex-1 min-w-[200px] px-3 py-2 text-sm rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white"
                     />
-                    <button onClick={() => act(item.id, 'reject')} disabled={busyId === item.id}
+                    <button onClick={() => act(item.id, 'reject')} aria-busy={busyId === item.id || undefined} disabled={busyId === item.id}
                       className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 disabled:opacity-50">
                       <XCircle className="w-4 h-4" /> Reject
                     </button>
-                    <button onClick={() => act(item.id, 'approve')} disabled={busyId === item.id}
+                    <button onClick={() => act(item.id, 'approve')} aria-busy={busyId === item.id || undefined} disabled={busyId === item.id}
                       className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">
                       {busyId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />} Verify & sign
                     </button>

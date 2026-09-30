@@ -40,7 +40,7 @@ export default function TimetableManagementPage() {
   return (
     <>
       <Topbar title="Timetable Management" subtitle="Weekly class schedule for every course"
-        rightNode={<button onClick={open} disabled={!data?.courses.length} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50"><Plus className="w-4 h-4" /> Add class</button>} />
+        rightNode={<button onClick={open} disabled={!data?.courses.length} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> Add class</button>} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
@@ -53,7 +53,7 @@ export default function TimetableManagementPage() {
               <input className={input} type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
               <input className={input} type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
               <select className={input} value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })}><option value="">No room</option>{data!.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
-              <button onClick={save} disabled={busy} className="sm:col-span-3 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add to timetable</button>
+              <button onClick={save} aria-busy={busy || undefined} disabled={busy} className="btn-primary sm:col-span-3">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add to timetable</button>
             </div>
           )}
 

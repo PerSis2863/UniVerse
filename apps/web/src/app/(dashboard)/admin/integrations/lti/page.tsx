@@ -96,7 +96,7 @@ export default function LtiPage() {
             <input type="checkbox" checked={form.trustEmails} onChange={(e) => setForm({ ...form, trustEmails: e.target.checked })} className="mt-1 w-4 h-4 accent-indigo-500" />
             <span>Link to existing UniVerse accounts with the same email <span className="block text-xs text-zinc-500">Only if your LMS verifies email addresses (people can’t change them freely). Admin accounts are never linked this way.</span></span>
           </label>
-          <button onClick={save} disabled={busy} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plug className="w-4 h-4" />} Connect LMS</button>
+          <button onClick={save} aria-busy={busy || undefined} disabled={busy} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plug className="w-4 h-4" />} Connect LMS</button>
         </section>
 
         <section className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5">

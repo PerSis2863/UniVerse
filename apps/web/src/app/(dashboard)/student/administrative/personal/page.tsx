@@ -71,7 +71,7 @@ export default function PersonalDataPage() {
             ) : (
               <input autoFocus className={input} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveField()} placeholder="+91 98765 43210" />
             )}
-            <button onClick={saveField} disabled={busy || !value.trim()} className="px-3 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}</button>
+            <button onClick={saveField} disabled={busy || !value.trim()} className="btn-primary btn-sm">{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}</button>
             <button onClick={() => setEditing(null)} aria-label="Cancel" className="px-2 text-zinc-500"><X className="w-4 h-4" /></button>
           </div>
         ) : (
@@ -111,7 +111,7 @@ export default function PersonalDataPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-bold text-zinc-900 dark:text-white">Emergency contacts</h2>
                   {data.emergencyContacts.length > 0 && data.emergencyContacts.length < 5 && !contactForm && (
-                    <button onClick={() => setContactForm({ ...blank })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600 text-white text-xs font-bold"><Plus className="w-3.5 h-3.5" /> Add</button>
+                    <button onClick={() => setContactForm({ ...blank })} className="btn-primary btn-sm rounded-full"><Plus className="w-3.5 h-3.5" /> Add</button>
                   )}
                 </div>
 
@@ -122,7 +122,7 @@ export default function PersonalDataPage() {
                     <input className={input} type="tel" placeholder="Phone" value={contactForm.phone} maxLength={30} onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })} />
                     <input className={input} type="email" placeholder="Email (optional)" value={contactForm.email} maxLength={120} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} />
                     <div className="sm:col-span-2 flex gap-2">
-                      <button onClick={saveContact} disabled={busy || !contactForm.name.trim() || !contactForm.phone.trim()} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save contact</button>
+                      <button onClick={saveContact} disabled={busy || !contactForm.name.trim() || !contactForm.phone.trim()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save contact</button>
                       <button onClick={() => setContactForm(null)} className="px-4 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300">Cancel</button>
                     </div>
                   </div>

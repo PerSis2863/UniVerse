@@ -116,7 +116,7 @@ export default function AdminCertificationsPage() {
                       </button>
                       <button 
                         className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-emerald-600 hover:bg-emerald-500 text-white"
-                        disabled={approving === req.id}
+                        aria-busy={approving === req.id || undefined} disabled={approving === req.id}
                         onClick={() => handleApprove(req.id)}
                       >
                         {approving === req.id ? (

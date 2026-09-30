@@ -152,7 +152,7 @@ function AccountingContent() {
           <div className="text-center py-6 space-y-3">
             <p className="text-white font-semibold">Talk to the finance office</p>
             <p className="text-sm text-zinc-400 max-w-sm mx-auto">Send a request through Support and the finance team will reply to arrange a time with an advisor.</p>
-            <a href="/student/support" className="inline-block px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">Contact finance via Support</a>
+            <a href="/student/support" className="btn-primary">Contact finance via Support</a>
           </div>
         );
       case 'tax':
@@ -204,7 +204,7 @@ function AccountingContent() {
             <button 
               onClick={() => handlePayment(Number(customAmount), currency)} 
               disabled={isLoading || !customAmount || Number(customAmount) < 1}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="btn-primary btn-lg w-full"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
               {isLoading ? 'Processing...' : 'Proceed to Checkout'}

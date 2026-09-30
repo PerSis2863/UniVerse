@@ -55,7 +55,7 @@ export function ContactSalesDialog({ plan, onClose }: { plan: PlanId; onClose: (
           <span className="font-medium text-zinc-700 dark:text-zinc-300">What do you need?</span>
           <textarea className={`${input} min-h-[120px]`} value={message} onChange={(e) => setMessage(e.target.value)} maxLength={5000} required placeholder="e.g. We're a university network of 4 campuses and want AI impact reports and invoiced billing." />
         </label>
-        <button disabled={busy || !message.trim()} className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold disabled:opacity-50">
+        <button disabled={busy || !message.trim()} className="btn-primary btn-lg w-full">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Send request
         </button>
       </form>

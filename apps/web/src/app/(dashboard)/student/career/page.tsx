@@ -100,7 +100,7 @@ export default function CareerPage() {
                     </div>
                     <div className="px-6 py-3 bg-white/[0.02] border-t border-white/[0.05] flex justify-end gap-3">
                       <button onClick={() => toggleSaved(job.id)} aria-pressed={saved.includes(job.id)} className={`text-sm font-medium transition-colors ${saved.includes(job.id) ? 'text-indigo-500' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}>{saved.includes(job.id) ? 'Saved' : 'Save'}</button>
-                      <button onClick={() => router.push(`/student/internships?q=${encodeURIComponent(job.title)}`)} className="px-4 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors">Apply Now</button>
+                      <button onClick={() => router.push(`/student/internships?q=${encodeURIComponent(job.title)}`)} className="btn-primary btn-sm">Apply Now</button>
                     </div>
                   </div>
                 ))}

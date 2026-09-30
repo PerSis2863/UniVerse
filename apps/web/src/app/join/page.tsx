@@ -86,7 +86,7 @@ function JoinContent() {
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Invalid Invite Link</h1>
           <p className="text-zinc-400 mb-6">This invite link is invalid or has expired. Please request a new one.</p>
-          <Link href="/register" className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl px-6 py-3 transition-colors">
+          <Link href="/register" className="btn-primary btn-lg">
             Register Normally
           </Link>
         </div>

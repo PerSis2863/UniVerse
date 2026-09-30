@@ -108,7 +108,7 @@ export default function ApprovalsPage() {
         <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
           {/* List */}
           <section className={cn('space-y-4', selected && 'hidden lg:block')}>
-            <button onClick={() => setInviting(true)} className="w-full inline-flex items-center justify-center gap-2 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">
+            <button onClick={() => setInviting(true)} className="btn-primary w-full">
               <UserPlus className="w-4 h-4" /> Invite people (no review needed)
             </button>
             <div className="flex flex-wrap gap-1">
@@ -131,7 +131,7 @@ export default function ApprovalsPage() {
                   {allPicked ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4" />} {allPicked ? 'Clear selection' : `Select all ${shown.length}`}
                 </button>
                 {picked.size > 0 && (
-                  <button onClick={approvePicked} disabled={approving} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold disabled:opacity-60">
+                  <button onClick={approvePicked} aria-busy={approving || undefined} disabled={approving} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold disabled:opacity-60">
                     {approving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Approve {picked.size}
                   </button>
                 )}

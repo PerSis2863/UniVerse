@@ -71,7 +71,7 @@ function BadgeVerifier() {
         <div className="mt-3 space-y-3">
           <p className="text-xs text-zinc-500">Paste the contents of a badge file (.jwt) you received from this person. We check the signature, that UniVerse issued it, and that it hasn’t been revoked.</p>
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} aria-label="Badge" placeholder="eyJhbGciOiJFZERTQSIs…" className="w-full rounded-xl bg-zinc-100 dark:bg-white/[0.06] p-3 font-mono text-xs text-zinc-800 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/40" />
-          <button onClick={check} disabled={busy || !text.trim()} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Check badge</button>
+          <button onClick={check} disabled={busy || !text.trim()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Check badge</button>
           {result && (!("reason" in result) ? (
             <div role="status" className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-sm text-emerald-800 dark:text-emerald-200">
               <p className="font-bold flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" /> Valid badge</p>

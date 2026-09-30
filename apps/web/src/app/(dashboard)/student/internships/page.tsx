@@ -126,7 +126,7 @@ export default function StudentInternships() {
             <button onClick={() => setShowFilterDrawer(true)} className="flex items-center gap-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
               <Filter className="w-4 h-4" /> Filters
             </button>
-            <button onClick={() => setShowMyApplications(true)} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap">
+            <button onClick={() => setShowMyApplications(true)} className="btn-primary">
               <Briefcase className="w-4 h-4" /> My Applications
               {applications.length > 0 && (
                 <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">{applications.length}</span>
@@ -298,7 +298,7 @@ export default function StudentInternships() {
                 </div>
 
                 <div className="pt-2">
-                  <button type="submit" className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-indigo-500/20">
+                  <button type="submit" className="btn-primary btn-lg w-full">
                     {editingAppId ? 'Update Application' : 'Submit Application'}
                   </button>
                 </div>

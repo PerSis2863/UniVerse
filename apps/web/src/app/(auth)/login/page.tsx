@@ -268,7 +268,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm shadow-md transition-colors flex items-center justify-center gap-2 mt-6 disabled:opacity-50"
+                  className="btn-primary w-full mt-6"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign In'}
                 </button>

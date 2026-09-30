@@ -47,7 +47,7 @@ export default function SponsorPortalPage() {
   return (
     <>
       <Topbar title="Sponsor & Partner Portal" subtitle="Sponsorships and agreements with your partner organizations"
-        rightNode={<button onClick={() => setForm({ partnerId: partners?.[0]?.id ?? '', title: '', description: '', startDate: '', endDate: '' })} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold"><Plus className="w-4 h-4" /> New partnership</button>} />
+        rightNode={<button onClick={() => setForm({ partnerId: partners?.[0]?.id ?? '', title: '', description: '', startDate: '', endDate: '' })} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> New partnership</button>} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-6">
           {form && (
@@ -66,7 +66,7 @@ export default function SponsorPortalPage() {
                     <label className="text-xs text-zinc-500">Start<input type="date" className={input} value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></label>
                     <label className="text-xs text-zinc-500">End<input type="date" className={input} value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></label>
                   </div>
-                  <button onClick={save} disabled={busy || !form.title.trim()} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
+                  <button onClick={save} disabled={busy || !form.title.trim()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
                 </>
               )}
             </div>

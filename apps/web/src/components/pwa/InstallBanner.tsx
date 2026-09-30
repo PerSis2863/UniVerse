@@ -90,7 +90,7 @@ export function InstallBanner() {
               <button
                 onClick={handleInstall}
                 disabled={installing}
-                className="mt-3 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-indigo-500/30 hover:shadow-indigo-500/50"
+                className="btn-primary btn-sm mt-3"
               >
                 {installing ? (
                   <>

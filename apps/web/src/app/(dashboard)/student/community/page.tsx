@@ -65,7 +65,7 @@ export default function StudentCommunity() {
                 <textarea value={draftBody} onChange={(e) => setDraftBody(e.target.value)} maxLength={5000} placeholder="Share news with your campus…"
                   className="w-full min-h-[90px] bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500" />
                 <div className="flex justify-end">
-                  <button onClick={publish} disabled={publishing || !draftTitle.trim() || !draftBody.trim()} className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50">
+                  <button onClick={publish} disabled={publishing || !draftTitle.trim() || !draftBody.trim()} className="btn-primary btn-sm">
                     {publishing ? 'Publishing…' : 'Publish'}
                   </button>
                 </div>
@@ -73,7 +73,7 @@ export default function StudentCommunity() {
             ) : (
               <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4">
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">Campus news from your teachers and admins appears here. Want to start a discussion?</p>
-                <a href="/student/groups" className="shrink-0 px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium">Open Groups</a>
+                <a href="/student/groups" className="btn-primary btn-sm shrink-0">Open Groups</a>
               </div>
             )}
 

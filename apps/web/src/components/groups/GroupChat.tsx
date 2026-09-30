@@ -219,10 +219,10 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <button onClick={() => imageRef.current?.click()} disabled={uploading} aria-label="Share a photo" className="p-2 text-zinc-400 hover:text-indigo-500 bg-zinc-100 dark:bg-zinc-800 rounded-full shrink-0 disabled:opacity-50">
+                <button onClick={() => imageRef.current?.click()} aria-busy={uploading || undefined} disabled={uploading} aria-label="Share a photo" className="p-2 text-zinc-400 hover:text-indigo-500 bg-zinc-100 dark:bg-zinc-800 rounded-full shrink-0 disabled:opacity-50">
                   <ImageIcon className="w-5 h-5" />
                 </button>
-                <button onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="Share a file" className="p-2 text-zinc-400 hover:text-indigo-500 bg-zinc-100 dark:bg-zinc-800 rounded-full shrink-0 disabled:opacity-50">
+                <button onClick={() => fileRef.current?.click()} aria-busy={uploading || undefined} disabled={uploading} aria-label="Share a file" className="p-2 text-zinc-400 hover:text-indigo-500 bg-zinc-100 dark:bg-zinc-800 rounded-full shrink-0 disabled:opacity-50">
                   {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
                 </button>
                 <input

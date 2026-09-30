@@ -145,7 +145,7 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
           </div>
 
           {/* Apply button */}
-          <button onClick={handleApply} disabled={applied || applying}
+          <button onClick={handleApply} aria-busy={applying || undefined} disabled={applied || applying}
             className={cn('flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl transition-all',
               applied
                 ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'

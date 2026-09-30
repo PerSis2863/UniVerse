@@ -121,8 +121,8 @@ export function RequestAssociationModal({ onClose, onSuccess }: RequestAssociati
               </button>
               <button 
                 type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                aria-busy={isSubmitting || undefined} disabled={isSubmitting}
+                className="btn-primary"
               >
                 {isSubmitting ? 'Submitting...' : (
                   <>

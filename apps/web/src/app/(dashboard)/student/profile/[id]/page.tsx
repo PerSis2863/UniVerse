@@ -111,7 +111,7 @@ export default function StudentProfile() {
             <div className="flex shrink-0 gap-3 w-full md:w-auto mt-4 md:mt-0 z-10">
               <button 
                 onClick={handleMessage}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/20"
+                className="btn-primary btn-lg flex-1 md:flex-none"
               >
                 <Mail className="w-4 h-4" /> Message
               </button>

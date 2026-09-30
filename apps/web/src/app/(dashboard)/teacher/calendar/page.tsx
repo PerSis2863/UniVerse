@@ -236,7 +236,7 @@ export default function TeacherCalendarPage() {
         title="Teaching Timetable" 
         subtitle="Manage your classes and office hours" 
         rightNode={
-          <button className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" onClick={exportIcs}>
+          <button className="btn-primary" onClick={exportIcs}>
             <Download className="w-4 h-4" /> Export
           </button>
         }
@@ -443,7 +443,7 @@ export default function TeacherCalendarPage() {
                 </div>
                 <div className="flex gap-3 mt-6">
                   <button onClick={() => setShowOfficeModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                  <button onClick={handleSaveOfficeHours} disabled={savingOffice} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
+                  <button onClick={handleSaveOfficeHours} aria-busy={savingOffice || undefined} disabled={savingOffice} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
                     {savingOffice ? (
                       <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
                     ) : (

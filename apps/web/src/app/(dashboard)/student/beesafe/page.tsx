@@ -130,7 +130,7 @@ export default function BeeSafeReporting() {
                     </label>
                   </div>
 
-                  <button className="w-full flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3.5 rounded-lg font-medium transition-colors">
+                  <button className="btn-primary btn-lg w-full">
                     <Send className="w-5 h-5" /> Submit Report Securely
                   </button>
                 </form>
