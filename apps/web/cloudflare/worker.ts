@@ -46,6 +46,23 @@ async function rateLimited(request: Request, url: URL, env: Env): Promise<boolea
   return (await Promise.all(checks)).some((r) => !r.success);
 }
 
+/**
+ * Pages (HTML and in-app navigation data) come with Next's `s-maxage=…, stale-while-revalidate=…`,
+ * meant for a shared cache. Browsers that honour stale-while-revalidate (Safari) could then show a
+ * copy from before the last update, even after a refresh, and that copy points at files the update
+ * removed. `no-cache` makes the browser check each time (a cheap 304 when nothing changed).
+ */
+function revalidatePages(request: Request, res: Response): Response {
+  const type = res.headers.get('content-type') ?? '';
+  if (!/^text\/(html|x-component)/.test(type) || !/s-maxage|stale-while-revalidate/.test(res.headers.get('cache-control') ?? '')) return res;
+  // Unchanged since the browser's copy: just say so.
+  const etag = res.headers.get('etag');
+  if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: { ETag: etag, 'Cache-Control': 'no-cache' } });
+  const out = new Response(res.body, res);
+  out.headers.set('Cache-Control', 'no-cache');
+  return out;
+}
+
 const TICKET_TTL_MS = 60_000;
 const MAX_SOCKETS = 20; // per user: app + a few browser tabs
 
@@ -68,7 +85,7 @@ export default {
       if (!board || !url.searchParams.get('ticket') || !env.BOARDS) return new Response('Forbidden', { status: 403 });
       return env.BOARDS.get(env.BOARDS.idFromName(board)).fetch(request);
     }
-    return nextApp.fetch(request, env, ctx);
+    return revalidatePages(request, await nextApp.fetch(request, env, ctx));
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
