@@ -166,8 +166,8 @@ export default function AdminAuditLog() {
           )}
           <button
             onClick={exportCsv}
-            disabled={exporting}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-60"
+            aria-busy={exporting || undefined} disabled={exporting}
+            className="btn-primary"
           >
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Export CSV
           </button>
@@ -216,7 +216,7 @@ export default function AdminAuditLog() {
           )}
           {cursor && entries.length > 0 && (
             <div className="p-4 border-t border-zinc-100 dark:border-white/[0.05] flex justify-center">
-              <button onClick={loadMore} disabled={loadingMore} className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-500 disabled:opacity-60">
+              <button onClick={loadMore} aria-busy={loadingMore || undefined} disabled={loadingMore} className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-500 disabled:opacity-60">
                 {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />} Load more
               </button>
             </div>

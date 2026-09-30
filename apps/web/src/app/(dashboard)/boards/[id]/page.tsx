@@ -135,7 +135,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
           <div className="w-14 h-14 mx-auto rounded-2xl bg-zinc-100 dark:bg-white/5 flex items-center justify-center text-zinc-400"><PenTool className="w-7 h-7" /></div>
           <h1 className="mt-4 text-lg font-bold text-zinc-900 dark:text-white">{gone === 'deleted' ? 'This board was deleted' : 'You can’t open this board'}</h1>
           <p className="mt-1 text-sm text-zinc-500">{gone === 'deleted' ? 'The owner deleted it.' : 'It doesn’t exist, or it hasn’t been shared with you. Ask the owner to share it.'}</p>
-          <Link href="/boards" className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-indigo-600 text-white text-sm font-bold"><ArrowLeft className="w-4 h-4" /> My boards</Link>
+          <Link href="/boards" className="btn-primary mt-5"><ArrowLeft className="w-4 h-4" /> My boards</Link>
         </div>
       </div>
     );
@@ -188,7 +188,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         )}
         <button onClick={copyBoard} className={cn(btn, 'hidden sm:inline-flex')} title="Make your own copy"><Copy className="w-4 h-4" /><span className="hidden lg:inline">Copy</span></button>
         {myRole === 'OWNER' && <button onClick={remove} className={cn(btn, 'hidden sm:inline-flex text-rose-500 dark:text-rose-400')} title="Delete board"><Trash2 className="w-4 h-4" /></button>}
-        <button onClick={() => setSharing(true)} disabled={!board} className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold disabled:opacity-60">
+        <button onClick={() => setSharing(true)} disabled={!board} className="btn-primary btn-sm">
           <Share2 className="w-4 h-4" /> Share
         </button>
       </header>

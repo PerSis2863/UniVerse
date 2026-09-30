@@ -93,7 +93,7 @@ export default function TeacherQuizzes() {
           </div>
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center justify-center w-full md:w-auto gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 whitespace-nowrap"
+            className="btn-primary w-full md:w-auto"
           >
             <Plus className="w-4 h-4" /> Create New Quiz
           </button>
@@ -222,7 +222,7 @@ export default function TeacherQuizzes() {
             
             <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex justify-end gap-3">
               <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleCreateQuiz} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all flex items-center gap-2">
+              <button onClick={handleCreateQuiz} className="btn-primary">
                 <Check className="w-4 h-4" /> Create Draft
               </button>
             </div>

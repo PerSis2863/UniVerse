@@ -57,7 +57,7 @@ export function PremiumGate({ feature, children }: { feature: PremiumFeature; ch
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href={plan.contactSales ? `/admin/billing?contact=${plan.id}` : `/admin/billing?plan=${plan.id}`}
-              className="group inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/30 transition-all"
+              className="btn-primary btn-lg group rounded-full"
             >
               {plan.contactSales ? `Contact us about ${plan.name}` : 'Start 14-day free trial'} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>

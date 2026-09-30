@@ -39,7 +39,7 @@ export default function RoomBookingsPage() {
   return (
     <>
       <Topbar title="Room Bookings" subtitle="Campus spaces and who has booked them"
-        rightNode={<button onClick={() => setForm({ name: '', capacity: '', type: 'Classroom', amenities: '' })} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold"><Plus className="w-4 h-4" /> Add room</button>} />
+        rightNode={<button onClick={() => setForm({ name: '', capacity: '', type: 'Classroom', amenities: '' })} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> Add room</button>} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
@@ -50,7 +50,7 @@ export default function RoomBookingsPage() {
               <input className={input} type="number" min={1} placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
               <select className={input} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['Classroom', 'Lab', 'Study room', 'Auditorium', 'Meeting room'].map((t) => <option key={t}>{t}</option>)}</select>
               <input className={input} placeholder="Amenities, e.g. Projector, Whiteboard" value={form.amenities} onChange={(e) => setForm({ ...form, amenities: e.target.value })} />
-              <button onClick={addRoom} disabled={busy || !form.name.trim() || !form.capacity} className="sm:col-span-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save room</button>
+              <button onClick={addRoom} disabled={busy || !form.name.trim() || !form.capacity} className="btn-primary sm:col-span-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save room</button>
             </div>
           )}
 

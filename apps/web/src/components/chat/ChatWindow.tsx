@@ -455,7 +455,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           )}
           {(hasMoreOlder ?? data?.hasMore) && (
             <div className="flex justify-center pb-2">
-              <button onClick={loadOlder} disabled={loadingOlder} className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-white/[0.06] border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1.5">
+              <button onClick={loadOlder} aria-busy={loadingOlder || undefined} disabled={loadingOlder} className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-white/[0.06] border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1.5">
                 {loadingOlder && <Loader2 className="w-3 h-3 animate-spin" />} Load earlier messages
               </button>
             </div>

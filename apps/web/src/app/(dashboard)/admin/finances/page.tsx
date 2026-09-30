@@ -188,7 +188,7 @@ export default function AdminFinances() {
                 </select>
               </div>
               <div className="pt-4 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800 mt-6">
-                <button type="submit" className="px-4 py-2 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 transition-colors">
+                <button type="submit" className="btn-primary">
                   Add Transaction
                 </button>
               </div>

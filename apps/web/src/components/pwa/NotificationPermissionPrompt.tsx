@@ -140,7 +140,7 @@ export function NotificationPermissionPrompt() {
         <button
           onClick={handleEnable}
           disabled={status === 'loading'}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 shadow-md shadow-indigo-500/20 disabled:opacity-70 transition-all"
+          className="btn-primary btn-sm flex-shrink-0"
         >
           {status === 'loading' ? (
             <>

@@ -202,7 +202,7 @@ function PracticePanel({ courseId, onNeedSources }: { courseId: string; onNeedSo
       {needSources && <NeedSources onGo={onNeedSources} message="Practice questions are made from the course materials, and there are none ready yet." />}
       <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 flex flex-col sm:flex-row gap-2">
         <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={200} placeholder="Topic (optional), e.g. recursion" aria-label="Topic" className="flex-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
-        <button onClick={make} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {qs ? 'New questions' : 'Make 5 questions'}</button>
+        <button onClick={make} aria-busy={busy || undefined} disabled={busy} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {qs ? 'New questions' : 'Make 5 questions'}</button>
       </div>
       {qs && (
         <>
@@ -279,7 +279,7 @@ function CardsPanel({ courseId, onNeedSources }: { courseId: string; onNeedSourc
       {needSources && <NeedSources onGo={onNeedSources} message="Flashcards are made from the course materials, and there are none ready yet." />}
       <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 flex flex-col sm:flex-row gap-2">
         <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={200} placeholder="Topic (optional)" aria-label="Flashcard topic" className="flex-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
-        <button onClick={generate} disabled={busy} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Make flashcards</button>
+        <button onClick={generate} aria-busy={busy || undefined} disabled={busy} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Make flashcards</button>
       </div>
       <p className="text-xs text-zinc-500">{data ? `${data.due} to review now · ${data.total} in this course’s deck${done ? ` · ${done} reviewed this session` : ''}` : ' '}</p>
       {!data ? <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
@@ -353,7 +353,7 @@ function SourcesPanel({ courseId, onChanged }: { courseId: string; onChanged: ()
       <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-bold text-zinc-900 dark:text-white flex-1">What the tutor reads</p>
-          {pending > 0 && <button onClick={prepare} disabled={preparing} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60">{preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Prepare {pending} material{pending === 1 ? '' : 's'}</button>}
+          {pending > 0 && <button onClick={prepare} disabled={preparing} className="btn-primary">{preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Prepare {pending} material{pending === 1 ? '' : 's'}</button>}
           {data.canManage && !note && <button onClick={() => setNote({ title: '', text: '' })} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm font-semibold text-zinc-700 dark:text-zinc-200"><NotebookPen className="w-4 h-4" /> Add a note</button>}
         </div>
         <p className="mt-1 text-xs text-zinc-500">PDFs and text files from the course materials, plus notes from the teacher (e.g. the syllabus or key definitions). Each file is read once.</p>
@@ -363,7 +363,7 @@ function SourcesPanel({ courseId, onChanged }: { courseId: string; onChanged: ()
             <textarea value={note.text} onChange={(e) => setNote({ ...note, text: e.target.value })} rows={6} maxLength={60000} placeholder="Paste or write the content…" aria-label="Note text" className="w-full rounded-xl bg-zinc-100 dark:bg-white/[0.06] p-3 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
             <div className="flex gap-2 justify-end">
               <button onClick={() => setNote(null)} className="px-3 py-2 rounded-xl text-sm text-zinc-500">Cancel</button>
-              <button onClick={saveNote} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">Save note</button>
+              <button onClick={saveNote} className="btn-primary">Save note</button>
             </div>
           </div>
         )}

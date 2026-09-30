@@ -311,7 +311,7 @@ export default function MedicalPage() {
                   <button onClick={handleClose} className="px-6 py-2 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors">
                     Cancel
                   </button>
-                  <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-medium transition-colors flex items-center gap-2">
+                  <button onClick={handleSave} aria-busy={isSaving || undefined} disabled={isSaving} className="px-6 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-medium transition-colors flex items-center gap-2">
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     Save Changes
                   </button>

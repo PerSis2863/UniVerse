@@ -124,7 +124,7 @@ export function AccountSetupCard() {
                 <p className={cn('text-sm font-semibold', s.done ? 'text-zinc-500 line-through decoration-zinc-400/50' : 'text-zinc-900 dark:text-white')}>{s.label}</p>
                 <p className="text-xs text-zinc-500 truncate">{s.hint}</p>
                 {!s.done && s.key === 'email' && (
-                  <button onClick={sendVerification} disabled={busy} className="mt-2 text-xs font-semibold text-indigo-500 hover:text-indigo-400 disabled:opacity-50">Send verification email</button>
+                  <button onClick={sendVerification} aria-busy={busy || undefined} disabled={busy} className="mt-2 text-xs font-semibold text-indigo-500 hover:text-indigo-400 disabled:opacity-50">Send verification email</button>
                 )}
                 {!s.done && (s.key === 'phone' || s.key === 'department') && open !== s.key && (
                   <button onClick={() => { setOpen(s.key as 'phone' | 'department'); setValue(''); }} className="mt-2 text-xs font-semibold text-indigo-500 hover:text-indigo-400">Add now</button>
@@ -144,7 +144,7 @@ export function AccountSetupCard() {
                       placeholder={s.key === 'phone' ? '+91 98765 43210' : 'e.g. Computer Science'}
                       className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white dark:bg-white/[0.06] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
                     />
-                    <button onClick={save} disabled={busy || !value.trim()} className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50 inline-flex items-center gap-1">
+                    <button onClick={save} disabled={busy || !value.trim()} className="btn-primary btn-sm">
                       {busy && <Loader2 className="w-3 h-3 animate-spin" />} Save
                     </button>
                   </div>

@@ -138,7 +138,7 @@ export function CampusItemManager({ kind, label, categories }: { kind: CampusKin
     <div className={`${card} p-5`}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-zinc-900 dark:text-white">{label}s</h3>
-        <button onClick={openNew} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold"><Plus className="w-3.5 h-3.5" /> Add</button>
+        <button onClick={openNew} className="btn-primary btn-sm rounded-full"><Plus className="w-3.5 h-3.5" /> Add</button>
       </div>
 
       {form && (
@@ -162,7 +162,7 @@ export function CampusItemManager({ kind, label, categories }: { kind: CampusKin
             {kind !== 'LINK' && <input className={input} placeholder="Location (optional)" value={form.location} maxLength={120} onChange={(e) => setForm({ ...form, location: e.target.value })} />}
             <input className={input} placeholder={kind === 'LINK' ? 'https://…' : 'Link (optional)'} value={form.url} maxLength={500} onChange={(e) => setForm({ ...form, url: e.target.value })} />
           </div>
-          <button onClick={save} disabled={busy || !form.title.trim()} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2">
+          <button onClick={save} disabled={busy || !form.title.trim()} className="btn-primary">
             {busy && <Loader2 className="w-4 h-4 animate-spin" />} Save
           </button>
         </div>

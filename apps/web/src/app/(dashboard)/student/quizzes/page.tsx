@@ -154,7 +154,7 @@ export default function QuizzesPage() {
                       </div>
                       <button 
                         onClick={() => startQuiz(quiz)} 
-                        disabled={loadingQuizId === quiz.id}
+                        aria-busy={loadingQuizId === quiz.id || undefined} disabled={loadingQuizId === quiz.id}
                         className="w-full btn-primary py-2.5 flex justify-center items-center gap-2 relative z-10 disabled:opacity-70"
                       >
                         {loadingQuizId === quiz.id ? (

@@ -125,7 +125,7 @@ export default function TeacherGradesPage() {
               </div>
               <input className={input} placeholder="Feedback for the student (optional)" maxLength={2000} value={adding.feedback} onChange={(e) => setAdding({ ...adding, feedback: e.target.value })} />
             </div>
-            <button onClick={saveGrade} disabled={busy || !adding.studentId || !adding.assignmentName.trim() || adding.score === ''} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save grade</button>
+            <button onClick={saveGrade} disabled={busy || !adding.studentId || !adding.assignmentName.trim() || adding.score === ''} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save grade</button>
           </div>
         )}
 
@@ -183,7 +183,7 @@ export default function TeacherGradesPage() {
                   </div>
                 );
               })}
-              <button onClick={() => { setAdding({ studentId: selected.id, assignmentName: '', score: '', maxScore: '100', feedback: '' }); setDetail(null); }} className="w-full mt-2 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold inline-flex items-center justify-center gap-1.5"><Plus className="w-4 h-4" /> Add a grade for {selected.name.split(' ')[0]}</button>
+              <button onClick={() => { setAdding({ studentId: selected.id, assignmentName: '', score: '', maxScore: '100', feedback: '' }); setDetail(null); }} className="btn-primary w-full mt-2"><Plus className="w-4 h-4" /> Add a grade for {selected.name.split(' ')[0]}</button>
             </div>
           </div>
         </div>

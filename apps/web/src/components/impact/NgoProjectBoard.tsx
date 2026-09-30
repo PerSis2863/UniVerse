@@ -147,7 +147,7 @@ export function NgoProjectBoard({ filter, sort = 'newest', guide }: Props) {
             />
             <div className="flex gap-2 mt-4">
               <button onClick={() => setApplying(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-white/[0.06]">Cancel</button>
-              <button onClick={apply} disabled={busy} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-600 disabled:opacity-60 inline-flex items-center justify-center gap-2">
+              <button onClick={apply} aria-busy={busy || undefined} disabled={busy} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-600 disabled:opacity-60 inline-flex items-center justify-center gap-2">
                 {busy && <Loader2 className="w-4 h-4 animate-spin" />} Send application
               </button>
             </div>

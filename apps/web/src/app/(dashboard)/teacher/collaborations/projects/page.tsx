@@ -161,7 +161,7 @@ export default function NGOMentorshipPage() {
 
               <button
                 onClick={() => setShowProposeModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap"
+                className="btn-primary"
               >
                 <Briefcase className="w-4 h-4" /> Propose Project
               </button>
@@ -406,7 +406,7 @@ export default function NGOMentorshipPage() {
               </button>
               <button
                 onClick={handlePropose}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all"
+                className="btn-primary"
               >
                 <Send className="w-4 h-4" /> Submit for Review
               </button>

@@ -210,7 +210,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
               </button>
               <button 
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20 whitespace-nowrap z-20 relative"
+                className="btn-primary z-20 relative"
               >
                 <Plus className="w-4 h-4" /> Add Resource
               </button>
@@ -379,7 +379,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
             
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
               <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleAdd} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
+              <button onClick={handleAdd} className="btn-primary">
                 <Plus className="w-4 h-4" /> Add Resource
               </button>
             </div>
@@ -417,7 +417,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
             
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
               <button onClick={() => setShowShareModal(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
-              <button onClick={submitShareHub} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
+              <button onClick={submitShareHub} className="btn-primary">
                 <Share2 className="w-4 h-4" /> Share
               </button>
             </div>

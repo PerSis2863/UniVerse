@@ -156,7 +156,7 @@ export function ShareBoardDialog({ board, onClose, onChanged }: { board: BoardMe
           )}
           <div className="flex gap-2">
             <input readOnly value={link} aria-label="Board link" onFocus={(e) => e.target.select()} className="flex-1 min-w-0 h-10 px-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-950/50 text-xs text-zinc-600 dark:text-zinc-300" />
-            <button onClick={copy} className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">
+            <button onClick={copy} className="btn-primary">
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? 'Copied' : 'Copy'}
             </button>
           </div>

@@ -245,7 +245,7 @@ export default function RegisterPage() {
               type="button"
               disabled={!selectedRole || (selectedRole === 'STUDENT' && !individual)}
               onClick={() => setStep('credentials')}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 text-sm shadow-md transition-colors flex items-center justify-center gap-2"
+              className="btn-primary btn-lg w-full"
             >
               Continue as {selectedRole === 'STUDENT' && individual ? (individual === 'STUDENT' ? 'a student' : 'an independent') : selectedRoleData?.label || '...'}
               <ArrowRight className="w-4 h-4" />
@@ -282,7 +282,7 @@ export default function RegisterPage() {
               <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setError(''); }} required className="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0" />
               <span>I have read and agree to the <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link> and the <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.</span>
             </label>
-            <button type="submit" disabled={isLoading || !name.trim() || !agreed} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+            <button type="submit" disabled={isLoading || !name.trim() || !agreed} className="btn-primary w-full">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Finish creating my account'}
             </button>
           </form>
@@ -380,7 +380,7 @@ export default function RegisterPage() {
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
                     <button type="submit" disabled={isLoading || !agreed}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                      className="btn-primary flex-1">
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}
                     </button>
                   </div>

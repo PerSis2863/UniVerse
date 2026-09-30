@@ -101,7 +101,7 @@ export default function TeacherRoomReservationPage() {
             </div>
             <button
               onClick={() => { setSearched(true); toast.success('Showing available rooms!'); }}
-              className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-3 rounded-lg transition-colors"
+              className="btn-primary btn-lg w-full"
             >
               Search Availability
             </button>
@@ -207,7 +207,7 @@ export default function TeacherRoomReservationPage() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setConfirmBooking(null)} className="flex-1 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors">Cancel</button>
-              <button onClick={handleBook} className="flex-1 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors">Confirm</button>
+              <button onClick={handleBook} className="btn-primary flex-1">Confirm</button>
             </div>
           </div>
         </div>

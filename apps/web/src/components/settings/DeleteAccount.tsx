@@ -45,7 +45,7 @@ export function DeleteAccount() {
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Permanently deletes your account and the personal data linked to it: profile, sign-in history, notifications, skills passport, flashcards. This can’t be undone. For your safety, each request is reviewed before the account is deleted (usually within a few days). Consider downloading your data first.</p>
           {req?.status === 'DECLINED' && <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">Your last request was declined{req.note ? `: ${req.note}` : '.'}</p>}
           {!open ? (
-            <button onClick={() => setOpen(true)} className="mt-3 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">Delete my account…</button>
+            <button onClick={() => setOpen(true)} className="btn-danger mt-3">Delete my account…</button>
           ) : (
             <div className="mt-4 space-y-3">
               <div className="flex gap-2 rounded-xl bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> Your courses, credentials, messages and everything else will be gone for you. Organizations and teachers keep only records they need, with your name removed.</div>
@@ -58,7 +58,7 @@ export function DeleteAccount() {
                 <input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" className="mt-1 w-full rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-3 py-2 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-rose-500/40" />
               </label>
               <div className="flex gap-2">
-                <button onClick={submit} disabled={busy || confirm !== 'DELETE'} className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Request deletion</button>
+                <button onClick={submit} aria-busy={busy || undefined} disabled={busy || confirm !== 'DELETE'} className="btn-danger">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Request deletion</button>
                 <button onClick={() => setOpen(false)} className="px-4 py-2 rounded-xl text-sm font-semibold text-zinc-500 inline-flex items-center gap-1"><X className="w-4 h-4" /> Cancel</button>
               </div>
             </div>

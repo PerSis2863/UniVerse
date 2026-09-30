@@ -98,7 +98,7 @@ export default function AdminPartnershipsPage() {
         rightNode={
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+            className="btn-primary btn-sm"
           >
             <PlusCircle className="w-4 h-4" /> Add partner
           </button>
@@ -216,8 +216,8 @@ export default function AdminPartnershipsPage() {
               <textarea className={`${input} min-h-[90px]`} placeholder="What you work on together (optional)" value={form.description} maxLength={600} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </div>
             <div className="flex items-center justify-end gap-3 pt-2">
-              <button onClick={() => setShowAddModal(false)} disabled={saving} className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">Cancel</button>
-              <button onClick={addPartner} disabled={saving || !form.name.trim()} className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 disabled:opacity-50 inline-flex items-center gap-2">
+              <button onClick={() => setShowAddModal(false)} aria-busy={saving || undefined} disabled={saving} className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">Cancel</button>
+              <button onClick={addPartner} disabled={saving || !form.name.trim()} className="btn-primary btn-sm">
                 {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Add partner
               </button>
             </div>

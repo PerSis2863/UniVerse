@@ -284,7 +284,7 @@ export default function AdminUsers() {
                 <button onClick={() => setSelectedUser(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Close</button>
                 <button
                   onClick={() => { window.location.href = `mailto:${selectedUser.email}`; }}
-                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  className="btn-primary"
                 >
                   <Mail className="w-4 h-4" /> Send Email
                 </button>

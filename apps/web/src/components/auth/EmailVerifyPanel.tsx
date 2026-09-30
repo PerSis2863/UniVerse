@@ -70,7 +70,7 @@ export function EmailVerifyPanel({ email, sendOnMount, onVerified, onCancel }: {
       <h2 className="mt-4 text-xl font-bold text-white">Verify your email</h2>
       <p className="mt-2 text-sm text-zinc-400">We sent a link to <span className="text-white font-medium">{email}</span>. Open it to confirm the address is yours, then come back here.</p>
       {message && <p role="status" className={`mt-4 text-sm ${message.kind === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>{message.text}</p>}
-      <button onClick={check} disabled={!!busy} className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+      <button onClick={check} disabled={!!busy} className="btn-primary mt-6 w-full">
         {busy === 'check' ? <Loader2 className="w-4 h-4 animate-spin" /> : null} I’ve verified my email
       </button>
       <div className="mt-3 flex items-center justify-center gap-4 text-sm">

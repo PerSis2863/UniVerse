@@ -70,7 +70,7 @@ export default function AdminCoursesPage() {
         rightNode={
           <button 
             onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="btn-primary"
           >
             <Plus className="w-4 h-4" /> Create Course
           </button>
@@ -127,7 +127,7 @@ export default function AdminCoursesPage() {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
                   Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition-colors shadow-lg shadow-indigo-500/20">
+                <button type="submit" className="btn-primary">
                   Save Course
                 </button>
               </div>

@@ -236,7 +236,7 @@ export default function StartupIncubatorPage() {
               <div className="flex gap-2 pt-2">
                 <button onClick={() => setSelected(null)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
                 <button onClick={() => handleJoin(selected)} disabled={joined.includes(selected.id) || applying}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 text-sm rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50">
+                  className="btn-primary flex-1">
                   {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Apply to Join</>}
                 </button>
               </div>

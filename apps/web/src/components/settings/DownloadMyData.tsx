@@ -35,7 +35,7 @@ export function DownloadMyData() {
         <h3 className="font-medium text-zinc-900 dark:text-white text-sm">Download my data</h3>
         <p className="text-xs text-zinc-500 mt-0.5">A copy of your profile, grades, messages you sent, posts, boards and more, as a JSON file.</p>
       </div>
-      <button onClick={run} disabled={busy} className="btn-secondary px-3 py-2 text-sm inline-flex items-center gap-2 shrink-0 disabled:opacity-60">
+      <button onClick={run} aria-busy={busy || undefined} disabled={busy} className="btn-secondary px-3 py-2 text-sm inline-flex items-center gap-2 shrink-0 disabled:opacity-60">
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download
       </button>
     </div>

@@ -96,7 +96,7 @@ export function ErrorsPanel() {
           Crashes in browsers, the app and on the server are collected and grouped. Each day, AI diagnoses new problems and you get an email digest.
           Pages that break after an update reload themselves.
         </div>
-        <button onClick={() => diagnose()} disabled={!!busy} className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold disabled:opacity-60 shrink-0">
+        <button onClick={() => diagnose()} disabled={!!busy} className="btn-primary shrink-0">
           {busy === 'all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Diagnose new
         </button>
       </div>

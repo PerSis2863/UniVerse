@@ -320,7 +320,7 @@ function Changes() {
             <p className="text-xs text-zinc-400">{format(new Date(c.createdAt), 'd MMM yyyy, HH:mm')}{c.undoneAt ? ` · undone ${formatDistanceToNow(new Date(c.undoneAt), { addSuffix: true })}` : ''}</p>
           </div>
           {!c.undoneAt && (c.action === 'UPDATE' || c.action === 'DELETE') && (
-            <button onClick={async () => { setBusy(c.id); await undoChange(c.id); setBusy(null); }} disabled={busy === c.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-200 shrink-0">
+            <button onClick={async () => { setBusy(c.id); await undoChange(c.id); setBusy(null); }} aria-busy={busy === c.id || undefined} disabled={busy === c.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-200 shrink-0">
               {busy === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />} Undo
             </button>
           )}

@@ -260,7 +260,7 @@ export default function TeacherDashboard() {
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setShowCourseModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                <button onClick={handleCreateCourse} disabled={creating} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
+                <button onClick={handleCreateCourse} aria-busy={creating || undefined} disabled={creating} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
                   {creating ? (
                     <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> Creating...</>
                   ) : (

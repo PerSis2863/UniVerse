@@ -69,7 +69,7 @@ export default function TeacherCourses() {
         <div className="flex justify-end mb-6">
           <button 
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+            className="btn-primary"
           >
             <Plus className="w-4 h-4" /> Create Course
           </button>
@@ -253,7 +253,7 @@ export default function TeacherCourses() {
             
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
-              <button onClick={showEditModal ? handleEdit : handleCreate} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
+              <button onClick={showEditModal ? handleEdit : handleCreate} className="btn-primary">
                 <Upload className="w-4 h-4" /> {showEditModal ? 'Save Changes' : 'Create Course'}
               </button>
             </div>

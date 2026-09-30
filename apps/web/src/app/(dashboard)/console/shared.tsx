@@ -159,7 +159,7 @@ export function RecordEditor({ model, record, schema, onClose, onSaved }: { mode
           )}
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm text-zinc-500">Cancel</button>
-            <button onClick={save} disabled={!!busy} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50">
+            <button onClick={save} disabled={!!busy} className="btn-primary">
               {busy === 'save' && <Loader2 className="w-4 h-4 animate-spin" />} Save
             </button>
           </div>

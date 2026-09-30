@@ -99,7 +99,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           {action && (
             <button
               onClick={action.onClick}
-              className="pressable shrink-0 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-600/25 active:bg-indigo-700"
+              className="btn-primary pressable shrink-0 rounded-full"
             >
               <Plus className="w-4 h-4" />
               <span>{action.label}</span>

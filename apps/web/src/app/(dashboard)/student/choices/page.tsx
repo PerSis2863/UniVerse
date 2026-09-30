@@ -195,7 +195,7 @@ export default function StudentChoices() {
                 </div>
                 
                 <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
-                  <button onClick={handleConfirmSelections} className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/20">
+                  <button onClick={handleConfirmSelections} className="btn-primary">
                     Confirm Selections <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -272,7 +272,7 @@ export default function StudentChoices() {
                     <textarea name="reason" required rows={3} placeholder="Please provide your reason for requesting this change..." className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"></textarea>
                   </div>
 
-                  <button type="submit" className="w-full bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-medium transition-colors mt-4 shadow-lg shadow-indigo-500/20">
+                  <button type="submit" className="btn-primary btn-lg w-full mt-4">
                     Submit Request for Advisor Approval
                   </button>
                   <p className="text-xs text-zinc-500 text-center mt-2">Note: All changes are subject to review by your academic advisor.</p>

@@ -57,8 +57,8 @@ export function DeletionsPanel({ onOpenPerson }: { onOpenPerson: (id: string) =>
           {r.status === 'PENDING' && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <input value={notes[r.id] ?? ''} onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })} placeholder="Note to the person if you decline (optional)" className="flex-1 min-w-[14rem] rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-3 py-2 text-sm text-zinc-900 dark:text-white outline-none" />
-              <button onClick={() => decide(r, 'decline')} disabled={busy === r.id} className="px-3 py-2 rounded-xl text-sm font-semibold bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200 inline-flex items-center gap-1"><X className="w-4 h-4" /> Decline</button>
-              <button onClick={() => decide(r, 'approve')} disabled={busy === r.id} className="px-3 py-2 rounded-xl text-sm font-semibold bg-rose-600 text-white inline-flex items-center gap-1">{busy === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Approve & delete</button>
+              <button onClick={() => decide(r, 'decline')} aria-busy={busy === r.id || undefined} disabled={busy === r.id} className="px-3 py-2 rounded-xl text-sm font-semibold bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200 inline-flex items-center gap-1"><X className="w-4 h-4" /> Decline</button>
+              <button onClick={() => decide(r, 'approve')} aria-busy={busy === r.id || undefined} disabled={busy === r.id} className="btn-danger">{busy === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Approve & delete</button>
             </div>
           )}
         </div>

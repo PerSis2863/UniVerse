@@ -263,7 +263,7 @@ function SectionHead({ icon: Icon, title, count, action }: { icon: LucideIcon; t
 }
 
 function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
-  return <button onClick={onClick} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold"><Plus className="w-3.5 h-3.5" /> {label}</button>;
+  return <button onClick={onClick} className="btn-primary btn-sm rounded-full"><Plus className="w-3.5 h-3.5" /> {label}</button>;
 }
 
 function FormShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -296,7 +296,7 @@ function Announcements({ board, canManage, refresh }: SectionProps) {
         <FormShell title="New announcement — enrolled students get a notification" onClose={() => setForm(null)}>
           <input className={input} placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <textarea className={`${input} min-h-[100px]`} placeholder="What do students need to know?" maxLength={5000} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
-          <button disabled={busy || !form.title.trim() || !form.body.trim()} onClick={async () => (await post({ kind: 'announcement', ...form }, 'Announcement posted')) && setForm(null)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Post announcement</button>
+          <button disabled={busy || !form.title.trim() || !form.body.trim()} onClick={async () => (await post({ kind: 'announcement', ...form }, 'Announcement posted')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Post announcement</button>
         </FormShell>
       )}
       {board.announcements.length === 0 && !form ? <Empty text={canManage ? 'No announcements yet. Post a welcome message to get your class started.' : 'No announcements yet. Your instructor’s updates will appear here.'} /> : (
@@ -346,7 +346,7 @@ function Materials({ board, canManage, refresh }: SectionProps) {
             {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading… {uploading}%</> : form.fileName ? <><CheckCircle2 className="w-4 h-4" /> {form.fileName} · {form.size}</> : <><Paperclip className="w-4 h-4" /> Choose a file (up to 4 MB)</>}
           </label>
           {!form.fileName && <input className={input} placeholder="…or paste a link (Google Drive, YouTube, website)" maxLength={1000} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />}
-          <button disabled={busy || !!uploading || !form.title.trim() || !form.url.trim()} onClick={async () => (await post({ kind: 'material', ...form }, 'Material shared with the class')) && setForm(null)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Share with class</button>
+          <button disabled={busy || !!uploading || !form.title.trim() || !form.url.trim()} onClick={async () => (await post({ kind: 'material', ...form }, 'Material shared with the class')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Share with class</button>
         </FormShell>
       )}
       {board.materials.length === 0 && !form ? <Empty text={canManage ? 'No materials yet. Upload slides, notes or add links for your students.' : 'No materials yet. Files your instructor shares will appear here.'} /> : (
@@ -391,7 +391,7 @@ function Readings({ board, canManage, refresh }: SectionProps) {
             <select className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{['Paper', 'Article', 'Book', 'Video', 'Website'].map((c) => <option key={c}>{c}</option>)}</select>
           </div>
           <textarea className={`${input} min-h-[70px]`} placeholder="Why should students read this? (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          <button disabled={busy || !form.title.trim()} onClick={async () => (await post({ kind: 'reading', ...form }, 'Added to the reading list')) && setForm(null)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add</button>
+          <button disabled={busy || !form.title.trim()} onClick={async () => (await post({ kind: 'reading', ...form }, 'Added to the reading list')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add</button>
         </FormShell>
       )}
       {board.readings.length === 0 && !form ? <Empty text={canManage ? 'Nothing on the reading list yet. Add papers, articles or books for this course.' : 'No readings yet. Papers and articles your instructor recommends will appear here.'} /> : (
@@ -605,7 +605,7 @@ function Events({ board, canManage, refresh }: SectionProps) {
             <select className={input} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
           </div>
           <input className={input} placeholder="Room or notes (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          <button disabled={busy || !form.title.trim() || !form.startAt} onClick={async () => (await post({ kind: 'event', ...form, startAt: new Date(form.startAt).toISOString() }, 'Added to the course calendar')) && setForm(null)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add event</button>
+          <button disabled={busy || !form.title.trim() || !form.startAt} onClick={async () => (await post({ kind: 'event', ...form, startAt: new Date(form.startAt).toISOString() }, 'Added to the course calendar')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add event</button>
         </FormShell>
       )}
       {board.events.length === 0 && !form ? <Empty text={canManage ? 'Nothing scheduled. Add exams, deadlines or extra sessions so students can plan ahead.' : 'Nothing scheduled yet. Exams, deadlines and sessions for this course will appear here.'} /> : (

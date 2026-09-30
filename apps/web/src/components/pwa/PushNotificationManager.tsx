@@ -191,7 +191,7 @@ export function PushNotificationManager() {
               <button
                 onClick={() => subscribeUser(false)}
                 disabled={status === 'requesting'}
-                className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-2.5 rounded-[14px] transition-all disabled:opacity-70 text-[13px] flex items-center justify-center gap-1.5"
+                className="btn-primary flex-1"
               >
                 {status === 'requesting' ? (
                   <>

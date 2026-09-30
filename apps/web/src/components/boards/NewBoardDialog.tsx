@@ -44,7 +44,7 @@ export function NewBoardDialog({ onCreate, onClose }: { onCreate: (title: string
             ))}
           </div>
         </div>
-        <button disabled={busy} className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold disabled:opacity-60">
+        <button aria-busy={busy || undefined} disabled={busy} className="btn-primary btn-lg w-full">
           {busy && <Loader2 className="w-4 h-4 animate-spin" />} Create board
         </button>
       </form>

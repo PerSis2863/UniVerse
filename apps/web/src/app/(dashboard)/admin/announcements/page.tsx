@@ -68,7 +68,7 @@ export default function AdminAnnouncements() {
         <div className="flex justify-end mb-6">
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+            className="btn-primary"
           >
             <Plus className="w-4 h-4" /> Create Announcement
           </button>
@@ -83,7 +83,7 @@ export default function AdminAnnouncements() {
             <Megaphone className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">No announcements</h2>
             <p className="text-zinc-600 dark:text-zinc-400 mb-6">There are no announcements in the system.</p>
-            <button onClick={openCreate} className="mx-auto flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <button onClick={openCreate} className="btn-primary mx-auto">
               <Plus className="w-4 h-4" /> Create First Announcement
             </button>
           </div>
@@ -163,7 +163,7 @@ export default function AdminAnnouncements() {
             </div>
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleSave} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg flex items-center gap-2 transition-all">
+              <button onClick={handleSave} className="btn-primary">
                 <Send className="w-4 h-4" /> {editTarget ? 'Save Changes' : 'Publish'}
               </button>
             </div>
@@ -182,7 +182,7 @@ export default function AdminAnnouncements() {
             <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center">This action cannot be undone. The announcement will be permanently removed.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmDelete(null)} className="flex-1 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(confirmDelete)} className="flex-1 px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-500 rounded-xl transition-colors">Delete</button>
+              <button onClick={() => handleDelete(confirmDelete)} className="btn-danger flex-1">Delete</button>
             </div>
           </div>
         </div>

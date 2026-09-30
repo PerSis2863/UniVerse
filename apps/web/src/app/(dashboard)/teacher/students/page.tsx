@@ -206,7 +206,7 @@ export default function TeacherStudents() {
                 if (!to) return void toast.error('None of these students have an email address.');
                 window.location.href = `mailto:?bcc=${encodeURIComponent(to)}&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
                 setShowEmailModal(false);
-              }} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition-all">
+              }} className="btn-primary">
                 Open in email app ({filteredStudents.length})
               </button>
             </div>

@@ -252,7 +252,7 @@ export default function StudentSkills() {
             <div className="flex gap-2 pt-2">
               {editor.id && <button onClick={deleteSkill} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-500/10">Remove</button>}
               <button onClick={() => setEditor(null)} className="ml-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300">Cancel</button>
-              <button onClick={saveSkill} disabled={savingSkill || !editor.name.trim()} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-50">{savingSkill ? 'Saving…' : 'Save'}</button>
+              <button onClick={saveSkill} disabled={savingSkill || !editor.name.trim()} className="btn-primary">{savingSkill ? 'Saving…' : 'Save'}</button>
             </div>
           </div>
         </div>

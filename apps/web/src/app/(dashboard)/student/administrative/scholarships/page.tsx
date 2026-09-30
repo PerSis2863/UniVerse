@@ -233,7 +233,7 @@ export default function Scholarships() {
                 <button 
                   onClick={handleClose}
                   className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-white/5 transition-colors"
-                  disabled={isSubmitting}
+                  aria-busy={isSubmitting || undefined} disabled={isSubmitting}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -326,13 +326,13 @@ export default function Scholarships() {
                         <button 
                           onClick={() => setApplicationStep(1)}
                           className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 font-bold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-zinc-900 dark:text-white"
-                          disabled={isSubmitting}
+                          aria-busy={isSubmitting || undefined} disabled={isSubmitting}
                         >
                           Back
                         </button>
                         <button 
                           onClick={handleSubmit}
-                          disabled={isSubmitting}
+                          aria-busy={isSubmitting || undefined} disabled={isSubmitting}
                           className="flex-[2] btn-primary py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
                         >
                           {isSubmitting ? (

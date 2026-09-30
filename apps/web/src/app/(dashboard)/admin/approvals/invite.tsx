@@ -88,8 +88,8 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
           </span>
         </label>
 
-        <button onClick={send} disabled={busy || !parsed.valid || parsed.valid > 1000}
-          className="mt-4 w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold disabled:opacity-50">
+        <button onClick={send} aria-busy={busy || undefined} disabled={busy || !parsed.valid || parsed.valid > 1000}
+          className="btn-primary btn-lg mt-4 w-full">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
           Invite {parsed.valid || ''} {ROLES.find((r) => r.id === role)!.label.toLowerCase()}
         </button>
