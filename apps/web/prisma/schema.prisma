@@ -1906,3 +1906,23 @@ model StudyCard {
   @@index([userId, due])
   @@map("study_cards")
 }
+
+// Verified impact reports for sponsors / partners: figures from verified credentials for a period,
+// frozen and signed when issued (data + jwt), shared by an unguessable link.
+model ImpactReport {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  organization  String? // only credentials issued with this organisation; null = all
+  periodStart   DateTime
+  periodEnd     DateTime
+  data          Json
+  jwt           String // signed snapshot of `data`
+  isPublic      Boolean  @default(true)
+  views         Int      @default(0)
+  createdById   String
+  createdByName String
+  createdAt     DateTime @default(now())
+
+  @@map("impact_reports")
+}

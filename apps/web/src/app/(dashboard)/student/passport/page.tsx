@@ -55,7 +55,7 @@ export default function SkillsPassportPage() {
   return (
     <>
       <Topbar title="Skills passport" subtitle="Your verified skills and impact, ready to share with employers and universities" />
-      <div className="p-4 md:p-8 max-w-6xl mx-auto grid lg:grid-cols-[22rem_1fr] gap-6 items-start">
+      <div className="p-4 md:p-8 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[22rem_minmax(0,1fr)] gap-6 items-start min-w-0 w-full">
         <aside className="space-y-4 lg:sticky lg:top-4">
           <section className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5">
             <div className="flex items-center gap-3">

@@ -35,7 +35,7 @@ export function TutorStudio() {
 
   if (!course) {
     return (
-      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-5">
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-5 min-w-0 w-full">
         <div className="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.08] to-fuchsia-500/[0.06] p-5 sm:p-6">
           <p className="text-lg font-black text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-indigo-500" /> Your course tutor</p>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300 max-w-2xl">Ask questions about a course and get answers from <b>your teacher’s own materials</b>, with the source for every point. Practise with generated questions and learn with flashcards that come back just before you’d forget them.</p>
@@ -61,7 +61,7 @@ export function TutorStudio() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto min-w-0 w-full">
       <div className="flex items-center gap-2 mb-4">
         <button onClick={() => { setCourseId(null); void mutate(); }} aria-label="All courses" className="p-2 -ml-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronLeft className="w-5 h-5" /></button>
         <div className="min-w-0">
@@ -71,7 +71,7 @@ export function TutorStudio() {
       </div>
       <div role="tablist" className="flex gap-1 p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] mb-5 overflow-x-auto">
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn('flex-1 min-w-[5.5rem] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold', tab === t.id ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500')}>
+          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn('flex-1 min-w-[4.75rem] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold', tab === t.id ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500')}>
             <t.icon className="w-4 h-4" /> {t.label}
           </button>
         ))}

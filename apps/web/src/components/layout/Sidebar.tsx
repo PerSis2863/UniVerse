@@ -145,6 +145,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/partnerships', label: 'nav.partner_institutions' },
         { href: '/admin/partners', label: 'nav.sponsor_portal' },
         { href: '/admin/impact-metrics', label: 'nav.impact_analytics' },
+        { href: '/admin/impact-reports', label: '📊 Verified impact reports' },
         { href: '/admin/certifications', label: 'Certifications' },
         { href: '/admin/credentials', label: 'Credential Verification' },
       ]
