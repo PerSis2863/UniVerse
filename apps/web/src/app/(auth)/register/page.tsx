@@ -134,7 +134,7 @@ export default function RegisterPage() {
       await updateProfile(userCredential.user, { displayName: name });
       // The address must be confirmed before the account can be used (see EmailVerifyPanel).
       setStep('verify');
-    } catch (err: any) {
+    } catch (err) {
       setError(authErrorMessage(err, 'Failed to create account. Please try again.'));
     } finally {
       setIsLoading(false);
@@ -150,7 +150,7 @@ export default function RegisterPage() {
       const userCredential = await signInWithPopup(auth, provider);
       const token = await userCredential.user.getIdToken();
       await handleRegisterSuccess(token, userCredential.user.displayName || '', 'google');
-    } catch (err: any) {
+    } catch (err) {
       setError(authErrorMessage(err, 'Failed to sign up with Google.'));
     } finally {
       setIsLoading(false);
