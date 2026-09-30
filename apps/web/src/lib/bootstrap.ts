@@ -40,6 +40,7 @@ export function startBootstrap(pathname: string, send: (body: string) => Promise
 
 /** Whether `key` (a URL as the app requests it) can still be answered from the bundle. */
 export function inBootstrap(key: string) {
+  adoptEarlyBootstrap(); // the head script may have started it before anything else ran
   return !!pending && keys.has(key) && !used.has(key) && (!doneAt || Date.now() - doneAt < FRESH_MS);
 }
 
@@ -54,6 +55,7 @@ export async function fromBootstrap<T = unknown>(key: string): Promise<T | undef
 
 /** The live-updates address from the bundle (used once, while still valid), or undefined. */
 export async function bootstrapTicket(): Promise<string | undefined> {
+  adoptEarlyBootstrap();
   if (!pending || !ticketAsked || used.has('ticket')) return undefined;
   used.add('ticket');
   const bundle = await pending;
