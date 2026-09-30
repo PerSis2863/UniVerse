@@ -4,17 +4,18 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Bug, Crown, Database, History, LayoutDashboard, Loader2, LogIn, MessageSquare, Search, Undo2, Users } from 'lucide-react';
+import { Activity, Bug, Crown, Database, History, LayoutDashboard, Loader2, LogIn, MessageSquare, Search, Trash2, Undo2, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, card, fetcher, field, formatValue, summarize, undoChange } from './shared';
 import { PersonPanel } from './person';
 import { ErrorsPanel } from './errors';
+import { DeletionsPanel } from './deletions';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'activity' | 'people' | 'data' | 'changes' | 'errors';
+type Tab = 'overview' | 'activity' | 'people' | 'data' | 'changes' | 'errors' | 'deletions';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'activity', label: 'Live activity', icon: Activity },
@@ -22,6 +23,7 @@ const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'data', label: 'All data', icon: Database },
   { id: 'changes', label: 'Changes & undo', icon: History },
   { id: 'errors', label: 'Errors', icon: Bug },
+  { id: 'deletions', label: 'Deletion requests', icon: Trash2 },
 ];
 
 export default function OwnerConsole() {
@@ -76,6 +78,8 @@ export default function OwnerConsole() {
           <Data tables={tables.tables} schema={tables.schema} />
         ) : tab === 'errors' ? (
           <ErrorsPanel />
+        ) : tab === 'deletions' ? (
+          <DeletionsPanel onOpenPerson={openPerson} />
         ) : (
           <Changes />
         )}

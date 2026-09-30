@@ -133,6 +133,7 @@ export const navByRole: Record<string, NavItem[]> = {
     { href: '/teacher/tutor', label: 'AI tutor', icon: Sparkles },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
     { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
+    { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
     { href: '/boards', label: 'Whiteboards', icon: PenTool },
     { href: '/explore', label: 'Explore modes', icon: Compass },
   ],

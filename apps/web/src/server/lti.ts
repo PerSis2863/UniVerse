@@ -126,7 +126,7 @@ export async function completeLaunch(idToken: string, state: string, cookieState
   }
   if (!user) {
     if (!email) throw new LtiError('The LMS didn’t share an email address. Ask your administrator to enable sharing names and emails with UniVerse.');
-    user = await prisma.user.create({ data: { email, name, role: instructor ? 'TEACHER' : 'STUDENT', status: 'ACTIVE' } });
+    user = await prisma.user.create({ data: { email, name, role: instructor ? 'TEACHER' : 'STUDENT', status: 'ACTIVE', onboardedAt: new Date() } }); // the LMS vouches for them
     if (!instructor) await prisma.studentProfile.create({ data: { userId: user.id } }).catch(() => {});
   }
   if (user.status === 'SUSPENDED') throw new LtiError('Your UniVerse account is suspended. Please contact your administrator.');

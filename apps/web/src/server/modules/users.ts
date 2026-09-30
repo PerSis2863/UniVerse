@@ -3,17 +3,18 @@ import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { pick } from '../pick';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '../http';
-import { forgetUser, isOwner, isOwnerEmail } from '../auth';
+import { forgetUser, isDemoAccount, isOwner, isOwnerEmail } from '../auth';
 import { audit } from '../audit';
 import { currentApplication } from './applications';
 import { TERMS_VERSION } from '@/lib/terms-version';
 import { exportUserData } from '../export';
+import { cancelDeletion, requestDeletion } from '../account-deletion';
 
 const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
-  avatar: true, phone: true, googleId: true, emailNotifications: true, termsVersion: true, termsAcceptedAt: true, createdAt: true, updatedAt: true,
+  avatar: true, phone: true, googleId: true, emailNotifications: true, termsVersion: true, termsAcceptedAt: true, onboardedAt: true, createdAt: true, updatedAt: true,
   studentProfile: true, teacherProfile: true,
 };
 
@@ -25,6 +26,18 @@ async function findOne(id: string) {
 
 export default function users(router: Router) {
   const r = router.controller('users');
+
+  // "Delete my account": ask; the platform owner reviews the request (see server/account-deletion.ts).
+  r.get('me/deletion', ({ user }) => prisma.accountDeletionRequest.findFirst({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, status: true, reason: true, note: true, createdAt: true, decidedAt: true } }));
+  r.post('me/deletion', async ({ user, body, req }) => {
+    if (body?.confirm !== 'DELETE') throw new BadRequestException('Type DELETE to confirm.');
+    if (isOwnerEmail(user.email)) throw new BadRequestException('The platform owner account can’t be deleted from here.');
+    if (isDemoAccount(user.email)) throw new BadRequestException('Demo accounts can’t be deleted.');
+    const r = await requestDeletion(user, typeof body?.reason === 'string' ? body.reason.trim() : null);
+    audit(user, { action: 'account.deletion_requested', summary: `${user.name} asked to delete their account`, targetType: 'user', targetId: user.id }, req);
+    return { id: r.id, status: r.status, createdAt: r.createdAt };
+  });
+  r.delete('me/deletion', async ({ user }) => { await cancelDeletion(user.id); return { ok: true }; });
 
   r.get('', { roles: ['ADMIN'] }, ({ query }) => {
     const where: any = {};

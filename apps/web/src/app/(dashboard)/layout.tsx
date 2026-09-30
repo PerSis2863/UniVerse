@@ -15,7 +15,7 @@ import { adoptEarlyBootstrap, startBootstrap } from '@/lib/bootstrap';
 import { authedJson } from '@/lib/authed-fetch';
 import { isSampleMode } from '@/lib/sample-mode';
 
-type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean };
+type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean; onboardedAt?: string | null };
 
 const toUser = (me: MeResponse, photoURL?: string | null) => ({
   id: me.id,
@@ -70,7 +70,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       lastSync = Date.now();
       try {
         const res = await api.get<MeResponse>('/users/me');
-        if (!cancelled && res.data) useAuthStore.getState().setUser(toUser(res.data, photoURL));
+        if (!cancelled && res.data) {
+          // Signed in but never registered (e.g. first Google sign-in): finish registration first.
+          if (!res.data.onboardedAt && !res.data.owner) { router.replace('/register?continue=1'); return; }
+          useAuthStore.getState().setUser(toUser(res.data, photoURL));
+        }
       } catch (e) {
         console.error('Failed to fetch user data', e);
       }

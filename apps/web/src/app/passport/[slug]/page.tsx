@@ -43,7 +43,7 @@ export default function PublicPassportPage() {
             <BadgeVerifier />
           </>
         )}
-        <p className="mt-8 text-center text-[11px] text-zinc-500">UniVerse Impact · Rue de la Patouillerie, 44700 Orvault (Nantes), France · <Link href="/privacy" className="hover:underline">Privacy</Link></p>
+        <p className="mt-8 text-center text-[11px] text-zinc-500">UniVerse Impact · Paris, France · <Link href="/privacy" className="hover:underline">Privacy</Link></p>
       </div>
     </main>
   );

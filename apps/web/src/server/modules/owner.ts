@@ -4,6 +4,7 @@ import prisma from '@/lib/db';
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import { forgetUser, isOwnerEmail } from '../auth';
 import schema from '../owner-schema.json';
+import { decideDeletion } from '../account-deletion';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -98,6 +99,20 @@ async function guardUserEdit(m: Model, id: string, data: Record<string, unknown>
 
 export default function ownerModule(router: Router) {
   const r = router.controller('owner', owned);
+
+  // ── Account deletion requests ──
+  r.get('deletion-requests', ({ query }) => prisma.accountDeletionRequest.findMany({
+    where: query.status === 'all' ? {} : { status: String(query.status || 'PENDING') },
+    orderBy: { createdAt: 'desc' }, take: 200,
+    include: { user: { select: { id: true, role: true, status: true, createdAt: true, lastSeenAt: true, _count: { select: { loginEvents: true } } } } },
+  }));
+  r.patch<{ id: string }>('deletion-requests/:id', async ({ params, body, user }) => {
+    const decision = body?.decision === 'approve' ? 'approve' : body?.decision === 'decline' ? 'decline' : null;
+    if (!decision) throw new BadRequestException('Choose approve or decline.');
+    const done = await decideDeletion(params.id, decision, user, typeof body?.note === 'string' ? body.note.trim() : null);
+    if (!done) throw new NotFoundException('This request was already handled.');
+    return done;
+  });
 
   // ── Overview & live activity ──
 

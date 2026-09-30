@@ -112,6 +112,7 @@ model User {
   emailNotifications Boolean   @default(true)
   termsVersion       String? // version of the Terms & Privacy the person accepted
   termsAcceptedAt    DateTime?
+  onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
   lastSeenAt         DateTime?
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
 
@@ -120,6 +121,7 @@ model User {
   skillPassport  SkillPassport?
   riskFlags      StudentRiskFlag[]
   studyCards     StudyCard[]
+  deletionRequests AccountDeletionRequest[]
   teacherProfile TeacherProfile?
 
   // Core Academic
@@ -1983,4 +1985,24 @@ model LtiContext {
 
   @@unique([platformId, contextId])
   @@map("lti_contexts")
+}
+
+// "Delete my account" requests: the person asks, the platform owner reviews (to stop abuse, e.g.
+// someone else deleting an account from an unlocked device) and approves or declines.
+model AccountDeletionRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email       String // kept for the owner's review list
+  name        String
+  reason      String?
+  status      String    @default("PENDING") // PENDING | APPROVED | DECLINED | CANCELLED
+  decidedById String?
+  decidedAt   DateTime?
+  note        String? // owner's note (sent to the person when declined)
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+  @@index([userId])
+  @@map("account_deletion_requests")
 }

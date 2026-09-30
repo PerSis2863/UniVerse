@@ -38,7 +38,7 @@ export async function getSystemUser() {
   const system = await prisma.user.upsert({
     where: { email: SYSTEM_EMAIL },
     update: {},
-    create: { email: SYSTEM_EMAIL, firebaseUid: SYSTEM_FIREBASE_UID, name: 'UniVerse Impact', role: 'ADMIN', status: 'ACTIVE' },
+    create: { email: SYSTEM_EMAIL, firebaseUid: SYSTEM_FIREBASE_UID, name: 'UniVerse Impact', role: 'ADMIN', status: 'ACTIVE', onboardedAt: new Date() },
     select: { id: true },
   });
   systemUserId = system.id;

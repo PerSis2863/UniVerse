@@ -68,6 +68,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
+        {/* After a new version is deployed, a tab still on the old one can ask for a stylesheet that no
+            longer exists and show the page unstyled: reload once to get the new version. */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){addEventListener('error',function(e){var t=e.target;if(!t||t.tagName!=='LINK'||t.rel!=='stylesheet'||!/\/_next\/static\//.test(t.href))return;try{var k='universe-css-reload',l=+sessionStorage.getItem(k)||0;if(Date.now()-l<60000)return;sessionStorage.setItem(k,String(Date.now()));}catch(x){return;}location.reload();},true);})();` }} />
         {/* Dashboards: start loading the first screen's data now, in parallel with the app's code */}
         <script dangerouslySetInnerHTML={{ __html: bootstrapPrefetchScript }} />
         {/* PWA: iOS touch icon */}

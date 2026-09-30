@@ -8,7 +8,7 @@ import { recordLogin } from '../logins';
 
 const userSelect = {
   id: true, name: true, email: true, role: true, status: true, avatar: true,
-  phone: true, googleId: true, createdAt: true, updatedAt: true,
+  phone: true, googleId: true, onboardedAt: true, createdAt: true, updatedAt: true,
   studentProfile: true, teacherProfile: true,
 };
 
@@ -50,10 +50,9 @@ export default function auth(router: Router) {
   // email address after verifying it, gets the role straight away.
   r.post('register', async ({ user, body, req }) => {
     const name = body?.name && String(body.name).trim() ? String(body.name).trim().slice(0, 100) : null;
-    if (name && name !== user.name) {
-      await prisma.user.update({ where: { id: user.id }, data: { name } });
-      forgetUser(user.id);
-    }
+    // Registration finished (the person picked a role and name): until now they had only signed in.
+    await prisma.user.update({ where: { id: user.id }, data: { ...(name && name !== user.name ? { name } : {}), onboardedAt: user.onboardedAt ?? new Date() } });
+    forgetUser(user.id);
     const wanted = body?.role;
     if ((REQUESTABLE_ROLES as readonly string[]).includes(wanted) && user.role === 'STUDENT') {
       const role = wanted as (typeof REQUESTABLE_ROLES)[number];

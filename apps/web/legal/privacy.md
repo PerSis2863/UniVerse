@@ -191,7 +191,7 @@ Depending on your jurisdiction (including the EU, UK, USA/California, India, Bra
 
 - **Right of Access / Right to Know:** Request a comprehensive copy of the personal data we hold about you and details on how it is processed.
 - **Right to Rectification / Correction:** Request correction of inaccurate, obsolete, or incomplete data.
-- **Right to Erasure / Deletion ("Right to be Forgotten"):** Request the deletion of your personal data where no overriding legal obligation requires its retention.
+- **Right to Erasure / Deletion ("Right to be Forgotten"):** Request the deletion of your personal data where no overriding legal obligation requires its retention. You can ask directly in the app (Settings → Privacy → Delete my account). To protect you against someone else deleting your account from an unlocked device, each request is checked before the account is erased, normally within a few days and always within one month; we email you when it is done. Records that others legitimately need (for example a class register) are kept with your name and contact details removed.
 - **Right to Restrict Processing:** Request a temporary halt to the processing of your data under specific conditions.
 - **Right to Data Portability:** Receive a copy of your data in a structured, commonly used, machine-readable format (e.g., JSON export).
 - **Instructions After Death (France):** Give instructions on what should happen to your personal data after your death.

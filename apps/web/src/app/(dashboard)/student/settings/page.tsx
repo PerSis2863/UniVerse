@@ -1,4 +1,6 @@
 'use client';
+import { AccountSecurity } from '@/components/settings/AccountSecurity';
+import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { LowDataToggle } from '@/components/settings/LowDataToggle';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -272,7 +274,9 @@ export default function StudentSettings() {
                         </div>
                         <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
                       </Link>
+                      <AccountSecurity />
                       <DownloadMyData />
+                      <DeleteAccount />
                       <button onClick={async () => {
                         try {
                           const { auth } = await import('@/lib/firebase');
