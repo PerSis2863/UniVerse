@@ -135,15 +135,24 @@ export default function ApplicationPage() {
   };
 
   const withdraw = async () => {
+    const signup = app?.source === 'SIGNUP' && standalone;
     const yes = await confirmDialog({
       title: 'Withdraw your application?',
-      message: app?.source === 'SIGNUP' ? 'You can keep using UniVerse as a student and apply again later from Settings.' : 'You can apply again later from Settings.',
+      message: signup ? 'Your account setup will be cancelled and you’ll be signed out. You can sign up again at any time.' : 'You can apply again later from Settings.',
       confirmLabel: 'Withdraw',
       destructive: true,
     });
     if (!yes) return;
     try {
-      await api.post('/applications/mine/withdraw');
+      const { data: res } = await api.post<{ setupCancelled?: boolean }>('/applications/mine/withdraw');
+      if (res?.setupCancelled) {
+        // Back to the home page, signed out; the toast survives the navigation.
+        toast.success('Your application was withdrawn successfully.');
+        await auth.signOut().catch(() => {});
+        logout();
+        router.replace('/');
+        return;
+      }
       await mutate();
       await refreshProfile();
       toast.success('Application withdrawn');

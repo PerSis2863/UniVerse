@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,7 +19,7 @@ type Source = readonly string[] | readonly ComboOption[] | (() => Promise<ComboO
 
 interface Indexed extends ComboOption { n: string; initials: string }
 
-const MAX_SHOWN = 80;
+const MAX_SHOWN = 50;
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const STOP = new Set(['of', 'the', 'de', 'la', 'le', 'des', 'du', 'and', 'et', 'for', 'di', 'del', 'da', 'y', 'e', 'für', 'an', 'at', 'in']);
 
@@ -39,14 +39,17 @@ function search(items: Indexed[], query: string, preferGroup?: string): Indexed[
     return (local.length ? local : items).slice(0, MAX_SHOWN);
   }
   const tokens = q.split(/\s+/).filter(Boolean);
+  // Typed in capitals ("MIT", "UCLA"): an acronym, so initials beat plain prefix matches.
+  const acronym = /^[A-Z]{2,6}$/.test(query.trim());
+  const spaced = ` ${q}`, paren = `(${q}`, multi = tokens.length > 1;
   const scored: { item: Indexed; score: number }[] = [];
   for (const item of items) {
     let score: number;
-    if (item.n === q) score = 0;
-    else if (item.n.startsWith(q)) score = 1;
-    else if (item.n.includes(` ${q}`) || item.n.includes(`(${q}`)) score = 2;
-    else if (q.length >= 2 && !q.includes(' ') && item.initials.startsWith(q)) score = item.initials === q ? 1.5 : 2.5;
-    else if (tokens.every((t) => item.n.includes(t))) score = 3;
+    const at = item.n.indexOf(q);
+    if (at === 0) score = item.n.length === q.length ? 0 : 1;
+    else if (at > 0 && (item.n.includes(spaced) || item.n.includes(paren))) score = 2;
+    else if (q.length >= 2 && !q.includes(' ') && item.initials.startsWith(q)) score = item.initials === q ? (acronym ? 0.5 : 1.5) : 2.5;
+    else if (at > 0 || (multi && tokens.every((t) => item.n.includes(t)))) score = 3;
     else continue;
     if (preferGroup && item.group === preferGroup) score -= 0.6;
     scored.push({ item, score });
@@ -59,6 +62,11 @@ function search(items: Indexed[], query: string, preferGroup?: string): Indexed[
 function Highlight({ label, query }: { label: string; query: string }) {
   const q = fold(query.trim());
   if (!q) return <>{label}</>;
+  if (/^[\x00-\x7f]*$/.test(label)) { // fast path: plain ASCII
+    const i = label.toLowerCase().indexOf(q);
+    if (i < 0) return <>{label}</>;
+    return <>{label.slice(0, i)}<mark className="bg-transparent text-indigo-600 dark:text-indigo-300 font-semibold">{label.slice(i, i + q.length)}</mark>{label.slice(i + q.length)}</>;
+  }
   let folded = '';
   const map: number[] = [];
   for (let i = 0; i < label.length; i++) {
@@ -123,12 +131,14 @@ export function Combobox({
     options().then((o) => { setLoaded(index(o)); setLoadState('idle'); }).catch(() => setLoadState('error'));
   };
 
+  // The input repaints immediately; the (up to 10k-item) search follows at lower priority.
+  const deferredQuery = useDeferredValue(query);
   const results = useMemo(() => {
     if (!loaded) return [];
-    const q = multiple || dirty ? query : '';
+    const q = multiple || dirty ? deferredQuery : '';
     const r = search(loaded, q, preferGroup);
     return multiple ? r.filter((o) => !chips.some((c) => c.toLowerCase() === o.label.toLowerCase())) : r;
-  }, [loaded, query, preferGroup, multiple, chips, dirty]);
+  }, [loaded, deferredQuery, preferGroup, multiple, chips, dirty]);
 
   const typed = multiple || dirty ? query.trim() : '';
   const exact = !!typed && results.some((r) => r.label.toLowerCase() === typed.toLowerCase());
@@ -195,6 +205,35 @@ export function Combobox({
     else if (e.key === 'Backspace' && multiple && !query && chips.length) removeChip(chips.length - 1);
     else if (e.key === ',' && multiple && typed) { e.preventDefault(); pick(typed); }
   };
+
+  // Handlers reach the latest pick() through a ref so the memoised rows below stay valid.
+  const pickRef = useRef(pick);
+  useEffect(() => { pickRef.current = pick; });
+  const hl = multiple || dirty ? deferredQuery : '';
+  const current = multiple || dirty ? '' : value;
+  const rows = useMemo(() => results.map((o, i) => {
+    const selected = !!current && o.label === current;
+    return (
+      <div
+        key={`${o.label}|${o.group ?? ''}`}
+        id={`${listId}-${i}`}
+        data-row={i}
+        role="option"
+        aria-selected={selected}
+        onMouseMove={() => setActive((a) => (a === i ? a : i))}
+        onClick={(e) => { e.preventDefault(); pickRef.current(o.label); }} // preventDefault: inside a <label>, the click would re-focus the input and reopen the list
+        className={cn(
+          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer select-none transition-colors duration-75',
+          i === active ? 'bg-indigo-500/10 text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300',
+        )}
+      >
+        {o.icon && <span className="text-base leading-none shrink-0" aria-hidden>{o.icon}</span>}
+        <span className="min-w-0 flex-1 truncate"><Highlight label={o.label} query={hl} /></span>
+        {o.hint && <span className="shrink-0 max-w-[40%] truncate text-xs text-zinc-400">{o.hint}</span>}
+        {selected && <Check className="w-4 h-4 shrink-0 text-indigo-500" />}
+      </div>
+    );
+  }), [results, active, current, hl, listId]);
 
   const activeId = open && rowCount ? `${listId}-${active}` : undefined;
 
@@ -285,29 +324,7 @@ export function Combobox({
             {loadState === 'error' && (
               <div className="px-3 py-3 text-sm text-zinc-500">Couldn’t load the list. Type the name and press Enter.</div>
             )}
-            {results.map((o, i) => {
-              const selected = multiple ? false : o.label === value;
-              return (
-                <div
-                  key={`${o.label}|${o.group ?? ''}`}
-                  id={`${listId}-${i}`}
-                  data-row={i}
-                  role="option"
-                  aria-selected={selected}
-                  onMouseMove={() => active !== i && setActive(i)}
-                  onClick={() => pick(o.label)}
-                  className={cn(
-                    'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer select-none transition-colors duration-75',
-                    i === active ? 'bg-indigo-500/10 text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300',
-                  )}
-                >
-                  {o.icon && <span className="text-base leading-none shrink-0" aria-hidden>{o.icon}</span>}
-                  <span className="min-w-0 flex-1 truncate"><Highlight label={o.label} query={typed} /></span>
-                  {o.hint && <span className="shrink-0 max-w-[40%] truncate text-xs text-zinc-400">{o.hint}</span>}
-                  {selected && <Check className="w-4 h-4 shrink-0 text-indigo-500" />}
-                </div>
-              );
-            })}
+            {rows}
             {offerCustom && (
               <div
                 id={`${listId}-${results.length}`}
@@ -315,7 +332,7 @@ export function Combobox({
                 role="option"
                 aria-selected={false}
                 onMouseMove={() => active !== results.length && setActive(results.length)}
-                onClick={() => pick(typed)}
+                onClick={(e) => { e.preventDefault(); pick(typed); }}
                 className={cn(
                   'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer select-none transition-colors duration-75',
                   active === results.length ? 'bg-indigo-500/10 text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400',

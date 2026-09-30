@@ -174,13 +174,23 @@ export default function applicationsModule(router: Router) {
     return body?.submit ? submit(updated.id, user) : updated;
   });
 
-  /** Withdraw your application. If you signed up as a teacher you carry on as a student. */
+  /**
+   * Withdraw your application. Withdrawing the application made at sign-up cancels the account
+   * setup: the account gets no access (not even as a student) and the person goes through
+   * registration again if they come back. An application made later from an existing account just
+   * closes, and the account carries on as before.
+   */
   r.post('mine/withdraw', async ({ user, req }) => {
     const app = await prisma.roleApplication.findFirst({ where: { userId: user.id, status: { in: OPEN } }, orderBy: { createdAt: 'desc' } });
     if (!app) throw new NotFoundException('You have no open application.');
-    const done = await prisma.roleApplication.update({ where: { id: app.id }, data: { status: 'WITHDRAWN', history: withEvent(app.history, { by: user.id, byName: user.name, type: 'withdrawn' }) } });
+    const signup = app.source === 'SIGNUP' && user.role === 'STUDENT';
+    const [done] = await prisma.$transaction([
+      prisma.roleApplication.update({ where: { id: app.id }, data: { status: 'WITHDRAWN', history: withEvent(app.history, { by: user.id, byName: user.name, type: 'withdrawn' }) } }),
+      ...(signup ? [prisma.user.update({ where: { id: user.id }, data: { onboardedAt: null, accountType: null } })] : []),
+    ]);
+    if (signup) forgetUser(user.id);
     audit(user, { action: 'application.withdrawn', summary: `${user.name} withdrew their ${ROLE_LABEL[app.requestedRole as RequestableRole] ?? 'staff'} application`, targetType: 'role_application', targetId: app.id }, req);
-    return done;
+    return { ...done, setupCancelled: signup };
   });
 
   // ── For admins ──
