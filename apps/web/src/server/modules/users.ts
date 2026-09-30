@@ -8,6 +8,11 @@ import { audit } from '../audit';
 import { currentApplication } from './applications';
 import { TERMS_VERSION } from '@/lib/terms-version';
 import { exportUserData } from '../export';
+
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
+const INVITABLE: Role[] = ['STUDENT', 'TEACHER', 'ADMIN'];
+/** Invitations stay valid for 30 days: a class may take a few weeks to sign up. */
+const inviteExpiry = () => new Date(Date.now() + 30 * 24 * 3600 * 1000);
 import { cancelDeletion, requestDeletion } from '../account-deletion';
 
 const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
@@ -70,6 +75,12 @@ export default function users(router: Router) {
   // `owner` is only ever present (true) for the platform owner, so the app can open the console.
   r.get('me', async ({ user }) => ({ ...(await findOne(user.id)), application: await currentApplication(user.id), ...(isOwner(user) ? { owner: true } : {}) }));
 
+  // Pending invitations. Registered before ':id', which would otherwise match "invitations".
+  r.get('invitations', { roles: ['ADMIN'] }, async () => {
+    const rows = await prisma.invitation.findMany({ where: { status: 'PENDING', expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' }, take: 1000, select: { id: true, email: true, role: true, expiresAt: true, createdAt: true } });
+    return { items: rows, total: rows.length };
+  });
+
   // Other people's contact details and grades (GPA) are for admins; everyone else gets a public card.
   r.get<{ id: string }>(':id', async ({ params, user }) => {
     if (user.role === 'ADMIN' || params.id === user.id) return findOne(params.id);
@@ -81,19 +92,55 @@ export default function users(router: Router) {
     return card;
   });
 
+  // Invitations: people an admin invites are approved automatically when they sign up with that
+  // (verified) address: students are verified, staff and organizations get their role.
   r.post('invitations', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
-    const email = String(body.email ?? '');
+    const email = String(body.email ?? '').trim().toLowerCase();
     const role = body.role as Role;
+    if (!EMAIL_RE.test(email)) throw new BadRequestException('Enter a valid email address.');
+    if (!INVITABLE.includes(role)) throw new BadRequestException('Choose Student, Staff or Organization.');
     if (await prisma.user.findUnique({ where: { email } })) throw new ConflictException('User with this email already exists');
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
     const invitation = await prisma.invitation.upsert({
       where: { email },
-      update: { role, status: 'PENDING', expiresAt },
-      create: { email, role, status: 'PENDING', expiresAt },
+      update: { role, status: 'PENDING', expiresAt: inviteExpiry() },
+      create: { email, role, status: 'PENDING', expiresAt: inviteExpiry() },
     });
     audit(user, { action: 'user.invited', summary: `Invited ${email} as ${role}`, targetType: 'invitation', targetId: invitation.id, metadata: { email, role } }, req);
     return { success: true, invitation };
+  });
+
+  /** Invite many at once: a pasted list of addresses (commas, spaces or new lines), up to 1,000. */
+  r.post('invitations/bulk', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
+    const role = body?.role as Role;
+    if (!INVITABLE.includes(role)) throw new BadRequestException('Choose Student, Staff or Organization.');
+    const found = String(body?.emails ?? '').toLowerCase().split(/[\s,;]+/).map((e) => e.replace(/^<|>$/g, '').trim()).filter(Boolean);
+    const unique = [...new Set(found)];
+    const invalid = unique.filter((e) => !EMAIL_RE.test(e));
+    const valid = unique.filter((e) => EMAIL_RE.test(e));
+    if (!valid.length) throw new BadRequestException('No valid email addresses found.');
+    if (valid.length > 1000) throw new BadRequestException('Invite up to 1,000 people at a time.');
+    const existing = new Set<string>();
+    for (let i = 0; i < valid.length; i += 90) {
+      const rows = await prisma.user.findMany({ where: { email: { in: valid.slice(i, i + 90) } }, select: { email: true } });
+      rows.forEach((r) => existing.add(r.email.toLowerCase()));
+    }
+    const toInvite = valid.filter((e) => !existing.has(e));
+    const expiresAt = inviteExpiry();
+    for (let i = 0; i < toInvite.length; i += 25) {
+      await prisma.$transaction(toInvite.slice(i, i + 25).map((email) => prisma.invitation.upsert({
+        where: { email }, update: { role, status: 'PENDING', expiresAt }, create: { email, role, status: 'PENDING', expiresAt },
+      })));
+    }
+    audit(user, { action: 'user.invited', summary: `Invited ${toInvite.length} people as ${role}`, targetType: 'invitation', metadata: { count: toInvite.length, role } }, req);
+    return { invited: toInvite.length, alreadyMembers: [...existing], invalid, expiresAt };
+  });
+
+  r.delete<{ id: string }>('invitations/:id', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
+    const inv = await prisma.invitation.findUnique({ where: { id: params.id } });
+    if (!inv) throw new NotFoundException('Invitation not found');
+    await prisma.invitation.delete({ where: { id: inv.id } });
+    audit(user, { action: 'user.invitation_revoked', summary: `Cancelled the invitation for ${inv.email}`, targetType: 'invitation', targetId: inv.id }, req);
+    return { success: true };
   });
 
   // Accepting the Terms of Use & Privacy Notice (first sign-in, or after they change).

@@ -39,10 +39,12 @@
       "simple": { "limit": 300, "period": 60 }
     },
     {
-      // Flood guard: 1,500 API calls per minute from one IP address (a campus can share one).
+      // Flood guard: 6,000 API calls per minute from one IP address. A whole campus or school
+      // Wi-Fi shares one address: 500 students opening their dashboard at the start of a class
+      // is ~1,500 calls in a minute on its own, so this must stay well above that.
       "name": "IP_RATE_LIMITER",
       "namespace_id": "1002",
-      "simple": { "limit": 1500, "period": 60 }
+      "simple": { "limit": 6000, "period": 60 }
     },
     {
       // AI answers, uploads and support emails: 20 per minute per user (they cost money).

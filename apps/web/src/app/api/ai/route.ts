@@ -74,12 +74,13 @@ export async function POST(req: NextRequest) {
 
   try {
     let res = await callGemini(PRIMARY_MODEL, apiKey, contents);
-    if ((res.status === 404 || res.status === 400) && FALLBACK_MODEL && FALLBACK_MODEL !== PRIMARY_MODEL) {
+    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK_MODEL && FALLBACK_MODEL !== PRIMARY_MODEL) {
       console.warn(`Gemini model "${PRIMARY_MODEL}" unavailable (${res.status}); falling back to "${FALLBACK_MODEL}"`);
       res = await callGemini(FALLBACK_MODEL, apiKey, contents);
     }
     if (!res.ok || !res.body) {
       console.error(`Gemini API error: ${res.status}`);
+      if (res.status === 429) return NextResponse.json({ error: 'Lots of people are using the assistant right now. Please try again in a minute.' }, { status: 503, headers: { 'Retry-After': '60' } });
       return NextResponse.json({ error: 'The AI assistant is temporarily unavailable.' }, { status: 502 });
     }
 
