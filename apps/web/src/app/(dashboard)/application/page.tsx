@@ -12,6 +12,9 @@ import {
 import { Topbar } from '@/components/layout/Topbar';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { confirmDialog } from '@/components/ui/Dialogs';
+import { Combobox } from '@/components/ui/Combobox';
+import { DEPARTMENTS, ORG_DEPARTMENTS, ORG_ROLES, PROGRAMMES, STAFF_POSITIONS, STUDY_YEARS, SUBJECTS } from '@/lib/options/academic';
+import { homeCountry, loadUniversities } from '@/lib/options/universities';
 import { api } from '@/lib/api';
 import { authedFetch } from '@/lib/authed-fetch';
 import { auth } from '@/lib/firebase';
@@ -78,6 +81,8 @@ const EVENT_LABEL: Record<string, string> = {
 const fetcher = (url: string) => api.get(url).then((r) => r.data);
 const input =
   'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40';
+
+const PROGRAMMES_AND_FIELDS = [...PROGRAMMES, ...DEPARTMENTS];
 
 const toForm = (a: Application | null | undefined, fallbackRole: Requested): Form => ({
   requestedRole: a?.requestedRole ?? fallbackRole,
@@ -410,9 +415,9 @@ function History({ events }: { events: HistoryEvent[] }) {
   );
 }
 
-function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, hint, required, className, children }: { label: string; hint?: string; required?: boolean; className?: string; children: React.ReactNode }) {
   return (
-    <label className="block space-y-1.5">
+    <label className={cn('block space-y-1.5', className)}>
       <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
         {label}
         {required && <span className="text-rose-500"> *</span>}
@@ -431,8 +436,10 @@ function ApplicationForm({
   const [f, setF] = useState<Form>(initial);
   const [busy, setBusy] = useState<'save' | 'submit' | 'upload' | null>(null);
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF((p) => ({ ...p, [k]: e.target.value }));
+  const put = (k: keyof Form) => (v: string) => setF((p) => ({ ...p, [k]: v }));
   const ngo = f.requestedRole === 'ADMIN';
   const stu = f.requestedRole === 'STUDENT';
+  const [country] = useState(homeCountry);
 
   const missing = useMemo(() => {
     const m: string[] = [];
@@ -506,14 +513,23 @@ function ApplicationForm({
       <section className="space-y-4">
         <h3 className="font-semibold text-zinc-900 dark:text-white">{ngo ? 'Your organization' : stu ? 'Where you study' : 'Where you teach'}</h3>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label={ngo ? 'Organization' : stu ? 'University or school' : 'Institution'} required>
-            <input className={input} value={f.institution} onChange={set('institution')} maxLength={150} placeholder={ngo ? 'e.g. Green Earth Foundation' : stu ? 'e.g. Université de Nantes' : 'e.g. Delhi University'} />
+          <Field label={ngo ? 'Organization' : stu ? 'University or school' : 'Institution'} required hint={ngo ? undefined : 'Search 10,000+ universities worldwide, or type your own.'}>
+            {ngo ? (
+              <input className={input} value={f.institution} onChange={set('institution')} maxLength={150} placeholder="e.g. Green Earth Foundation" />
+            ) : (
+              <Combobox value={f.institution} onChange={put('institution')} options={loadUniversities} preferGroup={country} sizeHint="10,000+ universities" maxLength={150}
+                placeholder={stu ? 'e.g. Université de Nantes' : 'e.g. Delhi University'} />
+            )}
           </Field>
-          <Field label={stu ? 'Programme / field of study' : 'Department'} required={!ngo}>
-            <input className={input} value={f.department} onChange={set('department')} maxLength={120} placeholder={ngo ? 'e.g. Partnerships' : stu ? 'e.g. Bachelor in Computer Science' : 'e.g. Computer Science'} />
+          <Field label={ngo ? 'Team / department' : stu ? 'Programme / field of study' : 'Department'} required={!ngo}>
+            <Combobox value={f.department} onChange={put('department')} maxLength={120}
+              options={ngo ? ORG_DEPARTMENTS : stu ? PROGRAMMES_AND_FIELDS : DEPARTMENTS}
+              placeholder={ngo ? 'e.g. Partnerships' : stu ? 'e.g. Computer Science' : 'e.g. Computer Science'} />
           </Field>
           <Field label={ngo ? 'Your role' : stu ? 'Year / level' : 'Position'} required={!stu}>
-            <input className={input} value={f.position} onChange={set('position')} maxLength={100} placeholder={ngo ? 'e.g. Programme officer' : stu ? 'e.g. 2nd year' : 'e.g. Assistant professor'} />
+            <Combobox value={f.position} onChange={put('position')} maxLength={100}
+              options={ngo ? ORG_ROLES : stu ? STUDY_YEARS : STAFF_POSITIONS}
+              placeholder={ngo ? 'e.g. Programme Officer' : stu ? 'e.g. 2nd year' : 'e.g. Assistant Professor'} />
           </Field>
           {!stu && (
             <Field label="Years of experience">
@@ -521,8 +537,8 @@ function ApplicationForm({
             </Field>
           )}
           {!ngo && !stu && (
-            <Field label="Subjects you teach" hint="Separate with commas">
-              <input className={cn(input, 'sm:col-span-2')} value={f.subjects} onChange={set('subjects')} maxLength={300} placeholder="e.g. Algorithms, Databases" />
+            <Field label="Subjects you teach" hint="Pick as many as you like, or type your own and press Enter." className="sm:col-span-2">
+              <Combobox multiple value={f.subjects} onChange={put('subjects')} options={SUBJECTS} maxLength={300} placeholder="e.g. Algorithms, Databases" />
             </Field>
           )}
         </div>
