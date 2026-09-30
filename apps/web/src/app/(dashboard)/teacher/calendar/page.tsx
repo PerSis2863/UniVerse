@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { downloadIcs } from '@/components/dashboard/CourseBoard';
+import { courseColor } from '@/lib/course-color';
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -130,7 +131,7 @@ export default function TeacherCalendarPage() {
         id: slot.course?.id ?? slot.courseId,
         name: slot.course?.name || 'Unknown Course',
         code: slot.course?.code || 'UNK101',
-        color: slot.course?.color || '#6366f1'
+        color: courseColor(slot.course?.color, slot.course?.code)
       }
     }));
   }, [timetableSlots]);
@@ -361,16 +362,16 @@ export default function TeacherCalendarPage() {
                               style={{
                                 top: `calc(${topOffsetHours} * var(--hour-height) + 2px)`,
                                 height: `calc(${durationHours} * var(--hour-height) - 4px)`,
-                                backgroundColor: `${cls.course.color}20` || '#6366f120',
-                                borderLeft: `4px solid ${cls.course.color || '#6366f1'}`,
-                                borderTop: `1px solid ${cls.course.color}40`,
-                                borderRight: `1px solid ${cls.course.color}40`,
-                                borderBottom: `1px solid ${cls.course.color}40`,
+                                backgroundColor: `${courseColor(cls.course.color, cls.course.code)}20`,
+                                borderLeft: `4px solid ${courseColor(cls.course.color, cls.course.code)}`,
+                                borderTop: `1px solid ${courseColor(cls.course.color, cls.course.code)}40`,
+                                borderRight: `1px solid ${courseColor(cls.course.color, cls.course.code)}40`,
+                                borderBottom: `1px solid ${courseColor(cls.course.color, cls.course.code)}40`,
                               }}
                               onClick={() => cls.course.id && router.push(`/teacher/blackboard?course=${cls.course.id}`)}
                               title={`Open ${cls.course.name} on Blackboard`}
                             >
-                              <div className="text-xs font-bold mb-1" style={{ color: cls.course.color || '#818cf8' }}>
+                              <div className="text-xs font-bold mb-1" style={{ color: courseColor(cls.course.color, cls.course.code) }}>
                                 {cls.course.code}
                               </div>
                               <div className="text-sm font-medium text-zinc-900 dark:text-white mb-2 leading-tight">

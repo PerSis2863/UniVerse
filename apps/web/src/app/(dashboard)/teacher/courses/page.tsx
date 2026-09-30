@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
+import { courseColor } from '@/lib/course-color';
 
 export default function TeacherCourses() {
   const router = useRouter();
@@ -100,7 +101,7 @@ export default function TeacherCourses() {
                 </div>
 
                 <div className="flex flex-col h-full">
-                  <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: course.color || '#6366f1' }}>
+                  <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: courseColor(course.color, course.code) }}>
                     <div className="absolute top-4 left-4 text-4xl opacity-50 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-300">
                       {course.emoji || '📚'}
                     </div>
@@ -141,7 +142,7 @@ export default function TeacherCourses() {
       {showDetailsModal && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowDetailsModal(null)}>
           <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
-            <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: showDetailsModal.color || '#6366f1' }}>
+            <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: courseColor(showDetailsModal.color, showDetailsModal.code) }}>
                <button onClick={() => setShowDetailsModal(null)} className="absolute top-4 right-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-zinc-900 dark:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>

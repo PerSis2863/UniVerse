@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
+import { courseColor } from '@/lib/course-color';
 
 export default function AdminCoursesPage() {
   const { data: courses = [], mutate: mutateCourses } = useSWR('/courses/admin/all', fetcher);
@@ -141,7 +142,7 @@ export default function AdminCoursesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course: any) => (
               <div key={course.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden flex flex-col group">
-                <div className="h-24 p-6 relative flex items-center justify-between" style={{ backgroundColor: course.color || '#6366f1' }}>
+                <div className="h-24 p-6 relative flex items-center justify-between" style={{ backgroundColor: courseColor(course.color, course.code) }}>
                   <div className="bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-white">
                     {course.code}
                   </div>

@@ -8,6 +8,7 @@ import { CalendarClock, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { authedJson } from '@/lib/authed-fetch';
+import { courseColor } from '@/lib/course-color';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 type Slot = { id: string; dayOfWeek: number; startTime: string; endTime: string; type: string; course: { id: string; code: string; name: string; color: string | null }; room: { id: string; name: string } | null };
@@ -76,7 +77,7 @@ export default function TimetableManagementPage() {
                     <ul className="space-y-2">
                       {daySlots.map((s) => (
                         <li key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03]">
-                          <span className="w-1.5 h-10 rounded-full" style={{ backgroundColor: s.course.color || '#6366f1' }} />
+                          <span className="w-1.5 h-10 rounded-full" style={{ backgroundColor: courseColor(s.course.color, s.course.code) }} />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{s.course.code} · {s.course.name}</p>
                             <p className="text-xs text-zinc-500">{s.startTime}–{s.endTime} · {s.type.toLowerCase()}{s.room ? ` · ${s.room.name}` : ''}</p>

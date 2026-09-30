@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/auth';
 import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
+import { courseColor } from '@/lib/course-color';
 
 interface Overview {
   name: string;
@@ -104,6 +105,8 @@ function LevelRing({ progress }: { progress: number }) {
     </svg>
   );
 }
+
+const letter = (p: number) => (p >= 90 ? 'A' : p >= 80 ? 'B' : p >= 70 ? 'C' : p >= 60 ? 'D' : 'F');
 
 const QUICK_ACTIONS = [
   { icon: BookOpen, label: 'Courses', href: '/student/courses' },
@@ -213,7 +216,7 @@ export default function StudentDashboard() {
                     {data.schedule.map((c) => (
                       <li key={c.id} className="flex items-center gap-4">
                         <span className="w-11 text-right text-xs font-semibold text-zinc-500 tabular-nums">{c.start}</span>
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-indigo-500/10" style={{ backgroundColor: c.course.color || '#6366f1' }} />
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-indigo-500/10" style={{ backgroundColor: courseColor(c.course.color, c.course.code) }} />
                         <div className="flex-1 min-w-0 flex items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.course.name}</p>
@@ -246,8 +249,8 @@ export default function StudentDashboard() {
                         className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06] hover:border-indigo-500/30 transition-colors"
                       >
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: `${c.color || '#6366f1'}22` }}>
-                            {c.emoji || <BookOpen className="w-4 h-4" style={{ color: c.color || '#6366f1' }} />}
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: `${courseColor(c.color, c.code)}22` }}>
+                            {c.emoji || <BookOpen className="w-4 h-4" style={{ color: courseColor(c.color, c.code) }} />}
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.name}</p>
@@ -268,6 +271,19 @@ export default function StudentDashboard() {
                     ))}
                   </div>
                 )}
+              </Panel>
+
+              <Panel title={t('dashboard.quick_actions')} icon={Sparkles} delay={0.2}>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {QUICK_ACTIONS.map((a) => (
+                    <Link key={a.label} href={a.href} className="group flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors">
+                      <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 border border-indigo-500/15 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <a.icon className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
+                      </span>
+                      <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white">{a.label}</span>
+                    </Link>
+                  ))}
+                </div>
               </Panel>
             </div>
 
@@ -328,36 +344,33 @@ export default function StudentDashboard() {
                 )}
               </Panel>
 
-              <Panel title="Recent grades" icon={GraduationCap} delay={0.2}>
+              <Panel title="Recent grades" icon={GraduationCap} delay={0.2}
+                action={<Link href="/student/grades" className="text-xs font-semibold text-indigo-500 hover:text-indigo-400 inline-flex items-center gap-0.5">{t('dashboard.view_all')} <ChevronRight className="w-3.5 h-3.5" /></Link>}
+              >
                 {data.recentGrades.length === 0 ? (
                   <p className="text-sm text-zinc-500">No graded work yet.</p>
                 ) : (
-                  <div className="space-y-3">
-                    {data.recentGrades.map((g) => (
-                      <div key={g.id} className="flex items-center gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{g.name}</p>
-                          <p className="text-[11px] text-zinc-500">{g.course}</p>
-                        </div>
-                        <span className={cn('text-sm font-bold tabular-nums', g.percent >= 70 ? 'text-emerald-500' : g.percent >= 50 ? 'text-amber-500' : 'text-rose-500')}>{g.percent}%</span>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    {data.recentGrades.map((g) => {
+                      const tone = g.percent >= 70 ? 'emerald' : g.percent >= 50 ? 'amber' : 'rose';
+                      return (
+                        <Link key={g.id} href="/student/grades" className="flex items-center gap-3 p-2 -mx-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors group">
+                          <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shrink-0',
+                            tone === 'emerald' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : tone === 'amber' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400')}>
+                            {letter(g.percent)}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-zinc-900 dark:text-white truncate group-hover:text-indigo-500 transition-colors">{g.name}</p>
+                            <p className="text-[11px] text-zinc-500 truncate">{g.course} · {formatDistanceToNowStrict(new Date(g.gradedAt), { addSuffix: true })}</p>
+                          </div>
+                          <span className={cn('text-sm font-bold tabular-nums', tone === 'emerald' ? 'text-emerald-500' : tone === 'amber' ? 'text-amber-500' : 'text-rose-500')}>{g.percent}%</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </Panel>
 
-              <Panel title={t('dashboard.quick_actions')} icon={Sparkles} delay={0.25}>
-                <div className="grid grid-cols-3 gap-2">
-                  {QUICK_ACTIONS.map((a) => (
-                    <Link key={a.label} href={a.href} className="group flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors">
-                      <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 border border-indigo-500/15 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <a.icon className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />
-                      </span>
-                      <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white">{a.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </Panel>
             </div>
           </div>
         )}
