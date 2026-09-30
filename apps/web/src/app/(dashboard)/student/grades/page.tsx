@@ -127,7 +127,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
 }
 
 // Grade distribution donut
-function GradeDonut({ grades }: { grades: { grade: string; percentage: number }[] }) {
+function GradeDonut({ grades, avg }: { grades: { grade: string; percentage: number }[]; avg: number }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const counts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
   grades.forEach(g => {
@@ -181,10 +181,10 @@ function GradeDonut({ grades }: { grades: { grade: string; percentage: number }[
             );
           })}
           <text x={cx} y={cy - 5} textAnchor="middle" fontSize="16" fontWeight="800" fill="currentColor" className="fill-zinc-900 dark:fill-white">
-            {((counts.A / total) * 100).toFixed(0)}%
+            {getLetter(avg)}
           </text>
           <text x={cx} y={cy + 12} textAnchor="middle" fontSize="8" className="fill-zinc-500">
-            A grades
+            average
           </text>
         </svg>
       </div>
@@ -195,11 +195,11 @@ function GradeDonut({ grades }: { grades: { grade: string; percentage: number }[
               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: slice.color }} />
               <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{slice.label}</span>
             </div>
-            <span className="text-xs font-bold" style={{ color: slice.color }}>{slice.count} course{slice.count !== 1 ? 's' : ''}</span>
+            <span className="text-xs font-bold" style={{ color: slice.color }}>{slice.count} · {Math.round(slice.pct)}%</span>
           </div>
         ))}
         <div className="pt-1 border-t border-zinc-200 dark:border-zinc-800">
-          <div className="text-xs text-zinc-500">Total: {total} courses</div>
+          <div className="text-xs text-zinc-500">{total} graded item{total !== 1 ? 's' : ''}</div>
         </div>
       </div>
     </div>
@@ -222,7 +222,7 @@ function getLetter(percentage: number) {
 }
 
 export default function GradesPage() {
-  const [semester, setSemester] = useState('All Grades');
+  const [semester, setSemester] = useState('All courses');
   const [showModal, setShowModal] = useState(false);
   const [transcriptType, setTranscriptType] = useState('full');
 
@@ -274,14 +274,15 @@ export default function GradesPage() {
       code: g.course?.code || '---',
       credits: g.course?.credits || 3,
       assignment: g.assignmentName,
+      date: g.gradedAt ?? g.createdAt,
       grade: getLetter(percentage),
       percentage: Math.round(percentage)
     };
   });
 
-  const allGradesData: Record<string, typeof mappedGrades> = {
-    'All Grades': mappedGrades,
-  };
+  // "All courses" plus one entry per course, so the transcript and charts can focus on one course.
+  const allGradesData: Record<string, typeof mappedGrades> = { 'All courses': mappedGrades };
+  for (const r of mappedGrades) (allGradesData[r.course] ??= []).push(r);
 
   const gradesData = allGradesData[semester] ?? [];
   const avg = gradesData.length ? gradesData.reduce((a: number, r: any) => a + r.percentage, 0) / gradesData.length : 0;
@@ -350,9 +351,9 @@ export default function GradesPage() {
         rightNode={
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="btn-primary h-9 px-4 text-sm"
           >
-            <Download className="w-4 h-4" /> Download Transcript
+            <Download className="w-4 h-4" /> <span className="hidden sm:inline">Download transcript</span><span className="sm:hidden">Transcript</span>
           </button>
         }
       />
@@ -360,7 +361,7 @@ export default function GradesPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <KpiCard title="Cumulative GPA" value={semGPA} icon={TrendingUp} change={0} color="indigo" />
+          <KpiCard title={semester === 'All courses' ? 'Cumulative GPA' : 'Course GPA'} value={semGPA} icon={TrendingUp} change={0} color="indigo" />
           <KpiCard title="Credits Earned" value={byCourse.reduce((acc, c) => acc + (c.credits || 0), 0).toString()} icon={Award} change={0} color="emerald" />
           <KpiCard title="Average Score" value={`${Math.round(avg)}%`} icon={BookOpen} change={0} color="fuchsia" />
         </div>
@@ -413,8 +414,8 @@ export default function GradesPage() {
             <h3 className="font-bold text-zinc-900 dark:text-white mb-1 flex items-center gap-2">
               <Award className="w-4 h-4 text-emerald-500" /> Grade Distribution
             </h3>
-            <p className="text-xs text-zinc-500 mb-4">Breakdown for {semester}</p>
-            <GradeDonut grades={gradesData} />
+            <p className="text-xs text-zinc-500 mb-4">Letter grades across {semester === 'All courses' ? 'all your courses' : semester}</p>
+            <GradeDonut grades={gradesData} avg={avg} />
           </div>
         </div>
 
@@ -427,6 +428,7 @@ export default function GradesPage() {
             <select
               value={semester}
               onChange={e => setSemester(e.target.value)}
+              aria-label="Show grades for"
               className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50 font-medium text-zinc-900 dark:text-white"
             >
               {Object.keys(allGradesData).map(s => <option key={s}>{s}</option>)}
@@ -438,7 +440,7 @@ export default function GradesPage() {
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/[0.06] text-sm text-zinc-500 dark:text-zinc-400">
                   <th className="pb-3 font-medium px-4">Course / Assignment</th>
-                  <th className="pb-3 font-medium px-4 text-center hidden sm:table-cell">Credits</th>
+                  <th className="pb-3 font-medium px-4 text-center hidden sm:table-cell">Graded</th>
                   <th className="pb-3 font-medium px-4 text-center">Score</th>
                   <th className="pb-3 font-medium px-4 text-center">Grade</th>
                 </tr>
@@ -465,7 +467,7 @@ export default function GradesPage() {
                       <div className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{record.course}</div>
                       <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-mono">{record.code} • {record.assignment}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-center text-zinc-600 dark:text-zinc-300 font-medium hidden sm:table-cell">{record.credits}</td>
+                    <td className="py-4 px-4 text-sm text-center text-zinc-600 dark:text-zinc-300 font-medium hidden sm:table-cell whitespace-nowrap">{record.date ? new Date(record.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
                     <td className="py-4 px-4 text-center">
                       <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{record.percentage}%</div>
                       <div className="w-16 h-1 rounded-full bg-zinc-200 dark:bg-zinc-700 mx-auto mt-1 overflow-hidden">
@@ -473,7 +475,7 @@ export default function GradesPage() {
                           initial={{ width: 0 }}
                           animate={{ width: `${record.percentage}%` }}
                           transition={{ delay: Math.min(i, 6) * 0.03 + 0.2, duration: 0.6 }}
-                          className="h-full rounded-full bg-indigo-500"
+                          className={cn('h-full rounded-full', record.percentage >= 90 ? 'bg-emerald-500' : record.percentage >= 80 ? 'bg-indigo-500' : record.percentage >= 70 ? 'bg-amber-500' : 'bg-red-500')}
                         />
                       </div>
                     </td>
@@ -495,10 +497,10 @@ export default function GradesPage() {
           </div>
 
           <div className="mt-6 flex justify-end items-center gap-3">
-            <button onClick={handleRequestOfficial} disabled={requesting} className="btn-secondary text-sm h-10 px-4 flex items-center justify-center gap-2">
-              <FileBadge className="w-4 h-4" /> Request Official Transcript
+            <button onClick={handleRequestOfficial} disabled={requesting} aria-busy={requesting || undefined} className="btn-secondary text-sm h-10 px-4">
+              {requesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileBadge className="w-4 h-4" />} {requesting ? 'Sending…' : 'Request official transcript'}
             </button>
-            <button onClick={() => setShowModal(true)} className="btn-primary text-sm h-10 px-4 flex items-center justify-center gap-2">
+            <button onClick={() => setShowModal(true)} className="btn-primary text-sm h-10 px-4">
               <Download className="w-4 h-4" /> Download PDF
             </button>
           </div>
@@ -518,7 +520,7 @@ export default function GradesPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Download Transcript</h3>
-                <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
+                <button onClick={() => setShowModal(false)} aria-label="Close" className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>

@@ -21,6 +21,7 @@ import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { Loader2 } from 'lucide-react';
+import { courseColor } from '@/lib/course-color';
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -145,7 +146,7 @@ export default function TeacherDashboard() {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: `${c.color}20` }}>📚</div>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: `${courseColor(c.color, c.code)}20` }}>📚</div>
                       <div>
                         <div className="font-semibold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{c.name}</div>
                         <div className="text-xs text-zinc-500">{c.code} • {c.students} students</div>
@@ -159,7 +160,7 @@ export default function TeacherDashboard() {
                   <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.06] overflow-hidden">
                     <motion.div
                       className="h-full rounded-full"
-                      style={{ backgroundColor: c.color }}
+                      style={{ backgroundColor: courseColor(c.color, c.code) }}
                       initial={{ width: 0 }}
                       animate={{ width: `${c.completion}%` }}
                       transition={{ duration: 1, ease: 'easeOut', delay: 0.2 + i * 0.1 }}

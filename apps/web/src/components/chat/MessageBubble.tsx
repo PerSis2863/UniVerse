@@ -47,6 +47,17 @@ function RichText({ text, mine }: { text: string; mine: boolean }) {
   );
 }
 
+// Each person keeps the same colour everywhere, so a list of chats is easy to scan.
+const AVATAR_GRADIENTS = [
+  'from-indigo-500 to-violet-500', 'from-sky-500 to-cyan-500', 'from-emerald-500 to-teal-500', 'from-amber-500 to-orange-500',
+  'from-rose-500 to-pink-500', 'from-fuchsia-500 to-purple-500', 'from-blue-500 to-indigo-500', 'from-lime-500 to-emerald-500',
+];
+function avatarGradient(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
+}
+
 export function Avatar({ name, src, size = 40, online }: { name: string; src?: string | null; size?: number; online?: boolean }) {
   const letters = name.split(/\s+/).filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   // A photo that fails to load (deleted, blocked, offline) falls back to the initials.
@@ -56,7 +67,7 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
       {src && failed !== src ? (
         <img src={src} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
       ) : (
-        <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-bold" style={{ fontSize: size * 0.36 }}>
+        <div className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold', avatarGradient(name))} style={{ fontSize: size * 0.36 }}>
           {letters}
         </div>
       )}

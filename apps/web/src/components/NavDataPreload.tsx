@@ -16,7 +16,7 @@ type Loader = [key: string, fetch: (key: string) => Promise<unknown>];
 
 const PAGES: Record<string, () => Loader[]> = {
   '/student': () => [[`/api/student/overview?dow=${(new Date().getDay() + 6) % 7}`, authedJson]],
-  '/student/courses': () => [['/courses/my', fetcher]],
+  '/student/courses': () => [['/courses/my', fetcher], [`/api/student/overview?dow=${(new Date().getDay() + 6) % 7}`, authedJson]],
   '/student/grades': () => [['/grades/student', fetcher]],
   '/student/quizzes': () => [['/quizzes/student/my-quizzes', fetcher]],
   '/student/attendance': () => [['/attendance/student', fetcher]],

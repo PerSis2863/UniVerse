@@ -23,6 +23,7 @@ import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 import { safeHref } from '@/lib/safe-href';
+import { courseColor } from '@/lib/course-color';
 
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -135,7 +136,7 @@ export function CourseBoard({ role }: { role: Role }) {
             <button key={c.id} onClick={() => setCourseId(c.id)}
               className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm whitespace-nowrap border transition-all',
                 courseId === c.id ? 'text-white border-transparent shadow-lg' : 'bg-white/60 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-indigo-400/40')}
-              style={courseId === c.id ? { background: c.color || '#4f46e5' } : undefined}>
+              style={courseId === c.id ? { background: courseColor(c.color, c.code) } : undefined}>
               <span className="font-bold">{c.code}</span>
               <span className="hidden sm:inline opacity-80">{c.name.split(' ').slice(0, 3).join(' ')}</span>
             </button>
@@ -145,7 +146,7 @@ export function CourseBoard({ role }: { role: Role }) {
         {/* Header */}
         <div className="px-4 sm:px-8 py-4 border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: course?.color || '#4f46e5', viewTransitionName: course ? vtName('course', course.id) : undefined }}>{course?.code?.slice(-2)}</div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: courseColor(course?.color, course?.code), viewTransitionName: course ? vtName('course', course.id) : undefined }}>{course?.code?.slice(-2)}</div>
             <div className="min-w-0">
               <h2 className="font-bold text-zinc-900 dark:text-white truncate" style={{ viewTransitionName: course ? vtName('course-title', course.id) : undefined }}>{course?.name}</h2>
               <p className="text-xs text-zinc-500">{course?.teacher?.name ?? 'Instructor'}{board ? ` · ${board.course._count.enrollments} student${board.course._count.enrollments === 1 ? '' : 's'}` : ''}</p>
