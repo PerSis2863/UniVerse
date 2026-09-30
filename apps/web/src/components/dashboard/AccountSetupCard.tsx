@@ -23,21 +23,28 @@ export function AccountSetupCard() {
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const [checked, setChecked] = useState(false); // email check finished (the card appears once, complete)
+
   useEffect(() => {
     try { setHidden(localStorage.getItem(HIDE_KEY) === '1'); } catch { setHidden(false); }
     (async () => {
       try {
+        // Demo and LMS sessions have no Firebase account: nothing to verify, and no need to load it.
+        const token = localStorage.getItem('accessToken') ?? '';
+        if (token.startsWith('mock-token-') || token.startsWith('ut1.')) { setEmailVerified(null); return; }
         const { auth } = await import('@/lib/firebase');
         await auth.authStateReady();
         await auth.currentUser?.reload().catch(() => {});
         setEmailVerified(auth.currentUser ? auth.currentUser.emailVerified : null);
       } catch {
         setEmailVerified(null);
+      } finally {
+        setChecked(true);
       }
     })();
   }, []);
 
-  if (!data || hidden) return null;
+  if (!data || hidden || !checked) return null;
 
   const needsDepartment = data.role === 'STUDENT' || data.role === 'TEACHER';
   const steps = [

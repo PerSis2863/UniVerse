@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { openCommandPalette } from '@/components/ui/CommandPalette';
+import { openCommandPalette } from '@/lib/palette';
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Plus, CheckCircle2, X, Archive, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';

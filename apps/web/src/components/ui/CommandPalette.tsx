@@ -49,9 +49,7 @@ function score(text: string, q: string) {
 }
 
 /** Open from anywhere: window.dispatchEvent(new Event('universe:open-palette')) */
-export function openCommandPalette() {
-  window.dispatchEvent(new Event('universe:open-palette'));
-}
+export { openCommandPalette } from '@/lib/palette';
 
 export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const [open, setOpen] = useState(false);
@@ -82,6 +80,8 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       else if (e.key === 'Escape') setOpen(false);
     };
     const onOpen = () => setOpen(true);
+    // Opened (Ctrl+K / search button) before this component had loaded.
+    if (window.__universePalettePending) { window.__universePalettePending = false; setOpen(true); }
     document.addEventListener('keydown', onKey);
     window.addEventListener('universe:open-palette', onOpen);
     return () => { document.removeEventListener('keydown', onKey); window.removeEventListener('universe:open-palette', onOpen); };

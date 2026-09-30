@@ -170,8 +170,6 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <AccountSetupCard />
-
         {error && (
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-500">
             Couldn&apos;t load your dashboard right now. Please refresh in a moment.
@@ -191,6 +189,9 @@ export default function StudentDashboard() {
             </>
           )}
         </div>
+
+        {/* Below the main figures, so it never pushes them down when it appears. */}
+        <AccountSetupCard />
 
         {data && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
