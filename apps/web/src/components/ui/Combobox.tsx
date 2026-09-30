@@ -22,6 +22,10 @@ type Source = readonly string[] | readonly ComboOption[] | (() => Promise<ComboO
 interface Indexed extends ComboOption { n: string; initials: string; k: string }
 
 const MAX_SHOWN = 40;
+// Fixed class strings for the rows (no class merging per row per keystroke: it made typing lag).
+const ROW_BASE = 'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer select-none transition-colors duration-75';
+const ROW = `${ROW_BASE} text-zinc-700 dark:text-zinc-300`;
+const ROW_ACTIVE = `${ROW_BASE} bg-indigo-500/10 text-zinc-900 dark:text-white`;
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const STOP = new Set(['of', 'the', 'de', 'la', 'le', 'des', 'du', 'and', 'et', 'for', 'di', 'del', 'da', 'y', 'e', 'für', 'an', 'at', 'in']);
 
@@ -231,10 +235,7 @@ export function Combobox({
         aria-selected={selected}
         onMouseMove={() => setActive((a) => (a === i ? a : i))}
         onClick={(e) => { e.preventDefault(); pickRef.current(o.label); }} // preventDefault: inside a <label>, the click would re-focus the input and reopen the list
-        className={cn(
-          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer select-none transition-colors duration-75',
-          i === active ? 'bg-indigo-500/10 text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300',
-        )}
+        className={i === active ? ROW_ACTIVE : ROW}
       >
         {o.icon && <span className="text-base leading-none shrink-0" aria-hidden>{o.icon}</span>}
         <span className="min-w-0 flex-1 truncate"><Highlight label={o.label} query={hl} /></span>
