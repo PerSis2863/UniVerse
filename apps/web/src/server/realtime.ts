@@ -5,7 +5,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 // so they refetch right away instead of waiting for the next poll.
 
 export type RealtimeEvent =
-  | { type: 'chat'; conversationId: string } // new/edited message, reaction, poll vote, members
+  | { type: 'chat'; conversationId: string; call?: boolean } // new/edited message, reaction, poll vote, members (call: a call started)
   | { type: 'typing'; conversationId: string; name: string } // someone is typing (shown, nothing refetched)
   | { type: 'notification' } // a new in-app notification
   | { type: 'refresh'; keys: string[] }; // SWR keys (or prefixes ending in "*") to revalidate

@@ -230,7 +230,7 @@ const PREVIEW: Record<string, string> = { IMAGE: '📷 Photo', FILE: '📎 File'
 // doesn't flood their inbox.
 async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string) {
   const everyone = await prisma.conversationParticipant.findMany({ where: { conversationId }, select: { userId: true } });
-  const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId });
+  const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId, ...(type === 'CALL' ? { call: true } : {}) });
   const now = new Date();
   const [convo, allMembers] = await Promise.all([
     prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true } }),

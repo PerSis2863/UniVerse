@@ -10,7 +10,7 @@ import { useLowData } from '@/store/low-data';
 // Live updates in the browser: one WebSocket per tab (see cloudflare/worker.ts). Server events make
 // the matching SWR data refetch at once; while connected, chat and notifications don't poll.
 
-type ServerEvent = { type: 'hello' } | { type: 'chat'; conversationId: string } | { type: 'typing'; conversationId: string; name: string } | { type: 'notification' } | { type: 'refresh'; keys: string[] };
+type ServerEvent = { type: 'hello' } | { type: 'chat'; conversationId: string; call?: boolean } | { type: 'typing'; conversationId: string; name: string } | { type: 'notification' } | { type: 'refresh'; keys: string[] };
 
 // Who is typing in each chat, from live 'typing' events (shown for 6 seconds, like the server's
 // own record). Kept here instead of refetching the whole chat for every "typing…".
@@ -148,7 +148,8 @@ function handle(event: ServerEvent) {
     case 'chat':
       void mutate('/api/chat/conversations');
       void mutate(startsWith(`/api/chat/conversations/${event.conversationId}/`));
-      void mutate('/api/chat/incoming');
+      // Only a new call can change the ringing card (other chat events used to refetch it too).
+      if (event.call) void mutate('/api/chat/incoming');
       break;
     case 'typing':
       noteTyping(event.conversationId, event.name);
