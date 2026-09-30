@@ -1926,3 +1926,61 @@ model ImpactReport {
 
   @@map("impact_reports")
 }
+
+// LTI 1.3: LMS platforms (Moodle, Canvas…) registered by an admin, and the links between their
+// users / course contexts and UniVerse accounts / courses.
+model LtiPlatform {
+  id            String   @id @default(cuid())
+  name          String
+  issuer        String
+  clientId      String
+  deploymentIds Json     @default("[]") // string[]; empty = any
+  authLoginUrl  String
+  authTokenUrl  String?
+  jwksUrl       String
+  trustEmails   Boolean  @default(false) // link to existing accounts by email
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([issuer, clientId])
+  @@map("lti_platforms")
+}
+
+// One-time OIDC state + nonce for a launch in progress (valid 10 minutes).
+model LtiNonce {
+  id            String   @id @default(cuid())
+  platformId    String
+  state         String   @unique
+  nonce         String   @unique
+  targetLinkUri String?
+  used          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("lti_nonces")
+}
+
+model LtiUser {
+  id         String   @id @default(cuid())
+  platformId String
+  sub        String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  @@unique([platformId, sub])
+  @@index([userId])
+  @@map("lti_users")
+}
+
+model LtiContext {
+  id         String   @id @default(cuid())
+  platformId String
+  contextId  String
+  courseId   String
+  title      String
+  createdAt  DateTime @default(now())
+
+  @@unique([platformId, contextId])
+  @@map("lti_contexts")
+}

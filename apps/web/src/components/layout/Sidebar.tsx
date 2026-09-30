@@ -157,6 +157,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/early-warning', label: '🛟 Early warning' },
         { href: '/admin/approvals', label: 'Approvals' },
         { href: '/admin/audit', label: 'Activity Log' },
+        { href: '/admin/integrations/lti', label: '🔌 LMS integration (LTI)' },
         { href: '/admin/courses', label: 'nav.courses' },
         { href: '/admin/administrative', label: 'nav.administrative' },
         { href: '/admin/internships', label: 'nav.internships' },

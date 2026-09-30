@@ -2,6 +2,7 @@ import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } 
 import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
 import { ForbiddenException, UnauthorizedException } from './http';
+import { isSessionToken, verifySessionToken } from './session-token';
 
 // Turns a bearer token into a platform user (ported from the old NestJS API).
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
@@ -128,6 +129,13 @@ function decodeExp(token: string): number | undefined {
 }
 
 async function resolveUserUncached(token: string): Promise<User> {
+  // UniVerse's own session tokens (people who signed in from their LMS via LTI).
+  if (isSessionToken(token)) {
+    const uid = verifySessionToken(token);
+    const user = uid ? await prisma.user.findUnique({ where: { id: uid } }) : null;
+    if (!user) throw new UnauthorizedException('Your session has expired. Please open UniVerse again from your course.');
+    return user;
+  }
 
   if (token.startsWith('mock-token-')) {
     if (!isDemoLoginEnabled()) throw new UnauthorizedException('Demo login is disabled');

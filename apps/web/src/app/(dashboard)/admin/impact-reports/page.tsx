@@ -25,7 +25,7 @@ export default function ImpactReportsPage() {
   const run = async (kind: 'preview' | 'issue') => {
     setBusy(kind);
     try {
-      if (kind === 'preview') setPreview(await authedJson<ReportData>('/api/impact-reports', { method: 'POST', body: JSON.stringify({ ...form, preview: true }) }));
+      if (kind === 'preview') setPreview(await authedJson<ReportData>(`/api/impact-reports?${new URLSearchParams({ preview: '1', ...form })}`));
       else {
         const r = await authedJson<{ url: string }>('/api/impact-reports', { method: 'POST', body: JSON.stringify(form) });
         await navigator.clipboard?.writeText(r.url).catch(() => {});

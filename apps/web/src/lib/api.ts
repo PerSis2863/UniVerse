@@ -49,13 +49,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && original && !original._retry) {
       original._retry = true;
       const fresh = await getAuthToken(true);
-      if (fresh && !fresh.startsWith('mock-token-')) {
+      if (fresh && !fresh.startsWith('mock-token-') && !fresh.startsWith('ut1.')) {
         original.headers.Authorization = `Bearer ${fresh}`;
         return api(original);
       }
       // A leftover demo session that the server no longer accepts (demo login is off on the
       // live site): clear it and send the user to sign in instead of showing a broken dashboard.
-      if (fresh && fresh.startsWith('mock-token-') && typeof window !== 'undefined') {
+      if (fresh && (fresh.startsWith('mock-token-') || fresh.startsWith('ut1.')) && typeof window !== 'undefined') {
         try {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');

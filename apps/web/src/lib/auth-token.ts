@@ -17,6 +17,7 @@ export async function getAuthToken(forceRefresh = false): Promise<string | null>
     stored = null;
   }
   if (stored && stored.startsWith('mock-token-')) return stored;
+  if (stored && stored.startsWith('ut1.')) return stored; // signed in from an LMS (LTI)
 
   try {
     const { auth } = await import('./firebase');

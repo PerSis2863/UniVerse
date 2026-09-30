@@ -80,7 +80,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       const token = localStorage.getItem('accessToken');
-      signedIn = !!firebaseUser || !!token?.startsWith('mock-token-');
+      signedIn = !!firebaseUser || !!token?.startsWith('mock-token-') || !!token?.startsWith('ut1.');
       if (!cancelled) setIsSignedIn(signedIn);
       if (signedIn) {
         reportSession('SESSION');

@@ -10,6 +10,13 @@ export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Only admins can see impact reports.' }, { status: 403 });
+  // ?preview=1&title=&organization=&from=&to= — the figures, without issuing anything.
+  const sp = new URL(req.url).searchParams;
+  if (sp.get('preview') === '1') {
+    const period = parsePeriod(sp.get('from'), sp.get('to'));
+    if (!period) return NextResponse.json({ error: 'Choose a valid period.' }, { status: 400 });
+    return NextResponse.json(await computeReport({ title: sp.get('title')?.trim().slice(0, 140) || 'Verified impact report', organization: sp.get('organization')?.trim().slice(0, 200) || null, ...period }));
+  }
   const [reports, orgs] = await Promise.all([
     prisma.impactReport.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, slug: true, title: true, organization: true, periodStart: true, periodEnd: true, isPublic: true, views: true, createdAt: true, createdByName: true } }),
     prisma.impactCertificate.groupBy({ by: ['organization'], where: { status: 'ISSUED', revokedAt: null }, _count: { _all: true }, orderBy: { _count: { organization: 'desc' } }, take: 100 }),
@@ -25,12 +32,11 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Only admins can issue impact reports.' }, { status: 403 });
   const b = await req.json().catch(() => ({}));
-  const from = new Date(b.from), to = new Date(b.to);
-  if (isNaN(+from) || isNaN(+to) || from > to) return NextResponse.json({ error: 'Choose a valid period.' }, { status: 400 });
-  to.setUTCHours(23, 59, 59, 999);
+  const period = parsePeriod(b.from, b.to);
+  if (!period) return NextResponse.json({ error: 'Choose a valid period.' }, { status: 400 });
+  const { from, to } = period;
   const title = typeof b.title === 'string' && b.title.trim() ? b.title.trim().slice(0, 140) : 'Verified impact report';
   const organization = typeof b.organization === 'string' && b.organization.trim() ? b.organization.trim().slice(0, 200) : null;
-  if (b.preview === true) return NextResponse.json(await computeReport({ title, organization, from, to }));
   try {
     const r = await issueReport({ title, organization, from, to }, { id: user.id, name: user.name });
     audit(user, { action: 'impact_report.issued', summary: `Issued impact report “${title}”${organization ? ` for ${organization}` : ''}`, targetType: 'impact_report', targetId: r.id }, req);
@@ -38,4 +44,11 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'Reports can’t be signed yet (the credential signing key is missing).' }, { status: 503 });
   }
+}
+
+function parsePeriod(a: unknown, b: unknown) {
+  const from = new Date(String(a)), to = new Date(String(b));
+  if (isNaN(+from) || isNaN(+to) || from > to) return null;
+  to.setUTCHours(23, 59, 59, 999);
+  return { from, to };
 }
