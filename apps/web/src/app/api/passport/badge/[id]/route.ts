@@ -9,7 +9,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   const { id } = await params;
-  const badge = await openBadgeFor(user.id, id);
+  let badge: Awaited<ReturnType<typeof openBadgeFor>>;
+  try { badge = await openBadgeFor(user.id, id); }
+  catch { return NextResponse.json({ error: 'Badge downloads aren’t set up yet (the credential signing key is missing). Please contact support.' }, { status: 503 }); }
   if (!badge) return NextResponse.json({ error: 'Only your verified, signed credentials can be exported.' }, { status: 404 });
   const json = new URL(req.url).searchParams.get('format') === 'json';
   return new NextResponse(json ? JSON.stringify(badge.credential, null, 2) : badge.jwt, {
