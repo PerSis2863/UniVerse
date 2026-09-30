@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 
   const prompt = `Write the executive impact report from this live platform data:\n\n${JSON.stringify(data, null, 2)}`;
   let res = await callGemini(PRIMARY_MODEL, apiKey, prompt);
-  if ((res.status === 404 || res.status === 400) && FALLBACK_MODEL !== PRIMARY_MODEL) {
+  if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK_MODEL !== PRIMARY_MODEL) {
     res = await callGemini(FALLBACK_MODEL, apiKey, prompt);
   }
   if (!res.ok) {

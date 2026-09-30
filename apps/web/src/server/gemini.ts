@@ -23,7 +23,7 @@ export async function geminiJson<T>(system: string, prompt: string, schema: obje
   };
   try {
     let res = await call(PRIMARY(), apiKey, body);
-    if ((res.status === 404 || res.status === 400) && FALLBACK() !== PRIMARY()) res = await call(FALLBACK(), apiKey, body);
+    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK() !== PRIMARY()) res = await call(FALLBACK(), apiKey, body);
     if (!res.ok) {
       console.error('Gemini request failed:', res.status, (await res.text()).slice(0, 300));
       return null;
@@ -56,7 +56,7 @@ export async function geminiFileText(bytes: Uint8Array, mimeType: string): Promi
   };
   try {
     let res = await call(PRIMARY(), apiKey, body);
-    if ((res.status === 404 || res.status === 400) && FALLBACK() !== PRIMARY()) res = await call(FALLBACK(), apiKey, body);
+    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK() !== PRIMARY()) res = await call(FALLBACK(), apiKey, body);
     if (!res.ok) {
       console.error('Gemini file read failed:', res.status, (await res.text()).slice(0, 300));
       return null;
