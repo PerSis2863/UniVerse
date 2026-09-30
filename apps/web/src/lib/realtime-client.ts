@@ -5,6 +5,7 @@ import { mutate } from 'swr';
 import { authedFetch } from './authed-fetch';
 import { isSampleMode } from './sample-mode';
 import { bootstrapTicket } from './bootstrap';
+import { useLowData } from '@/store/low-data';
 
 // Live updates in the browser: one WebSocket per tab (see cloudflare/worker.ts). Server events make
 // the matching SWR data refetch at once; while connected, chat and notifications don't poll.
@@ -99,7 +100,9 @@ export function useUserActive() {
  */
 export function useLiveInterval(normal: number, live: number) {
   const connected = useRealtimeConnected();
-  return useUserActive() ? (connected ? live : normal) : 0;
+  const lowData = useLowData((st) => st.enabled); // low-data mode: poll a third as often
+  const ms = connected ? live : normal;
+  return useUserActive() ? (lowData && ms ? ms * 3 : ms) : 0;
 }
 
 let helloCount = 0;

@@ -62,7 +62,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
 
   const s = data?.summary;
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-5">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-5 min-w-0">
       <div className="rounded-2xl border border-sky-500/20 bg-sky-500/[0.06] p-4 text-sm text-sky-900 dark:text-sky-100 flex gap-3">
         <Info className="w-5 h-5 shrink-0 text-sky-500 mt-0.5" />
         <p className="leading-relaxed">
@@ -143,7 +143,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
 function FlagDetail({ f, onMessage, onUpdate }: { f: Flag; onMessage: () => void; onUpdate: (b: { status?: Flag['status']; note?: string }, done?: string) => void }) {
   const [note, setNote] = useState(f.note ?? '');
   return (
-    <div className="px-4 pb-4 border-t border-zinc-100 dark:border-white/[0.06] pt-4 grid md:grid-cols-[1fr_18rem] gap-5">
+    <div className="px-4 pb-4 border-t border-zinc-100 dark:border-white/[0.06] pt-4 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_18rem] gap-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why they’re on this list</p>
         {f.reasons.length ? (

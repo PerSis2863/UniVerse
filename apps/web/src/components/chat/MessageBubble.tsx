@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2 } from 'lucide-react';
+import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon } from 'lucide-react';
 import { languageName } from '@/lib/languages';
+import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes } from './chat-client';
@@ -180,12 +181,10 @@ export function MessageBubble(p: Props) {
     content = <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
-      <button onClick={() => p.onOpenImage(m.attachmentUrl!)} className="block p-1">
-        <img src={m.attachmentUrl} alt={m.attachmentName || 'Photo'} loading="lazy" className="rounded-xl max-h-80 w-auto object-cover" />
-      </button>
+      <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />
     );
   } else if (m.type === 'VIDEO' && m.attachmentUrl) {
-    content = <video src={m.attachmentUrl} controls preload="metadata" className="rounded-xl max-h-80 m-1" />;
+    content = <ChatVideo url={m.attachmentUrl} />;
   } else if (m.type === 'AUDIO' && m.attachmentUrl) {
     content = <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} />;
   } else if (m.type === 'FILE' && m.attachmentUrl) {
@@ -418,4 +417,29 @@ function MenuItem({ icon: Icon, label, onClick, danger }: { icon: typeof Copy; l
       <Icon className="w-4 h-4" /> {label}
     </button>
   );
+}
+
+/** A photo in a chat. In low-data mode, photos from others load only when tapped. */
+function ChatPhoto({ url, name, size, mine, onOpen }: { url: string; name?: string | null; size?: number | null; mine: boolean; onOpen: () => void }) {
+  const lowData = useLowData((s) => s.enabled);
+  const [show, setShow] = useState(false);
+  if (lowData && !mine && !show) {
+    return (
+      <button onClick={() => setShow(true)} className="m-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-black/5 dark:bg-white/[0.06] text-left">
+        <ImageIcon className="w-5 h-5 opacity-70" />
+        <span className="text-sm"><span className="block font-medium">Photo{size ? ` · ${formatBytes(size)}` : ''}</span><span className="block text-[11px] opacity-70">Low-data mode · tap to load</span></span>
+      </button>
+    );
+  }
+  return (
+    <button onClick={onOpen} className="block p-1">
+      <img src={url} alt={name || 'Photo'} loading="lazy" className="rounded-xl max-h-80 w-auto object-cover" />
+    </button>
+  );
+}
+
+/** A video in a chat: nothing is downloaded until play in low-data mode. */
+function ChatVideo({ url }: { url: string }) {
+  const lowData = useLowData((s) => s.enabled);
+  return <video src={url} controls preload={lowData ? 'none' : 'metadata'} className="rounded-xl max-h-80 m-1" />;
 }

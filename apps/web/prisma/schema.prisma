@@ -119,6 +119,7 @@ model User {
   studentProfile StudentProfile?
   skillPassport  SkillPassport?
   riskFlags      StudentRiskFlag[]
+  studyCards     StudyCard[]
   teacherProfile TeacherProfile?
 
   // Core Academic
@@ -313,6 +314,7 @@ model Course {
   electiveRequests      ElectiveRequest[]
   calendarEvents        CalendarEvent[]
   riskFlags             StudentRiskFlag[]
+  sources               CourseSource[]
 
   @@index([teacherId])
   @@index([status])
@@ -1863,4 +1865,44 @@ model StudentRiskFlag {
   @@index([courseId])
   @@index([status])
   @@map("student_risk_flags")
+}
+
+// Course AI tutor: the text the tutor answers from — course materials (read once) and teacher notes.
+model CourseSource {
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materialId String?  @unique // set for course materials; null for teacher notes
+  title      String
+  kind       String // material | note
+  text       String
+  chars      Int      @default(0)
+  status     String   @default("READY") // READY | FAILED
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([courseId])
+  @@map("course_sources")
+}
+
+// A student's flashcards, reviewed with spaced repetition (SM-2).
+model StudyCard {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String?
+  front       String
+  back        String
+  sourceTitle String?
+  due         DateTime @default(now())
+  interval    Int      @default(0) // days
+  ease        Float    @default(2.5)
+  reps        Int      @default(0)
+  lapses      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, due])
+  @@map("study_cards")
 }

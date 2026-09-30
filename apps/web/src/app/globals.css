@@ -928,3 +928,7 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 }
 .animate-heartbeat { display: inline-block; animation: heartbeat 1.6s ease-in-out infinite; transform-origin: center; }
 @media (prefers-reduced-motion: reduce) { .animate-heartbeat { animation: none; } }
+
+/* Low-data mode: lighter visuals (no blur layers or looping decorative animations). */
+.low-data *, .low-data *::before, .low-data *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.low-data .animate-pulse, .low-data .animate-ping, .low-data .animate-float { animation: none !important; }

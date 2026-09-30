@@ -11,6 +11,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
 import { DataConfig } from '@/components/DataConfig';
+import { LowDataSync } from '@/components/settings/LowDataToggle';
 import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
 import { startBootstrap } from '@/lib/bootstrap';
 import { authedJson } from '@/lib/authed-fetch';
@@ -130,6 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <DataConfig>
       <DashboardShell>
         <RealtimeSync />
+        <LowDataSync />
         {children}
       </DashboardShell>
     </DataConfig>

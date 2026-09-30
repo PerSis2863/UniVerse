@@ -67,3 +67,24 @@ export async function deleteFile(url: string): Promise<void> {
   }
   await r2DeleteByUrl(url);
 }
+
+const READ_MAX = 15 * 1024 * 1024;
+
+/**
+ * Reads a file uploaded through this app (database storage or our R2 files domain), e.g. for the
+ * AI tutor. Other URLs are never fetched. Null if it doesn't exist or is too large.
+ */
+export async function readAppFile(url: string): Promise<{ bytes: Uint8Array; mime: string } | null> {
+  const key = url.match(/^\/api\/files\/([A-Za-z0-9_-]{16,})(\/|$)/)?.[1];
+  if (key) {
+    const f = await prisma.storedFile.findUnique({ where: { key }, select: { data: true, mime: true, size: true } });
+    return f && f.size <= READ_MAX ? { bytes: new Uint8Array(f.data), mime: f.mime } : null;
+  }
+  let u: URL;
+  try { u = new URL(url); } catch { return null; }
+  if (!isStorageHostUrl(u)) return null;
+  const res = await fetch(u, { redirect: 'error' });
+  if (!res.ok || Number(res.headers.get('content-length') ?? 0) > READ_MAX) return null;
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  return bytes.length <= READ_MAX ? { bytes, mime: res.headers.get('content-type') ?? 'application/octet-stream' } : null;
+}

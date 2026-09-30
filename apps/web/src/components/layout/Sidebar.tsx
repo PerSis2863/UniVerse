@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Compass, PenTool, ShieldCheck } from 'lucide-react';
+import { Compass, PenTool, ShieldCheck, Sparkles } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
@@ -91,6 +91,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/links', label: 'nav.apps_links' },
       ]
     },
+    { href: '/student/tutor', label: 'AI tutor', icon: Sparkles },
     { href: '/student/knowledge-hub', label: 'nav.knowledge_hub', icon: Brain },
     { href: '/student/credentials', label: 'nav.credentials', icon: Award },
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
@@ -130,6 +131,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/services/rooms', label: 'nav.room_reservation' },
       ]
     },
+    { href: '/teacher/tutor', label: 'AI tutor', icon: Sparkles },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
     { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
     { href: '/boards', label: 'Whiteboards', icon: PenTool },
