@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
 import { IncomingCall } from '@/components/chat/IncomingCall';
+import { useOptimisticPath } from '@/lib/nav-pending';
+import { PendingPage } from './PendingPage';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -61,7 +63,8 @@ function tabsForRole(role: string): { base: string; items: TabItem[] } {
 
 /** iOS-style tab bar. The last tab ("More") opens the full navigation sheet. */
 function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => void; moreOpen: boolean }) {
-  const pathname = usePathname();
+  // The tapped tab lights up at once, not when its page has downloaded.
+  const pathname = useOptimisticPath(usePathname());
   const { base, items } = tabsForRole(role);
 
   const isActive = (item: TabItem) => {
@@ -123,11 +126,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuthStore();
   const pathname = usePathname();
+  const openingPath = useOptimisticPath(pathname);
 
-  // Close the navigation sheet whenever the route changes.
+  // Close the navigation sheet as soon as a page in it is tapped (and on any route change).
   useEffect(() => {
     setSidebarOpen(false);
-  }, [pathname]);
+  }, [openingPath]);
 
   const openSearch = () => {
     openCommandPalette();
@@ -163,7 +167,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         <main className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip">
           <SampleModeBar />
           {/* Re-mount pages when switching between sample and real data so they reload from the right source */}
-          <Fragment key={sampleMode ? 'sample' : 'real'}>{children}</Fragment>
+          <Fragment key={sampleMode ? 'sample' : 'real'}><PendingPage>{children}</PendingPage></Fragment>
         </main>
       </div>
 

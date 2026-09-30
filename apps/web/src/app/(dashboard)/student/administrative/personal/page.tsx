@@ -91,7 +91,7 @@ export default function PersonalDataPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
           {isLoading || !data ? (
-            <div className="h-64 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />
+            <div className="h-64 rounded-3xl skeleton" />
           ) : (
             <>
               <section className={card}>

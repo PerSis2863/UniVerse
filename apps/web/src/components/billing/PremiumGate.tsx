@@ -13,7 +13,7 @@ export function PremiumGate({ feature, children }: { feature: PremiumFeature; ch
   if (isLoading) {
     return (
       <div className="flex-1 p-8 grid gap-4 md:grid-cols-3">
-        {[0, 1, 2].map((i) => <div key={i} className="h-40 rounded-3xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />)}
+        {[0, 1, 2].map((i) => <div key={i} className="h-40 rounded-3xl skeleton" />)}
       </div>
     );
   }

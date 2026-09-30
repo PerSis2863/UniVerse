@@ -860,6 +860,17 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 .dark .skeleton { background-color: rgb(255 255 255 / 0.05); background-image: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.06) 50%, transparent 80%); }
 @keyframes skeleton-sweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background-image: none; } }
+/* A loading placeholder fades in instead of popping (a quick 140 ms, so it never feels slower). */
+.skeleton-in { animation: backdrop-in 140ms ease-out; }
+
+/* Press feedback: controls whose own utilities only animate colours (\`transition-colors\`, the
+   usual case) would snap back from the pressed scale. Unlayered, so it adds scale to their list. */
+:where(button, [role="button"], a).transition-colors {
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, box-shadow, opacity, scale;
+}
+:where(button, [role="button"], a).transition-opacity { transition-property: opacity, scale; }
+/* Tappable cards (a link card with hover effects) sink slightly under the finger, like iOS. */
+a.group:not(.sidebar-item):active { scale: 0.985; transition-duration: 70ms; }
 
 /* Shared-element page transitions (course card → Blackboard): quick, springy morph */
 ::view-transition-group(*) { animation-duration: 380ms; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }

@@ -105,7 +105,7 @@ export default function GlobalPartnersPage() {
 
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[0, 1, 2, 3].map((i) => <div key={i} className="h-48 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-48 rounded-2xl skeleton" />)}
             </div>
           ) : filtered.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 p-12 text-center">

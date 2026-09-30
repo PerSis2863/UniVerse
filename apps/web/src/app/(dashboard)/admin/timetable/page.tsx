@@ -57,7 +57,7 @@ export default function TimetableManagementPage() {
             </div>
           )}
 
-          {isLoading ? <div className="h-48 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" /> : slots.length === 0 ? (
+          {isLoading ? <div className="h-48 rounded-3xl skeleton" /> : slots.length === 0 ? (
             <FeatureGuide
               icon={CalendarClock}
               title="Build your weekly timetable"

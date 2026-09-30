@@ -69,6 +69,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
+        {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
+        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f8fafc}html.dark{background:#0a0d13;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}
         <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />

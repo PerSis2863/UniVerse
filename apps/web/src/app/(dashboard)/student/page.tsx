@@ -182,7 +182,7 @@ export default function StudentDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-40 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)
+            Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-40 rounded-3xl skeleton" />)
           ) : !data ? null : (
             <>
               <StatTile delay={0} label="Enrolled courses" value={String(s!.courses)} sub={s!.courses ? 'This term' : 'Not enrolled yet'} icon={BookOpen} gradient="from-indigo-500 to-violet-500" />

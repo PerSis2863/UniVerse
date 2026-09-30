@@ -5,14 +5,13 @@ import { COMPANY, LEGAL_LINKS } from '@/lib/company';
 const COLUMNS = [
   { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#solutions', label: 'Solutions' }, { href: '/#security', label: 'Security' }] },
   { title: 'For', links: [{ href: '/#solutions', label: 'Students' }, { href: '/#solutions', label: 'Universities' }, { href: '/#solutions', label: 'NGOs & organizations' }] },
-  { title: 'Company', links: [{ href: '/#faq', label: 'FAQ' }, { href: '/contact', label: 'Contact' }, { href: '/contact#sales', label: 'Talk to sales' }] },
-  { title: 'Trust', links: [{ href: '/security', label: 'Product Security' }, { href: '/accessibility', label: 'Accessibility' }, { href: '/policies', label: 'Corporate Policies' }] },
+  { title: 'Company', links: [{ href: '/#faq', label: 'FAQ' }, { href: '/contact#sales', label: 'Talk to sales' }] },
 ];
 
 export function MarketingFooter() {
   return (
     <footer className="relative z-10 border-t border-white/[0.06] mt-10">
-      <div className="max-w-7xl mx-auto px-6 py-14 grid gap-10 grid-cols-2 md:grid-cols-[1.5fr_repeat(4,1fr)]">
+      <div className="max-w-7xl mx-auto px-6 py-14 grid gap-10 grid-cols-2 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2.5 mb-4">
             <UniverseLogo size="sm" />

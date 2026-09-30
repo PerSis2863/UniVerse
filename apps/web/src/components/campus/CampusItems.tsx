@@ -36,7 +36,7 @@ export function CampusItemList({ kind, guide }: {
 }) {
   const { data, error, isLoading } = useSWR<CampusItem[]>(`/api/campus-items?kind=${kind}`, authedJson);
 
-  if (isLoading) return <div className="grid sm:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-2xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>;
+  if (isLoading) return <div className="grid sm:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-2xl skeleton" />)}</div>;
   if (error) return <p className="text-sm text-rose-500">{(error as Error).message}</p>;
   if (!data || data.length === 0) {
     return (

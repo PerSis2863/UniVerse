@@ -27,7 +27,7 @@ import { courseColor } from '@/lib/course-color';
 
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
-  loading: () => <div className="h-[600px] rounded-2xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />,
+  loading: () => <div className="h-[600px] rounded-2xl skeleton" />,
 });
 
 type Role = 'student' | 'teacher';
@@ -181,7 +181,7 @@ export function CourseBoard({ role }: { role: Role }) {
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-8">
           {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
-            : isLoading || !board ? <div className="max-w-3xl mx-auto space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-2xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>
+            : isLoading || !board ? <div className="max-w-3xl mx-auto space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>
             : (
               <div key={`${courseId}-${tab}`} className={cn('fade-up mx-auto', tab === 'whiteboard' ? 'max-w-6xl' : 'max-w-3xl')}>
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}

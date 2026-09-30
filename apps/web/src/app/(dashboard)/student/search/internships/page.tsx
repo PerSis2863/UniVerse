@@ -23,7 +23,7 @@ export default function InternshipHistoryPage() {
         <div className="max-w-5xl mx-auto">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
           {isLoading ? (
-            <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-20 rounded-2xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>
+            <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-20 rounded-2xl skeleton" />)}</div>
           ) : !data || data.length === 0 ? (
             <FeatureGuide
               icon={Briefcase}

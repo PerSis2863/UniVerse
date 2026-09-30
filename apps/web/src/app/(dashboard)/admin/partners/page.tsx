@@ -73,7 +73,7 @@ export default function SponsorPortalPage() {
           )}
 
           {isLoading ? (
-            <div className="h-40 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />
+            <div className="h-40 rounded-3xl skeleton" />
           ) : list.length === 0 ? (
             <FeatureGuide
               icon={Handshake}

@@ -54,7 +54,7 @@ export default function RoomBookingsPage() {
             </div>
           )}
 
-          {isLoading ? <div className="h-48 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" /> : rooms.length === 0 ? (
+          {isLoading ? <div className="h-48 rounded-3xl skeleton" /> : rooms.length === 0 ? (
             <FeatureGuide
               icon={DoorOpen}
               title="Add your campus rooms"

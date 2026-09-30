@@ -66,7 +66,7 @@ export function AccountSecurity() {
     location.href = '/login';
   };
 
-  if (info === undefined) return <div className="h-24 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />;
+  if (info === undefined) return <div className="h-24 rounded-2xl skeleton" />;
   const inputCls = 'w-full rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-3 py-2 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
   return (
     <div className="rounded-2xl border border-zinc-200 dark:border-white/10 p-5 space-y-4">

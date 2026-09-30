@@ -11,7 +11,7 @@ import dynamic from 'next/dynamic';
 import { WhenVisible } from '@/components/ui/WhenVisible';
 
 // The charting library is large, so the charts load after the rest of the dashboard.
-const chartSkeleton = () => <div className="h-full w-full rounded-xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />;
+const chartSkeleton = () => <div className="h-full w-full rounded-xl skeleton" />;
 const GradeDistributionChart = dynamic(() => import('./TeacherCharts').then((m) => m.GradeDistributionChart), { ssr: false, loading: chartSkeleton });
 const PerformanceTrendChart = dynamic(() => import('./TeacherCharts').then((m) => m.PerformanceTrendChart), { ssr: false, loading: chartSkeleton });
 import { toast } from 'sonner';

@@ -143,7 +143,7 @@ function AiReport() {
       <AnimatePresence mode="wait">
         {loading ? (
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-            {[90, 75, 82, 60, 70].map((w, i) => <div key={i} className="h-3 rounded-full bg-zinc-200/70 dark:bg-white/[0.06] animate-pulse" style={{ width: `${w}%` }} />)}
+            {[90, 75, 82, 60, 70].map((w, i) => <div key={i} className="h-3 rounded-full skeleton" style={{ width: `${w}%` }} />)}
           </motion.div>
         ) : report ? (
           <motion.div key="report" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl bg-white/70 dark:bg-black/20 border border-zinc-200/70 dark:border-white/[0.05] p-6">

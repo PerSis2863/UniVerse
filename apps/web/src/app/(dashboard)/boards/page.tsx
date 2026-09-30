@@ -132,7 +132,7 @@ export default function BoardsPage() {
             </div>
           ) : isLoading ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {[0, 1, 2].map((i) => <div key={i} className="h-60 rounded-3xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />)}
+              {[0, 1, 2].map((i) => <div key={i} className="h-60 rounded-3xl skeleton" />)}
             </div>
           ) : list.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-white/10 p-10 sm:p-14 text-center">
