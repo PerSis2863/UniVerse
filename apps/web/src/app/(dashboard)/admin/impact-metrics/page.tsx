@@ -71,7 +71,7 @@ export default function ImpactMetricsPage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {isLoading || !data
-            ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />)
+            ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 rounded-2xl skeleton" />)
             : kpis.map((kpi, i) => (
                 <motion.div
                   key={kpi.title}

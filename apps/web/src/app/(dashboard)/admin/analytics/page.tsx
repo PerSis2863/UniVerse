@@ -110,7 +110,7 @@ function AnalyticsDashboard() {
   if (isLoading || !data) {
     return (
       <div className="flex-1 p-8 grid gap-4 md:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-32 rounded-3xl bg-zinc-100 dark:bg-white/[0.04] animate-pulse" />)}
+        {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-32 rounded-3xl skeleton" />)}
       </div>
     );
   }

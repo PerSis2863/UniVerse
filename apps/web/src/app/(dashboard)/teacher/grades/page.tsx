@@ -130,7 +130,7 @@ export default function TeacherGradesPage() {
         )}
 
         {error ? <p className="text-sm text-rose-500">{(error as any)?.response?.data?.message ?? 'Could not load grades.'}</p>
-          : isLoading || loadingCourses ? <div className="h-64 rounded-2xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />
+          : isLoading || loadingCourses ? <div className="h-64 rounded-2xl skeleton" />
           : rows.length === 0 ? <div className={`${card} p-10 text-center text-sm text-zinc-500`}>No students are enrolled in this course yet. Ask your campus admin to enroll them.</div>
           : (
             <div className={`${card} overflow-hidden`}>

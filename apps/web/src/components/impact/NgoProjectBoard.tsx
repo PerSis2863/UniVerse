@@ -65,7 +65,7 @@ export function NgoProjectBoard({ filter, sort = 'newest', guide }: Props) {
     }
   };
 
-  if (isLoading) return <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-48 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>;
+  if (isLoading) return <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-48 rounded-3xl skeleton" />)}</div>;
   if (error) return <p className="text-sm text-rose-500">Couldn&apos;t load projects right now. Please try again shortly.</p>;
   if (projects.length === 0) {
     return (

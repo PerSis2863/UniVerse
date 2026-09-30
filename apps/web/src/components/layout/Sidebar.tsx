@@ -16,6 +16,7 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
+import { useOptimisticPath } from '@/lib/nav-pending';
 
 export type NavItem = {
   href?: string;
@@ -276,7 +277,8 @@ function NavItemComponent({
 
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
-  const pathname = usePathname();
+  // The tapped entry lights up at once, not when its page has downloaded.
+  const pathname = useOptimisticPath(usePathname());
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const { t } = useLanguageStore();

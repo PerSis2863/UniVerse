@@ -26,7 +26,7 @@ export default function AdminQuizzesPage() {
       <Topbar title="Quizzes" subtitle="Every quiz across your courses" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
-          {isLoading ? <div className="h-48 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" /> : quizzes.length === 0 ? (
+          {isLoading ? <div className="h-48 rounded-3xl skeleton" /> : quizzes.length === 0 ? (
             <FeatureGuide
               icon={ClipboardCheck}
               title="Quizzes will appear here"

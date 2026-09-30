@@ -40,7 +40,7 @@ export default function CorporatePartnersPage() {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           {l1 || l2 ? (
-            <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>
+            <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-3xl skeleton" />)}</div>
           ) : companies.length === 0 ? (
             <FeatureGuide
               icon={Building2}

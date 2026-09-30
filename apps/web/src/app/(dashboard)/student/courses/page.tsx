@@ -37,7 +37,7 @@ export default function CoursesPage() {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         {error && <p className="text-sm text-rose-500 mb-4">Couldn&apos;t load your courses right now. Please try again shortly.</p>}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">{[0, 1, 2].map((i) => <div key={i} className="h-48 rounded-3xl bg-zinc-200/60 dark:bg-white/[0.04] animate-pulse" />)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">{[0, 1, 2].map((i) => <div key={i} className="h-48 rounded-3xl skeleton" />)}</div>
         ) : enrollments.length === 0 ? (
           <FeatureGuide
             icon={BookOpen}

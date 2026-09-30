@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { setPendingNav } from '@/lib/nav-pending';
 
 /**
  * A slim bar at the top of the screen while a page is opening, so every tap on a link gets
@@ -23,9 +24,14 @@ export function NavProgress() {
       if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search) || url.pathname.startsWith('/api/')) return;
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => setState('loading'), 80); // quick pages don't flash the bar
+      // Another page: menus switch to it now and the content area shows it loading (see nav-pending).
+      if (url.pathname !== location.pathname) setPendingNav(url.pathname);
     };
+    // Back/forward (and anything else that changes the address without a tap) cancels it.
+    const onPop = () => setPendingNav(null);
     document.addEventListener('click', onClick, true);
-    return () => document.removeEventListener('click', onClick, true);
+    window.addEventListener('popstate', onPop);
+    return () => { document.removeEventListener('click', onClick, true); window.removeEventListener('popstate', onPop); };
   }, []);
 
   // The new page is shown: finish the bar.
@@ -37,9 +43,10 @@ export function NavProgress() {
   }
   useEffect(() => {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    setPendingNav(null);
   }, [route]);
   useEffect(() => {
-    if (state === 'loading') { const t = setTimeout(() => setState('done'), 10_000); return () => clearTimeout(t); } // never stuck
+    if (state === 'loading') { const t = setTimeout(() => { setState('done'); setPendingNav(null); }, 10_000); return () => clearTimeout(t); } // never stuck
     if (state !== 'done') return;
     const t = setTimeout(() => setState('idle'), 350);
     return () => clearTimeout(t);
