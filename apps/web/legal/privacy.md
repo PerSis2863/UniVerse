@@ -42,6 +42,8 @@ We collect and process the following categories of personal data globally:
 - Timetable scheduling, elective preferences, and major change requests.
 - Uploaded academic documents, certificates, and assignments.
 
+- **Learning platform (LMS) sign-in:** if your Institution connects UniVerse to its learning platform (e.g. Moodle or Canvas via LTI 1.3), that platform sends us your LMS user identifier, name, email address, role (student or teacher) and the course you opened, so we can sign you in and link the course.
+
 ### 2.3 Student Profile, Career, and Impact Data
 
 - Institution-specific identifiers (Student ID, department, year of study, GPA).
@@ -132,7 +134,7 @@ When you actively submit an application for an NGO project, internship, startup 
 We utilize industry-leading technology partners bound by strict Data Processing Agreements (DPAs):
 
 - **Google LLC (Firebase Authentication):** Authentication and identity infrastructure.
-- **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, data included in AI impact reports, and chat messages you choose to translate (or that are translated because you or another member of the chat turned on auto-translate) are sent to Google to produce a response. Translations are stored with the message so each one is only produced once, and are deleted when the message is edited or deleted.
+- **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, data included in AI impact reports, chat messages you choose to translate (or that are translated because you or another member of the chat turned on auto-translate), questions you ask the course AI tutor together with the relevant passages of that course's materials, and course materials your teacher prepares for the tutor are sent to Google to produce a response. Tutor conversations are not stored by us; flashcards you create are saved to your account until you delete them. Translations are stored with the message so each one is only produced once, and are deleted when the message is edited or deleted.
 - **Cloudflare, Inc.:** Hosting and serverless computing (Workers), database (D1), file storage (R2), and real-time features.
 - **Stripe, Inc.:** PCI-compliant payment processing.
 - **Resend, Inc.:** Delivery of notification and account emails.
