@@ -60,6 +60,7 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/student/impact/ai-match', label: '🤖 AI Project Match' },
         { href: '/student/credentials', label: '🛡️ Verified Credentials' },
+        { href: '/student/passport', label: '🪪 Skills Passport' },
         { href: '/student/impact/startups', label: 'nav.startups' },
         { href: '/student/impact/ngo-marketplace', label: 'nav.ngo_marketplace' },
         { href: '/student/impact/edu-society', label: 'nav.edu_society' },

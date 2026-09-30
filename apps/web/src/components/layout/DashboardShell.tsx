@@ -53,7 +53,7 @@ function tabsForRole(role: string): { base: string; items: TabItem[] } {
     base: '/student',
     items: [
       { href: '/student', label: 'Home', icon: LayoutDashboard },
-      { href: '/student/impact/ngo-marketplace', label: 'Impact', icon: Globe2, match: ['/student/impact', '/student/credentials'] },
+      { href: '/student/impact/ngo-marketplace', label: 'Impact', icon: Globe2, match: ['/student/impact', '/student/credentials', '/student/passport'] },
       { href: '/student/courses', label: 'Courses', icon: BookOpen },
       { href: '/student/inbox', label: 'Messages', icon: MessageSquare },
     ],

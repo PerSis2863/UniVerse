@@ -117,6 +117,7 @@ model User {
 
   // Profiles
   studentProfile StudentProfile?
+  skillPassport  SkillPassport?
   teacherProfile TeacherProfile?
 
   // Core Academic
@@ -1812,4 +1813,24 @@ model MessageTranslation {
 
   @@unique([messageId, lang])
   @@map("message_translations")
+}
+
+// Skills passport: a public page a student can choose to share (verified credentials, skills,
+// courses), and Open Badges 3.0 exports of their credentials.
+model SkillPassport {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String   @unique // random, part of the public link
+  isPublic        Boolean  @default(false)
+  headline        String?
+  showSkills      Boolean  @default(true)
+  showCredentials Boolean  @default(true)
+  showCourses     Boolean  @default(false)
+  showImpact      Boolean  @default(true)
+  views           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("skill_passports")
 }

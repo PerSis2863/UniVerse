@@ -156,6 +156,38 @@ export class CredentialSigner {
     return { payload, hash, hashMatches, signatureValid, knownKey };
   }
 
+  /** A compact JWS (EdDSA) over `payload` with the platform key, for Open Badges 3.0 (VC-JWT). */
+  static signJwt(payload: Record<string, unknown>, kid: string) {
+    const { privateKey, publicKey } = this.load();
+    const jwk = publicKey.export({ format: 'jwk' }) as { kty: string; crv: string; x: string };
+    const header = { alg: 'EdDSA', typ: 'JWT', kid, jwk: { kty: jwk.kty, crv: jwk.crv, x: jwk.x } };
+    const enc = (v: unknown) => Buffer.from(JSON.stringify(v), 'utf8').toString('base64url');
+    const input = `${enc(header)}.${enc(payload)}`;
+    return `${input}.${cryptoSign(null, Buffer.from(input, 'utf8'), privateKey).toString('base64url')}`;
+  }
+
+  /** Checks a compact JWS made by signJwt; returns its payload, or null if the signature is wrong. */
+  static verifyJwt(jwt: string): Record<string, unknown> | null {
+    const parts = jwt.trim().split('.');
+    if (parts.length !== 3) return null;
+    try {
+      const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+      if (header.alg !== 'EdDSA') return null;
+      const { publicKey } = this.load();
+      const ok = cryptoVerify(null, Buffer.from(`${parts[0]}.${parts[1]}`, 'utf8'), publicKey, Buffer.from(parts[2], 'base64url'));
+      return ok ? JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** The public key as a JWK set (for verifiers of Open Badges). */
+  static jwks() {
+    const { publicKey, keyId } = this.load();
+    const jwk = publicKey.export({ format: 'jwk' }) as { kty: string; crv: string; x: string };
+    return { keys: [{ kty: jwk.kty, crv: jwk.crv, x: jwk.x, kid: keyId, alg: 'EdDSA', use: 'sig' }] };
+  }
+
   static publicKeyInfo() {
     const { publicKey, keyId, ephemeral } = this.load();
     return {

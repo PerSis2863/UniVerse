@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   Shield, ExternalLink, Copy, CheckCircle2, Clock, Loader2, Plus, X,
-  Globe2, ChevronDown, ChevronUp, Sparkles, Lock, Hash, AlertTriangle, XCircle
+  Globe2, ChevronDown, ChevronUp, Sparkles, Lock, Hash, AlertTriangle, XCircle, Download
 } from 'lucide-react';
 
 const TwitterIcon = ({ className }: { className?: string }) => (
@@ -22,6 +22,7 @@ const LinkedinIcon = ({ className }: { className?: string }) => (
 );
 import { Topbar } from '@/components/layout/Topbar';
 import { safeHref } from '@/lib/safe-href';
+import { downloadFile } from '@/lib/download';
 
 type CredentialStatus = 'PENDING' | 'ISSUED' | 'REVOKED' | 'REJECTED' | 'UNVERIFIED_LEGACY';
 
@@ -249,6 +250,11 @@ function CredentialCard({ cred }: { cred: Credential }) {
             <button onClick={copyLink}
               className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all">
               <Copy className="w-3 h-3" /> Copy Link
+            </button>
+            <button onClick={() => downloadFile(`/api/passport/badge/${cred.id}`, 'open-badge.jwt').then(() => toast.success('Open Badge downloaded')).catch((e) => toast.error(e.message))}
+              title="Signed Open Badges 3.0 credential for digital wallets and badge platforms"
+              className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              <Download className="w-3 h-3" /> Open Badge
             </button>
             <a href={`/verify/${cred.id}`} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
