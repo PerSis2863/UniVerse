@@ -102,6 +102,8 @@ const nextConfig: NextConfig = {
       test: /[\\/]@excalidraw[\\/]excalidraw[\\/]dist[\\/](prod|dev)[\\/].*\.js$/,
       loader: path.join(__dirname, 'scripts/excalidraw-assets-loader.cjs'),
     });
+    // The Terms and Privacy Policy pages show legal/*.md, bundled as text.
+    config.module.rules.push({ test: /[\\/]legal[\\/][^\\/]+\.md$/, type: 'asset/source' });
     return config;
   },
   async headers() {

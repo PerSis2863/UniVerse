@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/auth';
 import { Role, UserStatus, awaitingApproval, type ApplicationSummary } from '@/types';
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
+import { NavDataPreload } from '@/components/NavDataPreload';
 import { DataConfig } from '@/components/DataConfig';
 import { LowDataSync } from '@/components/settings/LowDataToggle';
 import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
@@ -146,6 +147,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <DashboardShell>
         <RealtimeSync />
         <LowDataSync />
+        <NavDataPreload />
         {children}
       </DashboardShell>
     </DataConfig>

@@ -44,7 +44,7 @@ export function UniverseLogo({
           <div 
             className={cn(
               "absolute inset-0 rounded-full blur-md opacity-60 transition-opacity duration-500 group-hover:opacity-100",
-              animated && "animate-pulse"
+              animated && "animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_4]"
             )}
             style={{
               background: 'radial-gradient(circle, rgba(99,102,241,0.45) 0%, rgba(6,182,212,0.3) 50%, rgba(249,115,22,0.15) 100%)',

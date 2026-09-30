@@ -352,9 +352,11 @@
 
   @keyframes uCurveDash { 0% { stroke-dashoffset: 140; } 100% { stroke-dashoffset: 0; } }
   @keyframes nLineDash  { 0% { stroke-dashoffset: 120; } 100% { stroke-dashoffset: 0; } }
-  .universe-u-beam { animation: uCurveDash 2.4s ease-in-out infinite; }
-  .universe-n-beam { animation: nLineDash 2.4s ease-in-out infinite; animation-delay: 0.6s; }
-  .universe-node-pulse { animation: pingNode 3s ease-in-out infinite; }
+  /* The logo plays its animation a few times, then rests: repainting the SVG (with its shadow)
+     every frame, forever, kept the sidebar busy on every page. */
+  .universe-u-beam { animation: uCurveDash 2.4s ease-in-out 3; }
+  .universe-n-beam { animation: nLineDash 2.4s ease-in-out 3; animation-delay: 0.6s; }
+  .universe-node-pulse { animation: pingNode 3s ease-in-out 3; }
   @keyframes pingNode { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 
 }
@@ -846,6 +848,8 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 @media (prefers-reduced-motion: reduce) { .mkt-float { animation: none; } }
 
 /* ─── Ambient two-tone background (indigo + fuchsia glow), shared by every page ─── */
+/* Still on purpose: moving glow behind the frosted-glass panels made the browser redo every blur
+   on every frame, forever (jank while scrolling, battery drain on phones). */
 .ambient-bg {
   position: fixed;
   inset: 0;
@@ -858,17 +862,14 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
   content: '';
   position: absolute;
   border-radius: 9999px;
-  will-change: transform;
 }
 .ambient-bg::before {
   top: -25%; left: -35%; width: max(80vw, 760px); height: max(80vw, 760px);
   background: radial-gradient(closest-side, rgba(79, 70, 229, 0.12), transparent);
-  animation: ambient-drift-a 18s ease-in-out infinite;
 }
 .ambient-bg::after {
   bottom: -30%; right: -40%; width: max(75vw, 720px); height: max(75vw, 720px);
   background: radial-gradient(closest-side, rgba(192, 38, 211, 0.08), transparent);
-  animation: ambient-drift-b 22s ease-in-out infinite;
 }
 .dark .ambient-bg::before { background: radial-gradient(closest-side, rgba(79, 70, 229, 0.26), transparent); }
 .dark .ambient-bg::after { background: radial-gradient(closest-side, rgba(192, 38, 211, 0.17), transparent); }
@@ -882,11 +883,6 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
   -webkit-mask-image: radial-gradient(ellipse at top, black 20%, transparent 70%);
 }
 .dark .ambient-bg__grid { background-image: linear-gradient(rgba(255, 255, 255, 0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.6) 1px, transparent 1px); }
-@keyframes ambient-drift-a { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(40px, -30px); } }
-@keyframes ambient-drift-b { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-40px, 30px); } }
-@media (prefers-reduced-motion: reduce) {
-  .ambient-bg::before, .ambient-bg::after { animation: none; }
-}
 
 /* ─── Two-tone glass chrome (sidebar, top bars) matching the landing page ─── */
 .glass-sidebar {
