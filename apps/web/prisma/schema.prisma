@@ -113,6 +113,7 @@ model User {
   termsVersion       String? // version of the Terms & Privacy the person accepted
   termsAcceptedAt    DateTime?
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
+  accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION (what they chose at sign-up)
   lastSeenAt         DateTime?
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
 

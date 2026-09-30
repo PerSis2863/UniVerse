@@ -63,6 +63,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
+  const [individual, setIndividual] = useState<'STUDENT' | 'INDEPENDENT' | null>(null); // for Individual sign-ups
   const [agreed, setAgreed] = useState(false); // Terms and Privacy Policy, required to create the account
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);
@@ -103,7 +104,7 @@ export default function RegisterPage() {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
-      const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole, acceptTerms: agreed ? TERMS_VERSION : undefined });
+      const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole, accountType: selectedRole === 'STUDENT' ? individual : undefined, acceptTerms: agreed ? TERMS_VERSION : undefined });
       const me = { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status || 'ACTIVE', createdAt: user.createdAt || new Date().toISOString(), application: user.application ?? null };
       setUser(me);
       reportSession('SIGN_UP', method);
@@ -223,13 +224,30 @@ export default function RegisterPage() {
                 );
               })}
             </div>
+            {selectedRole === 'STUDENT' && (
+              <fieldset className="mb-6 -mt-2">
+                <legend className="text-zinc-400 text-sm mb-3 font-medium">Which describes you?</legend>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {([
+                    ['STUDENT', 'I’m a student', 'At a university or school. You’ll add your details and your student card or enrolment certificate; an admin verifies it before your account opens.'],
+                    ['INDEPENDENT', 'I’m independent', 'Freelancer, professional or lifelong learner, not enrolled anywhere. No documents needed: start straight away.'],
+                  ] as const).map(([id, title, text]) => (
+                    <button key={id} type="button" onClick={() => setIndividual(id)} aria-pressed={individual === id}
+                      className={`text-left p-3.5 rounded-xl border-2 transition-all ${individual === id ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>
+                      <span className="flex items-center gap-2 font-semibold text-sm text-white">{individual === id && <Check className="w-4 h-4 text-indigo-400" />}{title}</span>
+                      <span className="block text-xs text-zinc-400 mt-1 leading-relaxed">{text}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <button
               type="button"
-              disabled={!selectedRole}
+              disabled={!selectedRole || (selectedRole === 'STUDENT' && !individual)}
               onClick={() => setStep('credentials')}
               className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 text-sm shadow-md transition-colors flex items-center justify-center gap-2"
             >
-              Continue as {selectedRoleData?.label || '...'}
+              Continue as {selectedRole === 'STUDENT' && individual ? (individual === 'STUDENT' ? 'a student' : 'an independent') : selectedRoleData?.label || '...'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

@@ -63,8 +63,15 @@ export default function auth(router: Router) {
       data: { ...(name && name !== user.name ? { name } : {}), onboardedAt: user.onboardedAt ?? new Date(), ...(acceptsTerms ? { termsVersion: TERMS_VERSION, termsAcceptedAt: new Date() } : {}) },
     });
     forgetUser(user.id);
+    // What they chose at sign-up. Individuals are either students (verified by an admin, from a
+    // student card or enrolment certificate) or independent (freelancers, professionals, lifelong
+    // learners: no verification, access straight away).
     const wanted = body?.role;
-    if ((REQUESTABLE_ROLES as readonly string[]).includes(wanted) && user.role === 'STUDENT') {
+    const accountType = wanted === 'TEACHER' ? 'STAFF' : wanted === 'ADMIN' ? 'ORGANIZATION' : body?.accountType === 'STUDENT' ? 'STUDENT' : 'INDEPENDENT';
+    if (!user.accountType) await prisma.user.update({ where: { id: user.id }, data: { accountType } });
+    if (wanted === 'STUDENT' && accountType === 'STUDENT' && user.role === 'STUDENT' && !user.accountType) {
+      await startSignupApplication({ ...user, name: name ?? user.name }, 'STUDENT');
+    } else if ((REQUESTABLE_ROLES as readonly string[]).includes(wanted) && wanted !== 'STUDENT' && user.role === 'STUDENT') {
       const role = wanted as (typeof REQUESTABLE_ROLES)[number];
       const invitation = await prisma.invitation.findUnique({ where: { email: user.email.toLowerCase() } });
       const invited = invitation && invitation.role === role && invitation.status === 'PENDING' && invitation.expiresAt > new Date();

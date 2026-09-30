@@ -24,7 +24,7 @@ import { awaitingApproval, type ApplicationStatus, type Role, type UserStatus } 
 // People who picked "teacher" when signing up land here until an admin decides; students can
 // apply from Settings. The role is only granted when an admin approves (server-side).
 
-type Requested = 'TEACHER' | 'ADMIN';
+type Requested = 'STUDENT' | 'TEACHER' | 'ADMIN';
 interface HistoryEvent { at: string; byName?: string | null; type: string; note?: string | null }
 interface Application {
   id: string;
@@ -58,6 +58,7 @@ type Form = Record<'institution' | 'department' | 'position' | 'staffId' | 'work
 };
 
 const ROLE_INFO: Record<Requested, { label: string; icon: typeof GraduationCap; blurb: string }> = {
+  STUDENT: { label: 'Verified student', icon: GraduationCap, blurb: 'Confirm you study at a university or school to get your student account and verified student badge.' },
   TEACHER: { label: 'Teacher / university staff', icon: Building2, blurb: 'Create courses, post grades and materials, run quizzes and take attendance.' },
   ADMIN: { label: 'NGO representative', icon: Globe, blurb: 'Post projects and work with universities. This gives admin access, so it is reviewed carefully.' },
 };
@@ -361,7 +362,7 @@ function Notice({ icon: Icon, tone, title, text }: { icon: typeof Clock; tone: '
 function Summary({ app }: { app: Application }) {
   const rows: [string, React.ReactNode][] = [
     ['Applying as', ROLE_INFO[app.requestedRole]?.label ?? app.requestedRole],
-    [app.requestedRole === 'ADMIN' ? 'Organization' : 'Institution', app.institution],
+    [app.requestedRole === 'ADMIN' ? 'Organization' : app.requestedRole === 'STUDENT' ? 'University or school' : 'Institution', app.institution],
     ['Department', app.department],
     ['Position', app.position],
     ['Staff ID', app.staffId],
@@ -431,16 +432,18 @@ function ApplicationForm({
   const [busy, setBusy] = useState<'save' | 'submit' | 'upload' | null>(null);
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF((p) => ({ ...p, [k]: e.target.value }));
   const ngo = f.requestedRole === 'ADMIN';
+  const stu = f.requestedRole === 'STUDENT';
 
   const missing = useMemo(() => {
     const m: string[] = [];
-    if (!f.institution.trim()) m.push(ngo ? 'organization' : 'institution');
-    if (!ngo && !f.department.trim()) m.push('department');
-    if (!f.position.trim()) m.push(ngo ? 'your role' : 'position');
+    if (!f.institution.trim()) m.push(ngo ? 'organization' : stu ? 'university or school' : 'institution');
+    if (!ngo && !f.department.trim()) m.push(stu ? 'programme' : 'department');
+    if (!stu && !f.position.trim()) m.push(ngo ? 'your role' : 'position');
     if (ngo && !f.message.trim()) m.push('about your organization');
-    if (!f.staffId.trim() && !f.workEmail.trim() && !f.proofUrl) m.push('a staff ID, work email or document');
+    if (stu && !f.proofUrl && !f.workEmail.trim()) m.push('your student card or enrolment certificate (or your university email)');
+    if (!stu && !f.staffId.trim() && !f.workEmail.trim() && !f.proofUrl) m.push('a staff ID, work email or document');
     return m;
-  }, [f, ngo]);
+  }, [f, ngo, stu]);
 
   const upload = async (file: File) => {
     if (file.size > 4 * 1024 * 1024) return toast.error('The document must be 4 MB or smaller.');
@@ -484,7 +487,7 @@ function ApplicationForm({
       {canChangeRole && (
         <fieldset>
           <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">I&apos;m applying as</legend>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-3 gap-3">
             {(Object.keys(ROLE_INFO) as Requested[]).map((r) => {
               const Icon = ROLE_INFO[r].icon;
               const on = f.requestedRole === r;
@@ -501,21 +504,23 @@ function ApplicationForm({
       )}
 
       <section className="space-y-4">
-        <h3 className="font-semibold text-zinc-900 dark:text-white">{ngo ? 'Your organization' : 'Where you teach'}</h3>
+        <h3 className="font-semibold text-zinc-900 dark:text-white">{ngo ? 'Your organization' : stu ? 'Where you study' : 'Where you teach'}</h3>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label={ngo ? 'Organization' : 'Institution'} required>
-            <input className={input} value={f.institution} onChange={set('institution')} maxLength={150} placeholder={ngo ? 'e.g. Green Earth Foundation' : 'e.g. Delhi University'} />
+          <Field label={ngo ? 'Organization' : stu ? 'University or school' : 'Institution'} required>
+            <input className={input} value={f.institution} onChange={set('institution')} maxLength={150} placeholder={ngo ? 'e.g. Green Earth Foundation' : stu ? 'e.g. Université de Nantes' : 'e.g. Delhi University'} />
           </Field>
-          <Field label="Department" required={!ngo}>
-            <input className={input} value={f.department} onChange={set('department')} maxLength={120} placeholder={ngo ? 'e.g. Partnerships' : 'e.g. Computer Science'} />
+          <Field label={stu ? 'Programme / field of study' : 'Department'} required={!ngo}>
+            <input className={input} value={f.department} onChange={set('department')} maxLength={120} placeholder={ngo ? 'e.g. Partnerships' : stu ? 'e.g. Bachelor in Computer Science' : 'e.g. Computer Science'} />
           </Field>
-          <Field label={ngo ? 'Your role' : 'Position'} required>
-            <input className={input} value={f.position} onChange={set('position')} maxLength={100} placeholder={ngo ? 'e.g. Programme officer' : 'e.g. Assistant professor'} />
+          <Field label={ngo ? 'Your role' : stu ? 'Year / level' : 'Position'} required={!stu}>
+            <input className={input} value={f.position} onChange={set('position')} maxLength={100} placeholder={ngo ? 'e.g. Programme officer' : stu ? 'e.g. 2nd year' : 'e.g. Assistant professor'} />
           </Field>
-          <Field label="Years of experience">
-            <input className={input} type="number" min={0} max={60} value={f.experienceYears} onChange={set('experienceYears')} />
-          </Field>
-          {!ngo && (
+          {!stu && (
+            <Field label="Years of experience">
+              <input className={input} type="number" min={0} max={60} value={f.experienceYears} onChange={set('experienceYears')} />
+            </Field>
+          )}
+          {!ngo && !stu && (
             <Field label="Subjects you teach" hint="Separate with commas">
               <input className={cn(input, 'sm:col-span-2')} value={f.subjects} onChange={set('subjects')} maxLength={300} placeholder="e.g. Algorithms, Databases" />
             </Field>
@@ -526,25 +531,25 @@ function ApplicationForm({
       <section className="space-y-4">
         <div>
           <h3 className="font-semibold text-zinc-900 dark:text-white">How we can confirm it&apos;s you</h3>
-          <p className="text-sm text-zinc-500 mt-0.5">Give at least one. A work email or a document gets you approved fastest.</p>
+          <p className="text-sm text-zinc-500 mt-0.5">{stu ? 'Upload your student card or enrolment certificate (or give your university email). Documents get you approved fastest.' : 'Give at least one. A work email or a document gets you approved fastest.'}</p>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Work email" hint="Your address at the institution; an admin may write to you there.">
+          <Field label={stu ? 'University email' : 'Work email'} hint="Your address at the institution; an admin may write to you there.">
             <input className={input} type="email" value={f.workEmail} onChange={set('workEmail')} maxLength={150} placeholder="name@university.edu" />
           </Field>
-          <Field label={ngo ? 'Registration / staff ID' : 'Staff / employee ID'}>
+          <Field label={ngo ? 'Registration / staff ID' : stu ? 'Student ID number' : 'Staff / employee ID'}>
             <input className={input} value={f.staffId} onChange={set('staffId')} maxLength={60} />
           </Field>
           <Field label="Phone">
             <input className={input} type="tel" value={f.phone} onChange={set('phone')} maxLength={30} placeholder="+91 98765 43210" />
           </Field>
-          <Field label="Public profile" hint="Staff page, LinkedIn or organization website">
+          <Field label="Public profile" hint={stu ? 'Optional: LinkedIn or portfolio' : 'Staff page, LinkedIn or organization website'}>
             <input className={input} type="url" value={f.profileUrl} onChange={set('profileUrl')} maxLength={300} placeholder="https://" />
           </Field>
         </div>
         <div>
           <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Document</span>
-          <p className="text-xs text-zinc-500 mb-2">Staff ID card, appointment letter or NGO registration. PDF or photo, up to 4 MB. Only admins can see it.</p>
+          <p className="text-xs text-zinc-500 mb-2">{stu ? 'Student card or enrolment certificate for this year.' : 'Staff ID card, appointment letter or NGO registration.'} PDF or photo, up to 4 MB. Only admins can see it.</p>
           {f.proofUrl ? (
             <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-zinc-200 dark:border-white/10">
               <a href={safeHref(f.proofUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-indigo-500 min-w-0"><FileText className="w-4 h-4 shrink-0" /><span className="truncate">{f.proofName || 'Document'}</span></a>
@@ -559,7 +564,7 @@ function ApplicationForm({
         </div>
       </section>
 
-      <Field label={ngo ? 'About your organization' : 'Anything else we should know?'} required={ngo} hint={ngo ? 'What you do and how you want to work with universities.' : 'Optional. E.g. which courses you plan to run.'}>
+      <Field label={ngo ? 'About your organization' : 'Anything else we should know?'} required={ngo} hint={ngo ? 'What you do and how you want to work with universities.' : stu ? 'Optional.' : 'Optional. E.g. which courses you plan to run.'}>
         <textarea className={cn(input, 'min-h-[110px]')} value={f.message} onChange={set('message')} maxLength={2000} />
       </Field>
 
