@@ -93,10 +93,19 @@ export async function completeLaunch(idToken: string, state: string, cookieState
   if (!platform || !platform.isActive) throw new LtiError('This LMS registration is no longer active.');
 
   let claims: JWTPayload & Record<string, unknown>;
+  const verify = () => jwtVerify(idToken, platformKeys(platform.jwksUrl), { issuer: platform.issuer, audience: platform.clientId, algorithms: ['RS256', 'RS384', 'RS512', 'ES256'], clockTolerance: 60 });
   try {
-    ({ payload: claims } = await jwtVerify(idToken, platformKeys(platform.jwksUrl), { issuer: platform.issuer, audience: platform.clientId, algorithms: ['RS256', 'RS384', 'RS512', 'ES256'], clockTolerance: 60 }));
+    ({ payload: claims } = await verify());
   } catch (e) {
-    throw new LtiError(`The launch token couldn’t be verified (${(e as Error).message}).`);
+    // The LMS may have rotated its keys: fetch them again once before giving up.
+    const code = (e as { code?: string }).code;
+    if (code !== 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' && code !== 'ERR_JWKS_NO_MATCHING_KEY') throw new LtiError(`The launch token couldn’t be verified (${(e as Error).message}).`);
+    jwksCache.delete(platform.jwksUrl);
+    try {
+      ({ payload: claims } = await verify());
+    } catch (e2) {
+      throw new LtiError(`The launch token couldn’t be verified (${(e2 as Error).message}).`);
+    }
   }
   if (claims.nonce !== pending.nonce) throw new LtiError('The launch token wasn’t issued for this sign-in (nonce mismatch).');
   if (Array.isArray(claims.aud) && claims.aud.length > 1 && claims.azp !== platform.clientId) throw new LtiError('The launch token is for a different tool (azp).');
