@@ -11,7 +11,10 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { RealtimeSync } from '@/components/RealtimeSync';
 import { DataConfig } from '@/components/DataConfig';
-import { reportSession } from '@/lib/sign-in-history';
+import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
+import { startBootstrap } from '@/lib/bootstrap';
+import { authedJson } from '@/lib/authed-fetch';
+import { isSampleMode } from '@/lib/sample-mode';
 
 type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean };
 
@@ -28,6 +31,17 @@ const toUser = (me: MeResponse, photoURL?: string | null) => ({
 });
 
 const RESYNC_MS = 5 * 60 * 1000;
+
+/** A saved sign-in on this device (checked before Firebase has restored it). */
+function hasSession() {
+  try {
+    return !!localStorage.getItem('accessToken') && !!localStorage.getItem('universe-auth');
+  } catch {
+    return false;
+  }
+}
+let sessionClaim: boolean | null = null;
+const claimSessionReportOnce = () => (sessionClaim ??= claimSessionReport());
 const noopSubscribe = () => () => {};
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +53,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
+
+  // Ask for everything the first screen needs in one request (see lib/bootstrap.ts). Started while
+  // rendering, before the page's own data hooks run, so they can use its answers. Runs once.
+  if (mounted && hasSession() && !isSampleMode()) {
+    startBootstrap(pathname, (body) => authedJson('/api/bootstrap', { method: 'POST', body }), { session: claimSessionReportOnce() });
+  }
 
   useEffect(() => {
     let cancelled = false;

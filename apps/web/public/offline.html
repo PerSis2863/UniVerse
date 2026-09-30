@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0f1e">
+<title>You're offline · UniVerse</title>
+<link rel="icon" href="/icon-192x192.png">
+<!-- A plain static page (no app code), served for free by Cloudflare and shown by the service
+     worker when a page that isn't saved on this device is opened without a connection. -->
+<style>
+  :root { --bg: #0b0f1e; --card: rgba(255,255,255,.035); --line: rgba(255,255,255,.07); --text: #fff; --muted: #a1a1aa; --faint: #71717a; --ok: #34d399; --warn: #fb923c; --brand: #4f46e5; color-scheme: dark; }
+  @media (prefers-color-scheme: light) { :root { --bg: #f7f7fb; --card: #fff; --line: #e4e4e7; --text: #18181b; --muted: #52525b; --faint: #71717a; --ok: #059669; --warn: #ea580c; color-scheme: light; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 16px calc(48px + env(safe-area-inset-bottom)); background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; }
+  .icon { position: relative; width: 96px; height: 96px; margin-bottom: 28px; }
+  .icon::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: color-mix(in srgb, var(--warn) 12%, transparent); animation: ping 2s cubic-bezier(0,0,.2,1) infinite; }
+  .icon div { position: relative; width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 25%, transparent); color: var(--warn); }
+  @keyframes ping { 75%, 100% { transform: scale(1.6); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .icon::before { animation: none; } }
+  h1 { margin: 0 0 6px; font-size: 24px; font-weight: 900; }
+  p { margin: 0; max-width: 24rem; color: var(--muted); font-size: 14px; }
+  .small { margin-top: 6px; color: var(--faint); font-size: 12px; }
+  ul { list-style: none; margin: 28px 0; padding: 0; width: 100%; max-width: 24rem; text-align: left; }
+  li.label { display: block; margin: 0 0 10px; padding: 0; border: 0; background: none; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+  li { display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 12px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); font-size: 14px; }
+  li span { margin-left: auto; font-size: 10px; font-weight: 600; color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); padding: 2px 8px; border-radius: 99px; }
+  button { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border: 0; border-radius: 14px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; cursor: pointer; box-shadow: 0 10px 25px -10px rgba(79,70,229,.6); }
+  button:hover { background: #6366f1; }
+  button:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 3px; }
+  .brand { margin-top: 48px; display: flex; align-items: center; gap: 8px; color: var(--faint); font-size: 14px; font-weight: 600; }
+  .brand b { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: var(--brand); color: #fff; font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="icon" aria-hidden="true"><div>
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M5 12.86a10 10 0 0 1 5.17-2.69"/><path d="M19 12.86a10 10 0 0 0-2-1.4"/><path d="M2 8.82a15 15 0 0 1 4.18-2.65"/><path d="M22 8.82a15 15 0 0 0-11.29-3.76"/><path d="m2 2 20 20"/></svg>
+  </div></div>
+  <h1>You're offline</h1>
+  <p>This page isn't saved on this device yet, and there's no internet connection.</p>
+  <p class="small">It opens by itself as soon as you're back online.</p>
+  <ul aria-label="Works offline">
+    <li class="label">Works offline</li>
+    <li>Pages you've opened before<span>Available</span></li>
+    <li>Answers from the help assistant<span>Available</span></li>
+  </ul>
+  <button id="retry" type="button">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+    <span>Try again</span>
+  </button>
+  <div class="brand"><b>U</b>UniVerse</div>
+  <script>
+    var reload = function () { location.reload(); };
+    addEventListener('online', reload);
+    document.getElementById('retry').addEventListener('click', function () { this.lastElementChild.textContent = 'Trying…'; setTimeout(reload, 600); });
+  </script>
+</body>
+</html>

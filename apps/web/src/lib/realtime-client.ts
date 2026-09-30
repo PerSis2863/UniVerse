@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { mutate } from 'swr';
 import { authedFetch } from './authed-fetch';
 import { isSampleMode } from './sample-mode';
+import { bootstrapTicket } from './bootstrap';
 
 // Live updates in the browser: one WebSocket per tab (see cloudflare/worker.ts). Server events make
 // the matching SWR data refetch at once; while connected, chat and notifications don't poll.
@@ -156,10 +157,14 @@ export function startRealtime(): () => void {
     if (stopped || ws || document.visibilityState === 'hidden') return;
     let path: string;
     try {
-      const res = await authedFetch('/api/realtime/ticket', { method: 'POST' });
-      if (res.status === 503 || res.status === 404) return schedule(5 * 60_000); // not available here; keep polling
-      if (!res.ok) throw new Error(String(res.status));
-      path = ((await res.json()) as { path: string }).path;
+      const fromBoot = await bootstrapTicket(); // the first connection uses the startup bundle's ticket
+      if (fromBoot) path = fromBoot;
+      else {
+        const res = await authedFetch('/api/realtime/ticket', { method: 'POST' });
+        if (res.status === 503 || res.status === 404) return schedule(5 * 60_000); // not available here; keep polling
+        if (!res.ok) throw new Error(String(res.status));
+        path = ((await res.json()) as { path: string }).path;
+      }
     } catch {
       return schedule(backoff());
     }

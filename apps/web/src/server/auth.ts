@@ -60,7 +60,7 @@ export function isDemoAccount(email: string | null | undefined): boolean {
  * must not be able to change real people's roles, accounts, grades or credentials. It can still
  * browse, chat and read notifications.
  */
-const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$|boards(\/|$))/;
+const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$|bootstrap$|boards(\/|$))/;
 export function demoWriteBlocked(req: Request, user: { role: string }, token: string | null): boolean {
   if (!token?.startsWith('mock-token-') || user.role !== 'ADMIN') return false;
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return false;

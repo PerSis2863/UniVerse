@@ -19,10 +19,18 @@ const withPWA = withPWAInit({
   // OfflineBar refetches the data on screen instead.
   reloadOnOnline: false,
   // The whiteboard's fonts (14 MB, mostly Chinese/Japanese glyphs) load on demand, not at install.
-  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!sitemap.xml', '!.well-known/**/*'],
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!sitemap.xml', '!offline.html', '!.well-known/**/*'],
+  // Shown for pages not saved on the device when offline: a plain static page (public/offline.html,
+  // served at /offline by Cloudflare's free static files, not the Worker).
   fallbacks: {
     document: '/offline',
   },
+  // Don't download the start page a second time at install just to store it: it's saved from the
+  // normal page load like any other page (one Worker request less per new visitor).
+  cacheStartUrl: false,
+  // Off: with it, the page downloaded the home page again in the background whenever its address
+  // became "/" (every visitor: one extra Worker request).
+  dynamicStartUrl: false,
   workboxOptions: {
     skipWaiting: true,
     disableDevLogs: true,

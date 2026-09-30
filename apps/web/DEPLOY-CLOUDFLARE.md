@@ -144,12 +144,16 @@ preview build of a branch that adds one fails until that change has been deploye
 
 Only requests that run the Worker count: pages, API calls, live-update connections. Pictures, code, fonts
 and other files in `public/` are served free by Cloudflare and never count. Measured on a local build:
-opening the dashboard costs ~9 requests, each page opened from the menu ~2 (the page and its data),
-and an open tab that nobody is using costs nothing. A student who signs in and opens 20 pages uses about
-50–60 requests, so the free plan covers roughly 1,500 active people a day. Beyond that, upgrade to Workers
+a visitor reading the home page costs 1 request, opening the dashboard 3 (the page, one startup bundle,
+the live-updates connection), each page opened from the menu ~2 (the page and its data), and an open tab
+that nobody is using costs nothing. A student who signs in and opens 20 pages uses about 40–45 requests,
+so the free plan covers roughly 2,000–2,500 active people a day. Beyond that, upgrade to Workers
 Paid ($5/month, 10 million requests a month included).
 
-What keeps the count low (don't undo these without measuring): links don't prefetch
+What keeps the count low (don't undo these without measuring): the app asks for everything its first
+screen needs in one request (`/api/bootstrap`, `src/lib/bootstrap.ts`), the offline page is a static file
+(`public/offline.html`), the service worker doesn't download the home page a second time
+(`cacheStartUrl` / `dynamicStartUrl` off in `next.config.ts`), links don't prefetch
 (`src/components/ui/Link.tsx`), the service worker saves pages as they load instead of fetching them again
 (`next.config.ts`), polling stops while live updates are connected and in idle tabs
 (`src/lib/realtime-client.ts`), reconnects back off and give up after repeated failures, and robots.txt keeps
