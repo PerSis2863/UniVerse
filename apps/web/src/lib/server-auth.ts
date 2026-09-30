@@ -1,13 +1,15 @@
 // Server-side (route handler) helper: confirms the caller is a signed-in UniVerse user from the
 // bearer token. Keeps paid services (Gemini, file storage) from being used anonymously by anyone
 // who finds the endpoint.
-import { demoWriteBlocked, extractBearer, resolveUser } from '@/server/auth';
+import { demoWriteBlocked, extractBearer, isOwner, resolveUser } from '@/server/auth';
 
 export interface SessionUser {
   id: string;
   name: string;
   email: string;
   role: string;
+  /** The platform owner (verified sign-in): every feature, whatever the plan. */
+  owner?: boolean;
 }
 
 export async function getSessionUser(request: Request): Promise<SessionUser | null> {
@@ -16,7 +18,7 @@ export async function getSessionUser(request: Request): Promise<SessionUser | nu
   try {
     const user = await resolveUser(token);
     if (demoWriteBlocked(request, user, token)) return null;
-    return { id: user.id, name: user.name, email: user.email, role: user.role };
+    return { id: user.id, name: user.name, email: user.email, role: user.role, owner: isOwner(user) };
   } catch {
     return null;
   }

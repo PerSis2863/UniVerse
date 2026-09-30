@@ -31,7 +31,8 @@ export async function requireAdmin(req: Request): Promise<Authorized | NextRespo
     return NextResponse.json({ error: 'Only organization admins can manage billing.' }, { status: 403 });
   }
   const org = await getOrCreateOrganization(user);
-  return { user, org, plan: effectivePlan(org) };
+  // The owner has every paid feature without a subscription.
+  return { user, org, plan: user.owner ? 'ENTERPRISE' : effectivePlan(org) };
 }
 
 /** Like requireAdmin, but also rejects with 402 unless the organization's plan unlocks `feature`. */

@@ -28,8 +28,8 @@ const ROLES = [
   },
   {
     id: 'TEACHER',
-    label: 'Staff',
-    description: 'Teachers and university staff: manage courses, students and content. An admin approves staff accounts.',
+    label: 'Staff / Mentor',
+    description: 'Teachers, university staff and mentors: manage courses, students and content. An admin approves staff accounts.',
     icon: Building2,
     color: 'emerald',
     gradient: 'from-emerald-500/20 to-teal-500/20',
@@ -38,7 +38,7 @@ const ROLES = [
   },
   {
     id: 'ADMIN',
-    label: 'Organization',
+    label: 'Organisation',
     description: 'NGOs, companies and institutions: post projects and partner with universities. An admin approves organizations.',
     icon: Globe,
     color: 'amber',
@@ -304,12 +304,6 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                <div className="mb-5 p-3 rounded-xl border border-white/10 bg-white/[0.03]">
-                  <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
-                    <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setError(''); }} required className="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0" />
-                    <span>I have read and agree to the <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link> and the <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.</span>
-                  </label>
-                </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   <button
@@ -372,6 +366,12 @@ export default function RegisterPage() {
                         className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                         placeholder="••••••••" minLength={6} />
                     </div>
+                  </div>
+                  <div className="p-3 rounded-xl border border-white/10 bg-white/[0.03]">
+                    <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
+                      <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setError(''); }} required className="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0" />
+                      <span>I have read and agree to the <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link> and the <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.</span>
+                    </label>
                   </div>
 
                   <div className="flex gap-3 pt-2">

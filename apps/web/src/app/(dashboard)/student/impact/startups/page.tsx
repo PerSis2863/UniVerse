@@ -2,6 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Rocket, Users, DollarSign, Globe2, Sparkles, Heart, CheckCircle2, X, Send, TrendingUp, Lightbulb, Building2, Award, ArrowUpRight, Search, Loader2 } from 'lucide-react';
@@ -81,7 +82,8 @@ export default function StartupIncubatorPage() {
         subtitle="Join, co-found, or fund student startups tackling real-world social challenges with verified CSR backing."
         rightNode={
           <button onClick={() => setPitching(true)} className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition-all">
-            <Lightbulb className="w-4 h-4" /> Pitch My Startup
+            <Lightbulb className="w-4 h-4" />
+      <SectionTabs tabs={OPPORTUNITY_TABS} /> Pitch My Startup
           </button>
         }
       />

@@ -2,13 +2,13 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Compass, PenTool, ShieldCheck, Sparkles } from 'lucide-react';
+import { PenTool, ShieldCheck, Sparkles } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
   GraduationCap, Brain, ClipboardList, Calendar as CalendarIcon,
-  Info, AlertTriangle, Globe, Folder, Search, Link as LinkIcon, ChevronDown, ChevronRight,
-  Coffee, Shield, Map, Globe2, Layers, Award, Crown
+  Info, AlertTriangle, Folder, Search, ChevronDown, ChevronRight,
+  Coffee, Shield, Map, Globe2, Layers, Crown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -21,17 +21,23 @@ export type NavItem = {
   href?: string;
   label: string;
   icon: any;
-  subItems?: { href: string; label: string }[];
+  subItems?: { href: string; label: string; also?: string[] }[];
   action?: string;
+  /** Other pages that count as this entry (tabs of the same section). */
+  also?: string[];
 };
+
+/** Whether `pathname` is the page of this entry (its href without a query, or one of `also`). */
+const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
 
 export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
     { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard },
     { href: '/student/information', label: 'nav.information', icon: Info },
     { href: '/student/calendar', label: 'nav.calendar', icon: CalendarIcon },
-    { 
-      label: 'nav.schooling', icon: GraduationCap, 
+    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
+    {
+      label: 'nav.schooling', icon: GraduationCap,
       subItems: [
         { href: '/student/courses', label: 'nav.courses' },
         { href: '/student/groups', label: 'nav.groups' },
@@ -42,29 +48,33 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/grades', label: 'nav.grades' },
         { href: '/student/quizzes', label: 'nav.quizzes' },
         { href: '/student/skills', label: 'nav.skills' },
+        { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },
       ]
     },
-    { 
+    {
+      label: 'AI tutor & credentials', icon: Sparkles,
+      subItems: [
+        { href: '/student/tutor', label: 'AI tutor' },
+        { href: '/student/credentials', label: 'nav.credentials' },
+        { href: '/student/passport', label: 'Skills passport' },
+      ]
+    },
+    {
       label: 'nav.administrative_data', icon: Folder,
       subItems: [
         { href: '/student/administrative/personal', label: 'nav.personal_data' },
         { href: '/student/administrative/documents', label: 'nav.school_documents' },
         { href: '/student/administrative/accounting', label: 'nav.accounting' },
         { href: '/student/administrative/scholarships', label: 'nav.scholarships' },
-        { href: '/student/administrative/consents', label: 'nav.my_consents' },
       ]
     },
     {
       label: 'nav.global_impact', icon: Globe2,
       subItems: [
-        { href: '/student/impact/ai-match', label: '🤖 AI Project Match' },
-        { href: '/student/credentials', label: '🛡️ Verified Credentials' },
-        { href: '/student/passport', label: '🪪 Skills Passport' },
-        { href: '/student/impact/startups', label: 'nav.startups' },
-        { href: '/student/impact/ngo-marketplace', label: 'nav.ngo_marketplace' },
+        { href: '/student/impact/ai-match', label: 'AI project match' },
+        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies'] },
         { href: '/student/impact/edu-society', label: 'nav.edu_society' },
-        { href: '/student/impact/companies', label: 'nav.companies' },
-        { href: '/student/impact/leaderboard', label: '🏆 Impact Leaderboard' },
+        { href: '/student/impact/leaderboard', label: 'Leaderboard' },
       ]
     },
     {
@@ -82,24 +92,12 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/student/search/directory', label: 'nav.student_directory' },
         { href: '/student/search/internships', label: 'nav.internship_history' },
-      ]
-    },
-    {
-      label: 'nav.links', icon: LinkIcon,
-      subItems: [
         { href: '/student/links', label: 'nav.apps_links' },
       ]
     },
-    { href: '/student/tutor', label: 'AI tutor', icon: Sparkles },
-    { href: '/student/knowledge-hub', label: 'nav.knowledge_hub', icon: Brain },
-    { href: '/student/credentials', label: 'nav.credentials', icon: Award },
-    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
     { href: '/student/community', label: 'nav.community', icon: Users },
-    { href: '/student/support', label: 'nav.support', icon: Settings },
-    { href: '/student/beesafe', label: 'nav.beesafe', icon: AlertTriangle },
-    { href: '/student/settings?section=language', label: 'nav.settings', icon: Globe },
-    { href: '/boards', label: 'Whiteboards', icon: PenTool },
-    { href: '/explore', label: 'Explore modes', icon: Compass },
+    { href: '/student/support', label: 'Support & BeeSafe', icon: AlertTriangle, also: ['/student/beesafe'] },
+    { href: '/student/settings?section=language', label: 'nav.settings', icon: Settings },
   ],
   TEACHER: [
     { href: '/teacher', label: 'nav.dashboard', icon: LayoutDashboard },
@@ -134,8 +132,6 @@ export const navByRole: Record<string, NavItem[]> = {
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
     { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
-    { href: '/boards', label: 'Whiteboards', icon: PenTool },
-    { href: '/explore', label: 'Explore modes', icon: Compass },
   ],
   ADMIN: [
     { href: '/admin', label: 'nav.overview', icon: LayoutDashboard },
@@ -188,7 +184,6 @@ export const navByRole: Record<string, NavItem[]> = {
     { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
     { href: '/boards', label: 'Whiteboards', icon: PenTool },
-    { href: '/explore', label: 'Explore modes', icon: Compass },
   ],
 };
 
@@ -206,7 +201,7 @@ function NavItemComponent({
   onToggle: () => void;
 }) {
   const { t } = useLanguageStore();
-  const hasActiveChild = item.subItems?.some(sub => pathname === sub.href || pathname.startsWith(sub.href + '/'));
+  const hasActiveChild = item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/'));
   const active = pathname === item.href || (item.href && item.href !== '/' && pathname.startsWith(item.href)) || hasActiveChild;
 
   if (item.subItems) {
@@ -235,7 +230,7 @@ function NavItemComponent({
             >
               <div className="pl-9 space-y-1 pt-1">
                 {item.subItems.map(sub => {
-                  const on = pathname === sub.href;
+                  const on = isOn(pathname, sub.href, sub.also);
                   return (
                     <Link key={sub.href} href={sub.href} onClick={onClose} aria-current={on ? 'page' : undefined}
                       className={cn('sidebar-item pill-host relative block text-sm py-1.5', on && 'active text-indigo-400')}>
@@ -262,7 +257,7 @@ function NavItemComponent({
   }
 
   if (item.href) {
-    const on = pathname === item.href;
+    const on = isOn(pathname, item.href, item.also);
     return (
       <Link href={item.href} onClick={onClose} aria-current={on ? 'page' : undefined}
         className={cn('sidebar-item pill-host relative block', on && 'active')}>
@@ -349,7 +344,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
           </div>
           <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium tracking-wider flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            {user.role} PORTAL
+            {user.owner ? 'OWNER' : user.role} PORTAL
           </div>
         </div>
       </div>
@@ -362,7 +357,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             item={item} 
             pathname={pathname} 
             onClose={onClose}
-            isOpen={openIndex === i || (item.subItems?.some(sub => pathname === sub.href || pathname.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
+            isOpen={openIndex === i || (item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
             onToggle={() => setOpenIndex(openIndex === i ? null : i)}
           />
         ))}

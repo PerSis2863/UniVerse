@@ -1,6 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, SUPPORT_TABS } from '@/components/layout/SectionTabs';
 import { AlertTriangle, ShieldAlert, Phone, Send, Info, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -47,6 +48,7 @@ export default function BeeSafeReporting() {
   return (
     <>
       <Topbar title="BeeSafe Reporting" subtitle="Confidential platform for safety and incident reporting" />
+      <SectionTabs tabs={SUPPORT_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-8">

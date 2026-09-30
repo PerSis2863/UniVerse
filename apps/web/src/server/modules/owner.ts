@@ -166,12 +166,12 @@ export default function ownerModule(router: Router) {
     };
   });
 
-  /** Everything happening: sign-ins, actions (Activity Log) and messages sent, newest first. */
+  /** Everything happening: sign-ins, actions (Activity Log), messages sent, pages opened and buttons clicked, newest first. */
   r.get('activity', async ({ query }) => {
     const before = query.before ? new Date(String(query.before)) : new Date(Date.now() + 1000);
     const userId = typeof query.userId === 'string' && query.userId ? query.userId : undefined;
     const take = 40;
-    const [signIns, actions, messages] = await Promise.all([
+    const [signIns, actions, messages, ui] = await Promise.all([
       prisma.loginEvent.findMany({ where: { createdAt: { lt: before }, ...(userId && { userId }) }, orderBy: { createdAt: 'desc' }, take, include: { user: { select: { id: true, name: true, role: true } } } }),
       prisma.auditLog.findMany({ where: { createdAt: { lt: before }, ...(userId && { actorId: userId }) }, orderBy: { createdAt: 'desc' }, take }),
       prisma.message.findMany({
@@ -180,11 +180,13 @@ export default function ownerModule(router: Router) {
         take,
         select: { id: true, type: true, body: true, createdAt: true, conversationId: true, sender: { select: { id: true, name: true, role: true } }, conversation: { select: { name: true, isGroup: true } } },
       }),
+      prisma.uiEvent.findMany({ where: { createdAt: { lt: before }, ...(userId && { userId }) }, orderBy: { createdAt: 'desc' }, take, include: { user: { select: { id: true, name: true, role: true } } } }),
     ]);
     const items = [
       ...signIns.map((e) => ({ kind: 'signin' as const, at: e.createdAt, user: e.user, data: e })),
       ...actions.map((e) => ({ kind: 'action' as const, at: e.createdAt, user: { id: e.actorId, name: e.actorName, role: e.actorRole }, data: e })),
       ...messages.map((e) => ({ kind: 'message' as const, at: e.createdAt, user: e.sender, data: e })),
+      ...ui.map((e) => ({ kind: 'ui' as const, at: e.createdAt, user: e.user, data: e })),
     ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, take);
     return { items, next: items.length === take ? items[items.length - 1].at : null };
   });
