@@ -10,7 +10,37 @@ import { useLowData } from '@/store/low-data';
 // Live updates in the browser: one WebSocket per tab (see cloudflare/worker.ts). Server events make
 // the matching SWR data refetch at once; while connected, chat and notifications don't poll.
 
-type ServerEvent = { type: 'hello' } | { type: 'chat'; conversationId: string } | { type: 'notification' } | { type: 'refresh'; keys: string[] };
+type ServerEvent = { type: 'hello' } | { type: 'chat'; conversationId: string; call?: boolean } | { type: 'typing'; conversationId: string; name: string } | { type: 'notification' } | { type: 'refresh'; keys: string[] };
+
+// Who is typing in each chat, from live 'typing' events (shown for 6 seconds, like the server's
+// own record). Kept here instead of refetching the whole chat for every "typing…".
+const TYPING_MS = 6000;
+const typingNow = new Map<string, Map<string, number>>(); // conversationId → name → until
+const typingListeners = new Set<() => void>();
+const typingSnapshots = new Map<string, string[]>();
+const EMPTY: string[] = [];
+function typingChanged(conversationId: string) {
+  const until = typingNow.get(conversationId);
+  const now = Date.now();
+  const names = until ? [...until].filter(([, t]) => t > now).map(([n]) => n) : [];
+  typingSnapshots.set(conversationId, names.length ? names : EMPTY);
+  typingListeners.forEach((l) => l());
+}
+function noteTyping(conversationId: string, name: string) {
+  const until = typingNow.get(conversationId) ?? new Map<string, number>();
+  until.set(name, Date.now() + TYPING_MS);
+  typingNow.set(conversationId, until);
+  typingChanged(conversationId);
+  setTimeout(() => typingChanged(conversationId), TYPING_MS + 50);
+}
+/** First names of people typing in this chat right now (live updates only). */
+export function useLiveTyping(conversationId: string): string[] {
+  return useSyncExternalStore(
+    (l) => { typingListeners.add(l); return () => typingListeners.delete(l); },
+    () => typingSnapshots.get(conversationId) ?? EMPTY,
+    () => EMPTY,
+  );
+}
 
 const startsWith = (prefix: string) => (key: unknown) => typeof key === 'string' && key.startsWith(prefix);
 
@@ -118,7 +148,11 @@ function handle(event: ServerEvent) {
     case 'chat':
       void mutate('/api/chat/conversations');
       void mutate(startsWith(`/api/chat/conversations/${event.conversationId}/`));
-      void mutate('/api/chat/incoming');
+      // Only a new call can change the ringing card (other chat events used to refetch it too).
+      if (event.call) void mutate('/api/chat/incoming');
+      break;
+    case 'typing':
+      noteTyping(event.conversationId, event.name);
       break;
     case 'notification':
       void mutate('/api/notifications');

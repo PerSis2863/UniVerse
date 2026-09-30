@@ -6,6 +6,7 @@ import { later, notify } from '@/server/email';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
 import { deliver } from '@/server/realtime';
 import { pretranslate, storedTranslations } from '@/server/translate';
+import { recordServerError } from '@/server/errors';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
@@ -14,8 +15,18 @@ const ATTACHMENT_TYPES = new Set(['IMAGE', 'FILE', 'AUDIO', 'VIDEO']);
 const sender = { select: { id: true, name: true, avatar: true } } as const;
 
 // GET: a page of messages (newest last) plus who's typing, online and how far each member has read.
-// Also marks the conversation read for the caller.
-export async function GET(req: Request, { params }: Ctx) {
+// Also marks the conversation read for the caller. A failure is recorded for the owner console
+// (Errors) and answered with a readable message instead of a bare 500.
+export async function GET(req: Request, ctx: Ctx) {
+  try {
+    return await getThread(req, ctx);
+  } catch (e) {
+    await recordServerError(e, req).catch(() => {});
+    return NextResponse.json({ error: 'Couldn’t open this chat right now. Please try again.' }, { status: 500 });
+  }
+}
+
+async function getThread(req: Request, { params }: Ctx) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   const { id } = await params;
@@ -38,8 +49,11 @@ export async function GET(req: Request, { params }: Ctx) {
     return NextResponse.json({ results }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
-  // Disappearing messages: remove anything that has expired.
-  await prisma.message.deleteMany({ where: { conversationId: id, expiresAt: { lt: new Date() } } });
+  // Housekeeping writes below never stop the chat from opening: a failure is only recorded.
+  const quietly = (p: Promise<unknown>) => p.catch((e) => recordServerError(e, req, user.id).catch(() => {}));
+
+  // Expired disappearing messages are hidden here (visibleTo) and deleted by the daily job, not on
+  // every load: each load has to fit in the Worker's small CPU budget.
 
   const [rows, convo, system, prefs] = await Promise.all([
     prisma.message.findMany({
@@ -61,11 +75,14 @@ export async function GET(req: Request, { params }: Ctx) {
   if (!convo) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
 
   const now = new Date();
-  // Mark read (only when looking at the latest page) and record presence.
+  // Mark read (only when looking at the latest page, and only if something new arrived since the
+  // last time) and record presence.
+  const newest = rows[0]?.createdAt;
+  const unread = me.markedUnread || !me.lastReadAt || (!!newest && newest > me.lastReadAt);
   if (!beforeDate) {
     await Promise.all([
-      prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: now, markedUnread: false } }),
-      touchPresence(user.id),
+      unread ? quietly(prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: now, markedUnread: false } })) : null,
+      quietly(touchPresence(user.id)),
     ]);
   }
 
@@ -213,7 +230,7 @@ const PREVIEW: Record<string, string> = { IMAGE: '📷 Photo', FILE: '📎 File'
 // doesn't flood their inbox.
 async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string) {
   const everyone = await prisma.conversationParticipant.findMany({ where: { conversationId }, select: { userId: true } });
-  const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId });
+  const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId, ...(type === 'CALL' ? { call: true } : {}) });
   const now = new Date();
   const [convo, allMembers] = await Promise.all([
     prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true } }),

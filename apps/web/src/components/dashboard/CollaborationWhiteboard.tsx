@@ -162,14 +162,15 @@ export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboa
     setDraft(tool === 'pen' ? { kind: 'pen', points: [p], color, width } : { kind: tool, x: p.x, y: p.y, w: 0, h: 0, color, width });
   };
   const onMove = (e: React.PointerEvent) => {
-    if (!start.current) return;
+    const from = start.current;
+    if (!from) return;
     const p = pos(e);
     if (tool === 'eraser') return eraseAt(p);
     setDraft((d) => {
       if (!d) return d;
       if (d.kind === 'pen') return { ...d, points: [...d.points, p] };
       if (d.kind === 'rect' || d.kind === 'ellipse') {
-        let w = p.x - start.current!.x, h = p.y - start.current!.y;
+        let w = p.x - from.x, h = p.y - from.y; // not start.current: this runs later, maybe after pointer up
         if (e.shiftKey) { const m = Math.max(Math.abs(w), Math.abs(h)); w = Math.sign(w || 1) * m; h = Math.sign(h || 1) * m; }
         return { ...d, w, h };
       }
