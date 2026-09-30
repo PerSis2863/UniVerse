@@ -13,6 +13,7 @@ import { awaitingApproval } from '@/types';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { reportSession } from '@/lib/sign-in-history';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
+import { TERMS_VERSION } from '@/lib/terms-version';
 
 const ROLES = [
   {
@@ -62,6 +63,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
+  const [agreed, setAgreed] = useState(false); // Terms and Privacy Policy, required to create the account
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);
 
@@ -82,7 +84,7 @@ export default function RegisterPage() {
 
   const finishRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!finishing) return;
+    if (!finishing || needAgreement()) return;
     setIsLoading(true);
     setError('');
     try {
@@ -101,7 +103,7 @@ export default function RegisterPage() {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
-      const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole });
+      const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole, acceptTerms: agreed ? TERMS_VERSION : undefined });
       const me = { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status || 'ACTIVE', createdAt: user.createdAt || new Date().toISOString(), application: user.application ?? null };
       setUser(me);
       reportSession('SIGN_UP', method);
@@ -115,8 +117,15 @@ export default function RegisterPage() {
     }
   };
 
+  const needAgreement = () => {
+    if (agreed) return false;
+    setError('Please accept the Terms and Conditions and the Privacy Policy to create your account.');
+    return true;
+  };
+
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (needAgreement()) return;
     setIsLoading(true);
     setError('');
     try {
@@ -132,6 +141,7 @@ export default function RegisterPage() {
   };
 
   const handleGoogleRegister = async () => {
+    if (needAgreement()) return;
     setIsLoading(true);
     setError('');
     try {
@@ -250,7 +260,11 @@ export default function RegisterPage() {
                   placeholder="Your name" />
               </div>
             </div>
-            <button type="submit" disabled={isLoading || !name.trim()} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+            <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
+              <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setError(''); }} required className="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0" />
+              <span>I have read and agree to the <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link> and the <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.</span>
+            </label>
+            <button type="submit" disabled={isLoading || !name.trim() || !agreed} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Finish creating my account'}
             </button>
           </form>
@@ -272,6 +286,13 @@ export default function RegisterPage() {
                   </div>
                 )}
 
+                <div className="mb-5 p-3 rounded-xl border border-white/10 bg-white/[0.03]">
+                  <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
+                    <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setError(''); }} required className="mt-0.5 w-4 h-4 accent-indigo-500 shrink-0" />
+                    <span>I have read and agree to the <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link> and the <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.</span>
+                  </label>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   <button
                     type="button"
@@ -289,7 +310,7 @@ export default function RegisterPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowPhoneFlow(true)}
+                    onClick={() => { if (!needAgreement()) setShowPhoneFlow(true); }}
                     disabled={isLoading}
                     className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50"
                   >
@@ -340,7 +361,7 @@ export default function RegisterPage() {
                       className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors">
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
-                    <button type="submit" disabled={isLoading}
+                    <button type="submit" disabled={isLoading || !agreed}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl py-2.5 text-sm shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}
                     </button>
@@ -360,7 +381,7 @@ export default function RegisterPage() {
       </div>
 
       <p className="mt-6 text-center text-xs text-zinc-600">
-        By joining, you agree to our{' '}
+        Read our{' '}
         <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link>
         {' and '}
         <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.

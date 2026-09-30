@@ -1,6 +1,7 @@
 import type { Router } from '../router';
 import prisma from '@/lib/db';
-import { UnauthorizedException } from '../http';
+import { BadRequestException, UnauthorizedException } from '../http';
+import { TERMS_VERSION } from '@/lib/terms-version';
 import { extractBearer, forgetUser, isDemoAccount, isDemoLoginEnabled, isOwner, verifyFirebaseIdToken } from '../auth';
 import { REQUESTABLE_ROLES, approveInvited, currentApplication, startSignupApplication } from './applications';
 import { audit } from '../audit';
@@ -50,8 +51,17 @@ export default function auth(router: Router) {
   // email address after verifying it, gets the role straight away.
   r.post('register', async ({ user, body, req }) => {
     const name = body?.name && String(body.name).trim() ? String(body.name).trim().slice(0, 100) : null;
+    // Creating an account requires accepting the current Terms and Privacy Policy (the sign-up
+    // form's checkbox); the version and time are recorded.
+    const acceptsTerms = body?.acceptTerms === TERMS_VERSION;
+    if (!acceptsTerms && user.termsVersion !== TERMS_VERSION) {
+      throw new BadRequestException({ message: 'Please accept the Terms and Conditions and the Privacy Policy to create your account.', code: 'TERMS_REQUIRED', error: 'Bad Request' });
+    }
     // Registration finished (the person picked a role and name): until now they had only signed in.
-    await prisma.user.update({ where: { id: user.id }, data: { ...(name && name !== user.name ? { name } : {}), onboardedAt: user.onboardedAt ?? new Date() } });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { ...(name && name !== user.name ? { name } : {}), onboardedAt: user.onboardedAt ?? new Date(), ...(acceptsTerms ? { termsVersion: TERMS_VERSION, termsAcceptedAt: new Date() } : {}) },
+    });
     forgetUser(user.id);
     const wanted = body?.role;
     if ((REQUESTABLE_ROLES as readonly string[]).includes(wanted) && user.role === 'STUDENT') {
