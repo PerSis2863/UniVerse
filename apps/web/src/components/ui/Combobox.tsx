@@ -13,13 +13,15 @@ export interface ComboOption {
   icon?: string;
   /** Used to rank the visitor's own country first (see `preferGroup`). */
   group?: string;
+  /** Other names people search for, space-separated (e.g. "mit"): an exact hit ranks first. */
+  keywords?: string;
 }
 
 type Source = readonly string[] | readonly ComboOption[] | (() => Promise<ComboOption[]>);
 
-interface Indexed extends ComboOption { n: string; initials: string }
+interface Indexed extends ComboOption { n: string; initials: string; k: string }
 
-const MAX_SHOWN = 50;
+const MAX_SHOWN = 40;
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const STOP = new Set(['of', 'the', 'de', 'la', 'le', 'des', 'du', 'and', 'et', 'for', 'di', 'del', 'da', 'y', 'e', 'für', 'an', 'at', 'in']);
 
@@ -27,7 +29,7 @@ function index(options: readonly ComboOption[]): Indexed[] {
   return options.map((o) => {
     const n = fold(o.label);
     const initials = n.split(/[^a-z0-9]+/).filter((w) => w && !STOP.has(w)).map((w) => w[0]).join('');
-    return { ...o, n, initials };
+    return { ...o, n, initials, k: o.keywords ? ` ${fold(o.keywords)} ` : '' };
   });
 }
 
@@ -42,20 +44,27 @@ function search(items: Indexed[], query: string, preferGroup?: string): Indexed[
   // Typed in capitals ("MIT", "UCLA"): an acronym, so initials beat plain prefix matches.
   const acronym = /^[A-Z]{2,6}$/.test(query.trim());
   const spaced = ` ${q}`, paren = `(${q}`, multi = tokens.length > 1;
-  const scored: { item: Indexed; score: number }[] = [];
+  // Keep only the best MAX_SHOWN (a short query like "u" matches thousands; sorting them all
+  // made typing lag on phones). Rank: match quality, then shorter names.
+  const best: { item: Indexed; key: number }[] = [];
   for (const item of items) {
     let score: number;
     const at = item.n.indexOf(q);
-    if (at === 0) score = item.n.length === q.length ? 0 : 1;
+    if (item.k && item.k.includes(` ${q} `)) score = -1;
+    else if (at === 0) score = item.n.length === q.length ? 0 : 1;
     else if (at > 0 && (item.n.includes(spaced) || item.n.includes(paren))) score = 2;
     else if (q.length >= 2 && !q.includes(' ') && item.initials.startsWith(q)) score = item.initials === q ? (acronym ? 0.5 : 1.5) : 2.5;
     else if (at > 0 || (multi && tokens.every((t) => item.n.includes(t)))) score = 3;
     else continue;
     if (preferGroup && item.group === preferGroup) score -= 0.6;
-    scored.push({ item, score });
+    const key = score * 10000 + Math.min(item.n.length, 999); // scores differ by >= 0.1, so 10000 keeps them apart
+    if (best.length === MAX_SHOWN && key >= best[MAX_SHOWN - 1].key) continue;
+    let i = best.length;
+    while (i > 0 && best[i - 1].key > key) i--;
+    best.splice(i, 0, { item, key });
+    if (best.length > MAX_SHOWN) best.pop();
   }
-  scored.sort((a, b) => a.score - b.score || a.item.label.length - b.item.label.length);
-  return scored.slice(0, MAX_SHOWN).map((s) => s.item);
+  return best.map((b) => b.item);
 }
 
 /** Bolds the part of `label` that matches `query`, ignoring case and accents. */

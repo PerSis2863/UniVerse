@@ -21,7 +21,6 @@ export interface CapturedError {
 
 const STORAGE_KEY = 'universe_error_log';
 const MAX_ERRORS = 50;
-const RELOAD_KEY = 'universe_chunk_reload';
 const REPORT_EVERY_MS = 5000;
 const MAX_REPORTS_PER_PAGE = 20;
 
@@ -113,58 +112,11 @@ export function captureError(
   }
 }
 
-// ─── Recovering from a missing chunk (old tab after a deploy) ────────────────────────────────────
-
-let lastClick: { href: string; at: number } | null = null;
-let recovering = false;
-
-/** Where the person was heading: the link they just clicked, else this page. */
-function destination(): string {
-  if (lastClick && Date.now() - lastClick.at < 15_000) return lastClick.href;
-  return window.location.href;
-}
-
+/** Recovery lives in an inline head script (src/lib/recovery-script.ts) so it works even when the
+ * app's own code failed to load; false when it's already been tried for this page. */
 function recoverFromChunkError(): boolean {
-  if (recovering) return true;
-  const to = destination();
-  let last: { url?: string; at?: number } = {};
-  try { last = JSON.parse(sessionStorage.getItem(RELOAD_KEY) || '{}'); } catch { /* old format */ }
-  if (last.url === to && Date.now() - (last.at ?? 0) < 60_000) {
-    // Already tried this page a moment ago: don't loop, and never leave a blank page.
-    setTimeout(() => { if (pageLooksBlank()) showReloadScreen(to); }, 1500);
-    return false;
-  }
-  recovering = true;
-  try { sessionStorage.setItem(RELOAD_KEY, JSON.stringify({ url: to, at: Date.now() })); } catch { /* private mode */ }
-  if (to === window.location.href) window.location.reload();
-  else window.location.assign(to);
-  return true;
-}
-
-function pageLooksBlank(): boolean {
-  const body = document.body;
-  return !body || body.innerText.trim().length < 20 || getComputedStyle(body).backgroundColor === 'rgba(0, 0, 0, 0)';
-}
-
-/** A plain, self-styled screen (the app's own code and styles may be what failed to load). */
-function showReloadScreen(to: string) {
-  if (document.getElementById('universe-reload-screen')) return;
-  const dark = !window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches || document.documentElement.classList.contains('dark');
-  const el = document.createElement('div');
-  el.id = 'universe-reload-screen';
-  el.setAttribute('role', 'alertdialog');
-  el.style.cssText = `position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;background:${dark ? '#0a0d13' : '#f7f7fb'};font-family:system-ui,-apple-system,'Segoe UI',sans-serif`;
-  el.innerHTML = `<div style="max-width:380px;width:100%;text-align:center;border-radius:24px;padding:32px;background:${dark ? '#121622' : '#fff'};border:1px solid ${dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)'};box-shadow:0 20px 50px rgba(0,0,0,.25)">
-    <div style="font-size:36px" aria-hidden="true">✨</div>
-    <h1 style="margin:12px 0 8px;font-size:20px;color:${dark ? '#fff' : '#111'}">UniVerse has been updated</h1>
-    <p style="margin:0;font-size:14px;line-height:1.6;color:#8b8b95">Reload to continue with the latest version.</p>
-    <button type="button" style="margin-top:22px;height:42px;padding:0 22px;border:0;border-radius:12px;background:#4f46e5;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Reload</button>
-  </div>`;
-  el.querySelector('button')!.addEventListener('click', () => {
-    try { sessionStorage.removeItem(RELOAD_KEY); } catch { /* ignore */ }
-    window.location.assign(to);
-  });
-  document.body.appendChild(el);
+  const recover = (window as unknown as { __uvRecover?: () => boolean }).__uvRecover;
+  return typeof recover === 'function' ? recover() : false;
 }
 
 export function getErrors(): CapturedError[] {
@@ -197,18 +149,10 @@ export function installErrorMonitor(): void {
     captureError(event.error || event.message, 'runtime', { filename: event.filename, lineno: event.lineno, colno: event.colno });
   }, true);
 
-  // Remember where a click was going, so a failed page load can recover to the right page.
-  document.addEventListener('click', (e) => {
-    const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
-    if (a && a.origin === window.location.origin && !a.target && !a.hasAttribute('download')) lastClick = { href: a.href, at: Date.now() };
-  }, true);
-
   window.addEventListener('unhandledrejection', (event) => {
     captureError(event.reason, 'promise');
   });
 
-  // A successful load clears the "just reloaded" marker after a minute.
-  setTimeout(() => { try { sessionStorage.removeItem(RELOAD_KEY); } catch { /* ignore */ } }, 60_000);
 
   const w = window as unknown as Record<string, unknown>;
   w.universeErrors = () => {
