@@ -52,6 +52,14 @@ export function AccountSecurity() {
       setPw(null);
     } catch (e) { toast.error(authErrorMessage(e, 'Couldn’t change the password.')); } finally { setBusy(false); }
   };
+  const sendReset = async () => {
+    try {
+      const [{ auth }, { sendPasswordResetEmail }] = await Promise.all([import('@/lib/firebase'), import('firebase/auth')]);
+      if (!auth.currentUser?.email) return;
+      await sendPasswordResetEmail(auth, auth.currentUser.email);
+      toast.success('Password reset email sent', { description: `Check ${auth.currentUser.email} for the link.` });
+    } catch (e) { toast.error(authErrorMessage(e, 'Couldn’t send the reset email.')); }
+  };
   const signOut = async () => {
     try { const { auth } = await import('@/lib/firebase'); await auth.signOut(); } catch { /* not a Firebase session */ }
     try { localStorage.removeItem('accessToken'); localStorage.removeItem('universe-auth'); sessionStorage.clear(); } catch { /* ignore */ }
@@ -82,6 +90,7 @@ export function AccountSecurity() {
               <div className="sm:col-span-2 flex gap-2">
                 <button disabled={busy} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Change password</button>
                 <button type="button" onClick={() => setPw(null)} className="px-4 py-2 rounded-xl text-sm font-semibold text-zinc-500">Cancel</button>
+                <button type="button" onClick={sendReset} className="ml-auto text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Forgot it? Email me a reset link</button>
               </div>
             </form>
           ) : (

@@ -277,20 +277,6 @@ export default function StudentSettings() {
                       <AccountSecurity />
                       <DownloadMyData />
                       <DeleteAccount />
-                      <button onClick={async () => {
-                        try {
-                          const { auth } = await import('@/lib/firebase');
-                          const { sendPasswordResetEmail } = await import('firebase/auth');
-                          const email = auth.currentUser?.email;
-                          if (!email) return void toast.error('Your account signs in without a password (e.g. Google or phone).');
-                          await sendPasswordResetEmail(auth, email);
-                          toast.success('Password reset email sent', { description: `Check ${email} for the link.` });
-                        } catch (e: any) {
-                          toast.error(e?.code === 'auth/too-many-requests' ? 'Please wait a few minutes and try again.' : 'Could not send the reset email.');
-                        }
-                      }} className="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2">
-                        <Shield className="w-4 h-4" /> Change Password
-                      </button>
                       <div className="pt-2">
                         <RecentSignIns />
                       </div>
