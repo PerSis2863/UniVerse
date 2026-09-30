@@ -19,7 +19,9 @@ const withPWA = withPWAInit({
   // OfflineBar refetches the data on screen instead.
   reloadOnOnline: false,
   // The whiteboard's fonts (14 MB, mostly Chinese/Japanese glyphs) load on demand, not at install.
-  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!sitemap.xml', '!offline.html', '!.well-known/**/*'],
+  // `_headers` is Cloudflare's config file and is never served: listing it made every install fail
+  // (a 404), so from 29 Sep no device got a working service worker. Lookup data loads when needed.
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*'],
   // Shown for pages not saved on the device when offline: a plain static page (public/offline.html,
   // served at /offline by Cloudflare's free static files, not the Worker).
   fallbacks: {
@@ -37,6 +39,9 @@ const withPWA = withPWAInit({
     // offers a refresh, which activates it (SKIP_WAITING message).
     skipWaiting: false,
     disableDevLogs: true,
+    // Don't download the whole app (about 14 MB, 500 files) in the background at install: phones on
+    // mobile data felt that. The app's code is saved as it's used instead (the rule below).
+    exclude: [/.*/],
     runtimeCaching: [
       {
         urlPattern: /^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,
@@ -53,6 +58,13 @@ const withPWA = withPWAInit({
           cacheName: 'google-fonts-stylesheets',
           expiration: { maxEntries: 4, maxAgeSeconds: 7 * 24 * 60 * 60 },
         },
+      },
+      {
+        // The app's code and styles as they load. Their names change with every version, so a saved
+        // copy never goes stale; old versions' files stay available to tabs still running them.
+        urlPattern: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) => sameOrigin && url.pathname.startsWith('/_next/static/'),
+        handler: 'CacheFirst',
+        options: { cacheName: 'next-static', expiration: { maxEntries: 400, maxAgeSeconds: 30 * 24 * 60 * 60 } },
       },
       {
         // API responses are per-user (grades, messages, billing): never store them on the device,
@@ -81,6 +93,12 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Reopening a page within 5 minutes shows the copy already in the browser instead of asking the
+    // server again (pages hold no personal data; their data refreshes on its own). Faster and fewer
+    // Worker requests.
+    staleTimes: { dynamic: 300, static: 300 },
+  },
   // Dependencies are installed by pnpm at the workspace root; trace server files from there so the
   // Cloudflare build (OpenNext) finds every file it needs.
   outputFileTracingRoot: path.join(__dirname, '../..'),
