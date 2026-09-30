@@ -1,4 +1,5 @@
-import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
+import { errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
+import { jwksFor, keysMayHaveRotated } from './jwks-cache';
 import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
 import { ForbiddenException, UnauthorizedException } from './http';
@@ -8,9 +9,7 @@ import { isSessionToken, verifySessionToken } from './session-token';
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
 // for allowlisted demo accounts only when demo login is enabled, "mock-token-<email|id>" tokens.
 
-const FIREBASE_KEYS = createRemoteJWKSet(
-  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
-);
+const FIREBASE_JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 
 function firebaseProjectId() {
   return process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'universe-71e68';
@@ -27,11 +26,15 @@ interface FirebaseClaims extends JWTPayload {
 /** Verifies a Firebase ID token the same way firebase-admin's verifyIdToken does. */
 export async function verifyFirebaseIdToken(token: string): Promise<FirebaseClaims & { uid: string }> {
   const projectId = firebaseProjectId();
-  const { payload } = await jwtVerify<FirebaseClaims>(token, FIREBASE_KEYS, {
-    issuer: `https://securetoken.google.com/${projectId}`,
-    audience: projectId,
-    algorithms: ['RS256'],
-  });
+  const options = { issuer: `https://securetoken.google.com/${projectId}`, audience: projectId, algorithms: ['RS256'] };
+  let payload: FirebaseClaims;
+  try {
+    ({ payload } = await jwtVerify<FirebaseClaims>(token, await jwksFor(FIREBASE_JWKS_URL), options));
+  } catch (e) {
+    if (!keysMayHaveRotated(e)) throw e;
+    // Google rotates its keys every few hours: download them again once.
+    ({ payload } = await jwtVerify<FirebaseClaims>(token, await jwksFor(FIREBASE_JWKS_URL, true), options));
+  }
   if (!payload.sub) throw new Error('Token has no subject');
   if (typeof payload.auth_time === 'number' && payload.auth_time * 1000 > Date.now() + 60_000) {
     throw new Error('Token auth_time is in the future');
@@ -98,7 +101,7 @@ export function forgetUser(userId: string) {
 /** Fetches Google's signing keys ahead of the first sign-in (used by the warm-up call). */
 export async function warmFirebaseKeys() {
   try {
-    await FIREBASE_KEYS.reload();
+    await jwksFor(FIREBASE_JWKS_URL, true);
   } catch {
     // best effort
   }

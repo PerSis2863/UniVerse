@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import { jwtVerify, type JWTPayload } from 'jose';
+import { jwksFor, keysMayHaveRotated } from './jwks-cache';
 import prisma from '@/lib/db';
 import { publicAppUrl } from './services/credential-signer';
 import { issueSessionToken } from './session-token';
@@ -70,16 +71,6 @@ export async function startLogin(params: URLSearchParams) {
   return { redirect: url.toString(), state };
 }
 
-const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-function platformKeys(jwksUrl: string) {
-  let set = jwksCache.get(jwksUrl);
-  if (!set) {
-    set = createRemoteJWKSet(new URL(jwksUrl), { cooldownDuration: 30_000, cacheMaxAge: 10 * 60_000 });
-    jwksCache.set(jwksUrl, set);
-  }
-  return set;
-}
-
 const INSTRUCTOR = /#(Instructor|Administrator|ContentDeveloper|Mentor|TeachingAssistant)$|\/(Instructor|Administrator)$/;
 
 /** Step 2: validates the launch and signs the person in. */
@@ -93,19 +84,16 @@ export async function completeLaunch(idToken: string, state: string, cookieState
   if (!platform || !platform.isActive) throw new LtiError('This LMS registration is no longer active.');
 
   let claims: JWTPayload & Record<string, unknown>;
-  const verify = () => jwtVerify(idToken, platformKeys(platform.jwksUrl), { issuer: platform.issuer, audience: platform.clientId, algorithms: ['RS256', 'RS384', 'RS512', 'ES256'], clockTolerance: 60 });
+  const verify = async (fresh: boolean) => jwtVerify(idToken, await jwksFor(platform.jwksUrl, fresh), { issuer: platform.issuer, audience: platform.clientId, algorithms: ['RS256', 'RS384', 'RS512', 'ES256'], clockTolerance: 60 });
   try {
-    ({ payload: claims } = await verify());
-  } catch (e) {
-    // The LMS may have rotated its keys: fetch them again once before giving up.
-    const code = (e as { code?: string }).code;
-    if (code !== 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' && code !== 'ERR_JWKS_NO_MATCHING_KEY') throw new LtiError(`The launch token couldn’t be verified (${(e as Error).message}).`);
-    jwksCache.delete(platform.jwksUrl);
     try {
-      ({ payload: claims } = await verify());
-    } catch (e2) {
-      throw new LtiError(`The launch token couldn’t be verified (${(e2 as Error).message}).`);
+      ({ payload: claims } = await verify(false));
+    } catch (e) {
+      if (!keysMayHaveRotated(e)) throw e;
+      ({ payload: claims } = await verify(true)); // the LMS may have rotated its keys
     }
+  } catch (e) {
+    throw new LtiError(`The launch token couldn’t be verified (${(e as Error).message}).`);
   }
   if (claims.nonce !== pending.nonce) throw new LtiError('The launch token wasn’t issued for this sign-in (nonce mismatch).');
   if (Array.isArray(claims.aud) && claims.aud.length > 1 && claims.azp !== platform.clientId) throw new LtiError('The launch token is for a different tool (azp).');
