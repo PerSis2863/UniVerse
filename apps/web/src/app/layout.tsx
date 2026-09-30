@@ -8,6 +8,7 @@ import { MotionProvider } from '@/components/MotionProvider';
 import { UpdateNotifier } from '@/components/pwa/UpdateNotifier';
 import { Suspense } from 'react';
 import { NavProgress } from '@/components/layout/NavProgress';
+import { bootstrapPrefetchScript } from '@/lib/bootstrap';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -67,6 +68,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
+        {/* Dashboards: start loading the first screen's data now, in parallel with the app's code */}
+        <script dangerouslySetInnerHTML={{ __html: bootstrapPrefetchScript }} />
         {/* PWA: iOS touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
       </head>

@@ -11,7 +11,7 @@ import { RealtimeSync } from '@/components/RealtimeSync';
 import { DataConfig } from '@/components/DataConfig';
 import { LowDataSync } from '@/components/settings/LowDataToggle';
 import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
-import { startBootstrap } from '@/lib/bootstrap';
+import { adoptEarlyBootstrap, startBootstrap } from '@/lib/bootstrap';
 import { authedJson } from '@/lib/authed-fetch';
 import { isSampleMode } from '@/lib/sample-mode';
 
@@ -55,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Ask for everything the first screen needs in one request (see lib/bootstrap.ts). Started while
   // rendering, before the page's own data hooks run, so they can use its answers. Runs once.
-  if (mounted && hasSession() && !isSampleMode()) {
+  if (mounted && hasSession() && !isSampleMode() && !adoptEarlyBootstrap()) {
     startBootstrap(pathname, (body) => authedJson('/api/bootstrap', { method: 'POST', body }), { session: claimSessionReportOnce() });
   }
 
