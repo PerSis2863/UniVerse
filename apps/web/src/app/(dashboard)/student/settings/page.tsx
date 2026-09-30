@@ -2,12 +2,13 @@
 import { AccountSecurity } from '@/components/settings/AccountSecurity';
 import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { LowDataToggle } from '@/components/settings/LowDataToggle';
+import { ConsentsPanel } from '@/components/settings/ConsentsPanel';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
 import { api } from '@/lib/api';
-import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight, Sparkles } from 'lucide-react';
+import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { LANGUAGES, type Language } from '@/lib/i18n';
@@ -28,7 +29,7 @@ export default function StudentSettings() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const section = params.get('section');
-    if (section && ['profile', 'language', 'notifications', 'privacy', 'ai'].includes(section)) {
+    if (section && ['profile', 'language', 'notifications', 'privacy', 'consents', 'ai'].includes(section)) {
       setActiveSection(section);
     }
     
@@ -67,6 +68,7 @@ export default function StudentSettings() {
     { id: 'language', label: t('settings.language'), icon: Globe },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'privacy', label: t('settings.privacy'), icon: Shield },
+    { id: 'consents', label: 'My consents', icon: ShieldCheck },
     { id: 'ai', label: 'AI Features', icon: Sparkles },
   ];
 
@@ -107,6 +109,12 @@ export default function StudentSettings() {
               {/* Content Panel */}
               <div className="flex-1">
                 <AnimatePresence mode="wait">
+
+                  {activeSection === 'consents' && (
+                    <motion.div key="consents" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                      <ConsentsPanel embedded />
+                    </motion.div>
+                  )}
 
                   {/* Profile */}
                   {activeSection === 'profile' && (

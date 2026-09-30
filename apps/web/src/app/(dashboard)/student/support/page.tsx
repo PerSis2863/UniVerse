@@ -1,6 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, SUPPORT_TABS } from '@/components/layout/SectionTabs';
 import { LifeBuoy, FileText, MessageCircle, ChevronRight, Search, Send, Book, Wifi, Laptop, X, HelpCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -103,6 +104,7 @@ export default function StudentSupport() {
   return (
     <>
       <Topbar title="Help & Support" subtitle="Get assistance with your courses, account, and campus technology" />
+      <SectionTabs tabs={SUPPORT_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-12">

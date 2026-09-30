@@ -185,7 +185,9 @@
     box-shadow: 0 6px 18px rgba(99, 102, 241, 0.38);
   }
   .btn-primary:active { box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; filter: none; }
+  .btn-secondary:disabled, .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary, .btn-secondary, .btn-ghost { justify-content: center; gap: 0.5rem; white-space: nowrap; user-select: none; }
 
   .btn-secondary {
     background-color: var(--btn-secondary-bg);
@@ -774,6 +776,20 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
   :is(button, [role="button"], summary):not(:disabled):active,
   .btn-primary:not(:disabled):active, .btn-secondary:not(:disabled):active { scale: 0.97; transition-duration: 70ms; }
   .sidebar-item:active, .card-hover:active { scale: 0.985; transition-duration: 70ms; }
+
+  /* Every control looks pressable: pointer cursor (Tailwind 4 resets buttons to the arrow), no grey
+     flash on phones, no double-tap zoom delay, and a clear disabled / busy state. */
+  :where(button, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], summary, select, label[for], input[type="checkbox"], input[type="radio"]) {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  :where(button, [role="button"], select, input):disabled, :where([role="button"], [role="tab"])[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  :where(button, [role="button"])[aria-busy="true"] { cursor: progress; }
+  :where(button, [role="button"]) svg { flex-shrink: 0; }
 
   /* Visible focus ring for keyboard users only */
   :where(a, button, [role="button"], summary, [tabindex]):focus-visible {

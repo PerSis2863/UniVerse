@@ -2,6 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Globe, Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin, Sparkles, Building, X, Loader2 } from 'lucide-react';
@@ -72,6 +73,7 @@ export default function NGOMarketplacePage() {
         title="🌍 NGO Marketplace" 
         subtitle="Volunteer, intern, and work with verified NGOs to earn impact points." 
       />
+      <SectionTabs tabs={OPPORTUNITY_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Hero */}

@@ -191,7 +191,10 @@ export function CourseBoard({ role }: { role: Role }) {
                 {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'whiteboard' && (
                   <div className="space-y-3">
-                    <p className="text-xs text-zinc-500">A personal whiteboard for {board.course.code}. It&apos;s saved on this device; use Share or Export to send it to classmates.</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-zinc-500">A personal whiteboard for {board.course.code}. It&apos;s saved on this device; use Share or Export to send it to classmates.</p>
+                      <Link href="/boards" className="btn-secondary text-xs py-2 flex items-center gap-1.5"><PenTool className="w-3.5 h-3.5" /> Live shared whiteboards</Link>
+                    </div>
                     <Whiteboard boardId={`${board.course.id}`} title={`${board.course.code} whiteboard`} />
                   </div>
                 )}

@@ -6,6 +6,7 @@ import Link from '@/components/ui/Link';
 import { m as motion } from 'framer-motion';
 import { Building2, ExternalLink, MapPin } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { fetcher } from '@/lib/fetcher';
 import { safeHref } from '@/lib/safe-href';
@@ -35,6 +36,7 @@ export default function CorporatePartnersPage() {
   return (
     <>
       <Topbar title="🏢 Corporate Partners" subtitle="Companies working with your campus and their open roles" />
+      <SectionTabs tabs={OPPORTUNITY_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           {l1 || l2 ? (
