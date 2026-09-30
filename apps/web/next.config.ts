@@ -32,7 +32,10 @@ const withPWA = withPWAInit({
   // became "/" (every visitor: one extra Worker request).
   dynamicStartUrl: false,
   workboxOptions: {
-    skipWaiting: true,
+    // A new version waits instead of taking over open tabs: taking over deletes the old version's
+    // files that those tabs still need (the next page they opened came up blank). UpdateNotifier
+    // offers a refresh, which activates it (SKIP_WAITING message).
+    skipWaiting: false,
     disableDevLogs: true,
     runtimeCaching: [
       {
