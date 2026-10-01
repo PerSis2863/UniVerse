@@ -15,7 +15,7 @@ import { conversations, notifications, presence, thread } from './fast-chat';
 
 interface Env {
   DB?: D1Database;
-  REALTIME?: DurableObjectNamespace;
+  REALTIME?: { idFromName(name: string): DurableObjectId; get(id: DurableObjectId): { fetch(url: string, init?: RequestInit): Promise<Response> } };
 }
 
 
