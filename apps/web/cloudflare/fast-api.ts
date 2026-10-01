@@ -227,7 +227,7 @@ async function file(request: Request, key: string, db: D1Database, ctx: Executio
   return new Response(bytes, { headers });
 }
 
-const OWNER_EMAILS = () => (process.env.SUPER_ADMIN_EMAILS || 'universeimpact1@gmail.com').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+const OWNER_EMAILS = () => ownerEmailList(process.env.SUPER_ADMIN_EMAILS);
 
 /** GET /api/core/users/me (src/server/modules/users.ts): the caller's account. The owner goes to the Next.js route. */
 async function usersMe(me: Caller, db: D1Database): Promise<Response | null> {

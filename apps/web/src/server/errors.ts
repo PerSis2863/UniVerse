@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { ownerEmailList } from '@/lib/owner-emails';
 import { geminiJson } from './gemini';
 import { APP_URL, escapeHtml, sendEmail } from './email';
 
@@ -174,7 +175,7 @@ export async function diagnoseErrors(opts: { ids?: string[]; limit?: number } = 
 
 /** Emails the owner(s) about problems first seen or back since the last digest. */
 export async function emailErrorDigest(since: Date): Promise<number> {
-  const owners = (process.env.SUPER_ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean);
+  const owners = ownerEmailList(process.env.SUPER_ADMIN_EMAILS);
   if (!owners.length) return 0;
   const rows = await prisma.errorReport.findMany({
     where: { status: { in: ['NEW', 'DIAGNOSED'] }, lastSeen: { gte: since } },

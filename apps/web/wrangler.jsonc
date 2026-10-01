@@ -74,7 +74,7 @@
   "triggers": {
     // Daily at 08:00 UTC (13:30 in India): reminders for quizzes due in the next 24 hours.
     // Every 15 minutes: the spending guard (cloudflare/usage-guard.ts).
-    "crons": ["0 8 * * *", "*/15 * * * *"]
+    "crons": ["0 8 * * *", "*/15 * * * *", "30 7 * * *"]
   },
   "observability": {
     "enabled": true
