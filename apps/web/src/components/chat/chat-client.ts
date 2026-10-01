@@ -19,6 +19,7 @@ export interface ChatMessage {
     question?: string; options?: string[]; multiple?: boolean; // POLL
     lat?: number; lng?: number; label?: string | null; // LOCATION
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
+    moderated?: 'edited' | 'removed'; team?: boolean; // changed or posted by UniVerse (owner console)
   } | null;
   createdAt: string;
   editedAt: string | null;

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon } from 'lucide-react';
+import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
@@ -164,7 +164,13 @@ export function MessageBubble(p: Props) {
   if (m.type === 'SYSTEM') {
     return (
       <div className="flex justify-center my-2">
-        <span className="text-[11px] px-3 py-1 rounded-full bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400 text-center max-w-[85%]">{m.body}</span>
+        {m.metadata?.team ? (
+          <span className="text-xs px-3.5 py-1.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-200 text-center max-w-[85%] whitespace-pre-wrap break-words inline-flex items-start gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 mt-px shrink-0" /> {m.body}
+          </span>
+        ) : (
+          <span className="text-[11px] px-3 py-1 rounded-full bg-zinc-200/70 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-400 text-center max-w-[85%]">{m.body}</span>
+        )}
       </div>
     );
   }
@@ -182,14 +188,16 @@ export function MessageBubble(p: Props) {
     <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none', mine ? 'text-white/70' : 'text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
-      {m.editedAt && !deleted && 'edited ·'} {time}
+      {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : 'edited ·')} {time}
       {mine && !deleted && (m.pending ? <Check className="w-3 h-3" /> : readState === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" /> : <CheckCheck className="w-3.5 h-3.5" />)}
     </span>
   );
 
   let content: React.ReactNode;
   if (deleted) {
-    content = <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
+    content = m.metadata?.moderated === 'removed'
+      ? <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Removed by UniVerse</p>
+      : <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
       <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />

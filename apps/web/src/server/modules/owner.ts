@@ -5,6 +5,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '../h
 import { forgetUser, isOwnerEmail } from '../auth';
 import schema from '../owner-schema.json';
 import { decideDeletion, eraseAccount } from '../account-deletion';
+import { publishChat } from '../realtime';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -83,9 +84,16 @@ function revive(m: Model, snapshot: Record<string, unknown>) {
   for (const f of columns(m)) {
     if (!(f.name in snapshot)) continue;
     const v = snapshot[f.name];
+    if (f.type === 'Json' && v === null) continue; // Prisma refuses a plain null here: see clearJson
     out[f.name] = f.type === 'DateTime' && typeof v === 'string' ? new Date(v) : v;
   }
   return out;
+}
+
+/** Empties the JSON columns that were empty in a snapshot (revive leaves them out). */
+async function clearJson(m: Model, id: string, snapshot: Record<string, unknown>) {
+  const cols = columns(m).filter((f) => f.type === 'Json' && f.name in snapshot && snapshot[f.name] === null);
+  if (cols.length) await prisma.$executeRawUnsafe(`UPDATE "${m.table}" SET ${cols.map((f) => `"${f.name}" = NULL`).join(', ')} WHERE "id" = ?`, id);
 }
 
 /** Stops the owner from locking themselves out, and keeps the owner account safe. */
@@ -514,6 +522,7 @@ export default function ownerModule(router: Router) {
       const exists = await delegate(m).findUnique({ where: { id: change.recordId }, select: { id: true } });
       if (!exists) throw new BadRequestException('The record no longer exists, so this edit can’t be undone.');
       await delegate(m).update({ where: { id: change.recordId }, data: snapshot });
+      await clearJson(m, change.recordId, (change.before ?? {}) as Record<string, unknown>);
     } else if (change.action === 'DELETE') {
       const exists = await delegate(m).findUnique({ where: { id: change.recordId }, select: { id: true } });
       if (exists) throw new BadRequestException('A record with this id already exists.');
@@ -526,6 +535,10 @@ export default function ownerModule(router: Router) {
       throw new BadRequestException('This change can’t be undone.');
     }
     if (m.name === 'User') forgetUser(change.recordId);
+    if (m.name === 'Message') {
+      const msg = await prisma.message.findUnique({ where: { id: change.recordId }, select: { conversationId: true } });
+      if (msg) publishChat(msg.conversationId);
+    }
     await prisma.ownerChange.update({ where: { id: change.id }, data: { undoneAt: new Date() } });
     await prisma.ownerChange.create({ data: { ownerId: user.id, action: 'RESTORE', model: m.name, recordId: change.recordId, summary: `Undid: ${change.summary}` } });
     return { ok: true };

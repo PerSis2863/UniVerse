@@ -36,6 +36,7 @@ import blackboard from './modules/blackboard';
 import audit from './modules/audit';
 import applications from './modules/applications';
 import owner from './modules/owner';
+import ownerChats from './modules/owner-chats';
 import activity from './modules/activity';
 
 // The platform API (formerly a NestJS app on Render), served at /api/core/*. Modules are
@@ -46,7 +47,7 @@ for (const register of [
   auth, users, courses, attendance, grades, quizzes, announcements, files, notifications, knowledgeHub,
   messages, career, schedule, associations, rooms, tickets, timetable, internships, electives, skills,
   groups, impact, partners, documents, scholarships, consents, medical, safety, mentorship, collaborations,
-  calendar, health, dashboard, blackboard, audit, applications, owner, activity,
+  calendar, health, dashboard, blackboard, audit, applications, owner, ownerChats, activity,
 ]) {
   register(api);
 }

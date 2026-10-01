@@ -4,12 +4,12 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Ban, ChevronDown, Crown, Loader2, MessageSquare, Paperclip, Pencil, Phone, ShieldCheck, Trash2, Video } from 'lucide-react';
+import { ArrowLeft, Ban, Bell, ChevronDown, Crown, Download, Loader2, MessageSquare, Pencil, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
-import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, SearchBox, card, errorMessage, fetcher, formatValue, matches, refreshConsole, summarize, toastWithUndo } from './shared';
+import { ComposeDialog, LiveChat } from './chats';
 
 interface Section { model: string; field: string; title: string; count: number; records: Rec[] }
 interface Dossier { user: Rec & { owner?: boolean }; sections: Section[]; empty: string[] }
@@ -21,6 +21,8 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
   const { data, isLoading, error } = useSWR<Dossier>(`/owner/people/${id}`, fetcher);
   const [editing, setEditing] = useState<{ model: string; record: Rec } | null>(null);
   const [chats, setChats] = useState(false);
+  const [compose, setCompose] = useState<'message' | 'notify' | null>(null);
+  const [saving, setSaving] = useState(false);
   const [q, setQ] = useState('');
 
   if (isLoading) return <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>;
@@ -69,6 +71,33 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
     }
   };
 
+  const send = async (path: string, payload: unknown, done: string) => {
+    try {
+      await api.post(`/owner/people/${u.id}/${path}`, payload);
+      toast.success(done);
+      void refreshConsole();
+      return true;
+    } catch (e) {
+      toast.error(errorMessage(e));
+      return false;
+    }
+  };
+
+  const download = async () => {
+    setSaving(true);
+    try {
+      const { data: all } = await api.get(`/owner/people/${u.id}/export`);
+      const url = URL.createObjectURL(new Blob([JSON.stringify({ ...all, records: data.sections }, null, 2)], { type: 'application/json' }));
+      const slug = String(u.name ?? 'person').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'person';
+      Object.assign(document.createElement('a'), { href: url, download: `${slug}-${new Date().toISOString().slice(0, 10)}.json` }).click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm text-zinc-500"><ArrowLeft className="w-4 h-4" /> Back</button>
@@ -95,6 +124,9 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
             </select>
             <button onClick={() => setEditing({ model: 'User', record: u })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Pencil className="w-4 h-4" /> Edit all</button>
             <button onClick={() => setChats(true)} className="btn-primary"><MessageSquare className="w-4 h-4" /> Messages & calls</button>
+            <button onClick={() => setCompose('message')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Send className="w-4 h-4" /> Message as UniVerse</button>
+            <button onClick={() => setCompose('notify')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Bell className="w-4 h-4" /> Notify</button>
+            <button onClick={() => void download()} disabled={saving} aria-busy={saving || undefined} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download data</button>
             {!u.owner && (u.status === 'SUSPENDED' ? (
               <button onClick={() => void ban(false)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"><ShieldCheck className="w-4 h-4" /> Let back in</button>
             ) : (
@@ -126,7 +158,17 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
       {data.empty.length > 0 && <p className="text-xs text-zinc-400">Nothing in: {data.empty.join(', ')}.</p>}
 
       {editing && <RecordEditor model={editing.model} record={editing.record} schema={schema} onClose={() => setEditing(null)} />}
-      {chats && <Conversations personId={u.id} personName={String(u.name)} schema={schema} onClose={() => setChats(false)} />}
+      {chats && <Conversations personId={u.id} personName={String(u.name)} onClose={() => setChats(false)} />}
+      {compose === 'message' && (
+        <ComposeDialog title={`Message ${String(u.name)}`} confirm="Send"
+          hint="Sent from the official UniVerse Impact account, in their chat with it. They can reply there and you’ll see it in Live chats."
+          onSend={(v) => send('message', { body: v.body }, 'Message sent from UniVerse Impact')} onClose={() => setCompose(null)} />
+      )}
+      {compose === 'notify' && (
+        <ComposeDialog title={`Notify ${String(u.name)}`} confirm="Send" withTitle withEmail
+          hint="Shows in their notifications (the bell). Tick the box to email them a copy too."
+          onSend={(v) => send('notify', v, 'Notification sent')} onClose={() => setCompose(null)} />
+      )}
     </div>
   );
 }
@@ -164,7 +206,7 @@ function SectionBlock({ s, onEdit, forceOpen }: { s: Section; onEdit: (r: Rec) =
   );
 }
 
-function Conversations({ personId, personName, schema, onClose }: { personId: string; personName: string; schema: Schema; onClose: () => void }) {
+function Conversations({ personId, personName, onClose }: { personId: string; personName: string; onClose: () => void }) {
   const { data: convos, isLoading } = useSWR<Convo[]>(`/owner/people/${personId}/conversations`, fetcher);
   const [open, setOpen] = useState<string | null>(null);
   return (
@@ -186,58 +228,10 @@ function Conversations({ personId, personName, schema, onClose }: { personId: st
             ))}
           </ul>
           <div className={cn('min-h-0', !open && 'hidden md:block')}>
-            {open ? <Thread id={open} schema={schema} onBack={() => setOpen(null)} /> : <p className="p-10 text-center text-sm text-zinc-500">Choose a conversation.</p>}
+            {open ? <LiveChat key={open} id={open} onBack={() => setOpen(null)} /> : <p className="p-10 text-center text-sm text-zinc-500">Choose a conversation.</p>}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Thread({ id, schema, onBack }: { id: string; schema: Schema; onBack: () => void }) {
-  const { data, isLoading } = useSWR<{ conversation: { name: string | null; isGroup: boolean; participants: { user: { id: string; name: string } }[] }; messages: (Rec & { sender: { id: string; name: string } | null })[] }>(`/owner/conversations/${id}/messages`, fetcher);
-  const [editing, setEditing] = useState<Rec | null>(null);
-  const del = async (m: Rec) => {
-    try {
-      const { data: res } = await api.delete(`/owner/records/Message/${m.id}`);
-      toastWithUndo('Message deleted', res.changeId);
-      await refreshConsole();
-    } catch (e) {
-      toast.error(errorMessage(e));
-    }
-  };
-  if (isLoading || !data) return <div className="p-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>;
-  return (
-    <div className="h-full flex flex-col">
-      <div className="p-3 border-b border-zinc-100 dark:border-white/[0.06] flex items-center gap-2">
-        <button onClick={onBack} className="md:hidden text-zinc-500"><ArrowLeft className="w-4 h-4" /></button>
-        <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{data.conversation.participants.map((p) => p.user.name).join(', ')}</p>
-      </div>
-      <ol className="flex-1 overflow-y-auto p-4 space-y-3">
-        {data.messages.length === 0 && <li className="text-sm text-zinc-500">No messages.</li>}
-        {data.messages.map((m) => {
-          const meta = (m.metadata ?? {}) as { kind?: string; url?: string };
-          return (
-            <li key={m.id} className={cn('group rounded-xl p-3 bg-zinc-50 dark:bg-white/[0.03]', m.deletedAt ? 'opacity-60' : '')}>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-indigo-500">{m.sender?.name ?? 'System'} <span className="text-zinc-400 font-normal">· {format(new Date(String(m.createdAt)), 'd MMM yyyy, HH:mm')}{m.editedAt ? ' · edited' : ''}{m.deletedAt ? ' · deleted by user' : ''}</span></p>
-                <span className="opacity-0 group-hover:opacity-100 flex gap-2">
-                  <button onClick={() => setEditing(m)} aria-label="Edit message" className="text-zinc-400 hover:text-indigo-500"><Pencil className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => void del(m)} aria-label="Delete message" className="text-zinc-400 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                </span>
-              </div>
-              {m.type === 'CALL' ? (
-                <p className="mt-1 text-sm text-zinc-800 dark:text-zinc-200 inline-flex items-center gap-1.5">{meta.kind === 'video' ? <Video className="w-4 h-4" /> : <Phone className="w-4 h-4" />} {String(m.body)} {meta.url && <a href={safeHref(meta.url)} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500">room</a>}</p>
-              ) : (
-                <p className="mt-1 text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{String(m.body ?? '')}</p>
-              )}
-              {!!m.attachmentUrl && <a href={safeHref(String(m.attachmentUrl))} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-indigo-500"><Paperclip className="w-3 h-3" />{String(m.attachmentName ?? 'attachment')}</a>}
-              {m.type !== 'TEXT' && m.type !== 'CALL' && <p className="mt-1 text-[11px] text-zinc-400">{String(m.type)}</p>}
-            </li>
-          );
-        })}
-      </ol>
-      {editing && <RecordEditor model="Message" record={editing} schema={schema} onClose={() => setEditing(null)} />}
     </div>
   );
 }

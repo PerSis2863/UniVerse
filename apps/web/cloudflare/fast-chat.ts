@@ -2,6 +2,9 @@
 // answer exactly like the Next.js route it stands in for; null hands the call to that route.
 import { bool, dbDate, isoDate, json, parseJson, type Caller } from './fast-db';
 
+// Same as removedBy in src/lib/chat.ts (not imported: that file loads Prisma).
+const removedBy = (metadata: unknown) => ((metadata as { moderated?: string } | null)?.moderated === 'removed' ? { moderated: 'removed' as const } : null);
+
 type Row = Record<string, string | number | null>;
 
 const SYSTEM_EMAIL = 'hello@universeimpact.system'; // src/lib/chat.ts
@@ -159,7 +162,7 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
       sender: { id: m.senderId, name: m.senderName, avatar: m.senderAvatar },
     };
     const out = m.deletedAt
-      ? { ...base, type: 'DELETED', body: '', pinnedAt: null, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null, metadata: null, replyTo: null, reactions: {} }
+      ? { ...base, type: 'DELETED', body: '', pinnedAt: null, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null, metadata: removedBy(base.metadata), replyTo: null, reactions: {} }
       : base;
     let poll = null;
     if (out.type === 'POLL') {

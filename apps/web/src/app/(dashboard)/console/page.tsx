@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Bug, Server, Crown, Database, Download, History, LayoutDashboard, Loader2, LogIn, MessageSquare, MousePointerClick, Trash2, Undo2, Users } from 'lucide-react';
+import { Activity, Bug, Server, Crown, Database, Download, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, Trash2, Undo2, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, fetcher, field, formatValue, matches, summarize, undoChange, useDebounced } from './shared';
@@ -12,15 +12,18 @@ import { PersonPanel } from './person';
 import { ErrorsPanel } from './errors';
 import { DeletionsPanel } from './deletions';
 import { type PlanUsage, PlanUsageCard, ServerPanel } from './server';
+import { AnnouncePanel, ChatsPanel } from './chats';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'server' | 'activity' | 'people' | 'data' | 'changes' | 'errors' | 'deletions';
+type Tab = 'overview' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'data' | 'changes' | 'errors' | 'deletions';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'server', label: 'Server', icon: Server },
   { id: 'activity', label: 'Live activity', icon: Activity },
+  { id: 'chats', label: 'Live chats', icon: MessagesSquare },
+  { id: 'announce', label: 'Announce', icon: Megaphone },
   { id: 'people', label: 'People', icon: Users },
   { id: 'data', label: 'All data', icon: Database },
   { id: 'changes', label: 'Changes & undo', icon: History },
@@ -76,6 +79,10 @@ export default function OwnerConsole() {
           <ServerPanel onTab={setTab} />
         ) : tab === 'activity' ? (
           <Feed onPerson={openPerson} />
+        ) : tab === 'chats' ? (
+          <ChatsPanel onPerson={openPerson} />
+        ) : tab === 'announce' ? (
+          <AnnouncePanel />
         ) : tab === 'people' ? (
           person ? <PersonPanel id={person} schema={tables.schema} onBack={() => setPerson(null)} /> : <People onPerson={setPerson} />
         ) : tab === 'data' ? (
