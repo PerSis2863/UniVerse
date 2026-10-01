@@ -157,7 +157,7 @@ export default function AdminInternshipsPage() {
 
       {isModalOpen && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center p-5 sm:p-6 border-b border-zinc-200 dark:border-zinc-800">
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">{editingId ? 'Edit Opportunity' : 'Add Opportunity'}</h2>
               <button onClick={() => setIsModalOpen(false)} aria-label="Close" className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">

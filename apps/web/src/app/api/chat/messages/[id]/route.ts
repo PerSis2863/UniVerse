@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { MAX_BODY, membership, messageSelect, serializeMessage } from '@/lib/chat';
 import { publishChat } from '@/server/realtime';
+import { chatMuted } from '@/server/moderation';
 
 type Ctx = { params: Promise<{ id: string }> };
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -23,6 +24,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const { user, msg } = r;
   if (msg.senderId !== user.id || msg.type !== 'TEXT' || msg.deletedAt) return NextResponse.json({ error: 'You can only edit your own text messages.' }, { status: 403 });
   if (Date.now() - msg.createdAt.getTime() > EDIT_WINDOW_MS) return NextResponse.json({ error: 'Messages can only be edited for 24 hours.' }, { status: 403 });
+  const muted = await chatMuted(user.id);
+  if (muted) return NextResponse.json({ error: muted }, { status: 403 });
   const body = await req.json().catch(() => ({}));
   const text = String(body.body ?? '').trim().slice(0, MAX_BODY);
   if (!text) return NextResponse.json({ error: 'Message is empty.' }, { status: 400 });

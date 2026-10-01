@@ -116,7 +116,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/courses', label: 'nav.my_courses' },
         { href: '/teacher/blackboard', label: 'nav.blackboard' },
         { href: '/teacher/students', label: 'nav.students' },
-        { href: '/teacher/early-warning', label: '🛟 Early warning' },
+        { href: '/teacher/early-warning', label: 'Early warning' },
         { href: '/teacher/attendance', label: 'nav.attendance' },
         { href: '/teacher/grades', label: 'nav.grades' },
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
@@ -142,7 +142,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/partnerships', label: 'nav.partner_institutions' },
         { href: '/admin/partners', label: 'nav.sponsor_portal' },
         { href: '/admin/impact-metrics', label: 'nav.impact_analytics' },
-        { href: '/admin/impact-reports', label: '📊 Verified impact reports' },
+        { href: '/admin/impact-reports', label: 'Impact reports' },
         { href: '/admin/certifications', label: 'Certifications' },
         { href: '/admin/credentials', label: 'Credential Verification' },
       ]
@@ -151,10 +151,10 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.management', icon: Settings,
       subItems: [
         { href: '/admin/users', label: 'nav.users' },
-        { href: '/admin/early-warning', label: '🛟 Early warning' },
+        { href: '/admin/early-warning', label: 'Early warning' },
         { href: '/admin/approvals', label: 'Approvals' },
         { href: '/admin/audit', label: 'Activity Log' },
-        { href: '/admin/integrations/lti', label: '🔌 LMS integration (LTI)' },
+        { href: '/admin/integrations/lti', label: 'LMS integration' },
         { href: '/admin/courses', label: 'nav.courses' },
         { href: '/admin/administrative', label: 'nav.administrative' },
         { href: '/admin/internships', label: 'nav.internships' },
@@ -236,7 +236,7 @@ function NavItemComponent({
                     <Link key={sub.href} href={sub.href} onClick={onClose} aria-current={on ? 'page' : undefined}
                       className={cn('sidebar-item pill-host relative block text-sm py-1.5', on && 'active text-indigo-400')}>
                       {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
-                      <span className="relative">{t(sub.label)}</span>
+                      <span className="relative block truncate">{t(sub.label)}</span>
                     </Link>
                   );
                 })}

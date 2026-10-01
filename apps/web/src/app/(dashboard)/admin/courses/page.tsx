@@ -120,7 +120,7 @@ export default function AdminCoursesPage() {
       {/* Modal */}
       {isModalOpen && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">{editingId ? 'Edit Course' : 'Create New Course'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
@@ -359,7 +359,7 @@ function RosterSheet({ course, onClose }: { course: AdminCourse; onClose: () => 
   return (
     <div className="backdrop-in fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`${course.code} students`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="sheet-in w-full sm:max-w-lg max-h-[90vh] flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
+      <div className="sheet-in w-full sm:max-w-lg max-h-[90vh] flex flex-col tone-panel border border-zinc-200 dark:border-zinc-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
         <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white break-words">{course.code} · {course.name}</h2>

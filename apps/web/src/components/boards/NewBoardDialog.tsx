@@ -21,7 +21,7 @@ export function NewBoardDialog({ onCreate, onClose }: { onCreate: (title: string
   };
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true" aria-label="New whiteboard" onClick={onClose}>
-      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 p-6 space-y-5">
+      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-6 space-y-5">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-white">New whiteboard</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-zinc-600"><X className="w-5 h-5" /></button>

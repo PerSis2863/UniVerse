@@ -140,12 +140,17 @@ type RawMessage = {
   [k: string]: unknown;
 };
 
+/** What a deleted message still shows: only that UniVerse removed it, if it did (owner console). */
+export function removedBy(metadata: unknown) {
+  return (metadata as { moderated?: string } | null)?.moderated === 'removed' ? { moderated: 'removed' as const } : null;
+}
+
 /** Hides the content of deleted messages and groups reactions by emoji. */
 export function serializeMessage<T extends RawMessage>(m: T) {
   const reactions: Record<string, string[]> = {};
   for (const r of m.reactions) (reactions[r.emoji] ??= []).push(r.userId);
   if (m.deletedAt) {
-    return { ...m, type: 'DELETED', body: '', pinnedAt: null, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null, metadata: null, replyTo: null, reactions: {} };
+    return { ...m, type: 'DELETED', body: '', pinnedAt: null, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null, metadata: removedBy(m.metadata), replyTo: null, reactions: {} };
   }
   return {
     ...m,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { chatMuted } from '@/server/moderation';
 import { getSessionUser } from '@/lib/server-auth';
 import { ensureWelcome, getSystemUser, isOnline, touchPresence, userCard, visibleTo } from '@/lib/chat';
 import { publishChat } from '@/server/realtime';
@@ -106,6 +107,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: created.id }, { status: 201 });
   }
 
+  const muted = await chatMuted(user.id);
+  if (muted) return NextResponse.json({ error: muted }, { status: 403 });
   const name = String(body.name ?? '').trim().slice(0, 80);
   const memberIds: string[] = Array.isArray(body.memberIds)
     ? [...new Set<string>(body.memberIds.filter((x: unknown) => typeof x === 'string'))].filter((id) => id !== user.id && id !== system.id).slice(0, 255)

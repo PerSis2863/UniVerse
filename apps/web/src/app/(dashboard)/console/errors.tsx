@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Bot, CheckCircle2, ChevronDown, EyeOff, Loader2, RotateCcw, Server, Monitor, Sparkles } from 'lucide-react';
+import { Bot, CheckCircle2, ChevronDown, Copy, ExternalLink, EyeOff, Loader2, RotateCcw, Server, Monitor, Sparkles, User } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, fetcher, matches } from './shared';
@@ -27,7 +27,41 @@ interface ErrorReport {
   severity: 'low' | 'medium' | 'high' | null;
   firstSeen: string;
   lastSeen: string;
+  lastUser: { id: string; name: string; email: string; role: string } | null;
 }
+
+interface Summary {
+  seenToday: number; newToday: number; openServer: number; openBrowser: number; openHigh: number; peopleAffected: number; timesSeen: number;
+  perDay: { day: string; new: number; seen: number }[];
+}
+
+// What each kind of problem means, in plain words.
+const KIND: Record<string, string> = {
+  chunk: 'An old copy of the app tried to load a file that an update replaced. The page reloads itself, so this usually needs no fix.',
+  api: 'A request to the server failed, so something on the page could not load or save.',
+  render: 'Part of a page crashed while it was being drawn. The person saw an error screen there.',
+  promise: 'Something the page was waiting for (usually a server answer) failed and nothing handled it.',
+  runtime: 'A script error in the browser while the page was running.',
+};
+
+/** "Chrome on Android" from a user agent. */
+function device(ua: string | null) {
+  if (!ua) return null;
+  const browser = /Edg\//.test(ua) ? 'Edge' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'a browser';
+  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : null;
+  return os ? `${browser} on ${os}` : browser;
+}
+
+const titleOf = (e: ErrorReport) => {
+  const t = e.diagnosis?.match(/^\*\*(.+?)\*\*/)?.[1] ?? e.message;
+  return !t || t === 'undefined' || t === 'null' ? `Unknown ${e.source === 'SERVER' ? 'server' : 'browser'} error (no message)` : t;
+};
+
+const SORTS = [
+  { id: 'latest', label: 'Latest' },
+  { id: 'often', label: 'Most often' },
+  { id: 'people', label: 'Most people' },
+] as const;
 
 const FILTERS = [
   { id: 'OPEN', label: 'Open' },
@@ -54,14 +88,44 @@ function Diagnosis({ text }: { text: string }) {
   );
 }
 
-export function ErrorsPanel() {
+export function ErrorsPanel({ onPerson }: { onPerson?: (id: string) => void }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('OPEN');
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number> }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: 60_000 });
+  const [source, setSource] = useState<'ALL' | 'SERVER' | 'CLIENT'>('ALL');
+  const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('latest');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number>; summary?: Summary }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: 60_000 });
   const openCount = (data?.counts.NEW ?? 0) + (data?.counts.DIAGNOSED ?? 0);
-  const items = (data?.items ?? []).filter((e) => matches(q, e.message, e.path, e.kind, e.source, e.diagnosis, e.userAgent, e.severity));
+  const items = (data?.items ?? [])
+    .filter((e) => (source === 'ALL' || e.source === source) && matches(q, e.message, e.path, e.kind, e.source, e.diagnosis, e.userAgent, e.severity, e.lastUser?.name, e.lastUser?.email))
+    .sort((a, b) => (sort === 'often' ? b.count - a.count : sort === 'people' ? b.users - a.users : 0));
+  const sum = data?.summary;
+  const peak = Math.max(1, ...(sum?.perDay ?? []).map((d) => Math.max(d.new, d.seen)));
+
+  const bulk = async (status: 'RESOLVED' | 'IGNORED' | 'NEW') => {
+    setBusy('bulk');
+    try {
+      const { data: r } = await api.post('/owner/errors/bulk', { ids: [...picked], status });
+      toast.success(`${r.updated} updated`);
+      setPicked(new Set());
+      mutate();
+    } catch {
+      toast.error('Could not update');
+    } finally {
+      setBusy(null);
+    }
+  };
+  const copy = async (e: ErrorReport) => {
+    const text = [`${titleOf(e)}`, `Where: ${e.path ?? 'unknown'} (${e.source === 'SERVER' ? 'server' : 'browser'}, ${e.kind})`, `Seen ${e.count} times by ${e.users} people, first ${e.firstSeen}, last ${e.lastSeen}`, e.userAgent ? `Browser: ${e.userAgent}` : '', '', e.message, e.stack ?? '', e.diagnosis ? `\nDiagnosis:\n${e.diagnosis}` : ''].filter((x) => x !== null).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied. Paste it to Claude to get it fixed.');
+    } catch {
+      toast.error('Could not copy');
+    }
+  };
 
   const diagnose = async (ids?: string[]) => {
     setBusy(ids?.[0] ?? 'all');
@@ -103,14 +167,66 @@ export function ErrorsPanel() {
         </button>
       </div>
 
-      <SearchBox value={q} onChange={setQ} placeholder="Search errors (message, page, browser, diagnosis)" />
-      <div className="flex gap-1">
+      {sum && (
+        <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              ['Open problems', openCount, `${sum.openServer} server · ${sum.openBrowser} browser`],
+              ['High severity', sum.openHigh, 'open, from AI diagnosis'],
+              ['People affected', sum.peopleAffected, `${sum.timesSeen} times in total`],
+              ['Seen today', sum.seenToday, `${sum.newToday} new today`],
+            ] as const).map(([label, value, hint]) => (
+              <div key={label} className={cn(card, 'p-4')}>
+                <p className={cn('text-2xl font-bold', label === 'High severity' && value ? 'text-rose-500' : 'text-zinc-900 dark:text-white')}>{value}</p>
+                <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{label}</p>
+                <p className="text-[11px] text-zinc-400">{hint}</p>
+              </div>
+            ))}
+          </div>
+          <div className={cn(card, 'p-4')}>
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Problems per day · 14 days</p>
+            <div className="mt-3 flex items-end gap-1 h-28" role="img" aria-label="Problems per day">
+              {sum.perDay.map((d) => (
+                <div key={d.day} className="flex-1 flex items-end gap-px h-full" title={`${format(new Date(d.day), 'd MMM')}: ${d.new} new, ${d.seen} still happening`}>
+                  <div className="flex-1 rounded-t bg-rose-500/80" style={{ height: `${Math.max(d.new ? 6 : 2, (d.new / peak) * 100)}%`, opacity: d.new ? 1 : 0.25 }} />
+                  <div className="flex-1 rounded-t bg-amber-400/80" style={{ height: `${Math.max(d.seen ? 6 : 2, (d.seen / peak) * 100)}%`, opacity: d.seen ? 1 : 0.25 }} />
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-zinc-500 flex gap-3"><span><span className="inline-block w-2 h-2 rounded-sm bg-rose-500 mr-1" />new problems</span><span><span className="inline-block w-2 h-2 rounded-sm bg-amber-400 mr-1" />last seen that day</span></p>
+          </div>
+        </div>
+      )}
+
+      <SearchBox value={q} onChange={setQ} placeholder="Search errors (message, page, browser, person, diagnosis)" />
+      <div className="flex flex-wrap gap-1 items-center">
         {FILTERS.map((f) => (
           <button key={f.id} onClick={() => setFilter(f.id)} className={cn('px-3.5 py-1.5 rounded-full text-sm font-semibold', filter === f.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
             {f.label}{f.id === 'OPEN' && openCount ? ` (${openCount})` : f.id !== 'OPEN' && data?.counts[f.id] ? ` (${data.counts[f.id]})` : ''}
           </button>
         ))}
+        <span className="flex-1" />
+        <select aria-label="Where" value={source} onChange={(e) => setSource(e.target.value as typeof source)} className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm">
+          <option value="ALL">Server and browser</option><option value="SERVER">Server only</option><option value="CLIENT">Browser only</option>
+        </select>
+        <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm">
+          {SORTS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+        </select>
       </div>
+      {picked.size > 0 && (
+        <div className={cn(card, 'p-3 flex flex-wrap items-center gap-2 sticky top-2 z-10')}>
+          <span className="text-sm font-semibold text-zinc-900 dark:text-white mr-auto">{picked.size} selected</span>
+          {filter === 'OPEN' ? (
+            <>
+              <button onClick={() => bulk('RESOLVED')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold"><CheckCircle2 className="w-4 h-4" /> Resolve</button>
+              <button onClick={() => bulk('IGNORED')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><EyeOff className="w-4 h-4" /> Ignore</button>
+            </>
+          ) : (
+            <button onClick={() => bulk('NEW')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><RotateCcw className="w-4 h-4" /> Reopen</button>
+          )}
+          <button onClick={() => setPicked(new Set())} className="text-sm text-zinc-500 px-2">Clear</button>
+        </div>
+      )}
 
       {isLoading ? (
         <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
@@ -126,9 +242,12 @@ export function ErrorsPanel() {
         <div className="space-y-2">
           {items.map((e) => {
             const expanded = open === e.id;
-            const title = e.diagnosis?.match(/^\*\*(.+?)\*\*/)?.[1] ?? e.message;
+            const title = titleOf(e);
             return (
-              <div key={e.id} className={card}>
+              <div key={e.id} className={cn(card, 'flex items-start')}>
+                <input type="checkbox" aria-label="Select" checked={picked.has(e.id)} className="mt-5 ml-4 shrink-0"
+                  onChange={() => setPicked((cur) => { const next = new Set(cur); if (next.has(e.id)) next.delete(e.id); else next.add(e.id); return next; })} />
+                <div className="min-w-0 flex-1">
                 <button onClick={() => setOpen(expanded ? null : e.id)} className="w-full text-left p-4 flex items-start gap-3">
                   {e.source === 'SERVER' ? <Server className="w-4 h-4 mt-1 text-zinc-400 shrink-0" /> : <Monitor className="w-4 h-4 mt-1 text-zinc-400 shrink-0" />}
                   <div className="min-w-0 flex-1">
@@ -137,6 +256,7 @@ export function ErrorsPanel() {
                       <span>{e.path ?? 'unknown page'}</span>
                       <span>{e.count}× · {e.users} {e.users === 1 ? 'person' : 'people'}</span>
                       <span>last {formatDistanceToNow(new Date(e.lastSeen), { addSuffix: true })}</span>
+                      {e.lastUser && <span>{e.lastUser.name}</span>}
                       {e.status === 'NEW' && <span className="font-semibold text-indigo-500">New</span>}
                     </p>
                   </div>
@@ -153,6 +273,20 @@ export function ErrorsPanel() {
                     ) : (
                       <p className="text-sm text-zinc-500">Not diagnosed yet.</p>
                     )}
+                    <dl className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                      <div><dt className="text-xs text-zinc-500">What it means</dt><dd className="text-zinc-800 dark:text-zinc-200">{KIND[e.kind] ?? 'An error the app caught and recorded.'}</dd></div>
+                      <div><dt className="text-xs text-zinc-500">Where</dt><dd className="text-zinc-800 dark:text-zinc-200 break-all">{e.source === 'SERVER' ? 'On the server' : 'In the browser'} · {e.path ?? 'unknown page'}</dd></div>
+                      <div><dt className="text-xs text-zinc-500">How often</dt><dd className="text-zinc-800 dark:text-zinc-200">{e.count} {e.count === 1 ? 'time' : 'times'}, {e.users} {e.users === 1 ? 'person' : 'people'}</dd></div>
+                      <div><dt className="text-xs text-zinc-500">First seen</dt><dd className="text-zinc-800 dark:text-zinc-200">{format(new Date(e.firstSeen), 'd MMM yyyy, HH:mm')}</dd></div>
+                      <div><dt className="text-xs text-zinc-500">Last seen</dt><dd className="text-zinc-800 dark:text-zinc-200">{format(new Date(e.lastSeen), 'd MMM yyyy, HH:mm')}</dd></div>
+                      <div><dt className="text-xs text-zinc-500">Device</dt><dd className="text-zinc-800 dark:text-zinc-200">{device(e.userAgent) ?? (e.source === 'SERVER' ? 'Server' : 'Unknown')}</dd></div>
+                      {e.lastUser && (
+                        <div><dt className="text-xs text-zinc-500">Last person</dt><dd>
+                          <button onClick={() => onPerson?.(e.lastUser!.id)} disabled={!onPerson} className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-300 hover:underline"><User className="w-3.5 h-3.5" />{e.lastUser.name}</button>
+                          <span className="text-xs text-zinc-500"> · {e.lastUser.role.toLowerCase()}</span>
+                        </dd></div>
+                      )}
+                    </dl>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1">Error</p>
                       <pre className="text-xs whitespace-pre-wrap break-words rounded-xl bg-zinc-50 dark:bg-black/30 p-3 text-zinc-700 dark:text-zinc-300 max-h-64 overflow-auto">{e.message}{e.stack ? `\n\n${e.stack}` : ''}</pre>
@@ -162,6 +296,10 @@ export function ErrorsPanel() {
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <button onClick={() => void copy(e)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Copy className="w-4 h-4" /> Copy details</button>
+                      {e.source !== 'SERVER' && e.path && e.path.startsWith('/') && (
+                        <a href={e.path} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><ExternalLink className="w-4 h-4" /> Open page</a>
+                      )}
                       <button onClick={() => diagnose([e.id])} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200 disabled:opacity-60">
                         {busy === e.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {e.diagnosis ? 'Diagnose again' : 'Diagnose'}
                       </button>
@@ -176,6 +314,7 @@ export function ErrorsPanel() {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             );
           })}

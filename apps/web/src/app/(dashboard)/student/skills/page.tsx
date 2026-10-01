@@ -237,7 +237,7 @@ export default function StudentSkills() {
       </div>
       {editor && (
         <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && setEditor(null)}>
-          <div className="sheet-in w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11152a] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl space-y-3">
+          <div className="sheet-in w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-6 shadow-2xl space-y-3">
             <h3 className="text-lg font-black text-zinc-900 dark:text-white">{editor.id ? 'Edit skill' : 'Add a skill'}</h3>
             <input autoFocus disabled={!!editor.id} value={editor.name} onChange={(e) => setEditor({ ...editor, name: e.target.value })} maxLength={60} placeholder="e.g. Python, Public speaking"
               className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none disabled:opacity-60" />

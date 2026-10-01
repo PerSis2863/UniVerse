@@ -4,7 +4,10 @@ import prisma from '@/lib/db';
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import { forgetUser, isOwnerEmail } from '../auth';
 import schema from '../owner-schema.json';
-import { decideDeletion } from '../account-deletion';
+import { decideDeletion, eraseAccount } from '../account-deletion';
+import { publishChat } from '../realtime';
+import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
+import { forgetRules } from '../moderation';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -83,9 +86,16 @@ function revive(m: Model, snapshot: Record<string, unknown>) {
   for (const f of columns(m)) {
     if (!(f.name in snapshot)) continue;
     const v = snapshot[f.name];
+    if (f.type === 'Json' && v === null) continue; // Prisma refuses a plain null here: see clearJson
     out[f.name] = f.type === 'DateTime' && typeof v === 'string' ? new Date(v) : v;
   }
   return out;
+}
+
+/** Empties the JSON columns that were empty in a snapshot (revive leaves them out). */
+async function clearJson(m: Model, id: string, snapshot: Record<string, unknown>) {
+  const cols = columns(m).filter((f) => f.type === 'Json' && f.name in snapshot && snapshot[f.name] === null);
+  if (cols.length) await prisma.$executeRawUnsafe(`UPDATE "${m.table}" SET ${cols.map((f) => `"${f.name}" = NULL`).join(', ')} WHERE "id" = ?`, id);
 }
 
 /** Stops the owner from locking themselves out, and keeps the owner account safe. */
@@ -120,11 +130,43 @@ export default function ownerModule(router: Router) {
   r.get('errors', async ({ query }) => {
     const status = typeof query.status === 'string' && ['NEW', 'DIAGNOSED', 'RESOLVED', 'IGNORED', 'OPEN'].includes(query.status) ? query.status : 'OPEN';
     const where = status === 'OPEN' ? { status: { in: ['NEW', 'DIAGNOSED'] } } : { status };
-    const [items, counts] = await Promise.all([
+    const day = new Date(Date.now() - 86_400_000);
+    const [items, counts, recent] = await Promise.all([
       prisma.errorReport.findMany({ where, orderBy: [{ lastSeen: 'desc' }], take: 200 }),
       prisma.errorReport.groupBy({ by: ['status'], _count: { _all: true } }),
+      // For the summary and the 14-day chart (one row per problem, so this stays small).
+      prisma.errorReport.findMany({ where: { lastSeen: { gt: new Date(Date.now() - 14 * 86_400_000) } }, select: { firstSeen: true, lastSeen: true, source: true, count: true, users: true, severity: true, status: true } }),
     ]);
-    return { items, counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])) };
+    // Who ran into each problem last (name and role, to see if it's one person or many).
+    const userIds = [...new Set(items.map((e) => e.lastUserId).filter((x): x is string => !!x))];
+    const people = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds.slice(0, 90) } }, select: { id: true, name: true, email: true, role: true } }) : [];
+    const byId = new Map(people.map((u) => [u.id, u]));
+    const open = recent.filter((e) => e.status === 'NEW' || e.status === 'DIAGNOSED');
+    const days = Array.from({ length: 14 }, (_, i) => new Date(Date.now() - (13 - i) * 86_400_000).toISOString().slice(0, 10));
+    return {
+      items: items.map((e) => ({ ...e, lastUser: e.lastUserId ? byId.get(e.lastUserId) ?? null : null })),
+      counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
+      summary: {
+        seenToday: recent.filter((e) => e.lastSeen > day).length,
+        newToday: recent.filter((e) => e.firstSeen > day).length,
+        openServer: open.filter((e) => e.source === 'SERVER').length,
+        openBrowser: open.filter((e) => e.source !== 'SERVER').length,
+        openHigh: open.filter((e) => e.severity === 'high').length,
+        peopleAffected: open.reduce((n, e) => n + e.users, 0),
+        timesSeen: open.reduce((n, e) => n + e.count, 0),
+        // New problems per day, and problems still happening per day (by last time seen).
+        perDay: days.map((d) => ({ day: d, new: recent.filter((e) => e.firstSeen.toISOString().slice(0, 10) === d).length, seen: recent.filter((e) => e.lastSeen.toISOString().slice(0, 10) === d).length })),
+      },
+    };
+  });
+
+  /** Resolve, ignore or reopen several problems at once. */
+  r.post('errors/bulk', async ({ body }) => {
+    const ids = Array.isArray(body?.ids) ? (body.ids as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, 90) : [];
+    const status = body?.status;
+    if (!ids.length || !['NEW', 'RESOLVED', 'IGNORED'].includes(status)) throw new BadRequestException('Choose problems and a status.');
+    const { count } = await prisma.errorReport.updateMany({ where: { id: { in: ids } }, data: { status, resolvedAt: status === 'RESOLVED' ? new Date() : null } });
+    return { updated: count };
   });
 
   r.post('errors/diagnose', async ({ body }) => {
@@ -143,7 +185,7 @@ export default function ownerModule(router: Router) {
     const now = Date.now();
     const day = new Date(now - 86_400_000);
     const month = new Date(now - 30 * 86_400_000);
-    const [roles, statuses, online, signInsToday, newUsers, messagesToday, pendingApps, recentSignIns, recentActions, openErrors, pendingDeletions, joined, countries, devices] = await Promise.all([
+    const [roles, statuses, online, signInsToday, newUsers, messagesToday, pendingApps, recentSignIns, recentActions, openErrors, pendingDeletions, joined, countries, devices, guard] = await Promise.all([
       prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
       prisma.user.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.user.findMany({ where: { lastSeenAt: { gt: new Date(now - 5 * 60_000) } }, select: { id: true, name: true, role: true, lastSeenAt: true }, orderBy: { lastSeenAt: 'desc' }, take: 50 }),
@@ -158,6 +200,7 @@ export default function ownerModule(router: Router) {
       prisma.user.findMany({ where: { createdAt: { gt: new Date(now - 14 * 86_400_000) } }, select: { createdAt: true, role: true } }),
       prisma.loginEvent.groupBy({ by: ['country'], where: { createdAt: { gt: month } }, _count: { _all: true } }),
       prisma.loginEvent.groupBy({ by: ['device'], where: { createdAt: { gt: month } }, _count: { _all: true } }),
+      prisma.usageGuard.findUnique({ where: { id: 'main' } }).catch(() => null),
     ]);
     // New accounts per day for the last 14 days (oldest first).
     const signUps = Array.from({ length: 14 }, (_, i) => {
@@ -181,7 +224,117 @@ export default function ownerModule(router: Router) {
       signUps,
       countries: top(countries, (r: { country: string | null }) => r.country),
       devices: top(devices, (r: { device: string | null }) => r.device),
+      // The spending guard (cloudflare/usage-guard.ts): this billing month's Cloudflare usage.
+      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
     };
+  });
+
+  // ── Server: live, read-only or maintenance, a notice on every page, and the spending guard ──
+  // The Worker (cloudflare/usage-guard.ts) reads the server_control row at most once a minute. The
+  // owner always gets through: these answers give their browser the uv_owner cookie.
+
+  r.get('server', async () => {
+    const day = new Date(Date.now() - 86_400_000);
+    const [ctl, guard, people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended, history] = await Promise.all([
+      serverControl(),
+      prisma.usageGuard.findUnique({ where: { id: 'main' } }).catch(() => null),
+      prisma.user.count(),
+      prisma.user.count({ where: { lastSeenAt: { gt: day } } }),
+      prisma.loginEvent.count({ where: { createdAt: { gt: day } } }),
+      prisma.message.count({ where: { createdAt: { gt: day } } }),
+      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] } } }),
+      prisma.errorReport.count({ where: { lastSeen: { gt: day } } }),
+      prisma.accountDeletionRequest.count({ where: { status: 'PENDING' } }),
+      prisma.user.count({ where: { status: 'SUSPENDED' } }),
+      prisma.ownerChange.findMany({ where: { model: 'ServerControl' }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    ]);
+    return withOwnerPass(ctl.bypass, {
+      control: publicControl(ctl),
+      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
+      health: { people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended },
+      history,
+    });
+  });
+
+  r.post('server', async ({ body, user }) => {
+    const ctl = await serverControl();
+    const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null; switches?: string | null } = {};
+    if (body?.mode !== undefined) {
+      if (!['LIVE', 'READ_ONLY', 'MAINTENANCE'].includes(body.mode)) throw new BadRequestException('Mode must be LIVE, READ_ONLY or MAINTENANCE');
+      data.mode = body.mode;
+    }
+    if (body?.message !== undefined) data.message = String(body.message ?? '').trim().slice(0, 500) || null;
+    if (body?.banner !== undefined) data.banner = String(body.banner ?? '').trim().slice(0, 300) || null;
+    if (body?.until !== undefined) {
+      const until = body.until ? new Date(String(body.until)) : null;
+      if (until && (Number.isNaN(until.getTime()) || until.getTime() < Date.now())) throw new BadRequestException('Pick a time in the future');
+      data.until = until;
+    }
+    // Feature switches: the list of features turned off.
+    let switched = '';
+    if (body?.switches !== undefined) {
+      if (!Array.isArray(body.switches)) throw new BadRequestException('switches must be a list');
+      const off = parseSwitches(JSON.stringify(body.switches));
+      const was = parseSwitches(ctl.switches);
+      data.switches = off.length ? JSON.stringify(off) : null;
+      const name = (id: string) => FEATURE_SWITCHES.find((f) => f.id === id)?.label ?? id;
+      const turnedOff = off.filter((x) => !was.includes(x)).map(name);
+      const turnedOn = was.filter((x) => !off.includes(x)).map(name);
+      switched = [turnedOff.length && `Turned off: ${turnedOff.join(', ')}`, turnedOn.length && `Turned back on: ${turnedOn.join(', ')}`].filter(Boolean).join(' · ');
+    }
+    // Back to normal clears the end time.
+    if (data.mode === 'LIVE') data.until = null;
+    const keys = Object.keys(data) as (keyof typeof data)[];
+    if (!keys.length) throw new BadRequestException('Nothing to change');
+    const after = await prisma.serverControl.update({ where: { id: 'main' }, data: { ...data, updatedAt: new Date(), updatedBy: user.id } });
+    const words: Record<string, string> = { LIVE: 'Server back to normal', READ_ONLY: 'Server set to read-only', MAINTENANCE: 'Server paused for maintenance' };
+    forgetRules();
+    const summary = data.mode && data.mode !== ctl.mode ? words[data.mode] : switched ? switched : data.banner !== undefined && data.banner !== ctl.banner ? (data.banner ? `Notice set: “${data.banner.slice(0, 60)}”` : 'Notice removed') : 'Server settings changed';
+    const change = await prisma.ownerChange.create({
+      data: { ownerId: user.id, action: 'UPDATE', model: 'ServerControl', recordId: 'main', summary, before: json(pickKeys(publicControl(ctl), keys)), after: json(pickKeys(publicControl(after), keys)) },
+    });
+    return withOwnerPass(after.bypass, { control: publicControl(after), changeId: change.id });
+  });
+
+  // ── Ban and permanent delete ──
+
+  r.post<{ id: string }>('people/:id/ban', async ({ params, body, user }) => {
+    const target = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, name: true, email: true, status: true } });
+    if (!target) throw new NotFoundException('Person not found');
+    if (isOwnerEmail(target.email) || target.id === user.id) throw new ForbiddenException("The owner account can't be banned.");
+    const ban = body?.ban !== false;
+    const status = ban ? 'SUSPENDED' : 'ACTIVE';
+    await prisma.user.update({ where: { id: target.id }, data: { status } });
+    forgetUser(target.id);
+    const change = await prisma.ownerChange.create({
+      data: { ownerId: user.id, action: 'UPDATE', model: 'User', recordId: target.id, summary: `${ban ? 'Banned' : 'Let back in'} ${label(target)}`, before: { status: target.status }, after: { status } },
+    });
+    return { ok: true, changeId: change.id };
+  });
+
+  /** Removes the account and everything that belongs only to it. Can't be undone. */
+  r.delete<{ id: string }>('people/:id', async ({ params, query, user }) => {
+    const before = (await prisma.user.findUnique({ where: { id: params.id }, select: select(model('User')) })) as Record<string, unknown> | null;
+    if (!before) throw new NotFoundException('Person not found');
+    if (isOwnerEmail(String(before.email)) || before.id === user.id) throw new ForbiddenException("The owner account can't be deleted.");
+    if (String(query.confirm ?? '').trim().toLowerCase() !== String(before.email).toLowerCase()) throw new BadRequestException('Type their email address to confirm.');
+    let how: 'removed' | 'erased' = 'removed';
+    try {
+      await prisma.user.delete({ where: { id: params.id } });
+    } catch {
+      // Something else points at them (a course they teach, a payment…): remove everything
+      // personal and keep a "Deleted user" in their place, so the rest stays intact.
+      await eraseAccount(params.id);
+      how = 'erased';
+    }
+    forgetUser(params.id);
+    await prisma.ownerChange.create({
+      data: {
+        ownerId: user.id, action: 'PURGE', model: 'User', recordId: params.id, before: json(before),
+        summary: `Permanently deleted ${label(before)}${how === 'erased' ? ' (kept as “Deleted user” where other records need them)' : ''}`,
+      },
+    });
+    return { ok: true, how };
   });
 
   /**
@@ -416,6 +569,7 @@ export default function ownerModule(router: Router) {
       const exists = await delegate(m).findUnique({ where: { id: change.recordId }, select: { id: true } });
       if (!exists) throw new BadRequestException('The record no longer exists, so this edit can’t be undone.');
       await delegate(m).update({ where: { id: change.recordId }, data: snapshot });
+      await clearJson(m, change.recordId, (change.before ?? {}) as Record<string, unknown>);
     } else if (change.action === 'DELETE') {
       const exists = await delegate(m).findUnique({ where: { id: change.recordId }, select: { id: true } });
       if (exists) throw new BadRequestException('A record with this id already exists.');
@@ -428,10 +582,30 @@ export default function ownerModule(router: Router) {
       throw new BadRequestException('This change can’t be undone.');
     }
     if (m.name === 'User') forgetUser(change.recordId);
+    if (m.name === 'Message') {
+      const msg = await prisma.message.findUnique({ where: { id: change.recordId }, select: { conversationId: true } });
+      if (msg) publishChat(msg.conversationId);
+    }
     await prisma.ownerChange.update({ where: { id: change.id }, data: { undoneAt: new Date() } });
     await prisma.ownerChange.create({ data: { ownerId: user.id, action: 'RESTORE', model: m.name, recordId: change.recordId, summary: `Undid: ${change.summary}` } });
     return { ok: true };
   });
+}
+
+/** The server switch, created on first use with a fresh owner pass. */
+export async function serverControl() {
+  const found = await prisma.serverControl.findUnique({ where: { id: 'main' } });
+  if (found) return found;
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  const bypass = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' })[c]!);
+  return prisma.serverControl.upsert({ where: { id: 'main' }, update: {}, create: { id: 'main', bypass } });
+}
+type Control = Awaited<ReturnType<typeof serverControl>>;
+const publicControl = (c: Control) => ({ mode: c.mode, message: c.message, until: c.until, banner: c.banner, switches: c.switches, updatedAt: c.updatedAt });
+
+/** Answers with the owner's pass as a cookie, so the Worker lets them through while paused. */
+function withOwnerPass(bypass: string, body: unknown) {
+  return Response.json(json(body), { headers: { 'Set-Cookie': `uv_owner=${bypass}; Path=/; Max-Age=7776000; HttpOnly; Secure; SameSite=Lax` } });
 }
 
 function humanize(name: string) {

@@ -363,7 +363,7 @@ function UserDetail({ user, onClose, onDelete, onStatus }: { user: Person; onClo
   return (
     <div className="backdrop-in fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`${user.name}'s profile`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full sm:max-w-2xl max-h-[92vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
+      <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full sm:max-w-2xl max-h-[92vh] flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
         <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-white">User profile</h2>
           <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">

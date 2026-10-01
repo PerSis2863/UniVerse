@@ -146,7 +146,7 @@ export function RecordEditor({ model, record, schema, onClose, onSaved }: { mode
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50" role="dialog" aria-modal="true" aria-label={`Edit ${model}`}>
-      <div className="w-full sm:max-w-2xl max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10">
+      <div className="w-full sm:max-w-2xl max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10">
         <div className="flex items-center justify-between gap-3 p-5 border-b border-zinc-100 dark:border-white/[0.06]">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-indigo-500">{model}</p>

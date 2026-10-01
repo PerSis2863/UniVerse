@@ -134,7 +134,7 @@ export function NgoProjectBoard({ filter, sort = 'newest', guide }: Props) {
 
       {applying && (
         <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && setApplying(null)}>
-          <div className="sheet-in w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11152a] border border-zinc-200 dark:border-white/10 p-6 shadow-2xl">
+          <div className="sheet-in w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-6 shadow-2xl">
             <h3 className="text-lg font-black text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-indigo-500" /> Apply to {applying.name}</h3>
             <p className="text-sm text-zinc-500 mt-1">{applying.ngo.name} will review your application.</p>
             <textarea

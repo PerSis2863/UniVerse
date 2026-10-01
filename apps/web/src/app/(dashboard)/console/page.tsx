@@ -4,22 +4,29 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Bug, Crown, Database, Download, History, LayoutDashboard, Loader2, LogIn, MessageSquare, MousePointerClick, Trash2, Undo2, Users } from 'lucide-react';
+import { Activity, Bug, Server, Crown, Database, Download, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, Trash2, Undo2, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, fetcher, field, formatValue, matches, summarize, undoChange, useDebounced } from './shared';
 import { PersonPanel } from './person';
 import { ErrorsPanel } from './errors';
 import { DeletionsPanel } from './deletions';
+import { type PlanUsage, PlanUsageCard, ServerPanel } from './server';
+import { AnnouncePanel, ChatsPanel } from './chats';
+import { DatabasePanel } from './database';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'activity' | 'people' | 'data' | 'changes' | 'errors' | 'deletions';
+type Tab = 'overview' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'changes' | 'errors' | 'deletions';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'server', label: 'Server', icon: Server },
   { id: 'activity', label: 'Live activity', icon: Activity },
+  { id: 'chats', label: 'Live chats', icon: MessagesSquare },
+  { id: 'announce', label: 'Announce', icon: Megaphone },
   { id: 'people', label: 'People', icon: Users },
+  { id: 'database', label: 'Database', icon: HardDrive },
   { id: 'data', label: 'All data', icon: Database },
   { id: 'changes', label: 'Changes & undo', icon: History },
   { id: 'errors', label: 'Errors', icon: Bug },
@@ -30,6 +37,7 @@ export default function OwnerConsole() {
   const owner = useAuthStore((s) => s.user?.owner === true);
   const [tab, setTab] = useState<Tab>('overview');
   const [person, setPerson] = useState<string | null>(null);
+  const [dataTable, setDataTable] = useState<string | null>(null);
   // Links such as /console?tab=errors (from the error digest email) open that tab.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
@@ -58,7 +66,7 @@ export default function OwnerConsole() {
         <p className="text-sm text-zinc-500">Everything on UniVerse. Only you can open this page. Every change here can be undone.</p>
         <nav className="mt-4 flex flex-wrap gap-1" aria-label="Console sections">
           {TABS.map((t) => (
-            <button key={t.id} onClick={() => { setTab(t.id); if (t.id !== 'people') setPerson(null); }}
+            <button key={t.id} onClick={() => { setTab(t.id); if (t.id !== 'people') setPerson(null); if (t.id === 'data') setDataTable(null); }}
               className={cn('inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold', tab === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
               <t.icon className="w-4 h-4" /> {t.label}
             </button>
@@ -70,14 +78,22 @@ export default function OwnerConsole() {
           <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
         ) : tab === 'overview' ? (
           <Overview onPerson={openPerson} onTab={setTab} />
+        ) : tab === 'server' ? (
+          <ServerPanel onTab={setTab} />
         ) : tab === 'activity' ? (
           <Feed onPerson={openPerson} />
+        ) : tab === 'chats' ? (
+          <ChatsPanel onPerson={openPerson} />
+        ) : tab === 'announce' ? (
+          <AnnouncePanel />
         ) : tab === 'people' ? (
           person ? <PersonPanel id={person} schema={tables.schema} onBack={() => setPerson(null)} /> : <People onPerson={setPerson} />
         ) : tab === 'data' ? (
-          <Data tables={tables.tables} schema={tables.schema} />
+          <Data key={dataTable ?? 'all'} initial={dataTable} tables={tables.tables} schema={tables.schema} />
+        ) : tab === 'database' ? (
+          <DatabasePanel onOpenTable={(name) => { setDataTable(name); setTab('data'); }} />
         ) : tab === 'errors' ? (
-          <ErrorsPanel />
+          <ErrorsPanel onPerson={openPerson} />
         ) : tab === 'deletions' ? (
           <DeletionsPanel onOpenPerson={openPerson} />
         ) : (
@@ -96,7 +112,9 @@ interface OverviewData {
   signUps: { day: string; count: number }[]; countries: { name: string; count: number }[]; devices: { name: string; count: number }[];
   recentSignIns: { id: string; createdAt: string; kind: string; method: string | null; device: string | null; city: string | null; country: string | null; ip: string | null; user: { id: string; name: string; role: string; email: string } }[];
   recentActions: { id: string; createdAt: string; actorId: string | null; actorName: string | null; summary: string }[];
+  usage?: PlanUsage | null;
 }
+
 
 type PersonRow = {
   id: string; name: string; email: string; phone: string | null; role: string; status: string; accountType: string | null; onboardedAt: string | null; createdAt: string; lastSeenAt: string | null;
@@ -143,6 +161,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
           </button>
         ))}
       </div>
+      <PlanUsageCard usage={data.usage ?? null} />
       <div className="grid lg:grid-cols-3 gap-6">
         <div className={cn(card, 'p-5 lg:col-span-1')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">New accounts · 14 days</h2>
@@ -342,8 +361,8 @@ function People({ onPerson }: { onPerson: (id: string) => void }) {
 
 // ─── All data ──────────────────────────────────────────────────────────────────────────────────
 
-function Data({ tables, schema }: { tables: { name: string; title: string; count: number }[]; schema: Schema }) {
-  const [table, setTable] = useState<string | null>(null);
+function Data({ tables, schema, initial }: { tables: { name: string; title: string; count: number }[]; schema: Schema; initial?: string | null }) {
+  const [table, setTable] = useState<string | null>(initial ?? null);
   const [q, setQ] = useState('');
   const [skip, setSkip] = useState(0);
   const [editing, setEditing] = useState<Rec | null>(null);

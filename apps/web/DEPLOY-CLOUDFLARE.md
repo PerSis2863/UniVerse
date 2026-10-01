@@ -186,6 +186,44 @@ the universeimpact.com zone:
 4. **Security → Settings:** keep **Browser Integrity Check** on.
 5. Check the effect in **Security → Events** (what was blocked) and **Workers & Pages → universe-web → Metrics**.
 
+## On Workers Paid ($5/month): the spending guard
+
+Cloudflare has no setting that caps the bill: past what the $5 includes (10 million requests and 30 million
+CPU ms a month, plus D1, Durable Objects, logs and R2 allowances), usage is charged. Three things keep it at $5:
+
+- **The spending guard** (`cloudflare/usage-guard.ts`), every 15 minutes: reads this billing month's usage
+  from Cloudflare's analytics, emails `SUPER_ADMIN_EMAILS` at 70% of any allowance, and at 90% pauses the app
+  (every page and API call gets a small "back soon" answer; Stripe's webhook still works) until the next
+  billing month. The owner console's Overview shows the usage. Secrets (type **Secret**):
+  - `CF_ACCOUNT_ID`: the account id (Workers & Pages → Overview, right-hand side).
+  - `CF_USAGE_TOKEN`: My Profile → API Tokens → Create Token → Custom token, permission
+    **Account → Account Analytics → Read**, nothing else.
+  - `CF_BILLING_DAY`: the day of the month the Paid plan renews (the day it was bought). Without it the guard
+    counts the last 31 days, which may pause early.
+  - `CF_GUARD_OFF`: any value turns pausing off (to reopen during a pause and accept extra charges).
+- **A 50 ms CPU limit per request**: after upgrading, add `"limits": { "cpu_ms": 50 }` to `wrangler.jsonc`
+  (Paid plan only: the free plan is fixed at 10 ms and refuses the setting), so no single request can run
+  up time.
+- The bot and rate-limiting rules above: requests blocked by Cloudflare's firewall never reach the Worker
+  and aren't billed. A paused app still counts each request it answers, though cheaply.
+
+## Owner console → Server
+
+The owner can switch UniVerse between **Live**, **Read-only** (people can look around; every change is
+refused with a message) and **Maintenance** (everyone else sees a "down for maintenance" page), with an
+optional message and a time to go back to Live by itself, and show a notice at the top of every page. The
+switch is the `server_control` row; the Worker (`cloudflare/usage-guard.ts`) applies it within a minute.
+Stripe's webhook always goes through, and so does the owner: opening the console gives their browser a
+`uv_owner` cookie (on a new device: sign in at /login, then open any page).
+
+**Feature switches** turn one feature off for everyone (sending messages, calls, uploads, AI, groups,
+whiteboards, sign-ups, payments). They are stored in `server_control.switches`. The list and the
+paths each one blocks are in `src/lib/feature-switches.ts`; the Worker refuses those paths, and the
+chat send route checks calls itself. **Watch words** (`server_control.watchWords`, owner console → Live
+chats) send the owner an in-app alert when one is written in a chat. A person can be **muted in chat**
+(`users.chatMutedUntil`): they can still read their chats but can't send. Migration
+0023 adds these columns.
+
 ## Notes
 
 - The Worker is about 3.4 MB gzipped (minified). Cloudflare's documented script limit is 3 MB on the free plan and 10 MB on paid; deployments have been succeeding, but if one fails with a size error, that's the cause.
