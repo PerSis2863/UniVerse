@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Check, Eye, Loader2, Megaphone, MessageSquare, Paperclip, Pencil, RotateCcw, Send, ShieldCheck, Trash2, UserMinus, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, Eye, Loader2, Megaphone, MessageSquare, Paperclip, Pencil, RotateCcw, Send, ShieldCheck, Trash2, UserMinus, Users, X } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
@@ -46,7 +46,11 @@ const chatTitle = (c: { name: string | null; isGroup: boolean; participants: { u
 export function ChatsPanel({ onPerson }: { onPerson: (id: string) => void }) {
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim());
-  const [open, setOpen] = useState<{ id: string; highlight?: string } | null>(null);
+  // A watch-word alert links to /console?tab=chats&chat=<id>.
+  const [open, setOpen] = useState<{ id: string; highlight?: string } | null>(() => {
+    const id = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('chat');
+    return id ? { id } : null;
+  });
   const { data, isLoading } = useSWR<{ chats: ChatRow[]; hits: Hit[]; activeNow: number }>(`/owner/chats${dq ? `?q=${encodeURIComponent(dq)}` : ''}`, fetcher, { refreshInterval: 5000 });
   return (
     <div className="space-y-4">
@@ -57,6 +61,7 @@ export function ChatsPanel({ onPerson }: { onPerson: (id: string) => void }) {
         </p>
         <p className="text-xs text-zinc-400">Anything you change shows as done by UniVerse.</p>
       </div>
+      <WatchWords onOpen={(id, highlight) => setOpen({ id, highlight })} />
       <SearchBox value={q} onChange={setQ} placeholder="Search people, group names and every message" />
       <div className={cn(card, 'grid md:grid-cols-[300px_1fr] h-[75vh] min-h-[420px] overflow-hidden')}>
         <div className={cn('overflow-y-auto border-r border-zinc-100 dark:border-white/[0.06]', open && 'hidden md:block')}>
@@ -107,6 +112,62 @@ export function ChatsPanel({ onPerson }: { onPerson: (id: string) => void }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Watch words ───────────────────────────────────────────────────────────────────────────────
+
+/** Words that alert the owner (the bell) when someone writes them, and where they were written. */
+function WatchWords({ onOpen }: { onOpen: (conversationId: string, messageId: string) => void }) {
+  const { data, mutate } = useSWR<{ words: string[]; flagged: Hit[] }>('/owner/watch-words', fetcher, { refreshInterval: 30_000 });
+  const [show, setShow] = useState(false);
+  const [text, setText] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const value = text ?? data?.words.join(', ') ?? '';
+  const save = async () => {
+    setBusy(true);
+    try {
+      const { data: res } = await api.post('/owner/watch-words', { words: value });
+      toastWithUndo(res.words.length ? `Watching ${res.words.length} word${res.words.length === 1 ? '' : 's'}` : 'Watch words cleared', res.changeId);
+      setText(null);
+      await mutate();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const flagged = data?.flagged ?? [];
+  return (
+    <div className={cn(card, flagged.length > 0 && 'border-amber-500/40')}>
+      <button onClick={() => setShow(!show)} aria-expanded={show} className="w-full flex items-center gap-2 p-4 text-left">
+        <AlertTriangle className={cn('w-4 h-4 shrink-0', flagged.length ? 'text-amber-500' : 'text-zinc-400')} />
+        <span className="font-semibold text-zinc-900 dark:text-white flex-1">Watch words</span>
+        <span className="text-xs text-zinc-500">{data ? `${data.words.length} words · ${flagged.length} flagged in 14 days` : ''}</span>
+        <ChevronDown className={cn('w-4 h-4 text-zinc-400 transition-transform', show && 'rotate-180')} />
+      </button>
+      {show && (
+        <div className="px-4 pb-4 space-y-3 border-t border-zinc-100 dark:border-white/[0.05] pt-3">
+          <p className="text-xs text-zinc-500">When someone writes one of these in any chat, you get an alert in your notifications. Separate words with commas, for example: bully, cheat, phone number.</p>
+          <textarea value={value} onChange={(e) => setText(e.target.value)} rows={2} maxLength={3000} aria-label="Watch words" placeholder="bully, cheat, kill" className={field} />
+          <div className="flex justify-end">
+            <button onClick={() => void save()} disabled={busy || text === null} aria-busy={busy || undefined} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save words</button>
+          </div>
+          {flagged.length > 0 && (
+            <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05] rounded-xl border border-zinc-100 dark:border-white/[0.05] max-h-72 overflow-y-auto">
+              {flagged.map((h) => (
+                <li key={h.id}>
+                  <button onClick={() => onOpen(h.conversationId, h.id)} className="w-full text-left px-3 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
+                    <p className="text-xs text-zinc-500 truncate"><span className="font-semibold text-zinc-700 dark:text-zinc-300">{h.sender?.name ?? 'UniVerse'}</span> · {h.conversation.isGroup ? h.conversation.name ?? 'Group' : 'private chat'} · {formatDistanceToNow(new Date(h.createdAt), { addSuffix: true })}{h.deletedAt ? ' · removed' : ''}</p>
+                    <p className={cn('text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2', h.deletedAt && 'line-through opacity-60')}>{h.body}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

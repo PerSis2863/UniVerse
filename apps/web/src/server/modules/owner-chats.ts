@@ -5,7 +5,10 @@ import { BadRequestException, NotFoundException } from '../http';
 import { notify } from '../email';
 import { publish, publishChat } from '../realtime';
 import { MAX_BODY, getSystemUser } from '@/lib/chat';
-import { isOwnerEmail } from '../auth';
+import { forgetUser, isOwnerEmail } from '../auth';
+import { forgetRules } from '../moderation';
+import { serverControl } from './owner';
+import { findWatchWords, parseWatchWords } from '@/lib/feature-switches';
 
 // Owner console → Chats and Announce: watch every chat live, step in as UniVerse, and reach
 // everyone at once. People always see that it was UniVerse: an edited message reads "edited by
@@ -207,6 +210,57 @@ export default function ownerChatsModule(router: Router) {
     await notify(target.id, { title, body: text, link: link ?? undefined, type: 'announcement', email: body?.email === true });
     await prisma.ownerChange.create({ data: { ownerId: user.id, action: 'NOTIFY', model: 'Notification', recordId: target.id, summary: `Notified ${target.name}: “${short(title)}”` } });
     return { ok: true };
+  });
+
+  /** Pauses someone's chat messages for a while (hours: 1, 24, 168; -1 until lifted; 0 lifts it). */
+  r.post<{ id: string }>('people/:id/mute', async ({ params, body, user }) => {
+    const hours = Number(body?.hours);
+    if (![0, 1, 24, 168, -1].includes(hours)) throw new BadRequestException('Choose 1 hour, 1 day, 1 week, until lifted, or lift it.');
+    const target = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, name: true, email: true, chatMutedUntil: true } });
+    if (!target) throw new NotFoundException('Person not found');
+    if (isOwnerEmail(target.email) || target.id === user.id) throw new BadRequestException('The owner account can’t be muted.');
+    const until = hours === 0 ? null : new Date(Date.now() + (hours === -1 ? 10 * 365 * 24 : hours) * 3_600_000);
+    await prisma.user.update({ where: { id: target.id }, data: { chatMutedUntil: until } });
+    forgetUser(target.id);
+    const what = hours === 0 ? 'Unmuted' : hours === -1 ? 'Muted until lifted:' : `Muted for ${hours === 1 ? '1 hour' : hours === 24 ? '1 day' : '1 week'}:`;
+    const change = await prisma.ownerChange.create({
+      data: { ownerId: user.id, action: 'UPDATE', model: 'User', recordId: target.id, summary: `${what} ${target.name} in chat`, before: plain({ chatMutedUntil: target.chatMutedUntil }), after: plain({ chatMutedUntil: until }) },
+    });
+    // They're told, so a refused message isn't a mystery.
+    await notify(target.id, until
+      ? { title: 'Your chat messages are paused', body: hours === -1 ? 'UniVerse has paused your messages until further notice. You can still read your chats.' : `UniVerse has paused your messages for ${hours === 1 ? 'an hour' : hours === 24 ? 'a day' : 'a week'}. You can still read your chats.`, type: 'warning', email: false }
+      : { title: 'You can send messages again', body: 'UniVerse has lifted the pause on your chat messages.', type: 'success', email: false });
+    return { ok: true, until, changeId: change.id };
+  });
+
+  // ── Watch words: the owner is alerted when one appears in a chat ──
+
+  r.get('watch-words', async () => {
+    const row = await prisma.serverControl.findUnique({ where: { id: 'main' }, select: { watchWords: true } });
+    const words = parseWatchWords(row?.watchWords);
+    // Messages with any of them from the last 14 days (D1 takes up to 100 values per query).
+    const candidates = words.length
+      ? await prisma.message.findMany({
+          where: { createdAt: { gt: new Date(Date.now() - 14 * 86_400_000) }, type: { not: 'SYSTEM' }, OR: words.slice(0, 90).map((w) => ({ body: { contains: w } })) },
+          orderBy: { createdAt: 'desc' }, take: 300,
+          select: { id: true, body: true, createdAt: true, deletedAt: true, conversationId: true, sender: { select: { id: true, name: true } }, conversation: { select: { name: true, isGroup: true } } },
+        })
+      : [];
+    // The database matches parts of words too ("cheating" for "cheat"); keep whole words only.
+    const flagged = candidates.filter((m) => findWatchWords(words, m.body).length).slice(0, 60);
+    return { words, flagged };
+  });
+
+  r.post('watch-words', async ({ body, user }) => {
+    const list = Array.isArray(body?.words) ? body.words.map(String).join('\n') : String(body?.words ?? '');
+    const words = parseWatchWords(list);
+    const ctl = await serverControl();
+    await prisma.serverControl.update({ where: { id: 'main' }, data: { watchWords: words.length ? words.join('\n') : null } });
+    forgetRules();
+    const change = await prisma.ownerChange.create({
+      data: { ownerId: user.id, action: 'UPDATE', model: 'ServerControl', recordId: 'main', summary: words.length ? `Watch words set (${words.length})` : 'Watch words cleared', before: plain({ watchWords: ctl.watchWords }), after: plain({ watchWords: words.join('\n') || null }) },
+    });
+    return { words, changeId: change.id };
   });
 
   // ── Announcements: a notification for everyone, or everyone with one role ──

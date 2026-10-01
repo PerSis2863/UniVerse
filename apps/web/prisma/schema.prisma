@@ -115,6 +115,7 @@ model User {
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
   accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION (what they chose at sign-up)
   lastSeenAt         DateTime?
+  chatMutedUntil     DateTime? // owner console: can't send chat messages until then
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
 
   // Profiles
@@ -2055,6 +2056,8 @@ model ServerControl {
   bypass    String // the owner's pass (uv_owner cookie), set when the row is created
   updatedAt DateTime  @default(now())
   updatedBy String?
+  switches   String? // JSON list of features turned off, e.g. ["ai","uploads"] (src/lib/feature-switches.ts)
+  watchWords String? // words that alert the owner when they appear in a chat, one per line
 
   @@map("server_control")
 }

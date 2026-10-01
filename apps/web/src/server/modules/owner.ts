@@ -6,6 +6,8 @@ import { forgetUser, isOwnerEmail } from '../auth';
 import schema from '../owner-schema.json';
 import { decideDeletion, eraseAccount } from '../account-deletion';
 import { publishChat } from '../realtime';
+import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
+import { forgetRules } from '../moderation';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -224,7 +226,7 @@ export default function ownerModule(router: Router) {
 
   r.post('server', async ({ body, user }) => {
     const ctl = await serverControl();
-    const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null } = {};
+    const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null; switches?: string | null } = {};
     if (body?.mode !== undefined) {
       if (!['LIVE', 'READ_ONLY', 'MAINTENANCE'].includes(body.mode)) throw new BadRequestException('Mode must be LIVE, READ_ONLY or MAINTENANCE');
       data.mode = body.mode;
@@ -236,13 +238,26 @@ export default function ownerModule(router: Router) {
       if (until && (Number.isNaN(until.getTime()) || until.getTime() < Date.now())) throw new BadRequestException('Pick a time in the future');
       data.until = until;
     }
+    // Feature switches: the list of features turned off.
+    let switched = '';
+    if (body?.switches !== undefined) {
+      if (!Array.isArray(body.switches)) throw new BadRequestException('switches must be a list');
+      const off = parseSwitches(JSON.stringify(body.switches));
+      const was = parseSwitches(ctl.switches);
+      data.switches = off.length ? JSON.stringify(off) : null;
+      const name = (id: string) => FEATURE_SWITCHES.find((f) => f.id === id)?.label ?? id;
+      const turnedOff = off.filter((x) => !was.includes(x)).map(name);
+      const turnedOn = was.filter((x) => !off.includes(x)).map(name);
+      switched = [turnedOff.length && `Turned off: ${turnedOff.join(', ')}`, turnedOn.length && `Turned back on: ${turnedOn.join(', ')}`].filter(Boolean).join(' · ');
+    }
     // Back to normal clears the end time.
     if (data.mode === 'LIVE') data.until = null;
     const keys = Object.keys(data) as (keyof typeof data)[];
     if (!keys.length) throw new BadRequestException('Nothing to change');
     const after = await prisma.serverControl.update({ where: { id: 'main' }, data: { ...data, updatedAt: new Date(), updatedBy: user.id } });
     const words: Record<string, string> = { LIVE: 'Server back to normal', READ_ONLY: 'Server set to read-only', MAINTENANCE: 'Server paused for maintenance' };
-    const summary = data.mode && data.mode !== ctl.mode ? words[data.mode] : data.banner !== undefined && data.banner !== ctl.banner ? (data.banner ? `Notice set: “${data.banner.slice(0, 60)}”` : 'Notice removed') : 'Server settings changed';
+    forgetRules();
+    const summary = data.mode && data.mode !== ctl.mode ? words[data.mode] : switched ? switched : data.banner !== undefined && data.banner !== ctl.banner ? (data.banner ? `Notice set: “${data.banner.slice(0, 60)}”` : 'Notice removed') : 'Server settings changed';
     const change = await prisma.ownerChange.create({
       data: { ownerId: user.id, action: 'UPDATE', model: 'ServerControl', recordId: 'main', summary, before: json(pickKeys(publicControl(ctl), keys)), after: json(pickKeys(publicControl(after), keys)) },
     });
@@ -546,7 +561,7 @@ export default function ownerModule(router: Router) {
 }
 
 /** The server switch, created on first use with a fresh owner pass. */
-async function serverControl() {
+export async function serverControl() {
   const found = await prisma.serverControl.findUnique({ where: { id: 'main' } });
   if (found) return found;
   const bytes = crypto.getRandomValues(new Uint8Array(24));
@@ -554,7 +569,7 @@ async function serverControl() {
   return prisma.serverControl.upsert({ where: { id: 'main' }, update: {}, create: { id: 'main', bypass } });
 }
 type Control = Awaited<ReturnType<typeof serverControl>>;
-const publicControl = (c: Control) => ({ mode: c.mode, message: c.message, until: c.until, banner: c.banner, updatedAt: c.updatedAt });
+const publicControl = (c: Control) => ({ mode: c.mode, message: c.message, until: c.until, banner: c.banner, switches: c.switches, updatedAt: c.updatedAt });
 
 /** Answers with the owner's pass as a cookie, so the Worker lets them through while paused. */
 function withOwnerPass(bypass: string, body: unknown) {

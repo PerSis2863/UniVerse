@@ -15,7 +15,7 @@ interface Section { model: string; field: string; title: string; count: number; 
 interface Dossier { user: Rec & { owner?: boolean }; sections: Section[]; empty: string[] }
 interface Convo { id: string; name: string | null; isGroup: boolean; updatedAt: string; participants: { user: { id: string; name: string; role: string } }[]; _count: { messages: number } }
 
-const PROFILE_FIELDS = ['email', 'phone', 'role', 'status', 'accountType', 'dateOfBirth', 'createdAt', 'onboardedAt', 'lastSeenAt', 'updatedAt', 'termsVersion', 'termsAcceptedAt', 'emailNotifications', 'impactXP', 'impactLevel', 'googleId', 'firebaseUid'];
+const PROFILE_FIELDS = ['email', 'phone', 'role', 'status', 'accountType', 'dateOfBirth', 'createdAt', 'onboardedAt', 'lastSeenAt', 'updatedAt', 'termsVersion', 'termsAcceptedAt', 'chatMutedUntil', 'emailNotifications', 'impactXP', 'impactLevel', 'googleId', 'firebaseUid'];
 
 export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema; onBack: () => void }) {
   const { data, isLoading, error } = useSWR<Dossier>(`/owner/people/${id}`, fetcher);
@@ -23,6 +23,7 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
   const [chats, setChats] = useState(false);
   const [compose, setCompose] = useState<'message' | 'notify' | null>(null);
   const [saving, setSaving] = useState(false);
+  const [shownAt] = useState(() => Date.now());
   const [q, setQ] = useState('');
 
   if (isLoading) return <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>;
@@ -65,6 +66,18 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
       const { data: res } = await api.delete(`/owner/people/${u.id}?confirm=${encodeURIComponent(typed.trim())}`);
       toast.success(res.how === 'erased' ? `${String(u.name)} was deleted. Their name now shows as “Deleted user” where others still need the record.` : `${String(u.name)} was deleted.`);
       onBack();
+      await refreshConsole();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
+
+  const mutedUntil = u.chatMutedUntil ? new Date(String(u.chatMutedUntil)) : null;
+  const muted = !!mutedUntil && mutedUntil.getTime() > shownAt;
+  const mute = async (hours: number) => {
+    try {
+      const { data: res } = await api.post(`/owner/people/${u.id}/mute`, { hours });
+      toastWithUndo(hours === 0 ? `${String(u.name)} can send messages again` : `${String(u.name)} is muted in chat`, res.changeId);
       await refreshConsole();
     } catch (e) {
       toast.error(errorMessage(e));
@@ -124,6 +137,17 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
             </select>
             <button onClick={() => setEditing({ model: 'User', record: u })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Pencil className="w-4 h-4" /> Edit all</button>
             <button onClick={() => setChats(true)} className="btn-primary"><MessageSquare className="w-4 h-4" /> Messages & calls</button>
+            {!u.owner && (
+              <select aria-label="Chat mute" value="" onChange={(e) => e.target.value && void mute(Number(e.target.value))}
+                className={cn('rounded-xl border px-3 py-2 text-sm', muted ? 'border-amber-500/40 text-amber-700 dark:text-amber-300 bg-amber-500/10' : 'border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900')}>
+                <option value="">{muted ? `Muted in chat until ${mutedUntil!.getFullYear() > new Date(shownAt).getFullYear() + 1 ? 'lifted' : format(mutedUntil!, 'd MMM, HH:mm')}` : 'Mute in chat…'}</option>
+                <option value="1">Mute for 1 hour</option>
+                <option value="24">Mute for 1 day</option>
+                <option value="168">Mute for 1 week</option>
+                <option value="-1">Mute until I lift it</option>
+                {muted && <option value="0">Unmute now</option>}
+              </select>
+            )}
             <button onClick={() => setCompose('message')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Send className="w-4 h-4" /> Message as UniVerse</button>
             <button onClick={() => setCompose('notify')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Bell className="w-4 h-4" /> Notify</button>
             <button onClick={() => void download()} disabled={saving} aria-busy={saving || undefined} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download data</button>

@@ -12,6 +12,7 @@
 //   CF_BILLING_DAY    optional: the day of the month the Paid plan renews (1-31). Without it the
 //                     guard counts the last 31 days, which never undercounts but may pause early.
 //   CF_GUARD_OFF      optional: any value turns pausing off (the checks and emails still run).
+import { blockedFeature, parseSwitches } from '../src/lib/feature-switches';
 import { bool, dbDate } from './fast-db';
 
 export interface GuardEnv {
@@ -259,8 +260,8 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<strin
 // uv_owner cookie that matches the switch's pass.
 
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
-type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; at: number };
-let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, at: 0 };
+type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; off: string[]; at: number };
+let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, off: [], at: 0 };
 let loading = false;
 
 const toMs = (v: string | null) => (v ? Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(v) ? v : `${v.replace(' ', 'T')}Z`) : NaN);
@@ -272,13 +273,15 @@ function refresh(env: GuardEnv, ctx: ExecutionContext) {
   // Each read on its own: before its migration runs, a missing table just means "not set".
   const guard = db.prepare('SELECT paused, resumeAt FROM usage_guard WHERE id = ?').bind('main').first<{ paused: unknown; resumeAt: string | null }>().catch(() => undefined);
   const control = db.prepare('SELECT mode, message, until, banner, bypass FROM server_control WHERE id = ?').bind('main').first<{ mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string }>().catch(() => undefined);
+  const switches = db.prepare('SELECT switches FROM server_control WHERE id = ?').bind('main').first<{ switches: string | null }>().catch(() => undefined);
   ctx.waitUntil(
-    Promise.all([guard, control])
-      .then(([g, c]) => {
+    Promise.all([guard, control, switches])
+      .then(([g, c, f]) => {
         state = {
           ...state,
           ...(g !== undefined && { paused: bool(g?.paused), resumeAt: g?.resumeAt ?? null }),
           ...(c !== undefined && { mode: c?.mode ?? 'LIVE', message: c?.message ?? null, until: c?.until ?? null, banner: c?.banner ?? null, bypass: c?.bypass ?? null }),
+          ...(f !== undefined && { off: parseSwitches(f?.switches) }),
           at: Date.now(),
         };
       })
@@ -314,6 +317,11 @@ export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: Execu
   if (mode === 'READ_ONLY' && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname.startsWith('/api/') && !READ_ONLY_OK.test(url.pathname)) {
     const message = `${state.message || 'UniVerse is in read-only mode for maintenance'}: you can look around, but changes can't be saved right now.`;
     return Response.json({ error: message }, { status: 503, headers: { 'Retry-After': '600', 'Cache-Control': 'no-store' } });
+  }
+  const feature = blockedFeature(state.off, request.method, url.pathname);
+  if (feature) {
+    const message = `${feature.label}: turned off on UniVerse for now. Please try again later.`;
+    return Response.json({ error: message, message, statusCode: 503 }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
   return null;
 }

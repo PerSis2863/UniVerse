@@ -354,6 +354,17 @@
      "updatedAt": false
     },
     {
+     "name": "chatMutedUntil",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "emergencyContacts",
      "type": "Json",
      "kind": "scalar",
@@ -13597,6 +13608,28 @@
     },
     {
      "name": "updatedBy",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "switches",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "watchWords",
      "type": "String",
      "kind": "scalar",
      "list": false,

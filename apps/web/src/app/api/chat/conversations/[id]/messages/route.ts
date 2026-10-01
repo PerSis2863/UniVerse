@@ -7,6 +7,7 @@ import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, 
 import { deliver } from '@/server/realtime';
 import { pretranslate, storedTranslations } from '@/server/translate';
 import { recordServerError } from '@/server/errors';
+import { alertOwner, chatMuted, featureOff, watchWordsIn } from '@/server/moderation';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
@@ -149,6 +150,8 @@ export async function POST(req: Request, { params }: Ctx) {
   const system = await getSystemUser();
   const official = await prisma.conversationParticipant.findFirst({ where: { conversationId: id, userId: system.id }, select: { id: true } });
   if (official) return NextResponse.json({ error: 'This is an announcements-only channel.' }, { status: 403 });
+  const muted = await chatMuted(user.id);
+  if (muted) return NextResponse.json({ error: muted }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
   const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true } });
@@ -167,6 +170,7 @@ export async function POST(req: Request, { params }: Ctx) {
     data.body = text;
 
     if (type === 'CALL') {
+      if (await featureOff('calls')) return NextResponse.json({ error: 'Voice and video calls: turned off on UniVerse for now. Please try again later.' }, { status: 503 });
       const kind = b.kind === 'video' ? 'video' : 'audio';
       const room = `UniVerse-${randomBytes(9).toString('base64url')}`;
       data.body = kind === 'video' ? 'Video call' : 'Voice call';
@@ -218,6 +222,13 @@ export async function POST(req: Request, { params }: Ctx) {
     await notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? ''));
   });
   if (data.type === 'TEXT' && String(data.body ?? '').includes('@')) later(() => notifyMentions(id, user, String(data.body)));
+  // Watch words (owner console → Live chats) alert the owner.
+  if ((data.type === 'TEXT' || data.type === 'POLL') && data.body) {
+    later(async () => {
+      const found = await watchWordsIn(String(data.body));
+      if (found.length) await alertOwner(found, user, id, String(data.body));
+    });
+  }
   return NextResponse.json(out, { status: 201 });
 }
 

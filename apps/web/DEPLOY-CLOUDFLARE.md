@@ -216,6 +216,14 @@ switch is the `server_control` row; the Worker (`cloudflare/usage-guard.ts`) app
 Stripe's webhook always goes through, and so does the owner: opening the console gives their browser a
 `uv_owner` cookie (on a new device: sign in at /login, then open any page).
 
+**Feature switches** turn one feature off for everyone (sending messages, calls, uploads, AI, groups,
+whiteboards, sign-ups, payments). They are stored in `server_control.switches`. The list and the
+paths each one blocks are in `src/lib/feature-switches.ts`; the Worker refuses those paths, and the
+chat send route checks calls itself. **Watch words** (`server_control.watchWords`, owner console → Live
+chats) send the owner an in-app alert when one is written in a chat. A person can be **muted in chat**
+(`users.chatMutedUntil`): they can still read their chats but can't send. Migration
+0023 adds these columns.
+
 ## Notes
 
 - The Worker is about 3.4 MB gzipped (minified). Cloudflare's documented script limit is 3 MB on the free plan and 10 MB on paid; deployments have been succeeding, but if one fails with a size error, that's the cause.

@@ -4,10 +4,11 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Ban, Bug, Eye, Loader2, Megaphone, MessageSquare, Power, Trash2, Users, Wrench } from 'lucide-react';
+import { Activity, Ban, Bug, Eye, Loader2, Megaphone, MessageSquare, Power, ToggleRight, Trash2, Users, Wrench } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
 
 // The owner console's Server tab: switch UniVerse between live, read-only and maintenance, show a
@@ -19,7 +20,7 @@ export interface PlanUsage {
   meters: { key: string; label: string; used: number | null; limit: number; bytes?: boolean }[];
 }
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
-interface Control { mode: Mode; message: string | null; until: string | null; banner: string | null; updatedAt: string }
+interface Control { mode: Mode; message: string | null; until: string | null; banner: string | null; switches: string | null; updatedAt: string }
 interface ServerData {
   control: Control;
   usage: PlanUsage | null;
@@ -53,6 +54,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
     <div className="space-y-6">
       <SwitchCard key={data.control.updatedAt} control={data.control} onSaved={() => void mutate()} />
       <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
+      <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
       <PlanUsageCard usage={data.usage} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map(([label, n, Icon, to]) => (
@@ -169,6 +171,51 @@ function NoticeCard({ banner, onSaved }: { banner: string | null; onSaved: () =>
           {banner && <button onClick={() => void save('')} disabled={busy} className="btn-secondary">Remove</button>}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Turn single features off for everyone (the Worker refuses them; you still get through). */
+function FeatureCard({ switches, onSaved }: { switches: string | null; onSaved: () => void }) {
+  const [off, setOff] = useState(() => parseSwitches(switches));
+  const [busy, setBusy] = useState<string | null>(null);
+  const flip = async (id: string, label: string) => {
+    const next = off.includes(id) ? off.filter((x) => x !== id) : [...off, id];
+    setBusy(id);
+    try {
+      const { data: res } = await api.post('/owner/server', { switches: next });
+      setOff(next);
+      toastWithUndo(`${label}: ${next.includes(id) ? 'off' : 'on'}`, res.changeId);
+      onSaved();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className={cn(card, 'p-5')}>
+      <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><ToggleRight className="w-4 h-4 text-indigo-500" /> Feature switches</h2>
+      <p className="text-sm text-zinc-500 mt-1 mb-3">Turn one part of UniVerse off for everyone while the rest keeps working. People see a short “turned off for now” message. Changes reach everyone within a minute, and you can still use everything.</p>
+      <ul className="grid sm:grid-cols-2 gap-2">
+        {FEATURE_SWITCHES.map((f) => {
+          const on = !off.includes(f.id);
+          return (
+            <li key={f.id}>
+              <button role="switch" aria-checked={on} onClick={() => void flip(f.id, f.label)} disabled={busy !== null}
+                className={cn('w-full text-left rounded-xl border p-3 flex items-start gap-3 transition-colors', on ? 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40' : 'border-rose-500/40 bg-rose-500/[0.06]')}>
+                <span className={cn('mt-0.5 w-9 h-5 rounded-full p-0.5 shrink-0 transition-colors', on ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600')}>
+                  <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', on && 'translate-x-4')} />
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5 font-semibold text-sm text-zinc-900 dark:text-white">{f.label} {busy === f.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{!on && <span className="text-[10px] font-bold uppercase text-rose-500">off</span>}</span>
+                  <span className="block text-xs text-zinc-500 mt-0.5">{f.hint}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

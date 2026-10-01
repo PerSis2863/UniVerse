@@ -225,7 +225,7 @@ async function resolveUserUncached(token: string): Promise<User> {
 // Default when the secret isn't set: the platform owner's Google account. It still has to be proven
 // by a Google sign-in (verified email), so knowing the address isn't enough.
 const DEFAULT_OWNER_EMAILS = 'universeimpact1@gmail.com';
-function ownerEmails(): string[] {
+export function ownerEmails(): string[] {
   return (process.env.SUPER_ADMIN_EMAILS || DEFAULT_OWNER_EMAILS).split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 }
 
