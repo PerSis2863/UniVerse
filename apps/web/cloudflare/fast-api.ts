@@ -10,13 +10,14 @@ import { jwtVerify, type JWTPayload } from 'jose';
 import { jwksFor, keysMayHaveRotated } from '../src/server/jwks-cache';
 import { isSessionToken, verifySessionToken } from '../src/server/session-token';
 import { securityHeaders } from '../security-headers';
+import { bool, dbDate, isoDate, json, parseJson, type Caller } from './fast-db';
+import { conversations, notifications, presence, thread } from './fast-chat';
 
 interface Env {
   DB?: D1Database;
   REALTIME?: DurableObjectNamespace;
 }
 
-type Caller = { id: string; name: string; email: string; role: string; demo: boolean };
 
 // Token → caller for a minute per instance, like src/server/auth.ts (never past the token's expiry).
 const callers = new Map<string, { caller: Caller; until: number }>();
@@ -91,20 +92,6 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
   callers.set(token, { caller, until: Math.min(Date.now() + 60_000, exp ? exp * 1000 : Infinity) });
   return caller;
 }
-
-// Dates as Prisma stores them in D1 ("2026-09-30T21:42:19.500+00:00"), so comparisons line up.
-const dbDate = (ms: number) => new Date(ms).toISOString().replace('Z', '+00:00');
-// And back, as the JSON Next.js sends ("…Z"). Rows written by hand may lack the "T" and zone.
-const isoDate = (v: string | null) => (v ? new Date(/[zZ]|[+-]\d\d:\d\d$/.test(v) ? v : `${v.replace(' ', 'T')}Z`).toISOString() : null);
-const parseJson = (v: unknown) => {
-  if (typeof v !== 'string') return v ?? null;
-  try {
-    return JSON.parse(v);
-  } catch {
-    return null;
-  }
-};
-const json = (body: unknown, status = 200, headers: Record<string, string> = {}) => Response.json(body, { status, headers });
 
 /** GET /api/chat/incoming (src/app/api/chat/incoming/route.ts): calls started in the last 45 s. */
 async function incoming(me: Caller, db: D1Database) {
@@ -240,13 +227,94 @@ async function file(request: Request, key: string, db: D1Database, ctx: Executio
   return new Response(bytes, { headers });
 }
 
-async function answer(request: Request, path: string, db: D1Database, env: Env, ctx: ExecutionContext): Promise<Response | null> {
+const OWNER_EMAILS = () => (process.env.SUPER_ADMIN_EMAILS || 'universeimpact1@gmail.com').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+
+/** GET /api/core/users/me (src/server/modules/users.ts): the caller's account. The owner goes to the Next.js route. */
+async function usersMe(me: Caller, db: D1Database): Promise<Response | null> {
+  if (OWNER_EMAILS().includes(me.email.trim().toLowerCase())) return null;
+  const [userRes, studentRes, teacherRes, appRes] = await db.batch<Record<string, string | number | null>>([
+    db.prepare('SELECT id, name, email, role, status, avatar, phone, googleId, emailNotifications, termsVersion, termsAcceptedAt, onboardedAt, createdAt, updatedAt FROM users WHERE id = ?').bind(me.id),
+    db.prepare('SELECT id, userId, studentId, department, year, gpa, createdAt, updatedAt FROM student_profiles WHERE userId = ?').bind(me.id),
+    db.prepare('SELECT id, userId, employeeId, department, designation, createdAt, updatedAt FROM teacher_profiles WHERE userId = ?').bind(me.id),
+    db.prepare('SELECT id, status, source, requestedRole, adminNote, submittedAt, reviewedAt FROM role_applications WHERE userId = ? ORDER BY createdAt DESC LIMIT 1').bind(me.id),
+  ]);
+  const u = userRes.results[0];
+  if (!u) return json({ statusCode: 404, message: 'User not found', error: 'Not Found' }, 404);
+  const dates = <T extends Record<string, unknown>>(row: T | undefined, keys: string[]) =>
+    row ? Object.fromEntries(Object.entries(row).map(([k, v]) => [k, keys.includes(k) ? isoDate(v as string | null) : v])) : null;
+  return json({
+    ...dates(u, ['termsAcceptedAt', 'onboardedAt', 'createdAt', 'updatedAt']),
+    emailNotifications: bool(u.emailNotifications),
+    studentProfile: dates(studentRes.results[0], ['createdAt', 'updatedAt']),
+    teacherProfile: dates(teacherRes.results[0], ['createdAt', 'updatedAt']),
+    application: dates(appRes.results[0], ['submittedAt', 'reviewedAt']),
+  });
+}
+
+/**
+ * POST /api/bootstrap (src/app/api/bootstrap/route.ts): what the app asks for when it opens, in one
+ * request. The parts above are answered here; the rest (a dashboard's data, the sign-in history
+ * entry) by the Next.js route in the same request, so far less of it runs there.
+ */
+async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>) {
+  const b = (await request.clone().json().catch(() => ({}))) as { keys?: unknown; ticket?: unknown; session?: unknown };
+  const keys = Array.isArray(b.keys) ? [...new Set(b.keys.filter((k): k is string => typeof k === 'string'))].slice(0, 8) : [];
+  const origin = new URL(request.url).origin;
+  const own: Record<string, (r: Request) => Promise<Response | null>> = {
+    '/api/me': () => account(me, db),
+    '/api/notifications': () => notifications(me, db),
+    '/api/chat/incoming': () => incoming(me, db),
+    '/api/core/users/me': () => usersMe(me, db),
+  };
+  const read = async (res: Response) => ({ status: res.status, body: await res.json().catch(() => null) });
+  const results: Record<string, { status: number; body: unknown }> = {};
+  const rest: string[] = [];
+  const tasks: Promise<unknown>[] = keys.map(async (key) => {
+    let u: URL;
+    try { u = new URL(key, request.url); } catch { return; }
+    const handler = u.origin === origin ? own[u.pathname] : undefined;
+    const res = handler ? await handler(request).catch(() => null) : null;
+    if (res) results[key] = await read(res);
+    else rest.push(key);
+  });
+  let ticket: string | undefined;
+  if (b.ticket === true && env.REALTIME) {
+    const hub = env.REALTIME.get(env.REALTIME.idFromName(me.id));
+    tasks.push(
+      hub.fetch('https://realtime/ticket', { method: 'POST' }).then(async (res) => {
+        const t = res.ok ? ((await res.json()) as { ticket?: string }).ticket : undefined;
+        if (t) ticket = `/realtime?user=${encodeURIComponent(me.id)}&ticket=${encodeURIComponent(t)}`;
+      }).catch(() => {}),
+    );
+    const seen = presence(me.id, db, Date.now());
+    if (seen) ctx.waitUntil(seen.run().catch(() => {}));
+  }
+  await Promise.all(tasks);
+  if (rest.length || b.session === true) {
+    const headers = new Headers(request.headers);
+    headers.delete('content-length');
+    headers.set('content-type', 'application/json');
+    // Built from the original request so its location (request.cf) still reaches the sign-in history.
+    const res = await next(new Request(request, { method: 'POST', headers, body: JSON.stringify({ keys: rest, session: b.session === true }) }));
+    const more = res.ok ? ((await res.json().catch(() => null)) as { results?: typeof results } | null) : null;
+    Object.assign(results, more?.results ?? {});
+  }
+  return json({ results, ...(ticket ? { ticket } : {}) }, 200, { 'Cache-Control': 'no-store' });
+}
+
+async function answer(request: Request, path: string, db: D1Database, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>): Promise<Response | null> {
   const file_ = FILE.exec(path);
   if (file_) return file(request, file_[1], db, ctx);
   const me = await callerOf(request, db);
   if (!me) return null;
   if (path === '/api/chat/incoming') return incoming(me, db);
   if (path === '/api/me') return account(me, db);
+  if (path === '/api/notifications') return notifications(me, db);
+  if (path === '/api/chat/conversations') return conversations(me, db, ctx);
+  if (path === '/api/core/users/me') return usersMe(me, db);
+  if (path === '/api/bootstrap') return bootstrap(me, request, db, env, ctx, next);
+  const threadOf = THREAD.exec(path);
+  if (threadOf) return thread(me, decodeURIComponent(threadOf[1]), new URL(request.url), db, ctx);
   if (path === '/api/core/activity/ui') {
     // The demo admin account is read-only (src/server/auth.ts demoWriteBlocked): the app says so.
     return me.demo && me.role === 'ADMIN' ? null : activity(me, request, db);
@@ -255,19 +323,21 @@ async function answer(request: Request, path: string, db: D1Database, env: Env, 
   return typingIn ? typing(me, decodeURIComponent(typingIn[1]), db, env, ctx) : null;
 }
 
+const THREAD = /^\/api\/chat\/conversations\/([^/]+)\/messages$/;
 const TYPING = /^\/api\/chat\/conversations\/([^/]+)\/typing$/;
 const FILE = /^\/api\/files\/([A-Za-z0-9_-]{16,})(?:\/[^/]*)?$/;
 
 /** The answer for one of the calls above, or null to let the Next.js app answer. */
-export async function fastApi(request: Request, url: URL, env: Env, ctx: ExecutionContext): Promise<Response | null> {
+export async function fastApi(request: Request, url: URL, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>): Promise<Response | null> {
   const db = env.DB;
   if (!db) return null;
   const path = url.pathname;
   const get = request.method === 'GET';
   const post = request.method === 'POST';
-  if (!(get && (path === '/api/chat/incoming' || path === '/api/me' || FILE.test(path))) && !(post && (path === '/api/core/activity/ui' || TYPING.test(path)))) return null;
+  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || THREAD.test(path) || FILE.test(path);
+  if (!(get && fastGet) && !(post && (path === '/api/core/activity/ui' || path === '/api/bootstrap' || TYPING.test(path)))) return null;
   try {
-    const res = await answer(request, path, db, env, ctx);
+    const res = await answer(request, path, db, env, ctx, next);
     // The headers next.config.ts adds to every response (files and JSON set their own CSP or need none).
     if (res) for (const h of securityHeaders) if (h.key !== 'Content-Security-Policy' && !res.headers.has(h.key)) res.headers.set(h.key, h.value);
     return res;
