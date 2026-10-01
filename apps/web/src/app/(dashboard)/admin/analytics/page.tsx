@@ -1,12 +1,14 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
-import { Users, UserCheck, BookOpen, Sparkles, Trophy } from 'lucide-react';
+import { Users, UserCheck, BookOpen, Sparkles, Trophy, GraduationCap, ShieldCheck, Presentation } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Topbar } from '@/components/layout/Topbar';
 import { PremiumGate } from '@/components/billing/PremiumGate';
 import { authedJson } from '@/lib/authed-fetch';
+import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
 
 interface Analytics {
   totals: { members: number; activeMembers: number; courses: number; enrollments: number; impactPoints: number };
@@ -14,8 +16,14 @@ interface Analytics {
   applications: { status: string; count: number }[];
   signupsByMonth: { month: string; value: number }[];
   impactByMonth: { month: string; value: number }[];
-  topContributors: { id: string; name: string; impactXP: number; impactLevel: number }[];
+  topContributors: { id: string; name: string; email?: string; impactXP: number; impactLevel: number }[];
+  // Newer fields (older servers and sample data may not send them).
+  roleStatus?: { role: string; status: string; count: number }[];
+  admins?: Person[];
+  teachers?: (Person & { department: string | null; designation: string | null; courses: number; publishedCourses: number; courseCodes: string[]; students: number })[];
+  topStudents?: (Person & { gpa: number; year: number; department: string | null; impactXP: number; impactLevel: number; enrollments: number })[];
 }
+type Person = PersonInfo & { id: string; createdAt?: string };
 
 const ROLE_LABEL: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', INDUSTRY_MENTOR: 'Industry mentors' };
 const nf = new Intl.NumberFormat('en-US');
@@ -103,6 +111,109 @@ function BarList({ title, rows }: { title: string; rows: { label: string; count:
   );
 }
 
+const STATUS_COLS = ['ACTIVE', 'PENDING', 'SUSPENDED'] as const;
+
+function RoleStatusTable({ rows }: { rows: { role: string; status: string; count: number }[] }) {
+  const roles = [...new Set(rows.map((r) => r.role))].sort((a, b) => (ROLE_LABEL[a] ?? a).localeCompare(ROLE_LABEL[b] ?? b));
+  const get = (role: string, status: string) => rows.find((r) => r.role === role && r.status === status)?.count ?? 0;
+  return (
+    <div className={card}>
+      <h3 className="font-bold text-zinc-900 dark:text-white mb-4">Accounts by role and status</h3>
+      {roles.length === 0 ? <p className="text-sm text-zinc-500">No data yet.</p> : (
+        <table className="w-full text-xs sm:text-sm">
+          <thead>
+            <tr className="text-xs text-zinc-500">
+              <th className="text-left font-medium pb-2">Role</th>
+              {STATUS_COLS.map((s) => <th key={s} className="text-right font-medium pb-2">{s.charAt(0) + s.slice(1).toLowerCase()}</th>)}
+              <th className="text-right font-medium pb-2">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
+            {roles.map((role) => (
+              <tr key={role}>
+                <td className="py-2 text-zinc-700 dark:text-zinc-200">{ROLE_LABEL[role] ?? role}</td>
+                {STATUS_COLS.map((s) => <td key={s} className="py-2 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{nf.format(get(role, s))}</td>)}
+                <td className="py-2 text-right tabular-nums font-bold text-zinc-900 dark:text-white">{nf.format(rows.filter((r) => r.role === role).reduce((n, r) => n + r.count, 0))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function PeoplePanel({ data }: { data: Analytics }) {
+  const [tab, setTab] = useState<'teachers' | 'students' | 'admins'>('teachers');
+  const [q, setQ] = useState('');
+  const teachers = useMemo(() => data.teachers ?? [], [data.teachers]);
+  const students = useMemo(() => data.topStudents ?? [], [data.topStudents]);
+  const admins = useMemo(() => data.admins ?? [], [data.admins]);
+  if (!data.teachers && !data.topStudents && !data.admins) return null;
+
+  const tabs = [
+    { id: 'teachers' as const, label: 'Teachers', icon: Presentation, count: teachers.length },
+    { id: 'students' as const, label: 'Top students (GPA)', icon: GraduationCap, count: students.length },
+    { id: 'admins' as const, label: 'Admins', icon: ShieldCheck, count: admins.length },
+  ];
+  const joined = (p: Person) => (p.createdAt ? `Joined ${new Date(p.createdAt).toLocaleDateString()}` : null);
+
+  const rows = tab === 'teachers'
+    ? teachers.filter((t) => matchesQuery(q, personText(t), t.department, t.designation, t.courseCodes)).map((t) => ({
+      person: t,
+      facts: [t.designation, t.department, joined(t)].filter(Boolean).join(' · '),
+      right: [`${t.courses} course${t.courses === 1 ? '' : 's'} (${t.publishedCourses} published)`, `${nf.format(t.students)} enrollments`, t.courseCodes.slice(0, 6).join(', ')],
+    }))
+    : tab === 'students'
+      ? students.filter((s) => matchesQuery(q, personText(s), s.department)).map((s) => ({
+        person: s,
+        facts: [s.department, s.year ? `Year ${s.year}` : null, joined(s)].filter(Boolean).join(' · '),
+        right: [`GPA ${s.gpa.toFixed(2)}`, `${s.enrollments} course${s.enrollments === 1 ? '' : 's'}`, `Lvl ${s.impactLevel} · ${nf.format(s.impactXP)} XP`],
+      }))
+      : admins.filter((a) => matchesQuery(q, personText(a))).map((a) => ({ person: a, facts: joined(a) ?? '', right: [] as string[] }));
+  const total = tab === 'teachers' ? teachers.length : tab === 'students' ? students.length : admins.length;
+
+  return (
+    <div className={card}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+        <h3 className="font-bold text-zinc-900 dark:text-white">People</h3>
+        <div className="flex gap-1 overflow-x-auto">
+          {tabs.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)} aria-pressed={tab === t.id}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${tab === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+              <t.icon className="w-3.5 h-3.5" />{t.label} <span className="opacity-70">{t.count}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <AdminSearch className="mb-4" value={q} onChange={setQ} placeholder={`Search ${tab === 'students' ? 'students' : tab} by name, email, department…`} shown={rows.length} total={total} />
+      {total === 0 ? (
+        <p className="text-sm text-zinc-500">{tab === 'students' ? 'No students have a recorded GPA yet.' : tab === 'teachers' ? 'No teachers yet.' : 'No admins found.'}</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-zinc-500">No one matches your search.</p>
+      ) : (
+        <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
+          {rows.map((r, i) => (
+            <li key={r.person.id} className="py-3 grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:items-center">
+              <div className="flex items-start gap-2 min-w-0">
+                {tab === 'students' && <span className="w-6 h-6 shrink-0 mt-1 rounded-full bg-indigo-500/10 text-indigo-500 text-[11px] font-black flex items-center justify-center">{i + 1}</span>}
+                <PersonCell className="flex-1" person={r.person} showActivity extra={r.facts || null} />
+              </div>
+              {r.right.length > 0 && (
+                <div className="text-xs text-zinc-600 dark:text-zinc-400 md:text-right space-y-0.5">
+                  <p className="font-semibold text-zinc-900 dark:text-white">{r.right[0]}</p>
+                  {r.right.slice(1).filter(Boolean).map((x) => <p key={x} className="break-words">{x}</p>)}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {tab === 'teachers' && teachers.length >= 200 && <p className="mt-3 text-xs text-zinc-500">Showing the first 200 teachers alphabetically.</p>}
+    </div>
+  );
+}
+
 function AnalyticsDashboard() {
   const { data, error, isLoading } = useSWR<Analytics>('/api/premium/analytics', authedJson);
 
@@ -157,7 +268,10 @@ function AnalyticsDashboard() {
               {data.topContributors.map((c, i) => (
                 <li key={c.id} className="flex items-center gap-3">
                   <span className="w-7 h-7 rounded-full bg-indigo-500/10 text-indigo-500 text-xs font-black flex items-center justify-center">{i + 1}</span>
-                  <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-200 truncate">{c.name}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm text-zinc-700 dark:text-zinc-200 truncate">{c.name}</span>
+                    {c.email && <span className="block text-xs text-zinc-500 truncate">{c.email}</span>}
+                  </span>
                   <span className="text-xs text-zinc-500">Lvl {c.impactLevel}</span>
                   <span className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums">{nf.format(c.impactXP)} XP</span>
                 </li>
@@ -166,6 +280,9 @@ function AnalyticsDashboard() {
           )}
         </div>
       </div>
+
+      {data.roleStatus && <RoleStatusTable rows={data.roleStatus} />}
+      <PeoplePanel data={data} />
     </div>
   );
 }

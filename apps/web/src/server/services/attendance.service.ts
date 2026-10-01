@@ -29,15 +29,22 @@ export class AttendanceService {
       include: { student: { select: { id: true, name: true, email: true, avatar: true } } }
     });
 
-    // Get attendance for the specific date
-    const attendance = await prisma.attendance.findMany({
-      where: {
-        courseId,
-        date: targetDate
-      }
-    });
+    // Get attendance for the specific date, plus each student's record in this course so far
+    // (one grouped query: rows per student and status).
+    const [attendance, totals] = await Promise.all([
+      prisma.attendance.findMany({
+        where: {
+          courseId,
+          date: targetDate
+        }
+      }),
+      prisma.attendance.groupBy({ by: ['studentId', 'status'], where: { courseId }, _count: { _all: true } }),
+    ]);
 
-    return { enrollments, attendance };
+    const summary: Record<string, Partial<Record<string, number>>> = {};
+    for (const t of totals) (summary[t.studentId] ??= {})[t.status] = t._count._all;
+
+    return { enrollments, attendance, summary };
   }
 
   async markAttendance(courseId: string, date: string, studentId: string, status: any) {

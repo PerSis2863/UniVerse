@@ -84,7 +84,9 @@ function currentBuild(origin: string, env: Env) {
  * CPU time for the free plan's limit. In-app navigation data (RSC requests) still goes to Next.js.
  */
 async function edgeCachedPage(request: Request, url: URL, env: Env, ctx: ExecutionContext, render: () => Promise<Response>): Promise<Response> {
-  const plain = request.method === 'GET' && !request.headers.has('rsc') && !request.headers.has('next-router-prefetch') && !request.headers.has('authorization') && !request.headers.has('range');
+  // An address with ?… (the page recovery's one-off retry, links with tracking tags) always gets a
+  // fresh copy from Next.js.
+  const plain = request.method === 'GET' && !url.search && !request.headers.has('rsc') && !request.headers.has('next-router-prefetch') && !request.headers.has('authorization') && !request.headers.has('range');
   const build = plain ? await currentBuild(url.origin, env) : null;
   if (!build) return revalidatePages(request, await render());
   const cache = (caches as unknown as { default: Cache }).default;
@@ -131,11 +133,8 @@ export default {
     }
     const fast = url.pathname.startsWith('/api/') ? await fastApi(request, url, env, ctx, (r) => nextApp.fetch(r, env, ctx)) : null;
     if (fast) return fast;
-    // One address for the site: www.universeimpact.com and universeimpact.com were both in use,
-    // each with its own sign-in (saved per address), offline copy and cache.
-    if (url.hostname.startsWith('www.') && (request.method === 'GET' || request.method === 'HEAD') && !url.pathname.startsWith('/api/')) {
-      return Response.redirect(`${url.protocol}//${url.host.slice(4)}${url.pathname}${url.search}`, 301);
-    }
+    // No www → main address redirect: phones that installed the app from www.universeimpact.com
+    // were sent outside their app (and its saved files) on every launch.
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/')) return revalidatePages(request, await nextApp.fetch(request, env, ctx));
     return edgeCachedPage(request, url, env, ctx, () => nextApp.fetch(request, env, ctx));
   },

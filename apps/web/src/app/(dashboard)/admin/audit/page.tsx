@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
-import { Activity, Download, Loader2, Search, X } from 'lucide-react';
+import { format, formatDistanceToNow as fromNow } from 'date-fns';
+import { Activity, ChevronDown, Download, Loader2, Mail, Search, UserRound, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { api, API_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth-token';
@@ -19,11 +19,15 @@ interface AuditEntry {
   targetType: string | null;
   targetId: string | null;
   ip: string | null;
+  metadata?: unknown;
   createdAt: string;
 }
+/** The person behind an entry as they are today (absent once their account is deleted). */
+interface Actor { id: string; name: string; email: string; role: string; status: string; lastSeenAt: string | null }
 interface Page {
   entries: AuditEntry[];
   nextCursor: string | null;
+  actors?: Record<string, Actor>;
 }
 
 const AREA_LABELS: Record<string, string> = {
@@ -61,6 +65,9 @@ export default function AdminAuditLog() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [more, setMore] = useState<AuditEntry[]>([]);
+  const [moreActors, setMoreActors] = useState<Record<string, Actor>>({});
+  const [actorFilter, setActorFilter] = useState<{ id: string; name: string } | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -74,15 +81,17 @@ export default function AdminAuditLog() {
     const p = new URLSearchParams();
     if (debouncedQ) p.set('q', debouncedQ);
     if (areaFilter) p.set('action', areaFilter);
+    if (actorFilter) p.set('actorId', actorFilter.id);
     if (from) p.set('from', new Date(`${from}T00:00:00`).toISOString());
     if (to) p.set('to', new Date(`${to}T23:59:59.999`).toISOString());
     return p.toString();
-  }, [debouncedQ, areaFilter, from, to]);
+  }, [debouncedQ, areaFilter, actorFilter, from, to]);
 
   const { data, isLoading, error } = useSWR<Page>(`/audit?${params}`, (url: string) => api.get(url).then((r) => r.data), {
     revalidateOnFocus: true,
     onSuccess: (page) => {
       setMore([]);
+      setMoreActors({});
       setCursor(page.nextCursor);
     },
   });
@@ -95,7 +104,8 @@ export default function AdminAuditLog() {
   }, [actions]);
 
   const entries = [...(data?.entries ?? []), ...more];
-  const filtered = !!(debouncedQ || areaFilter || from || to);
+  const actors: Record<string, Actor> = { ...(data?.actors ?? {}), ...moreActors };
+  const filtered = !!(debouncedQ || areaFilter || actorFilter || from || to);
 
   const loadMore = async () => {
     if (!cursor) return;
@@ -103,6 +113,7 @@ export default function AdminAuditLog() {
     try {
       const { data: page } = await api.get<Page>(`/audit?${params}${params ? '&' : ''}cursor=${encodeURIComponent(cursor)}`);
       setMore((m) => [...m, ...page.entries]);
+      setMoreActors((a) => ({ ...a, ...(page.actors ?? {}) }));
       setCursor(page.nextCursor);
     } catch {
       toast.error('Could not load more activity');
@@ -132,6 +143,7 @@ export default function AdminAuditLog() {
   const clear = () => {
     setQ('');
     setAreaFilter('');
+    setActorFilter(null);
     setFrom('');
     setTo('');
   };
@@ -144,7 +156,7 @@ export default function AdminAuditLog() {
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <input className={`${input} w-full pl-9`} placeholder="Search people or descriptions…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input className={`${input} w-full pl-9`} placeholder="Search people, emails or descriptions…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <select className={input} value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} aria-label="Type of activity">
             <option value="">All activity</option>
@@ -173,6 +185,13 @@ export default function AdminAuditLog() {
           </button>
         </div>
 
+        {actorFilter && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-300 flex flex-wrap items-center gap-2">
+            Showing only what <b className="text-zinc-900 dark:text-white">{actorFilter.name}</b> did
+            <button onClick={() => setActorFilter(null)} className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-500"><X className="w-3.5 h-3.5" /> Everyone</button>
+          </p>
+        )}
+
         <div className="rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 overflow-hidden">
           {isLoading ? (
             <div className="p-12 flex justify-center">
@@ -190,15 +209,21 @@ export default function AdminAuditLog() {
             </div>
           ) : (
             <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
-              {entries.map((e) => (
+              {entries.map((e) => {
+                const actor = e.actorId ? actors[e.actorId] : undefined;
+                const open = expanded === e.id;
+                const meta = e.metadata && typeof e.metadata === 'object' && Object.keys(e.metadata as object).length ? JSON.stringify(e.metadata, null, 2) : null;
+                return (
                 <li key={e.id} className="p-4 sm:px-6 flex gap-4 items-start">
                   <div className="w-9 h-9 shrink-0 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center text-sm font-bold text-zinc-600 dark:text-zinc-300">
                     {(e.actorName ?? '?').charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-zinc-900 dark:text-white">
+                    <p className="text-sm text-zinc-900 dark:text-white flex flex-wrap items-baseline gap-x-2">
                       <span className="font-semibold">{e.actorName ?? 'System'}</span>
-                      {e.actorRole && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-zinc-400">{e.actorRole}</span>}
+                      {e.actorRole && <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">{e.actorRole}</span>}
+                      {actor && <a href={`mailto:${actor.email}`} className="text-xs text-zinc-500 hover:text-indigo-500 break-all">{actor.email}</a>}
+                      {e.actorId && !actor && <span className="text-xs text-zinc-400">account deleted</span>}
                     </p>
                     <p className="text-sm text-zinc-600 dark:text-zinc-300 mt-0.5 break-words">{e.summary}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -206,12 +231,41 @@ export default function AdminAuditLog() {
                         {AREA_LABELS[area(e.action)] ?? area(e.action)} · {verb(e.action)}
                       </span>
                       <time className="text-xs text-zinc-400" dateTime={e.createdAt} title={new Date(e.createdAt).toLocaleString()}>
-                        {formatDistanceToNow(new Date(e.createdAt), { addSuffix: true })}
+                        {fromNow(new Date(e.createdAt), { addSuffix: true })}
                       </time>
+                      <button onClick={() => setExpanded(open ? null : e.id)} aria-expanded={open} className="inline-flex items-center gap-0.5 text-xs font-semibold text-indigo-500">
+                        Details <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+                      </button>
                     </div>
+                    {open && (
+                      <div className="mt-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06] p-3 text-xs space-y-2">
+                        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                          <div><dt className="text-zinc-500">When</dt><dd className="text-zinc-900 dark:text-zinc-100">{format(new Date(e.createdAt), 'd MMM yyyy, HH:mm:ss')}</dd></div>
+                          <div><dt className="text-zinc-500">Action</dt><dd className="text-zinc-900 dark:text-zinc-100 break-all">{e.action}</dd></div>
+                          {e.targetType && <div><dt className="text-zinc-500">Target</dt><dd className="text-zinc-900 dark:text-zinc-100 break-all">{e.targetType}{e.targetId ? ` · ${e.targetId}` : ''}</dd></div>}
+                          {e.ip && <div><dt className="text-zinc-500">IP address</dt><dd className="text-zinc-900 dark:text-zinc-100 break-all">{e.ip}</dd></div>}
+                          {actor && (
+                            <div className="sm:col-span-2">
+                              <dt className="text-zinc-500">Actor today</dt>
+                              <dd className="text-zinc-900 dark:text-zinc-100 break-words">
+                                {actor.name} · <Mail className="w-3 h-3 inline -mt-0.5" /> {actor.email} · {actor.role.toLowerCase()} · {actor.status.toLowerCase()}
+                                {' · '}last active {actor.lastSeenAt ? fromNow(new Date(actor.lastSeenAt), { addSuffix: true }) : 'never'}
+                              </dd>
+                            </div>
+                          )}
+                        </dl>
+                        {meta && <pre className="whitespace-pre-wrap break-all text-[11px] text-zinc-600 dark:text-zinc-400 max-h-48 overflow-auto">{meta}</pre>}
+                        {e.actorId && actorFilter?.id !== e.actorId && (
+                          <button onClick={() => setActorFilter({ id: e.actorId!, name: e.actorName ?? actor?.name ?? 'this person' })} className="inline-flex items-center gap-1 font-semibold text-indigo-500">
+                            <UserRound className="w-3.5 h-3.5" /> Everything by {e.actorName ?? actor?.name ?? 'this person'}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
           {cursor && entries.length > 0 && (

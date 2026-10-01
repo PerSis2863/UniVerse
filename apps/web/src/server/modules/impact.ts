@@ -82,6 +82,7 @@ export default function impactModule(router: Router) {
   r.get('blockchain-credentials', ({ user }) => impact.getMyBlockchainCredentials(user.id));
   r.post('blockchain-credentials/request', ({ user, body }) => impact.requestCredential(user.id, validate<RequestCredentialDto>(RequestCredentialDto, body)));
   r.get('blockchain-credentials/pending', { roles: ['ADMIN'] }, () => impact.getPendingCredentialRequests());
+  r.get('blockchain-credentials/recent', { roles: ['ADMIN'] }, () => impact.getRecentCredentialDecisions());
   r.post('blockchain-credentials/issue', { roles: ['ADMIN'] }, async ({ user, body, req }) => {
     const dto = validate<IssueCredentialDto>(IssueCredentialDto, body);
     const result = await impact.issueCredentialDirect({ id: user.id, name: user.name }, dto);

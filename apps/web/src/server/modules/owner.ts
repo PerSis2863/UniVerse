@@ -142,7 +142,8 @@ export default function ownerModule(router: Router) {
   r.get('overview', async () => {
     const now = Date.now();
     const day = new Date(now - 86_400_000);
-    const [roles, statuses, online, signInsToday, newUsers, messagesToday, pendingApps, recentSignIns, recentActions] = await Promise.all([
+    const month = new Date(now - 30 * 86_400_000);
+    const [roles, statuses, online, signInsToday, newUsers, messagesToday, pendingApps, recentSignIns, recentActions, openErrors, pendingDeletions, joined, countries, devices] = await Promise.all([
       prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
       prisma.user.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.user.findMany({ where: { lastSeenAt: { gt: new Date(now - 5 * 60_000) } }, select: { id: true, name: true, role: true, lastSeenAt: true }, orderBy: { lastSeenAt: 'desc' }, take: 50 }),
@@ -152,7 +153,19 @@ export default function ownerModule(router: Router) {
       prisma.roleApplication.count({ where: { status: 'PENDING' } }),
       prisma.loginEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 15, include: { user: { select: { id: true, name: true, role: true, email: true } } } }),
       prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 15 }),
+      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] } } }),
+      prisma.accountDeletionRequest.count({ where: { status: 'PENDING' } }),
+      prisma.user.findMany({ where: { createdAt: { gt: new Date(now - 14 * 86_400_000) } }, select: { createdAt: true, role: true } }),
+      prisma.loginEvent.groupBy({ by: ['country'], where: { createdAt: { gt: month } }, _count: { _all: true } }),
+      prisma.loginEvent.groupBy({ by: ['device'], where: { createdAt: { gt: month } }, _count: { _all: true } }),
     ]);
+    // New accounts per day for the last 14 days (oldest first).
+    const signUps = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(now - (13 - i) * 86_400_000).toISOString().slice(0, 10);
+      return { day: d, count: joined.filter((u) => u.createdAt.toISOString().slice(0, 10) === d).length };
+    });
+    const top = (rows: { _count: { _all: number } }[], key: (r: never) => string | null) =>
+      rows.map((r) => ({ name: key(r as never) ?? 'Unknown', count: r._count._all })).sort((a, b) => b.count - a.count).slice(0, 6);
     return {
       roles: Object.fromEntries(roles.map((x) => [x.role, x._count._all])),
       statuses: Object.fromEntries(statuses.map((x) => [x.status, x._count._all])),
@@ -163,24 +176,61 @@ export default function ownerModule(router: Router) {
       pendingApps,
       recentSignIns,
       recentActions,
+      openErrors,
+      pendingDeletions,
+      signUps,
+      countries: top(countries, (r: { country: string | null }) => r.country),
+      devices: top(devices, (r: { device: string | null }) => r.device),
     };
   });
 
-  /** Everything happening: sign-ins, actions (Activity Log), messages sent, pages opened and buttons clicked, newest first. */
+  /**
+   * Everything happening: sign-ins, actions (Activity Log), messages sent, pages opened and buttons
+   * clicked, newest first. `kind` limits it to one of those, `q` searches names, emails, text,
+   * pages, devices and places, `role` limits it to students, teachers, admins or mentors.
+   */
   r.get('activity', async ({ query }) => {
     const before = query.before ? new Date(String(query.before)) : new Date(Date.now() + 1000);
     const userId = typeof query.userId === 'string' && query.userId ? query.userId : undefined;
+    const kind = ['signin', 'action', 'message', 'ui'].includes(query.kind) ? String(query.kind) : '';
+    const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
+    const role = (['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR'] as const).find((x) => x === query.role);
+    const want = (k: string) => !kind || kind === k;
+    const person = { ...(role && { role }), ...(q && { OR: [{ name: { contains: q } }, { email: { contains: q } }] }) };
+    const byPerson = role || q ? { user: { is: person } } : {};
     const take = 40;
+    const none = Promise.resolve([]);
     const [signIns, actions, messages, ui] = await Promise.all([
-      prisma.loginEvent.findMany({ where: { createdAt: { lt: before }, ...(userId && { userId }) }, orderBy: { createdAt: 'desc' }, take, include: { user: { select: { id: true, name: true, role: true } } } }),
-      prisma.auditLog.findMany({ where: { createdAt: { lt: before }, ...(userId && { actorId: userId }) }, orderBy: { createdAt: 'desc' }, take }),
-      prisma.message.findMany({
-        where: { createdAt: { lt: before }, ...(userId && { senderId: userId }) },
+      want('signin') ? prisma.loginEvent.findMany({
+        where: {
+          createdAt: { lt: before }, ...(userId && { userId }),
+          ...(q ? { OR: [{ user: { is: person } }, ...['device', 'city', 'country', 'ip', 'method'].map((f) => ({ [f]: { contains: q } }))], ...(role && { user: { is: { role } } }) } : byPerson),
+        },
+        orderBy: { createdAt: 'desc' }, take, include: { user: { select: { id: true, name: true, role: true } } },
+      }) : none,
+      want('action') ? prisma.auditLog.findMany({
+        where: {
+          createdAt: { lt: before }, ...(userId && { actorId: userId }), ...(role && { actorRole: role }),
+          ...(q && { OR: [{ summary: { contains: q } }, { actorName: { contains: q } }, { action: { contains: q } }] }),
+        },
+        orderBy: { createdAt: 'desc' }, take,
+      }) : none,
+      want('message') ? prisma.message.findMany({
+        where: {
+          createdAt: { lt: before }, ...(userId && { senderId: userId }), ...(role && { sender: { is: { role } } }),
+          ...(q && { OR: [{ body: { contains: q } }, { sender: { is: { OR: [{ name: { contains: q } }, { email: { contains: q } }] } } }, { conversation: { is: { name: { contains: q } } } }] }),
+        },
         orderBy: { createdAt: 'desc' },
         take,
         select: { id: true, type: true, body: true, createdAt: true, conversationId: true, sender: { select: { id: true, name: true, role: true } }, conversation: { select: { name: true, isGroup: true } } },
-      }),
-      prisma.uiEvent.findMany({ where: { createdAt: { lt: before }, ...(userId && { userId }) }, orderBy: { createdAt: 'desc' }, take, include: { user: { select: { id: true, name: true, role: true } } } }),
+      }) : none,
+      want('ui') ? prisma.uiEvent.findMany({
+        where: {
+          createdAt: { lt: before }, ...(userId && { userId }), ...(role && { user: { is: { role } } }),
+          ...(q && { OR: [{ label: { contains: q } }, { path: { contains: q } }, { user: { is: { OR: [{ name: { contains: q } }, { email: { contains: q } }] } } }] }),
+        },
+        orderBy: { createdAt: 'desc' }, take, include: { user: { select: { id: true, name: true, role: true } } },
+      }) : none,
     ]);
     const items = [
       ...signIns.map((e) => ({ kind: 'signin' as const, at: e.createdAt, user: e.user, data: e })),
@@ -203,9 +253,21 @@ export default function ownerModule(router: Router) {
       where,
       orderBy: { createdAt: 'desc' },
       take: 200,
-      select: { id: true, name: true, email: true, phone: true, role: true, status: true, avatar: true, createdAt: true, lastSeenAt: true, loginEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true, device: true, country: true } } },
+      skip: Math.max(0, Number(query.skip) || 0),
+      select: {
+        id: true, name: true, email: true, phone: true, role: true, status: true, avatar: true, accountType: true, onboardedAt: true, createdAt: true, lastSeenAt: true,
+        loginEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true, device: true, country: true, city: true } },
+        _count: { select: { loginEvents: true, enrollments: true, taughtCourses: true, sentMessages: true } },
+      },
     });
-    return people.map(({ loginEvents, ...p }) => ({ ...p, lastSignIn: loginEvents[0] ?? null, owner: isOwnerEmail(p.email) }));
+    const total = await prisma.user.count({ where });
+    return {
+      total,
+      people: people.map(({ loginEvents, _count, ...p }) => ({
+        ...p, lastSignIn: loginEvents[0] ?? null, owner: isOwnerEmail(p.email),
+        signIns: _count.loginEvents, courses: p.role === 'TEACHER' ? _count.taughtCourses : _count.enrollments, messages: _count.sentMessages,
+      })),
+    };
   });
 
   /** Everything linked to one person, from every table in the database. */
@@ -335,7 +397,12 @@ export default function ownerModule(router: Router) {
 
   r.get('changes', async ({ query }) => {
     const before = query.before ? new Date(String(query.before)) : undefined;
-    const items = await prisma.ownerChange.findMany({ where: before ? { createdAt: { lt: before } } : {}, orderBy: { createdAt: 'desc' }, take: 50 });
+    const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
+    const items = await prisma.ownerChange.findMany({
+      where: { ...(before && { createdAt: { lt: before } }), ...(q && { OR: [{ summary: { contains: q } }, { model: { contains: q } }, { recordId: q }] }) },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
     return { items, next: items.length === 50 ? items[items.length - 1].createdAt : null };
   });
 

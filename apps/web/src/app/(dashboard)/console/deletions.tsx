@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Check, Loader2, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { card, fetcher } from './shared';
+import { SearchBox, card, fetcher, matches } from './shared';
 
 interface Req {
   id: string; email: string; name: string; reason: string | null; status: string; note: string | null; createdAt: string; decidedAt: string | null;
@@ -20,6 +20,8 @@ export function DeletionsPanel({ onOpenPerson }: { onOpenPerson: (id: string) =>
   const { data, mutate, isLoading } = useSWR<Req[]>(`/owner/deletion-requests?status=${view}`, fetcher);
   const [busy, setBusy] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [q, setQ] = useState('');
+  const shown = (data ?? []).filter((r) => matches(q, r.name, r.email, r.reason, r.status, r.note, r.user.role));
 
   const decide = async (r: Req, decision: 'approve' | 'decline') => {
     if (decision === 'approve' && !window.confirm(`Permanently delete ${r.name}'s account (${r.email})? This can't be undone.`)) return;
@@ -39,10 +41,11 @@ export function DeletionsPanel({ onOpenPerson }: { onOpenPerson: (id: string) =>
           <button key={v} onClick={() => setView(v)} className={cn('px-3 py-1.5 rounded-full text-sm font-semibold', view === v ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{v === 'PENDING' ? 'Waiting for you' : 'All'}</button>
         ))}
       </div>
+      <SearchBox value={q} onChange={setQ} placeholder="Search by name, email or reason" />
       <p className="text-xs text-zinc-500">Check that the request is genuine (e.g. recent sign-ins from the person’s usual devices, or contact them) before approving. Approving erases the account; the person gets an email first.</p>
-      {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-indigo-400" /> : !data?.length ? (
-        <div className={cn(card, 'p-8 text-center text-sm text-zinc-500')}>No {view === 'PENDING' ? 'pending ' : ''}deletion requests.</div>
-      ) : data.map((r) => (
+      {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-indigo-400" /> : !shown.length ? (
+        <div className={cn(card, 'p-8 text-center text-sm text-zinc-500')}>{q && data?.length ? 'No requests match.' : `No ${view === 'PENDING' ? 'pending ' : ''}deletion requests.`}</div>
+      ) : shown.map((r) => (
         <div key={r.id} className={cn(card, 'p-4 sm:p-5')}>
           <div className="flex flex-wrap items-start gap-3">
             <Trash2 className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />

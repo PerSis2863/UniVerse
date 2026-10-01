@@ -12,6 +12,7 @@ import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { InviteDialog } from './invite';
+import { InvitationsPanel } from './invitations';
 
 // Admin → Approvals: review applications to become a teacher or NGO representative.
 // Approving grants the role; declining and "ask for more info" send the applicant your message.
@@ -64,6 +65,8 @@ export default function ApprovalsPage() {
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const [approving, setApproving] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [showInvitations, setShowInvitations] = useState(false);
+  const { data: invitationCount } = useSWR<{ total: number }>('/users/invitations', fetcher);
   const canPick = tab === 'PENDING' || tab === 'NEEDS_INFO';
   const shown = data?.items ?? [];
   const allPicked = shown.length > 0 && shown.every((a) => picked.has(a.id));
@@ -90,7 +93,7 @@ export default function ApprovalsPage() {
     }
   };
 
-  const switchTab = (t: Status) => { setTab(t); setPicked(new Set()); };
+  const switchTab = (t: Status) => { setTab(t); setPicked(new Set()); setShowInvitations(false); };
 
   const select = (id: string | null) => {
     setSelected(id);
@@ -105,6 +108,11 @@ export default function ApprovalsPage() {
       <Topbar title="Approvals" subtitle="Students, staff and organizations waiting for a decision" />
       {inviting && <InviteDialog onClose={() => setInviting(false)} />}
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
+        {showInvitations ? (
+          <div className="max-w-4xl mx-auto">
+            <InvitationsPanel onBack={() => setShowInvitations(false)} onInvite={() => setInviting(true)} />
+          </div>
+        ) : (
         <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
           {/* List */}
           <section className={cn('space-y-4', selected && 'hidden lg:block')}>
@@ -119,6 +127,9 @@ export default function ApprovalsPage() {
                   {!!data?.counts[t.id] && <span className={cn('ml-1.5', t.id === 'PENDING' && tab !== t.id && 'text-indigo-500')}>{data.counts[t.id]}</span>}
                 </button>
               ))}
+              <button onClick={() => setShowInvitations(true)} className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                Invited{invitationCount?.total ? <span className="ml-1.5">{invitationCount.total}</span> : null}
+              </button>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -163,7 +174,8 @@ export default function ApprovalsPage() {
                           <div className="w-9 h-9 shrink-0 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center text-sm font-bold text-zinc-600 dark:text-zinc-300">{a.user.name.charAt(0).toUpperCase()}</div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{a.user.name}</p>
-                            <p className="text-xs text-zinc-500 truncate">{[a.position, a.institution].filter(Boolean).join(' · ') || a.user.email}</p>
+                            <p className="text-xs text-zinc-500 truncate">{a.user.email}</p>
+                            {(a.position || a.institution || a.department) && <p className="text-xs text-zinc-400 truncate">{[a.position, a.department, a.institution].filter(Boolean).join(' · ')}</p>}
                             <div className="mt-1.5 flex items-center gap-2 text-[11px] text-zinc-400">
                               <span className={cn('inline-flex items-center gap-1 font-semibold', a.requestedRole === 'ADMIN' ? 'text-amber-500' : 'text-indigo-500')}><Icon className="w-3 h-3" />{ROLE[a.requestedRole]?.label}</span>
                               {when && <span>· {formatDistanceToNow(new Date(when), { addSuffix: true })}</span>}
@@ -190,6 +202,7 @@ export default function ApprovalsPage() {
             )}
           </section>
         </div>
+        )}
       </div>
     </>
   );
@@ -252,6 +265,7 @@ function ApplicationDetail({ id, onBack, onDecided }: { id: string; onBack: () =
               <p className="text-sm text-zinc-500 inline-flex items-center gap-1.5 break-all"><Mail className="w-3.5 h-3.5 shrink-0" />{a.user.email}</p>
               {a.user.phone && <p className="text-sm text-zinc-500 inline-flex items-center gap-1.5 ml-3"><Phone className="w-3.5 h-3.5" />{a.user.phone}</p>}
               <p className="text-xs text-zinc-400 mt-1">Joined {format(new Date(a.user.createdAt), 'd MMM yyyy')} · {a.source === 'SIGNUP' ? 'chose this role when signing up' : 'applied from a student account'}</p>
+              <p className="text-xs text-zinc-400">Account today: {a.user.role.toLowerCase()} · {a.user.status.toLowerCase()}{a.submittedAt ? ` · sent ${format(new Date(a.submittedAt), 'd MMM yyyy, HH:mm')}` : ''}</p>
             </div>
           </div>
           <div className="text-right">

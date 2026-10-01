@@ -113,8 +113,13 @@
     --badge-blue-bg: rgba(99, 102, 241, 0.15);  --badge-blue-color: #818cf8;
   }
 
-  body {
+  /* The page colour sits on <html>; <body> stays see-through so the indigo/purple glows
+     (.ambient-bg, behind the page) show. A coloured body covered them: one flat colour. */
+  html {
     background-color: var(--background);
+  }
+  body {
+    background-color: transparent;
     color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;

@@ -29,6 +29,17 @@ function newest(){var b=builds(),k='',t=0;for(var h in b){if(b[h]>t){t=b[h];k=h;
 function outdated(){var m=build(),n=newest();return !!m&&!!n&&m!==n;}
 function seen(){var m=build();if(!m)return;var b=builds();if(b[m])return;b[m]=Date.now();var o={};Object.keys(b).sort(function(x,y){return b[y]-b[x];}).slice(0,5).forEach(function(k){o[k]=b[k];});try{localStorage.setItem(BKEY,JSON.stringify(o));}catch(x){}}
 if(document.readyState==='loading')addEventListener('DOMContentLoaded',seen);else seen();
+// Clears this site's saved files and service worker, so the retry comes straight from the server
+// (a bad copy saved on the device was served again on every refresh and app restart).
+function purge(then){
+  var done=false,jobs=[];function fin(){if(!done){done=true;then();}}
+  setTimeout(fin,2500);
+  try{if(window.caches)jobs.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}));}catch(x){}
+  try{if(navigator.serviceWorker)jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}));}catch(x){}
+  Promise.all(jobs).then(fin,fin);
+}
+// Saved files from before 1 Oct (renamed since): these could hold a bad copy.
+try{if(window.caches)['next-static','pages','pages-rsc'].forEach(function(k){caches.delete(k).catch(function(){});});}catch(x){}
 function fresh(to){try{var u=new URL(to,location.href);u.searchParams.set('__uv',Date.now().toString(36));return u.href;}catch(x){return to;}}
 addEventListener('click',function(e){var el=e.target,a=el&&el.closest?el.closest('a[href]'):null;if(a&&a.origin===location.origin&&!a.target&&!a.hasAttribute('download'))click={h:a.href,t:Date.now()};},true);
 function screen(to){
@@ -41,7 +52,7 @@ function screen(to){
     +'<h1 style="margin:12px 0 8px;font-size:20px;color:'+(dark?'#fff':'#111')+'">This page needs a reload</h1>'
     +'<p style="margin:0;font-size:14px;line-height:1.6;color:#8b8b95">It didn&#39;t finish loading, or UniVerse was just updated. Reload to continue.</p>'
     +'<button type="button" style="margin-top:22px;height:42px;padding:0 22px;border:0;border-radius:12px;background:#4f46e5;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Reload</button></div>';
-  d.querySelector('button').addEventListener('click',function(){try{sessionStorage.removeItem(KEY);}catch(x){}location.assign(fresh(to));});
+  d.querySelector('button').addEventListener('click',function(){try{sessionStorage.removeItem(KEY);}catch(x){}purge(function(){location.assign(fresh(to));});});
   document.body.appendChild(d);
 }
 window.__uvRecover=function(){
@@ -58,14 +69,20 @@ window.__uvRecover=function(){
   }
   busy=true;
   try{sessionStorage.setItem(KEY,JSON.stringify({u:to,t:Date.now(),n:n+1}));}catch(x){}
-  if(n>=1)location.assign(fresh(to));else if(to===location.href)location.reload();else location.assign(to);
+  if(n>=1)purge(function(){location.assign(fresh(to));});else if(to===location.href)location.reload();else location.assign(to);
   return true;
 };
 function blank(){
   var b=document.body;if(!b)return 'no page body';
   if(document.getElementById('universe-reload-screen'))return '';
   var css=document.querySelectorAll('link[rel="stylesheet"]');
-  for(var i=0;i<css.length;i++){if(!css[i].sheet&&!css[i].disabled&&String(css[i].href).indexOf('/_next/static/')>=0)return 'styles did not load';}
+  for(var i=0;i<css.length;i++){
+    var l=css[i];if(l.disabled||String(l.href).indexOf('/_next/static/')<0)continue;
+    // No sheet, or one that isn't readable or is empty: the file that arrived wasn't our stylesheet.
+    if(!l.sheet)return 'styles did not load';
+    try{if(!l.sheet.cssRules.length)return 'styles were empty';}catch(x){return 'styles came from elsewhere';}
+  }
+  if(!window.next&&document.querySelector('script[src*="/_next/static/"]'))return 'app code did not start';
   return (b.innerText||'').replace(/\\s+/g,'').length<2?'nothing on screen':'';
 }
 function guard(ms){

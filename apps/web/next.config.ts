@@ -63,8 +63,10 @@ const withPWA = withPWAInit({
         // The app's code and styles as they load. Their names change with every version, so a saved
         // copy never goes stale; old versions' files stay available to tabs still running them.
         urlPattern: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) => sameOrigin && url.pathname.startsWith('/_next/static/'),
+        // Only complete, successful answers are kept: a redirect or error saved here was served again
+        // on every later visit (the page came up without its styles and never recovered).
         handler: 'CacheFirst',
-        options: { cacheName: 'next-static', expiration: { maxEntries: 400, maxAgeSeconds: 30 * 24 * 60 * 60 } },
+        options: { cacheName: 'static-v2', cacheableResponse: { statuses: [200] }, expiration: { maxEntries: 400, maxAgeSeconds: 30 * 24 * 60 * 60 } },
       },
       {
         // API responses are per-user (grades, messages, billing): never store them on the device,
@@ -78,14 +80,14 @@ const withPWA = withPWAInit({
         urlPattern: ({ request, url, sameOrigin }: { request: Request; url: URL; sameOrigin: boolean }) =>
           sameOrigin && request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
         handler: 'NetworkFirst',
-        options: { cacheName: 'pages', networkTimeoutSeconds: 8, expiration: { maxEntries: 80, maxAgeSeconds: 14 * 24 * 60 * 60 } },
+        options: { cacheName: 'pages-v2', cacheableResponse: { statuses: [200] }, networkTimeoutSeconds: 8, expiration: { maxEntries: 80, maxAgeSeconds: 14 * 24 * 60 * 60 } },
       },
       {
         // In-app navigation (React Server Component payloads), likewise kept for offline use.
         urlPattern: ({ request, url, sameOrigin }: { request: Request; url: URL; sameOrigin: boolean }) =>
           sameOrigin && request.headers.get('RSC') === '1' && request.headers.get('Next-Router-Prefetch') !== '1' && !url.pathname.startsWith('/api/'),
         handler: 'NetworkFirst',
-        options: { cacheName: 'pages-rsc', networkTimeoutSeconds: 8, matchOptions: { ignoreSearch: true }, expiration: { maxEntries: 80, maxAgeSeconds: 14 * 24 * 60 * 60 } },
+        options: { cacheName: 'pages-rsc-v2', cacheableResponse: { statuses: [200] }, networkTimeoutSeconds: 8, matchOptions: { ignoreSearch: true }, expiration: { maxEntries: 80, maxAgeSeconds: 14 * 24 * 60 * 60 } },
       },
     ],
   },

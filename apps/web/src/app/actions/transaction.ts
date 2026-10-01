@@ -8,7 +8,8 @@ import { getUserFromToken } from '@/lib/server-auth';
 // Students can only see and create (pending) payments for themselves; admins manage all.
 
 const MAX_AMOUNT = 1_000_000;
-const userSummary = { select: { id: true, name: true, email: true } } as const;
+// Admins see who paid: name, email, role, account status and phone.
+const userSummary = { select: { id: true, name: true, email: true, role: true, status: true, phone: true } } as const;
 
 export async function createTransaction(
   token: string | null,

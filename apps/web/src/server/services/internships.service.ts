@@ -15,6 +15,32 @@ export class InternshipsService {
     });
   }
 
+  /** Admin view: every internship (active or not) with who posted it and every applicant's details. */
+  findAllForAdmin() {
+    return prisma.internship.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        company: { select: { id: true, name: true } },
+        postedBy: { select: { id: true, name: true, email: true, role: true } },
+        _count: { select: { applications: true } },
+        applications: {
+          orderBy: { appliedAt: 'desc' },
+          take: 200,
+          select: {
+            id: true, status: true, appliedAt: true, cvUrl: true,
+            student: {
+              select: {
+                id: true, name: true, email: true, role: true, status: true, phone: true,
+                studentProfile: { select: { department: true, year: true, gpa: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async findOne(id: string, user: { id: string; role: string }) {
     const item = await prisma.internship.findUnique({ where: { id }, include: { company: true } });
     if (!item) throw new NotFoundException();

@@ -9,6 +9,7 @@ import { CalendarDays, Clock, ExternalLink, Loader2, MapPin, Pencil, Plus, Trash
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { safeHref } from '@/lib/safe-href';
+import { RoleBadge, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
 
 export type CampusKind = 'SERVICE' | 'LINK' | 'EVENT';
 export interface CampusItem {
@@ -21,6 +22,9 @@ export interface CampusItem {
   location: string | null;
   hours: string | null;
   startAt: string | null;
+  createdAt?: string;
+  /** Who added it (only returned to admins). */
+  createdBy?: PersonInfo | null;
 }
 
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
@@ -90,13 +94,15 @@ export function CampusItemList({ kind, guide }: {
 const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 const empty = { title: '', category: '', description: '', url: '', location: '', hours: '', startAt: '' };
 
-/** Admin editor for one kind of campus info. */
-export function CampusItemManager({ kind, label, categories }: { kind: CampusKind; label: string; categories?: string[] }) {
-  const key = `/api/campus-items?kind=${kind}`;
+/** Admin editor for one kind of campus info. `query` filters the list; `showPast` includes past events. */
+export function CampusItemManager({ kind, label, categories, query = '', showPast = false }: { kind: CampusKind; label: string; categories?: string[]; query?: string; showPast?: boolean }) {
+  const key = `/api/campus-items?kind=${kind}${kind === 'EVENT' && showPast ? '&past=1' : ''}`;
   const { data, isLoading, mutate } = useSWR<CampusItem[]>(key, authedJson);
+  const shown = (data ?? []).filter((it) => matchesQuery(query, it.title, it.category, it.description, it.location, it.hours, it.url, personText(it.createdBy)));
   const [form, setForm] = useState<typeof empty | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [now] = useState(() => Date.now());
 
   const openNew = () => { setEditingId(null); setForm({ ...empty, category: categories?.[0] ?? '' }); };
   const openEdit = (it: CampusItem) => {
@@ -137,7 +143,10 @@ export function CampusItemManager({ kind, label, categories }: { kind: CampusKin
   return (
     <div className={`${card} p-5`}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-zinc-900 dark:text-white">{label}s</h3>
+        <h3 className="font-bold text-zinc-900 dark:text-white">
+          {label}s
+          {!!data?.length && <span className="ml-2 text-xs font-medium text-zinc-500 tabular-nums">{query.trim() ? `${shown.length} of ${data.length}` : data.length}</span>}
+        </h3>
         <button onClick={openNew} className="btn-primary btn-sm rounded-full"><Plus className="w-3.5 h-3.5" /> Add</button>
       </div>
 
@@ -172,15 +181,32 @@ export function CampusItemManager({ kind, label, categories }: { kind: CampusKin
         <div className="py-4 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
       ) : !data?.length ? (
         <p className="text-sm text-zinc-500">Nothing added yet. Students will see these once you add them.</p>
+      ) : !shown.length ? (
+        <p className="text-sm text-zinc-500">No {label.toLowerCase()}s match your search.</p>
       ) : (
         <ul className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
-          {data.map((it) => (
+          {shown.map((it) => (
             <li key={it.id} className="py-3 flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{it.title}</p>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">
+                  {it.title}
+                  {it.startAt && new Date(it.startAt).getTime() < now - 24 * 3600 * 1000 && <span className="ml-2 text-[10px] font-bold uppercase text-zinc-400">Past</span>}
+                </p>
                 <p className="text-xs text-zinc-500 truncate">
                   {[it.category, it.startAt && eventDate(it.startAt), it.hours, it.location].filter(Boolean).join(' · ') || it.url}
                 </p>
+                {it.createdBy !== undefined && (
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-zinc-500">
+                    {it.createdBy ? (
+                      <>
+                        <span>Added by <span className="font-medium text-zinc-700 dark:text-zinc-300">{it.createdBy.name}</span></span>
+                        <RoleBadge role={it.createdBy.role} />
+                        {it.createdBy.email && <a href={`mailto:${it.createdBy.email}`} className="hover:text-indigo-500 break-all">{it.createdBy.email}</a>}
+                      </>
+                    ) : <span>Creator not recorded</span>}
+                    {it.createdAt && <span>· {new Date(it.createdAt).toLocaleDateString()}</span>}
+                  </div>
+                )}
               </div>
               <button onClick={() => openEdit(it)} aria-label="Edit" className="p-2 rounded-lg text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Pencil className="w-4 h-4" /></button>
               <button onClick={() => remove(it)} aria-label="Delete" className="p-2 rounded-lg text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" /></button>
