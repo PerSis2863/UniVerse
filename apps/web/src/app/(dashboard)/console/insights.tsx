@@ -1,0 +1,387 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import useSWR from 'swr';
+import { format, formatDistanceToNow } from 'date-fns';
+import { AlertTriangle, ArrowRight, Bug, CheckCircle2, CreditCard, Download, History, Loader2, MessageSquare, MessagesSquare, Search, Users, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { card, downloadCsv, fetcher, useDebounced } from './shared';
+
+// Owner console pieces that read across the app (server side: src/server/modules/owner-insights.ts):
+// the "Needs your attention" card, the console-wide search, Analytics and Money.
+
+export type Attention = {
+  items: { id: string; level: 'high' | 'medium' | 'low'; text: string; tab?: string; href?: string; filter?: string }[];
+  badges: Record<string, number>;
+};
+
+/** What needs the owner now, shared by the Overview card and the counts on the tabs. */
+export const useAttention = () => useSWR<Attention>('/owner/attention', fetcher, { refreshInterval: 60_000 });
+
+const LEVEL = {
+  high: 'bg-rose-500',
+  medium: 'bg-amber-500',
+  low: 'bg-zinc-400',
+};
+
+export function AttentionCard({ onGo }: { onGo: (tab: string, filter?: string) => void }) {
+  const { data } = useAttention();
+  if (!data) return null;
+  return (
+    <div className={cn(card, 'p-5')}>
+      <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-3">
+        {data.items.length ? <AlertTriangle className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+        {data.items.length ? 'Needs your attention' : 'All clear: nothing needs you right now'}
+      </h2>
+      {data.items.length > 0 && (
+        <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
+          {data.items.map((x) => {
+            const inner = (
+              <>
+                <span className={cn('w-2 h-2 rounded-full shrink-0', LEVEL[x.level])} />
+                <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-200">{x.text}</span>
+                <ArrowRight className="w-4 h-4 text-zinc-300 shrink-0" />
+              </>
+            );
+            const cls = 'w-full flex items-center gap-3 py-2.5 text-left hover:text-indigo-500';
+            return (
+              <li key={x.id}>
+                {x.href ? <a href={x.href} className={cls}>{inner}</a> : <button onClick={() => onGo(x.tab!, x.filter)} className={cls}>{inner}</button>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ─── Search everything ─────────────────────────────────────────────────────────────────────────
+
+type Found = {
+  people: { id: string; name: string; email: string; role: string; status: string; owner: boolean }[];
+  chats: { id: string; name: string | null; isGroup: boolean; updatedAt: string }[];
+  messages: { id: string; body: string; createdAt: string; conversationId: string; sender: { name: string } | null }[];
+  errors: { id: string; message: string; path: string | null; status: string; lastSeen: string }[];
+  changes: { id: string; summary: string; createdAt: string }[];
+};
+
+export type Go =
+  | { to: 'person'; id: string }
+  | { to: 'chat'; id: string }
+  | { to: 'error'; id: string; status: string }
+  | { to: 'table'; name: string }
+  | { to: 'changes'; q: string };
+
+function Row({ icon: Icon, title, sub, onClick }: { icon: typeof Users; title: string; sub?: string; onClick: () => void }) {
+  return (
+    <li>
+      <button onClick={onClick} className="w-full text-left px-3 py-2 flex gap-2.5 items-start rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+        <Icon className="w-4 h-4 mt-0.5 text-zinc-400 shrink-0" />
+        <span className="min-w-0">
+          <span className="block text-sm text-zinc-900 dark:text-white truncate">{title}</span>
+          {sub && <span className="block text-xs text-zinc-500 truncate">{sub}</span>}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400">{label}</p>
+      <ul>{children}</ul>
+    </div>
+  );
+}
+
+export function ConsoleSearch({ tables, onGo }: { tables: { name: string; title: string; count: number }[]; onGo: (g: Go) => void }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const dq = useDebounced(q.trim());
+  const box = useRef<HTMLDivElement>(null);
+  const { data, isLoading } = useSWR<Found>(dq.length >= 2 ? `/owner/search?q=${encodeURIComponent(dq)}` : null, fetcher, { keepPreviousData: true });
+  useEffect(() => {
+    const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+  const go = (g: Go) => { onGo(g); setOpen(false); setQ(''); };
+  const lower = dq.toLowerCase();
+  const tableHits = dq.length >= 2 ? tables.filter((t) => t.title.toLowerCase().includes(lower) || t.name.toLowerCase().includes(lower)).slice(0, 5) : [];
+  const empty = data && !tableHits.length && !data.people.length && !data.chats.length && !data.messages.length && !data.errors.length && !data.changes.length;
+  return (
+    <div ref={box} className="relative w-full sm:max-w-md">
+      <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] px-3 py-2">
+        <Search className="w-4 h-4 text-zinc-400" />
+        <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+          placeholder="Search everything: people, chats, messages, errors, tables" aria-label="Search the console" className="flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400" />
+        {isLoading && <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />}
+        {q && <button onClick={() => setQ('')} aria-label="Clear"><X className="w-4 h-4 text-zinc-400" /></button>}
+      </label>
+      {open && dq.length >= 2 && (
+        <div className="absolute z-40 mt-2 w-full max-h-[70vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-white/10 tone-panel shadow-xl p-1.5">
+          {!data && <p className="p-3 text-sm text-zinc-500">Searching…</p>}
+          {empty && <p className="p-3 text-sm text-zinc-500">Nothing matches “{dq}”.</p>}
+          {!!data?.people.length && <Group label="People">{data.people.map((p) => <Row key={p.id} icon={Users} title={p.name} sub={`${p.email} · ${p.owner ? 'owner' : p.role.toLowerCase()}${p.status !== 'ACTIVE' ? ` · ${p.status.toLowerCase()}` : ''}`} onClick={() => go({ to: 'person', id: p.id })} />)}</Group>}
+          {!!data?.chats.length && <Group label="Chats">{data.chats.map((c) => <Row key={c.id} icon={MessagesSquare} title={c.name ?? 'Private chat'} sub={`${c.isGroup ? 'Group' : 'Chat'} · active ${formatDistanceToNow(new Date(c.updatedAt), { addSuffix: true })}`} onClick={() => go({ to: 'chat', id: c.id })} />)}</Group>}
+          {!!data?.messages.length && <Group label="Messages">{data.messages.map((m) => <Row key={m.id} icon={MessageSquare} title={m.body} sub={`${m.sender?.name ?? 'Someone'} · ${format(new Date(m.createdAt), 'd MMM, HH:mm')}`} onClick={() => go({ to: 'chat', id: m.conversationId })} />)}</Group>}
+          {!!data?.errors.length && <Group label="Errors">{data.errors.map((e) => <Row key={e.id} icon={Bug} title={e.message} sub={`${e.path ?? ''} · ${e.status.toLowerCase()} · last ${formatDistanceToNow(new Date(e.lastSeen), { addSuffix: true })}`} onClick={() => go({ to: 'error', id: e.id, status: e.status })} />)}</Group>}
+          {!!tableHits.length && <Group label="Tables">{tableHits.map((t) => <Row key={t.name} icon={Search} title={t.title} sub={`${t.count} records`} onClick={() => go({ to: 'table', name: t.name })} />)}</Group>}
+          {!!data?.changes.length && <Group label="Your changes">{data.changes.map((c) => <Row key={c.id} icon={History} title={c.summary} sub={format(new Date(c.createdAt), 'd MMM yyyy, HH:mm')} onClick={() => go({ to: 'changes', q: dq })} />)}</Group>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Small charts ──────────────────────────────────────────────────────────────────────────────
+
+function Bars({ values, labels, tone = 'from-indigo-600/70 to-fuchsia-400/80', height = 'h-32', title }: { values: number[]; labels: string[]; tone?: string; height?: string; title: (i: number) => string }) {
+  const peak = Math.max(1, ...values);
+  return (
+    <div>
+      <div className={cn('flex items-end gap-[3px]', height)} role="img" aria-label={labels.length ? `${labels[0]} to ${labels[labels.length - 1]}` : 'chart'}>
+        {values.map((v, i) => (
+          <div key={i} className="flex-1 flex flex-col justify-end h-full" title={title(i)}>
+            <div className={cn('w-full rounded-t bg-gradient-to-t', tone)} style={{ height: `${Math.max(v ? 6 : 2, (v / peak) * 100)}%`, opacity: v ? 1 : 0.25 }} />
+          </div>
+        ))}
+      </div>
+      {labels.length > 1 && <div className="mt-1 flex justify-between text-[10px] text-zinc-400"><span>{labels[0]}</span><span>{labels[labels.length - 1]}</span></div>}
+    </div>
+  );
+}
+
+function Tiles({ tiles }: { tiles: [string, string | number, string?][] }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {tiles.map(([label, value, hint]) => (
+        <div key={label} className={cn(card, 'p-4')}>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-white tabular-nums">{value}</p>
+          <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{label}</p>
+          {hint && <p className="text-[11px] text-zinc-400 mt-0.5">{hint}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Ranked({ title, rows, empty, onClick }: { title: string; rows: { key: string; label: string; sub?: string; value: number }[]; empty: string; onClick?: (key: string) => void }) {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return (
+    <div className={cn(card, 'p-5')}>
+      <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">{title}</h2>
+      {rows.length === 0 ? <p className="text-sm text-zinc-500">{empty}</p> : (
+        <ul className="space-y-2.5">{rows.map((r) => {
+          const body = (
+            <>
+              <div className="flex justify-between gap-2 text-sm"><span className="truncate text-zinc-700 dark:text-zinc-200">{r.label}</span><span className="text-zinc-500 tabular-nums shrink-0">{r.value}</span></div>
+              {r.sub && <p className="text-[11px] text-zinc-400 truncate">{r.sub}</p>}
+              <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06]"><div className="h-full rounded-full bg-indigo-500/70" style={{ width: `${(r.value / max) * 100}%` }} /></div>
+            </>
+          );
+          return <li key={r.key}>{onClick ? <button onClick={() => onClick(r.key)} className="w-full text-left">{body}</button> : body}</li>;
+        })}</ul>
+      )}
+    </div>
+  );
+}
+
+// ─── Analytics ─────────────────────────────────────────────────────────────────────────────────
+
+interface AnalyticsData {
+  days: number;
+  perDay: { day: string; active: number; joined: number; messages: number }[];
+  totals: { people: number; activeDay: number; activeWeek: number; activeMonth: number; neverActive: number; unfinished: number; views: number; clicks: number; signIns: number };
+  activeByRole: Record<string, number>;
+  pages: { path: string; views: number; people: number }[];
+  buttons: { label: string; path: string; clicks: number }[];
+  hours: number[];
+  busiest: { id: string; name: string; role: string; events: number }[];
+}
+
+const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : '—');
+const ROLE_NAMES: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', INDUSTRY_MENTOR: 'Mentors' };
+
+export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void }) {
+  const [days, setDays] = useState(30);
+  const { data, isLoading } = useSWR<AnalyticsData>(`/owner/analytics?days=${days}`, fetcher, { keepPreviousData: true, refreshInterval: 120_000 });
+  if (isLoading && !data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
+  if (!data) return null;
+  const t = data.totals;
+  const labels = data.perDay.map((d) => format(new Date(d.day), 'd MMM'));
+  // Hours are counted in UTC; move them to this device's time zone.
+  const shift = -new Date().getTimezoneOffset() / 60;
+  const hours = Array.from({ length: 24 }, (_, h) => data.hours[(((h - shift) % 24) + 24) % 24] ?? 0);
+  const busiestHour = hours.indexOf(Math.max(...hours));
+  const sum = (k: 'active' | 'joined' | 'messages') => data.perDay.reduce((s, d) => s + d[k], 0);
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2 justify-between">
+        <p className="text-sm text-zinc-500">Real use of UniVerse, from page views, button presses, sign-ins and messages.</p>
+        <div className="flex gap-1">
+          {[7, 30, 90].map((d) => (
+            <button key={d} onClick={() => setDays(d)} className={cn('px-3 py-1.5 rounded-full text-xs font-semibold', days === d ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{d} days</button>
+          ))}
+          <button onClick={() => downloadCsv(`universe-analytics-${days}d`, ['Day', 'Active people', 'New accounts', 'Messages'], data.perDay.map((d) => [d.day, d.active, d.joined, d.messages]))}
+            className="btn-secondary inline-flex items-center gap-1.5 ml-1"><Download className="w-4 h-4" /> CSV</button>
+        </div>
+      </div>
+      <Tiles tiles={[
+        ['Active today', t.activeDay, `${pct(t.activeDay, t.people)} of ${t.people} people`],
+        ['Active this week', t.activeWeek, pct(t.activeWeek, t.people)],
+        ['Active this month', t.activeMonth, pct(t.activeMonth, t.people)],
+        ['Never opened the app', t.neverActive, `${t.unfinished} didn't finish signing up`],
+        ['Pages opened', t.views, `last ${days} days`],
+        ['Buttons pressed', t.clicks, `last ${days} days`],
+        ['Sign-ins and app opens', t.signIns, `last ${days} days`],
+        ['Messages sent', sum('messages'), `last ${days} days`],
+      ]} />
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className={cn(card, 'p-5 lg:col-span-2')}>
+          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">People active per day</h2>
+          <Bars values={data.perDay.map((d) => d.active)} labels={labels} title={(i) => `${labels[i]}: ${data.perDay[i].active} people`} />
+        </div>
+        <div className={cn(card, 'p-5')}>
+          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Who is active · {days} days</h2>
+          {Object.keys(data.activeByRole).length === 0 ? <p className="text-sm text-zinc-500">Nobody yet.</p> : (
+            <ul className="space-y-2 text-sm">{Object.entries(data.activeByRole).sort((a, b) => b[1] - a[1]).map(([role, n]) => (
+              <li key={role} className="flex justify-between"><span className="text-zinc-700 dark:text-zinc-200">{ROLE_NAMES[role] ?? role}</span><span className="text-zinc-500 tabular-nums">{n}</span></li>
+            ))}</ul>
+          )}
+        </div>
+        <div className={cn(card, 'p-5')}>
+          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">New accounts per day</h2>
+          <Bars height="h-24" tone="from-emerald-600/70 to-teal-300/80" values={data.perDay.map((d) => d.joined)} labels={labels} title={(i) => `${labels[i]}: ${data.perDay[i].joined} new`} />
+          <p className="mt-2 text-xs text-zinc-500">{sum('joined')} in {days} days</p>
+        </div>
+        <div className={cn(card, 'p-5')}>
+          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Messages per day</h2>
+          <Bars height="h-24" tone="from-sky-600/70 to-cyan-300/80" values={data.perDay.map((d) => d.messages)} labels={labels} title={(i) => `${labels[i]}: ${data.perDay[i].messages} messages`} />
+          <p className="mt-2 text-xs text-zinc-500">{sum('messages')} in {days} days</p>
+        </div>
+        <div className={cn(card, 'p-5')}>
+          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Busiest hours (your time)</h2>
+          <Bars height="h-24" tone="from-amber-600/70 to-yellow-300/80" values={hours} labels={['00:00', '23:00']} title={(h) => `${String(h).padStart(2, '0')}:00: ${hours[h]} actions`} />
+          <p className="mt-2 text-xs text-zinc-500">{Math.max(...hours) ? `Busiest around ${String(busiestHour).padStart(2, '0')}:00` : 'No activity yet'}</p>
+        </div>
+      </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        <Ranked title="Most opened pages" empty="No page views yet." rows={data.pages.map((p) => ({ key: p.path, label: p.path, sub: `${p.people} ${p.people === 1 ? 'person' : 'people'}`, value: p.views }))} />
+        <Ranked title="Most pressed buttons" empty="No button presses yet." rows={data.buttons.map((b) => ({ key: `${b.label}${b.path}`, label: `“${b.label}”`, sub: b.path, value: b.clicks }))} />
+        <Ranked title="Most active people" empty="Nobody yet." onClick={onPerson} rows={data.busiest.map((b) => ({ key: b.id, label: b.name, sub: b.role.toLowerCase(), value: b.events }))} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Money ─────────────────────────────────────────────────────────────────────────────────────
+
+interface MoneyData {
+  currency: string;
+  byStatus: { status: string; currency: string; count: number; total: number }[];
+  byType: { type: string; currency: string; total: number }[];
+  perDay: { day: string; total: number }[];
+  thisMonth: number; lastMonth: number;
+  recent: { id: string; amount: number; currency: string; type: string; description: string; status: string; createdAt: string; user: { id: string; name: string; email: string } | null }[];
+  invoices: { status: string; currency: string; count: number; total: number; overdue: number; overdueTotal: number }[];
+  subscriptions: { mrr: number; paying: number; orgs: { id: string; name: string; plan: string; planName: string; price: number; subscriptionStatus: string | null; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean }[] };
+}
+
+const STATUS_TONE: Record<string, string> = { COMPLETED: 'text-emerald-600 dark:text-emerald-400', PENDING: 'text-amber-600 dark:text-amber-400', FAILED: 'text-rose-500', REFUNDED: 'text-zinc-500' };
+const STATUS_NAME: Record<string, string> = { COMPLETED: 'Paid', PENDING: 'Waiting', FAILED: 'Failed', REFUNDED: 'Refunded' };
+const nice = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
+
+export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
+  const { data, isLoading } = useSWR<MoneyData>('/owner/money', fetcher, { refreshInterval: 120_000 });
+  const [status, setStatus] = useState('');
+  if (isLoading || !data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
+  const money = (n: number, c = data.currency) => new Intl.NumberFormat('en', { style: 'currency', currency: c, maximumFractionDigits: 2 }).format(n);
+  const paid = data.byStatus.filter((x) => x.status === 'COMPLETED' && x.currency === data.currency);
+  const of = (s: string) => data.byStatus.filter((x) => x.status === s && x.currency === data.currency);
+  const total = (rows: { total: number }[]) => rows.reduce((a, x) => a + x.total, 0);
+  const count = (rows: { count: number }[]) => rows.reduce((a, x) => a + x.count, 0);
+  const overdue = data.invoices.reduce((a, x) => a + x.overdue, 0);
+  const change = data.lastMonth ? Math.round(((data.thisMonth - data.lastMonth) / data.lastMonth) * 100) : null;
+  const labels = data.perDay.map((d) => format(new Date(d.day), 'd MMM'));
+  const recent = data.recent.filter((p) => !status || p.status === status);
+  return (
+    <div className="space-y-6">
+      <Tiles tiles={[
+        ['Paid this month', money(data.thisMonth), change == null ? `last month ${money(data.lastMonth)}` : `${change >= 0 ? '+' : ''}${change}% vs last month`],
+        ['Paid in total', money(total(paid)), `${count(paid)} payments`],
+        ['Waiting to be paid', money(total(of('PENDING'))), `${count(of('PENDING'))} payments${overdue ? ` · ${overdue} overdue invoices` : ''}`],
+        ['Subscriptions', money(data.subscriptions.mrr), `a month from ${data.subscriptions.paying} paying ${data.subscriptions.paying === 1 ? 'organization' : 'organizations'} (estimate)`],
+      ]} />
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className={cn(card, 'p-5 lg:col-span-2')}>
+          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Money received per day · 30 days</h2>
+          <Bars tone="from-emerald-600/70 to-lime-300/80" values={data.perDay.map((d) => d.total)} labels={labels} title={(i) => `${labels[i]}: ${money(data.perDay[i].total)}`} />
+          {failedNote(of('FAILED'), money)}
+        </div>
+        <Ranked title="What people paid for" empty="No paid payments yet." rows={data.byType.filter((x) => x.currency === data.currency).map((x) => ({ key: x.type, label: nice(x.type), value: Math.round(x.total) }))} />
+      </div>
+      <div className={cn(card, 'p-5')}>
+        <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
+          <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><CreditCard className="w-4 h-4 text-zinc-400" /> Latest payments</h2>
+          <div className="flex flex-wrap gap-1">
+            {['', 'COMPLETED', 'PENDING', 'FAILED', 'REFUNDED'].map((s) => (
+              <button key={s} onClick={() => setStatus(s)} className={cn('px-3 py-1 rounded-full text-xs font-semibold', status === s ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{s ? STATUS_NAME[s] : 'All'}</button>
+            ))}
+            <button onClick={() => downloadCsv('universe-payments', ['Date', 'Person', 'Email', 'What', 'Type', 'Amount', 'Currency', 'Status'], recent.map((p) => [p.createdAt, p.user?.name, p.user?.email, p.description, p.type, p.amount, p.currency, p.status]))}
+              className="btn-secondary inline-flex items-center gap-1.5 ml-1"><Download className="w-4 h-4" /> CSV</button>
+          </div>
+        </div>
+        {recent.length === 0 ? <p className="text-sm text-zinc-500">No payments{status ? ' with this status' : ' yet'}.</p> : (
+          <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">{recent.map((p) => (
+            <li key={p.id} className="py-2.5 flex items-center gap-3 text-sm">
+              <span className="min-w-0 flex-1">
+                <span className="block text-zinc-900 dark:text-white truncate">{p.description}</span>
+                <span className="block text-xs text-zinc-500 truncate">
+                  {p.user ? <button onClick={() => onPerson(p.user!.id)} className="hover:text-indigo-500">{p.user.name}</button> : 'Deleted user'} · {nice(p.type)} · {format(new Date(p.createdAt), 'd MMM yyyy, HH:mm')}
+                </span>
+              </span>
+              <span className={cn('text-xs font-semibold', STATUS_TONE[p.status])}>{STATUS_NAME[p.status] ?? p.status}</span>
+              <span className="w-24 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">{money(p.amount, p.currency)}</span>
+            </li>
+          ))}</ul>
+        )}
+      </div>
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className={cn(card, 'p-5')}>
+          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Invoices</h2>
+          {data.invoices.length === 0 ? <p className="text-sm text-zinc-500">No invoices yet.</p> : (
+            <ul className="space-y-2 text-sm">{data.invoices.map((x) => (
+              <li key={`${x.status}${x.currency}`} className="flex justify-between gap-2">
+                <span className={STATUS_TONE[x.status]}>{STATUS_NAME[x.status] ?? x.status} · {x.count}{x.overdue ? <span className="text-rose-500"> ({x.overdue} overdue, {money(x.overdueTotal, x.currency)})</span> : null}</span>
+                <span className="tabular-nums text-zinc-700 dark:text-zinc-200">{money(x.total, x.currency)}</span>
+              </li>
+            ))}</ul>
+          )}
+        </div>
+        <div className={cn(card, 'p-5')}>
+          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Organization plans</h2>
+          {data.subscriptions.orgs.length === 0 ? <p className="text-sm text-zinc-500">No organization is on a paid plan yet.</p> : (
+            <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">{data.subscriptions.orgs.map((o) => (
+              <li key={o.id} className="py-2 flex items-center gap-3 text-sm">
+                <span className="min-w-0 flex-1">
+                  <span className="block text-zinc-900 dark:text-white truncate">{o.name}</span>
+                  <span className="block text-xs text-zinc-500">{o.planName}{o.price ? ` · ${money(o.price, 'USD')}/month` : ''}{o.currentPeriodEnd ? ` · ${o.cancelAtPeriodEnd ? 'ends' : 'renews'} ${format(new Date(o.currentPeriodEnd), 'd MMM yyyy')}` : ''}</span>
+                </span>
+                <span className={cn('text-xs font-semibold', o.subscriptionStatus === 'active' || o.subscriptionStatus === 'trialing' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400')}>{o.subscriptionStatus ? nice(o.subscriptionStatus.toUpperCase()) : 'No subscription'}</span>
+              </li>
+            ))}</ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function failedNote(rows: { count: number; total: number }[], money: (n: number) => string) {
+  const n = rows.reduce((a, x) => a + x.count, 0);
+  if (!n) return null;
+  return <p className="mt-2 text-xs text-rose-500">{n} failed {n === 1 ? 'payment' : 'payments'} in total, {money(rows.reduce((a, x) => a + x.total, 0))}.</p>;
+}

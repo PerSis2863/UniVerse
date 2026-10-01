@@ -19,6 +19,12 @@ type Field = { name: string; type: string; kind: 'scalar' | 'enum' | 'object'; l
 type Model = { name: string; delegate: string; table: string; fields: Field[] };
 const MODELS = (schema.models as Model[]);
 const ENUMS = schema.enums as Record<string, string[]>;
+// Changes & undo filters: which tables each kind of change touches.
+const AREA_MODELS: Record<string, string[]> = {
+  people: ['User', 'Notification'],
+  chats: ['Message', 'Conversation', 'ConversationParticipant'],
+  server: ['ServerControl'],
+};
 const byName = new Map(MODELS.map((m) => [m.name, m]));
 
 /** Tables that can't be edited here (binary files, and the history of these edits itself). */
@@ -560,7 +566,11 @@ export default function ownerModule(router: Router) {
     const before = query.before ? new Date(String(query.before)) : undefined;
     const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
     const items = await prisma.ownerChange.findMany({
-      where: { ...(before && { createdAt: { lt: before } }), ...(q && { OR: [{ summary: { contains: q } }, { model: { contains: q } }, { recordId: q }] }) },
+      where: {
+        ...(before && { createdAt: { lt: before } }),
+        ...(q && { OR: [{ summary: { contains: q } }, { model: { contains: q } }, { recordId: q }] }),
+        ...(typeof query.area === 'string' && AREA_MODELS[query.area] && { model: { in: AREA_MODELS[query.area] } }),
+      },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
@@ -586,6 +596,13 @@ export default function ownerModule(router: Router) {
       } catch (e) {
         throw new BadRequestException(`Could not restore it: ${(e as Error).message.split('\n').pop()}`);
       }
+    } else if (change.action === 'BULK' && m.name === 'User') {
+      // Several people's status at once (People → select → Ban / Let back in): each gets theirs back.
+      const before = (change.before ?? {}) as Record<string, string>;
+      const groups = new Map<string, string[]>();
+      for (const [id, status] of Object.entries(before)) groups.set(status, [...(groups.get(status) ?? []), id]);
+      for (const [status, ids] of groups) await prisma.user.updateMany({ where: { id: { in: ids } }, data: { status: status as 'ACTIVE' } });
+      Object.keys(before).forEach(forgetUser);
     } else {
       throw new BadRequestException('This change can’t be undone.');
     }
