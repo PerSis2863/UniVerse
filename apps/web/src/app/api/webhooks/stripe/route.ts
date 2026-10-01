@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import prisma from '@/lib/db';
-import { syncSubscription } from '@/lib/billing';
+import { getStripe, syncSubscription } from '@/lib/billing';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2024-06-20' as any,
-  httpClient: Stripe.createFetchHttpClient(), // fetch works on Cloudflare Workers
-});
+// Checking the signature needs no API key; a placeholder keeps this working if the key is missing.
+const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as any, httpClient: Stripe.createFetchHttpClient() });
 
 export async function POST(req: Request) {
   const payload = await req.text();
@@ -16,11 +14,8 @@ export async function POST(req: Request) {
 
   try {
     // The async variant uses Web Crypto, which is what Cloudflare Workers provide.
-    event = await stripe.webhooks.constructEventAsync(
-      payload,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET as string
-    );
+    // Trimmed: a pasted secret often carries a trailing space or line break.
+    event = await stripeClient().webhooks.constructEventAsync(payload, signature, (process.env.STRIPE_WEBHOOK_SECRET ?? '').trim());
   } catch (err: any) {
     console.error(`Webhook Error: ${err.message}`);
     return NextResponse.json({ error: err.message }, { status: 400 });
@@ -45,7 +40,7 @@ export async function POST(req: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     if (typeof session.subscription === 'string') {
       try {
-        await syncSubscription(await stripe.subscriptions.retrieve(session.subscription));
+        await syncSubscription(await stripeClient().subscriptions.retrieve(session.subscription));
       } catch (err) {
         console.error('Error syncing subscription from checkout:', err);
         return NextResponse.json({ error: 'Failed to sync subscription' }, { status: 500 });

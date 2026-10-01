@@ -4,12 +4,27 @@ import prisma from '@/lib/db';
 import { getSessionUser, type SessionUser } from '@/lib/server-auth';
 import { effectivePlan, hasFeature, FEATURE_INFO, type PlanId, type PremiumFeature } from '@/lib/plans';
 
-let stripeClient: Stripe | null = null;
+let stripeClient: { key: string; client: Stripe } | null = null;
+
+/** The Stripe secret key as saved on the Worker, without the spaces or line breaks a paste can add. */
+export const stripeSecretKey = () => (process.env.STRIPE_SECRET_KEY ?? '').trim().replace(/^["']|["']$/g, '');
+
+/** What's wrong with the saved key at a glance (the owner sees this in console → Errors), or null. */
+export function stripeKeyProblem(): string | null {
+  const key = stripeSecretKey();
+  if (!key) return 'the STRIPE_SECRET_KEY secret is not set on the Cloudflare Worker (it must be a Secret, not a plain Variable, or the next deploy removes it).';
+  if (key.startsWith('pk_')) return 'STRIPE_SECRET_KEY holds the publishable key (pk_…). Use the secret key (sk_live_…) from Stripe → Developers → API keys.';
+  if (key.startsWith('whsec_')) return 'STRIPE_SECRET_KEY holds the webhook signing secret (whsec_…). That one belongs in STRIPE_WEBHOOK_SECRET; use the secret key (sk_live_…) here.';
+  if (!/^(sk|rk)_(live|test)_[A-Za-z0-9]+$/.test(key)) return `STRIPE_SECRET_KEY doesn't look like a Stripe secret key (it should start with sk_live_ and have no spaces; it starts with "${key.slice(0, 8)}…").`;
+  return null;
+}
 
 export function getStripe(): Stripe | null {
-  if (!process.env.STRIPE_SECRET_KEY) return null;
-  stripeClient ??= new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' as any, httpClient: Stripe.createFetchHttpClient() });
-  return stripeClient;
+  const key = stripeSecretKey();
+  if (!key) return null;
+  // A new key (changed on the Worker) gets a new client.
+  if (stripeClient?.key !== key) stripeClient = { key, client: new Stripe(key, { apiVersion: '2024-06-20' as any, httpClient: Stripe.createFetchHttpClient() }) };
+  return stripeClient.client;
 }
 
 /** The organization owned by this admin, created on first use with the free Starter plan. */
