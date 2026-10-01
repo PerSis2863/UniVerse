@@ -15,6 +15,7 @@ import { fastApi } from './fast-api';
 export { DOQueueHandler, DOShardedTagCache, BucketCachePurge } from '../.open-next/worker.js';
 
 interface Env {
+  ASSETS?: Fetcher;
   REALTIME: DurableObjectNamespace<RealtimeHub>;
   BOARDS?: DurableObjectNamespace<BoardRoom>;
   API_RATE_LIMITER?: RateLimit; // per signed-in user (or per IP when signed out)
@@ -65,6 +66,47 @@ function revalidatePages(request: Request, res: Response): Response {
   return out;
 }
 
+// The build these pages belong to (public/BUILD_ID), read once per instance: cached pages are kept
+// per build, so a deploy never serves pages that point at the previous build's files.
+let buildId: Promise<string | null> | null = null;
+function currentBuild(origin: string, env: Env) {
+  buildId ??= (env.ASSETS ? env.ASSETS.fetch(`${origin}/BUILD_ID`).then((r) => (r.ok ? r.text() : null)).then((t) => t?.trim() || null) : Promise.resolve(null)).catch(() => {
+    buildId = null;
+    return null;
+  });
+  return buildId;
+}
+
+/**
+ * Pages that are the same for everyone (Next.js built them ahead of time: the home page, sign-in,
+ * the dashboards' shells, legal pages) are kept in Cloudflare's cache near the visitor. A repeat
+ * visit is then answered without starting the Next.js app at all: a faster first screen, and no
+ * CPU time for the free plan's limit. In-app navigation data (RSC requests) still goes to Next.js.
+ */
+async function edgeCachedPage(request: Request, url: URL, env: Env, ctx: ExecutionContext, render: () => Promise<Response>): Promise<Response> {
+  const plain = request.method === 'GET' && !request.headers.has('rsc') && !request.headers.has('next-router-prefetch') && !request.headers.has('authorization') && !request.headers.has('range');
+  const build = plain ? await currentBuild(url.origin, env) : null;
+  if (!build) return revalidatePages(request, await render());
+  const cache = (caches as unknown as { default: Cache }).default;
+  const key = new Request(`${url.origin}${url.pathname}?__build=${encodeURIComponent(build)}`);
+  const hit = await cache.match(key).catch(() => undefined);
+  if (hit) {
+    const etag = hit.headers.get('etag');
+    if (etag && request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: { ETag: etag, 'Cache-Control': 'no-cache' } });
+    const out = new Response(hit.body, hit);
+    out.headers.set('Cache-Control', 'no-cache');
+    return out;
+  }
+  const res = await render();
+  const sameForEveryone = res.status === 200 && res.headers.get('x-nextjs-prerender') === '1' && /^text\/html/.test(res.headers.get('content-type') ?? '') && /s-maxage/.test(res.headers.get('cache-control') ?? '') && !res.headers.has('set-cookie');
+  if (sameForEveryone) {
+    const copy = new Response(res.clone().body, res);
+    copy.headers.set('Cache-Control', 'public, max-age=86400');
+    ctx.waitUntil(cache.put(key, copy).catch(() => {}));
+  }
+  return revalidatePages(request, res);
+}
+
 const TICKET_TTL_MS = 60_000;
 const MAX_SOCKETS = 20; // per user: app + a few browser tabs
 
@@ -89,7 +131,13 @@ export default {
     }
     const fast = url.pathname.startsWith('/api/') ? await fastApi(request, url, env, ctx, (r) => nextApp.fetch(r, env, ctx)) : null;
     if (fast) return fast;
-    return revalidatePages(request, await nextApp.fetch(request, env, ctx));
+    // One address for the site: www.universeimpact.com and universeimpact.com were both in use,
+    // each with its own sign-in (saved per address), offline copy and cache.
+    if (url.hostname.startsWith('www.') && (request.method === 'GET' || request.method === 'HEAD') && !url.pathname.startsWith('/api/')) {
+      return Response.redirect(`${url.protocol}//${url.host.slice(4)}${url.pathname}${url.search}`, 301);
+    }
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/')) return revalidatePages(request, await nextApp.fetch(request, env, ctx));
+    return edgeCachedPage(request, url, env, ctx, () => nextApp.fetch(request, env, ctx));
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
