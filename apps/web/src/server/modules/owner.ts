@@ -130,11 +130,43 @@ export default function ownerModule(router: Router) {
   r.get('errors', async ({ query }) => {
     const status = typeof query.status === 'string' && ['NEW', 'DIAGNOSED', 'RESOLVED', 'IGNORED', 'OPEN'].includes(query.status) ? query.status : 'OPEN';
     const where = status === 'OPEN' ? { status: { in: ['NEW', 'DIAGNOSED'] } } : { status };
-    const [items, counts] = await Promise.all([
+    const day = new Date(Date.now() - 86_400_000);
+    const [items, counts, recent] = await Promise.all([
       prisma.errorReport.findMany({ where, orderBy: [{ lastSeen: 'desc' }], take: 200 }),
       prisma.errorReport.groupBy({ by: ['status'], _count: { _all: true } }),
+      // For the summary and the 14-day chart (one row per problem, so this stays small).
+      prisma.errorReport.findMany({ where: { lastSeen: { gt: new Date(Date.now() - 14 * 86_400_000) } }, select: { firstSeen: true, lastSeen: true, source: true, count: true, users: true, severity: true, status: true } }),
     ]);
-    return { items, counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])) };
+    // Who ran into each problem last (name and role, to see if it's one person or many).
+    const userIds = [...new Set(items.map((e) => e.lastUserId).filter((x): x is string => !!x))];
+    const people = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds.slice(0, 90) } }, select: { id: true, name: true, email: true, role: true } }) : [];
+    const byId = new Map(people.map((u) => [u.id, u]));
+    const open = recent.filter((e) => e.status === 'NEW' || e.status === 'DIAGNOSED');
+    const days = Array.from({ length: 14 }, (_, i) => new Date(Date.now() - (13 - i) * 86_400_000).toISOString().slice(0, 10));
+    return {
+      items: items.map((e) => ({ ...e, lastUser: e.lastUserId ? byId.get(e.lastUserId) ?? null : null })),
+      counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
+      summary: {
+        seenToday: recent.filter((e) => e.lastSeen > day).length,
+        newToday: recent.filter((e) => e.firstSeen > day).length,
+        openServer: open.filter((e) => e.source === 'SERVER').length,
+        openBrowser: open.filter((e) => e.source !== 'SERVER').length,
+        openHigh: open.filter((e) => e.severity === 'high').length,
+        peopleAffected: open.reduce((n, e) => n + e.users, 0),
+        timesSeen: open.reduce((n, e) => n + e.count, 0),
+        // New problems per day, and problems still happening per day (by last time seen).
+        perDay: days.map((d) => ({ day: d, new: recent.filter((e) => e.firstSeen.toISOString().slice(0, 10) === d).length, seen: recent.filter((e) => e.lastSeen.toISOString().slice(0, 10) === d).length })),
+      },
+    };
+  });
+
+  /** Resolve, ignore or reopen several problems at once. */
+  r.post('errors/bulk', async ({ body }) => {
+    const ids = Array.isArray(body?.ids) ? (body.ids as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, 90) : [];
+    const status = body?.status;
+    if (!ids.length || !['NEW', 'RESOLVED', 'IGNORED'].includes(status)) throw new BadRequestException('Choose problems and a status.');
+    const { count } = await prisma.errorReport.updateMany({ where: { id: { in: ids } }, data: { status, resolvedAt: status === 'RESOLVED' ? new Date() : null } });
+    return { updated: count };
   });
 
   r.post('errors/diagnose', async ({ body }) => {

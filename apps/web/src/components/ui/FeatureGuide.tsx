@@ -2,10 +2,11 @@
 
 import Link from '@/components/ui/Link';
 import { m as motion } from 'framer-motion';
-import { FlaskConical, Sparkles, type LucideIcon } from 'lucide-react';
+import { Database, FlaskConical, Sparkles, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSampleMode } from '@/lib/sample-mode';
 import { startSampleMode } from '@/components/SampleMode';
+import { useAuthStore } from '@/store/auth';
 
 export interface FeatureGuideProps {
   icon: LucideIcon;
@@ -26,6 +27,9 @@ export interface FeatureGuideProps {
 export function FeatureGuide({ icon: Icon, title, description, steps, example, action, className }: FeatureGuideProps) {
   const ActionEl = action?.href ? Link : 'button';
   const sampleOn = useSampleMode();
+  // The owner sees the real database: no examples or sample data, just that nothing is stored yet.
+  const owner = useAuthStore((s) => s.user?.owner === true);
+  if (owner && !sampleOn) return <OwnerEmpty icon={Icon} title={title} action={action} className={className} />;
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -100,6 +104,31 @@ export function ExampleRow({ title, meta, right, accent = 'from-indigo-500 to-vi
         {meta && <p className="text-xs text-zinc-500 truncate">{meta}</p>}
       </div>
       {right && <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 shrink-0">{right}</span>}
+    </div>
+  );
+}
+
+/** What the owner sees on an empty page: live data, nothing stored yet. */
+function OwnerEmpty({ icon: Icon, title, action, className }: Pick<FeatureGuideProps, 'icon' | 'title' | 'action' | 'className'>) {
+  const ActionEl = action?.href ? Link : 'button';
+  return (
+    <div className={cn('rounded-2xl border border-zinc-200 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.02] p-6 flex flex-col sm:flex-row sm:items-center gap-4', className)}>
+      <div className="w-11 h-11 rounded-xl bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center shrink-0">
+        <Icon className="w-5 h-5 text-zinc-500" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live data
+        </p>
+        <h3 className="mt-1 font-bold text-zinc-900 dark:text-white">Nothing stored yet</h3>
+        <p className="text-sm text-zinc-500">{title.replace(/\.$/, '')}: there are 0 records in the database. Real records show here the moment someone adds one.</p>
+      </div>
+      <div className="flex flex-wrap gap-2 shrink-0">
+        {action && (
+          <ActionEl href={action.href as string} onClick={action.onClick} className="btn-primary">{action.label}</ActionEl>
+        )}
+        <Link href="/console?tab=database" className="btn-secondary inline-flex items-center gap-1.5"><Database className="w-4 h-4" /> Database</Link>
+      </div>
     </div>
   );
 }
