@@ -2,7 +2,7 @@
 import { haptic } from '@/lib/haptics';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -18,6 +18,17 @@ import { useLanguageStore } from '@/store/language';
 import { LANGUAGES, languageName } from '@/lib/languages';
 import { LanguagePicker } from './LanguagePicker';
 import { useChatTranslations } from './useChatTranslations';
+
+/** Messages grouped by calendar day, each with its index in the whole list. */
+function byDay<T extends { createdAt: string }>(list: T[]) {
+  const days: { m: T; i: number }[][] = [];
+  list.forEach((m, i) => {
+    const prev = list[i - 1];
+    if (!prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString()) days.push([]);
+    days[days.length - 1].push({ m, i });
+  });
+  return days;
+}
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const key = `/api/chat/conversations/${conversationId}/messages`;
@@ -481,46 +492,48 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <p className="text-xs">Messages, photos, files and calls all live here.</p>
             </div>
           )}
-          {messages.map((m, i) => {
-            const prev = messages[i - 1];
-            const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
-            const showSender = !!convo.isGroup && (newDay || prev?.senderId !== m.senderId || prev?.type === 'SYSTEM');
-            return (
-              <Fragment key={m.id}>
-                {newDay && (
-                  <div className="flex justify-center py-2 sticky top-0 z-10">
-                    <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/90 dark:bg-[#161b2e]/90 backdrop-blur border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(m.createdAt)}</span>
+          {/* One section per day, so each day's label sticks only while its own messages are on
+              screen (all labels in one list piled up on top of each other). */}
+          {byDay(messages).map((day) => (
+            <section key={day[0].m.id}>
+              <div className="flex justify-center py-2 sticky top-0 z-10">
+                <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/90 dark:bg-[#161b2e]/90 backdrop-blur border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(day[0].m.createdAt)}</span>
+              </div>
+              {day.map(({ m, i }, n) => {
+                const prev = messages[i - 1];
+                const newDay = n === 0;
+                const showSender = !!convo.isGroup && (newDay || prev?.senderId !== m.senderId || prev?.type === 'SYSTEM');
+                return (
+                  <div key={m.id} id={`msg-${m.id}`} className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
+                    <MessageBubble
+                      m={m}
+                      mine={m.senderId === me}
+                      me={me}
+                      showSender={showSender}
+                      readState={readState(m)}
+                      canModerate={!!canModerate}
+                      highlight={highlight === m.id}
+                      onReply={() => { setEditing(null); setReplyTo(m); }}
+                      onEdit={() => { setReplyTo(null); setEditing(m); }}
+                      onDelete={async () => { if (await confirmDialog({ title: 'Delete for everyone?', message: 'The message will be removed for everyone in this chat.', destructive: true })) remove(m); }}
+                      onDeleteForMe={() => deleteForMe(m)}
+                      onStar={() => star(m)}
+                      onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
+                      onForward={() => setForwarding(m)}
+                      onInfo={() => setInfoMsg(m)}
+                      onVote={(o) => vote(m, o)}
+                      onOpenContact={openContact}
+                      onReact={(e) => react(m, e)}
+                      onOpenImage={setLightbox}
+                      {...(m.senderId !== me && m.type === 'TEXT' && !m.pending && m.body?.trim()
+                        ? { translation: tr.get(m.id), showOriginal: tr.showingOriginal(m.id), onTranslate: () => tr.translate(m.id), onToggleOriginal: () => tr.toggleOriginal(m.id) }
+                        : {})}
+                    />
                   </div>
-                )}
-                <div id={`msg-${m.id}`} className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
-                  <MessageBubble
-                    m={m}
-                    mine={m.senderId === me}
-                    me={me}
-                    showSender={showSender}
-                    readState={readState(m)}
-                    canModerate={!!canModerate}
-                    highlight={highlight === m.id}
-                    onReply={() => { setEditing(null); setReplyTo(m); }}
-                    onEdit={() => { setReplyTo(null); setEditing(m); }}
-                    onDelete={async () => { if (await confirmDialog({ title: 'Delete for everyone?', message: 'The message will be removed for everyone in this chat.', destructive: true })) remove(m); }}
-                    onDeleteForMe={() => deleteForMe(m)}
-                    onStar={() => star(m)}
-                    onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
-                    onForward={() => setForwarding(m)}
-                    onInfo={() => setInfoMsg(m)}
-                    onVote={(o) => vote(m, o)}
-                    onOpenContact={openContact}
-                    onReact={(e) => react(m, e)}
-                    onOpenImage={setLightbox}
-                    {...(m.senderId !== me && m.type === 'TEXT' && !m.pending && m.body?.trim()
-                      ? { translation: tr.get(m.id), showOriginal: tr.showingOriginal(m.id), onTranslate: () => tr.translate(m.id), onToggleOriginal: () => tr.toggleOriginal(m.id) }
-                      : {})}
-                  />
-                </div>
-              </Fragment>
-            );
-          })}
+                );
+              })}
+            </section>
+          ))}
         </div>
 
         <AnimatePresence>

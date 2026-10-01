@@ -87,7 +87,7 @@ export default {
       if (!board || !url.searchParams.get('ticket') || !env.BOARDS) return new Response('Forbidden', { status: 403 });
       return env.BOARDS.get(env.BOARDS.idFromName(board)).fetch(request);
     }
-    const fast = url.pathname.startsWith('/api/') ? await fastApi(request, url, env, ctx) : null;
+    const fast = url.pathname.startsWith('/api/') ? await fastApi(request, url, env, ctx, (r) => nextApp.fetch(r, env, ctx)) : null;
     if (fast) return fast;
     return revalidatePages(request, await nextApp.fetch(request, env, ctx));
   },
