@@ -143,7 +143,7 @@ export default function ownerModule(router: Router) {
     const now = Date.now();
     const day = new Date(now - 86_400_000);
     const month = new Date(now - 30 * 86_400_000);
-    const [roles, statuses, online, signInsToday, newUsers, messagesToday, pendingApps, recentSignIns, recentActions, openErrors, pendingDeletions, joined, countries, devices] = await Promise.all([
+    const [roles, statuses, online, signInsToday, newUsers, messagesToday, pendingApps, recentSignIns, recentActions, openErrors, pendingDeletions, joined, countries, devices, guard] = await Promise.all([
       prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
       prisma.user.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.user.findMany({ where: { lastSeenAt: { gt: new Date(now - 5 * 60_000) } }, select: { id: true, name: true, role: true, lastSeenAt: true }, orderBy: { lastSeenAt: 'desc' }, take: 50 }),
@@ -158,6 +158,7 @@ export default function ownerModule(router: Router) {
       prisma.user.findMany({ where: { createdAt: { gt: new Date(now - 14 * 86_400_000) } }, select: { createdAt: true, role: true } }),
       prisma.loginEvent.groupBy({ by: ['country'], where: { createdAt: { gt: month } }, _count: { _all: true } }),
       prisma.loginEvent.groupBy({ by: ['device'], where: { createdAt: { gt: month } }, _count: { _all: true } }),
+      prisma.usageGuard.findUnique({ where: { id: 'main' } }).catch(() => null),
     ]);
     // New accounts per day for the last 14 days (oldest first).
     const signUps = Array.from({ length: 14 }, (_, i) => {
@@ -181,6 +182,8 @@ export default function ownerModule(router: Router) {
       signUps,
       countries: top(countries, (r: { country: string | null }) => r.country),
       devices: top(devices, (r: { device: string | null }) => r.device),
+      // The spending guard (cloudflare/usage-guard.ts): this billing month's Cloudflare usage.
+      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
     };
   });
 

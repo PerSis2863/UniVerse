@@ -96,6 +96,12 @@ interface OverviewData {
   signUps: { day: string; count: number }[]; countries: { name: string; count: number }[]; devices: { name: string; count: number }[];
   recentSignIns: { id: string; createdAt: string; kind: string; method: string | null; device: string | null; city: string | null; country: string | null; ip: string | null; user: { id: string; name: string; role: string; email: string } }[];
   recentActions: { id: string; createdAt: string; actorId: string | null; actorName: string | null; summary: string }[];
+  usage?: PlanUsage | null;
+}
+
+interface PlanUsage {
+  paused: boolean; reason: string | null; resumeAt: string | null; checkedAt: string | null; error: string | null;
+  meters: { key: string; label: string; used: number | null; limit: number; bytes?: boolean }[];
 }
 
 type PersonRow = {
@@ -143,6 +149,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
           </button>
         ))}
       </div>
+      <PlanUsageCard usage={data.usage ?? null} />
       <div className="grid lg:grid-cols-3 gap-6">
         <div className={cn(card, 'p-5 lg:col-span-1')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">New accounts · 14 days</h2>
@@ -190,6 +197,48 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
           ))}</ul>
         </div>
       </div>
+    </div>
+  );
+}
+
+const amount = (n: number, bytes?: boolean) =>
+  bytes ? `${(n / 1024 ** 3).toFixed(n < 1024 ** 3 ? 2 : 1)} GB` : new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+
+/** The spending guard: how much of what the $5 Cloudflare plan includes has been used this month. */
+function PlanUsageCard({ usage }: { usage: PlanUsage | null }) {
+  const meters = usage?.meters ?? [];
+  const read = meters.filter((m) => m.used !== null).sort((a, b) => b.used! / b.limit - a.used! / a.limit);
+  return (
+    <div className={cn(card, 'p-5', usage?.paused && 'border-rose-500/50')}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+        <h2 className="font-semibold text-zinc-900 dark:text-white">Cloudflare plan · this billing month</h2>
+        {usage?.checkedAt && <span className="text-xs text-zinc-400">checked {formatDistanceToNow(new Date(usage.checkedAt), { addSuffix: true })}</span>}
+      </div>
+      {!usage ? (
+        <p className="text-sm text-zinc-500">The spending guard hasn&apos;t run yet. It checks every 15 minutes once the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets are set.</p>
+      ) : (
+        <>
+          <p className={cn('text-sm mb-3', usage.paused ? 'text-rose-500 font-semibold' : 'text-zinc-500')}>
+            {usage.paused
+              ? `Paused: ${usage.reason ?? 'an allowance ran low.'}${usage.resumeAt ? ` Opens again on ${format(new Date(usage.resumeAt), 'd MMM')}.` : ''}`
+              : 'Running. The app pauses itself at 90% of any allowance, so the plan stays at $5. You get an email at 70%.'}
+          </p>
+          {read.length > 0 && (
+            <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2">{read.map((m) => {
+              const pct = Math.min(100, (m.used! / m.limit) * 100);
+              return (
+                <li key={m.key}>
+                  <div className="flex justify-between gap-2 text-xs"><span className="text-zinc-600 dark:text-zinc-300 truncate">{m.label}</span><span className="text-zinc-400 shrink-0">{amount(m.used!, m.bytes)} of {amount(m.limit, m.bytes)}</span></div>
+                  <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
+                    <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: `${Math.max(pct, 1)}%` }} />
+                  </div>
+                </li>
+              );
+            })}</ul>
+          )}
+          {usage.error && <p className="mt-3 text-xs text-amber-600 dark:text-amber-400 whitespace-pre-wrap">Couldn&apos;t read some of it: {usage.error}</p>}
+        </>
+      )}
     </div>
   );
 }

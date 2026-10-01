@@ -73,8 +73,12 @@
   ],
   "triggers": {
     // Daily at 08:00 UTC (13:30 in India): reminders for quizzes due in the next 24 hours.
-    "crons": ["0 8 * * *"]
+    // Every 15 minutes: the spending guard (cloudflare/usage-guard.ts).
+    "crons": ["0 8 * * *", "*/15 * * * *"]
   },
+  // At most 50 ms of processing per request (Workers Paid plan only; the free plan is fixed at
+  // 10 ms), so a stuck or abused request can never run up the bill.
+  "limits": { "cpu_ms": 50 },
   "observability": {
     "enabled": true
   }

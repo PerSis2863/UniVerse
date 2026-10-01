@@ -2024,3 +2024,20 @@ model AccountDeletionRequest {
   @@index([userId])
   @@map("account_deletion_requests")
 }
+
+/// The spending guard (cloudflare/usage-guard.ts): one row ("main") with this billing month's
+/// Cloudflare usage, checked every 15 minutes. While `paused` is on, the app shows a "taking a
+/// break" page instead of running, so the Workers Paid plan never costs more than its $5.
+model UsageGuard {
+  id        String    @id // always "main"
+  paused    Boolean   @default(false)
+  reason    String? // which allowance ran low, in plain words
+  resumeAt  DateTime? // when the next billing month starts (unknown without CF_BILLING_DAY)
+  meters    String? // JSON: [{ key, label, used, limit }]
+  alerted   String? // the last email sent, "<month>:<warn|pause>", so each is sent once
+  error     String? // why the last check couldn't read the usage
+  checkedAt DateTime?
+  pausedAt  DateTime?
+
+  @@map("usage_guard")
+}
