@@ -31,7 +31,7 @@ interface ServerData {
 const MODES: { id: Mode; label: string; icon: typeof Power; text: string; tone: string }[] = [
   { id: 'LIVE', label: 'Live', icon: Power, text: 'Everyone can use UniVerse normally.', tone: 'emerald' },
   { id: 'READ_ONLY', label: 'Read-only', icon: Eye, text: 'People can sign in and look around, but nothing can be changed or sent. Good for backups and data fixes.', tone: 'amber' },
-  { id: 'MAINTENANCE', label: 'Maintenance', icon: Wrench, text: 'Everyone except you sees a "down for maintenance" page. Payments still go through.', tone: 'rose' },
+  { id: 'MAINTENANCE', label: 'Maintenance', icon: Wrench, text: 'Everyone except you sees a "down for maintenance" page and nobody else can sign in, so almost nothing counts toward your Cloudflare limits. Payments still go through.', tone: 'rose' },
 ];
 const TONES: Record<string, string> = {
   emerald: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',

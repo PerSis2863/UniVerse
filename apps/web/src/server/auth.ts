@@ -1,4 +1,5 @@
 import { errors as joseErrors, jwtVerify, type JWTPayload } from 'jose';
+import { ownerEmailList } from '@/lib/owner-emails';
 import { jwksFor, keysMayHaveRotated } from './jwks-cache';
 import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
@@ -224,9 +225,8 @@ async function resolveUserUncached(token: string): Promise<User> {
 /** Emails of the platform owner(s), from the SUPER_ADMIN_EMAILS secret (comma separated). */
 // Default when the secret isn't set: the platform owner's Google account. It still has to be proven
 // by a Google sign-in (verified email), so knowing the address isn't enough.
-const DEFAULT_OWNER_EMAILS = 'universeimpact1@gmail.com';
 export function ownerEmails(): string[] {
-  return (process.env.SUPER_ADMIN_EMAILS || DEFAULT_OWNER_EMAILS).split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return ownerEmailList(process.env.SUPER_ADMIN_EMAILS);
 }
 
 /** Whether this email belongs to the owner (used to protect the account from other admins). */

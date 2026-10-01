@@ -111,6 +111,12 @@ OpenNext builds and adds:
   Update the answers there when features change.
 - **Daily job** (`triggers.crons`, 08:00 UTC): quiz reminders, run through `src/app/api/cron/daily/route.ts`.
   Test locally with `npx wrangler dev --test-scheduled` and `curl "http://localhost:8787/__scheduled?cron=0+8+*+*+*"`.
+- **Owner's morning summary** (`triggers.crons`, 07:30 UTC): yesterday's numbers and what needs a look, emailed to
+  `SUPER_ADMIN_EMAILS` (`src/server/owner-digest.ts`). Needs `RESEND_API_KEY`. The owner turns it off in the console →
+  Server → Feature switches.
+- **Maintenance and the spending guard's pause let only the owner in**: everyone else, including sign-in, gets the
+  small "back soon" answer from the Worker, so almost nothing is used while paused. The owner signs in at `/login?owner`
+  (linked from that page) with an email listed in `SUPER_ADMIN_EMAILS`.
 
 The Durable Objects are created by **production** deploys (the `migrations` block in `wrangler.jsonc`:
 `v1` RealtimeHub, `v2` BoardRoom). Preview builds (`opennextjs-cloudflare upload`) can't create them, so a

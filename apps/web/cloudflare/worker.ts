@@ -112,7 +112,8 @@ async function edgeCachedPage(request: Request, url: URL, env: Env, ctx: Executi
   return revalidatePages(request, res);
 }
 
-const DAILY_CRON = '0 8 * * *'; // wrangler.jsonc "triggers"; the other one is the spending guard
+const DAILY_CRON = '0 8 * * *'; // wrangler.jsonc "triggers"; the */15 one is the spending guard
+const DIGEST_CRON = '30 7 * * *'; // the owner's morning summary email (src/server/owner-digest.ts)
 
 const TICKET_TTL_MS = 60_000;
 const MAX_SOCKETS = 20; // per user: app + a few browser tabs
@@ -148,7 +149,7 @@ export default {
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    if (controller.cron !== DAILY_CRON) {
+    if (controller.cron !== DAILY_CRON && controller.cron !== DIGEST_CRON) {
       console.log(`spending guard: ${await checkUsage(env)}`);
       return;
     }
@@ -156,8 +157,9 @@ export default {
     // exists in this isolate, so the route can't be triggered from outside.
     const token = crypto.randomUUID();
     (globalThis as { __universeCronToken?: string }).__universeCronToken = token;
+    const job = controller.cron === DIGEST_CRON ? 'digest' : 'daily';
     const res: Response = await nextApp.fetch(
-      new Request('https://universeimpact.com/api/cron/daily', { method: 'POST', headers: { 'x-cron-token': token } }),
+      new Request(`https://universeimpact.com/api/cron/${job}`, { method: 'POST', headers: { 'x-cron-token': token } }),
       env,
       ctx,
     );

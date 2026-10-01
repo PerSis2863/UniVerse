@@ -106,6 +106,12 @@ async function request<T>(method: string, url: string, body: unknown, config: Ap
     data = await parse(res);
   }
 
+  // UniVerse is paused or in maintenance (cloudflare/usage-guard.ts): stop asking the server and
+  // show the "back soon" page, so open tabs don't keep using Cloudflare.
+  if (status === 503 && resHeaders.get('x-universe-paused') && typeof window !== 'undefined') {
+    window.location.replace('/');
+    return new Promise<never>(() => {});
+  }
   if (status === 401 && !retried) {
     const fresh = await getAuthToken(true);
     if (fresh && !fresh.startsWith('mock-token-') && !fresh.startsWith('ut1.')) return request<T>(method, url, body, config, true);

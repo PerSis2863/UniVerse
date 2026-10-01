@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { notify } from '@/server/email';
+import { notifyMany } from '@/server/email';
 import { deleteFile } from '@/lib/storage';
 import { diagnoseErrors, emailErrorDigest } from '@/server/errors';
 import { assessCourses } from '@/server/early-warning';
@@ -94,19 +94,13 @@ async function quizReminders() {
     );
     const students = quiz.course.enrollments.map((e) => e.studentId).filter((id) => !done.has(id) && !already.has(id));
     const due = quiz.dueDate!.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
-    for (let i = 0; i < students.length; i += 10) {
-      await Promise.all(
-        students.slice(i, i + 10).map((studentId) =>
-          notify(studentId, {
-            type: 'reminder',
-            title: `Quiz due soon: ${quiz.title}`,
-            body: `${quiz.course.code ?? quiz.course.name} · due ${due} UTC. You haven't taken it yet.`,
-            link,
-          }),
-        ),
-      );
-    }
-    sent += students.length;
+    // Everyone at once (a few queries, not two per student: D1 allows 50 per run on Workers Free).
+    sent += await notifyMany(students, {
+      type: 'reminder',
+      title: `Quiz due soon: ${quiz.title}`,
+      body: `${quiz.course.code ?? quiz.course.name} · due ${due} UTC. You haven't taken it yet.`,
+      link,
+    });
   }
   return sent;
 }

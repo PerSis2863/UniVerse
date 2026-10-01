@@ -46,7 +46,7 @@ export default function ownerInsightsModule(router: Router) {
       : 0;
     const meters: { key: string; label?: string; used: number | null; limit: number }[] = guard?.meters ? JSON.parse(guard.meters) : [];
     const high = meters.filter((m) => m.used != null && m.limit > 0 && m.used / m.limit >= 0.7).map((m) => ({ key: m.key, label: m.label ?? m.key, percent: Math.round(((m.used ?? 0) / m.limit) * 100) }));
-    const off = parseSwitches(ctl?.switches);
+    const off = parseSwitches(ctl?.switches).filter((x) => x !== 'digest'); // the owner's own email isn't a feature people miss
     // What to look at, most urgent first. `tab` is the console tab, `href` a page elsewhere.
     const items = [
       guard?.paused && { id: 'paused', level: 'high', text: 'The spending guard has paused the site.', tab: 'server' },

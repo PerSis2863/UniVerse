@@ -14,6 +14,7 @@
 //   CF_GUARD_OFF      optional: any value turns pausing off (the checks and emails still run).
 import { blockedFeature, parseSwitches } from '../src/lib/feature-switches';
 import { bool, dbDate } from './fast-db';
+import { ownerEmailList } from '../src/lib/owner-emails';
 
 export interface GuardEnv {
   DB?: D1Database;
@@ -193,7 +194,7 @@ const percent = (m: Meter) => `${Math.round(share(m) * 100)}%`;
 async function emailOwner(env: GuardEnv, subject: string, text: string) {
   const key = env.RESEND_API_KEY as string | undefined;
   if (!key) return;
-  const to = String(env.SUPER_ADMIN_EMAILS || 'universeimpact1@gmail.com').split(',').map((e) => e.trim()).filter(Boolean);
+  const to = ownerEmailList(env.SUPER_ADMIN_EMAILS);
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -293,9 +294,32 @@ function refresh(env: GuardEnv, ctx: ExecutionContext) {
 
 const cookie = (request: Request, name: string) => request.headers.get('cookie')?.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))?.[1] ?? null;
 
-// While paused, these still work for everyone: the owner console's API (it answers "not found" to
-// anyone but the owner, and gives the owner their pass) and signing in, so the owner can get in.
-const OWNER_WAY_IN = /^\/(login|api\/core\/owner\/|api\/core\/auth\/)/;
+// While paused or in maintenance, nobody but the owner gets in, so nothing else uses Cloudflare:
+// every other request gets the small "back soon" answer without touching the app or the database.
+// The owner's way in: the sign-in page when opened as /login?owner (linked from that answer), and
+// the sign-in and owner console API when the sign-in token carries an owner's email. The token is
+// only peeked at here; the app still checks it properly.
+const OWNER_API = /^\/api\/core\/(owner|auth)\//;
+
+/** The email in a Firebase sign-in token, unchecked (null for any other kind of token). */
+function tokenEmail(request: Request): string | null {
+  const token = request.headers.get('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  const part = token?.split('.');
+  if (!part || part.length !== 3) return null;
+  try {
+    const claims = JSON.parse(atob(part[1].replace(/-/g, '+').replace(/_/g, '/'))) as { email?: unknown };
+    return typeof claims.email === 'string' ? claims.email.trim().toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+function ownerWayIn(request: Request, url: URL, env: GuardEnv): boolean {
+  if (url.pathname === '/login') return url.searchParams.has('owner');
+  if (!OWNER_API.test(url.pathname)) return false;
+  const email = tokenEmail(request);
+  return !!email && ownerEmailList(env.SUPER_ADMIN_EMAILS).includes(email);
+}
 // In read-only mode, changes are refused, except these, which only read or keep the app running,
 // and the owner console's API (owner only).
 const READ_ONLY_OK = /^\/api\/(bootstrap$|core\/auth\/|core\/owner\/|core\/activity\/ui$|errors$|chat\/conversations\/[^/]+\/typing$)/;
@@ -309,7 +333,7 @@ export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: Execu
   const mode: Mode = state.until && toMs(state.until) <= now ? 'LIVE' : state.mode;
   const spending = state.paused && !env.CF_GUARD_OFF;
   if (spending || mode === 'MAINTENANCE') {
-    if (OWNER_WAY_IN.test(url.pathname)) return null;
+    if (ownerWayIn(request, url, env)) return null;
     return spending
       ? pausedResponse(url, { title: 'Back soon', message: 'UniVerse is taking a short break. Your work is saved.', back: state.resumeAt })
       : pausedResponse(url, { title: 'Down for maintenance', message: state.message || 'UniVerse is being updated. Your work is saved.', back: state.until });
@@ -356,7 +380,8 @@ export function withNotice(res: Response, notice: string | null): Response {
 export function pausedResponse(url: URL, { title, message, back }: { title: string; message: string; back: string | null }): Response {
   const backMs = toMs(back);
   const backText = Number.isNaN(backMs) ? '' : ` Back by ${new Date(backMs).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC.`;
-  const headers = { 'Retry-After': '600', 'Cache-Control': 'no-store' };
+  // X-UniVerse-Paused tells open app tabs to stop asking and show this page instead (src/lib/api.ts).
+  const headers = { 'Retry-After': '600', 'Cache-Control': 'no-store', 'X-UniVerse-Paused': '1' };
   if (url.pathname.startsWith('/api/') || url.pathname === '/realtime' || url.pathname === '/board-live') return Response.json({ error: `${message}${backText}` }, { status: 503, headers });
   // The owner, signed in on this device, gets their pass from the console's API and comes back in.
   const unlock = `<script>(function(){try{var t=localStorage.getItem('accessToken');if(!t||sessionStorage.getItem('uv-unlock'))return;fetch('/api/core/owner/server',{headers:{Authorization:'Bearer '+t}}).then(function(r){if(r.ok){sessionStorage.setItem('uv-unlock','1');location.reload()}})}catch(e){}})()</script>`;
@@ -364,7 +389,7 @@ export function pausedResponse(url: URL, { title, message, back }: { title: stri
   return new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UniVerse · ${esc(title)}</title>
 <style>html{background:#0b0b14;color:#e4e4e7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:radial-gradient(60% 50% at 20% 10%,rgba(99,102,241,.25),transparent),radial-gradient(50% 40% at 90% 90%,rgba(217,70,239,.18),transparent)}main{max-width:420px;text-align:center}h1{font-size:22px;color:#fff;margin:0 0 12px}p{line-height:1.6;margin:0 0 20px;color:#a1a1aa}a{display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-weight:600;padding:10px 20px;border-radius:10px}</style></head>
-<body><main><h1>${esc(title)}</h1><p>${esc(message)}<span id="back">${esc(backText)}</span></p><a href="/">Try again</a></main>${local}${unlock}</body></html>`,
+<body><main><h1>${esc(title)}</h1><p>${esc(message)}<span id="back">${esc(backText)}</span></p><a href="/">Try again</a><p style="margin:28px 0 0;font-size:12px"><a href="/login?owner" style="background:none;padding:0;color:#71717a;font-weight:500">Site owner sign-in</a></p></main>${local}${unlock}</body></html>`,
     { status: 503, headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } },
   );
 }
