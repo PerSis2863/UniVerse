@@ -88,9 +88,10 @@ function Diagnosis({ text }: { text: string }) {
   );
 }
 
-export function ErrorsPanel({ onPerson }: { onPerson?: (id: string) => void }) {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('OPEN');
-  const [open, setOpen] = useState<string | null>(null);
+export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => void; focus?: { id: string; status: string } }) {
+  // The console search opens one problem, in the list it belongs to.
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>(focus && (focus.status === 'RESOLVED' || focus.status === 'IGNORED') ? focus.status : 'OPEN');
+  const [open, setOpen] = useState<string | null>(focus?.id ?? null);
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [source, setSource] = useState<'ALL' | 'SERVER' | 'CLIENT'>('ALL');

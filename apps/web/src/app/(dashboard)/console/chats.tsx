@@ -43,12 +43,12 @@ const chatTitle = (c: { name: string | null; isGroup: boolean; participants: { u
 
 // ─── Chats tab ─────────────────────────────────────────────────────────────────────────────────
 
-export function ChatsPanel({ onPerson }: { onPerson: (id: string) => void }) {
+export function ChatsPanel({ onPerson, initialChat }: { onPerson: (id: string) => void; initialChat?: string }) {
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim());
-  // A watch-word alert links to /console?tab=chats&chat=<id>.
+  // A watch-word alert links to /console?tab=chats&chat=<id>; the console search opens one directly.
   const [open, setOpen] = useState<{ id: string; highlight?: string } | null>(() => {
-    const id = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('chat');
+    const id = initialChat ?? (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('chat'));
     return id ? { id } : null;
   });
   const { data, isLoading } = useSWR<{ chats: ChatRow[]; hits: Hit[]; activeNow: number }>(`/owner/chats${dq ? `?q=${encodeURIComponent(dq)}` : ''}`, fetcher, { refreshInterval: 5000 });

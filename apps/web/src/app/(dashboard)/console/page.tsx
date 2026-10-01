@@ -4,23 +4,28 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Bug, Server, Crown, Database, Download, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, Trash2, Undo2, Users } from 'lucide-react';
+import { toast } from 'sonner';
+import { Activity, Ban, BarChart3, Bell, Bug, Server, Crown, Database, Download, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, ShieldCheck, Trash2, Undo2, Users, Wallet, X } from 'lucide-react';
+import { confirmDialog } from '@/components/ui/Dialogs';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
-import { type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, fetcher, field, formatValue, matches, summarize, undoChange, useDebounced } from './shared';
+import { type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, errorMessage, fetcher, field, formatValue, matches, refreshConsole, summarize, toastWithUndo, undoChange, useDebounced } from './shared';
 import { PersonPanel } from './person';
 import { ErrorsPanel } from './errors';
 import { DeletionsPanel } from './deletions';
 import { type PlanUsage, PlanUsageCard, ServerPanel } from './server';
-import { AnnouncePanel, ChatsPanel } from './chats';
+import { AnnouncePanel, ChatsPanel, ComposeDialog } from './chats';
 import { DatabasePanel } from './database';
+import { AnalyticsPanel, AttentionCard, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'changes' | 'errors' | 'deletions';
+type Tab = 'overview' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'server', label: 'Server', icon: Server },
   { id: 'activity', label: 'Live activity', icon: Activity },
   { id: 'chats', label: 'Live chats', icon: MessagesSquare },
@@ -28,6 +33,7 @@ const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'people', label: 'People', icon: Users },
   { id: 'database', label: 'Database', icon: HardDrive },
   { id: 'data', label: 'All data', icon: Database },
+  { id: 'money', label: 'Money', icon: Wallet },
   { id: 'changes', label: 'Changes & undo', icon: History },
   { id: 'errors', label: 'Errors', icon: Bug },
   { id: 'deletions', label: 'Deletion requests', icon: Trash2 },
@@ -38,12 +44,25 @@ export default function OwnerConsole() {
   const [tab, setTab] = useState<Tab>('overview');
   const [person, setPerson] = useState<string | null>(null);
   const [dataTable, setDataTable] = useState<string | null>(null);
-  // Links such as /console?tab=errors (from the error digest email) open that tab.
+  // Where a link from another tab or the search box points: a chat, an error, a filter.
+  const [focus, setFocus] = useState<{ chat?: string; error?: { id: string; status: string }; changes?: string; status?: string; n: number }>({ n: 0 });
+  // Links such as /console?tab=errors (from the error digest email) open that tab; ?person= opens a person.
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get('tab');
+    const p = new URLSearchParams(window.location.search);
+    const t = p.get('tab');
     if (t && TABS.some((x) => x.id === t)) setTab(t as Tab); // eslint-disable-line react-hooks/set-state-in-effect
+    if (p.get('person')) { setPerson(p.get('person')); setTab('people'); }
   }, []);
+  // The address keeps the open tab (and person), so refresh and Back land in the same place.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    p.set('tab', tab);
+    if (tab === 'people' && person) p.set('person', person); else p.delete('person');
+    if (tab !== 'chats') p.delete('chat');
+    window.history.replaceState(null, '', `${window.location.pathname}?${p}`);
+  }, [tab, person]);
   const { data: tables } = useSWR<{ tables: { name: string; title: string; count: number }[]; schema: Schema }>(owner ? '/owner/tables' : null, fetcher);
+  const { data: attention } = useAttention();
 
   if (!owner) {
     return (
@@ -58,46 +77,72 @@ export default function OwnerConsole() {
     setPerson(id);
     setTab('people');
   };
+  const show = (t: Tab, f: Omit<typeof focus, 'n'> = {}) => {
+    setFocus({ ...f, n: focus.n + 1 });
+    if (t !== 'people') setPerson(null);
+    setTab(t);
+  };
+  const go = (g: Go) => {
+    if (g.to === 'person') openPerson(g.id);
+    else if (g.to === 'chat') show('chats', { chat: g.id });
+    else if (g.to === 'error') show('errors', { error: { id: g.id, status: g.status } });
+    else if (g.to === 'table') { setDataTable(g.name); show('data'); }
+    else show('changes', { changes: g.q });
+  };
 
   return (
     <div className="flex-1 overflow-y-auto">
       <header className="px-4 sm:px-8 pt-6 pb-4 border-b border-zinc-200/70 dark:border-white/[0.06]">
         <h1 className="text-2xl font-black text-zinc-900 dark:text-white flex items-center gap-2"><Crown className="w-6 h-6 text-amber-500" /> Owner console</h1>
-        <p className="text-sm text-zinc-500">Everything on UniVerse. Only you can open this page. Every change here can be undone.</p>
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
+          <p className="text-sm text-zinc-500">Everything on UniVerse. Only you can open this page. Every change here can be undone.</p>
+          {tables && <ConsoleSearch tables={tables.tables} onGo={go} />}
+        </div>
         <nav className="mt-4 flex flex-wrap gap-1" aria-label="Console sections">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => { setTab(t.id); if (t.id !== 'people') setPerson(null); if (t.id === 'data') setDataTable(null); }}
-              className={cn('inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold', tab === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
-              <t.icon className="w-4 h-4" /> {t.label}
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const badge = attention?.badges[t.id] ?? 0;
+            return (
+              <button key={t.id} onClick={() => { setTab(t.id); setFocus({ n: focus.n + 1 }); if (t.id !== 'people') setPerson(null); if (t.id === 'data') setDataTable(null); }}
+                className={cn('inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold', tab === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+                <t.icon className="w-4 h-4" /> {t.label}
+                {badge > 0 && (
+                  <span title={t.id === 'activity' ? 'online now' : undefined}
+                    className={cn('min-w-[1.25rem] px-1.5 rounded-full text-[10px] leading-5 text-center', t.id === 'activity' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white')}>{badge > 99 ? '99+' : badge}</span>
+                )}
+              </button>
+            );
+          })}
         </nav>
       </header>
       <main className="p-4 sm:p-8 max-w-6xl mx-auto">
         {!tables ? (
           <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
         ) : tab === 'overview' ? (
-          <Overview onPerson={openPerson} onTab={setTab} />
+          <Overview onPerson={openPerson} onTab={(t, status) => show(t, { status })} />
+        ) : tab === 'analytics' ? (
+          <AnalyticsPanel onPerson={openPerson} />
+        ) : tab === 'money' ? (
+          <MoneyPanel onPerson={openPerson} />
         ) : tab === 'server' ? (
           <ServerPanel onTab={setTab} />
         ) : tab === 'activity' ? (
           <Feed onPerson={openPerson} />
         ) : tab === 'chats' ? (
-          <ChatsPanel onPerson={openPerson} />
+          <ChatsPanel key={`chats-${focus.n}`} onPerson={openPerson} initialChat={focus.chat} />
         ) : tab === 'announce' ? (
           <AnnouncePanel />
         ) : tab === 'people' ? (
-          person ? <PersonPanel id={person} schema={tables.schema} onBack={() => setPerson(null)} /> : <People onPerson={setPerson} />
+          person ? <PersonPanel id={person} schema={tables.schema} onBack={() => setPerson(null)} /> : <People key={`people-${focus.n}`} onPerson={setPerson} initialStatus={focus.status} />
         ) : tab === 'data' ? (
           <Data key={dataTable ?? 'all'} initial={dataTable} tables={tables.tables} schema={tables.schema} />
         ) : tab === 'database' ? (
           <DatabasePanel onOpenTable={(name) => { setDataTable(name); setTab('data'); }} />
         ) : tab === 'errors' ? (
-          <ErrorsPanel onPerson={openPerson} />
+          <ErrorsPanel key={`errors-${focus.n}`} onPerson={openPerson} focus={focus.error} />
         ) : tab === 'deletions' ? (
           <DeletionsPanel onOpenPerson={openPerson} />
         ) : (
-          <Changes />
+          <Changes key={`changes-${focus.n}`} initialQuery={focus.changes} />
         )}
       </main>
     </div>
@@ -121,7 +166,7 @@ type PersonRow = {
   lastSignIn: { createdAt: string; device: string | null; country: string | null; city: string | null } | null; owner: boolean; signIns: number; courses: number; messages: number;
 };
 
-function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: (t: Tab) => void }) {
+function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: (t: Tab, status?: string) => void }) {
   const { data } = useSWR<OverviewData>('/owner/overview', fetcher, { refreshInterval: 60_000 });
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim());
@@ -131,7 +176,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
   const tiles: [string, number, Tab][] = [
     ['People', total, 'people'], ['Students', data.roles.STUDENT ?? 0, 'people'], ['Teachers', data.roles.TEACHER ?? 0, 'people'], ['Admins', data.roles.ADMIN ?? 0, 'people'],
     ['Online now', data.online.length, 'activity'], ['Sign-ins today', data.signInsToday, 'activity'], ['Messages today', data.messagesToday, 'activity'], ['New this week', data.newUsers, 'people'],
-    ['Waiting for approval', data.statuses.PENDING ?? 0, 'people'], ['Suspended', data.statuses.SUSPENDED ?? 0, 'people'], ['Open errors', data.openErrors ?? 0, 'errors'], ['Deletion requests', data.pendingDeletions ?? 0, 'deletions'],
+    ['Waiting for approval', data.statuses.PENDING ?? 0, 'people:PENDING' as Tab], ['Suspended', data.statuses.SUSPENDED ?? 0, 'people:SUSPENDED' as Tab], ['Open errors', data.openErrors ?? 0, 'errors'], ['Deletion requests', data.pendingDeletions ?? 0, 'deletions'],
   ];
   const online = data.online.filter((u) => matches(q, u.name, u.role));
   const signIns = data.recentSignIns.filter((x) => matches(q, x.user.name, x.user.email, x.user.role, x.device, x.city, x.country, x.ip, x.method));
@@ -139,6 +184,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
   const peak = Math.max(1, ...(data.signUps ?? []).map((d) => d.count));
   return (
     <div className="space-y-6">
+      <AttentionCard onGo={(t, status) => onTab(t as Tab, status)} />
       <SearchBox value={q} onChange={setQ} placeholder="Search people, sign-ins and actions" />
       {dq && (
         <div className={cn(card, 'p-4')}>
@@ -155,7 +201,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map(([label, n, to]) => (
-          <button key={label} onClick={() => onTab(to)} className={cn(card, 'p-4 text-left hover:border-indigo-500/40')}>
+          <button key={label} onClick={() => { const [t, status] = to.split(':'); onTab(t as Tab, status); }} className={cn(card, 'p-4 text-left hover:border-indigo-500/40')}>
             <p className="text-2xl font-bold text-zinc-900 dark:text-white">{n}</p>
             <p className="text-xs text-zinc-500">{label}</p>
           </button>
@@ -296,15 +342,40 @@ function Feed({ onPerson }: { onPerson: (id: string) => void }) {
 
 // ─── People ────────────────────────────────────────────────────────────────────────────────────
 
-function People({ onPerson }: { onPerson: (id: string) => void }) {
+function People({ onPerson, initialStatus }: { onPerson: (id: string) => void; initialStatus?: string }) {
   const [q, setQ] = useState('');
   const [role, setRole] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(initialStatus ?? '');
   const [page, setPage] = useState(0);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [notifying, setNotifying] = useState(false);
   const dq = useDebounced(q.trim());
   const params = new URLSearchParams({ ...(dq && { q: dq }), ...(role && { role }), ...(status && { status }), ...(page && { skip: String(page * 200) }) });
   const { data, isLoading } = useSWR<{ total: number; people: PersonRow[] }>(`/owner/people?${params}`, fetcher, { keepPreviousData: true });
   const people = data?.people ?? [];
+  const choosable = people.filter((p) => !p.owner);
+  const allPicked = choosable.length > 0 && choosable.every((p) => picked.has(p.id));
+  const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  // Ban, let back in or notify everyone ticked (up to 90 at a time).
+  const bulk = async (action: 'ban' | 'unban' | 'notify', extra: Record<string, unknown> = {}) => {
+    const ids = [...picked].slice(0, 90);
+    if (action === 'ban' && !(await confirmDialog({ title: `Ban ${ids.length} ${ids.length === 1 ? 'person' : 'people'}?`, message: 'They are signed out and can’t sign in until you let them back in. You can undo this.', confirmLabel: 'Ban', destructive: true }))) return false;
+    setBusy(true);
+    try {
+      const { data: res } = await api.post('/owner/people/bulk', { ids, action, ...extra });
+      if (action === 'notify') toast.success(`Notification sent to ${res.done} ${res.done === 1 ? 'person' : 'people'}`);
+      else toastWithUndo(`${action === 'ban' ? 'Banned' : 'Let back in'} ${res.done} ${res.done === 1 ? 'person' : 'people'}`, res.changeId);
+      setPicked(new Set());
+      await refreshConsole();
+      return true;
+    } catch (e) {
+      toast.error(errorMessage(e));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
   const exportCsv = () => downloadCsv('universe-people', ['Name', 'Email', 'Phone', 'Role', 'Status', 'Account type', 'Courses', 'Sign-ins', 'Messages sent', 'Last sign-in', 'Device', 'Place', 'Last active', 'Joined'],
     people.map((p) => [p.name, p.email, p.phone, p.owner ? 'OWNER' : p.role, p.status, p.accountType, p.courses, p.signIns, p.messages, p.lastSignIn?.createdAt, p.lastSignIn?.device, [p.lastSignIn?.city, p.lastSignIn?.country].filter(Boolean).join(', '), p.lastSeenAt, p.createdAt]));
   return (
@@ -315,17 +386,31 @@ function People({ onPerson }: { onPerson: (id: string) => void }) {
         <select className={cn(field, 'sm:w-40')} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }} aria-label="Status"><option value="">All statuses</option><option value="ACTIVE">Active</option><option value="PENDING">Waiting for approval</option><option value="SUSPENDED">Suspended</option></select>
         <button onClick={exportCsv} disabled={!people.length} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200 disabled:opacity-50"><Download className="w-4 h-4" /> CSV</button>
       </div>
-      <p className="text-xs text-zinc-500">{data ? `${data.total} ${data.total === 1 ? 'person' : 'people'}${data.total > 200 ? ` · showing ${page * 200 + 1}–${page * 200 + people.length}` : ''}` : ' '}</p>
+      <p className="text-xs text-zinc-500">{data ? `${data.total} ${data.total === 1 ? 'person' : 'people'}${data.total > 200 ? ` · showing ${page * 200 + 1}–${page * 200 + people.length}` : ''}` : ' '}{choosable.length > 0 && ' · tick people to ban, let back in or notify several at once'}</p>
+      {picked.size > 0 && (
+        <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-2xl tone-panel border border-zinc-200 dark:border-white/10 px-4 py-2.5 shadow-lg">
+          <span className="text-sm font-semibold text-zinc-900 dark:text-white mr-auto">{picked.size} ticked{picked.size > 90 ? ' (the first 90 are changed)' : ''}</span>
+          <button disabled={busy} onClick={() => setNotifying(true)} className="btn-secondary inline-flex items-center gap-1.5"><Bell className="w-4 h-4" /> Notify</button>
+          <button disabled={busy} onClick={() => bulk('unban')} className="btn-secondary inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" /> Let back in</button>
+          <button disabled={busy} aria-busy={busy || undefined} onClick={() => bulk('ban')} className="btn-danger inline-flex items-center gap-1.5">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />} Ban</button>
+          <button onClick={() => setPicked(new Set())} aria-label="Clear ticks" className="p-1.5 text-zinc-400"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+      {notifying && (
+        <ComposeDialog title={`Notify ${picked.size} ${picked.size === 1 ? 'person' : 'people'}`} hint="They get it in their notifications (the bell), from UniVerse." confirm="Send" withTitle
+          onSend={(v) => bulk('notify', { title: v.title, body: v.body })} onClose={() => setNotifying(false)} />
+      )}
       <div className={cn(card, 'overflow-x-auto')}>
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-zinc-500">
-            <tr>{['Name', 'Email', 'Phone', 'Role', 'Status', 'Courses', 'Sign-ins', 'Messages', 'Last sign-in', 'Last active', 'Joined'].map((h) => <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>)}</tr>
+            <tr><th className="pl-4 py-3 w-8"><input type="checkbox" aria-label="Tick everyone shown" checked={allPicked} onChange={() => setPicked(allPicked ? new Set() : new Set(choosable.map((p) => p.id)))} /></th>{['Name', 'Email', 'Phone', 'Role', 'Status', 'Courses', 'Sign-ins', 'Messages', 'Last sign-in', 'Last active', 'Joined'].map((h) => <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
             {isLoading && <tr><td className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></td></tr>}
-            {!isLoading && people.length === 0 && <tr><td colSpan={11} className="p-6 text-sm text-zinc-500">Nobody matches.</td></tr>}
+            {!isLoading && people.length === 0 && <tr><td colSpan={12} className="p-6 text-sm text-zinc-500">Nobody matches.</td></tr>}
             {people.map((p) => (
-              <tr key={p.id} onClick={() => onPerson(p.id)} className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
+              <tr key={p.id} onClick={() => onPerson(p.id)} className={cn('cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/[0.03]', picked.has(p.id) && 'bg-indigo-50/60 dark:bg-indigo-500/[0.08]')}>
+                <td className="pl-4 py-3" onClick={(e) => e.stopPropagation()}>{!p.owner && <input type="checkbox" aria-label={`Tick ${p.name}`} checked={picked.has(p.id)} onChange={() => toggle(p.id)} />}</td>
                 <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">{p.name} {p.owner && <Crown className="inline w-3.5 h-3.5 text-amber-500" />}</td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{p.email}</td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{p.phone ?? '—'}</td>
@@ -390,6 +475,10 @@ function Data({ tables, schema, initial }: { tables: { name: string; title: stri
         <button onClick={() => setTable(null)} className="text-sm text-zinc-500">← All tables</button>
         <h2 className="font-bold text-zinc-900 dark:text-white">{table}</h2>
         <span className="text-xs text-zinc-400">{data?.total ?? '…'} records</span>
+        {!!data?.records.length && (
+          <button onClick={() => downloadCsv(`universe-${table}`, data.fields.map((f) => f.name), data.records.map((r) => data.fields.map((f) => { const v = r[f.name]; return v != null && typeof v === 'object' ? JSON.stringify(v) : v; })))}
+            className="btn-secondary inline-flex items-center gap-1.5" title="Download the records shown (up to 50)"><Download className="w-4 h-4" /> CSV</button>
+        )}
         <SearchBox className="sm:max-w-xs ml-auto" value={q} onChange={(v) => { setQ(v); setSkip(0); }} placeholder={`Search ${table}`} />
       </div>
       <div className={cn(card, 'overflow-x-auto')}>
@@ -418,12 +507,16 @@ function Data({ tables, schema, initial }: { tables: { name: string; title: stri
 
 // ─── Changes & undo ────────────────────────────────────────────────────────────────────────────
 
-function Changes() {
-  const [q, setQ] = useState('');
+const CHANGE_AREAS = [['', 'Everything'], ['people', 'People'], ['chats', 'Chats'], ['server', 'Server']] as const;
+
+function Changes({ initialQuery }: { initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery ?? '');
+  const [area, setArea] = useState('');
   const dq = useDebounced(q.trim());
-  const base = `/owner/changes${dq ? `?q=${encodeURIComponent(dq)}` : ''}`;
+  const qs = new URLSearchParams({ ...(dq && { q: dq }), ...(area && { area }) }).toString();
+  const base = `/owner/changes${qs ? `?${qs}` : ''}`;
   const { data: pages, size, setSize, isLoading } = useSWRInfinite<{ items: { id: string; action: string; model: string; summary: string; createdAt: string; undoneAt: string | null; before: unknown; after: unknown }[]; next: string | null }>(
-    (i, prev) => (i === 0 ? base : prev?.next ? `${base}${dq ? '&' : '?'}before=${encodeURIComponent(prev.next)}` : null),
+    (i, prev) => (i === 0 ? base : prev?.next ? `${base}${qs ? '&' : '?'}before=${encodeURIComponent(prev.next)}` : null),
     fetcher,
   );
   const items = (pages ?? []).flatMap((p) => p.items);
@@ -432,6 +525,11 @@ function Changes() {
   return (
     <div className="space-y-4">
       <SearchBox value={q} onChange={setQ} placeholder="Search changes (what, which table, record id)" />
+      <div className="flex flex-wrap gap-1">
+        {CHANGE_AREAS.map(([id, label]) => (
+          <button key={id} onClick={() => setArea(id)} className={cn('px-3 py-1.5 rounded-full text-xs font-semibold', area === id ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{label}</button>
+        ))}
+      </div>
       {isLoading ? <Loader2 className="w-6 h-6 animate-spin text-zinc-400" /> : !items.length ? (
         <p className="text-sm text-zinc-500">{dq ? 'No changes match.' : 'No changes yet. Everything you edit or delete in the console appears here, with an Undo button.'}</p>
       ) : (
@@ -441,6 +539,7 @@ function Changes() {
           <History className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
           <div className="min-w-0 flex-1 text-sm">
             <p className="text-zinc-900 dark:text-white break-words">{c.summary}</p>
+            {c.action === 'BULK' && <p className="text-xs text-zinc-500">{Object.keys((c.before ?? {}) as object).length} people at once</p>}
             {c.action === 'UPDATE' && (
               <p className="text-xs text-zinc-500 break-words">
                 {Object.keys((c.before ?? {}) as object).map((k) => `${k}: ${JSON.stringify((c.before as Record<string, unknown>)[k])} → ${JSON.stringify((c.after as Record<string, unknown>)?.[k])}`).join(' · ')}
@@ -448,7 +547,7 @@ function Changes() {
             )}
             <p className="text-xs text-zinc-400">{c.model} · {format(new Date(c.createdAt), 'd MMM yyyy, HH:mm')}{c.undoneAt ? ` · undone ${formatDistanceToNow(new Date(c.undoneAt), { addSuffix: true })}` : ''}</p>
           </div>
-          {!c.undoneAt && (c.action === 'UPDATE' || c.action === 'DELETE') && (
+          {!c.undoneAt && (c.action === 'UPDATE' || c.action === 'DELETE' || c.action === 'BULK') && (
             <button onClick={async () => { setBusy(c.id); await undoChange(c.id); setBusy(null); }} aria-busy={busy === c.id || undefined} disabled={busy === c.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-200 shrink-0">
               {busy === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />} Undo
             </button>

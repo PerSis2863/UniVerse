@@ -1,11 +1,12 @@
 import type { Router } from '../router';
 import prisma from '@/lib/db';
+import { selectColumns } from '../table-stats';
 import schema from '../owner-schema.json';
 
 // Owner console → Database: what is stored in the real database. Every table with its number of
 // records, how many were added today and this week, when the last one was added, and records added
-// per day for the last two weeks. Tables are counted five per statement (UNION ALL; D1 allows at
-// most five parts), all at once.
+// per day for the last two weeks. Every table is read in a handful of queries (src/server/table-stats.ts):
+// D1 on Workers Free allows 50 queries per request.
 
 type Model = { name: string; table: string; fields: { name: string; kind: string; type: string }[] };
 const MODELS = (schema.models as Model[]).filter((m) => /^[a-z0-9_]+$/i.test(m.table));
@@ -19,7 +20,6 @@ const AREAS: [RegExp, string][] = [
   [/^(Organization|Ngo.*|NGO.*|Partner.*|Sponsor.*|Project.*|Impact.*|Credential.*|Badge.*|Certification.*|Internship.*|Placement.*|Scholarship.*|Collaboration.*|Mentorship.*)$/, 'Impact & partners'],
   [/^(ErrorReport|AuditLog|OwnerChange|UsageGuard|ServerControl|StoredFile)$/, 'System'],
 ];
-const chunks = <T,>(list: T[], size: number) => Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, i * size + size));
 const areaOf = (name: string) => AREAS.find(([re]) => re.test(name))?.[1] ?? 'Campus & other';
 
 export default function ownerDatabaseModule(router: Router) {
@@ -31,24 +31,26 @@ export default function ownerDatabaseModule(router: Router) {
     const day = iso(now - 86_400_000);
     const week = iso(now - 7 * 86_400_000);
     const twoWeeks = iso(now - 14 * 86_400_000);
-    // Dates are written by this code, never by a person, so they can go straight into the SQL.
-    const counts = MODELS.map((m) =>
-      dated(m)
-        ? `SELECT '${m.name}' AS model, COUNT(*) AS rows, SUM("createdAt" > '${day}') AS today, SUM("createdAt" > '${week}') AS week, MAX("createdAt") AS lastAdded FROM "${m.table}"`
-        : `SELECT '${m.name}' AS model, COUNT(*) AS rows, NULL AS today, NULL AS week, NULL AS lastAdded FROM "${m.table}"`,
-    );
-    const perDay = MODELS.filter(dated)
-      .map((m) => `SELECT '${m.name}' AS model, substr("createdAt", 1, 10) AS day, COUNT(*) AS added FROM "${m.table}" WHERE "createdAt" > '${twoWeeks}' GROUP BY day`);
-    const run = async <T,>(parts: string[]) => (await Promise.all(chunks(parts, 5).map((c) => prisma.$queryRawUnsafe<T[]>(c.join(' UNION ALL '))))).flat();
-    const [rows, daily, guard] = await Promise.all([
-      run<{ model: string; rows: number | bigint; today: number | bigint | null; week: number | bigint | null; lastAdded: string | null }>(counts),
-      run<{ model: string; day: string; added: number | bigint }>(perDay),
-      prisma.usageGuard.findUnique({ where: { id: 'main' }, select: { meters: true, checkedAt: true } }).catch(() => null),
-    ]);
-    const n = (v: number | bigint | null | undefined) => (v == null ? null : Number(v));
-    const tables = rows
-      .map((x) => ({ name: x.model, area: areaOf(x.model), rows: n(x.rows) ?? 0, today: n(x.today), week: n(x.week), lastAdded: x.lastAdded }))
+    // Dates are written by this code, never by a person, so they can go straight into the SQL. Each
+    // table gives two columns: its numbers, and records added per day for two weeks (both as JSON).
+    const got = await selectColumns(MODELS.flatMap((m): [string, string][] => dated(m)
+      ? [
+          [m.name, `(SELECT json_object('rows', COUNT(*), 'today', SUM("createdAt" > '${day}'), 'week', SUM("createdAt" > '${week}'), 'last', MAX("createdAt")) FROM "${m.table}")`],
+          [`${m.name}_days`, `(SELECT json_group_object(d, n) FROM (SELECT substr("createdAt", 1, 10) AS d, COUNT(*) AS n FROM "${m.table}" WHERE "createdAt" > '${twoWeeks}' GROUP BY d))`],
+        ]
+      : [[m.name, `(SELECT json_object('rows', COUNT(*)) FROM "${m.table}")`]]));
+    const guard = await prisma.usageGuard.findUnique({ where: { id: 'main' }, select: { meters: true, checkedAt: true } }).catch(() => null);
+    const json = <T,>(v: unknown, empty: T): T => (typeof v === 'string' ? JSON.parse(v) : empty);
+    const n = (v: number | null | undefined) => (v == null ? null : Number(v));
+    const tables = MODELS
+      .map((m) => {
+        const x = json<{ rows: number; today?: number | null; week?: number | null; last?: string | null }>(got[m.name], { rows: 0 });
+        // SUM over an empty table is NULL: that is 0 added, not "no dates".
+        const isDated = dated(m);
+        return { name: m.name, area: areaOf(m.name), rows: Number(x.rows), today: isDated ? n(x.today) ?? 0 : null, week: isDated ? n(x.week) ?? 0 : null, lastAdded: x.last ?? null };
+      })
       .sort((a, b) => b.rows - a.rows);
+    const daily = MODELS.filter(dated).flatMap((m) => Object.entries(json<Record<string, number>>(got[`${m.name}_days`], {})).map(([d, added]) => ({ model: m.name, day: d, added })));
     const days = Array.from({ length: 14 }, (_, i) => iso(now - (13 - i) * 86_400_000).slice(0, 10));
     const added = days.map((d) => ({ day: d, added: daily.filter((x) => x.day === d).reduce((s, x) => s + Number(x.added), 0) }));
     // Database size and reads/writes this billing month come from the spending guard's last check.

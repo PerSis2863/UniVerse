@@ -8,6 +8,7 @@ import { decideDeletion, eraseAccount } from '../account-deletion';
 import { publishChat } from '../realtime';
 import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { forgetRules } from '../moderation';
+import { countTables, selectColumns } from '../table-stats';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -18,6 +19,12 @@ type Field = { name: string; type: string; kind: 'scalar' | 'enum' | 'object'; l
 type Model = { name: string; delegate: string; table: string; fields: Field[] };
 const MODELS = (schema.models as Model[]);
 const ENUMS = schema.enums as Record<string, string[]>;
+// Changes & undo filters: which tables each kind of change touches.
+const AREA_MODELS: Record<string, string[]> = {
+  people: ['User', 'Notification'],
+  chats: ['Message', 'Conversation', 'ConversationParticipant'],
+  server: ['ServerControl'],
+};
 const byName = new Map(MODELS.map((m) => [m.name, m]));
 
 /** Tables that can't be edited here (binary files, and the history of these edits itself). */
@@ -431,10 +438,15 @@ export default function ownerModule(router: Router) {
     const links = MODELS.flatMap((m) =>
       m.fields.filter((f) => f.kind === 'object' && f.type === 'User' && f.relationFields?.length).map((f) => ({ m, fk: f.relationFields![0], via: f.name })),
     ).filter((l) => !LOCKED.has(l.m.name));
+    // Counted in one query first (a query per table is over D1's 50-per-request limit), then records
+    // are read only for the tables that have some, up to 35 tables.
+    if (!/^[\w-]+$/.test(params.id)) throw new NotFoundException('Person not found');
+    const counts = await selectColumns(links.map(({ m, fk }, i) => [`l${i}`, `(SELECT COUNT(*) FROM "${m.table}" WHERE "${fk}" = '${params.id}')`]));
+    const withRecords = new Set(links.map((_, i) => i).filter((i) => Number(counts[`l${i}`]) > 0).slice(0, 35));
     const sections = await Promise.all(
-      links.map(async ({ m, fk, via }) => {
-        const records = await delegate(m).findMany({ where: { [fk]: params.id }, select: select(m), take: 100, ...(hasField(m, 'createdAt') ? { orderBy: { createdAt: 'desc' } } : {}) });
-        const count = records.length < 100 ? records.length : await delegate(m).count({ where: { [fk]: params.id } });
+      links.map(async ({ m, fk, via }, i) => {
+        const count = Number(counts[`l${i}`] ?? 0);
+        const records = withRecords.has(i) ? await delegate(m).findMany({ where: { [fk]: params.id }, select: select(m), take: 100, ...(hasField(m, 'createdAt') ? { orderBy: { createdAt: 'desc' } } : {}) }) : [];
         const sameModel = links.filter((l) => l.m.name === m.name).length > 1;
         return { model: m.name, field: fk, title: humanize(m.name) + (sameModel ? ` (as ${humanize(via).toLowerCase()})` : ''), count, records };
       }),
@@ -485,8 +497,10 @@ export default function ownerModule(router: Router) {
   // ── Any table ──
 
   r.get('tables', async () => {
-    const counts = await Promise.all(MODELS.filter((m) => !LOCKED.has(m.name)).map(async (m) => ({ name: m.name, title: humanize(m.name), count: await delegate(m).count() })));
-    return { tables: counts, schema: { models: MODELS.filter((m) => !LOCKED.has(m.name)).map((m) => ({ name: m.name, fields: columns(m) })), enums: ENUMS } };
+    // One query for every table: a count per table is ~90 queries, over D1's 50-per-request limit.
+    const open = MODELS.filter((m) => !LOCKED.has(m.name));
+    const count = await countTables(open);
+    return { tables: open.map((m) => ({ name: m.name, title: humanize(m.name), count: count[m.name] })), schema: { models: MODELS.filter((m) => !LOCKED.has(m.name)).map((m) => ({ name: m.name, fields: columns(m) })), enums: ENUMS } };
   });
 
   r.get<{ model: string }>('records/:model', async ({ params, query }) => {
@@ -552,7 +566,11 @@ export default function ownerModule(router: Router) {
     const before = query.before ? new Date(String(query.before)) : undefined;
     const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
     const items = await prisma.ownerChange.findMany({
-      where: { ...(before && { createdAt: { lt: before } }), ...(q && { OR: [{ summary: { contains: q } }, { model: { contains: q } }, { recordId: q }] }) },
+      where: {
+        ...(before && { createdAt: { lt: before } }),
+        ...(q && { OR: [{ summary: { contains: q } }, { model: { contains: q } }, { recordId: q }] }),
+        ...(typeof query.area === 'string' && AREA_MODELS[query.area] && { model: { in: AREA_MODELS[query.area] } }),
+      },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
@@ -578,6 +596,13 @@ export default function ownerModule(router: Router) {
       } catch (e) {
         throw new BadRequestException(`Could not restore it: ${(e as Error).message.split('\n').pop()}`);
       }
+    } else if (change.action === 'BULK' && m.name === 'User') {
+      // Several people's status at once (People → select → Ban / Let back in): each gets theirs back.
+      const before = (change.before ?? {}) as Record<string, string>;
+      const groups = new Map<string, string[]>();
+      for (const [id, status] of Object.entries(before)) groups.set(status, [...(groups.get(status) ?? []), id]);
+      for (const [status, ids] of groups) await prisma.user.updateMany({ where: { id: { in: ids } }, data: { status: status as 'ACTIVE' } });
+      Object.keys(before).forEach(forgetUser);
     } else {
       throw new BadRequestException('This change can’t be undone.');
     }
