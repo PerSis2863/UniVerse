@@ -17,13 +17,21 @@ export async function GET(req: Request) {
     if (!period) return NextResponse.json({ error: 'Choose a valid period.' }, { status: 400 });
     return NextResponse.json(await computeReport({ title: sp.get('title')?.trim().slice(0, 140) || 'Verified impact report', organization: sp.get('organization')?.trim().slice(0, 200) || null, ...period }));
   }
-  const [reports, orgs] = await Promise.all([
+  const [reports, orgs, holders] = await Promise.all([
     prisma.impactReport.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, slug: true, title: true, organization: true, periodStart: true, periodEnd: true, isPublic: true, views: true, createdAt: true, createdByName: true } }),
     prisma.impactCertificate.groupBy({ by: ['organization'], where: { status: 'ISSUED', revokedAt: null }, _count: { _all: true }, orderBy: { _count: { organization: 'desc' } }, take: 100 }),
+    // The admin's own view of who is behind the figures (the issued report itself carries no names).
+    prisma.impactCertificate.findMany({
+      where: { status: 'ISSUED', revokedAt: null, signature: { not: null } },
+      select: { id: true, title: true, organization: true, projectName: true, hoursCompleted: true, peopleImpacted: true, issuedAt: true, verifiedByName: true, user: { select: { id: true, name: true, email: true, role: true } } },
+      orderBy: { issuedAt: 'desc' },
+      take: 100,
+    }),
   ]);
   return NextResponse.json({
     reports: reports.map((r) => ({ ...r, url: reportUrl(r.slug) })),
     organizations: orgs.map((o) => ({ name: o.organization, credentials: o._count._all })),
+    holders,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

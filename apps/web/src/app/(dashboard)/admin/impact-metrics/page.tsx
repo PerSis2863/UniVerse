@@ -1,18 +1,33 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from '@/components/ui/Link';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Users, HeartHandshake, FolderKanban, Sparkles, ArrowRight } from 'lucide-react';
+import { Users, HeartHandshake, FolderKanban, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
+import { SearchBox, RoleChip, StatusChip, fmtDate, fmtAgo, ROLE_LABEL } from '@/components/impact/AdminPeople';
 
 interface ImpactData {
   kpis: { students: number; ngos: number; activeProjects: number; impactPoints: number };
   impactByMonth: { month: string; value: number }[];
   sectors: { sector: string; count: number }[];
 }
+
+type Role = 'STUDENT' | 'TEACHER' | 'ADMIN' | 'INDUSTRY_MENTOR';
+interface BasePerson { id: string; name: string; email: string; status: string; createdAt: string; lastSeenAt: string | null }
+interface PeopleData {
+  q: string;
+  roles: { role: Role; total: number; matched: number; limit: number }[];
+  students: (BasePerson & { impactXP: number; impactLevel: number; studentProfile: { department: string | null; year: number } | null; courses: number; projects: number; credentials: number })[];
+  teachers: (BasePerson & { teacherProfile: { department: string | null; designation: string | null } | null; courses: number; projects: number })[];
+  admins: BasePerson[];
+  mentors: BasePerson[];
+}
+const TAB_KEY: Record<Role, 'students' | 'teachers' | 'admins' | 'mentors'> = { STUDENT: 'students', TEACHER: 'teachers', ADMIN: 'admins', INDUSTRY_MENTOR: 'mentors' };
+const plural = (n: number, w: string) => `${nf.format(n)} ${w}${n === 1 ? '' : 's'}`;
 
 const nf = new Intl.NumberFormat('en-US');
 
@@ -23,6 +38,18 @@ function csvCell(v: string | number) {
 
 export default function ImpactMetricsPage() {
   const { data, error, isLoading } = useSWR<ImpactData>('/api/admin/impact', authedJson);
+  const [q, setQ] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [tab, setTab] = useState<Role>('STUDENT');
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+  const { data: people, error: peopleError, isLoading: peopleLoading } = useSWR<PeopleData>(
+    `/api/admin/impact/people${debounced ? `?q=${encodeURIComponent(debounced)}` : ''}`,
+    authedJson,
+    { keepPreviousData: true },
+  );
 
   const handleExport = () => {
     if (!data) return void toast.error('The report is still loading.');
@@ -39,6 +66,26 @@ export default function ImpactMetricsPage() {
       ['NGO sector', 'NGOs'],
       ...data.sectors.map((s) => [s.sector, s.count]),
     ];
+    if (people) {
+      rows.push(
+        [],
+        ['Role', 'People on the platform'],
+        ...people.roles.map((r) => [ROLE_LABEL[r.role] ?? r.role, r.total]),
+        [],
+        [`Students (top ${people.students.length} by impact XP${people.q ? `, matching "${people.q}"` : ''})`],
+        ['Name', 'Email', 'Status', 'Department', 'Year', 'Impact level', 'Impact XP', 'Courses', 'Projects', 'Verified credentials', 'Joined'],
+        ...people.students.map((p) => [p.name, p.email, p.status, p.studentProfile?.department ?? '', p.studentProfile?.year ?? '', p.impactLevel, p.impactXP, p.courses, p.projects, p.credentials, p.createdAt.slice(0, 10)]),
+        [],
+        ['Teachers'],
+        ['Name', 'Email', 'Status', 'Department', 'Designation', 'Courses taught', 'Projects supervised', 'Joined'],
+        ...people.teachers.map((p) => [p.name, p.email, p.status, p.teacherProfile?.department ?? '', p.teacherProfile?.designation ?? '', p.courses, p.projects, p.createdAt.slice(0, 10)]),
+        [],
+        ['Admins'],
+        ['Name', 'Email', 'Status', 'Joined'],
+        ...people.admins.map((p) => [p.name, p.email, p.status, p.createdAt.slice(0, 10)]),
+      );
+      if (people.mentors.length) rows.push([], ['Industry mentors'], ['Name', 'Email', 'Status', 'Joined'], ...people.mentors.map((p) => [p.name, p.email, p.status, p.createdAt.slice(0, 10)]));
+    }
     const csv = '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const name = `impact-summary-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -144,7 +191,93 @@ export default function ImpactMetricsPage() {
             </Link>
           </div>
         </div>
+
+        <section className="mt-8 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/[0.04] rounded-2xl overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-white/[0.06] space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white">People behind the impact</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">Every student, teacher and admin on the platform. Students are ranked by impact XP.</p>
+            </div>
+            <SearchBox value={q} onChange={setQ} placeholder="Search people by name or email…" summary={peopleLoading && debounced !== (people?.q ?? '') ? 'Searching…' : undefined} />
+            <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1" role="tablist" aria-label="Role">
+              {(people?.roles ?? (['STUDENT', 'TEACHER', 'ADMIN'] as Role[]).map((role) => ({ role, total: 0, matched: 0, limit: 0 })))
+                .filter((r) => r.role !== 'INDUSTRY_MENTOR' || r.total > 0)
+                .map((r) => (
+                  <button key={r.role} role="tab" aria-selected={tab === r.role} onClick={() => setTab(r.role)}
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${tab === r.role ? 'bg-indigo-600 text-white border-indigo-600' : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                    {ROLE_LABEL[r.role] ?? r.role}s {people ? `(${people.q ? `${nf.format(r.matched)} of ${nf.format(r.total)}` : nf.format(r.total)})` : ''}
+                  </button>
+                ))}
+            </div>
+          </div>
+          <PeopleList people={people} role={tab} error={peopleError as Error | undefined} />
+        </section>
       </div>
+    </>
+  );
+}
+
+function PeopleList({ people, role, error }: { people?: PeopleData; role: Role; error?: Error }) {
+  if (error && !people) return <p className="p-6 text-sm text-rose-500">{error.message || 'Could not load people.'}</p>;
+  if (!people) return <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>;
+  const info = people.roles.find((r) => r.role === role);
+  const rows = people[TAB_KEY[role]] as (BasePerson & Partial<PeopleData['students'][number]> & Partial<PeopleData['teachers'][number]>)[];
+  const noun = (ROLE_LABEL[role] ?? role).toLowerCase();
+  if (rows.length === 0) {
+    return <p className="p-6 text-sm text-zinc-500">{people.q ? `No ${noun}s match “${people.q}”.` : `There are no ${noun}s on the platform yet.`}</p>;
+  }
+  return (
+    <>
+      <ul className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
+        {rows.map((p, i) => {
+          const facts: string[] = [];
+          if (role === 'STUDENT') {
+            if (p.studentProfile?.department) facts.push(p.studentProfile.department);
+            if (p.studentProfile?.year) facts.push(`Year ${p.studentProfile.year}`);
+          }
+          if (role === 'TEACHER') {
+            const t = [p.teacherProfile?.designation, p.teacherProfile?.department].filter(Boolean).join(', ');
+            if (t) facts.push(t);
+          }
+          facts.push(`Joined ${fmtDate(p.createdAt) ?? '—'}`);
+          facts.push(p.lastSeenAt ? `Last seen ${fmtAgo(p.lastSeenAt)}` : 'Never seen online');
+          const stats: [string, number | string][] =
+            role === 'STUDENT' ? [['Impact XP', nf.format(p.impactXP ?? 0)], ['Level', p.impactLevel ?? 1], ['Courses', p.courses ?? 0], ['Projects', p.projects ?? 0], ['Credentials', p.credentials ?? 0]]
+            : role === 'TEACHER' ? [['Courses taught', p.courses ?? 0], ['Projects supervised', p.projects ?? 0]]
+            : [];
+          return (
+            <li key={p.id} className="p-4 sm:px-6 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                {role === 'STUDENT' && <span className="w-7 shrink-0 pt-0.5 text-xs font-bold text-zinc-400 tabular-nums">#{i + 1}</span>}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-zinc-900 dark:text-white">{p.name}</span>
+                    <RoleChip role={role} />
+                    <StatusChip status={p.status} />
+                  </div>
+                  <a href={`mailto:${p.email}`} className="text-xs text-zinc-500 hover:text-indigo-500 break-all">{p.email}</a>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">{facts.join(' · ')}</p>
+                </div>
+              </div>
+              {stats.length > 0 && (
+                <dl className={`grid gap-2 shrink-0 ${stats.length > 2 ? 'grid-cols-5 pl-10' : 'grid-cols-2'} lg:pl-0`}>
+                  {stats.map(([label, value]) => (
+                    <div key={label} className="text-center rounded-lg bg-zinc-50 dark:bg-zinc-950/40 px-2 py-1.5 min-w-[3.5rem]">
+                      <dt className="text-[10px] text-zinc-500 leading-tight">{label}</dt>
+                      <dd className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {info && info.matched > rows.length && (
+        <p className="px-6 py-3 text-xs text-zinc-500 border-t border-zinc-200 dark:border-white/[0.06]">
+          Showing {plural(rows.length, noun)} of {nf.format(info.matched)}{role === 'STUDENT' ? ' (highest impact XP first)' : ''}. Search by name or email to find anyone else, or open Users for the full directory.
+        </p>
+      )}
     </>
   );
 }

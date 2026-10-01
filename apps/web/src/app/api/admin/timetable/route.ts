@@ -11,7 +11,18 @@ export async function GET(req: Request) {
   const [slots, courses, rooms] = await Promise.all([
     prisma.timetableSlot.findMany({
       orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
-      include: { course: { select: { id: true, code: true, name: true, color: true } }, room: { select: { id: true, name: true } } },
+      include: {
+        course: {
+          select: {
+            id: true, code: true, name: true, color: true, department: true,
+            // The teacher of each course, so admins can see who teaches every slot.
+            teacher: { select: { id: true, name: true, email: true, role: true, status: true, phone: true, teacherProfile: { select: { department: true, designation: true } } } },
+            _count: { select: { enrollments: true } },
+          },
+        },
+        room: { select: { id: true, name: true } },
+      },
+      take: 1000,
     }),
     prisma.course.findMany({ orderBy: { code: 'asc' }, select: { id: true, code: true, name: true } }),
     prisma.room.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),

@@ -7,6 +7,7 @@ export default function internshipsModule(router: Router) {
   const r = router.controller('internships');
 
   r.get('', ({ query }) => internships.findAll(query));
+  r.get('admin/overview', { roles: ['ADMIN'] }, () => internships.findAllForAdmin());
   r.get('my-applications', ({ user }) => internships.getMyApplications(user.id));
   r.get<{ id: string }>(':id', ({ params, user }) => internships.findOne(params.id, user));
   r.post('', { roles: ['ADMIN', 'TEACHER', 'INDUSTRY_MENTOR'] }, ({ user, body }) => internships.create(user.id, body));

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { CheckCircle, Clock, ExternalLink, Loader2, ShieldCheck, XCircle, History, Link2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
+import { SearchBox, matchesQuery, RoleChip, StatusChip, fmtDate, fmtAgo, shownSummary } from '@/components/impact/AdminPeople';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -21,8 +22,37 @@ interface PendingCredential {
   description: string | null;
   evidenceUrl: string | null;
   requestedAt: string;
-  student: { id: string; name: string; email: string; avatar: string | null };
+  student: {
+    id: string; name: string; email: string; avatar: string | null;
+    role?: string; status?: string; createdAt?: string; lastSeenAt?: string | null;
+    impactXP?: number; impactLevel?: number;
+    studentProfile?: { department: string | null; year: number } | null;
+    _count?: { impactCertificates: number };
+  };
 }
+
+interface Decision {
+  id: string;
+  title: string;
+  organization: string;
+  projectName: string;
+  hoursCompleted: number;
+  peopleImpacted: number;
+  status: 'ISSUED' | 'REJECTED' | 'REVOKED' | 'UNVERIFIED_LEGACY';
+  issuedAt: string | null;
+  requestedAt: string;
+  revokedAt: string | null;
+  revokedReason: string | null;
+  verifiedByName: string | null;
+  student: { id: string; name: string; email: string; role: string };
+}
+
+const DECISION_STYLE: Record<Decision['status'], { label: string; cls: string }> = {
+  ISSUED: { label: 'Issued', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  REJECTED: { label: 'Rejected', cls: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300' },
+  REVOKED: { label: 'Revoked', cls: 'bg-rose-500/10 text-rose-600 dark:text-rose-400' },
+  UNVERIFIED_LEGACY: { label: 'Unverified (legacy)', cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+};
 
 function apiErrorMessage(err: any, fallback: string): string {
   const msg = err?.response?.data?.message;
@@ -33,6 +63,8 @@ function apiErrorMessage(err: any, fallback: string): string {
 
 export default function AdminCredentialVerificationPage() {
   const { data, error, isLoading, mutate } = useSWR<PendingCredential[]>('/impact/blockchain-credentials/pending', fetcher);
+  const { data: recentData, error: recentError, mutate: mutateRecent } = useSWR<Decision[]>('/impact/blockchain-credentials/recent', fetcher);
+  const [q, setQ] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
   const [legacyBusy, setLegacyBusy] = useState(false);
@@ -62,7 +94,7 @@ export default function AdminCredentialVerificationPage() {
         await api.post(`/impact/blockchain-credentials/${id}/reject`, reason ? { reason } : {});
         toast.success('Request rejected');
       }
-      await mutate();
+      await Promise.all([mutate(), mutateRecent()]);
     } catch (err) {
       toast.error(apiErrorMessage(err, `Could not ${action} this credential`));
     } finally {
@@ -83,7 +115,16 @@ export default function AdminCredentialVerificationPage() {
     }
   };
 
-  const items = data ?? [];
+  const allItems = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+  const items = useMemo(
+    () => allItems.filter((i) => matchesQuery(q, i.title, i.organization, i.projectName, i.certificateCode, i.student?.name, i.student?.email, i.student?.studentProfile?.department)),
+    [allItems, q],
+  );
+  const recentAll = useMemo(() => (Array.isArray(recentData) ? recentData : []), [recentData]);
+  const recent = useMemo(
+    () => recentAll.filter((d) => matchesQuery(q, d.title, d.organization, d.projectName, d.student?.name, d.student?.email, d.verifiedByName, DECISION_STYLE[d.status]?.label)),
+    [recentAll, q],
+  );
 
   return (
     <>
@@ -93,7 +134,7 @@ export default function AdminCredentialVerificationPage() {
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                <Clock className="w-5 h-5 text-amber-500" /> Awaiting verification ({items.length})
+                <Clock className="w-5 h-5 text-amber-500" /> Awaiting verification ({allItems.length})
               </h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                 Confirm the hours and impact with the partner organization before approving. Approved credentials are signed and publicly verifiable.
@@ -113,17 +154,28 @@ export default function AdminCredentialVerificationPage() {
             </div>
           </div>
 
+          <SearchBox
+            value={q}
+            onChange={setQ}
+            placeholder="Search student, email, organization, project or verifier…"
+            summary={allItems.length ? shownSummary(items.length, allItems.length, 'pending request') : undefined}
+          />
+
           {isLoading ? (
             <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-indigo-500" /></div>
           ) : error ? (
             <div className="p-6 rounded-2xl border border-red-500/30 bg-red-500/10 text-sm text-red-600 dark:text-red-300">
               {apiErrorMessage(error, 'Could not load pending credentials.')}
             </div>
-          ) : items.length === 0 ? (
+          ) : allItems.length === 0 ? (
             <div className="text-center p-12 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
               <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-bold text-zinc-900 dark:text-white">All caught up</h3>
               <p className="text-sm text-zinc-500 mt-1">No credential requests are waiting for verification.</p>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="text-center p-10 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm text-zinc-500">
+              No pending requests match “{q}”.
             </div>
           ) : (
             <div className="space-y-4">
@@ -131,11 +183,17 @@ export default function AdminCredentialVerificationPage() {
                 <div key={item.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="min-w-0">
-                      <p className="text-xs text-zinc-500">{item.student.name} · {item.student.email}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">{item.student.name}</p>
+                        <RoleChip role={item.student.role} />
+                        <StatusChip status={item.student.status} />
+                      </div>
+                      <a href={`mailto:${item.student.email}`} className="text-xs text-zinc-500 hover:text-indigo-500 break-all">{item.student.email}</a>
+                      {studentFacts(item.student).length > 0 && <p className="text-[11px] text-zinc-500 mt-0.5">{studentFacts(item.student).join(' · ')}</p>}
                       <h3 className="text-base font-bold text-zinc-900 dark:text-white mt-1">{item.title}</h3>
                       <p className="text-sm text-indigo-600 dark:text-indigo-400">{item.organization} — {item.projectName}</p>
                     </div>
-                    <span className="text-xs text-zinc-500">Requested {new Date(item.requestedAt).toLocaleDateString()}</span>
+                    <span className="text-xs text-zinc-500">Requested {fmtDate(item.requestedAt)}</span>
                   </div>
                   <div className="flex gap-6 mt-3 text-sm flex-wrap">
                     <span className="text-zinc-500">Hours <b className="text-zinc-900 dark:text-white">{item.hoursCompleted}</b></span>
@@ -168,8 +226,62 @@ export default function AdminCredentialVerificationPage() {
               ))}
             </div>
           )}
+
+          <section className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-zinc-200 dark:border-zinc-800">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">Recent decisions</h3>
+              <p className="text-xs text-zinc-500 mt-0.5">The latest 60 credentials that were issued, rejected or revoked, with the student and the admin who verified them.</p>
+            </div>
+            {recentError ? (
+              <p className="p-5 text-sm text-red-600 dark:text-red-300">{apiErrorMessage(recentError, 'Could not load recent decisions.')}</p>
+            ) : !recentData ? (
+              <div className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
+            ) : recentAll.length === 0 ? (
+              <p className="p-5 text-sm text-zinc-500">No credential has been issued, rejected or revoked yet.</p>
+            ) : recent.length === 0 ? (
+              <p className="p-5 text-sm text-zinc-500">No decisions match “{q}”.</p>
+            ) : (
+              <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
+                {recent.map((d) => {
+                  const st = DECISION_STYLE[d.status] ?? { label: d.status, cls: 'bg-zinc-500/10 text-zinc-500' };
+                  const when = d.status === 'ISSUED' ? d.issuedAt : d.revokedAt ?? d.requestedAt;
+                  return (
+                    <li key={d.id} className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">{d.title}</p>
+                        <p className="text-xs text-indigo-600 dark:text-indigo-400">{d.organization} — {d.projectName}</p>
+                        <p className="text-xs text-zinc-500 mt-1 break-words">
+                          <span className="text-zinc-700 dark:text-zinc-300 font-medium">{d.student?.name}</span> · {d.student?.email}
+                          {' · '}{d.hoursCompleted} h · {d.peopleImpacted.toLocaleString()} people
+                        </p>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">
+                          {d.verifiedByName ? `Verified by ${d.verifiedByName}` : 'No verifying admin recorded'}
+                          {d.revokedReason ? ` · Reason: ${d.revokedReason}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0">
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+                        {fmtDate(when) && <span className="text-[11px] text-zinc-500">{fmtDate(when)}</span>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
         </div>
       </div>
     </>
   );
+}
+
+function studentFacts(s: PendingCredential['student']) {
+  return [
+    s.studentProfile?.department,
+    s.studentProfile?.year ? `Year ${s.studentProfile.year}` : null,
+    typeof s.impactXP === 'number' ? `Impact level ${s.impactLevel ?? 1} · ${s.impactXP.toLocaleString()} XP` : null,
+    typeof s._count?.impactCertificates === 'number' ? `${s._count.impactCertificates} verified credential${s._count.impactCertificates === 1 ? '' : 's'}` : null,
+    s.createdAt ? `Joined ${fmtDate(s.createdAt)}` : null,
+    s.lastSeenAt ? `Last seen ${fmtAgo(s.lastSeenAt)}` : null,
+  ].filter(Boolean) as string[];
 }

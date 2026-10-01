@@ -13,6 +13,7 @@ export default function associationsModule(router: Router) {
   const r = router.controller('associations');
 
   r.get('', () => associations.findAll());
+  r.get('admin/members', { roles: ['ADMIN'] }, () => associations.findAllMembershipsForAdmin());
   r.get('my-memberships', ({ user }) => associations.getUserMemberships(user.id));
   r.get<{ id: string }>(':id', ({ params }) => associations.findOne(params.id));
   r.post<{ id: string }>(':id/join', ({ params, user }) => associations.join(params.id, user.id));

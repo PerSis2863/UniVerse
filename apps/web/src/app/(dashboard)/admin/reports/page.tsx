@@ -1,26 +1,118 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Download, FileSpreadsheet, Loader2, Sparkles, Users, HeartHandshake, Wand2, Copy } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { PremiumGate } from '@/components/billing/PremiumGate';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
+import { AdminSearch, PersonCell, type PersonInfo } from '@/components/admin/AdminPeople';
 
 const EXPORTS = [
-  { type: 'members', title: 'Members', desc: 'Every account with role, status, impact level and join date.', icon: Users },
-  { type: 'impact', title: 'Impact points ledger', desc: 'Every impact award: who, how many points, and why.', icon: Sparkles },
-  { type: 'applications', title: 'NGO applications', desc: 'Student applications to NGO projects with their status.', icon: HeartHandshake },
+  { type: 'members', title: 'Members', desc: 'Every account: name, email, phone, role, status, department, last active and join date. Use the filters below to narrow it.', icon: Users },
+  { type: 'impact', title: 'Impact points ledger', desc: 'Every impact award: who (name, email, phone, role, status), how many points, and why.', icon: Sparkles },
+  { type: 'applications', title: 'NGO applications', desc: 'Student applications to NGO projects with each student\'s contact details and status.', icon: HeartHandshake },
 ] as const;
+
+type MemberRow = PersonInfo & {
+  id: string; accountType: string | null; createdAt: string; impactLevel: number; impactXP: number;
+  studentProfile: { department: string | null; year: number; gpa: number } | null;
+  teacherProfile: { department: string | null; designation: string | null } | null;
+};
+type Filters = { role: string; status: string; q: string };
+
+function filterQuery(f: Filters) {
+  const p = new URLSearchParams();
+  if (f.role) p.set('role', f.role);
+  if (f.status) p.set('status', f.status);
+  if (f.q.trim()) p.set('q', f.q.trim());
+  return p.toString();
+}
+
+function useDebounced<T>(value: T, ms = 300) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+const select = 'rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40';
+
+function memberFacts(m: MemberRow) {
+  const dept = m.studentProfile?.department ?? m.teacherProfile?.department;
+  return [
+    m.teacherProfile?.designation, dept, m.studentProfile?.year ? `Year ${m.studentProfile.year}` : null,
+    m.studentProfile && m.studentProfile.gpa > 0 ? `GPA ${m.studentProfile.gpa.toFixed(2)}` : null,
+    `Joined ${new Date(m.createdAt).toLocaleDateString()}`,
+  ].filter(Boolean).join(' · ');
+}
+
+/** Filters for the members export, with a live preview of who it will contain. */
+function MembersPreview({ filters, setFilters, onDownload, busy }: { filters: Filters; setFilters: (f: Filters) => void; onDownload: () => void; busy: boolean }) {
+  const debounced = useDebounced(filters);
+  const key = `/api/premium/export?type=members&format=json${filterQuery(debounced) ? `&${filterQuery(debounced)}` : ''}`;
+  const { data, error, isLoading } = useSWR<{ total: number; people: MemberRow[] }>(key, authedJson);
+
+  return (
+    <div className="mt-6 rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-4 sm:p-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 className="font-bold text-zinc-900 dark:text-white">Who is in the members export</h3>
+          <p className="text-sm text-zinc-500">Filter by role, status or search, then download exactly these people.</p>
+        </div>
+        <button onClick={onDownload} disabled={busy || !data?.total} className="btn-primary shrink-0">
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          Download {data ? `${data.total.toLocaleString()} ` : ''}as CSV
+        </button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] mb-4">
+        <AdminSearch value={filters.q} onChange={(q) => setFilters({ ...filters, q })} placeholder="Search name, email or phone…" />
+        <select className={select} value={filters.role} onChange={(e) => setFilters({ ...filters, role: e.target.value })} aria-label="Role">
+          <option value="">All roles</option>
+          <option value="STUDENT">Students</option>
+          <option value="TEACHER">Teachers</option>
+          <option value="ADMIN">Admins</option>
+          <option value="INDUSTRY_MENTOR">Industry mentors</option>
+        </select>
+        <select className={select} value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} aria-label="Status">
+          <option value="">Any status</option>
+          <option value="ACTIVE">Active</option>
+          <option value="PENDING">Pending</option>
+          <option value="SUSPENDED">Suspended</option>
+        </select>
+      </div>
+      {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
+        : isLoading && !data ? <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
+        : !data || data.people.length === 0 ? <p className="text-sm text-zinc-500">No members match these filters.</p>
+        : (
+          <>
+            <p className="text-xs text-zinc-500 mb-2">{data.total.toLocaleString()} member{data.total === 1 ? '' : 's'}{data.total > data.people.length ? ` · showing the ${data.people.length} newest` : ''}</p>
+            <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05] max-h-[28rem] overflow-y-auto">
+              {data.people.map((m) => (
+                <li key={m.id} className="py-3">
+                  <PersonCell person={m} showActivity extra={memberFacts(m)} />
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+    </div>
+  );
+}
 
 function Exports() {
   const [busy, setBusy] = useState<string | null>(null);
+  const [filters, setFilters] = useState<Filters>({ role: '', status: '', q: '' });
 
   const download = async (type: string) => {
     setBusy(type);
     try {
-      const res = await authedFetch(`/api/premium/export?type=${type}`);
+      const extra = type === 'members' ? filterQuery(filters) : '';
+      const res = await authedFetch(`/api/premium/export?type=${type}${extra ? `&${extra}` : ''}`);
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Export failed');
       const blob = await res.blob();
       const name = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? `universe-${type}.csv`;
@@ -60,6 +152,9 @@ function Exports() {
           <span className="inline-flex items-center gap-1 mt-4 text-[11px] font-bold text-zinc-400"><FileSpreadsheet className="w-3.5 h-3.5" /> CSV · opens in Excel & Sheets</span>
         </motion.button>
       ))}
+      <div className="md:col-span-3">
+        <MembersPreview filters={filters} setFilters={setFilters} onDownload={() => download('members')} busy={busy === 'members'} />
+      </div>
     </div>
   );
 }

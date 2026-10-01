@@ -1,7 +1,7 @@
 'use client';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { CalendarClock, Loader2, Plus, Trash2, X } from 'lucide-react';
@@ -9,9 +9,16 @@ import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { authedJson } from '@/lib/authed-fetch';
 import { courseColor } from '@/lib/course-color';
+import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-type Slot = { id: string; dayOfWeek: number; startTime: string; endTime: string; type: string; course: { id: string; code: string; name: string; color: string | null }; room: { id: string; name: string } | null };
+type Teacher = PersonInfo & { teacherProfile?: { department: string | null; designation: string | null } | null };
+type Slot = {
+  id: string; dayOfWeek: number; startTime: string; endTime: string; type: string;
+  course: { id: string; code: string; name: string; color: string | null; department?: string | null; teacher?: Teacher | null; _count?: { enrollments: number } };
+  room: { id: string; name: string } | null;
+};
+const minutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
 type Data = { slots: Slot[]; courses: { id: string; code: string; name: string }[]; rooms: { id: string; name: string }[] };
 const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 
@@ -36,10 +43,27 @@ export default function TimetableManagementPage() {
     try { await authedJson(`/api/admin/timetable?id=${id}`, { method: 'DELETE' }); mutate(); } catch (e: any) { toast.error(e.message); }
   };
 
-  const slots = data?.slots ?? [];
+  const [q, setQ] = useState('');
+  const allSlots = useMemo(() => data?.slots ?? [], [data]);
+  const slots = useMemo(() => allSlots.filter((s) => matchesQuery(q, s.course.code, s.course.name, s.course.department, s.type, s.room?.name, DAYS[s.dayOfWeek], s.startTime, personText(s.course.teacher))), [allSlots, q]);
+  // Teaching load per teacher, from the slots shown.
+  const teachers = useMemo(() => {
+    const map = new Map<string, { teacher: Teacher; courses: Map<string, { code: string; students: number }>; classes: number; minutes: number }>();
+    for (const s of slots) {
+      const t = s.course.teacher;
+      if (!t) continue;
+      const key = t.id ?? t.email ?? t.name ?? '?';
+      const row = map.get(key) ?? { teacher: t, courses: new Map(), classes: 0, minutes: 0 };
+      row.courses.set(s.course.id, { code: s.course.code, students: s.course._count?.enrollments ?? 0 });
+      row.classes += 1;
+      row.minutes += Math.max(0, minutes(s.endTime) - minutes(s.startTime));
+      map.set(key, row);
+    }
+    return [...map.values()].sort((a, b) => b.minutes - a.minutes);
+  }, [slots]);
   return (
     <>
-      <Topbar title="Timetable Management" subtitle="Weekly class schedule for every course"
+      <Topbar title="Timetable Management" subtitle="Weekly class schedule for every course, and who teaches it"
         rightNode={<button onClick={open} disabled={!data?.courses.length} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> Add class</button>} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
@@ -57,7 +81,12 @@ export default function TimetableManagementPage() {
             </div>
           )}
 
-          {isLoading ? <div className="h-48 rounded-3xl skeleton" /> : slots.length === 0 ? (
+          {allSlots.length > 0 && (
+            <AdminSearch value={q} onChange={setQ} placeholder="Search course, teacher name/email, room, day or type…" shown={slots.length} total={allSlots.length} />
+          )}
+          {isLoading ? <div className="h-48 rounded-3xl skeleton" /> : allSlots.length > 0 && slots.length === 0 ? (
+            <p className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700 p-10 text-center text-sm text-zinc-500">No classes match your search.</p>
+          ) : slots.length === 0 ? (
             <FeatureGuide
               icon={CalendarClock}
               title="Build your weekly timetable"
@@ -80,7 +109,12 @@ export default function TimetableManagementPage() {
                           <span className="w-1.5 h-10 rounded-full" style={{ backgroundColor: courseColor(s.course.color, s.course.code) }} />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{s.course.code} · {s.course.name}</p>
-                            <p className="text-xs text-zinc-500">{s.startTime}–{s.endTime} · {s.type.toLowerCase()}{s.room ? ` · ${s.room.name}` : ''}</p>
+                            <p className="text-xs text-zinc-500">{s.startTime}–{s.endTime} · {s.type.toLowerCase()}{s.room ? ` · ${s.room.name}` : ''}{s.course._count ? ` · ${s.course._count.enrollments} enrolled` : ''}</p>
+                            {s.course.teacher !== undefined && (
+                              <p className="text-xs text-zinc-500 truncate" title={s.course.teacher?.email ?? undefined}>
+                                {s.course.teacher ? <>Teacher: <span className="font-medium text-zinc-700 dark:text-zinc-300">{s.course.teacher.name}</span>{s.course.teacher.email ? ` · ${s.course.teacher.email}` : ''}</> : 'No teacher assigned'}
+                              </p>
+                            )}
                           </div>
                           <button onClick={() => remove(s.id)} aria-label="Remove" className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
                         </li>
@@ -90,6 +124,27 @@ export default function TimetableManagementPage() {
                 );
               })}
             </div>
+          )}
+
+          {teachers.length > 0 && (
+            <section className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-4 sm:p-5">
+              <h2 className="font-bold text-zinc-900 dark:text-white">Teachers on the timetable</h2>
+              <p className="text-xs text-zinc-500 mb-3">Weekly classes and hours per teacher{q.trim() ? ' (matching your search)' : ''}</p>
+              <ul className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
+                {teachers.map((t, i) => {
+                  const courses = [...t.courses.values()];
+                  return (
+                    <li key={t.teacher.id ?? i} className="py-3 grid gap-2 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-center">
+                      <PersonCell person={t.teacher} extra={[t.teacher.teacherProfile?.designation, t.teacher.teacherProfile?.department].filter(Boolean).join(' · ') || null} />
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400 md:text-right">
+                        <p className="font-semibold text-zinc-900 dark:text-white">{t.classes} class{t.classes === 1 ? '' : 'es'} · {(t.minutes / 60).toFixed(1)} h / week</p>
+                        <p>{courses.map((c) => c.code).join(', ')} · {courses.reduce((n, c) => n + c.students, 0)} enrolled</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
         </div>
       </div>

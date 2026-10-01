@@ -25,7 +25,10 @@ export async function GET(req: Request) {
   since.setUTCMonth(since.getUTCMonth() - 11, 1);
   since.setUTCHours(0, 0, 0, 0);
 
-  const [roles, activeUsers, courses, enrollments, impactTotal, applications, signups, impact, topContributors] = await Promise.all([
+  // Contact details shown for every person listed on the page.
+  const person = { id: true, name: true, email: true, status: true, phone: true, lastSeenAt: true, createdAt: true } as const;
+
+  const [roles, activeUsers, courses, enrollments, impactTotal, applications, signups, impact, topContributors, roleStatus, admins, teachers, topStudents] = await Promise.all([
     prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
     prisma.user.count({ where: { status: 'ACTIVE' } }),
     prisma.course.count(),
@@ -42,7 +45,30 @@ export async function GET(req: Request) {
       where: { role: 'STUDENT', impactXP: { gt: 0 } },
       orderBy: { impactXP: 'desc' },
       take: 5,
-      select: { id: true, name: true, impactXP: true, impactLevel: true },
+      select: { id: true, name: true, email: true, impactXP: true, impactLevel: true },
+    }),
+    // Per-role breakdown by account status (active / pending / suspended).
+    prisma.user.groupBy({ by: ['role', 'status'], _count: { _all: true } }),
+    prisma.user.findMany({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' }, take: 100, select: person }),
+    prisma.user.findMany({
+      where: { role: 'TEACHER' },
+      orderBy: { name: 'asc' },
+      take: 200,
+      select: {
+        ...person,
+        teacherProfile: { select: { department: true, designation: true } },
+        taughtCourses: { take: 50, select: { code: true, status: true, _count: { select: { enrollments: true } } } },
+      },
+    }),
+    // Top students by GPA (only students with a recorded GPA).
+    prisma.studentProfile.findMany({
+      where: { gpa: { gt: 0 }, user: { role: 'STUDENT' } },
+      orderBy: [{ gpa: 'desc' }, { year: 'desc' }],
+      take: 25,
+      select: {
+        gpa: true, year: true, department: true,
+        user: { select: { ...person, impactXP: true, impactLevel: true, _count: { select: { enrollments: true } } } },
+      },
     }),
   ]);
 
@@ -59,5 +85,22 @@ export async function GET(req: Request) {
     signupsByMonth: lastTwelveMonths(signups),
     impactByMonth: lastTwelveMonths(impact),
     topContributors,
+    roleStatus: roleStatus.map((r) => ({ role: r.role, status: r.status, count: r._count._all })),
+    admins,
+    teachers: teachers.map(({ taughtCourses, teacherProfile, ...t }) => ({
+      ...t,
+      department: teacherProfile?.department ?? null,
+      designation: teacherProfile?.designation ?? null,
+      courses: taughtCourses.length,
+      publishedCourses: taughtCourses.filter((c) => c.status === 'PUBLISHED').length,
+      courseCodes: taughtCourses.map((c) => c.code),
+      students: taughtCourses.reduce((n, c) => n + c._count.enrollments, 0),
+    })),
+    topStudents: topStudents.map(({ user, ...p }) => ({
+      id: user.id, name: user.name, email: user.email, status: user.status, phone: user.phone,
+      lastSeenAt: user.lastSeenAt, createdAt: user.createdAt,
+      gpa: p.gpa, year: p.year, department: p.department,
+      impactXP: user.impactXP, impactLevel: user.impactLevel, enrollments: user._count.enrollments,
+    })),
   });
 }

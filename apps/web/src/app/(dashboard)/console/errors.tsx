@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Bot, CheckCircle2, ChevronDown, EyeOff, Loader2, RotateCcw, Server, Monitor, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { card, fetcher } from './shared';
+import { SearchBox, card, fetcher, matches } from './shared';
 
 // Errors tab: problems collected automatically from browsers and the server (src/server/errors.ts),
 // grouped, with an AI diagnosis. Mark them resolved once fixed; if one happens again it comes back.
@@ -58,8 +58,10 @@ export function ErrorsPanel() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('OPEN');
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [q, setQ] = useState('');
   const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number> }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: 60_000 });
   const openCount = (data?.counts.NEW ?? 0) + (data?.counts.DIAGNOSED ?? 0);
+  const items = (data?.items ?? []).filter((e) => matches(q, e.message, e.path, e.kind, e.source, e.diagnosis, e.userAgent, e.severity));
 
   const diagnose = async (ids?: string[]) => {
     setBusy(ids?.[0] ?? 'all');
@@ -101,6 +103,7 @@ export function ErrorsPanel() {
         </button>
       </div>
 
+      <SearchBox value={q} onChange={setQ} placeholder="Search errors (message, page, browser, diagnosis)" />
       <div className="flex gap-1">
         {FILTERS.map((f) => (
           <button key={f.id} onClick={() => setFilter(f.id)} className={cn('px-3.5 py-1.5 rounded-full text-sm font-semibold', filter === f.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
@@ -111,6 +114,8 @@ export function ErrorsPanel() {
 
       {isLoading ? (
         <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+      ) : data?.items.length && !items.length ? (
+        <p className="text-sm text-zinc-500">No errors match.</p>
       ) : !data?.items.length ? (
         <div className={cn(card, 'p-10 text-center')}>
           <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500" />
@@ -119,7 +124,7 @@ export function ErrorsPanel() {
         </div>
       ) : (
         <div className="space-y-2">
-          {data.items.map((e) => {
+          {items.map((e) => {
             const expanded = open === e.id;
             const title = e.diagnosis?.match(/^\*\*(.+?)\*\*/)?.[1] ?? e.message;
             return (

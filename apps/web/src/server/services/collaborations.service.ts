@@ -24,7 +24,21 @@ export class CollaborationsService {
 
   // ─── PHASE 3: COLLABORATION PROJECTS (NGO/Student Projects) ──────────────────
 
-  getProjects() {
+  // `detailed` (admins only): also the supervisor's email/department and the members' contact details,
+  // so the admin review page can show who is involved.
+  getProjects(opts: { detailed?: boolean } = {}) {
+    if (opts.detailed) {
+      return prisma.collaborationProject.findMany({
+        include: {
+          supervisingTeacher: { select: { id: true, name: true, avatar: true, email: true, role: true, status: true, teacherProfile: { select: { department: true, designation: true } } } },
+          ngoProject: { select: { id: true, name: true, ngo: { select: { name: true } } } },
+          members: { select: { role: true, joinedAt: true, user: { select: { id: true, name: true, email: true, role: true } } }, orderBy: { joinedAt: 'asc' }, take: 25 },
+          _count: { select: { members: true, milestones: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 300,
+      });
+    }
     return prisma.collaborationProject.findMany({
       include: {
         supervisingTeacher: { select: { id: true, name: true, avatar: true } },

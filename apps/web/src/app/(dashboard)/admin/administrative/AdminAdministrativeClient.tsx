@@ -1,202 +1,282 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { FileText, CreditCard, GraduationCap, Plus, Edit2, Trash2, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { FileText, CreditCard, GraduationCap, Plus, Edit2, Trash2, X, ExternalLink, ChevronDown, Users, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import useSWR from 'swr';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
+import Link from '@/components/ui/Link';
 import { api } from '@/lib/api';
+import { getAuthToken } from '@/lib/auth-token';
+import { isSampleMode } from '@/lib/sample-mode';
+import { safeHref } from '@/lib/safe-href';
+import { useAuthStore } from '@/store/auth';
+import { getTransactions } from '@/app/actions/transaction';
+import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
 
 const TABS = [
   { id: 'documents', label: 'School Documents', icon: FileText },
   { id: 'billing', label: 'Billing & Accounting', icon: CreditCard },
   { id: 'scholarships', label: 'Scholarships', icon: GraduationCap },
-];
+] as const;
+type TabId = (typeof TABS)[number]['id'];
+
+const DOC_TYPES = ['TRANSCRIPT', 'DIPLOMA', 'CERTIFICATE', 'ID_CARD', 'LETTER', 'OTHER'] as const;
+const APP_STATUSES = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'] as const;
+
+type StudentPerson = PersonInfo & { studentProfile?: { department: string | null; year: number; gpa: number } | null };
+interface Doc {
+  id: string; title: string; type: string; fileUrl?: string | null; issuedAt?: string | null; expiresAt?: string | null;
+  isVerified?: boolean; createdAt?: string; user?: StudentPerson | null;
+}
+interface Applicant { id: string; status: string; appliedAt: string; student: StudentPerson }
+interface Scholarship {
+  id: string; name: string; description?: string | null; amount?: number | null; currency?: string; provider?: string | null;
+  deadline?: string | null; isActive: boolean; _count?: { applications: number }; applications?: Applicant[];
+}
+interface Payment { id: string; description: string; amount: number; currency?: string; status: string; type?: string; createdAt: string | Date; user?: PersonInfo | null }
+
+type DocForm = { title: string; type: string; fileUrl: string; issuedAt: string };
+type ScholarshipForm = { name: string; amount: string; deadline: string; provider: string; description: string };
+
+const field = 'w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors';
+const label = 'text-sm font-medium text-zinc-600 dark:text-zinc-400';
+const card = 'bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden';
+const fmtDate = (v?: string | Date | null) => (v ? format(new Date(v), 'd MMM yyyy') : '—');
+const money = (n?: number | null, currency = 'USD') =>
+  n == null ? '—' : new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
+const humanize = (s?: string | null) => (s ? s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ') : '');
+
+function studentFacts(p?: StudentPerson | null) {
+  const sp = p?.studentProfile;
+  if (!sp) return null;
+  return [sp.department, sp.year ? `Year ${sp.year}` : null, sp.gpa > 0 ? `GPA ${sp.gpa.toFixed(2)}` : null].filter(Boolean).join(' · ') || null;
+}
+
+function Pill({ tone, children }: { tone: 'green' | 'amber' | 'red' | 'zinc' | 'indigo'; children: React.ReactNode }) {
+  const tones = {
+    green: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    red: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+    zinc: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20',
+    indigo: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+  };
+  return <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${tones[tone]}`}>{children}</span>;
+}
+
+const statusTone = (s: string): 'green' | 'amber' | 'red' | 'zinc' | 'indigo' =>
+  s === 'ACCEPTED' || s === 'COMPLETED' ? 'green' : s === 'PENDING' ? 'amber' : s === 'REVIEWING' ? 'indigo' : s === 'WITHDRAWN' ? 'zinc' : 'red';
+
+async function loadAll() {
+  const [docsRes, schRes] = await Promise.all([
+    api.get<Doc[]>('/documents').catch(() => ({ data: [] as Doc[] })),
+    // Admin view with applicants; falls back to the public list if it's unavailable.
+    (isSampleMode() ? Promise.reject(new Error('sample')) : api.get<Scholarship[]>('/scholarships/admin'))
+      .catch(() => api.get<Scholarship[]>('/scholarships').catch(() => ({ data: [] as Scholarship[] }))),
+  ]);
+  let payments: Payment[] = [];
+  let paymentsError: string | null = null;
+  try {
+    payments = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken())) as Payment[];
+  } catch {
+    paymentsError = 'Could not load payments.';
+  }
+  return {
+    docs: Array.isArray(docsRes.data) ? docsRes.data : [],
+    scholarships: Array.isArray(schRes.data) ? schRes.data : [],
+    payments,
+    paymentsError,
+  };
+}
 
 export default function AdminAdministrativeClient() {
-  const [activeTab, setActiveTab] = useState('documents');
-  const [loading, setLoading] = useState(true);
+  const me = useAuthStore((s) => s.user);
+  const [activeTab, setActiveTab] = useState<TabId>('documents');
+  const [q, setQ] = useState('');
+  const { data, isLoading: loading, mutate } = useSWR('admin-administrative', loadAll);
+  const docs = useMemo(() => data?.docs ?? [], [data]);
+  const scholarships = useMemo(() => data?.scholarships ?? [], [data]);
+  const payments = useMemo(() => data?.payments ?? [], [data]);
+  const paymentsError = data?.paymentsError ?? null;
+  const [openScholarship, setOpenScholarship] = useState<string | null>(null);
 
-  const [docs, setDocs] = useState<any[]>([]);
-  const [bills, setBills] = useState<any[]>([]);
-  const [scholarships, setScholarships] = useState<any[]>([]);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [docForm, setDocForm] = useState<DocForm | null>(null);
+  const [schForm, setSchForm] = useState<ScholarshipForm | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<any>({});
+  const [saving, setSaving] = useState(false);
 
-  // Fetch data from API
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      api.get('/documents').catch(() => ({ data: [] })),
-      api.get('/scholarships').catch(() => ({ data: [] })),
-    ]).then(([docsRes, schRes]) => {
-      setDocs(docsRes.data || []);
-      setScholarships(schRes.data || []);
-      setBills([]); // No billing API endpoint yet
-    }).finally(() => setLoading(false));
-  }, []);
+  const switchTab = (id: TabId) => { setActiveTab(id); setQ(''); };
 
-  const refetch = async () => {
-    const [docsRes, schRes] = await Promise.all([
-      api.get('/documents').catch(() => ({ data: [] })),
-      api.get('/scholarships').catch(() => ({ data: [] })),
-    ]);
-    setDocs(docsRes.data || []);
-    setScholarships(schRes.data || []);
+  const shownDocs = useMemo(
+    () => docs.filter((d) => matchesQuery(q, d.title, d.type, humanize(d.type), d.isVerified ? 'verified' : 'pending', personText(d.user), studentFacts(d.user))),
+    [docs, q],
+  );
+  const shownPayments = useMemo(
+    () => payments.filter((p) => matchesQuery(q, p.description, p.status, p.type, p.id, String(p.amount), personText(p.user))),
+    [payments, q],
+  );
+  const shownScholarships = useMemo(
+    () => scholarships.filter((s) => matchesQuery(q, s.name, s.provider, s.description, s.isActive ? 'open' : 'closed', (s.applications ?? []).flatMap((a) => [...personText(a.student), a.status]))),
+    [scholarships, q],
+  );
+
+  const openNew = () => {
+    setEditingId(null);
+    if (activeTab === 'documents') setDocForm({ title: '', type: 'OTHER', fileUrl: '', issuedAt: '' });
+    if (activeTab === 'scholarships') setSchForm({ name: '', amount: '', deadline: '', provider: '', description: '' });
   };
+  const openEditDoc = (d: Doc) => {
+    setEditingId(d.id);
+    setDocForm({ title: d.title, type: d.type, fileUrl: d.fileUrl ?? '', issuedAt: d.issuedAt ? d.issuedAt.slice(0, 10) : '' });
+  };
+  const closeModal = () => { setDocForm(null); setSchForm(null); setEditingId(null); };
 
-  const handleOpenModal = (id: string | null = null) => {
-    if (activeTab === 'documents') {
-      if (id) {
-        setFormData(docs.find(d => d.id === id) || {});
-      } else {
-        setFormData({ title: '', type: 'OTHER', status: 'Draft' });
-      }
-    } else if (activeTab === 'billing') {
-      if (id) {
-        setFormData(bills.find(b => b.id === id) || {});
-      } else {
-        setFormData({ description: '', amount: 0, dueDate: '', status: 'Pending' });
-      }
-    } else if (activeTab === 'scholarships') {
-      if (id) {
-        setFormData(scholarships.find(s => s.id === id) || {});
-      } else {
-        setFormData({ name: '', amount: 0, deadline: '', isActive: true });
-      }
-    }
-    setEditingId(id);
-    setIsModalOpen(true);
+  const errorMessage = (err: unknown) => {
+    const e = err as { response?: { data?: { message?: string } }; message?: string };
+    return e.response?.data?.message || e.message || 'Failed to save';
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     try {
-      if (activeTab === 'documents') {
-        if (editingId) {
-          await api.patch(`/documents/${editingId}`, formData);
-        } else {
-          await api.post('/documents', formData);
-        }
-      } else if (activeTab === 'scholarships') {
-        if (editingId) {
-          // no patch endpoint, skip
-        } else {
-          await api.post('/scholarships', formData);
-        }
+      if (docForm) {
+        const body = { title: docForm.title.trim(), type: docForm.type, fileUrl: docForm.fileUrl.trim(), issuedAt: docForm.issuedAt ? new Date(docForm.issuedAt).toISOString() : undefined };
+        if (editingId) await api.patch(`/documents/${editingId}`, body);
+        else await api.post('/documents', body);
+      } else if (schForm) {
+        await api.post('/scholarships', {
+          name: schForm.name.trim(),
+          amount: schForm.amount ? Number(schForm.amount) : undefined,
+          deadline: schForm.deadline ? new Date(schForm.deadline).toISOString() : undefined,
+          provider: schForm.provider.trim() || undefined,
+          description: schForm.description.trim() || undefined,
+          isActive: true,
+        });
       }
       toast.success('Saved successfully!');
-      await refetch();
-      setIsModalOpen(false);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to save');
+      await mutate();
+      closeModal();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const deleteDoc = async (id: string) => {
     try {
-      if (activeTab === 'documents') {
-        await api.delete(`/documents/${id}`);
-        setDocs(prev => prev.filter(d => d.id !== id));
-      } else if (activeTab === 'scholarships') {
-        toast.error('Delete scholarship is not supported yet.');
-        return;
-      }
+      await api.delete(`/documents/${id}`);
+      mutate((cur) => cur && { ...cur, docs: cur.docs.filter((d) => d.id !== id) }, { revalidate: false });
       toast.success('Deleted successfully');
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to delete');
     }
   };
+
+  const setApplicationStatus = async (scholarshipId: string, appId: string, status: string) => {
+    try {
+      await api.patch(`/scholarships/applications/${appId}`, { status });
+      mutate((cur) => cur && {
+        ...cur,
+        scholarships: cur.scholarships.map((s) => s.id !== scholarshipId ? s : { ...s, applications: s.applications?.map((a) => (a.id === appId ? { ...a, status } : a)) }),
+      }, { revalidate: false });
+      toast.success(`Application marked ${status.toLowerCase()}`);
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
+  };
+
+  const total = activeTab === 'documents' ? docs.length : activeTab === 'billing' ? payments.length : scholarships.length;
+  const shown = activeTab === 'documents' ? shownDocs.length : activeTab === 'billing' ? shownPayments.length : shownScholarships.length;
+  const placeholder = activeTab === 'documents'
+    ? 'Search documents, owners, emails, roles…'
+    : activeTab === 'billing' ? 'Search payer name, email, role, description or status…' : 'Search scholarships or applicant name, email…';
+  const empty = (text: string) => <div className="p-10 text-center text-sm text-zinc-500">{text}</div>;
 
   return (
     <div className="flex flex-col lg:h-screen">
       <Topbar
         title="Administrative Management"
-        subtitle="Manage documents, billing, and scholarships"
-        rightNode={
-          <button
-            onClick={() => handleOpenModal()}
-            className="btn-primary"
-          >
-            <Plus className="w-4 h-4" /> Add New {activeTab === 'documents' ? 'Document' : activeTab === 'billing' ? 'Bill' : 'Scholarship'}
+        subtitle="Documents, payments and scholarships, with the people behind each one"
+        rightNode={activeTab === 'billing' ? (
+          <Link href="/admin/finances" className="btn-secondary btn-sm">Open Finances</Link>
+        ) : (
+          <button onClick={openNew} className="btn-primary">
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add New</span> {activeTab === 'documents' ? 'Document' : 'Scholarship'}
           </button>
-        }
+        )}
       />
 
-      {/* Modal */}
-      {isModalOpen && (
+      {(docForm || schForm) && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl">
-            <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-5 sm:p-6 border-b border-zinc-200 dark:border-zinc-800">
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">
-                {editingId ? 'Edit ' : 'Create '}
-                {activeTab === 'documents' ? 'Document' : activeTab === 'billing' ? 'Bill' : 'Scholarship'}
+                {editingId ? 'Edit ' : 'Create '}{docForm ? 'Document' : 'Scholarship'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button onClick={closeModal} aria-label="Close" className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              {activeTab === 'documents' && (
+            <form onSubmit={handleSave} className="p-5 sm:p-6 space-y-4">
+              {docForm && (
                 <>
+                  <p className="text-xs text-zinc-500">Documents you add here are stored under your own account.</p>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Document Title</label>
-                    <input required value={formData.title || ''} onChange={e => setFormData({...formData, title: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" />
+                    <label className={label}>Document Title</label>
+                    <input required value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} type="text" className={field} />
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className={label}>Type</label>
+                      <select value={docForm.type} onChange={(e) => setDocForm({ ...docForm, type: e.target.value })} className={field}>
+                        {DOC_TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className={label}>Issued on</label>
+                      <input value={docForm.issuedAt} onChange={(e) => setDocForm({ ...docForm, issuedAt: e.target.value })} type="date" className={field} />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Type</label>
-                    <select value={formData.type || 'OTHER'} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
-                      <option value="TRANSCRIPT">Transcript</option>
-                      <option value="ENROLLMENT">Enrollment Certificate</option>
-                      <option value="DIPLOMA">Diploma</option>
-                      <option value="OTHER">Other</option>
-                    </select>
+                    <label className={label}>File link</label>
+                    <input required value={docForm.fileUrl} onChange={(e) => setDocForm({ ...docForm, fileUrl: e.target.value })} type="url" placeholder="https://…" className={field} />
                   </div>
                 </>
               )}
 
-              {activeTab === 'billing' && (
-                <>
-                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-600 dark:text-amber-400 text-sm">
-                    Billing management via API is coming soon. Currently read-only.
-                  </div>
-                </>
-              )}
-
-              {activeTab === 'scholarships' && (
+              {schForm && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Scholarship Name</label>
-                    <input required value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} type="text" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" />
+                    <label className={label}>Scholarship Name</label>
+                    <input required value={schForm.name} onChange={(e) => setSchForm({ ...schForm, name: e.target.value })} type="text" className={field} />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Amount ($)</label>
-                      <input required value={formData.amount || 0} onChange={e => setFormData({...formData, amount: Number(e.target.value)})} type="number" min="0" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors" />
+                      <label className={label}>Amount ($)</label>
+                      <input value={schForm.amount} onChange={(e) => setSchForm({ ...schForm, amount: e.target.value })} type="number" min="0" className={field} />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Deadline</label>
-                      <input value={formData.deadline || ''} onChange={e => setFormData({...formData, deadline: e.target.value})} type="date" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors [color-scheme:dark]" />
+                      <label className={label}>Deadline</label>
+                      <input value={schForm.deadline} onChange={(e) => setSchForm({ ...schForm, deadline: e.target.value })} type="date" className={field} />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Status</label>
-                    <select value={formData.isActive ? 'Open' : 'Closed'} onChange={e => setFormData({...formData, isActive: e.target.value === 'Open'})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
-                      <option value="Open">Open</option>
-                      <option value="Closed">Closed</option>
-                    </select>
+                    <label className={label}>Provider</label>
+                    <input value={schForm.provider} onChange={(e) => setSchForm({ ...schForm, provider: e.target.value })} type="text" placeholder="e.g. Internal" className={field} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className={label}>Description</label>
+                    <textarea value={schForm.description} onChange={(e) => setSchForm({ ...schForm, description: e.target.value })} className={`${field} min-h-[80px]`} />
                   </div>
                 </>
               )}
 
               <div className="pt-4 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Save
-                </button>
+                <button type="button" onClick={closeModal} className="btn-secondary">Cancel</button>
+                <button type="submit" disabled={saving} className="btn-primary">{saving && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
               </div>
             </form>
           </div>
@@ -204,7 +284,7 @@ export default function AdminAdministrativeClient() {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-8">
+      <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 md:px-8">
         <div className="flex gap-6 max-w-7xl mx-auto overflow-x-auto">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -212,7 +292,7 @@ export default function AdminAdministrativeClient() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => switchTab(tab.id)}
                 className={`flex items-center gap-2 py-4 px-2 border-b-2 text-sm font-medium whitespace-nowrap transition-colors ${
                   isActive
                     ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
@@ -227,129 +307,130 @@ export default function AdminAdministrativeClient() {
         </div>
       </div>
 
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-4">
+          <AdminSearch value={q} onChange={setQ} placeholder={placeholder} shown={shown} total={total} />
+
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
             </div>
-          ) : (
-            <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80">
-                      {activeTab === 'documents' && (
-                        <>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Document Title</th>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Type</th>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Date</th>
-                        </>
-                      )}
-                      {activeTab === 'billing' && (
-                        <>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Student</th>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Description</th>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Amount</th>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Due Date</th>
-                        </>
-                      )}
-                      {activeTab === 'scholarships' && (
-                        <>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Scholarship Name</th>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Amount</th>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Deadline</th>
-                          <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Applicants</th>
-                        </>
-                      )}
-                      <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Status</th>
-                      <th className="p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
-
-                    {activeTab === 'documents' && docs.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                        <td className="p-4 font-medium text-zinc-900 dark:text-white">{doc.title}</td>
-                        <td className="p-4 text-zinc-600 dark:text-zinc-300">{doc.type}</td>
-                        <td className="p-4 text-zinc-600 dark:text-zinc-300">{doc.issuedAt ? new Date(doc.issuedAt).toLocaleDateString() : doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '-'}</td>
-                        <td className="p-4">
-                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${
-                            doc.isVerified ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                          }`}>{doc.isVerified ? 'Verified' : 'Pending'}</span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button onClick={() => handleOpenModal(doc.id)} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => handleDelete(doc.id)} className="p-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+          ) : activeTab === 'documents' ? (
+            <div className={card}>
+              {docs.length === 0 ? empty('No documents have been uploaded yet.') : shownDocs.length === 0 ? empty('No documents match your search.') : (
+                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
+                  {shownDocs.map((doc) => {
+                    const mine = !!me?.id && doc.user?.id === me.id;
+                    return (
+                      <li key={doc.id} className="p-4 grid gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.3fr)_auto] md:items-center">
+                        <div className="min-w-0">
+                          <p className="font-medium text-zinc-900 dark:text-white break-words">{doc.title}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                            <span>{humanize(doc.type)}</span>
+                            <span>· Issued {fmtDate(doc.issuedAt ?? doc.createdAt)}</span>
+                            {doc.expiresAt && <span>· Expires {fmtDate(doc.expiresAt)}</span>}
+                            <Pill tone={doc.isVerified ? 'green' : 'amber'}>{doc.isVerified ? 'Verified' : 'Pending verification'}</Pill>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {activeTab === 'billing' && bills.map((bill) => (
-                      <tr key={bill.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                        <td className="p-4">
-                          <div className="font-medium text-zinc-900 dark:text-white">{bill.user?.firstName} {bill.user?.lastName}</div>
-                          <div className="text-xs text-zinc-500">{bill.userId}</div>
-                        </td>
-                        <td className="p-4 text-zinc-600 dark:text-zinc-300">{bill.description}</td>
-                        <td className="p-4 font-semibold text-indigo-600 dark:text-indigo-400">${bill.amount?.toLocaleString()}</td>
-                        <td className="p-4 text-zinc-600 dark:text-zinc-300">{bill.dueDate ? new Date(bill.dueDate).toLocaleDateString() : '-'}</td>
-                        <td className="p-4">
-                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${
-                            (bill.status === 'PAID' || bill.status === 'COMPLETED') ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
-                            bill.status === 'PENDING' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
-                            'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
-                          }`}>{bill.status}</span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button onClick={() => handleOpenModal(bill.id)} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => handleDelete(bill.id)} className="p-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {activeTab === 'scholarships' && scholarships.map((scholarship) => (
-                      <tr key={scholarship.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                        <td className="p-4 font-medium text-zinc-900 dark:text-white">{scholarship.name}</td>
-                        <td className="p-4 font-semibold text-indigo-600 dark:text-indigo-400">${scholarship.amount?.toLocaleString()}</td>
-                        <td className="p-4 text-zinc-600 dark:text-zinc-300">{scholarship.deadline ? new Date(scholarship.deadline).toLocaleDateString() : 'Rolling'}</td>
-                        <td className="p-4 text-zinc-600 dark:text-zinc-300">{scholarship._count?.applications ?? scholarship.applicationsCount ?? 0}</td>
-                        <td className="p-4">
-                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${
-                            scholarship.isActive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20'
-                          }`}>{scholarship.isActive ? 'Open' : 'Closed'}</span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button onClick={() => handleOpenModal(scholarship.id)} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => handleDelete(scholarship.id)} className="p-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {(
-                      (activeTab === 'documents' && docs.length === 0) ||
-                      (activeTab === 'billing' && bills.length === 0) ||
-                      (activeTab === 'scholarships' && scholarships.length === 0)
-                    ) && (
-                      <tr>
-                        <td colSpan={6} className="p-12 text-center">
-                          <div className="text-zinc-400 dark:text-zinc-500 text-sm">
-                            {activeTab === 'billing'
-                              ? 'Billing data will be available once the billing API is connected.'
-                              : 'No records found. Click "Add New" to create one.'}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                        </div>
+                        <PersonCell person={doc.user} extra={studentFacts(doc.user)} />
+                        <div className="flex gap-2 md:justify-end">
+                          {doc.fileUrl && (
+                            <a href={safeHref(doc.fileUrl)} target="_blank" rel="noopener noreferrer" aria-label="Open file" className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg"><ExternalLink className="w-4 h-4" /></a>
+                          )}
+                          {mine && (
+                            <>
+                              <button onClick={() => openEditDoc(doc)} aria-label="Edit" className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                              <button onClick={() => deleteDoc(doc.id)} aria-label="Delete" className="p-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                            </>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          ) : activeTab === 'billing' ? (
+            <div className={card}>
+              <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500">
+                Payments recorded in UniVerse (latest 500). Add or export payments from <Link href="/admin/finances" className="text-indigo-500 hover:underline">Finances</Link>.
               </div>
+              {paymentsError ? <p className="p-10 text-center text-sm text-rose-500">{paymentsError}</p>
+                : payments.length === 0 ? empty('No payments have been recorded yet.')
+                : shownPayments.length === 0 ? empty('No payments match your search.') : (
+                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
+                  {shownPayments.map((p) => (
+                    <li key={p.id} className="p-4 grid gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] md:items-center">
+                      <PersonCell person={p.user} />
+                      <div className="min-w-0 text-sm">
+                        <p className="text-zinc-900 dark:text-white break-words">{p.description}</p>
+                        <p className="text-xs text-zinc-500">{fmtDate(p.createdAt)}{p.type ? ` · ${humanize(p.type)}` : ''}</p>
+                      </div>
+                      <div className="flex items-center gap-3 md:justify-end">
+                        <span className={`text-sm font-semibold tabular-nums ${p.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>{money(p.amount, p.currency || 'USD')}</span>
+                        <Pill tone={statusTone(p.status)}>{humanize(p.status)}</Pill>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {scholarships.length === 0 ? <div className={card}>{empty('No scholarships yet. Click "Add New Scholarship" to create one.')}</div>
+                : shownScholarships.length === 0 ? <div className={card}>{empty('No scholarships or applicants match your search.')}</div>
+                : shownScholarships.map((s) => {
+                  const apps = s.applications;
+                  const count = s._count?.applications ?? apps?.length ?? 0;
+                  const shownApps = apps && q.trim() && !matchesQuery(q, s.name, s.provider, s.description) ? apps.filter((a) => matchesQuery(q, personText(a.student), a.status)) : apps;
+                  const isOpen = openScholarship === s.id || (!!q.trim() && shownApps !== apps);
+                  return (
+                    <div key={s.id} className={card}>
+                      <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-zinc-900 dark:text-white">{s.name}</p>
+                            <Pill tone={s.isActive ? 'green' : 'zinc'}>{s.isActive ? 'Open' : 'Closed'}</Pill>
+                          </div>
+                          <p className="text-xs text-zinc-500 mt-1">
+                            {[money(s.amount, s.currency || 'USD'), `Deadline ${s.deadline ? fmtDate(s.deadline) : 'rolling'}`, s.provider].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setOpenScholarship(openScholarship === s.id ? null : s.id)}
+                          disabled={!apps}
+                          aria-expanded={isOpen}
+                          className="btn-secondary btn-sm self-start sm:self-auto"
+                        >
+                          <Users className="w-4 h-4" /> {count} applicant{count === 1 ? '' : 's'}
+                          {apps && <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />}
+                        </button>
+                      </div>
+                      {isOpen && apps && (
+                        <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/30">
+                          {shownApps && shownApps.length > 0 ? (
+                            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
+                              {shownApps.map((a) => (
+                                <li key={a.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                                  <PersonCell className="flex-1" person={a.student} extra={[studentFacts(a.student), `Applied ${fmtDate(a.appliedAt)}`].filter(Boolean).join(' · ')} />
+                                  <select
+                                    value={a.status}
+                                    onChange={(e) => setApplicationStatus(s.id, a.id, e.target.value)}
+                                    aria-label={`Status for ${a.student?.name ?? 'applicant'}`}
+                                    className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm text-zinc-900 dark:text-white"
+                                  >
+                                    {(APP_STATUSES as readonly string[]).includes(a.status) ? null : <option value={a.status}>{humanize(a.status)}</option>}
+                                    {APP_STATUSES.map((st) => <option key={st} value={st}>{humanize(st)}</option>)}
+                                  </select>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : <p className="p-4 text-sm text-zinc-500">No one has applied yet.</p>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>

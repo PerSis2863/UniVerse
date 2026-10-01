@@ -23,6 +23,13 @@ const safeSelect = {
   studentProfile: true, teacherProfile: true,
 };
 
+/** The admin list: the profile fields above plus last activity and course counts (no extra queries). */
+const listSelect = {
+  ...safeSelect,
+  accountType: true, lastSeenAt: true,
+  _count: { select: { taughtCourses: true, enrollments: true } },
+};
+
 async function findOne(id: string) {
   const user = await prisma.user.findUnique({ where: { id }, select: safeSelect });
   if (!user) throw new NotFoundException('User not found');
@@ -44,12 +51,60 @@ export default function users(router: Router) {
   });
   r.delete('me/deletion', async ({ user }) => { await cancelDeletion(user.id); return { ok: true }; });
 
+  // Admin people list. Each row also carries when they were last active and how many courses they
+  // teach / are enrolled in (counted in the same query). Capped (default 1,000, ?limit up to 5,000);
+  // ?search= (or ?q=) narrows by name or email on the server.
   r.get('', { roles: ['ADMIN'] }, ({ query }) => {
     const where: any = {};
     if (query.role) where.role = query.role as Role;
     if (query.status) where.status = query.status as UserStatus;
-    if (query.search) where.OR = [{ name: { contains: query.search } }, { email: { contains: query.search } }];
-    return prisma.user.findMany({ where, select: safeSelect, orderBy: { createdAt: 'desc' } });
+    const search = typeof query.search === 'string' && query.search ? query.search : typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
+    if (search) where.OR = [{ name: { contains: search } }, { email: { contains: search } }];
+    const take = Math.min(Math.max(Number(query.limit) || 1000, 1), 5000);
+    return prisma.user.findMany({ where, select: listSelect, orderBy: { createdAt: 'desc' }, take });
+  });
+
+  // One person at a glance for admins: courses they teach or take, recent sign-ins and activity counts.
+  // Registered with two segments, so it never collides with ':id'.
+  r.get<{ id: string }>(':id/overview', { roles: ['ADMIN'] }, async ({ params }) => {
+    const exists = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true } });
+    if (!exists) throw new NotFoundException('User not found');
+    const [taught, enrolled, signIns, quizSubmissions, attendance, applications] = await Promise.all([
+      prisma.course.findMany({
+        where: { teacherId: params.id },
+        select: { id: true, code: true, name: true, status: true, _count: { select: { enrollments: true, quizzes: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      prisma.enrollment.findMany({
+        where: { studentId: params.id },
+        select: { enrolledAt: true, course: { select: { id: true, code: true, name: true, status: true, teacher: { select: { name: true } } } } },
+        orderBy: { enrolledAt: 'desc' },
+        take: 50,
+      }),
+      prisma.loginEvent.findMany({
+        where: { userId: params.id, kind: { in: ['SIGN_IN', 'SIGN_UP'] } },
+        select: { createdAt: true, kind: true, method: true, device: true, city: true, country: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      prisma.quizSubmission.count({ where: { studentId: params.id } }),
+      prisma.attendance.groupBy({ by: ['status'], where: { studentId: params.id }, _count: { _all: true } }),
+      prisma.roleApplication.findMany({
+        where: { userId: params.id, status: { not: 'DRAFT' } },
+        select: { id: true, requestedRole: true, status: true, submittedAt: true, reviewedAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+    ]);
+    return {
+      taught,
+      enrolled,
+      signIns,
+      quizSubmissions,
+      attendance: Object.fromEntries(attendance.map((a) => [a.status, a._count._all])),
+      applications,
+    };
   });
 
   r.get('directory', ({ query }) => {

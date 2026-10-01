@@ -22,10 +22,32 @@ export class QuizzesService {
     return prisma.quiz.create({ data: { ...createQuizDto, status: 'DRAFT' } });
   }
 
-  findAll() {
+  findAll(user?: { role: string }) {
+    // Admins oversee every quiz: who teaches the course, how many questions and submissions it has.
+    if (user?.role === 'ADMIN') {
+      return prisma.quiz.findMany({
+        include: {
+          course: { select: { id: true, code: true, name: true, teacher: { select: { id: true, name: true, email: true } }, _count: { select: { enrollments: true } } } },
+          _count: { select: { questions: true, submissions: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
+      });
+    }
     return prisma.quiz.findMany({
       include: { course: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Who submitted a quiz, with their score (the course's teacher or an admin). */
+  async getSubmissions(id: string, user: { id: string; role: string }) {
+    await this.assertQuizOwner(id, user);
+    return prisma.quizSubmission.findMany({
+      where: { quizId: id },
+      select: { id: true, score: true, maxScore: true, submittedAt: true, student: { select: { id: true, name: true, email: true } } },
+      orderBy: { submittedAt: 'desc' },
+      take: 1000,
     });
   }
 

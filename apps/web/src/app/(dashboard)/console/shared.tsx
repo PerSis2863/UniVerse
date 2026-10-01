@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { mutate as globalMutate } from 'swr';
 import { format } from 'date-fns';
-import { Loader2, Trash2, X } from 'lucide-react';
+import { Loader2, Search, Trash2, X } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,48 @@ export const errorMessage = (e: unknown) => {
 export const card = 'rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50';
 export const field =
   'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 px-3 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40';
+
+/** `value`, once it has stopped changing for `ms` (so a search asks the server once per pause, not per key). */
+export function useDebounced<T>(value: T, ms = 300) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
+/** Case-insensitive "does any of these contain the search text". */
+export const matches = (q: string, ...values: unknown[]) => {
+  const n = q.trim().toLowerCase();
+  return !n || values.some((v) => v != null && String(typeof v === 'object' ? JSON.stringify(v) : v).toLowerCase().includes(n));
+};
+
+/** The console's search field, with a clear button. */
+export function SearchBox({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder: string; className?: string }) {
+  return (
+    <div className={cn('relative flex-1 min-w-[12rem]', className)}>
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+      <input type="text" enterKeyHint="search" className={cn(field, 'pl-9 pr-9')} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} aria-label={placeholder} />
+      {value && (
+        <button type="button" onClick={() => onChange('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+          <X className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Downloads rows as a CSV file (opens in Excel / Numbers / Sheets). */
+export function downloadCsv(name: string, header: string[], rows: unknown[][]) {
+  const cell = (v: unknown) => {
+    const x = v == null ? '' : String(v);
+    return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x;
+  };
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  Object.assign(document.createElement('a'), { href: url, download: `${name}-${new Date().toISOString().slice(0, 10)}.csv` }).click();
+  URL.revokeObjectURL(url);
+}
 
 /** Refreshes everything the console shows after a change. */
 export const refreshConsole = () => globalMutate((k) => typeof k === 'string' && k.startsWith('/owner/'));

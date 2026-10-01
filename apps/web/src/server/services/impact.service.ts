@@ -32,6 +32,14 @@ function getLevelInfo(xp: number) {
   return { current, next, progress, xp };
 }
 
+// What admin review pages show about the person behind a request (no auth identifiers).
+const ADMIN_PERSON_SELECT = {
+  id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true, lastSeenAt: true,
+  impactXP: true, impactLevel: true,
+  studentProfile: { select: { department: true, year: true } },
+  _count: { select: { impactCertificates: { where: { status: 'ISSUED' as const } } } },
+} as const;
+
 // ── Deterministic blockchain-style hash ─────────────────────────────────────
 function generateBlockchainHash(data: string): string {
   return '0x' + createHash('sha256').update(data).digest('hex');
@@ -272,10 +280,30 @@ export class ImpactService {
   async getPendingCredentialRequests() {
     const certs = await prisma.impactCertificate.findMany({
       where: { status: 'DRAFT' },
-      include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
+      include: { user: { select: ADMIN_PERSON_SELECT } },
       orderBy: { requestedAt: 'asc' },
+      take: 300,
     });
     return certs.map((c) => ({ ...this.toClientCredential(c), student: c.user }));
+  }
+
+  /** Admins: the latest decisions (issued, rejected, revoked) with the student and the verifying admin. */
+  async getRecentCredentialDecisions() {
+    const certs = await prisma.impactCertificate.findMany({
+      where: { status: { not: 'DRAFT' } },
+      select: {
+        id: true, title: true, organization: true, projectName: true, hoursCompleted: true, peopleImpacted: true, status: true,
+        signature: true, issuedAt: true, requestedAt: true, revokedAt: true, revokedReason: true, verifiedByName: true,
+        user: { select: { id: true, name: true, email: true, role: true } },
+      },
+      orderBy: { requestedAt: 'desc' },
+      take: 60,
+    });
+    return certs.map(({ signature, user, ...c }) => ({
+      ...c,
+      status: c.status === 'REVOKED' ? (signature ? 'REVOKED' : 'REJECTED') : signature ? 'ISSUED' : 'UNVERIFIED_LEGACY',
+      student: user,
+    }));
   }
 
   private async finalizeIssue(certId: string, holderId: string, title: string) {
@@ -512,7 +540,7 @@ export class ImpactService {
   }
 
   async getPendingCertificateRequests() {
-    return prisma.studentDocument.findMany({ where: { type: 'CERTIFICATE', isVerified: false }, include: { user: { select: { name: true, email: true } } }, orderBy: { createdAt: 'asc' } });
+    return prisma.studentDocument.findMany({ where: { type: 'CERTIFICATE', isVerified: false }, include: { user: { select: ADMIN_PERSON_SELECT } }, orderBy: { createdAt: 'asc' }, take: 300 });
   }
 
   async requestCertificate(userId: string, title: string) {

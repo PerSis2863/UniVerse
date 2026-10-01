@@ -16,8 +16,12 @@ export class KnowledgeHubService {
   findAll(user: { id: string; role: string }) {
     return prisma.knowledgeHubResource.findMany({
       where: user.role === 'ADMIN' ? {} : { OR: [{ isPublic: true }, { authorId: user.id }] },
-      include: { author: { select: { name: true } }, course: { select: { name: true } } },
+      // Admins also get the author's contact details and role; everyone else only sees names.
+      include: user.role === 'ADMIN'
+        ? { author: { select: { id: true, name: true, email: true, role: true, status: true } }, course: { select: { name: true, code: true } } }
+        : { author: { select: { name: true } }, course: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
+      ...(user.role === 'ADMIN' ? { take: 1000 } : {}),
     });
   }
 

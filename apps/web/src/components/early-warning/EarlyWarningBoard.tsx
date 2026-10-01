@@ -1,18 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, CheckCircle2, ChevronDown, Eye, EyeOff, Info, Loader2, MessageSquare, PhoneCall, RefreshCw, ShieldCheck, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Eye, EyeOff, Info, Loader2, Mail, MessageSquare, PhoneCall, RefreshCw, Search, ShieldCheck, TrendingUp, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 
 interface Flag {
   id: string; score: number; level: 'AT_RISK' | 'WATCH' | 'OK'; status: 'OPEN' | 'CONTACTED' | 'RESOLVED' | 'DISMISSED';
   reasons: { code: string; text: string }[]; note: string | null; handledByName: string | null; handledAt: string | null; computedAt: string;
-  student: { id: string; name: string; avatar: string | null; department: string | null };
-  course: { id: string; code: string; name: string };
+  student: { id: string; name: string; email?: string; avatar: string | null; department: string | null; year?: number | null; lastSeenAt?: string | null };
+  course: { id: string; code: string; name: string; teacher?: { id: string; name: string; email: string } | null };
 }
 interface Board { flags: Flag[]; summary: { atRisk: number; watch: number; contacted: number; resolved: number }; courses: { id: string; code: string; name: string }[] }
 
@@ -29,7 +30,13 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
   const router = useRouter();
   const [view, setView] = useState<(typeof VIEWS)[number]['id']>('open');
   const [courseId, setCourseId] = useState('');
-  const key = `/api/early-warning?view=${view}${courseId ? `&courseId=${courseId}` : ''}`;
+  const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+  const key = `/api/early-warning?view=${view}${courseId ? `&courseId=${courseId}` : ''}${debouncedQ ? `&q=${encodeURIComponent(debouncedQ)}` : ''}`;
   const { data, error, isLoading, mutate } = useSWR<Board>(key, authedJson);
   const [refreshing, setRefreshing] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -99,13 +106,21 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
         </button>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search student name, email or course" aria-label="Search early warnings"
+          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 pl-9 pr-9 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+        {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"><X className="w-4 h-4" /></button>}
+      </div>
+      {debouncedQ && data && <p className="text-xs text-zinc-500">{data.flags.length} student{data.flags.length === 1 ? '' : 's'} match “{debouncedQ}”{data.flags.length >= 200 ? ' (first 200 shown)' : ''}</p>}
+
       {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
         : isLoading ? <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
         : !data?.flags.length ? (
           <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-10 text-center">
             <ShieldCheck className="w-10 h-10 mx-auto text-emerald-500" />
-            <p className="mt-3 font-bold text-zinc-900 dark:text-white">{view === 'open' ? 'No one needs attention right now' : 'Nothing here yet'}</p>
-            <p className="mt-1 text-sm text-zinc-500">{view === 'open' ? 'The list updates every morning. Use “Check now” after entering new grades or attendance.' : 'Students you mark as resolved or dismissed appear here.'}</p>
+            <p className="mt-3 font-bold text-zinc-900 dark:text-white">{debouncedQ ? `No students match “${debouncedQ}”` : view === 'open' ? 'No one needs attention right now' : 'Nothing here yet'}</p>
+            <p className="mt-1 text-sm text-zinc-500">{debouncedQ ? 'Try another name, email or course code.' : view === 'open' ? 'The list updates every morning. Use “Check now” after entering new grades or attendance.' : 'Students you mark as resolved or dismissed appear here.'}</p>
           </div>
         ) : (
           <ul className="space-y-2.5">
@@ -122,7 +137,8 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
                         <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border', LEVEL[f.level].cls)}>{LEVEL[f.level].label}</span>
                         {f.status !== 'OPEN' && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300">{STATUS_LABEL[f.status]}</span>}
                       </span>
-                      <span className="block text-xs text-zinc-500 truncate">{f.course.code} · {f.course.name} · {f.reasons[0]?.text ?? 'No current concerns'}</span>
+                      {f.student.email && <span className="block text-xs text-zinc-500 truncate">{f.student.email}{f.student.year ? ` · Year ${f.student.year}` : ''}{f.student.department ? ` · ${f.student.department}` : ''}</span>}
+                      <span className="block text-xs text-zinc-500 truncate">{f.course.code} · {f.course.name}{f.course.teacher ? ` · ${f.course.teacher.name}` : ''} · {f.reasons[0]?.text ?? 'No current concerns'}</span>
                     </span>
                     <span className="hidden sm:flex flex-col items-end shrink-0">
                       <span className="text-lg font-black text-zinc-900 dark:text-white">{f.score}</span>
@@ -144,7 +160,21 @@ function FlagDetail({ f, onMessage, onUpdate }: { f: Flag; onMessage: () => void
   const [note, setNote] = useState(f.note ?? '');
   return (
     <div className="px-4 pb-4 border-t border-zinc-100 dark:border-white/[0.06] pt-4 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_18rem] gap-5">
-      <div>
+      <div className="min-w-0">
+        <dl className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          {f.student.email && (
+            <div className="min-w-0"><dt className="text-xs text-zinc-500">Student email</dt><dd><a href={`mailto:${f.student.email}`} className="inline-flex items-center gap-1 text-indigo-500 break-all"><Mail className="w-3.5 h-3.5 shrink-0" />{f.student.email}</a></dd></div>
+          )}
+          {(f.student.department || f.student.year) && (
+            <div className="min-w-0"><dt className="text-xs text-zinc-500">Programme</dt><dd className="text-zinc-800 dark:text-zinc-100">{[f.student.department, f.student.year ? `Year ${f.student.year}` : null].filter(Boolean).join(' · ')}</dd></div>
+          )}
+          {f.course.teacher && (
+            <div className="min-w-0"><dt className="text-xs text-zinc-500">Course teacher</dt><dd className="text-zinc-800 dark:text-zinc-100 break-words">{f.course.teacher.name} · <a href={`mailto:${f.course.teacher.email}`} className="text-indigo-500 break-all">{f.course.teacher.email}</a></dd></div>
+          )}
+          {f.student.lastSeenAt !== undefined && (
+            <div className="min-w-0"><dt className="text-xs text-zinc-500">Last active</dt><dd className="text-zinc-800 dark:text-zinc-100">{f.student.lastSeenAt ? formatDistanceToNow(new Date(f.student.lastSeenAt), { addSuffix: true }) : 'No activity recorded'}</dd></div>
+          )}
+        </dl>
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Why they’re on this list</p>
         {f.reasons.length ? (
           <ul className="mt-2 space-y-1.5">

@@ -8,11 +8,12 @@ export async function GET(req: Request) {
   if (auth instanceof NextResponse) return auth;
   const rooms = await prisma.room.findMany({
     orderBy: { name: 'asc' },
+    take: 300,
     include: {
       reservations: {
         orderBy: [{ date: 'desc' }, { time: 'asc' }],
-        take: 50,
-        include: { user: { select: { name: true, email: true } } },
+        take: 100,
+        include: { user: { select: { id: true, name: true, email: true, role: true, status: true, phone: true } } },
       },
     },
   });

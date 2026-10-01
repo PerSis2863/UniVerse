@@ -73,6 +73,23 @@ export class AssociationsService {
     return { success: true };
   }
 
+  /** Admin view: every membership with the member's details (newest first, capped). */
+  findAllMembershipsForAdmin() {
+    return prisma.associationMembership.findMany({
+      orderBy: { joinedAt: 'desc' },
+      take: 1000,
+      select: {
+        id: true, role: true, joinedAt: true, associationId: true,
+        user: {
+          select: {
+            id: true, name: true, email: true, role: true, status: true, phone: true,
+            studentProfile: { select: { department: true, year: true } },
+          },
+        },
+      },
+    });
+  }
+
   getUserMemberships(userId: string) {
     return prisma.associationMembership.findMany({
       where: { userId },

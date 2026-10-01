@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { createTransaction, getTransactions } from '@/app/actions/transaction';
 import { getAuthToken } from '@/lib/auth-token';
 import { isSampleMode } from '@/lib/sample-mode';
+import { AdminSearch, PersonCell, matchesQuery, personText } from '@/components/admin/AdminPeople';
 
 export default function AdminFinances() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -66,6 +67,12 @@ export default function AdminFinances() {
   }, [transactions]);
 
   const [isExporting, setIsExporting] = useState(false);
+  const [q, setQ] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const shownTransactions = useMemo(
+    () => transactions.filter((t) => (statusFilter === 'ALL' || t.status === statusFilter) && matchesQuery(q, t.description, t.status, t.id, String(t.amount), personText(t.user))),
+    [transactions, q, statusFilter],
+  );
   
   // Modal states
   const [isStripeModalOpen, setIsStripeModalOpen] = useState(false);
@@ -77,12 +84,13 @@ export default function AdminFinances() {
   });
 
   const handleExport = () => {
-    if (!transactions.length) return void toast.info('No transactions to export yet.');
+    // Exports what the table shows (search and status filter applied).
+    if (!shownTransactions.length) return void toast.info(transactions.length ? 'No transactions match your search.' : 'No transactions to export yet.');
     setIsExporting(true);
     try {
-      const cell = (v: unknown) => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
-      const rows = transactions.map((t) => [t.id, new Date(t.createdAt).toISOString().slice(0, 10), t.description ?? '', t.user?.name ?? '', t.user?.email ?? '', Number(t.amount).toFixed(2), t.status]);
-      const csv = [['Transaction ID', 'Date', 'Description', 'User', 'Email', 'Amount (USD)', 'Status'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
+      const cell = (v: unknown) => { let x = String(v ?? ''); if (/^[=+\-@]/.test(x)) x = `'${x}`; return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+      const rows = shownTransactions.map((t) => [t.id, new Date(t.createdAt).toISOString().slice(0, 10), t.description ?? '', t.user?.name ?? '', t.user?.email ?? '', t.user?.role ?? '', t.user?.phone ?? '', Number(t.amount).toFixed(2), t.status]);
+      const csv = [['Transaction ID', 'Date', 'Description', 'User', 'Email', 'Role', 'Phone', 'Amount (USD)', 'Status'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
       const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
       Object.assign(document.createElement('a'), { href: url, download: `finance-report-${new Date().toISOString().slice(0, 10)}.csv` }).click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -197,7 +205,7 @@ export default function AdminFinances() {
         </div>
       )}
 
-      <div className="flex-1 p-8 overflow-y-auto">
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
           
           {/* Header Actions */}
@@ -287,64 +295,65 @@ export default function AdminFinances() {
             )}
           </div>
 
-          {/* Recent Transactions Table */}
+          {/* Transactions with the person who paid (or was paid) */}
           <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl overflow-hidden">
-            <div className="p-6 border-b border-zinc-200 dark:border-zinc-800/50 flex justify-between items-center">
-              <div>
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Recent Transactions</h2>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">Latest activity across your platform</p>
+            <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800/50 space-y-4">
+              <div className="flex justify-between items-start gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Transactions</h2>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">Every payment with the payer&apos;s name, email, role and phone (latest 500)</p>
+                </div>
+                <button
+                  onClick={() => setIsAddTrxModalOpen(true)}
+                  className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Transaction</span><span className="sm:hidden">Add</span>
+                </button>
               </div>
-              <button 
-                onClick={() => setIsAddTrxModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-lg text-sm font-medium transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Add Transaction
-              </button>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-zinc-50 dark:bg-zinc-950/50">
-                    <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50">Transaction ID</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50">Date</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50">Type</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50">User</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50">Amount</th>
-                    <th className="p-4 text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800/50">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/30">
-                  {transactions.map((trx, i) => (
-                    <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
-                      <td className="p-4 font-mono text-xs font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-300">{trx.id.substring(0,8)}...</td>
-                      <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400">{new Date(trx.createdAt).toISOString().split('T')[0]}</td>
-                      <td className="p-4 text-sm font-medium text-zinc-900 dark:text-white">{trx.description}</td>
-                      <td className="p-4 text-sm text-zinc-300">{trx.user?.name || trx.user?.email || 'Unknown'}</td>
-                      <td className={`p-4 text-sm font-semibold ${trx.amount > 0 ? 'text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
-                        {trx.amount > 0 ? '+' : ''}${Math.abs(trx.amount).toFixed(2)}
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          trx.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                          trx.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                          'bg-red-500/10 text-red-400 border border-red-500/20'
-                        }`}>
-                          {trx.status}
-                        </span>
-                      </td>
-                    </tr>
+              <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                <AdminSearch className="flex-1" value={q} onChange={setQ} placeholder="Search payer name, email, role, phone, description…" shown={shownTransactions.length} total={transactions.length} />
+                <div className="flex gap-1 overflow-x-auto shrink-0">
+                  {['ALL', 'COMPLETED', 'PENDING', 'FAILED', 'REFUNDED'].map((st) => (
+                    <button key={st} onClick={() => setStatusFilter(st)} aria-pressed={statusFilter === st}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${statusFilter === st ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+                      {st.charAt(0) + st.slice(1).toLowerCase()}
+                    </button>
                   ))}
-                  {transactions.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-zinc-500 dark:text-zinc-500">
-                        No transactions found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
+
+            {isLoading ? (
+              <div className="p-8 flex justify-center"><div className="w-6 h-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" /></div>
+            ) : shownTransactions.length === 0 ? (
+              <p className="p-8 text-center text-sm text-zinc-500">{transactions.length ? 'No transactions match your search.' : 'No transactions found.'}</p>
+            ) : (
+              <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
+                {shownTransactions.map((trx) => (
+                  <li key={trx.id} className="p-4 grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                    <PersonCell person={trx.user} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-zinc-900 dark:text-white break-words">{trx.description}</p>
+                      <p className="text-xs text-zinc-500">
+                        {new Date(trx.createdAt).toISOString().split('T')[0]} · <span className="font-mono" title={trx.id}>{trx.id.substring(0, 8)}…</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 md:justify-end">
+                      <span className={`text-sm font-semibold tabular-nums ${trx.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-900 dark:text-white'}`}>
+                        {trx.amount > 0 ? '+' : trx.amount < 0 ? '-' : ''}${Math.abs(trx.amount).toFixed(2)}
+                      </span>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        trx.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                        trx.status === 'PENDING' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                        'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+                      }`}>
+                        {trx.status}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
         </div>

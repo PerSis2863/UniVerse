@@ -1,17 +1,27 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
+import { getStripe } from '@/lib/billing';
+import { recordError } from '@/server/errors';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2024-06-20' as any,
-  httpClient: Stripe.createFetchHttpClient(), // fetch works on Cloudflare Workers
-});
+const NOT_SET_UP = 'Online payments are not set up correctly yet. Please contact your administrator.';
+
+/** Tells the owner (console → Errors) exactly what's wrong with the payment setup. */
+function reportSetup(message: string, userId: string) {
+  return recordError({ source: 'SERVER', kind: 'api', message: `Online payments: ${message}`, path: '/api/create-checkout-session', userId });
+}
 
 export async function POST(req: Request) {
+  let userId = '';
   try {
     const user = await getSessionUser(req);
     if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
+    userId = user.id;
+    const stripe = getStripe();
+    if (!stripe) {
+      await reportSetup('the STRIPE_SECRET_KEY secret is not set on the Cloudflare Worker.', user.id);
+      return NextResponse.json({ error: NOT_SET_UP }, { status: 503 });
+    }
 
     const body = await req.json();
     const { transactionId } = body;
@@ -60,11 +70,15 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ id: session.id, url: session.url });
-  } catch (err: any) {
+  } catch (caught) {
+    const err = caught as { type?: string; message?: string } | undefined;
     console.error('Checkout session failed:', err?.type, err?.message);
-    if (err?.type === 'StripeAuthenticationError') {
-      return NextResponse.json({ error: 'Online payments are not set up correctly yet. Please contact your administrator.' }, { status: 503 });
+    if (err?.type === 'StripeAuthenticationError' || err?.type === 'StripePermissionError') {
+      // Stripe's message names the key it saw (masked), e.g. "Invalid API Key provided: sk_live_****abcd".
+      await reportSetup(`Stripe rejected the STRIPE_SECRET_KEY secret (${err?.message ?? err?.type}).`, userId);
+      return NextResponse.json({ error: NOT_SET_UP }, { status: 503 });
     }
+    await reportSetup(`checkout failed (${err?.type ?? 'Error'}: ${err?.message ?? String(caught)}).`, userId);
     return NextResponse.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
   }
 }

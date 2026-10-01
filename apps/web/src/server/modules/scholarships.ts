@@ -8,6 +8,7 @@ export default function scholarshipsModule(router: Router) {
   const r = router.controller('scholarships');
 
   r.get('', () => scholarships.findAll());
+  r.get('admin', { roles: ['ADMIN'] }, () => scholarships.findAllForAdmin());
   r.get('my-applications', ({ user }) => scholarships.getMyApplications(user.id));
   r.post('', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
     const s = await scholarships.create(body);

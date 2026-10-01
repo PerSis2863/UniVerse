@@ -8,7 +8,7 @@ import { ArrowLeft, ChevronDown, Crown, Loader2, MessageSquare, Paperclip, Penci
 import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
-import { type Rec, type Schema, RecordEditor, card, errorMessage, fetcher, formatValue, refreshConsole, summarize, toastWithUndo } from './shared';
+import { type Rec, type Schema, RecordEditor, SearchBox, card, errorMessage, fetcher, formatValue, matches, refreshConsole, summarize, toastWithUndo } from './shared';
 
 interface Section { model: string; field: string; title: string; count: number; records: Rec[] }
 interface Dossier { user: Rec & { owner?: boolean }; sections: Section[]; empty: string[] }
@@ -20,6 +20,7 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
   const { data, isLoading, error } = useSWR<Dossier>(`/owner/people/${id}`, fetcher);
   const [editing, setEditing] = useState<{ model: string; record: Rec } | null>(null);
   const [chats, setChats] = useState(false);
+  const [q, setQ] = useState('');
 
   if (isLoading) return <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>;
   if (error || !data) return <p className="p-12 text-center text-sm text-rose-500">Could not load this person.</p>;
@@ -77,7 +78,12 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
         </dl>
       </div>
 
-      {data.sections.map((s) => <SectionBlock key={`${s.model}-${s.field}`} s={s} onEdit={(record) => setEditing({ model: s.model, record })} />)}
+      <SearchBox value={q} onChange={setQ} placeholder={`Search everything about ${String(u.name)}`} />
+      {data.sections
+        .map((s) => (q ? { ...s, records: s.records.filter((r) => matches(q, s.title, ...Object.values(r))) } : s))
+        .filter((s) => !q || s.records.length > 0)
+        .map((s) => <SectionBlock key={`${s.model}-${s.field}-${q ? 'q' : ''}`} s={q ? { ...s, count: s.records.length } : s} forceOpen={!!q} onEdit={(record) => setEditing({ model: s.model, record })} />)}
+      {q && data.sections.every((s) => !s.records.some((r) => matches(q, s.title, ...Object.values(r)))) && <p className="text-sm text-zinc-500">Nothing about this person matches “{q}”.</p>}
       {data.empty.length > 0 && <p className="text-xs text-zinc-400">Nothing in: {data.empty.join(', ')}.</p>}
 
       {editing && <RecordEditor model={editing.model} record={editing.record} schema={schema} onClose={() => setEditing(null)} />}
@@ -86,8 +92,8 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
   );
 }
 
-function SectionBlock({ s, onEdit }: { s: Section; onEdit: (r: Rec) => void }) {
-  const [open, setOpen] = useState(s.count <= 5);
+function SectionBlock({ s, onEdit, forceOpen }: { s: Section; onEdit: (r: Rec) => void; forceOpen?: boolean }) {
+  const [open, setOpen] = useState(forceOpen || s.count <= 5);
   const editable = s.model !== 'AuditLog';
   return (
     <div className={card}>

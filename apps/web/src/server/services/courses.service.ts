@@ -28,10 +28,11 @@ export class CoursesService {
   async findAllForAdmin() {
     return prisma.course.findMany({
       include: {
-        teacher: { select: { id: true, name: true, avatar: true } },
+        teacher: { select: { id: true, name: true, avatar: true, email: true, status: true } },
         _count: { select: { enrollments: true, materials: true, quizzes: true } },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: 2000,
     });
   }
 
