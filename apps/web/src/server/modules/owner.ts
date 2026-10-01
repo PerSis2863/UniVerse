@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import { forgetUser, isOwnerEmail } from '../auth';
 import schema from '../owner-schema.json';
-import { decideDeletion } from '../account-deletion';
+import { decideDeletion, eraseAccount } from '../account-deletion';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -185,6 +185,101 @@ export default function ownerModule(router: Router) {
       // The spending guard (cloudflare/usage-guard.ts): this billing month's Cloudflare usage.
       usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
     };
+  });
+
+  // ── Server: live, read-only or maintenance, a notice on every page, and the spending guard ──
+  // The Worker (cloudflare/usage-guard.ts) reads the server_control row at most once a minute. The
+  // owner always gets through: these answers give their browser the uv_owner cookie.
+
+  r.get('server', async () => {
+    const day = new Date(Date.now() - 86_400_000);
+    const [ctl, guard, people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended, history] = await Promise.all([
+      serverControl(),
+      prisma.usageGuard.findUnique({ where: { id: 'main' } }).catch(() => null),
+      prisma.user.count(),
+      prisma.user.count({ where: { lastSeenAt: { gt: day } } }),
+      prisma.loginEvent.count({ where: { createdAt: { gt: day } } }),
+      prisma.message.count({ where: { createdAt: { gt: day } } }),
+      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] } } }),
+      prisma.errorReport.count({ where: { lastSeen: { gt: day } } }),
+      prisma.accountDeletionRequest.count({ where: { status: 'PENDING' } }),
+      prisma.user.count({ where: { status: 'SUSPENDED' } }),
+      prisma.ownerChange.findMany({ where: { model: 'ServerControl' }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    ]);
+    return withOwnerPass(ctl.bypass, {
+      control: publicControl(ctl),
+      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
+      health: { people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended },
+      history,
+    });
+  });
+
+  r.post('server', async ({ body, user }) => {
+    const ctl = await serverControl();
+    const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null } = {};
+    if (body?.mode !== undefined) {
+      if (!['LIVE', 'READ_ONLY', 'MAINTENANCE'].includes(body.mode)) throw new BadRequestException('Mode must be LIVE, READ_ONLY or MAINTENANCE');
+      data.mode = body.mode;
+    }
+    if (body?.message !== undefined) data.message = String(body.message ?? '').trim().slice(0, 500) || null;
+    if (body?.banner !== undefined) data.banner = String(body.banner ?? '').trim().slice(0, 300) || null;
+    if (body?.until !== undefined) {
+      const until = body.until ? new Date(String(body.until)) : null;
+      if (until && (Number.isNaN(until.getTime()) || until.getTime() < Date.now())) throw new BadRequestException('Pick a time in the future');
+      data.until = until;
+    }
+    // Back to normal clears the end time.
+    if (data.mode === 'LIVE') data.until = null;
+    const keys = Object.keys(data) as (keyof typeof data)[];
+    if (!keys.length) throw new BadRequestException('Nothing to change');
+    const after = await prisma.serverControl.update({ where: { id: 'main' }, data: { ...data, updatedAt: new Date(), updatedBy: user.id } });
+    const words: Record<string, string> = { LIVE: 'Server back to normal', READ_ONLY: 'Server set to read-only', MAINTENANCE: 'Server paused for maintenance' };
+    const summary = data.mode && data.mode !== ctl.mode ? words[data.mode] : data.banner !== undefined && data.banner !== ctl.banner ? (data.banner ? `Notice set: “${data.banner.slice(0, 60)}”` : 'Notice removed') : 'Server settings changed';
+    const change = await prisma.ownerChange.create({
+      data: { ownerId: user.id, action: 'UPDATE', model: 'ServerControl', recordId: 'main', summary, before: json(pickKeys(publicControl(ctl), keys)), after: json(pickKeys(publicControl(after), keys)) },
+    });
+    return withOwnerPass(after.bypass, { control: publicControl(after), changeId: change.id });
+  });
+
+  // ── Ban and permanent delete ──
+
+  r.post<{ id: string }>('people/:id/ban', async ({ params, body, user }) => {
+    const target = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, name: true, email: true, status: true } });
+    if (!target) throw new NotFoundException('Person not found');
+    if (isOwnerEmail(target.email) || target.id === user.id) throw new ForbiddenException("The owner account can't be banned.");
+    const ban = body?.ban !== false;
+    const status = ban ? 'SUSPENDED' : 'ACTIVE';
+    await prisma.user.update({ where: { id: target.id }, data: { status } });
+    forgetUser(target.id);
+    const change = await prisma.ownerChange.create({
+      data: { ownerId: user.id, action: 'UPDATE', model: 'User', recordId: target.id, summary: `${ban ? 'Banned' : 'Let back in'} ${label(target)}`, before: { status: target.status }, after: { status } },
+    });
+    return { ok: true, changeId: change.id };
+  });
+
+  /** Removes the account and everything that belongs only to it. Can't be undone. */
+  r.delete<{ id: string }>('people/:id', async ({ params, query, user }) => {
+    const before = (await prisma.user.findUnique({ where: { id: params.id }, select: select(model('User')) })) as Record<string, unknown> | null;
+    if (!before) throw new NotFoundException('Person not found');
+    if (isOwnerEmail(String(before.email)) || before.id === user.id) throw new ForbiddenException("The owner account can't be deleted.");
+    if (String(query.confirm ?? '').trim().toLowerCase() !== String(before.email).toLowerCase()) throw new BadRequestException('Type their email address to confirm.');
+    let how: 'removed' | 'erased' = 'removed';
+    try {
+      await prisma.user.delete({ where: { id: params.id } });
+    } catch {
+      // Something else points at them (a course they teach, a payment…): remove everything
+      // personal and keep a "Deleted user" in their place, so the rest stays intact.
+      await eraseAccount(params.id);
+      how = 'erased';
+    }
+    forgetUser(params.id);
+    await prisma.ownerChange.create({
+      data: {
+        ownerId: user.id, action: 'PURGE', model: 'User', recordId: params.id, before: json(before),
+        summary: `Permanently deleted ${label(before)}${how === 'erased' ? ' (kept as “Deleted user” where other records need them)' : ''}`,
+      },
+    });
+    return { ok: true, how };
   });
 
   /**
@@ -435,6 +530,22 @@ export default function ownerModule(router: Router) {
     await prisma.ownerChange.create({ data: { ownerId: user.id, action: 'RESTORE', model: m.name, recordId: change.recordId, summary: `Undid: ${change.summary}` } });
     return { ok: true };
   });
+}
+
+/** The server switch, created on first use with a fresh owner pass. */
+async function serverControl() {
+  const found = await prisma.serverControl.findUnique({ where: { id: 'main' } });
+  if (found) return found;
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  const bypass = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' })[c]!);
+  return prisma.serverControl.upsert({ where: { id: 'main' }, update: {}, create: { id: 'main', bypass } });
+}
+type Control = Awaited<ReturnType<typeof serverControl>>;
+const publicControl = (c: Control) => ({ mode: c.mode, message: c.message, until: c.until, banner: c.banner, updatedAt: c.updatedAt });
+
+/** Answers with the owner's pass as a cookie, so the Worker lets them through while paused. */
+function withOwnerPass(bypass: string, body: unknown) {
+  return Response.json(json(body), { headers: { 'Set-Cookie': `uv_owner=${bypass}; Path=/; Max-Age=7776000; HttpOnly; Secure; SameSite=Lax` } });
 }
 
 function humanize(name: string) {

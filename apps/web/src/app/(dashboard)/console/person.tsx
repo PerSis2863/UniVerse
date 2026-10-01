@@ -4,7 +4,8 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, ChevronDown, Crown, Loader2, MessageSquare, Paperclip, Pencil, Phone, Trash2, Video } from 'lucide-react';
+import { ArrowLeft, Ban, ChevronDown, Crown, Loader2, MessageSquare, Paperclip, Pencil, Phone, ShieldCheck, Trash2, Video } from 'lucide-react';
+import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
@@ -14,7 +15,7 @@ interface Section { model: string; field: string; title: string; count: number; 
 interface Dossier { user: Rec & { owner?: boolean }; sections: Section[]; empty: string[] }
 interface Convo { id: string; name: string | null; isGroup: boolean; updatedAt: string; participants: { user: { id: string; name: string; role: string } }[]; _count: { messages: number } }
 
-const PROFILE_FIELDS = ['email', 'phone', 'role', 'status', 'dateOfBirth', 'createdAt', 'lastSeenAt', 'emailNotifications', 'impactXP', 'impactLevel', 'googleId', 'firebaseUid'];
+const PROFILE_FIELDS = ['email', 'phone', 'role', 'status', 'accountType', 'dateOfBirth', 'createdAt', 'onboardedAt', 'lastSeenAt', 'updatedAt', 'termsVersion', 'termsAcceptedAt', 'emailNotifications', 'impactXP', 'impactLevel', 'googleId', 'firebaseUid'];
 
 export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema; onBack: () => void }) {
   const { data, isLoading, error } = useSWR<Dossier>(`/owner/people/${id}`, fetcher);
@@ -30,6 +31,38 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
     try {
       const { data: res } = await api.patch(`/owner/records/User/${u.id}`, { data: patch });
       toastWithUndo(label, res.changeId);
+      await refreshConsole();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
+
+  const ban = async (on: boolean) => {
+    const name = String(u.name);
+    if (on && !(await confirmDialog({ title: `Ban ${name}?`, message: "They're signed out straight away and can't sign in again until you let them back in. Everything they made stays.", confirmLabel: 'Ban', destructive: true }))) return;
+    try {
+      const { data: res } = await api.post(`/owner/people/${u.id}/ban`, { ban: on });
+      toastWithUndo(on ? `${name} is banned` : `${name} can sign in again`, res.changeId);
+      await refreshConsole();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
+
+  const purge = async () => {
+    const email = String(u.email);
+    const typed = await promptDialog({
+      title: `Delete ${String(u.name)} permanently?`,
+      message: `Their account and everything that's only theirs is removed. This can't be undone. To keep them out but keep their data, use Ban instead. Type ${email} to confirm.`,
+      placeholder: email,
+      confirmLabel: 'Delete forever',
+    });
+    if (typed === null) return;
+    if (typed.trim().toLowerCase() !== email.toLowerCase()) return void toast.error("The email didn't match, so nothing was deleted.");
+    try {
+      const { data: res } = await api.delete(`/owner/people/${u.id}?confirm=${encodeURIComponent(typed.trim())}`);
+      toast.success(res.how === 'erased' ? `${String(u.name)} was deleted. Their name now shows as “Deleted user” where others still need the record.` : `${String(u.name)} was deleted.`);
+      onBack();
       await refreshConsole();
     } catch (e) {
       toast.error(errorMessage(e));
@@ -62,6 +95,12 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
             </select>
             <button onClick={() => setEditing({ model: 'User', record: u })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Pencil className="w-4 h-4" /> Edit all</button>
             <button onClick={() => setChats(true)} className="btn-primary"><MessageSquare className="w-4 h-4" /> Messages & calls</button>
+            {!u.owner && (u.status === 'SUSPENDED' ? (
+              <button onClick={() => void ban(false)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"><ShieldCheck className="w-4 h-4" /> Let back in</button>
+            ) : (
+              <button onClick={() => void ban(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-500/30 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"><Ban className="w-4 h-4" /> Ban</button>
+            ))}
+            {!u.owner && <button onClick={() => void purge()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-500/30 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" /> Delete permanently</button>}
           </div>
         </div>
         <dl className="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
@@ -130,7 +169,7 @@ function Conversations({ personId, personName, schema, onClose }: { personId: st
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50" role="dialog" aria-modal="true" aria-label="Messages and calls">
-      <div className="w-full sm:max-w-4xl h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 overflow-hidden">
+      <div className="w-full sm:max-w-4xl h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-white/[0.06]">
           <h2 className="font-bold text-zinc-900 dark:text-white">{personName}: messages & calls</h2>
           <button onClick={onClose} className="text-sm text-zinc-500">Close</button>

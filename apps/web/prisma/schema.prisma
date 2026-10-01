@@ -2041,3 +2041,20 @@ model UsageGuard {
 
   @@map("usage_guard")
 }
+
+/// The owner's server switch (owner console → Server), one row ("main"), read by the Worker
+/// (cloudflare/usage-guard.ts) at most once a minute:
+///   LIVE: normal. READ_ONLY: everyone can look around but nothing can be changed.
+///   MAINTENANCE: everyone sees a "back soon" page. The owner always gets through (uv_owner cookie).
+model ServerControl {
+  id        String    @id // always "main"
+  mode      String    @default("LIVE") // LIVE, READ_ONLY, MAINTENANCE
+  message   String? // shown to people while not LIVE
+  until     DateTime? // back to LIVE by itself at this time
+  banner    String? // a notice shown at the top of every page while set
+  bypass    String // the owner's pass (uv_owner cookie), set when the row is created
+  updatedAt DateTime  @default(now())
+  updatedBy String?
+
+  @@map("server_control")
+}

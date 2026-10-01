@@ -232,7 +232,7 @@ function AddResourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: 
 
   return (
     <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between">
           <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Add resource</h2>
           <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"><X className="w-5 h-5" /></button>

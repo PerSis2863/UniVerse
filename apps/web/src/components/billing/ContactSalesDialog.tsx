@@ -30,7 +30,7 @@ export function ContactSalesDialog({ plan, onClose }: { plan: PlanId; onClose: (
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50" role="dialog" aria-modal="true" aria-label={`Contact us about ${PLANS[plan].name}`}>
-      <form onSubmit={send} className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 p-6 space-y-4">
+      <form onSubmit={send} className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Contact us about {PLANS[plan].name}</h2>

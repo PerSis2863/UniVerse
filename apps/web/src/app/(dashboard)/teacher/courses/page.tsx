@@ -141,7 +141,7 @@ export default function TeacherCourses() {
       {/* Course Details Modal */}
       {showDetailsModal && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowDetailsModal(null)}>
-          <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+          <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
             <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: courseColor(showDetailsModal.color, showDetailsModal.code) }}>
                <button onClick={() => setShowDetailsModal(null)} className="absolute top-4 right-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-zinc-900 dark:text-white transition-colors">
                 <X className="w-5 h-5" />
@@ -215,7 +215,7 @@ export default function TeacherCourses() {
       {/* Create / Edit Modal */}
       {(showCreateModal || showEditModal) && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="sheet-in bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-5">
+          <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{showEditModal ? 'Edit Course' : 'Create New Course'}</h2>

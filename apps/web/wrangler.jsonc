@@ -76,9 +76,6 @@
     // Every 15 minutes: the spending guard (cloudflare/usage-guard.ts).
     "crons": ["0 8 * * *", "*/15 * * * *"]
   },
-  // At most 50 ms of processing per request (Workers Paid plan only; the free plan is fixed at
-  // 10 ms), so a stuck or abused request can never run up the bill.
-  "limits": { "cpu_ms": 50 },
   "observability": {
     "enabled": true
   }

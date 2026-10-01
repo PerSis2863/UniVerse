@@ -4,20 +4,22 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Bug, Crown, Database, Download, History, LayoutDashboard, Loader2, LogIn, MessageSquare, MousePointerClick, Trash2, Undo2, Users } from 'lucide-react';
+import { Activity, Bug, Server, Crown, Database, Download, History, LayoutDashboard, Loader2, LogIn, MessageSquare, MousePointerClick, Trash2, Undo2, Users } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, fetcher, field, formatValue, matches, summarize, undoChange, useDebounced } from './shared';
 import { PersonPanel } from './person';
 import { ErrorsPanel } from './errors';
 import { DeletionsPanel } from './deletions';
+import { type PlanUsage, PlanUsageCard, ServerPanel } from './server';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'activity' | 'people' | 'data' | 'changes' | 'errors' | 'deletions';
+type Tab = 'overview' | 'server' | 'activity' | 'people' | 'data' | 'changes' | 'errors' | 'deletions';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'server', label: 'Server', icon: Server },
   { id: 'activity', label: 'Live activity', icon: Activity },
   { id: 'people', label: 'People', icon: Users },
   { id: 'data', label: 'All data', icon: Database },
@@ -70,6 +72,8 @@ export default function OwnerConsole() {
           <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
         ) : tab === 'overview' ? (
           <Overview onPerson={openPerson} onTab={setTab} />
+        ) : tab === 'server' ? (
+          <ServerPanel onTab={setTab} />
         ) : tab === 'activity' ? (
           <Feed onPerson={openPerson} />
         ) : tab === 'people' ? (
@@ -99,10 +103,6 @@ interface OverviewData {
   usage?: PlanUsage | null;
 }
 
-interface PlanUsage {
-  paused: boolean; reason: string | null; resumeAt: string | null; checkedAt: string | null; error: string | null;
-  meters: { key: string; label: string; used: number | null; limit: number; bytes?: boolean }[];
-}
 
 type PersonRow = {
   id: string; name: string; email: string; phone: string | null; role: string; status: string; accountType: string | null; onboardedAt: string | null; createdAt: string; lastSeenAt: string | null;
@@ -197,48 +197,6 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
           ))}</ul>
         </div>
       </div>
-    </div>
-  );
-}
-
-const amount = (n: number, bytes?: boolean) =>
-  bytes ? `${(n / 1024 ** 3).toFixed(n < 1024 ** 3 ? 2 : 1)} GB` : new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
-
-/** The spending guard: how much of what the $5 Cloudflare plan includes has been used this month. */
-function PlanUsageCard({ usage }: { usage: PlanUsage | null }) {
-  const meters = usage?.meters ?? [];
-  const read = meters.filter((m) => m.used !== null).sort((a, b) => b.used! / b.limit - a.used! / a.limit);
-  return (
-    <div className={cn(card, 'p-5', usage?.paused && 'border-rose-500/50')}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-        <h2 className="font-semibold text-zinc-900 dark:text-white">Cloudflare plan · this billing month</h2>
-        {usage?.checkedAt && <span className="text-xs text-zinc-400">checked {formatDistanceToNow(new Date(usage.checkedAt), { addSuffix: true })}</span>}
-      </div>
-      {!usage ? (
-        <p className="text-sm text-zinc-500">The spending guard hasn&apos;t run yet. It checks every 15 minutes once the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets are set.</p>
-      ) : (
-        <>
-          <p className={cn('text-sm mb-3', usage.paused ? 'text-rose-500 font-semibold' : 'text-zinc-500')}>
-            {usage.paused
-              ? `Paused: ${usage.reason ?? 'an allowance ran low.'}${usage.resumeAt ? ` Opens again on ${format(new Date(usage.resumeAt), 'd MMM')}.` : ''}`
-              : 'Running. The app pauses itself at 90% of any allowance, so the plan stays at $5. You get an email at 70%.'}
-          </p>
-          {read.length > 0 && (
-            <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2">{read.map((m) => {
-              const pct = Math.min(100, (m.used! / m.limit) * 100);
-              return (
-                <li key={m.key}>
-                  <div className="flex justify-between gap-2 text-xs"><span className="text-zinc-600 dark:text-zinc-300 truncate">{m.label}</span><span className="text-zinc-400 shrink-0">{amount(m.used!, m.bytes)} of {amount(m.limit, m.bytes)}</span></div>
-                  <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-                    <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: `${Math.max(pct, 1)}%` }} />
-                  </div>
-                </li>
-              );
-            })}</ul>
-          )}
-          {usage.error && <p className="mt-3 text-xs text-amber-600 dark:text-amber-400 whitespace-pre-wrap">Couldn&apos;t read some of it: {usage.error}</p>}
-        </>
-      )}
     </div>
   );
 }

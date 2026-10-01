@@ -201,10 +201,20 @@ CPU ms a month, plus D1, Durable Objects, logs and R2 allowances), usage is char
   - `CF_BILLING_DAY`: the day of the month the Paid plan renews (the day it was bought). Without it the guard
     counts the last 31 days, which may pause early.
   - `CF_GUARD_OFF`: any value turns pausing off (to reopen during a pause and accept extra charges).
-- **A 50 ms CPU limit per request** (`limits.cpu_ms` in `wrangler.jsonc`, Paid plan only), so no single
-  request can run up time.
+- **A 50 ms CPU limit per request**: after upgrading, add `"limits": { "cpu_ms": 50 }` to `wrangler.jsonc`
+  (Paid plan only: the free plan is fixed at 10 ms and refuses the setting), so no single request can run
+  up time.
 - The bot and rate-limiting rules above: requests blocked by Cloudflare's firewall never reach the Worker
   and aren't billed. A paused app still counts each request it answers, though cheaply.
+
+## Owner console → Server
+
+The owner can switch UniVerse between **Live**, **Read-only** (people can look around; every change is
+refused with a message) and **Maintenance** (everyone else sees a "down for maintenance" page), with an
+optional message and a time to go back to Live by itself, and show a notice at the top of every page. The
+switch is the `server_control` row; the Worker (`cloudflare/usage-guard.ts`) applies it within a minute.
+Stripe's webhook always goes through, and so does the owner: opening the console gives their browser a
+`uv_owner` cookie (on a new device: sign in at /login, then open any page).
 
 ## Notes
 

@@ -1,4 +1,5 @@
-// The spending guard. Cloudflare has no setting that caps the bill: on the Workers Paid plan,
+// The spending guard, and the gate every request passes (see "The gate" below: the guard's pause
+// and the owner's server switch). Cloudflare has no setting that caps the bill: on the Workers Paid plan,
 // anything past what the $5 includes is charged. So every 15 minutes (wrangler.jsonc "triggers")
 // this reads the account's usage for the billing month from Cloudflare's analytics, emails the
 // owner when any allowance passes 70%, and at 90% pauses the app: every page and API call gets a
@@ -250,46 +251,112 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<strin
   return `${paused ? 'paused' : 'running'}; highest ${top.key} ${percent(top)}${errors.length ? `; unreadable: ${errors.length}` : ''}`;
 }
 
-// ─── The pause, as the app's requests see it ──────────────────────────────────────────────────
+// ─── The gate: what the app's requests see ─────────────────────────────────────────────────────
+// Two switches decide it: the spending guard above (usage_guard) and the owner's server switch in
+// the owner console (server_control: live, read-only or maintenance, plus a notice for every page).
+// Both are read from the database at most once a minute per instance, in the background, so
+// requests never wait for them. The owner always gets through: the console gives their browser a
+// uv_owner cookie that matches the switch's pass.
 
-// Read from the database at most once a minute per instance, in the background, so requests
-// never wait for it.
-let state: { paused: boolean; resumeAt: string | null; at: number } = { paused: false, resumeAt: null, at: 0 };
+type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
+type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; at: number };
+let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, at: 0 };
 let loading = false;
 
-export function guardPaused(env: GuardEnv, ctx: ExecutionContext): { resumeAt: string | null } | null {
-  if (env.CF_GUARD_OFF) return null;
-  if (!loading && env.DB && Date.now() - state.at > 60_000) {
-    loading = true;
-    ctx.waitUntil(
-      env.DB.prepare('SELECT paused, resumeAt FROM usage_guard WHERE id = ?')
-        .bind('main')
-        .first<{ paused: unknown; resumeAt: string | null }>()
-        .then((row) => {
-          state = { paused: bool(row?.paused), resumeAt: row?.resumeAt ?? null, at: Date.now() };
-        })
-        // No table yet (before the migration runs): treat as running and try again in a minute.
-        .catch(() => {
-          state = { ...state, at: Date.now() };
-        })
-        .finally(() => {
-          loading = false;
-        }),
-    );
-  }
-  return state.paused ? { resumeAt: state.resumeAt } : null;
+const toMs = (v: string | null) => (v ? Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(v) ? v : `${v.replace(' ', 'T')}Z`) : NaN);
+
+function refresh(env: GuardEnv, ctx: ExecutionContext) {
+  if (loading || !env.DB || Date.now() - state.at < 60_000) return;
+  loading = true;
+  const db = env.DB;
+  // Each read on its own: before its migration runs, a missing table just means "not set".
+  const guard = db.prepare('SELECT paused, resumeAt FROM usage_guard WHERE id = ?').bind('main').first<{ paused: unknown; resumeAt: string | null }>().catch(() => undefined);
+  const control = db.prepare('SELECT mode, message, until, banner, bypass FROM server_control WHERE id = ?').bind('main').first<{ mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string }>().catch(() => undefined);
+  ctx.waitUntil(
+    Promise.all([guard, control])
+      .then(([g, c]) => {
+        state = {
+          ...state,
+          ...(g !== undefined && { paused: bool(g?.paused), resumeAt: g?.resumeAt ?? null }),
+          ...(c !== undefined && { mode: c?.mode ?? 'LIVE', message: c?.message ?? null, until: c?.until ?? null, banner: c?.banner ?? null, bypass: c?.bypass ?? null }),
+          at: Date.now(),
+        };
+      })
+      .finally(() => {
+        loading = false;
+      }),
+  );
 }
 
-/** The answer every request gets while paused: tiny, no database, no rendering. */
-export function pausedResponse(url: URL, resumeAt: string | null): Response {
-  const when = resumeAt ? new Date(resumeAt.replace('+00:00', 'Z')).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' }) : null;
-  const message = `UniVerse is taking a short break${when ? ` and will be back on ${when}` : ' and will be back soon'}. Your work is saved.`;
-  const headers = { 'Retry-After': '3600', 'Cache-Control': 'no-store' };
-  if (url.pathname.startsWith('/api/') || url.pathname === '/realtime' || url.pathname === '/board-live') return Response.json({ error: message }, { status: 503, headers });
+const cookie = (request: Request, name: string) => request.headers.get('cookie')?.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))?.[1] ?? null;
+
+// While paused, these still work for everyone: the owner console's API (it answers "not found" to
+// anyone but the owner, and gives the owner their pass) and signing in, so the owner can get in.
+const OWNER_WAY_IN = /^\/(login|api\/core\/owner\/|api\/core\/auth\/)/;
+// In read-only mode, changes are refused, except these, which only read or keep the app running,
+// and the owner console's API (owner only).
+const READ_ONLY_OK = /^\/api\/(bootstrap$|core\/auth\/|core\/owner\/|core\/activity\/ui$|errors$|chat\/conversations\/[^/]+\/typing$)/;
+
+/** What the switches say about this request: null to let it through, or the answer to give. */
+export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: ExecutionContext): Response | null {
+  refresh(env, ctx);
+  if (url.pathname.startsWith('/api/webhooks/')) return null; // payments are never lost
+  if (state.bypass && cookie(request, 'uv_owner') === state.bypass) return null;
+  const now = Date.now();
+  const mode: Mode = state.until && toMs(state.until) <= now ? 'LIVE' : state.mode;
+  const spending = state.paused && !env.CF_GUARD_OFF;
+  if (spending || mode === 'MAINTENANCE') {
+    if (OWNER_WAY_IN.test(url.pathname)) return null;
+    return spending
+      ? pausedResponse(url, { title: 'Back soon', message: 'UniVerse is taking a short break. Your work is saved.', back: state.resumeAt })
+      : pausedResponse(url, { title: 'Down for maintenance', message: state.message || 'UniVerse is being updated. Your work is saved.', back: state.until });
+  }
+  if (mode === 'READ_ONLY' && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname.startsWith('/api/') && !READ_ONLY_OK.test(url.pathname)) {
+    const message = `${state.message || 'UniVerse is in read-only mode for maintenance'}: you can look around, but changes can't be saved right now.`;
+    return Response.json({ error: message }, { status: 503, headers: { 'Retry-After': '600', 'Cache-Control': 'no-store' } });
+  }
+  return null;
+}
+
+/** The notice shown at the top of every page: the owner's, or read-only mode's own. */
+export function pageNotice(request: Request, env: GuardEnv): string | null {
+  const now = Date.now();
+  const mode: Mode = state.until && toMs(state.until) <= now ? 'LIVE' : state.mode;
+  const owner = !!state.bypass && cookie(request, 'uv_owner') === state.bypass;
+  const parts = [state.banner];
+  if (mode === 'READ_ONLY') parts.push(`${state.message || 'Read-only mode'}: you can look around, but changes can't be saved right now.`);
+  if (owner && mode === 'MAINTENANCE') parts.push('Maintenance mode is on: only you can use UniVerse. Turn it off in the owner console → Server.');
+  if (owner && state.paused && !env.CF_GUARD_OFF) parts.push('The spending guard has paused UniVerse for everyone else.');
+  const text = parts.filter(Boolean).join(' · ');
+  return text || null;
+}
+
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+/**
+ * Adds the notice to a page. It's created by a small script after the page has loaded, so it never
+ * gets in the way of the app starting; people can close it until the text changes.
+ */
+export function withNotice(res: Response, notice: string | null): Response {
+  if (!notice || res.status !== 200 || !/^text\/html/.test(res.headers.get('content-type') ?? '')) return res;
+  const text = JSON.stringify(notice).replace(/</g, '\\u003c');
+  const script = `<script>(function(){var t=${text};try{if(sessionStorage.getItem('uv-notice')===t)return}catch(e){}function show(){if(document.getElementById('uv-notice'))return;var d=document.createElement('div');d.id='uv-notice';d.setAttribute('role','status');d.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top) + 8px);z-index:2147483000;max-width:calc(100vw - 24px);display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#a21caf);color:#fff;font:600 13px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3)';var s=document.createElement('span');s.textContent=t;var b=document.createElement('button');b.textContent='\u2715';b.setAttribute('aria-label','Close');b.style.cssText='background:none;border:0;color:#fff;font-size:14px;cursor:pointer;padding:0 0 0 4px';b.onclick=function(){d.remove();try{sessionStorage.setItem('uv-notice',t)}catch(e){}};d.appendChild(s);d.appendChild(b);document.body.appendChild(d)}if(document.readyState==='complete')setTimeout(show,300);else addEventListener('load',function(){setTimeout(show,300)})})()</script>`;
+  return new HTMLRewriter().on('head', { element: (e) => void e.append(script, { html: true }) }).transform(res);
+}
+
+/** The answer while paused: tiny, no database, no rendering. Signed-in owners are let back in. */
+export function pausedResponse(url: URL, { title, message, back }: { title: string; message: string; back: string | null }): Response {
+  const backMs = toMs(back);
+  const backText = Number.isNaN(backMs) ? '' : ` Back by ${new Date(backMs).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC.`;
+  const headers = { 'Retry-After': '600', 'Cache-Control': 'no-store' };
+  if (url.pathname.startsWith('/api/') || url.pathname === '/realtime' || url.pathname === '/board-live') return Response.json({ error: `${message}${backText}` }, { status: 503, headers });
+  // The owner, signed in on this device, gets their pass from the console's API and comes back in.
+  const unlock = `<script>(function(){try{var t=localStorage.getItem('accessToken');if(!t||sessionStorage.getItem('uv-unlock'))return;fetch('/api/core/owner/server',{headers:{Authorization:'Bearer '+t}}).then(function(r){if(r.ok){sessionStorage.setItem('uv-unlock','1');location.reload()}})}catch(e){}})()</script>`;
+  const local = Number.isNaN(backMs) ? '' : `<script>(function(){var e=document.getElementById('back');if(e)e.textContent=' Back by '+new Date(${backMs}).toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'.'})()</script>`;
   return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UniVerse · back soon</title>
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UniVerse · ${esc(title)}</title>
 <style>html{background:#0b0b14;color:#e4e4e7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:radial-gradient(60% 50% at 20% 10%,rgba(99,102,241,.25),transparent),radial-gradient(50% 40% at 90% 90%,rgba(217,70,239,.18),transparent)}main{max-width:420px;text-align:center}h1{font-size:22px;color:#fff;margin:0 0 12px}p{line-height:1.6;margin:0 0 20px;color:#a1a1aa}a{display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-weight:600;padding:10px 20px;border-radius:10px}</style></head>
-<body><main><h1>Back soon</h1><p>${message}</p><a href="/">Try again</a></main></body></html>`,
+<body><main><h1>${esc(title)}</h1><p>${esc(message)}<span id="back">${esc(backText)}</span></p><a href="/">Try again</a></main>${local}${unlock}</body></html>`,
     { status: 503, headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } },
   );
 }
