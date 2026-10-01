@@ -9,6 +9,7 @@ import { publishChat } from '../realtime';
 import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
+import { serverSettings } from '../server-settings';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -259,6 +260,7 @@ export default function ownerModule(router: Router) {
       control: publicControl(ctl),
       usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
       health: { people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended },
+      settings: serverSettings(),
       history,
     });
   });

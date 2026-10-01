@@ -25,6 +25,7 @@ interface ServerData {
   control: Control;
   usage: PlanUsage | null;
   health: { people: number; activeToday: number; signInsToday: number; messagesToday: number; openErrors: number; newErrors: number; pendingDeletions: number; suspended: number };
+  settings?: { name: string; what: string; needed: boolean; set: boolean; problem: string | null }[];
   history: { id: string; summary: string; createdAt: string; undoneAt: string | null }[];
 }
 
@@ -56,6 +57,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
       <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
       <PlanUsageCard usage={data.usage} />
+      {data.settings && <SettingsCard settings={data.settings} />}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map(([label, n, Icon, to]) => (
           <button key={label} onClick={() => onTab(to)} className={cn(card, 'p-4 text-left hover:border-indigo-500/40')}>
@@ -76,6 +78,31 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
           ))}</ul>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Which Cloudflare settings the live site can see: names and yes/no only, never the values. */
+function SettingsCard({ settings }: { settings: NonNullable<ServerData['settings']> }) {
+  const bad = settings.filter((s) => s.problem || (s.needed && !s.set)).length;
+  return (
+    <div className={cn(card, 'p-5')}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+        <h2 className="font-semibold text-zinc-900 dark:text-white">Server settings</h2>
+        <span className={cn('text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border', bad ? TONES.rose : TONES.emerald)}>{bad ? `${bad} to fix` : 'All good'}</span>
+      </div>
+      <p className="text-sm text-zinc-500 mb-4">What the live site can see in Cloudflare → universe-web → Settings → Variables and Secrets. Add each one there as type Secret, then Deploy. Values are never shown.</p>
+      <ul className="divide-y divide-zinc-200 dark:divide-white/10">
+        {settings.map((s) => (
+          <li key={s.name} className="py-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
+            <span><code className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{s.name}</code> <span className="text-xs text-zinc-500">· {s.what}</span></span>
+            <span className={cn('text-xs font-semibold', s.problem ? 'text-rose-600 dark:text-rose-400' : s.set ? 'text-emerald-600 dark:text-emerald-400' : s.needed ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-400')}>
+              {s.problem ? 'Needs fixing' : s.set ? 'Set' : s.needed ? 'Missing' : 'Not set (optional)'}
+            </span>
+            {s.problem && <p className="basis-full text-xs text-rose-600 dark:text-rose-400">{s.problem}</p>}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
