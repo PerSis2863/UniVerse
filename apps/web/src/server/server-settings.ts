@@ -24,6 +24,7 @@ const SETTINGS: { name: string; what: string; needed?: boolean }[] = [
   { name: 'SUPER_ADMIN_EMAILS', what: 'Extra owner emails (universeimpact1@gmail.com works without it)' },
   { name: 'CF_USAGE_TOKEN', what: 'Spending guard' },
   { name: 'CF_ACCOUNT_ID', what: 'Spending guard' },
+  { name: 'CF_ADMIN_TOKEN', what: 'Put an earlier version live from this console (Workers Scripts: Edit only)' },
 ];
 
 const squash = (name: string) => name.toUpperCase().replace(/[^A-Z0-9]/g, '');

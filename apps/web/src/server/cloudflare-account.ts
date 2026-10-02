@@ -5,6 +5,8 @@
 //   Configuration (builds), D1 (database), Workers R2 Storage (file storage).
 // Each part that its permission is missing for says so instead of failing the whole card.
 
+import { adminEnabled } from './cloudflare-admin';
+
 const WORKER = 'universe-web';
 const DATABASE = 'universe-db';
 const BUILD_MINUTES = 3000; // a month on Workers Free and Paid
@@ -27,9 +29,10 @@ const part = async <T,>(fn: () => Promise<T>): Promise<Part<T>> => {
 };
 
 async function versions() {
-  const r = await cf<{ deployments: { id: string; created_on: string; source?: string; author_email?: string; annotations?: Record<string, string> }[] }>(`/workers/scripts/${WORKER}/deployments`);
+  const r = await cf<{ deployments: { id: string; created_on: string; source?: string; author_email?: string; annotations?: Record<string, string>; versions?: { version_id: string; percentage: number }[] }[] }>(`/workers/scripts/${WORKER}/deployments`);
   return r.deployments.slice(0, 8).map((d) => ({
     at: d.created_on,
+    versionId: d.versions?.[0]?.version_id ?? null,
     by: d.annotations?.['workers/triggered_by'] ?? d.source ?? '',
     note: d.annotations?.['workers/message'] ?? '',
   }));
@@ -80,7 +83,7 @@ export async function cloudflareAccount(fresh = false) {
   if (!fresh && cache && Date.now() - cache.at < 5 * 60_000) return cache.value;
   if (!process.env.CF_ACCOUNT_ID?.trim() || !process.env.CF_USAGE_TOKEN?.trim()) return { setup: false };
   const [v, b, d, s] = await Promise.all([part(versions), part(builds), part(database), part(storage)]);
-  const value = { setup: true, checkedAt: new Date().toISOString(), versions: v, builds: b, database: d, storage: s };
+  const value = { setup: true, canEdit: adminEnabled(), checkedAt: new Date().toISOString(), versions: v, builds: b, database: d, storage: s };
   cache = { at: Date.now(), value };
   return value;
 }

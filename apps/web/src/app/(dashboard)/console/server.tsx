@@ -150,8 +150,8 @@ function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
 /** Which Cloudflare settings the live site can see: names and yes/no only, never the values. */
 type CfPart<T> = { ok: true; data: T } | { ok: false; error: string };
 type CfAccount = {
-  setup: boolean; checkedAt?: string;
-  versions?: CfPart<{ at: string; by: string; note: string }[]>;
+  setup: boolean; checkedAt?: string; canEdit?: boolean;
+  versions?: CfPart<{ at: string; versionId: string | null; by: string; note: string }[]>;
   builds?: CfPart<{ minutesUsed: number; minutesLimit: number; count: number; partial: boolean; recent: { at: string; outcome: string; minutes: number; branch: string; message: string }[] }>;
   database?: CfPart<{ name: string; bytes: number | null; tables: number | null }>;
   storage?: CfPart<{ buckets: string[] }>;
@@ -165,11 +165,23 @@ function CloudflareCard() {
   const { data, isValidating } = useSWR<CfAccount>(`/owner/cloudflare${fresh ? `?fresh=1&n=${fresh}` : ''}`, fetcher, { refreshInterval: 300_000 });
   const missing = (p?: CfPart<unknown>) => (p && !p.ok ? <p className="text-xs text-amber-600 dark:text-amber-400">{(p as { error: string }).error}</p> : null);
   const b = data?.builds?.ok ? data.builds.data : null;
+  // Every change to Cloudflare needs a code sent to the owner's email.
+  const putBack = async (versionId: string, when: string) => {
+    if (!(await confirmDialog({ title: `Put the version from ${when} back live?`, message: 'Use this when a new update broke something. We will email you a code to confirm.', confirmLabel: 'Email me a code' }))) return;
+    try {
+      await api.post('/owner/cloudflare/code');
+      const code = window.prompt('Enter the 6-digit code we just emailed you:');
+      if (!code) return;
+      const res = (await api.post('/owner/cloudflare/rollback', { versionId, code })).data;
+      toast.success(res.done);
+      setFresh((n) => n + 1);
+    } catch (e) { toast.error(errorMessage(e)); }
+  };
   return (
     <div className={cn(card, 'p-5')}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
         <h2 className="font-semibold text-zinc-900 dark:text-white">Cloudflare account</h2>
-        <button onClick={() => setFresh(Date.now())} disabled={isValidating} className="btn-secondary !py-1 !px-2.5 text-xs">{isValidating ? 'Checking…' : 'Check now'}</button>
+        <button onClick={() => setFresh((n) => n + 1)} disabled={isValidating} className="btn-secondary !py-1 !px-2.5 text-xs">{isValidating ? 'Checking…' : 'Check now'}</button>
       </div>
       {!data ? <Loader2 className="w-5 h-5 animate-spin text-zinc-400" /> : !data.setup ? (
         <p className="text-sm text-zinc-500">Add the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets to see this.</p>
@@ -195,6 +207,7 @@ function CloudflareCard() {
               <ul className="space-y-1">{data.versions.data.map((v, i) => (
                 <li key={v.at} className="text-xs text-zinc-500 truncate">
                   {i === 0 && <span className="font-semibold text-emerald-600 dark:text-emerald-400">Live · </span>}{format(new Date(v.at), 'd MMM, HH:mm')}{v.by ? ` · ${v.by}` : ''}{v.note ? ` · ${v.note}` : ''}
+                  {i > 0 && data.canEdit && v.versionId && <button onClick={() => void putBack(v.versionId!, format(new Date(v.at), 'd MMM, HH:mm'))} className="ml-2 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Put back live</button>}
                 </li>
               ))}</ul>
             ) : missing(data.versions)}

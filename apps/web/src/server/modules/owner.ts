@@ -12,6 +12,7 @@ import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
 import { aiUsageToday, forgetAiLimits, parseLimits } from '../ai-budget';
 import { cloudflareAccount } from '../cloudflare-account';
+import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -578,6 +579,21 @@ export default function ownerModule(router: Router) {
 
   // The Cloudflare account card on the Server tab (versions, builds, database, storage).
   r.get('cloudflare', ({ query }) => cloudflareAccount(query.fresh === '1'));
+
+  // Putting an earlier version live needs CF_ADMIN_TOKEN and an emailed code each time.
+  r.post('cloudflare/code', async ({ user }) => {
+    try { await emailCode(user); } catch (e) { throw new BadRequestException((e as Error).message); }
+    return { sent: true };
+  });
+  r.post('cloudflare/rollback', async ({ body, user }) => {
+    let done: string;
+    try { done = await rollback(user, body?.versionId, body?.code); } catch (e) {
+      if (e instanceof CloudflareAdminError) throw new BadRequestException(e.message);
+      throw e;
+    }
+    await prisma.ownerChange.create({ data: { ownerId: user.id, action: 'CLOUDFLARE', model: 'Cloudflare', recordId: 'universe-web', summary: done } });
+    return { done };
+  });
 
   // ── Payments (Money tab) ──
   // Fixing a payment by hand changes UniVerse's record only: Stripe is not refunded or charged.
