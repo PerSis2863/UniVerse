@@ -1,6 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, HOME_TABS } from '@/components/layout/SectionTabs';
 import { Info, Megaphone, FileText, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,6 +14,7 @@ export default function StudentInformation() {
   return (
     <>
       <Topbar title="Information" subtitle="Latest updates and resources from the university" />
+      <SectionTabs tabs={HOME_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-8">

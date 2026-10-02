@@ -53,7 +53,7 @@ function tabsForRole(role: string): { base: string; items: TabItem[] } {
   return {
     base: '/student',
     items: [
-      { href: '/student', label: 'Home', icon: LayoutDashboard },
+      { href: '/student', label: 'Home', icon: LayoutDashboard, match: ['/student/calendar', '/student/information'] },
       { href: '/student/impact/ngo-marketplace', label: 'Impact', icon: Globe2, match: ['/student/impact', '/student/credentials', '/student/passport'] },
       { href: '/student/courses', label: 'Courses', icon: BookOpen },
       { href: '/student/inbox', label: 'Messages', icon: MessageSquare },
@@ -68,7 +68,7 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
   const { base, items } = tabsForRole(role);
 
   const isActive = (item: TabItem) => {
-    if (item.href === base) return pathname === base;
+    if (item.href === base) return pathname === base || !!item.match?.includes(pathname);
     const prefixes = item.match ?? [item.href];
     return prefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
   };

@@ -35,6 +35,25 @@ export const CREDENTIAL_TABS: SectionTab[] = [
   { href: '/student/passport', label: 'Skills passport' },
 ];
 
+export const HOME_TABS: SectionTab[] = [
+  { href: '/student', label: 'Overview' },
+  { href: '/student/calendar', label: 'Timetable' },
+  { href: '/student/information', label: 'Information' },
+];
+
+export const PROGRESS_TABS: SectionTab[] = [
+  { href: '/student/grades', label: 'Grades' },
+  { href: '/student/attendance', label: 'Attendance' },
+  { href: '/student/quizzes', label: 'Quizzes' },
+];
+
+export const LIFE_TABS: SectionTab[] = [
+  { href: '/student/life/associations', label: 'Associations' },
+  { href: '/student/life/rooms', label: 'Room booking' },
+  { href: '/student/life/medical', label: 'Medical & disability' },
+  { href: '/student/life/everyday', label: 'Everyday life' },
+];
+
 export function SectionTabs({ tabs }: { tabs: SectionTab[] }) {
   const pathname = usePathname();
   return (

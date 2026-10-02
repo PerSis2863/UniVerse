@@ -2,6 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { HeartPulse, Stethoscope, Activity, X, CheckCircle2, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
@@ -110,6 +111,7 @@ export default function MedicalPage() {
     return (
       <>
         <Topbar title="Medical & Health Services" subtitle="Manage your health profile and emergency contacts" />
+        <SectionTabs tabs={LIFE_TABS} />
         <div className="flex-1 flex items-center justify-center">
           <ContentSkeleton variant="list" />
         </div>
@@ -120,6 +122,7 @@ export default function MedicalPage() {
   return (
     <>
       <Topbar title="Medical & Health Services" subtitle="Manage your health profile and emergency contacts" />
+      <SectionTabs tabs={LIFE_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-8">

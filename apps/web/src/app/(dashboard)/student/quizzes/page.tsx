@@ -1,6 +1,7 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Target, Trophy, Clock, CheckCircle2, ChevronRight, BrainCircuit, AlertCircle, Loader2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
@@ -109,6 +110,7 @@ export default function QuizzesPage() {
   return (
     <>
       <Topbar title="My Quizzes" subtitle="Test your knowledge and track your performance." />
+      <SectionTabs tabs={PROGRESS_TABS} />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <KpiCard title="Average Score" value={`${avgScore}%`} icon={Target} color="emerald" />

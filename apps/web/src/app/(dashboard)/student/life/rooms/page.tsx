@@ -1,5 +1,6 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { Map, Calendar as CalendarIcon, Clock, Users, Search, X, CheckCircle2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -77,6 +78,7 @@ export default function RoomReservationPage() {
         title="Room Reservation" 
         subtitle="Book study rooms and collaboration spaces" 
       />
+      <SectionTabs tabs={LIFE_TABS} />
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-8">
           

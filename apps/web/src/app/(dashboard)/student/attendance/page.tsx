@@ -5,6 +5,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
 import { m as motion } from 'framer-motion';
@@ -17,6 +18,7 @@ export default function AttendancePage() {
     return (
       <>
         <Topbar title="Attendance" subtitle="Track your class presence and absences." />
+        <SectionTabs tabs={PROGRESS_TABS} />
         <div className="flex-1 p-8 flex items-center justify-center">
           <ContentSkeleton variant="list" />
         </div>
@@ -49,6 +51,7 @@ export default function AttendancePage() {
   return (
     <>
       <Topbar title="Attendance" subtitle="Track your class presence and absences." />
+      <SectionTabs tabs={PROGRESS_TABS} />
       <div className="flex-1 p-8 space-y-8">
         
         {/* KPIs */}

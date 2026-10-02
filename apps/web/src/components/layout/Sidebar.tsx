@@ -6,8 +6,8 @@ import { PenTool, ShieldCheck } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
-  GraduationCap, Brain, ClipboardList, Calendar as CalendarIcon,
-  Info, AlertTriangle, Folder, Search, ChevronDown, ChevronRight,
+  GraduationCap, Brain, ClipboardList,
+  AlertTriangle, Folder, ChevronDown, ChevronRight,
   Coffee, Shield, Map, Globe2, Layers, Crown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,11 +31,33 @@ export type NavItem = {
 /** Whether `pathname` is the page of this entry (its href without a query, or one of `also`). */
 const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
 
+/**
+ * Pages that are tabs of another menu entry, or only reached from search (Ctrl+K / the search
+ * button): listed in search by name. `quick` ones also show before anything is typed.
+ */
+export const searchOnlyPages: Record<string, { href: string; label: string; keywords?: string; quick?: boolean }[]> = {
+  STUDENT: [
+    { href: '/student/search/directory', label: 'Student directory', keywords: 'people find students classmates', quick: true },
+    { href: '/student/search/internships', label: 'Internship history', keywords: 'placements companies past internships', quick: true },
+    { href: '/student/links', label: 'Apps & links', keywords: 'tools portals email library wifi', quick: true },
+    { href: '/student/calendar', label: 'Timetable', keywords: 'calendar schedule classes week' },
+    { href: '/student/information', label: 'Information', keywords: 'news announcements updates' },
+    { href: '/student/attendance', label: 'Attendance', keywords: 'absences presence' },
+    { href: '/student/quizzes', label: 'Quizzes', keywords: 'tests exams' },
+    { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
+    { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
+    { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
+    { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
+    { href: '/student/life/everyday', label: 'Everyday life', keywords: 'dining transport events campus' },
+  ],
+  TEACHER: [
+    { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
+  ],
+};
+
 export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
-    { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard },
-    { href: '/student/information', label: 'nav.information', icon: Info },
-    { href: '/student/calendar', label: 'nav.calendar', icon: CalendarIcon },
+    { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/information'] },
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
     {
       label: 'nav.schooling', icon: GraduationCap,
@@ -45,9 +67,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor'] },
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
-        { href: '/student/attendance', label: 'nav.attendance' },
-        { href: '/student/grades', label: 'nav.grades' },
-        { href: '/student/quizzes', label: 'nav.quizzes' },
+        { href: '/student/grades', label: 'My progress', also: ['/student/attendance', '/student/quizzes'] },
         { href: '/student/skills', label: 'nav.skills' },
         { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },
       ]
@@ -71,24 +91,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/impact/leaderboard', label: 'Leaderboard' },
       ]
     },
-    {
-      label: 'nav.student_life', icon: Coffee,
-      subItems: [
-        { href: '/student/life/associations', label: 'nav.associations' },
-        { href: '/student/life/rooms', label: 'nav.room_reservation' },
-        { href: '/student/life/medical', label: 'nav.medical_disability' },
-        { href: '/student/life/everyday', label: 'nav.everyday_life' },
-        { href: '/student/life/financing', label: 'nav.financing' },
-      ]
-    },
-    {
-      label: 'nav.search', icon: Search,
-      subItems: [
-        { href: '/student/search/directory', label: 'nav.student_directory' },
-        { href: '/student/search/internships', label: 'nav.internship_history' },
-        { href: '/student/links', label: 'nav.apps_links' },
-      ]
-    },
+    { href: '/student/life/associations', label: 'nav.student_life', icon: Coffee, also: ['/student/life/rooms', '/student/life/medical', '/student/life/everyday'] },
     { href: '/student/community', label: 'nav.community', icon: Users },
     { href: '/student/support', label: 'Support & BeeSafe', icon: AlertTriangle, also: ['/student/beesafe'] },
     { href: '/student/settings?section=language', label: 'nav.settings', icon: Settings },

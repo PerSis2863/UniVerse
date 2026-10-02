@@ -1,5 +1,6 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { Search, Users, ExternalLink, Globe } from 'lucide-react';
 import { m as motion } from 'framer-motion';
 import { useState } from 'react';
@@ -40,6 +41,7 @@ export default function AssociationsPage() {
         title="Associations" 
         subtitle="Discover and join student clubs" 
       />
+      <SectionTabs tabs={LIFE_TABS} />
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-8">
           
