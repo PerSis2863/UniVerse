@@ -12,6 +12,7 @@ import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
 import { aiUsageToday, forgetAiLimits, parseLimits } from '../ai-budget';
 import { cloudflareAccount } from '../cloudflare-account';
+import { healthCheck } from '../owner-health';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
@@ -579,6 +580,9 @@ export default function ownerModule(router: Router) {
 
   // The Cloudflare account card on the Server tab (versions, builds, database, storage).
   r.get('cloudflare', ({ query }) => cloudflareAccount(query.fresh === '1'));
+
+  // The Health check tab: security and error checks, ranked and explained by AI.
+  r.get('health', ({ query }) => healthCheck(query.fresh === '1'));
 
   // Putting an earlier version live needs CF_ADMIN_TOKEN and an emailed code each time.
   r.post('cloudflare/code', async ({ user }) => {

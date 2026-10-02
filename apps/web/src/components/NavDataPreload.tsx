@@ -44,10 +44,11 @@ const PAGES: Record<string, () => Loader[]> = {
   '/admin/certifications': () => [['/impact/certificates/pending', fetcher]],
 };
 
-// The page code of the sections staff and admins open most, fetched once per visit while the
+// The page code of the sections each role opens most, fetched once per visit while the
 // device is idle, so tapping them doesn't wait for code to download. A handful of requests per
 // session, not every link on screen (see components/ui/Link.tsx for why links don't prefetch).
 const WARM: Record<string, string[]> = {
+  STUDENT: ['/student/inbox', '/student/courses', '/student/grades'],
   TEACHER: ['/teacher/inbox', '/teacher/courses', '/teacher/students', '/teacher/grades'],
   ADMIN: ['/admin/inbox', '/admin/users', '/admin/approvals', '/admin/courses'],
 };
@@ -79,9 +80,32 @@ export function NavDataPreload() {
       // Already on the device: the page shows it at once and refreshes it itself.
       for (const [key, fn] of loaders()) if (cache.get(key)?.data === undefined) void preload(key, fn).catch(() => {});
     };
+    // With a mouse, resting on a link for a moment (as people do just before clicking) fetches
+    // that page's code, so the click opens it at once, like a native app. Once per page per visit,
+    // and only for links held under the pointer, so passing over a menu costs nothing.
+    let hover: ReturnType<typeof setTimeout> | undefined;
+    const warmed = new Set<string>();
+    const onOver = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return;
+      const a = (e.target as Element | null)?.closest?.('a');
+      if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+      const url = new URL(a.href, location.href);
+      const path = url.pathname.replace(/\/$/, '') || '/';
+      if (url.origin !== location.origin || url.pathname === location.pathname || path.startsWith('/api/') || warmed.has(path)) return;
+      clearTimeout(hover);
+      hover = setTimeout(() => { warmed.add(path); router.prefetch(url.pathname + url.search); }, 120);
+    };
+    const onOut = () => clearTimeout(hover);
     document.addEventListener('pointerdown', onDown, true);
-    return () => document.removeEventListener('pointerdown', onDown, true);
-  }, [cache]);
+    document.addEventListener('pointerover', onOver, true);
+    document.addEventListener('pointerout', onOut, true);
+    return () => {
+      clearTimeout(hover);
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('pointerover', onOver, true);
+      document.removeEventListener('pointerout', onOut, true);
+    };
+  }, [cache, router]);
 
   return null;
 }
