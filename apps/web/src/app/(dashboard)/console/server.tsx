@@ -155,6 +155,10 @@ type CfAccount = {
   builds?: CfPart<{ minutesUsed: number; minutesLimit: number; count: number; partial: boolean; recent: { at: string; outcome: string; minutes: number; branch: string; message: string }[] }>;
   database?: CfPart<{ name: string; bytes: number | null; tables: number | null }>;
   storage?: CfPart<{ buckets: string[] }>;
+  traffic?: CfPart<{ days: { day: string; visitors: number; pageViews: number; requests: number }[]; visitors: number; pageViews: number; threats: number; bytes: number; countries: { code: string; requests: number }[] }>;
+  attacks?: CfPart<{ total: number; top: { count: number; action: string; source: string; clientCountryName: string }[] }>;
+  domain?: CfPart<{ checks: { name: string; ok: boolean | null; note: string }[] }>;
+  plan?: CfPart<{ name: string; price: number; currency: string; frequency: string; renews: string | null; state: string }[]>;
 };
 
 const size = (b: number | null) => (b == null ? '?' : b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(2)} GB` : `${(b / 1024 ** 2).toFixed(1)} MB`);
@@ -215,6 +219,48 @@ function CloudflareCard() {
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Database</h3>
             {data.database?.ok ? <p className="text-zinc-700 dark:text-zinc-200">{data.database.data.name}: {size(data.database.data.bytes)} of 5 GB · {data.database.data.tables ?? '?'} tables</p> : missing(data.database)}
+          </section>
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Visitors · last 7 days</h3>
+            {data.traffic?.ok ? (() => {
+              const t = data.traffic.data;
+              const max = Math.max(1, ...t.days.map((d) => d.visitors));
+              return (
+                <>
+                  <p className="text-zinc-700 dark:text-zinc-200">{t.visitors.toLocaleString()} visitors · {t.pageViews.toLocaleString()} page views · {size(t.bytes)} sent{t.threats ? ` · ${t.threats} threats stopped` : ''}</p>
+                  <div className="mt-2 flex items-end gap-1 h-12">{t.days.map((d) => <div key={d.day} title={`${d.day}: ${d.visitors} visitors`} className="flex-1 rounded-t bg-indigo-500/70" style={{ height: `${Math.max(4, (d.visitors / max) * 100)}%` }} />)}</div>
+                  {t.countries.length > 0 && <p className="mt-1 text-xs text-zinc-500">Top countries: {t.countries.map((c) => `${c.code} (${c.requests.toLocaleString()})`).join(', ')}</p>}
+                </>
+              );
+            })() : missing(data.traffic)}
+          </section>
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Blocked by Cloudflare · last 24 hours</h3>
+            {data.attacks?.ok ? (data.attacks.data.total === 0 ? <p className="text-emerald-600 dark:text-emerald-400">Nothing needed blocking.</p> : (
+              <>
+                <p className="text-zinc-700 dark:text-zinc-200">{data.attacks.data.total.toLocaleString()} requests stopped</p>
+                <ul className="mt-1 space-y-0.5">{data.attacks.data.top.map((x, i) => <li key={i} className="text-xs text-zinc-500">{x.count} · {x.action} by {x.source}{x.clientCountryName ? ` · from ${x.clientCountryName}` : ''}</li>)}</ul>
+              </>
+            )) : missing(data.attacks)}
+          </section>
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Domain health</h3>
+            {data.domain?.ok ? (
+              <ul className="space-y-1">{data.domain.data.checks.map((c) => (
+                <li key={c.name} className="text-xs">
+                  <span className={cn('font-semibold', c.ok === true ? 'text-emerald-600 dark:text-emerald-400' : c.ok === false ? 'text-rose-500' : 'text-amber-500')}>{c.ok === true ? 'OK' : c.ok === false ? 'Fix' : 'Can’t check'}</span>
+                  <span className="text-zinc-700 dark:text-zinc-200"> · {c.name}</span> <span className="text-zinc-500">· {c.note}</span>
+                </li>
+              ))}</ul>
+            ) : missing(data.domain)}
+          </section>
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Cloudflare plan</h3>
+            {data.plan?.ok ? (data.plan.data.length === 0 ? <p className="text-zinc-500">Free plan, nothing billed.</p> : (
+              <ul className="space-y-0.5">{data.plan.data.map((x, i) => (
+                <li key={i} className="text-zinc-700 dark:text-zinc-200">{x.name}{x.price ? ` · ${new Intl.NumberFormat('en', { style: 'currency', currency: x.currency }).format(x.price)}${x.frequency ? ` ${x.frequency}` : ''}` : ' · free'}{x.renews ? <span className="text-xs text-zinc-500"> · renews {format(new Date(x.renews), 'd MMM yyyy')}</span> : null}</li>
+              ))}</ul>
+            )) : missing(data.plan)}
           </section>
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">File storage</h3>
