@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 // Parts of the app shell that aren't needed for the first view — the help assistant, the command
-// palette (Ctrl+K) and the push-notification prompt — load once the page is idle, so they don't
+// palette (Ctrl+K), the first-time tour and the push-notification prompt — load once the page is idle, so they don't
 // compete with the page itself. Opening the palette before then loads it right away.
 
 const CommandPalette = dynamic(() => import('@/components/ui/CommandPalette').then((m) => m.CommandPalette), { ssr: false });
 const AIStudyAssistant = dynamic(() => import('@/components/ui/AIStudyAssistant').then((m) => m.AIStudyAssistant), { ssr: false });
+const WelcomeTour = dynamic(() => import('@/components/layout/WelcomeTour').then((m) => m.WelcomeTour), { ssr: false });
 const PushNotificationManager = dynamic(() => import('@/components/pwa/PushNotificationManager').then((m) => m.PushNotificationManager), { ssr: false });
 
 declare global {
@@ -47,6 +48,7 @@ export function DeferredShell({ role, showAssistant, signedIn }: { role?: string
     <>
       {(idle || wantPalette) && <CommandPalette role={role} />}
       {idle && showAssistant && <AIStudyAssistant />}
+      {idle && signedIn && <WelcomeTour role={role} />}
       {idle && signedIn && <PushNotificationManager />}
     </>
   );

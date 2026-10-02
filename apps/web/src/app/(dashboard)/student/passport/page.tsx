@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Copy, Download, ExternalLink, Eye, FileJson, Globe2, Loader2, Lock, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { downloadFile as download } from '@/lib/download';
@@ -40,8 +41,8 @@ export default function SkillsPassportPage() {
     finally { setSaving(false); }
   };
 
-  if (error) return <><Topbar title="Skills passport" /><p className="p-6 text-sm text-rose-500">{(error as Error).message}</p></>;
-  if (!data) return <><Topbar title="Skills passport" /><div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div></>;
+  if (error) return <><Topbar title="Credentials & passport" /><SectionTabs tabs={CREDENTIAL_TABS} /><p className="p-6 text-sm text-rose-500">{(error as Error).message}</p></>;
+  if (!data) return <><Topbar title="Credentials & passport" /><SectionTabs tabs={CREDENTIAL_TABS} /><div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div></>;
 
   const preview: PassportData | null = data.preview && {
     ...data.preview,
@@ -54,7 +55,8 @@ export default function SkillsPassportPage() {
 
   return (
     <>
-      <Topbar title="Skills passport" subtitle="Your verified skills and impact, ready to share with employers and universities" />
+      <Topbar title="Credentials & passport" subtitle="Your verified skills and impact, ready to share with employers and universities" />
+      <SectionTabs tabs={CREDENTIAL_TABS} />
       <div className="p-4 md:p-8 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[22rem_minmax(0,1fr)] gap-6 items-start min-w-0 w-full">
         <aside className="space-y-4 lg:sticky lg:top-4">
           <section className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5">

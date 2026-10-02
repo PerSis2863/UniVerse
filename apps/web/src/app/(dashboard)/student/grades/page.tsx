@@ -2,6 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { GraduationCap, TrendingUp, BookOpen, Award, FileBadge, Download, X, TrendingDown, Sparkles, Loader2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
@@ -235,6 +236,7 @@ export default function GradesPage() {
     return (
       <>
         <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
+        <SectionTabs tabs={PROGRESS_TABS} />
         <div className="flex-1 p-8 flex items-center justify-center">
           <ContentSkeleton variant="table" />
         </div>
@@ -252,6 +254,7 @@ export default function GradesPage() {
     return (
       <>
         <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
+        <SectionTabs tabs={PROGRESS_TABS} />
         <div className="flex-1 p-4 md:p-8 overflow-y-auto">
           <FeatureGuide
             icon={GraduationCap}
@@ -357,6 +360,7 @@ export default function GradesPage() {
           </button>
         }
       />
+      <SectionTabs tabs={PROGRESS_TABS} />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
 
         {/* KPI Cards */}

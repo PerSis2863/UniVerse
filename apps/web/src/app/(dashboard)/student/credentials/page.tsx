@@ -21,6 +21,7 @@ const LinkedinIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
 import { safeHref } from '@/lib/safe-href';
 import { downloadFile } from '@/lib/download';
 
@@ -344,7 +345,8 @@ export default function VerifiedCredentialsPage() {
 
   return (
     <>
-      <Topbar title="🛡️ Verified Credentials" subtitle="Signed, shareable proof of your real-world impact" />
+      <Topbar title="Credentials & passport" subtitle="Signed, shareable proof of your real-world impact" />
+      <SectionTabs tabs={CREDENTIAL_TABS} />
       <div className="flex-1 overflow-y-auto p-4 sm:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
 

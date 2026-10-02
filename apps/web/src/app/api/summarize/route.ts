@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getSessionUser } from '@/lib/server-auth';
 import { isStorageHostUrl } from '@/lib/file-urls';
+import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -44,6 +45,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This file type cannot be summarized yet (PDF, images or text only).' }, { status: 415 });
     }
 
+    // A file's summary is the same for everyone: made once, then handed out again.
+    const saved = await cachedAi<string>(['summarize', url.href], 30);
+    if (saved) return NextResponse.json({ summary: saved });
+    const spend = await spendAi(user);
+    if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
+
     // Previously the model was only given the URL, which it cannot open — so it invented a summary.
     // Now the file itself is downloaded and passed to the model.
     const fileRes = await fetch(url, { cache: 'no-store' });
@@ -65,7 +72,9 @@ export async function POST(request: Request) {
       ],
     });
 
-    return NextResponse.json({ summary: response.text ?? '' });
+    const summary = response.text ?? '';
+    if (summary.trim()) await saveAi(['summarize', url.href], summary);
+    return NextResponse.json({ summary });
   } catch (error) {
     console.error('Error generating summary:', error);
     return NextResponse.json({ error: 'Failed to generate summary' }, { status: 500 });

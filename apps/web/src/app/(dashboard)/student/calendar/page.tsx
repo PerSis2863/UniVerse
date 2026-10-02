@@ -1,6 +1,7 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, HOME_TABS } from '@/components/layout/SectionTabs';
 import { Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -182,6 +183,7 @@ export default function CalendarPage() {
   return (
     <>
       <Topbar title="My Timetable" subtitle={SUBTITLE[view]} />
+      <SectionTabs tabs={HOME_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         {!loading && timetableSlots.length === 0 && calendarEvents.length === 0 && (
           <FeatureGuide

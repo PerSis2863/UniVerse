@@ -9,6 +9,10 @@ import { publishChat } from '../realtime';
 import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
+import { serverSettings } from '../server-settings';
+import { aiUsageToday, forgetAiLimits, parseLimits } from '../ai-budget';
+import { cloudflareAccount } from '../cloudflare-account';
+import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -259,13 +263,15 @@ export default function ownerModule(router: Router) {
       control: publicControl(ctl),
       usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
       health: { people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended },
+      settings: serverSettings(),
+      ai: await aiUsageToday().catch(() => null),
       history,
     });
   });
 
   r.post('server', async ({ body, user }) => {
     const ctl = await serverControl();
-    const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null; switches?: string | null } = {};
+    const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null; switches?: string | null; aiLimits?: string } = {};
     if (body?.mode !== undefined) {
       if (!['LIVE', 'READ_ONLY', 'MAINTENANCE'].includes(body.mode)) throw new BadRequestException('Mode must be LIVE, READ_ONLY or MAINTENANCE');
       data.mode = body.mode;
@@ -289,6 +295,16 @@ export default function ownerModule(router: Router) {
       const turnedOn = was.filter((x) => !off.includes(x)).map(name);
       switched = [turnedOff.length && `Turned off: ${turnedOff.join(', ')}`, turnedOn.length && `Turned back on: ${turnedOn.join(', ')}`].filter(Boolean).join(' · ');
     }
+    // Daily AI limits (src/server/ai-budget.ts).
+    let aiChange = '';
+    if (body?.aiLimits !== undefined) {
+      const v = body.aiLimits ?? {};
+      const bad = ['student', 'staff', 'site'].some((k) => v[k] !== undefined && !(Number.isInteger(v[k]) && v[k] >= 0 && v[k] <= 100_000));
+      if (bad) throw new BadRequestException('Limits must be whole numbers from 0 to 100,000');
+      const limits = parseLimits(JSON.stringify(v));
+      data.aiLimits = JSON.stringify(limits);
+      aiChange = `AI limits: ${limits.student} a day per student, ${limits.staff} per teacher or admin, ${limits.site} for the whole site`;
+    }
     // Back to normal clears the end time.
     if (data.mode === 'LIVE') data.until = null;
     const keys = Object.keys(data) as (keyof typeof data)[];
@@ -296,7 +312,8 @@ export default function ownerModule(router: Router) {
     const after = await prisma.serverControl.update({ where: { id: 'main' }, data: { ...data, updatedAt: new Date(), updatedBy: user.id } });
     const words: Record<string, string> = { LIVE: 'Server back to normal', READ_ONLY: 'Server set to read-only', MAINTENANCE: 'Server paused for maintenance' };
     forgetRules();
-    const summary = data.mode && data.mode !== ctl.mode ? words[data.mode] : switched ? switched : data.banner !== undefined && data.banner !== ctl.banner ? (data.banner ? `Notice set: “${data.banner.slice(0, 60)}”` : 'Notice removed') : 'Server settings changed';
+    forgetAiLimits();
+    const summary = data.mode && data.mode !== ctl.mode ? words[data.mode] : switched ? switched : aiChange ? aiChange : data.banner !== undefined && data.banner !== ctl.banner ? (data.banner ? `Notice set: “${data.banner.slice(0, 60)}”` : 'Notice removed') : 'Server settings changed';
     const change = await prisma.ownerChange.create({
       data: { ownerId: user.id, action: 'UPDATE', model: 'ServerControl', recordId: 'main', summary, before: json(pickKeys(publicControl(ctl), keys)), after: json(pickKeys(publicControl(after), keys)) },
     });
@@ -560,6 +577,105 @@ export default function ownerModule(router: Router) {
     return { ok: true, changeId: change.id };
   });
 
+  // The Cloudflare account card on the Server tab (versions, builds, database, storage).
+  r.get('cloudflare', ({ query }) => cloudflareAccount(query.fresh === '1'));
+
+  // Putting an earlier version live needs CF_ADMIN_TOKEN and an emailed code each time.
+  r.post('cloudflare/code', async ({ user }) => {
+    try { await emailCode(user); } catch (e) { throw new BadRequestException((e as Error).message); }
+    return { sent: true };
+  });
+  r.post('cloudflare/rollback', async ({ body, user }) => {
+    let done: string;
+    try { done = await rollback(user, body?.versionId, body?.code); } catch (e) {
+      if (e instanceof CloudflareAdminError) throw new BadRequestException(e.message);
+      throw e;
+    }
+    await prisma.ownerChange.create({ data: { ownerId: user.id, action: 'CLOUDFLARE', model: 'Cloudflare', recordId: 'universe-web', summary: done } });
+    return { done };
+  });
+
+  // ── Payments (Money tab) ──
+  // Fixing a payment by hand changes UniVerse's record only: Stripe is not refunded or charged.
+
+  const PAY_STATUS = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'];
+  /** An invoice tied to these payments follows their new status. */
+  const syncInvoices = (ids: string[], status: string) => prisma.invoice.updateMany({
+    where: { paymentId: { in: ids } }, data: { status: status as 'PENDING', ...(status === 'COMPLETED' && { paidAt: new Date() }) },
+  });
+  const payLabel = (p: { description: string; amount: number; currency: string }) => `“${p.description.slice(0, 40)}” (${p.amount} ${p.currency})`;
+
+  r.patch<{ id: string }>('payments/:id', async ({ params, body, user }) => {
+    const before = await prisma.payment.findUnique({ where: { id: params.id } });
+    if (!before) throw new NotFoundException('Payment not found');
+    const data: { status?: 'PENDING'; amount?: number; description?: string } = {};
+    if (body?.status !== undefined) {
+      if (!PAY_STATUS.includes(body.status)) throw new BadRequestException('Unknown status.');
+      data.status = body.status;
+    }
+    if (body?.amount !== undefined) {
+      const amount = Math.round(Number(body.amount) * 100) / 100;
+      if (!Number.isFinite(amount) || amount < 0 || amount > 10_000_000) throw new BadRequestException('Enter an amount of 0 or more.');
+      data.amount = amount;
+    }
+    if (body?.description !== undefined) {
+      const d = String(body.description).trim().slice(0, 300);
+      if (!d) throw new BadRequestException('Add what the payment is for.');
+      data.description = d;
+    }
+    const changed = Object.keys(data).filter((k) => (data as Record<string, unknown>)[k] !== (before as Record<string, unknown>)[k]);
+    if (!changed.length) throw new BadRequestException('Nothing to change');
+    const after = await prisma.payment.update({ where: { id: params.id }, data });
+    if (data.status) await syncInvoices([params.id], data.status);
+    const change = await prisma.ownerChange.create({
+      data: {
+        ownerId: user.id, action: 'UPDATE', model: 'Payment', recordId: params.id,
+        summary: `Edited payment ${payLabel(before)}: ${changed.join(', ')}`,
+        before: json(pickKeys(before, changed)), after: json(pickKeys(after, changed)),
+      },
+    });
+    return { changeId: change.id };
+  });
+
+  r.delete<{ id: string }>('payments/:id', async ({ params, user }) => {
+    const before = await prisma.payment.findUnique({ where: { id: params.id } });
+    if (!before) throw new NotFoundException('Payment not found');
+    await prisma.invoice.updateMany({ where: { paymentId: params.id }, data: { paymentId: null } });
+    await prisma.payment.delete({ where: { id: params.id } });
+    const change = await prisma.ownerChange.create({
+      data: { ownerId: user.id, action: 'DELETE', model: 'Payment', recordId: params.id, summary: `Deleted payment ${payLabel(before)}`, before: json(before) },
+    });
+    return { changeId: change.id };
+  });
+
+  // Several payments at once: a new status for all, or delete them (e.g. test payments never paid).
+  r.post('payments/bulk', async ({ body, user }) => {
+    const ids = Array.isArray(body?.ids) ? [...new Set((body.ids as unknown[]).filter((x): x is string => typeof x === 'string'))].slice(0, 90) : [];
+    const action = String(body?.action ?? '');
+    if (!ids.length || !(action === 'delete' || PAY_STATUS.includes(action))) throw new BadRequestException('Choose payments and what to do.');
+    const rows = await prisma.payment.findMany({ where: { id: { in: ids } } });
+    if (!rows.length) throw new BadRequestException('Those payments are already gone.');
+    const found = rows.map((p) => p.id);
+    const n = `${rows.length} ${rows.length === 1 ? 'payment' : 'payments'}`;
+    if (action === 'delete') {
+      await prisma.invoice.updateMany({ where: { paymentId: { in: found } }, data: { paymentId: null } });
+      await prisma.payment.deleteMany({ where: { id: { in: found } } });
+    } else {
+      await prisma.payment.updateMany({ where: { id: { in: found } }, data: { status: action as 'PENDING' } });
+      await syncInvoices(found, action);
+    }
+    const change = await prisma.ownerChange.create({
+      data: {
+        ownerId: user.id, action: 'BULK', model: 'Payment', recordId: 'bulk',
+        summary: action === 'delete' ? `Deleted ${n}` : `Marked ${n} as ${action.toLowerCase()}`,
+        // Deleted: every record, to put back. Status: each one's status before.
+        before: action === 'delete' ? json(rows) : Object.fromEntries(rows.map((p) => [p.id, p.status])),
+        after: action === 'delete' ? { deleted: true } : { status: action },
+      },
+    });
+    return { done: rows.length, changeId: change.id };
+  });
+
   // ── Change history & undo ──
 
   r.get('changes', async ({ query }) => {
@@ -603,6 +719,14 @@ export default function ownerModule(router: Router) {
       for (const [id, status] of Object.entries(before)) groups.set(status, [...(groups.get(status) ?? []), id]);
       for (const [status, ids] of groups) await prisma.user.updateMany({ where: { id: { in: ids } }, data: { status: status as 'ACTIVE' } });
       Object.keys(before).forEach(forgetUser);
+    } else if (change.action === 'BULK' && m.name === 'Payment') {
+      if ((change.after as { deleted?: boolean } | null)?.deleted) await restoreRows(m, (change.before ?? []) as Record<string, unknown>[]);
+      else {
+        const before = (change.before ?? {}) as Record<string, string>;
+        const groups = new Map<string, string[]>();
+        for (const [id, status] of Object.entries(before)) groups.set(status, [...(groups.get(status) ?? []), id]);
+        for (const [status, ids] of groups) await prisma.payment.updateMany({ where: { id: { in: ids } }, data: { status: status as 'PENDING' } });
+      }
     } else {
       throw new BadRequestException('This change can’t be undone.');
     }
@@ -626,7 +750,7 @@ export async function serverControl() {
   return prisma.serverControl.upsert({ where: { id: 'main' }, update: {}, create: { id: 'main', bypass } });
 }
 type Control = Awaited<ReturnType<typeof serverControl>>;
-const publicControl = (c: Control) => ({ mode: c.mode, message: c.message, until: c.until, banner: c.banner, switches: c.switches, updatedAt: c.updatedAt });
+const publicControl = (c: Control) => ({ mode: c.mode, message: c.message, until: c.until, banner: c.banner, switches: c.switches, aiLimits: c.aiLimits, updatedAt: c.updatedAt });
 
 /** Answers with the owner's pass as a cookie, so the Worker lets them through while paused. */
 function withOwnerPass(bypass: string, body: unknown) {
@@ -640,6 +764,29 @@ function label(rec: Record<string, unknown>) {
   const v = rec.name ?? rec.title ?? rec.subject ?? rec.email ?? rec.body ?? rec.id;
   const s = String(v ?? '');
   return `“${s.length > 40 ? s.slice(0, 40) + '…' : s}”`;
+}
+/**
+ * Puts deleted rows back with plain inserts, a few rows per statement: D1 allows 100 values per
+ * query and 50 queries per request, too few for one create per row. Rows already back are skipped.
+ */
+async function restoreRows(m: Model, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const cols = columns(m);
+  const per = Math.max(1, Math.floor(100 / cols.length));
+  const value = (f: Field, v: unknown) => {
+    if (v == null) return null;
+    if (f.type === 'DateTime') return new Date(String(v)).toISOString().replace('Z', '+00:00');
+    if (f.type === 'Json') return JSON.stringify(v);
+    if (f.type === 'Boolean') return v ? 1 : 0;
+    return v;
+  };
+  for (let i = 0; i < rows.length; i += per) {
+    const chunk = rows.slice(i, i + per);
+    await prisma.$executeRawUnsafe(
+      `INSERT OR IGNORE INTO "${m.table}" (${cols.map((f) => `"${f.name}"`).join(', ')}) VALUES ${chunk.map(() => `(${cols.map(() => '?').join(', ')})`).join(', ')}`,
+      ...chunk.flatMap((r) => cols.map((f) => value(f, r[f.name]))),
+    );
+  }
 }
 function pickKeys(o: Record<string, unknown>, keys: string[]) {
   return Object.fromEntries(keys.map((k) => [k, o[k] ?? null]));

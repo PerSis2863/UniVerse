@@ -5,12 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { BookOpen, Briefcase, ChevronRight, Command, CornerDownLeft, FlaskConical, HeartHandshake, Library, Loader2, MessageSquarePlus, Moon, Search, Sun, User, Users, type LucideIcon, Gauge } from 'lucide-react';
+import { BookOpen, Briefcase, ChevronRight, Command, Compass, CornerDownLeft, FileSearch, FlaskConical, HeartHandshake, Library, Loader2, MessageSquarePlus, Moon, Search, Sun, User, Users, type LucideIcon, Gauge } from 'lucide-react';
 import { isSampleMode } from '@/lib/sample-mode';
 import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { navByRole } from '@/components/layout/Sidebar';
+import { navByRole, searchOnlyPages } from '@/components/layout/Sidebar';
 import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
@@ -102,12 +102,16 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       if (n.href) out.push({ id: `page:${n.href}`, label: t(n.label), icon: n.icon, group: 'Pages', run: go(n.href) });
       for (const sub of n.subItems ?? []) out.push({ id: `page:${sub.href}`, label: t(sub.label), hint: t(n.label), icon: n.icon, group: 'Pages', run: go(sub.href) });
     }
+    for (const p of searchOnlyPages[role] ?? []) {
+      if (!out.some((o) => o.id === `page:${p.href}`)) out.push({ id: `page:${p.href}`, label: p.label, icon: FileSearch, group: 'Pages', keywords: p.keywords, run: go(p.href) });
+    }
     return out;
   }, [role, t, go]);
 
   const actions: Item[] = useMemo(() => {
     const dark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
     return [
+      ...(role === 'STUDENT' || role === 'TEACHER' ? [{ id: 'act:tour', label: 'Take the tour', hint: 'Where everything is', icon: Compass, group: 'Actions', keywords: 'help guide welcome start where menu', run: () => window.dispatchEvent(new Event('universe:tour')) }] : []),
       { id: 'act:message', label: 'New message', hint: 'Messages', icon: MessageSquarePlus, group: 'Actions', keywords: 'chat dm write send inbox', run: go(`${base}/inbox`) },
       {
         id: 'act:theme', label: dark ? 'Switch to light mode' : 'Switch to dark mode', icon: dark ? Sun : Moon, group: 'Actions', keywords: 'theme appearance dark light night',
@@ -121,7 +125,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
         ? { id: 'act:sample-off', label: 'Exit sample mode', hint: 'Back to your real account', icon: FlaskConical, group: 'Actions', keywords: 'demo example sample data exit', run: stopSampleMode }
         : { id: 'act:sample-on', label: 'Explore with sample data', hint: 'Try every feature with example data — nothing is saved', icon: FlaskConical, group: 'Actions', keywords: 'demo example sample data try tour', run: startSampleMode },
     ];
-  }, [base, go, open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [base, go, open, role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const courses: Item[] = useMemo(() => {
     const list = Array.isArray(myCourses) ? myCourses.map((c) => (role === 'STUDENT' ? c.course : c)).filter(Boolean) : [];
@@ -149,14 +153,18 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const results = useMemo(() => {
     const q = debounced.toLowerCase();
     const all = [...pages, ...courses, ...actions];
+    // Find-a-page shortcuts (student directory, internship history, apps & links) before typing.
+    const quickIds = new Set((searchOnlyPages[role] ?? []).filter((p) => p.quick).map((p) => `page:${p.href}`));
+    const quick = pages.filter((i) => quickIds.has(i.id)).map((i) => ({ ...i, group: 'Find' }));
     if (!q) {
       const recent = recents.map((id) => all.find((i) => i.id === id)).filter(Boolean) as Item[];
       const seen = new Set(recent.map((i) => i.id));
       return [
         ...recent.slice(0, 4).map((i) => ({ ...i, group: 'Recent' })),
         ...courses.slice(0, 4).filter((i) => !seen.has(i.id)),
+        ...quick.filter((i) => !seen.has(i.id)),
         ...actions,
-        ...pages.filter((i) => !seen.has(i.id)).slice(0, 6),
+        ...pages.filter((i) => !seen.has(i.id) && !quickIds.has(i.id)).slice(0, 6),
       ];
     }
     const ranked = all
@@ -167,7 +175,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     // Group in a fixed order so the list doesn't jump around while typing.
     const order = ['Courses', 'Pages', 'People', 'Groups', 'NGO projects', 'Internships', 'Resources', 'Actions'];
     return [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
-  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents]);
+  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, role]);
 
   useEffect(() => { setIndex(0); }, [debounced]);
   useEffect(() => {

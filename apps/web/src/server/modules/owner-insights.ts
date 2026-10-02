@@ -137,17 +137,18 @@ export default function ownerInsightsModule(router: Router) {
     const lastMonth = iso(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() - 1, 1));
     const since = iso(now - 30 * DAY);
     const q = <T,>(sql: string, ...args: unknown[]) => prisma.$queryRawUnsafe<T[]>(sql, ...args);
-    const [byStatus, byType, perDay, months, recent, invoices, orgs] = await Promise.all([
+    const [byStatus, byType, perDay, months, recent, invoices, orgs, invoiceList] = await Promise.all([
       q<{ status: string; currency: string; n: bigint; total: number }>(`SELECT status, currency, COUNT(*) AS n, SUM(amount) AS total FROM payments GROUP BY status, currency`),
       q<{ type: string; currency: string; total: number }>(`SELECT type, currency, SUM(amount) AS total FROM payments WHERE status = 'COMPLETED' GROUP BY type, currency`),
       q<{ d: string; currency: string; total: number }>(`SELECT substr(createdAt, 1, 10) AS d, currency, SUM(amount) AS total FROM payments WHERE status = 'COMPLETED' AND createdAt > ? GROUP BY d, currency`, since),
       q<{ m: string; currency: string; total: number }>(`SELECT CASE WHEN createdAt >= ? THEN 'this' ELSE 'last' END AS m, currency, SUM(amount) AS total FROM payments WHERE status = 'COMPLETED' AND createdAt >= ? GROUP BY m, currency`, thisMonth, lastMonth),
-      prisma.payment.findMany({ orderBy: { createdAt: 'desc' }, take: 40, select: { id: true, amount: true, currency: true, type: true, description: true, status: true, createdAt: true, user: { select: { id: true, name: true, email: true } } } }),
+      prisma.payment.findMany({ orderBy: { createdAt: 'desc' }, take: 90, select: { id: true, amount: true, currency: true, type: true, description: true, status: true, createdAt: true, user: { select: { id: true, name: true, email: true } } } }),
       q<{ status: string; currency: string; n: bigint; total: number; overdue: bigint; overdueTotal: number }>(
         `SELECT status, currency, COUNT(*) AS n, SUM(amount) AS total, SUM(status = 'PENDING' AND dueDate < ?) AS overdue, SUM(CASE WHEN status = 'PENDING' AND dueDate < ? THEN amount ELSE 0 END) AS overdueTotal FROM invoices GROUP BY status, currency`,
         iso(now), iso(now),
       ),
       prisma.organization.findMany({ where: { OR: [{ plan: { not: 'STARTER' } }, { subscriptionStatus: { not: null } }] }, orderBy: { name: 'asc' }, take: 100, select: { id: true, name: true, plan: true, subscriptionStatus: true, currentPeriodEnd: true, cancelAtPeriodEnd: true } }),
+      prisma.invoice.findMany({ orderBy: { createdAt: 'desc' }, take: 40, select: { id: true, number: true, amount: true, currency: true, status: true, dueDate: true, description: true, createdAt: true, user: { select: { id: true, name: true } } } }),
     ]);
     // Monthly subscription income, estimated from each paying organization's plan at the monthly price (in cents).
     const paying = orgs.filter((o) => ['active', 'trialing', 'past_due'].includes(o.subscriptionStatus ?? '') && o.plan !== 'STARTER');
@@ -162,6 +163,7 @@ export default function ownerInsightsModule(router: Router) {
       thisMonth: months.filter((x) => x.m === 'this' && x.currency === main).reduce((s, x) => s + Number(x.total ?? 0), 0),
       lastMonth: months.filter((x) => x.m === 'last' && x.currency === main).reduce((s, x) => s + Number(x.total ?? 0), 0),
       recent,
+      invoiceList,
       invoices: invoices.map((x) => ({ status: x.status, currency: x.currency, count: num(x.n), total: Number(x.total ?? 0), overdue: num(x.overdue), overdueTotal: Number(x.overdueTotal ?? 0) })),
       subscriptions: { mrr, paying: paying.length, orgs: orgs.map((o) => ({ ...o, price: (PLANS[o.plan as keyof typeof PLANS]?.monthlyPrice.month ?? 0) / 100, planName: PLANS[o.plan as keyof typeof PLANS]?.name ?? o.plan })) },
     };

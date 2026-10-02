@@ -12,8 +12,12 @@ async function call(model: string, apiKey: string, body: unknown) {
   });
 }
 
-/** Asks Gemini for JSON matching `schema` (an OpenAPI-style schema). */
-export async function geminiJson<T>(system: string, prompt: string, schema: object, maxOutputTokens = 800): Promise<T | null> {
+/**
+ * Asks Gemini for JSON matching `schema` (an OpenAPI-style schema). `lite` uses the smaller model
+ * first (simple jobs such as translation): it has its own free allowance, so the main model's
+ * lasts longer.
+ */
+export async function geminiJson<T>(system: string, prompt: string, schema: object, maxOutputTokens = 800, lite = false): Promise<T | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const body = {
@@ -22,8 +26,9 @@ export async function geminiJson<T>(system: string, prompt: string, schema: obje
     generationConfig: { temperature: 0.2, maxOutputTokens, responseMimeType: 'application/json', responseSchema: schema },
   };
   try {
-    let res = await call(PRIMARY(), apiKey, body);
-    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK() !== PRIMARY()) res = await call(FALLBACK(), apiKey, body);
+    const [first, second] = lite ? [FALLBACK(), PRIMARY()] : [PRIMARY(), FALLBACK()];
+    let res = await call(first, apiKey, body);
+    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && second !== first) res = await call(second, apiKey, body);
     if (!res.ok) {
       console.error('Gemini request failed:', res.status, (await res.text()).slice(0, 300));
       return null;

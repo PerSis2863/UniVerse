@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
-import { getStripe } from '@/lib/billing';
+import { getStripe, stripeKeyProblem } from '@/lib/billing';
 import { recordError } from '@/server/errors';
 
 const NOT_SET_UP = 'Online payments are not set up correctly yet. Please contact your administrator.';
@@ -17,9 +17,10 @@ export async function POST(req: Request) {
     const user = await getSessionUser(req);
     if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
     userId = user.id;
-    const stripe = getStripe();
+    const problem = stripeKeyProblem();
+    const stripe = problem ? null : getStripe();
     if (!stripe) {
-      await reportSetup('the STRIPE_SECRET_KEY secret is not set on the Cloudflare Worker.', user.id);
+      await reportSetup(problem ?? 'the STRIPE_SECRET_KEY secret is not set on the Cloudflare Worker.', user.id);
       return NextResponse.json({ error: NOT_SET_UP }, { status: 503 });
     }
 

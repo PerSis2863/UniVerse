@@ -2,12 +2,14 @@
 
 import { CalendarDays, Store } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { CampusItemList } from '@/components/campus/CampusItems';
 
 export default function EverydayLifePage() {
   return (
     <>
       <Topbar title="Everyday Life" subtitle="Campus events, dining, transport and services" />
+      <SectionTabs tabs={LIFE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-10">
           <section>

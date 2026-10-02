@@ -3,9 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { format, formatDistanceToNow } from 'date-fns';
-import { AlertTriangle, ArrowRight, Bug, CheckCircle2, CreditCard, Download, History, Loader2, MessageSquare, MessagesSquare, Search, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bug, CheckCircle2, CreditCard, Download, History, Loader2, MessageSquare, MessagesSquare, Pencil, Search, Trash2, Users, X } from 'lucide-react';
+import { confirmDialog } from '@/components/ui/Dialogs';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
+import { PLANS, type PlanId } from '@/lib/plans';
 import { cn } from '@/lib/utils';
-import { card, downloadCsv, fetcher, useDebounced } from './shared';
+import { card, downloadCsv, errorMessage, fetcher, field, refreshConsole, toastWithUndo, useDebounced } from './shared';
 
 // Owner console pieces that read across the app (server side: src/server/modules/owner-insights.ts):
 // the "Needs your attention" card, the console-wide search, Analytics and Money.
@@ -287,6 +291,7 @@ interface MoneyData {
   thisMonth: number; lastMonth: number;
   recent: { id: string; amount: number; currency: string; type: string; description: string; status: string; createdAt: string; user: { id: string; name: string; email: string } | null }[];
   invoices: { status: string; currency: string; count: number; total: number; overdue: number; overdueTotal: number }[];
+  invoiceList: { id: string; number: string; amount: number; currency: string; status: string; dueDate: string | null; description: string | null; createdAt: string; user: { id: string; name: string } | null }[];
   subscriptions: { mrr: number; paying: number; orgs: { id: string; name: string; plan: string; planName: string; price: number; subscriptionStatus: string | null; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean }[] };
 }
 
@@ -334,20 +339,8 @@ export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
               className="btn-secondary inline-flex items-center gap-1.5 ml-1"><Download className="w-4 h-4" /> CSV</button>
           </div>
         </div>
-        {recent.length === 0 ? <p className="text-sm text-zinc-500">No payments{status ? ' with this status' : ' yet'}.</p> : (
-          <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">{recent.map((p) => (
-            <li key={p.id} className="py-2.5 flex items-center gap-3 text-sm">
-              <span className="min-w-0 flex-1">
-                <span className="block text-zinc-900 dark:text-white truncate">{p.description}</span>
-                <span className="block text-xs text-zinc-500 truncate">
-                  {p.user ? <button onClick={() => onPerson(p.user!.id)} className="hover:text-indigo-500">{p.user.name}</button> : 'Deleted user'} · {nice(p.type)} · {format(new Date(p.createdAt), 'd MMM yyyy, HH:mm')}
-                </span>
-              </span>
-              <span className={cn('text-xs font-semibold', STATUS_TONE[p.status])}>{STATUS_NAME[p.status] ?? p.status}</span>
-              <span className="w-24 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">{money(p.amount, p.currency)}</span>
-            </li>
-          ))}</ul>
-        )}
+        <p className="text-xs text-zinc-500 mb-3">Changes here fix UniVerse’s records only. Stripe is not charged or refunded, so do refunds in Stripe too.</p>
+        <PaymentList rows={recent} money={money} onPerson={onPerson} />
       </div>
       <div className="grid lg:grid-cols-2 gap-6">
         <div className={cn(card, 'p-5')}>
@@ -360,6 +353,7 @@ export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
               </li>
             ))}</ul>
           )}
+          <InvoiceList rows={data.invoiceList} money={money} onPerson={onPerson} />
         </div>
         <div className={cn(card, 'p-5')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Organization plans</h2>
@@ -371,12 +365,143 @@ export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
                   <span className="block text-xs text-zinc-500">{o.planName}{o.price ? ` · ${money(o.price, 'USD')}/month` : ''}{o.currentPeriodEnd ? ` · ${o.cancelAtPeriodEnd ? 'ends' : 'renews'} ${format(new Date(o.currentPeriodEnd), 'd MMM yyyy')}` : ''}</span>
                 </span>
                 <span className={cn('text-xs font-semibold', o.subscriptionStatus === 'active' || o.subscriptionStatus === 'trialing' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400')}>{o.subscriptionStatus ? nice(o.subscriptionStatus.toUpperCase()) : 'No subscription'}</span>
+                <select aria-label={`Plan for ${o.name}`} value={o.plan} onChange={(e) => void editRecord('Organization', o.id, { plan: e.target.value }, `${o.name} is now on ${PLANS[e.target.value as PlanId]?.name ?? e.target.value}`)}
+                  className="text-xs rounded-lg border border-zinc-200 dark:border-white/10 bg-transparent px-1.5 py-1">
+                  {(Object.keys(PLANS) as PlanId[]).map((id) => <option key={id} value={id}>{PLANS[id].name}</option>)}
+                </select>
               </li>
             ))}</ul>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+/** Edits any record through the console's record editor routes, with Undo. */
+async function editRecord(model: string, id: string, data: Record<string, unknown>, done: string) {
+  try {
+    const res = (await api.patch(`/owner/records/${model}/${id}`, { data })).data;
+    toastWithUndo(done, res.changeId);
+    await refreshConsole();
+  } catch (e) { toast.error(errorMessage(e)); }
+}
+
+async function removeRecord(path: string, what: string) {
+  if (!(await confirmDialog({ title: `Delete ${what}?`, message: 'You can undo this from the message that appears, or from Changes & undo.', confirmLabel: 'Delete', destructive: true }))) return;
+  try {
+    const res = (await api.delete(path)).data;
+    toastWithUndo(`Deleted ${what}`, res.changeId);
+    await refreshConsole();
+  } catch (e) { toast.error(errorMessage(e)); }
+}
+
+const STATUS_OPTIONS = ['COMPLETED', 'PENDING', 'FAILED', 'REFUNDED'];
+const small = 'text-xs rounded-lg border border-zinc-200 dark:border-white/10 bg-transparent px-1.5 py-1';
+const iconBtn = 'p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:text-white dark:hover:bg-white/[0.06]';
+
+type PaymentRowData = MoneyData['recent'][number];
+
+/** Latest payments: change a status, fix the amount or what it was for, delete, one at a time or many. */
+function PaymentList({ rows, money, onPerson }: { rows: PaymentRowData[]; money: (n: number, c?: string) => string; onPerson: (id: string) => void }) {
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const shown = rows.filter((p) => picked.has(p.id));
+  const all = rows.length > 0 && shown.length === rows.length;
+  const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const bulk = async (action: string) => {
+    const ids = shown.map((p) => p.id);
+    if (action === 'delete' && !(await confirmDialog({ title: `Delete ${ids.length} ${ids.length === 1 ? 'payment' : 'payments'}?`, message: 'You can undo this from the message that appears, or from Changes & undo.', confirmLabel: 'Delete', destructive: true }))) return;
+    setBusy(true);
+    try {
+      const res = (await api.post('/owner/payments/bulk', { ids, action })).data;
+      toastWithUndo(action === 'delete' ? `Deleted ${res.done} ${res.done === 1 ? 'payment' : 'payments'}` : `Marked ${res.done} as ${STATUS_NAME[action].toLowerCase()}`, res.changeId);
+      setPicked(new Set());
+      await refreshConsole();
+    } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
+  };
+  if (rows.length === 0) return <p className="text-sm text-zinc-500">No payments here.</p>;
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-zinc-100 dark:border-white/[0.05]">
+        <label className="flex items-center gap-2 text-xs text-zinc-500">
+          <input type="checkbox" checked={all} onChange={() => setPicked(all ? new Set() : new Set(rows.map((p) => p.id)))} /> Select all shown ({rows.length})
+        </label>
+        {shown.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+            <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">{shown.length} selected:</span>
+            {STATUS_OPTIONS.map((s) => <button key={s} disabled={busy} onClick={() => void bulk(s)} className="btn-secondary !py-1 !px-2.5 text-xs">Mark {STATUS_NAME[s].toLowerCase()}</button>)}
+            <button disabled={busy} onClick={() => void bulk('delete')} className="!py-1 !px-2.5 text-xs rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-500 inline-flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+          </div>
+        )}
+      </div>
+      <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">{rows.map((p) => (
+        <PaymentRow key={p.id} p={p} money={money} onPerson={onPerson} picked={picked.has(p.id)} onPick={() => toggle(p.id)} />
+      ))}</ul>
+    </>
+  );
+}
+
+function PaymentRow({ p, money, onPerson, picked, onPick }: { p: PaymentRowData; money: (n: number, c?: string) => string; onPerson: (id: string) => void; picked: boolean; onPick: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [amount, setAmount] = useState(String(p.amount));
+  const [what, setWhat] = useState(p.description);
+  const save = async (body: Record<string, unknown>, done: string) => {
+    try {
+      const res = (await api.patch(`/owner/payments/${p.id}`, body)).data;
+      toastWithUndo(done, res.changeId);
+      setEditing(false);
+      await refreshConsole();
+    } catch (e) { toast.error(errorMessage(e)); }
+  };
+  return (
+    <li className="py-2.5 text-sm">
+      <div className="flex items-center gap-3">
+        <input type="checkbox" aria-label="Select payment" checked={picked} onChange={onPick} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-zinc-900 dark:text-white truncate">{p.description}</span>
+          <span className="block text-xs text-zinc-500 truncate">
+            {p.user ? <button onClick={() => onPerson(p.user!.id)} className="hover:text-indigo-500">{p.user.name}</button> : 'Deleted user'} · {nice(p.type)} · {format(new Date(p.createdAt), 'd MMM yyyy, HH:mm')}
+          </span>
+        </span>
+        <select aria-label="Payment status" value={p.status} onChange={(e) => void save({ status: e.target.value }, `Marked as ${STATUS_NAME[e.target.value].toLowerCase()}`)} className={cn(small, 'font-semibold', STATUS_TONE[p.status])}>
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_NAME[s]}</option>)}
+        </select>
+        <span className="w-20 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">{money(p.amount, p.currency)}</span>
+        <button aria-label="Edit payment" onClick={() => setEditing(!editing)} className={iconBtn}><Pencil className="w-4 h-4" /></button>
+        <button aria-label="Delete payment" onClick={() => void removeRecord(`/owner/payments/${p.id}`, 'this payment')} className={cn(iconBtn, 'hover:!text-rose-500')}><Trash2 className="w-4 h-4" /></button>
+      </div>
+      {editing && (
+        <form onSubmit={(e) => { e.preventDefault(); void save({ amount, description: what }, 'Payment updated'); }} className="mt-2 ml-7 flex flex-wrap items-center gap-2">
+          <input value={what} onChange={(e) => setWhat(e.target.value)} placeholder="What it was for" className={cn(field, 'flex-1 min-w-[10rem]')} />
+          <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" aria-label={`Amount in ${p.currency}`} className={cn(field, 'w-28')} />
+          <button type="submit" className="btn-primary">Save</button>
+          <button type="button" onClick={() => setEditing(false)} className="btn-secondary">Cancel</button>
+        </form>
+      )}
+    </li>
+  );
+}
+
+/** The latest invoices, each with a status to change and a delete button. */
+function InvoiceList({ rows, money, onPerson }: { rows: MoneyData['invoiceList']; money: (n: number, c?: string) => string; onPerson: (id: string) => void }) {
+  if (!rows?.length) return null;
+  return (
+    <ul className="mt-4 pt-3 border-t border-zinc-100 dark:border-white/[0.05] divide-y divide-zinc-100 dark:divide-white/[0.05] max-h-96 overflow-y-auto">{rows.map((x) => (
+      <li key={x.id} className="py-2 flex items-center gap-2 text-sm">
+        <span className="min-w-0 flex-1">
+          <span className="block text-zinc-900 dark:text-white truncate">{x.number}{x.description ? ` · ${x.description}` : ''}</span>
+          <span className="block text-xs text-zinc-500 truncate">
+            {x.user ? <button onClick={() => onPerson(x.user!.id)} className="hover:text-indigo-500">{x.user.name}</button> : 'Deleted user'}{x.dueDate ? ` · due ${format(new Date(x.dueDate), 'd MMM yyyy')}` : ''}
+          </span>
+        </span>
+        <select aria-label="Invoice status" value={x.status} onChange={(e) => void editRecord('Invoice', x.id, { status: e.target.value, ...(e.target.value === 'COMPLETED' && { paidAt: new Date().toISOString() }) }, `Invoice ${x.number} marked as ${STATUS_NAME[e.target.value].toLowerCase()}`)} className={cn(small, 'font-semibold', STATUS_TONE[x.status])}>
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_NAME[s]}</option>)}
+        </select>
+        <span className="w-20 text-right tabular-nums text-zinc-700 dark:text-zinc-200">{money(x.amount, x.currency)}</span>
+        <button aria-label="Delete invoice" onClick={() => void removeRecord(`/owner/records/Invoice/${x.id}`, `invoice ${x.number}`)} className={cn(iconBtn, 'hover:!text-rose-500')}><Trash2 className="w-4 h-4" /></button>
+      </li>
+    ))}</ul>
   );
 }
 

@@ -20,6 +20,40 @@ export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/companies', label: 'Companies' },
 ];
 
+export const STUDENT_BOARD_TABS: SectionTab[] = [
+  { href: '/student/blackboard', label: 'Course board' },
+  { href: '/student/tutor', label: 'AI tutor' },
+];
+
+export const TEACHER_BOARD_TABS: SectionTab[] = [
+  { href: '/teacher/blackboard', label: 'Course board' },
+  { href: '/teacher/tutor', label: 'AI tutor' },
+];
+
+export const CREDENTIAL_TABS: SectionTab[] = [
+  { href: '/student/credentials', label: 'My credentials' },
+  { href: '/student/passport', label: 'Skills passport' },
+];
+
+export const HOME_TABS: SectionTab[] = [
+  { href: '/student', label: 'Overview' },
+  { href: '/student/calendar', label: 'Timetable' },
+  { href: '/student/information', label: 'Information' },
+];
+
+export const PROGRESS_TABS: SectionTab[] = [
+  { href: '/student/grades', label: 'Grades' },
+  { href: '/student/attendance', label: 'Attendance' },
+  { href: '/student/quizzes', label: 'Quizzes' },
+];
+
+export const LIFE_TABS: SectionTab[] = [
+  { href: '/student/life/associations', label: 'Associations' },
+  { href: '/student/life/rooms', label: 'Room booking' },
+  { href: '/student/life/medical', label: 'Medical & disability' },
+  { href: '/student/life/everyday', label: 'Everyday life' },
+];
+
 export function SectionTabs({ tabs }: { tabs: SectionTab[] }) {
   const pathname = usePathname();
   return (
