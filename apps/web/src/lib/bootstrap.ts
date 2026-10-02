@@ -91,5 +91,5 @@ var dow=(new Date().getDay()+6)%7;
 var keys=['/api/core/users/me','/api/me','/api/notifications','/api/chat/incoming'].concat(({'/student':['/api/student/overview?dow='+dow],'/teacher':['/api/core/dashboard/teacher'],'/admin':['/api/core/dashboard/admin']})[p]||[]);
 var session=!sessionStorage.getItem('universe-session-reported');if(session)sessionStorage.setItem('universe-session-reported','1');
 var ticket='WebSocket' in window;
-window.__universeBoot={keys:keys,ticket:ticket,promise:fetch('/api/bootstrap',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+t},body:JSON.stringify({keys:keys,ticket:ticket,session:session})}).then(function(r){return r.ok?r.json():null},function(){return null})};
+window.__universeBoot={keys:keys,ticket:ticket,promise:fetch('/api/bootstrap',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+t,'x-uv-pass':localStorage.getItem('uv-pass')||''},body:JSON.stringify({keys:keys,ticket:ticket,session:session})}).then(function(r){return r.ok?r.json():null},function(){return null})};
 }catch(e){}})();`;

@@ -38,10 +38,21 @@ export async function getAuthToken(forceRefresh = false): Promise<string | null>
   }
 }
 
+/** The pass from the emailed sign-in code (admins and the owner; src/server/two-step.ts). */
+export function twoStepPass(): string | null {
+  try {
+    return localStorage.getItem('uv-pass');
+  } catch {
+    return null;
+  }
+}
+
 /** fetch() for this app's own /api routes, with the user's bearer token attached. */
 export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const token = await getAuthToken();
   const headers = new Headers(init.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  const pass = twoStepPass();
+  if (pass) headers.set('X-UV-Pass', pass);
   return fetch(input, { ...init, headers });
 }

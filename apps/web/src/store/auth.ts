@@ -49,6 +49,7 @@ export const useAuthStore = create<AuthStore>()(
 
       logout: () => {
         localStorage.removeItem('accessToken');
+        localStorage.removeItem('uv-pass');
         localStorage.removeItem('refreshToken');
         set({ user: null, accessToken: null, refreshToken: null });
       },

@@ -1,4 +1,4 @@
-import { getAuthToken } from './auth-token';
+import { getAuthToken, twoStepPass } from './auth-token';
 import { isSampleMode } from './sample-mode';
 import { fromBootstrap, inBootstrap } from './bootstrap';
 
@@ -12,6 +12,8 @@ export async function authedFetch(input: string, init: RequestInit = {}): Promis
   const token = await getAuthToken();
   const headers = new Headers(init.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  const pass = twoStepPass();
+  if (pass) headers.set('X-UV-Pass', pass);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   return fetch(input, { ...init, headers });
 }

@@ -115,7 +115,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
         </div>
         {mode === 'group' && (
           <div className="p-4 border-t border-zinc-200 dark:border-white/10">
-            <button onClick={createGroup} disabled={busy || !groupName.trim() || selected.length === 0} className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white font-bold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2">
+            <button onClick={createGroup} disabled={busy || !groupName.trim() || selected.length === 0} className="btn-primary w-full py-3">
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />} Create group{selected.length ? ` (${selected.length + 1})` : ''}
             </button>
           </div>

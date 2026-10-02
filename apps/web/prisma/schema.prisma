@@ -116,6 +116,7 @@ model User {
   accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION (what they chose at sign-up)
   lastSeenAt         DateTime?
   chatMutedUntil     DateTime? // owner console: can't send chat messages until then
+  signedOutAt        DateTime? // "sign out everywhere": sign-ins that started before this are refused
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
 
   // Profiles

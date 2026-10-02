@@ -40,7 +40,7 @@ export function PollDialog({ onClose, onCreate }: { onClose: () => void; onCreat
   };
   return (
     <Sheet title="Create poll" onClose={onClose} footer={
-      <button onClick={create} aria-busy={busy || undefined} disabled={!valid || busy} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2">
+      <button onClick={create} aria-busy={busy || undefined} disabled={!valid || busy} className="btn-primary w-full">
         {busy && <Loader2 className="w-4 h-4 animate-spin" />} Send poll
       </button>
     }>
@@ -107,7 +107,7 @@ export function ForwardDialog({ message, onClose, onDone }: { message: ChatMessa
   };
   return (
     <Sheet title="Forward to…" onClose={onClose} footer={
-      <button onClick={send} aria-busy={busy || undefined} disabled={!picked.length || busy} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2">
+      <button onClick={send} aria-busy={busy || undefined} disabled={!picked.length || busy} className="btn-primary w-full">
         {busy && <Loader2 className="w-4 h-4 animate-spin" />} Forward{picked.length > 1 ? ` to ${picked.length} chats` : ''}
       </button>
     }>

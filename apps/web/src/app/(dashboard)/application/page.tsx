@@ -259,7 +259,7 @@ export default function ApplicationPage() {
                 Continue as a student <ArrowRight className="w-4 h-4" />
               </button>
               {data?.canApply ? (
-                <button onClick={() => setStarting(app.requestedRole)} className="px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Apply again</button>
+                <button onClick={() => setStarting(app.requestedRole)} className="btn-secondary">Apply again</button>
               ) : data?.reapplyAfter ? (
                 <p className="self-center text-sm text-zinc-500">You can apply again on {format(new Date(data.reapplyAfter), 'd MMM yyyy')}.</p>
               ) : null}
@@ -271,14 +271,14 @@ export default function ApplicationPage() {
             <Notice icon={Undo2} tone="neutral" title="You withdrew your application" text="Your account works as a student account." />
             <div className="flex flex-wrap gap-3">
               <button onClick={continueAsStudent} className="btn-primary">Continue as a student <ArrowRight className="w-4 h-4" /></button>
-              {data?.canApply && <button onClick={() => setStarting(app.requestedRole)} className="px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Apply again</button>}
+              {data?.canApply && <button onClick={() => setStarting(app.requestedRole)} className="btn-secondary">Apply again</button>}
             </div>
           </>
         )}
         <Summary app={app} />
         {app.status === 'PENDING' && (
           <div className="flex flex-wrap justify-between gap-3">
-            <button onClick={() => setEditing(true)} className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Edit details</button>
+            <button onClick={() => setEditing(true)} className="btn-secondary">Edit details</button>
             <button onClick={withdraw} className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-rose-500"><Undo2 className="w-4 h-4" /> Withdraw application</button>
           </div>
         )}
@@ -639,7 +639,7 @@ function ApplicationForm({
         <p className="text-xs text-zinc-500">{missing.length ? `Still needed: ${missing.join(', ')}` : <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5" /> Ready to send</span>}</p>
         <div className="flex gap-2">
           {onCancel && <button type="button" onClick={onCancel} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300">Cancel</button>}
-          <button type="button" onClick={() => void save(false)} disabled={!!busy} className="px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200 disabled:opacity-50">
+          <button type="button" onClick={() => void save(false)} disabled={!!busy} className="btn-secondary">
             {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save draft'}
           </button>
           <button type="submit" disabled={!!busy || missing.length > 0} className="btn-primary">

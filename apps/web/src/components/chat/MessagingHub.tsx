@@ -216,8 +216,8 @@ export function MessagingHub() {
             <h3 className="text-2xl font-black text-zinc-900 dark:text-white">UniVerse Messages</h3>
             <p className="text-sm text-zinc-500 mt-2 max-w-sm">Chat one-to-one or in groups, share photos, files and voice messages, and start voice or video calls with anyone on your campus.</p>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setDialog('chat')} className="px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-bold shadow-lg shadow-indigo-500/25">New chat</button>
-              <button onClick={() => setDialog('group')} className="px-5 py-2.5 rounded-full border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">New group</button>
+              <button onClick={() => setDialog('chat')} className="btn-primary rounded-full px-5">New chat</button>
+              <button onClick={() => setDialog('group')} className="btn-secondary rounded-full px-5">New group</button>
             </div>
             <p className="mt-8 text-[11px] text-zinc-400 inline-flex items-center gap-1.5"><Lock className="w-3 h-3" /> Only people in a chat can see its messages</p>
           </div>

@@ -8,7 +8,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
 import { api } from '@/lib/api';
-import { Settings, Bell, Mail, Shield, User, Globe, Check, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { Bell, Mail, Shield, User, Users, Globe, Check, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { LANGUAGES, type Language } from '@/lib/i18n';
@@ -17,22 +17,25 @@ import { useAiStore } from '@/store/ai';
 import { toast } from 'sonner';
 import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermissionPrompt';
 import { RecentSignIns } from '@/components/security/RecentSignIns';
+import { GuardianShareCard } from '@/components/settings/GuardianShareCard';
+
+interface Me { name?: string; email?: string; emailNotifications?: boolean }
+const SECTION_IDS = ['profile', 'language', 'notifications', 'privacy', 'family', 'consents', 'ai'];
 
 export default function StudentSettings() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { language, setLanguage, t } = useLanguageStore();
   const { isChatbotEnabled, setChatbotEnabled } = useAiStore();
-  const [activeSection, setActiveSection] = useState('profile');
+  // ?section=… opens that section (links from elsewhere in the app).
+  const [activeSection, setActiveSection] = useState(() => {
+    if (typeof window === 'undefined') return 'profile';
+    const section = new URLSearchParams(window.location.search).get('section');
+    return section && SECTION_IDS.includes(section) ? section : 'profile';
+  });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const section = params.get('section');
-    if (section && ['profile', 'language', 'notifications', 'privacy', 'consents', 'ai'].includes(section)) {
-      setActiveSection(section);
-    }
-    
     api.get('/users/me')
       .then(res => setUser(res.data))
       .catch(() => setUser({ name: 'Student User', email: 'student@universe.edu', emailNotifications: true }))
@@ -68,6 +71,7 @@ export default function StudentSettings() {
     { id: 'language', label: t('settings.language'), icon: Globe },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'privacy', label: t('settings.privacy'), icon: Shield },
+    { id: 'family', label: 'Parent or guardian', icon: Users },
     { id: 'consents', label: 'My consents', icon: ShieldCheck },
     { id: 'ai', label: 'AI Features', icon: Sparkles },
   ];
@@ -109,6 +113,12 @@ export default function StudentSettings() {
               {/* Content Panel */}
               <div className="flex-1">
                 <AnimatePresence mode="wait">
+
+                  {activeSection === 'family' && (
+                    <motion.div key="family" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                      <GuardianShareCard />
+                    </motion.div>
+                  )}
 
                   {activeSection === 'consents' && (
                     <motion.div key="consents" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
@@ -238,7 +248,7 @@ export default function StudentSettings() {
                         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Email & In-App</p>
                       </div>
                       {[
-                        { label: 'Email Notifications', desc: 'Email me about new grades, credential decisions, messages I miss and quizzes due tomorrow.', icon: Mail, key: 'emailNotifications' },
+                        { label: 'Email Notifications', desc: 'Email me about new grades, credential decisions, messages I miss and quizzes due tomorrow.', icon: Mail, key: 'emailNotifications' as const },
                       ].map(item => (
                         <div key={item.key} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] rounded-xl">
                           <div className="flex items-start gap-3">

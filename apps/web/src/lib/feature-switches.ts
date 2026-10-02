@@ -18,11 +18,12 @@ export const FEATURE_SWITCHES: FeatureSwitch[] = [
   { id: 'chat', label: 'Sending messages', hint: 'Nobody can send chat messages or start new chats. Reading still works.', paths: /^\/api\/chat\/(conversations(\/[^/]+\/messages)?|messages\/[^/]+(\/(reactions|vote))?)$/, allow: ['DELETE'] },
   { id: 'calls', label: 'Voice and video calls', hint: 'Nobody can start a call.' },
   { id: 'uploads', label: 'File uploads', hint: 'Nobody can upload photos or files.', paths: /^\/api\/(upload(\/token)?|core\/files\/upload)$/ },
-  { id: 'ai', label: 'AI features', hint: 'AI tutor, summaries, translation and reports stop. Saves AI costs.', paths: /^\/api\/(ai|summarize|tutor\/.*|premium\/ai-report|chat\/translate-draft|chat\/conversations\/[^/]+\/translate)$/ },
+  { id: 'ai', label: 'AI features', hint: 'AI tutor, summaries, translation and reports stop. Saves AI costs.', paths: /^\/api\/(ai|summarize|student\/planner|tutor\/.*|premium\/ai-report|chat\/translate-draft|chat\/conversations\/[^/]+\/translate)$/ },
   { id: 'groups', label: 'Groups and posts', hint: 'Nobody can create, join or post in groups.', paths: /^\/api\/(groups\/.*|core\/groups(\/.*)?)$/ },
   { id: 'boards', label: 'Whiteboards', hint: 'Whiteboards become view-only.', paths: /^\/api\/(boards(\/.*)?|courses\/[^/]+\/board)$/ },
   { id: 'signups', label: 'New sign-ups', hint: 'New people can’t finish creating an account. Existing accounts are fine.', paths: /^\/api\/core\/auth\/register$/ },
   { id: 'payments', label: 'Payments', hint: 'Nobody can start a new payment or subscription.', paths: /^\/api\/(billing\/checkout|create-checkout-session)$/ },
+  { id: 'security', label: 'Your weekly security email', hint: 'Stops the Monday email with the Health check: security and error problems ranked by AI. Only affects you.' },
   { id: 'digest', label: 'Your daily summary email', hint: 'Stops the 07:30 UTC email with yesterday’s numbers and what needs a look. Only affects you.' },
 ];
 

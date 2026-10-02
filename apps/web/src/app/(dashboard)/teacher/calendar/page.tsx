@@ -2,7 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { Calendar as CalendarIcon, Clock, Users, ChevronLeft, ChevronRight, Download, X, Plus, Loader2 } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,13 @@ import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { downloadIcs } from '@/components/dashboard/CourseBoard';
 import { courseColor } from '@/lib/course-color';
+import { CalendarFeedCard } from '@/components/dashboard/CalendarFeedCard';
+
+// Shapes of /timetable/my and /calendar/my, as this page uses them.
+interface Slot { id: string; courseId?: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; course?: { id?: string; name?: string; code?: string; color?: string | null } | null; room?: { name?: string } | null }
+interface CalEvent { id: string; courseId?: string | null; title: string; description?: string | null; startAt: string; endAt: string; type?: string; color?: string | null }
+// True once the page runs in the browser (false while rendering on the server), without an effect.
+const noSubscribe = () => () => {};
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -25,10 +32,10 @@ export default function TeacherCalendarPage() {
   const [officeDuration, setOfficeDuration] = useState('60');
   const [officeLocation, setOfficeLocation] = useState('Room 301');
   const [savingOffice, setSavingOffice] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
 
-  const [timetableSlots, setTimetableSlots] = useState<any[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [timetableSlots, setTimetableSlots] = useState<Slot[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -61,34 +68,30 @@ export default function TeacherCalendarPage() {
     toast.success('Calendar file downloaded', { description: 'Open it to add your classes to Google, Apple or Outlook Calendar.' });
   };
 
+  // Loads once, when the page opens.
   useEffect(() => {
-    setMounted(true);
-    fetchData();
+    let cancelled = false;
+    Promise.all([api.get('/timetable/my'), api.get('/calendar/my')])
+      .then(([slotsRes, eventsRes]) => {
+        if (cancelled) return;
+        setTimetableSlots(slotsRes.data || []);
+        setCalendarEvents(eventsRes.data || []);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error('Failed to fetch schedule data:', error);
+        toast.error('Could not load schedule');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [slotsRes, eventsRes] = await Promise.all([
-        api.get('/timetable/my'),
-        api.get('/calendar/my')
-      ]);
-      setTimetableSlots(slotsRes.data || []);
-      setCalendarEvents(eventsRes.data || []);
-    } catch (error) {
-      console.error('Failed to fetch schedule data:', error);
-      toast.error('Could not load schedule');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSaveOfficeHours = async () => {
     setSavingOffice(true);
     try {
       // Find the next date that matches the officeDay
       const dayIndex = DAYS.indexOf(officeDay);
-      let targetDate = new Date();
+      const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() + ((dayIndex + 1 + 7 - targetDate.getDay()) % 7));
       
       const [hours, minutes] = officeTime.split(':').map(Number);
@@ -176,7 +179,7 @@ export default function TeacherCalendarPage() {
     const dates = [];
     const startDate = new Date(baseDate.getTime() + currentWeekOffset * 7 * 24 * 60 * 60 * 1000);
     
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     if (view !== 'Day') {
       while (currentDate.getDay() !== 1) {
         currentDate.setDate(currentDate.getDate() + 1);
@@ -395,6 +398,8 @@ export default function TeacherCalendarPage() {
               </div>
             </div>
           </div>
+
+          <CalendarFeedCard who="teacher" />
         </div>
       </div>
       {mounted && createPortal(

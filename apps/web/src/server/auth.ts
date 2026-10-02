@@ -127,7 +127,27 @@ export async function resolveUser(token: string | null): Promise<User> {
   }
   // An admin can suspend an account (Users → Deactivate); it then can't use the platform.
   if (user.status === 'SUSPENDED') throw new ForbiddenException('Your account has been suspended. Please contact your administrator.');
+  // "Sign out everywhere" (Settings, or the owner console): sign-ins from before then are refused.
+  if (user.signedOutAt) {
+    const started = signInTime(token);
+    if (started !== null && started * 1000 < new Date(user.signedOutAt).getTime()) {
+      throw new UnauthorizedException({ message: 'You were signed out on all devices. Please sign in again.', code: 'SIGNED_OUT', error: 'Unauthorized' });
+    }
+  }
   return user;
+}
+
+/** When the sign-in behind a token happened (seconds): Firebase auth_time, or a session token's iat. */
+function signInTime(token: string): number | null {
+  if (token.startsWith('mock-token-')) return null;
+  try {
+    const body = token.startsWith('ut1.') ? token.slice(4).split('.')[0] : token.split('.')[1];
+    const claims = JSON.parse(atob(body.replace(/-/g, '+').replace(/_/g, '/')));
+    const t = token.startsWith('ut1.') ? claims.iat : claims.auth_time;
+    return typeof t === 'number' ? t : null;
+  } catch {
+    return null;
+  }
 }
 
 function decodeExp(token: string): number | undefined {

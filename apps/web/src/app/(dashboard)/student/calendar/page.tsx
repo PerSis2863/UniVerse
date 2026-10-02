@@ -2,14 +2,21 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, HOME_TABS } from '@/components/layout/SectionTabs';
-import { Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { ClassDetailModal, ClassData } from '@/components/dashboard/ClassDetailModal';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { CalendarFeedCard } from '@/components/dashboard/CalendarFeedCard';
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
+
+// Shapes of /timetable/my and /calendar/my, as this page uses them.
+interface Slot { id: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; course?: { name?: string; code?: string; color?: string | null } | null; room?: { name?: string } | null }
+interface CalEvent { id: string; title: string; description?: string | null; startAt: string; endAt: string; type?: string; color?: string | null }
+// True once the page runs in the browser (false while rendering on the server), without an effect.
+const noSubscribe = () => () => {};
 
 const HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 const VIEWS = ['Day', 'Week', 'Month', 'Semester'] as const;
@@ -36,37 +43,30 @@ export default function CalendarPage() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [view, setView] = useState('Week');
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
   const [loading, setLoading] = useState(true);
 
-  const [timetableSlots, setTimetableSlots] = useState<any[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [timetableSlots, setTimetableSlots] = useState<Slot[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalEvent[]>([]);
 
+  // Loads once, when the page opens.
   useEffect(() => {
-    setMounted(true);
-    fetchData();
+    let cancelled = false;
+    Promise.all([api.get('/timetable/my'), api.get('/calendar/my')])
+      .then(([slotsRes, eventsRes]) => {
+        if (cancelled) return;
+        setTimetableSlots(slotsRes.data || []);
+        setCalendarEvents(eventsRes.data || []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTimetableSlots([]);
+        setCalendarEvents([]);
+        toast.error('Couldn’t load your timetable right now.');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
-
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [slotsRes, eventsRes] = await Promise.all([
-        api.get('/timetable/my'),
-        api.get('/calendar/my')
-      ]);
-      const slots = slotsRes.data || [];
-      setTimetableSlots(slots);
-      setCalendarEvents(eventsRes.data || []);
-    } catch (error) {
-      setTimetableSlots([]);
-      toast.error('Couldn’t load your timetable right now.');
-      setCalendarEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
 
   const getDuration = (start: string, end: string) => {
     const [h1, m1] = start.split(':').map(Number);
@@ -128,7 +128,7 @@ export default function CalendarPage() {
     const startDate = new Date(baseDate.getTime() + currentWeekOffset * 7 * 24 * 60 * 60 * 1000);
     
     // Fast forward to next Monday if weekend, or keep current day if Day view
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     if (view !== 'Day') {
       while (currentDate.getDay() !== 1) {
         currentDate.setDate(currentDate.getDate() + 1);
@@ -338,6 +338,7 @@ export default function CalendarPage() {
             </div>
           </div>
 
+          <CalendarFeedCard who="student" />
         </div>
       </div>
       {/* ─── Class Detail Panel ─────────────────────────────── */}

@@ -2,6 +2,7 @@
 // bearer token. Keeps paid services (Gemini, file storage) from being used anonymously by anyone
 // who finds the endpoint.
 import { demoWriteBlocked, extractBearer, isOwner, resolveUser } from '@/server/auth';
+import { hasPass, needsTwoStep } from '@/server/two-step';
 
 export interface SessionUser {
   id: string;
@@ -18,6 +19,8 @@ export async function getSessionUser(request: Request): Promise<SessionUser | nu
   try {
     const user = await resolveUser(token);
     if (demoWriteBlocked(request, user, token)) return null;
+    // Admins and the owner must have typed the emailed sign-in code (src/server/two-step.ts).
+    if (needsTwoStep(user.role, token) && !hasPass(request, user.id, token)) return null;
     return { id: user.id, name: user.name, email: user.email, role: user.role, owner: isOwner(user) };
   } catch {
     return null;
