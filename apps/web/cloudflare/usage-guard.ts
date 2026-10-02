@@ -8,7 +8,9 @@
 //
 // Secrets (Worker → Settings → Variables and Secrets, type Secret):
 //   CF_ACCOUNT_ID     the account id (Workers & Pages overview, right-hand side)
-//   CF_USAGE_TOKEN    an API token with only "Account Analytics: Read"
+//   CF_USAGE_TOKEN    an API token with only Read permissions: Account Analytics (this guard), plus
+//                     Workers Scripts, Workers Builds Configuration, D1 and Workers R2 Storage
+//                     for the owner console's Cloudflare account card (src/server/cloudflare-account.ts)
 //   CF_BILLING_DAY    optional: the day of the month the Paid plan renews (1-31). Without it the
 //                     guard counts the last 31 days, which never undercounts but may pause early.
 //   CF_GUARD_OFF      optional: any value turns pausing off (the checks and emails still run).

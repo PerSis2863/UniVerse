@@ -11,6 +11,7 @@ import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
 import { aiUsageToday, forgetAiLimits, parseLimits } from '../ai-budget';
+import { cloudflareAccount } from '../cloudflare-account';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -574,6 +575,9 @@ export default function ownerModule(router: Router) {
     });
     return { ok: true, changeId: change.id };
   });
+
+  // The Cloudflare account card on the Server tab (versions, builds, database, storage).
+  r.get('cloudflare', ({ query }) => cloudflareAccount(query.fresh === '1'));
 
   // ── Payments (Money tab) ──
   // Fixing a payment by hand changes UniVerse's record only: Stripe is not refunded or charged.

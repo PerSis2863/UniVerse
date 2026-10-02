@@ -61,6 +61,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
       <PlanUsageCard usage={data.usage} />
       {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
+      <CloudflareCard />
       {data.settings && <SettingsCard settings={data.settings} />}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map(([label, n, Icon, to]) => (
@@ -147,6 +148,71 @@ function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
 }
 
 /** Which Cloudflare settings the live site can see: names and yes/no only, never the values. */
+type CfPart<T> = { ok: true; data: T } | { ok: false; error: string };
+type CfAccount = {
+  setup: boolean; checkedAt?: string;
+  versions?: CfPart<{ at: string; by: string; note: string }[]>;
+  builds?: CfPart<{ minutesUsed: number; minutesLimit: number; count: number; partial: boolean; recent: { at: string; outcome: string; minutes: number; branch: string; message: string }[] }>;
+  database?: CfPart<{ name: string; bytes: number | null; tables: number | null }>;
+  storage?: CfPart<{ buckets: string[] }>;
+};
+
+const size = (b: number | null) => (b == null ? '?' : b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(2)} GB` : `${(b / 1024 ** 2).toFixed(1)} MB`);
+
+/** Live version, build minutes, database and file storage, read from Cloudflare with the read-only token. */
+function CloudflareCard() {
+  const [fresh, setFresh] = useState(0);
+  const { data, isValidating } = useSWR<CfAccount>(`/owner/cloudflare${fresh ? `?fresh=1&n=${fresh}` : ''}`, fetcher, { refreshInterval: 300_000 });
+  const missing = (p?: CfPart<unknown>) => (p && !p.ok ? <p className="text-xs text-amber-600 dark:text-amber-400">{(p as { error: string }).error}</p> : null);
+  const b = data?.builds?.ok ? data.builds.data : null;
+  return (
+    <div className={cn(card, 'p-5')}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+        <h2 className="font-semibold text-zinc-900 dark:text-white">Cloudflare account</h2>
+        <button onClick={() => setFresh(Date.now())} disabled={isValidating} className="btn-secondary !py-1 !px-2.5 text-xs">{isValidating ? 'Checking…' : 'Check now'}</button>
+      </div>
+      {!data ? <Loader2 className="w-5 h-5 animate-spin text-zinc-400" /> : !data.setup ? (
+        <p className="text-sm text-zinc-500">Add the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets to see this.</p>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-5 text-sm">
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Build minutes this month</h3>
+            {b ? (
+              <>
+                <div className="h-2 rounded-full bg-zinc-100 dark:bg-white/10 overflow-hidden"><div className={cn('h-full', b.minutesUsed / b.minutesLimit > 0.8 ? 'bg-rose-500' : 'bg-indigo-500')} style={{ width: `${Math.min(100, (b.minutesUsed / b.minutesLimit) * 100)}%` }} /></div>
+                <p className="mt-1 text-zinc-700 dark:text-zinc-200">{b.minutesUsed}{b.partial ? '+' : ''} of {b.minutesLimit} minutes · {b.count} builds</p>
+                <ul className="mt-2 space-y-1">{b.recent.map((x) => (
+                  <li key={x.at} className="text-xs text-zinc-500 truncate">
+                    <span className={cn('font-semibold', x.outcome === 'success' ? 'text-emerald-600 dark:text-emerald-400' : x.outcome === 'fail' || x.outcome === 'failure' ? 'text-rose-500' : 'text-amber-500')}>{x.outcome}</span> · {formatDistanceToNow(new Date(x.at), { addSuffix: true })} · {x.minutes} min{x.branch ? ` · ${x.branch}` : ''}{x.message ? ` · ${x.message}` : ''}
+                  </li>
+                ))}</ul>
+              </>
+            ) : missing(data.builds)}
+          </section>
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Live site versions</h3>
+            {data.versions?.ok ? (
+              <ul className="space-y-1">{data.versions.data.map((v, i) => (
+                <li key={v.at} className="text-xs text-zinc-500 truncate">
+                  {i === 0 && <span className="font-semibold text-emerald-600 dark:text-emerald-400">Live · </span>}{format(new Date(v.at), 'd MMM, HH:mm')}{v.by ? ` · ${v.by}` : ''}{v.note ? ` · ${v.note}` : ''}
+                </li>
+              ))}</ul>
+            ) : missing(data.versions)}
+          </section>
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Database</h3>
+            {data.database?.ok ? <p className="text-zinc-700 dark:text-zinc-200">{data.database.data.name}: {size(data.database.data.bytes)} of 5 GB · {data.database.data.tables ?? '?'} tables</p> : missing(data.database)}
+          </section>
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">File storage</h3>
+            {data.storage?.ok ? <p className="text-zinc-700 dark:text-zinc-200">{data.storage.data.buckets.length ? data.storage.data.buckets.join(', ') : 'No storage bucket yet (large chat files need one).'}</p> : missing(data.storage)}
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsCard({ settings }: { settings: NonNullable<ServerData['settings']> }) {
   const bad = settings.filter((s) => s.problem || (s.needed && !s.set)).length;
   return (
