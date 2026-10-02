@@ -38,6 +38,7 @@ export const CREDENTIAL_TABS: SectionTab[] = [
 export const HOME_TABS: SectionTab[] = [
   { href: '/student', label: 'Overview' },
   { href: '/student/calendar', label: 'Timetable' },
+  { href: '/student/planner', label: 'Study planner' },
   { href: '/student/information', label: 'Information' },
 ];
 

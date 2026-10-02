@@ -41,6 +41,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/search/internships', label: 'Internship history', keywords: 'placements companies past internships', quick: true },
     { href: '/student/links', label: 'Apps & links', keywords: 'tools portals email library wifi', quick: true },
     { href: '/student/calendar', label: 'Timetable', keywords: 'calendar schedule classes week' },
+    { href: '/student/planner', label: 'Study planner', keywords: 'plan study schedule ai deadlines revision' },
     { href: '/student/information', label: 'Information', keywords: 'news announcements updates' },
     { href: '/student/attendance', label: 'Attendance', keywords: 'absences presence' },
     { href: '/student/quizzes', label: 'Quizzes', keywords: 'tests exams' },
@@ -57,7 +58,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
 
 export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
-    { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/information'] },
+    { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
     {
       label: 'nav.schooling', icon: GraduationCap,
