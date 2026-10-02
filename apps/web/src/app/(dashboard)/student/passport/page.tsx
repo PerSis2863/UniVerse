@@ -12,6 +12,7 @@ import { downloadFile as download } from '@/lib/download';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { PassportView, type PassportData } from '@/components/passport/PassportView';
 import { cn } from '@/lib/utils';
+import { QrCode } from '@/components/ui/QrCode';
 
 interface Passport {
   isPublic: boolean; headline: string | null; url: string; views: number;
@@ -82,6 +83,13 @@ export default function SkillsPassportPage() {
                   <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(data.url)}`} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#0a66c2] text-white">Share on LinkedIn</a>
                   <button aria-busy={saving || undefined} disabled={saving} onClick={async () => { if (await confirmDialog({ title: 'Make a new link?', message: 'The current link stops working. Use this if you shared it with someone who shouldn’t see it any more.', confirmLabel: 'New link' })) save({ resetLink: true }, 'New link created'); }}
                     className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200 inline-flex items-center gap-1"><RefreshCw className="w-3.5 h-3.5" /> New link</button>
+                </div>
+                {/* The same link as a QR code: handy on a CV, a poster or at a careers fair */}
+                <div className="mt-3 flex items-center gap-3 rounded-2xl p-3 bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10 border border-indigo-500/15">
+                  <div className="rounded-xl p-1 bg-gradient-to-br from-indigo-500 to-fuchsia-500 shrink-0">
+                    <QrCode value={data.url} size={84} className="rounded-lg block" title="QR code for your public passport" />
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300">Scanning this opens your public passport. Add it to your CV or show it at a careers fair.</p>
                 </div>
               </div>
             )}

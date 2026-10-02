@@ -34,7 +34,7 @@ function tabsForRole(role: string): { base: string; items: TabItem[] } {
       items: [
         { href: '/teacher', label: 'Home', icon: LayoutDashboard },
         { href: '/teacher/courses', label: 'Courses', icon: BookOpen },
-        { href: '/teacher/students', label: 'Students', icon: Users, match: ['/teacher/students', '/teacher/early-warning'] },
+        { href: '/teacher/students', label: 'Students', icon: Users, match: ['/teacher/students', '/teacher/early-warning', '/teacher/analytics'] },
         { href: '/teacher/inbox', label: 'Messages', icon: MessageSquare },
       ],
     };

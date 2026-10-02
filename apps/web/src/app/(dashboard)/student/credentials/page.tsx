@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  Shield, ExternalLink, Copy, CheckCircle2, Clock, Loader2, Plus, X,
+  Shield, ExternalLink, CheckCircle2, Clock, Loader2, Plus, X,
   Globe2, ChevronDown, ChevronUp, Sparkles, Lock, Hash, AlertTriangle, XCircle, Download
 } from 'lucide-react';
 
@@ -24,6 +24,9 @@ import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
 import { safeHref } from '@/lib/safe-href';
 import { downloadFile } from '@/lib/download';
+import { useAuthStore } from '@/store/auth';
+import { QrCode } from '@/components/ui/QrCode';
+import { CertificateQrButton, CopyLinkButton } from '@/components/passport/CredentialShare';
 
 type CredentialStatus = 'PENDING' | 'ISSUED' | 'REVOKED' | 'REJECTED' | 'UNVERIFIED_LEGACY';
 
@@ -65,8 +68,8 @@ const STATUS_MAP: Record<CredentialStatus, { label: string; color: string; bg: s
   UNVERIFIED_LEGACY: { label: 'Unverified (legacy)', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20', dot: 'bg-zinc-400' },
 };
 
-function apiErrorMessage(err: any, fallback: string): string {
-  const msg = err?.response?.data?.message;
+function apiErrorMessage(err: unknown, fallback: string): string {
+  const msg = (err as { response?: { data?: { message?: unknown } } } | null)?.response?.data?.message;
   if (Array.isArray(msg)) return msg.join(', ');
   if (typeof msg === 'string') return msg;
   return fallback;
@@ -123,7 +126,7 @@ function RequestCredentialModal({ onClose, onRequested }: { onClose: () => void;
           ].map(({ key, label, placeholder, min, max }) => (
             <div key={key}>
               <label className="block text-xs font-medium text-zinc-400 mb-1">{label}</label>
-              <input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} required minLength={min} maxLength={max}
+              <input value={form[key as keyof typeof form]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} required minLength={min} maxLength={max}
                 className={inputCls} />
             </div>
           ))}
@@ -175,15 +178,8 @@ function CredentialCard({ cred }: { cred: Credential }) {
     const text = `I earned a verified credential: "${cred.title}" — ${cred.hoursCompleted} hours on ${cred.projectName} with ${cred.organization}.`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(cred.verifyUrl)}`, '_blank', 'noopener,noreferrer');
   };
-  const copyLink = async () => {
-    if (!cred.verifyUrl) return;
-    try {
-      await navigator.clipboard.writeText(cred.verifyUrl);
-      toast.success('Verification link copied');
-    } catch {
-      toast.error('Could not copy the link');
-    }
-  };
+  const holderName = useAuthStore((st) => st.user?.name);
+  const certInfo = { title: cred.title, holderName, organization: cred.organization, projectName: cred.projectName, issuedAt: cred.issuedAt, certificateCode: cred.certificateCode };
 
   return (
     <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all">
@@ -207,9 +203,17 @@ function CredentialCard({ cred }: { cred: Credential }) {
                 <p className="text-xs text-emerald-400 font-medium">{cred.organization}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">{cred.projectName}</p>
               </div>
-              <span className="text-xs text-zinc-600 flex-shrink-0">
-                {new Date(dateLabel).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </span>
+              <div className="flex items-start gap-3 flex-shrink-0">
+                <span className="text-xs text-zinc-600">
+                  {new Date(dateLabel).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                {/* Scannable straight from the card: opens the public verification page */}
+                {isVerified && (
+                  <CertificateQrButton url={cred.verifyUrl!} cert={certInfo} className="hidden sm:inline-flex rounded-lg p-0.5 bg-gradient-to-br from-indigo-500 to-fuchsia-500 hover:scale-105 transition-transform">
+                    <QrCode value={cred.verifyUrl!} size={56} className="rounded-md block" title="QR code for the verification page" />
+                  </CertificateQrButton>
+                )}
+              </div>
             </div>
             <div className="flex gap-4 mt-3 flex-wrap">
               <div className="text-xs"><span className="text-zinc-500">Hours </span><span className="text-white font-bold">{cred.hoursCompleted}</span></div>
@@ -248,10 +252,10 @@ function CredentialCard({ cred }: { cred: Credential }) {
               className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <TwitterIcon className="w-3 h-3" /> Twitter / X
             </button>
-            <button onClick={copyLink}
-              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all">
-              <Copy className="w-3 h-3" /> Copy Link
-            </button>
+            <CopyLinkButton url={cred.verifyUrl!}
+              className="text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all" />
+            <CertificateQrButton url={cred.verifyUrl!} cert={certInfo} label="QR certificate"
+              className="text-fuchsia-300 hover:text-fuchsia-200 bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/15 hover:from-indigo-500/25 hover:to-fuchsia-500/25 border border-fuchsia-500/25 px-3 py-1.5 rounded-lg transition-all" />
             <button onClick={() => downloadFile(`/api/passport/badge/${cred.id}`, 'open-badge.jwt').then(() => toast.success('Open Badge downloaded')).catch((e) => toast.error(e.message))}
               title="Signed Open Badges 3.0 credential for digital wallets and badge platforms"
               className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
@@ -315,22 +319,16 @@ export default function VerifiedCredentialsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  const fetchCredentials = async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const res = await api.get('/impact/blockchain-credentials');
-      setCredentials(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      setLoadError(apiErrorMessage(err, 'Could not load your credentials.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Bumping `attempt` (Try again) re-runs the load; state only changes once the request settles
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    fetchCredentials();
-  }, []);
+    let cancelled = false;
+    api.get('/impact/blockchain-credentials')
+      .then((res) => { if (!cancelled) { setCredentials(Array.isArray(res.data) ? res.data : []); setLoadError(null); } })
+      .catch((err) => { if (!cancelled) setLoadError(apiErrorMessage(err, 'Could not load your credentials.')); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [attempt]);
 
   const verified = credentials.filter(c => c.status === 'ISSUED');
   const pendingCount = credentials.filter(c => c.status === 'PENDING').length;
@@ -392,7 +390,7 @@ export default function VerifiedCredentialsPage() {
               <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm text-red-300">{loadError}</p>
-                <button onClick={fetchCredentials} className="mt-2 text-xs text-red-300 underline">Try again</button>
+                <button onClick={() => { setLoading(true); setLoadError(null); setAttempt((n) => n + 1); }} className="mt-2 text-xs text-red-300 underline">Try again</button>
               </div>
             </div>
           ) : credentials.length === 0 ? (

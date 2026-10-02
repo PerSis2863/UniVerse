@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useParams } from 'next/navigation';
-import { BadgeCheck, Loader2, ShieldAlert, ShieldCheck, UserX } from 'lucide-react';
+import { BadgeCheck, Loader2, ScanLine, ShieldAlert, ShieldCheck, UserX } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { PassportView, type PassportData } from '@/components/passport/PassportView';
+import { CopyLinkButton } from '@/components/passport/CredentialShare';
+import { QrCode } from '@/components/ui/QrCode';
 
 type VerifyResult = { valid: true; badge: { name?: string; earner?: string; criteria?: string; issued?: string; verifyUrl?: string } } | { valid: false; reason: string };
 
@@ -40,12 +42,35 @@ export default function PublicPassportPage() {
         ) : (
           <>
             <PassportView p={p} />
+            <PassportQr name={p.name} />
             <BadgeVerifier />
           </>
         )}
         <p className="mt-8 text-center text-[11px] text-zinc-500">UniVerse Impact · Paris, France · <Link href="/privacy" className="hover:underline">Privacy</Link></p>
       </div>
     </main>
+  );
+}
+
+const noSubscribe = () => () => {};
+
+/** A QR code of this page, so a recruiter at a fair can open it on their phone. */
+function PassportQr({ name }: { name: string }) {
+  // The address is only known in the browser; strip any query or hash so the code stays short
+  const url = useSyncExternalStore(noSubscribe, () => `${window.location.origin}${window.location.pathname}`, () => '');
+  if (!url) return null;
+  return (
+    <section className="mt-5 tone-panel rounded-3xl border border-zinc-200 dark:border-white/10 p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+      <div className="rounded-2xl p-1.5 bg-gradient-to-br from-indigo-500 to-fuchsia-500 shrink-0">
+        <QrCode value={url} size={132} className="rounded-xl block" title={`QR code for ${name}'s skills passport`} />
+      </div>
+      <div className="min-w-0">
+        <p className="font-bold text-zinc-900 dark:text-white flex items-center justify-center sm:justify-start gap-2"><ScanLine className="w-5 h-5 text-fuchsia-500" /> Scan to open this passport</p>
+        <p className="mt-1 text-xs text-zinc-500">Point a phone camera at the code to open {name}’s passport and check each credential.</p>
+        <p className="mt-2 text-[11px] text-zinc-400 break-all">{url}</p>
+        <CopyLinkButton url={url} label="Copy passport link" copiedMessage="Passport link copied" className="btn-secondary mt-3" />
+      </div>
+    </section>
   );
 }
 

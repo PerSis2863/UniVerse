@@ -2,6 +2,7 @@
 
 import { Award, BadgeCheck, BookOpen, Clock, ExternalLink, HeartHandshake, Sparkles, Users } from 'lucide-react';
 import { safeHref } from '@/lib/safe-href';
+import { CertificateQrButton, CopyLinkButton } from './CredentialShare';
 
 export interface PassportData {
   name: string;
@@ -75,8 +76,10 @@ export function PassportView({ p, badgeActions }: { p: PassportData; badgeAction
                   </div>
                   <p className="text-sm text-zinc-600 dark:text-zinc-300 mt-0.5">{c.projectName} · {c.organization}</p>
                   <p className="text-xs text-zinc-500 mt-1">{c.hoursCompleted} h{c.peopleImpacted ? ` · ${c.peopleImpacted} people` : ''} · {fmtDate(c.issuedAt)}{c.verifiedByName ? ` · verified by ${c.verifiedByName}` : ''}</p>
-                  <div className="mt-2.5 flex flex-wrap gap-2">
+                  <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2">
                     <a href={safeHref(c.verifyUrl)} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1 hover:underline">Verify <ExternalLink className="w-3 h-3" /></a>
+                    <CopyLinkButton url={c.verifyUrl} className="text-zinc-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-300" />
+                    <CertificateQrButton url={c.verifyUrl} cert={{ ...c, holderName: p.name }} className="text-fuchsia-600 dark:text-fuchsia-300 hover:underline" />
                     {badgeActions?.(c.id)}
                   </div>
                 </li>

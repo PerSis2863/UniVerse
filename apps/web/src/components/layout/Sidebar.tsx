@@ -114,6 +114,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor'] },
         { href: '/teacher/students', label: 'nav.students' },
         { href: '/teacher/early-warning', label: 'Early warning' },
+        { href: '/teacher/analytics', label: 'Course analytics' },
         { href: '/teacher/attendance', label: 'nav.attendance' },
         { href: '/teacher/grades', label: 'nav.grades' },
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
