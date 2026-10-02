@@ -40,8 +40,9 @@ async function versions() {
   return r.deployments.slice(0, 8).map((d) => ({
     at: d.created_on,
     versionId: d.versions?.[0]?.version_id ?? null,
-    by: d.annotations?.['workers/triggered_by'] ?? d.source ?? '',
-    note: d.annotations?.['workers/message'] ?? '',
+    by: ({ deployment: 'update', rollback: 'rollback', secret: 'secret changed', upload: 'upload' } as Record<string, string>)[d.annotations?.['workers/triggered_by'] ?? ''] ?? d.annotations?.['workers/triggered_by'] ?? '',
+    version: d.versions?.[0]?.version_id?.slice(0, 8) ?? '',
+    note: (d.annotations?.['workers/message'] ?? '').replace(/^Deployed version \S+$/, ''),
   }));
 }
 
@@ -75,7 +76,7 @@ async function database() {
   const list = await cf<{ uuid: string; name: string; file_size?: number; num_tables?: number }[]>(`/d1/database?name=${DATABASE}`);
   const db = list.find((d) => d.name === DATABASE) ?? list[0];
   if (!db) throw new Error('Database not found.');
-  return { name: db.name, bytes: db.file_size ?? null, tables: db.num_tables ?? null };
+  return { name: db.name, bytes: db.file_size ?? null, tables: db.num_tables || null };
 }
 
 async function storage() {
@@ -129,16 +130,39 @@ async function traffic() {
   };
 }
 
-/** What Cloudflare's firewall stopped in the last 24 hours (Zone → Firewall Services → Read). */
+/**
+ * What Cloudflare's firewall stopped in the last 24 hours (Zone → Firewall Services → Read). The
+ * grouped list isn't in the Free plan, so it falls back to the latest events, counted here; if
+ * neither is allowed, `limited` says so (the visitors part still counts threats stopped).
+ */
 async function attacks() {
-  type Group = { count: number; dimensions: { action: string; source: string; clientCountryName: string } };
-  const data = await graphql<{ viewer: { zones: { firewallEventsAdaptiveGroups: Group[] }[] } }>(
-    `query ($zone: String!, $since: Time!) { viewer { zones(filter: { zoneTag: $zone }) { firewallEventsAdaptiveGroups(limit: 10, filter: { datetime_geq: $since }, orderBy: [count_DESC]) {
-      count dimensions { action source clientCountryName } } } } }`,
-    { zone: await zone(), since: new Date(Date.now() - 86_400_000).toISOString() },
-  );
-  const groups = data.viewer.zones[0]?.firewallEventsAdaptiveGroups ?? [];
-  return { total: groups.reduce((a, g) => a + g.count, 0), top: groups.slice(0, 5).map((g) => ({ count: g.count, ...g.dimensions })) };
+  type Row = { action: string; source: string; clientCountryName: string };
+  const vars = { zone: await zone(), since: new Date(Date.now() - 86_400_000).toISOString() };
+  const noAccess = (e: unknown) => /does not have access|not authorized|permission/i.test((e as Error).message);
+  try {
+    const data = await graphql<{ viewer: { zones: { firewallEventsAdaptiveGroups: { count: number; dimensions: Row }[] }[] } }>(
+      `query ($zone: String!, $since: Time!) { viewer { zones(filter: { zoneTag: $zone }) { firewallEventsAdaptiveGroups(limit: 10, filter: { datetime_geq: $since }, orderBy: [count_DESC]) {
+        count dimensions { action source clientCountryName } } } } }`, vars);
+    const groups = data.viewer.zones[0]?.firewallEventsAdaptiveGroups ?? [];
+    return { limited: false, total: groups.reduce((a, g) => a + g.count, 0), top: groups.slice(0, 5).map((g) => ({ count: g.count, ...g.dimensions })) };
+  } catch (e) {
+    if (!noAccess(e)) throw e;
+  }
+  try {
+    const data = await graphql<{ viewer: { zones: { firewallEventsAdaptive: Row[] }[] } }>(
+      `query ($zone: String!, $since: Time!) { viewer { zones(filter: { zoneTag: $zone }) { firewallEventsAdaptive(limit: 100, filter: { datetime_geq: $since }, orderBy: [datetime_DESC]) {
+        action source clientCountryName } } } }`, vars);
+    const rows = data.viewer.zones[0]?.firewallEventsAdaptive ?? [];
+    const counts = new Map<string, { count: number } & Row>();
+    for (const r of rows) {
+      const k = `${r.action}|${r.source}|${r.clientCountryName}`;
+      counts.set(k, { ...r, count: (counts.get(k)?.count ?? 0) + 1 });
+    }
+    return { limited: false, total: rows.length, top: [...counts.values()].sort((x, y) => y.count - x.count).slice(0, 5) };
+  } catch (e) {
+    if (!noAccess(e)) throw e;
+    return { limited: true, total: 0, top: [] };
+  }
 }
 
 /** Domain health: email records, the certificate and hello@ forwarding (Zone → DNS, SSL and Certificates, Email Routing Rules → Read). */
@@ -173,7 +197,10 @@ async function domain() {
 /** Your Cloudflare plans and what they cost (Account → Billing → Read). */
 async function plan() {
   const subs = await cf<{ rate_plan?: { public_name?: string; id?: string }; price?: number; currency?: string; frequency?: string; current_period_end?: string; state?: string }[]>('/subscriptions');
-  return subs.map((s) => ({ name: s.rate_plan?.public_name ?? s.rate_plan?.id ?? 'Plan', price: s.price ?? 0, currency: s.currency ?? 'USD', frequency: s.frequency ?? '', renews: s.current_period_end ?? null, state: s.state ?? '' }));
+  const list = subs.map((s) => ({ name: s.rate_plan?.public_name ?? s.rate_plan?.id ?? 'Plan', price: s.price ?? 0, currency: s.currency ?? 'USD', frequency: s.frequency ?? '', renews: s.current_period_end ?? null, state: s.state ?? '' }));
+  // Workers Free has no subscription, so it's named here when no Workers plan is listed.
+  if (!list.some((x) => /worker/i.test(x.name))) list.unshift({ name: 'Workers Free', price: 0, currency: 'USD', frequency: '', renews: null, state: 'active' });
+  return list;
 }
 
 let cache: { at: number; value: unknown } | null = null;

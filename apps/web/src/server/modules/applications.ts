@@ -43,8 +43,13 @@ export async function currentApplication(userId: string) {
 
 /** Starts an application when someone picks "teacher" / "NGO" while signing up. */
 export async function startSignupApplication(user: Actor, requestedRole: RequestableRole) {
-  const open = await prisma.roleApplication.findFirst({ where: { userId: user.id, status: { in: OPEN } }, select: { id: true } });
-  if (open) return;
+  const open = await prisma.roleApplication.findFirst({ where: { userId: user.id, status: { in: OPEN } }, select: { id: true, status: true, requestedRole: true } });
+  if (open) {
+    // Picked a different role this time (e.g. Individual first, then Staff / Mentor): the unsent
+    // application follows the latest choice instead of staying a student verification.
+    if (open.status === 'DRAFT' && open.requestedRole !== requestedRole) await prisma.roleApplication.update({ where: { id: open.id }, data: { requestedRole } });
+    return;
+  }
   await prisma.roleApplication.create({
     data: { userId: user.id, requestedRole, source: 'SIGNUP', status: 'DRAFT', history: [{ at: new Date().toISOString(), by: user.id, byName: user.name, type: 'created' }] },
   });

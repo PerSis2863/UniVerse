@@ -206,7 +206,7 @@ export default function ApplicationPage() {
         )}
         <ApplicationForm
           initial={toForm(app, app.requestedRole)}
-          canChangeRole={app.status === 'DRAFT' && app.requestedRole !== 'STUDENT'}
+          canChangeRole={app.status === 'DRAFT'}
           submitLabel={app.status === 'NEEDS_INFO' ? 'Send updated application' : app.status === 'PENDING' ? 'Save changes' : 'Send for review'}
           onSaved={async () => { setEditing(false); await mutate(); await refreshProfile(); }}
           onCancel={editing ? () => setEditing(false) : undefined}

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Ban, Bug, Eye, Loader2, Megaphone, MessageSquare, Power, Sparkles, ToggleRight, Trash2, Users, Wrench } from 'lucide-react';
+import { Activity, AlertCircle, Ban, Bug, CheckCircle2, CreditCard, Eye, Hammer, History, Loader2, Megaphone, MessageSquare, Power, RefreshCw, Server, ShieldCheck, Sparkles, ToggleRight, Trash2, Users, Wrench, XCircle } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -151,24 +151,55 @@ function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
 type CfPart<T> = { ok: true; data: T } | { ok: false; error: string };
 type CfAccount = {
   setup: boolean; checkedAt?: string; canEdit?: boolean;
-  versions?: CfPart<{ at: string; versionId: string | null; by: string; note: string }[]>;
+  versions?: CfPart<{ at: string; versionId: string | null; version: string; by: string; note: string }[]>;
   builds?: CfPart<{ minutesUsed: number; minutesLimit: number; count: number; partial: boolean; recent: { at: string; outcome: string; minutes: number; branch: string; message: string }[] }>;
   database?: CfPart<{ name: string; bytes: number | null; tables: number | null }>;
   storage?: CfPart<{ buckets: string[] }>;
   traffic?: CfPart<{ days: { day: string; visitors: number; pageViews: number; requests: number }[]; visitors: number; pageViews: number; threats: number; bytes: number; countries: { code: string; requests: number }[] }>;
-  attacks?: CfPart<{ total: number; top: { count: number; action: string; source: string; clientCountryName: string }[] }>;
+  attacks?: CfPart<{ limited: boolean; total: number; top: { count: number; action: string; source: string; clientCountryName: string }[] }>;
   domain?: CfPart<{ checks: { name: string; ok: boolean | null; note: string }[] }>;
   plan?: CfPart<{ name: string; price: number; currency: string; frequency: string; renews: string | null; state: string }[]>;
 };
 
 const size = (b: number | null) => (b == null ? '?' : b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(2)} GB` : `${(b / 1024 ** 2).toFixed(1)} MB`);
+const short = (n: number) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+const okOf = <T,>(p?: CfPart<T>) => (p?.ok ? (p as { data: T }).data : null);
+const panel = 'rounded-2xl border border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-white/[0.025] p-4';
 
-/** Live version, build minutes, database and file storage, read from Cloudflare with the read-only token. */
+function Panel({ icon: Icon, title, tone = 'text-indigo-500 bg-indigo-500/10', className, children }: { icon: typeof Activity; title: string; tone?: string; className?: string; children: React.ReactNode }) {
+  return (
+    <section className={cn(panel, className)}>
+      <h3 className="flex items-center gap-2 text-[13px] font-semibold text-zinc-800 dark:text-zinc-100 mb-3">
+        <span className={cn('w-7 h-7 rounded-lg flex items-center justify-center', tone)}><Icon className="w-3.5 h-3.5" /></span>{title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: string }) {
+  return (
+    <div className={cn(panel, 'relative overflow-hidden')}>
+      <span className={cn('absolute inset-x-0 top-0 h-0.5', tone)} />
+      <p className="text-xs font-medium text-zinc-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white tabular-nums">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-zinc-500 truncate">{sub}</p>}
+    </div>
+  );
+}
+
+const Pill = ({ tone, children }: { tone: 'good' | 'bad' | 'warn' | 'plain'; children: React.ReactNode }) => (
+  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold', {
+    good: 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400', bad: 'bg-rose-500/12 text-rose-600 dark:text-rose-400',
+    warn: 'bg-amber-500/12 text-amber-600 dark:text-amber-400', plain: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300',
+  }[tone])}>{children}</span>
+);
+
+/** Live version, build minutes, visitors, security, domain, database and plan, read from Cloudflare with the read-only token. */
 function CloudflareCard() {
   const [fresh, setFresh] = useState(0);
   const { data, isValidating } = useSWR<CfAccount>(`/owner/cloudflare${fresh ? `?fresh=1&n=${fresh}` : ''}`, fetcher, { refreshInterval: 300_000 });
-  const missing = (p?: CfPart<unknown>) => (p && !p.ok ? <p className="text-xs text-amber-600 dark:text-amber-400">{(p as { error: string }).error}</p> : null);
-  const b = data?.builds?.ok ? data.builds.data : null;
+  const missing = (p?: CfPart<unknown>) => (p && !p.ok ? <p className="text-xs text-zinc-500">Can&apos;t read this yet: {(p as { error: string }).error}</p> : null);
   // Every change to Cloudflare needs a code sent to the owner's email.
   const putBack = async (versionId: string, when: string) => {
     if (!(await confirmDialog({ title: `Put the version from ${when} back live?`, message: 'Use this when a new update broke something. We will email you a code to confirm.', confirmLabel: 'Email me a code' }))) return;
@@ -181,91 +212,120 @@ function CloudflareCard() {
       setFresh((n) => n + 1);
     } catch (e) { toast.error(errorMessage(e)); }
   };
+  const b = okOf(data?.builds), t = okOf(data?.traffic), db = okOf(data?.database), at = okOf(data?.attacks), dom = okOf(data?.domain);
+  const buildPct = b ? Math.min(100, (b.minutesUsed / b.minutesLimit) * 100) : 0;
+  const maxDay = Math.max(1, ...(t?.days.map((d) => d.visitors) ?? [1]));
+  const totalReq = t?.countries.reduce((a, c) => a + c.requests, 0) || 1;
+  const domainBad = dom?.checks.filter((c) => c.ok === false).length ?? 0;
   return (
-    <div className={cn(card, 'p-5')}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-        <h2 className="font-semibold text-zinc-900 dark:text-white">Cloudflare account</h2>
-        <button onClick={() => setFresh((n) => n + 1)} disabled={isValidating} className="btn-secondary !py-1 !px-2.5 text-xs">{isValidating ? 'Checking…' : 'Check now'}</button>
+    <div className={cn(card, 'p-5 sm:p-6')}>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div>
+          <h2 className="font-semibold text-lg text-zinc-900 dark:text-white flex items-center gap-2"><Server className="w-5 h-5 text-orange-500" /> Cloudflare account</h2>
+          {data?.checkedAt && <p className="text-xs text-zinc-500 mt-0.5">Updated {formatDistanceToNow(new Date(data.checkedAt), { addSuffix: true })}</p>}
+        </div>
+        <button onClick={() => setFresh((n) => n + 1)} disabled={isValidating} className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 text-xs">
+          <RefreshCw className={cn('w-3.5 h-3.5', isValidating && 'animate-spin')} /> {isValidating ? 'Checking…' : 'Check now'}
+        </button>
       </div>
       {!data ? <Loader2 className="w-5 h-5 animate-spin text-zinc-400" /> : !data.setup ? (
         <p className="text-sm text-zinc-500">Add the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets to see this.</p>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-5 text-sm">
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Build minutes this month</h3>
-            {b ? (
-              <>
-                <div className="h-2 rounded-full bg-zinc-100 dark:bg-white/10 overflow-hidden"><div className={cn('h-full', b.minutesUsed / b.minutesLimit > 0.8 ? 'bg-rose-500' : 'bg-indigo-500')} style={{ width: `${Math.min(100, (b.minutesUsed / b.minutesLimit) * 100)}%` }} /></div>
-                <p className="mt-1 text-zinc-700 dark:text-zinc-200">{b.minutesUsed}{b.partial ? '+' : ''} of {b.minutesLimit} minutes · {b.count} builds</p>
-                <ul className="mt-2 space-y-1">{b.recent.map((x) => (
-                  <li key={x.at} className="text-xs text-zinc-500 truncate">
-                    <span className={cn('font-semibold', x.outcome === 'success' ? 'text-emerald-600 dark:text-emerald-400' : x.outcome === 'fail' || x.outcome === 'failure' ? 'text-rose-500' : 'text-amber-500')}>{x.outcome}</span> · {formatDistanceToNow(new Date(x.at), { addSuffix: true })} · {x.minutes} min{x.branch ? ` · ${x.branch}` : ''}{x.message ? ` · ${x.message}` : ''}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Stat label="Visitors · 7 days" value={t ? short(t.visitors) : '–'} sub={t ? `${short(t.pageViews)} page views` : undefined} tone="bg-indigo-500" />
+            <Stat label="Threats stopped · 7 days" value={t ? short(t.threats) : '–'} sub={t ? `${size(t.bytes)} sent` : undefined} tone="bg-rose-500" />
+            <Stat label="Build minutes" value={b ? `${b.minutesUsed}${b.partial ? '+' : ''}` : '–'} sub={b ? `of ${b.minutesLimit.toLocaleString()} this month · ${b.count} builds` : undefined} tone={buildPct > 80 ? 'bg-rose-500' : 'bg-violet-500'} />
+            <Stat label="Database" value={db ? size(db.bytes) : '–'} sub={db ? `of 5 GB${db.tables ? ` · ${db.tables} tables` : ''}` : undefined} tone="bg-emerald-500" />
+          </div>
+          <div className="grid lg:grid-cols-2 gap-4">
+            <Panel icon={Users} title="Visitors · last 7 days">
+              {t ? (
+                <>
+                  <div className="flex items-end gap-2 h-24">{t.days.map((d) => (
+                    <div key={d.day} className="flex-1 flex flex-col items-center gap-1 h-full justify-end" title={`${d.visitors} visitors, ${d.pageViews} page views`}>
+                      <span className="text-[10px] tabular-nums text-zinc-500">{short(d.visitors)}</span>
+                      <div className="w-full rounded-lg bg-gradient-to-t from-indigo-600 to-fuchsia-400" style={{ height: `${Math.max(6, (d.visitors / maxDay) * 100)}%` }} />
+                      <span className="text-[10px] text-zinc-500">{format(new Date(d.day), 'EEE')}</span>
+                    </div>
+                  ))}</div>
+                  {t.countries.length > 0 && (
+                    <div className="mt-4 space-y-1.5">{t.countries.map((c) => {
+                      const pct = Math.round((c.requests / totalReq) * 100);
+                      return (
+                        <div key={c.code} className="flex items-center gap-2 text-xs">
+                          <span className="w-8 font-semibold text-zinc-700 dark:text-zinc-200">{c.code}</span>
+                          <div className="flex-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.max(2, pct)}%` }} /></div>
+                          <span className="w-10 text-right tabular-nums text-zinc-500">{pct}%</span>
+                        </div>
+                      );
+                    })}</div>
+                  )}
+                </>
+              ) : missing(data.traffic)}
+            </Panel>
+            <Panel icon={Ban} title="Security · last 24 hours" tone="text-rose-500 bg-rose-500/10">
+              {at ? (at.limited ? (
+                <p className="text-sm text-zinc-600 dark:text-zinc-300">Cloudflare is protecting the site. {t ? <><b>{short(t.threats)}</b> threats were stopped in the last 7 days. </> : null}The detailed list of each blocked request needs a paid Cloudflare website plan.</p>
+              ) : at.total === 0 ? <p className="text-sm text-emerald-600 dark:text-emerald-400">Nothing needed blocking.</p> : (
+                <>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-200 mb-2"><b>{at.total.toLocaleString()}</b> requests stopped</p>
+                  <ul className="space-y-1.5">{at.top.map((x, i) => (
+                    <li key={i} className="flex items-center gap-2 text-xs"><Pill tone="bad">{x.count}</Pill><span className="text-zinc-600 dark:text-zinc-300">{x.action} by {x.source}</span>{x.clientCountryName && <span className="text-zinc-400">· {x.clientCountryName}</span>}</li>
+                  ))}</ul>
+                </>
+              )) : missing(data.attacks)}
+            </Panel>
+            <Panel icon={Hammer} title="Builds" tone="text-violet-500 bg-violet-500/10">
+              {b ? (
+                <>
+                  <div className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className={cn('h-full rounded-full', buildPct > 80 ? 'bg-rose-500' : 'bg-gradient-to-r from-violet-500 to-indigo-500')} style={{ width: `${Math.max(1, buildPct)}%` }} /></div>
+                  <p className="mt-1.5 text-xs text-zinc-500">{b.minutesUsed} of {b.minutesLimit.toLocaleString()} minutes used this month</p>
+                  <ul className="mt-3 space-y-2">{b.recent.map((x) => (
+                    <li key={x.at} className="flex items-start gap-2 text-xs">
+                      <Pill tone={x.outcome === 'success' ? 'good' : /fail/.test(x.outcome) ? 'bad' : 'warn'}>{x.outcome === 'success' ? 'OK' : x.outcome}</Pill>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-zinc-700 dark:text-zinc-200">{x.message || x.branch}</span><span className="text-zinc-400">{formatDistanceToNow(new Date(x.at), { addSuffix: true })} · {x.minutes} min{x.branch === 'main' ? ' · live site' : ''}</span></span>
+                    </li>
+                  ))}</ul>
+                </>
+              ) : missing(data.builds)}
+            </Panel>
+            <Panel icon={History} title="Live site versions" tone="text-emerald-500 bg-emerald-500/10">
+              {data.versions?.ok ? (
+                <ul className="space-y-2">{data.versions.data.map((v, i) => (
+                  <li key={v.at} className="flex items-center gap-2 text-xs">
+                    {i === 0 ? <Pill tone="good">Live</Pill> : <Pill tone="plain">{v.version || 'earlier'}</Pill>}
+                    <span className="flex-1 min-w-0 truncate text-zinc-600 dark:text-zinc-300">{format(new Date(v.at), 'd MMM, HH:mm')}{v.by ? ` · ${v.by}` : ''}{v.note ? ` · ${v.note}` : ''}</span>
+                    {i > 0 && data.canEdit && v.versionId && <button onClick={() => void putBack(v.versionId!, format(new Date(v.at), 'd MMM, HH:mm'))} className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Put back live</button>}
                   </li>
                 ))}</ul>
-              </>
-            ) : missing(data.builds)}
-          </section>
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Live site versions</h3>
-            {data.versions?.ok ? (
-              <ul className="space-y-1">{data.versions.data.map((v, i) => (
-                <li key={v.at} className="text-xs text-zinc-500 truncate">
-                  {i === 0 && <span className="font-semibold text-emerald-600 dark:text-emerald-400">Live · </span>}{format(new Date(v.at), 'd MMM, HH:mm')}{v.by ? ` · ${v.by}` : ''}{v.note ? ` · ${v.note}` : ''}
-                  {i > 0 && data.canEdit && v.versionId && <button onClick={() => void putBack(v.versionId!, format(new Date(v.at), 'd MMM, HH:mm'))} className="ml-2 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Put back live</button>}
-                </li>
-              ))}</ul>
-            ) : missing(data.versions)}
-          </section>
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Database</h3>
-            {data.database?.ok ? <p className="text-zinc-700 dark:text-zinc-200">{data.database.data.name}: {size(data.database.data.bytes)} of 5 GB · {data.database.data.tables ?? '?'} tables</p> : missing(data.database)}
-          </section>
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Visitors · last 7 days</h3>
-            {data.traffic?.ok ? (() => {
-              const t = data.traffic.data;
-              const max = Math.max(1, ...t.days.map((d) => d.visitors));
-              return (
-                <>
-                  <p className="text-zinc-700 dark:text-zinc-200">{t.visitors.toLocaleString()} visitors · {t.pageViews.toLocaleString()} page views · {size(t.bytes)} sent{t.threats ? ` · ${t.threats} threats stopped` : ''}</p>
-                  <div className="mt-2 flex items-end gap-1 h-12">{t.days.map((d) => <div key={d.day} title={`${d.day}: ${d.visitors} visitors`} className="flex-1 rounded-t bg-indigo-500/70" style={{ height: `${Math.max(4, (d.visitors / max) * 100)}%` }} />)}</div>
-                  {t.countries.length > 0 && <p className="mt-1 text-xs text-zinc-500">Top countries: {t.countries.map((c) => `${c.code} (${c.requests.toLocaleString()})`).join(', ')}</p>}
-                </>
-              );
-            })() : missing(data.traffic)}
-          </section>
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Blocked by Cloudflare · last 24 hours</h3>
-            {data.attacks?.ok ? (data.attacks.data.total === 0 ? <p className="text-emerald-600 dark:text-emerald-400">Nothing needed blocking.</p> : (
-              <>
-                <p className="text-zinc-700 dark:text-zinc-200">{data.attacks.data.total.toLocaleString()} requests stopped</p>
-                <ul className="mt-1 space-y-0.5">{data.attacks.data.top.map((x, i) => <li key={i} className="text-xs text-zinc-500">{x.count} · {x.action} by {x.source}{x.clientCountryName ? ` · from ${x.clientCountryName}` : ''}</li>)}</ul>
-              </>
-            )) : missing(data.attacks)}
-          </section>
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Domain health</h3>
-            {data.domain?.ok ? (
-              <ul className="space-y-1">{data.domain.data.checks.map((c) => (
-                <li key={c.name} className="text-xs">
-                  <span className={cn('font-semibold', c.ok === true ? 'text-emerald-600 dark:text-emerald-400' : c.ok === false ? 'text-rose-500' : 'text-amber-500')}>{c.ok === true ? 'OK' : c.ok === false ? 'Fix' : 'Can’t check'}</span>
-                  <span className="text-zinc-700 dark:text-zinc-200"> · {c.name}</span> <span className="text-zinc-500">· {c.note}</span>
-                </li>
-              ))}</ul>
-            ) : missing(data.domain)}
-          </section>
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Cloudflare plan</h3>
-            {data.plan?.ok ? (data.plan.data.length === 0 ? <p className="text-zinc-500">Free plan, nothing billed.</p> : (
-              <ul className="space-y-0.5">{data.plan.data.map((x, i) => (
-                <li key={i} className="text-zinc-700 dark:text-zinc-200">{x.name}{x.price ? ` · ${new Intl.NumberFormat('en', { style: 'currency', currency: x.currency }).format(x.price)}${x.frequency ? ` ${x.frequency}` : ''}` : ' · free'}{x.renews ? <span className="text-xs text-zinc-500"> · renews {format(new Date(x.renews), 'd MMM yyyy')}</span> : null}</li>
-              ))}</ul>
-            )) : missing(data.plan)}
-          </section>
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">File storage</h3>
-            {data.storage?.ok ? <p className="text-zinc-700 dark:text-zinc-200">{data.storage.data.buckets.length ? data.storage.data.buckets.join(', ') : 'No storage bucket yet (large chat files need one).'}</p> : missing(data.storage)}
-          </section>
+              ) : missing(data.versions)}
+            </Panel>
+            <Panel icon={ShieldCheck} title="Domain health" tone={domainBad ? 'text-rose-500 bg-rose-500/10' : 'text-emerald-500 bg-emerald-500/10'}>
+              {dom ? (
+                <ul className="space-y-2">{dom.checks.map((c) => (
+                  <li key={c.name} className="flex items-start gap-2 text-xs">
+                    {c.ok === true ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : c.ok === false ? <XCircle className="w-4 h-4 text-rose-500 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />}
+                    <span><span className="font-medium text-zinc-800 dark:text-zinc-100">{c.name}</span><span className="block text-zinc-500 break-words">{c.note}</span></span>
+                  </li>
+                ))}</ul>
+              ) : missing(data.domain)}
+            </Panel>
+            <Panel icon={CreditCard} title="Plan and storage" tone="text-orange-500 bg-orange-500/10">
+              {data.plan?.ok ? (
+                <ul className="space-y-2">{data.plan.data.map((x, i) => (
+                  <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-zinc-800 dark:text-zinc-100">{x.name}</span>
+                    <span className="text-xs text-zinc-500">{x.price ? `${new Intl.NumberFormat('en', { style: 'currency', currency: x.currency }).format(x.price)}${x.frequency ? ` ${x.frequency}` : ''}` : <Pill tone="good">Free</Pill>}{x.renews ? ` · renews ${format(new Date(x.renews), 'd MMM')}` : ''}</span>
+                  </li>
+                ))}</ul>
+              ) : missing(data.plan)}
+              <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-white/10 text-sm flex items-center justify-between gap-2">
+                <span className="text-zinc-500 text-xs">File storage</span>
+                {data.storage?.ok ? <span className="text-zinc-800 dark:text-zinc-100">{data.storage.data.buckets.join(', ') || 'none yet'}</span> : missing(data.storage)}
+              </div>
+            </Panel>
+          </div>
         </div>
       )}
     </div>
@@ -459,13 +519,17 @@ export function PlanUsageCard({ usage }: { usage: PlanUsage | null }) {
               : 'Running. The app pauses itself at 90% of any allowance, so the plan stays at $5. You get an email at 70%.'}
           </p>
           {read.length > 0 && (
-            <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2">{read.map((m) => {
+            <ul className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">{read.map((m) => {
               const pct = Math.min(100, (m.used! / m.limit) * 100);
               return (
-                <li key={m.key}>
-                  <div className="flex justify-between gap-2 text-xs"><span className="text-zinc-600 dark:text-zinc-300 truncate">{m.label}</span><span className="text-zinc-400 shrink-0">{amount(m.used!, m.bytes)} of {amount(m.limit, m.bytes)}</span></div>
-                  <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-                    <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: `${Math.max(pct, 1)}%` }} />
+                <li key={m.key} className="rounded-xl border border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-white/[0.025] px-3.5 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-300 leading-snug">{m.label}</span>
+                    <span className={cn('shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full', pct >= 90 ? 'bg-rose-500/12 text-rose-500' : pct >= 70 ? 'bg-amber-500/12 text-amber-500' : 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400')}>{pct < 1 ? '<1' : Math.round(pct)}%</span>
+                  </div>
+                  <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{amount(m.used!, m.bytes)} <span className="text-xs font-normal text-zinc-400">of {amount(m.limit, m.bytes)}</span></p>
+                  <div className="mt-2 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
+                    <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400')} style={{ width: `${Math.max(pct, 1.5)}%` }} />
                   </div>
                 </li>
               );
