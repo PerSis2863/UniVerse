@@ -6,7 +6,12 @@ import { publish } from './realtime';
 // (Settings → Notifications). Email is sent through Resend and is skipped when RESEND_API_KEY
 // isn't set, so everything still works without it.
 
-const FROM = () => process.env.RESEND_FROM || 'UniVerse <onboarding@resend.dev>';
+/** The sender: whatever address RESEND_FROM names, always shown as "UniVerse Impact". */
+export const FROM = () => {
+  const raw = (process.env.RESEND_FROM || 'onboarding@resend.dev').trim();
+  const address = raw.match(/<([^>]+)>/)?.[1] ?? raw;
+  return `UniVerse Impact <${address}>`;
+};
 export const APP_URL = () => (process.env.PUBLIC_APP_URL || 'https://universeimpact.com').replace(/\/$/, '');
 
 export function escapeHtml(s: string) {
@@ -33,13 +38,13 @@ function layout(title: string, body: string, link?: string) {
   const html = `<!doctype html><html><body style="margin:0;background:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px"><tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:16px;padding:32px">
-<tr><td style="font-size:13px;font-weight:700;color:#6366f1;letter-spacing:.04em">UNIVERSE</td></tr>
+<tr><td><table cellpadding="0" cellspacing="0"><tr><td style="padding-right:10px"><img src="${APP_URL()}/icon-192x192.png" width="36" height="36" alt="UniVerse Impact" style="display:block;border-radius:10px"></td><td style="font-size:17px;font-weight:700;color:#18181b">UniVerse <span style="color:#6366f1">Impact</span></td></tr></table></td></tr>
 <tr><td style="padding-top:16px;font-size:20px;font-weight:700;color:#18181b">${escapeHtml(title)}</td></tr>
 <tr><td style="padding-top:8px;font-size:15px;line-height:1.5;color:#3f3f46;white-space:pre-wrap">${escapeHtml(body)}</td></tr>
-<tr><td style="padding-top:24px"><a href="${escapeHtml(url)}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:10px">Open UniVerse</a></td></tr>
+<tr><td style="padding-top:24px"><a href="${escapeHtml(url)}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:10px">Open UniVerse Impact</a></td></tr>
 <tr><td style="padding-top:24px;font-size:12px;color:#a1a1aa">You get these emails because email notifications are on. You can turn them off in UniVerse under Settings → Notifications.</td></tr>
 </table></td></tr></table></body></html>`;
-  const text = `${title}\n\n${body}\n\nOpen UniVerse: ${url}\n\nTurn these emails off in Settings → Notifications.`;
+  const text = `UniVerse Impact\n\n${title}\n\n${body}\n\nOpen UniVerse Impact: ${url}\n\nTurn these emails off in Settings → Notifications.`;
   return { html, text };
 }
 

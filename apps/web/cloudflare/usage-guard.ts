@@ -200,7 +200,7 @@ async function emailOwner(env: GuardEnv, subject: string, text: string) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: env.RESEND_FROM || 'UniVerse <onboarding@resend.dev>', to, subject, text }),
+    body: JSON.stringify({ from: `UniVerse Impact <${String(env.RESEND_FROM || 'onboarding@resend.dev').match(/<([^>]+)>/)?.[1] ?? String(env.RESEND_FROM || 'onboarding@resend.dev').trim()}>`, to, subject, text }),
   }).catch(() => null);
   if (!res?.ok) console.error('Spending guard email failed:', res?.status);
 }
