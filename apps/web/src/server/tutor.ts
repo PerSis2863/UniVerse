@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import { geminiFileText, geminiJson } from './gemini';
+import { cachedAi, saveAi, sameQuestion, spendAi } from './ai-budget';
 import { readAppFile } from '@/lib/storage';
 
 // Course AI tutor. Answers come only from the course's own sources — the teacher's materials
@@ -133,9 +134,21 @@ Rules:
 - Explain step by step and simply, like a patient tutor. Encourage thinking: for homework-style questions, guide rather than just giving the final answer.
 - Answer in the same language as the question. Keep it under 250 words. Use short paragraphs or bullet points; plain text, no markdown headings.`;
 
-export async function askTutor(a: Access, question: string, history: { role: 'user' | 'tutor'; text: string }[]) {
+type TutorAnswer = { answer: string | null; grounded?: boolean; citations: { n: number; title: string; sourceId: string; excerpt: string }[]; reason: 'no-sources' | 'unavailable' | 'limit' | null; message?: string; saved?: boolean };
+
+/**
+ * A first question (no conversation before it) gets the same answer for everyone in the course,
+ * so it's saved for a week and handed out again without asking AI or counting against anyone's
+ * daily AI requests. The saved answer is dropped when the course's materials change.
+ */
+export async function askTutor(a: Access, question: string, history: { role: 'user' | 'tutor'; text: string }[], who: Parameters<typeof spendAi>[0]): Promise<TutorAnswer> {
   const sources = await readySources(a.courseId);
-  if (!sources.length) return { answer: null, reason: 'no-sources' as const, citations: [] };
+  if (!sources.length) return { answer: null, reason: 'no-sources', citations: [] };
+  const key = history.length ? null : ['tutor-ask', a.courseId, sources.map((s) => `${s.id}:${s.text.length}`).sort().join(','), sameQuestion(question)];
+  const saved = key && (await cachedAi<TutorAnswer>(key));
+  if (saved?.answer) return { ...saved, saved: true };
+  const spend = await spendAi(who);
+  if (!spend.ok) return { answer: null, reason: 'limit', message: spend.message, citations: [] };
   const context = history.slice(-4).map((h) => `${h.role === 'user' ? 'Student' : 'Tutor'}: ${h.text.slice(0, 600)}`).join('\n');
   const found = rank(passages(sources), `${history.filter((h) => h.role === 'user').slice(-1)[0]?.text ?? ''} ${question}`);
   const out = await geminiJson<{ answer: string; grounded: boolean; used: number[] }>(
@@ -148,10 +161,12 @@ export async function askTutor(a: Access, question: string, history: { role: 'us
     },
     1500,
   );
-  if (!out) return { answer: null, reason: 'unavailable' as const, citations: [] };
+  if (!out) return { answer: null, reason: 'unavailable', citations: [] };
   const usedNums = new Set([...(out.used ?? []), ...[...out.answer.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]))]);
   const citations = found.filter((p) => usedNums.has(p.n)).map((p) => ({ n: p.n, title: p.title, sourceId: p.sourceId, excerpt: p.text.slice(0, 400) }));
-  return { answer: out.answer, grounded: out.grounded && citations.length > 0, citations, reason: null };
+  const answer: TutorAnswer = { answer: out.answer, grounded: out.grounded && citations.length > 0, citations, reason: null };
+  if (key) await saveAi(key, answer);
+  return answer;
 }
 
 // ─── Practice questions & flashcards ─────────────────────────────────────────────────────────

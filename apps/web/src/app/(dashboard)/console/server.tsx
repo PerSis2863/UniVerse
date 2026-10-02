@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Ban, Bug, Eye, Loader2, Megaphone, MessageSquare, Power, ToggleRight, Trash2, Users, Wrench } from 'lucide-react';
+import { Activity, Ban, Bug, Eye, Loader2, Megaphone, MessageSquare, Power, Sparkles, ToggleRight, Trash2, Users, Wrench } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -20,12 +20,15 @@ export interface PlanUsage {
   meters: { key: string; label: string; used: number | null; limit: number; bytes?: boolean }[];
 }
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
+interface AiLimits { student: number; staff: number; site: number }
+interface AiToday { limits: AiLimits; used: number; top: { id: string; name: string; role: string | null; calls: number }[] }
 interface Control { mode: Mode; message: string | null; until: string | null; banner: string | null; switches: string | null; updatedAt: string }
 interface ServerData {
   control: Control;
   usage: PlanUsage | null;
   health: { people: number; activeToday: number; signInsToday: number; messagesToday: number; openErrors: number; newErrors: number; pendingDeletions: number; suspended: number };
   settings?: { name: string; what: string; needed: boolean; set: boolean; problem: string | null }[];
+  ai?: AiToday | null;
   history: { id: string; summary: string; createdAt: string; undoneAt: string | null }[];
 }
 
@@ -57,6 +60,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
       <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
       <PlanUsageCard usage={data.usage} />
+      {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
       {data.settings && <SettingsCard settings={data.settings} />}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map(([label, n, Icon, to]) => (
@@ -77,6 +81,66 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
             </li>
           ))}</ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Today's AI use and the daily limits that keep it inside Gemini's free allowance (src/server/ai-budget.ts). */
+function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
+  const [limits, setLimits] = useState<AiLimits>(ai.limits);
+  const [busy, setBusy] = useState(false);
+  const changed = (['student', 'staff', 'site'] as const).some((k) => limits[k] !== ai.limits[k]);
+  const pct = ai.limits.site ? Math.min(100, Math.round((ai.used / ai.limits.site) * 100)) : 100;
+  const save = async () => {
+    setBusy(true);
+    try {
+      const { data: res } = await api.post('/owner/server', { aiLimits: limits });
+      toastWithUndo('AI limits saved', res.changeId);
+      onSaved();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const input = (k: keyof AiLimits, label: string) => (
+    <label className="text-sm">
+      <span className="text-xs text-zinc-500">{label}</span>
+      <input type="number" min={0} max={100000} step={1} className={cn(field, 'mt-1')} value={limits[k]}
+        onChange={(e) => setLimits({ ...limits, [k]: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
+    </label>
+  );
+  return (
+    <div className={cn(card, 'p-5')}>
+      <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-indigo-500" /> AI use today</h2>
+      <p className="text-sm text-zinc-500 mt-1 mb-3">
+        Every AI tutor answer, summary, translation and report counts as one request. Answers many people ask for again (the same tutor question, a summary of the same file) are saved and don’t count. Limits reset at midnight UTC. You’re never limited.
+      </p>
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <span className="font-semibold text-zinc-900 dark:text-white tabular-nums">{ai.used.toLocaleString()} of {ai.limits.site.toLocaleString()} requests</span>
+        <span className="text-xs text-zinc-500 tabular-nums">{pct}%</span>
+      </div>
+      <div className="mt-2 h-2 rounded-full bg-zinc-100 dark:bg-white/10 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="AI requests used today">
+        <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: `${pct}%` }} />
+      </div>
+      {ai.top.length > 0 && (
+        <ul className="mt-3 text-sm divide-y divide-zinc-200 dark:divide-white/10">
+          {ai.top.map((p) => (
+            <li key={p.id} className="py-1.5 flex justify-between gap-3">
+              <span className="truncate text-zinc-800 dark:text-zinc-200">{p.name}{p.role ? <span className="text-xs text-zinc-400"> · {p.role.toLowerCase()}</span> : null}</span>
+              <span className="tabular-nums text-zinc-500 shrink-0">{p.calls}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-4 grid sm:grid-cols-3 gap-3">
+        {input('student', 'Per student, each day')}
+        {input('staff', 'Per teacher or admin, each day')}
+        {input('site', 'Whole site, each day')}
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button onClick={() => void save()} disabled={busy || !changed} className="btn-primary">Save limits</button>
       </div>
     </div>
   );

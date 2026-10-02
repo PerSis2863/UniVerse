@@ -14,8 +14,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   if (!question) return NextResponse.json({ error: 'Type a question.' }, { status: 400 });
   const history = Array.isArray(b.history) ? b.history.filter((h: { role?: unknown; text?: unknown }) => (h?.role === 'user' || h?.role === 'tutor') && typeof h.text === 'string').slice(-6) : [];
   if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: 'The AI tutor isn’t set up yet.' }, { status: 503 });
-  const r = await askTutor(a, question.slice(0, 1500), history);
+  const r = await askTutor(a, question.slice(0, 1500), history, user);
   if (r.reason === 'no-sources') return NextResponse.json({ error: 'This course has no materials the tutor can read yet.', code: 'no-sources' }, { status: 409 });
+  if (r.reason === 'limit') return NextResponse.json({ error: r.message, code: 'ai-limit' }, { status: 429 });
   if (r.reason === 'unavailable') return NextResponse.json({ error: 'The tutor is busy right now. Please try again in a moment.' }, { status: 503 });
   return NextResponse.json(r);
 }

@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { PenTool, ShieldCheck, Sparkles } from 'lucide-react';
+import { PenTool, ShieldCheck } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
@@ -42,7 +42,7 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/student/courses', label: 'nav.courses' },
         { href: '/student/groups', label: 'nav.groups' },
-        { href: '/student/blackboard', label: 'nav.blackboard' },
+        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor'] },
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/attendance', label: 'nav.attendance' },
@@ -50,14 +50,6 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/quizzes', label: 'nav.quizzes' },
         { href: '/student/skills', label: 'nav.skills' },
         { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },
-      ]
-    },
-    {
-      label: 'AI tutor & credentials', icon: Sparkles,
-      subItems: [
-        { href: '/student/tutor', label: 'AI tutor' },
-        { href: '/student/credentials', label: 'nav.credentials' },
-        { href: '/student/passport', label: 'Skills passport' },
       ]
     },
     {
@@ -75,6 +67,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/impact/ai-match', label: 'AI project match' },
         { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies'] },
         { href: '/student/impact/edu-society', label: 'nav.edu_society' },
+        { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport'] },
         { href: '/student/impact/leaderboard', label: 'Leaderboard' },
       ]
     },
@@ -114,7 +107,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.schooling', icon: GraduationCap,
       subItems: [
         { href: '/teacher/courses', label: 'nav.my_courses' },
-        { href: '/teacher/blackboard', label: 'nav.blackboard' },
+        { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor'] },
         { href: '/teacher/students', label: 'nav.students' },
         { href: '/teacher/early-warning', label: 'Early warning' },
         { href: '/teacher/attendance', label: 'nav.attendance' },
@@ -129,7 +122,6 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/services/rooms', label: 'nav.room_reservation' },
       ]
     },
-    { href: '/teacher/tutor', label: 'AI tutor', icon: Sparkles },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
     { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },

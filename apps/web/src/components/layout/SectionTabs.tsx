@@ -20,6 +20,21 @@ export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/companies', label: 'Companies' },
 ];
 
+export const STUDENT_BOARD_TABS: SectionTab[] = [
+  { href: '/student/blackboard', label: 'Course board' },
+  { href: '/student/tutor', label: 'AI tutor' },
+];
+
+export const TEACHER_BOARD_TABS: SectionTab[] = [
+  { href: '/teacher/blackboard', label: 'Course board' },
+  { href: '/teacher/tutor', label: 'AI tutor' },
+];
+
+export const CREDENTIAL_TABS: SectionTab[] = [
+  { href: '/student/credentials', label: 'My credentials' },
+  { href: '/student/passport', label: 'Skills passport' },
+];
+
 export function SectionTabs({ tabs }: { tabs: SectionTab[] }) {
   const pathname = usePathname();
   return (

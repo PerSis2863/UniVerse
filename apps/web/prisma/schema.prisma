@@ -2058,6 +2058,26 @@ model ServerControl {
   updatedBy String?
   switches   String? // JSON list of features turned off, e.g. ["ai","uploads"] (src/lib/feature-switches.ts)
   watchWords String? // words that alert the owner when they appear in a chat, one per line
+  aiLimits   String? // JSON { student, staff, site }: AI requests allowed per day (src/server/ai-budget.ts)
 
   @@map("server_control")
+}
+
+/// AI requests per person per UTC day ("YYYY-MM-DD"); userId "*" is the whole site (src/server/ai-budget.ts).
+model AiUsage {
+  day    String
+  userId String
+  calls  Int    @default(0)
+
+  @@id([day, userId])
+  @@map("ai_usage")
+}
+
+/// Saved AI answers, handed out again for the same question instead of asking AI (src/server/ai-budget.ts).
+model AiCache {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+
+  @@map("ai_cache")
 }

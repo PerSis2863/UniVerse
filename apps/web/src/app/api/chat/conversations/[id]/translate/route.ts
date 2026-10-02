@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { membership, visibleTo } from '@/lib/chat';
 import { isLanguage, translateMessages } from '@/server/translate';
+import { AiLimitError } from '@/server/ai-budget';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -24,7 +25,13 @@ export async function POST(req: Request, { params }: Ctx) {
     where: { id: { in: ids }, conversationId: id, deletedAt: null, type: { in: ['TEXT', 'POLL'] }, AND: [visibleTo(user.id)] },
     select: { id: true, body: true },
   });
-  const translations = await translateMessages(messages.filter((m) => m.body.trim()), body.to);
+  let translations;
+  try {
+    translations = await translateMessages(messages.filter((m) => m.body.trim()), body.to, user);
+  } catch (e) {
+    if (e instanceof AiLimitError) return NextResponse.json({ error: e.message, code: 'ai-limit' }, { status: 429 });
+    throw e;
+  }
   const failed = messages.some((m) => m.body.trim() && !translations[m.id]);
   if (failed && !Object.keys(translations).length) {
     return NextResponse.json({ error: process.env.GEMINI_API_KEY ? 'Translation is unavailable right now. Please try again.' : 'Translation isn’t set up yet.' }, { status: 503 });

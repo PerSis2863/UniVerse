@@ -157,7 +157,7 @@ export async function diagnoseErrors(opts: { ids?: string[]; limit?: number } = 
       `Message: ${r.message}`,
       r.stack ? `Stack:\n${r.stack.slice(0, 2500)}` : 'No stack trace.',
     ].filter(Boolean).join('\n');
-    const out = await geminiJson<{ severity: string; summary: string; cause: string; where: string; fix: string }>(SYSTEM, prompt, SCHEMA);
+    const out = await geminiJson<{ severity: string; summary: string; cause: string; where: string; fix: string }>(SYSTEM, prompt, SCHEMA, 800, true);
     if (!out) continue;
     await prisma.errorReport.update({
       where: { id: r.id },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
@@ -66,7 +66,8 @@ const TYPE_ICON: Record<string, LucideIcon> = { PDF: FileText, DOCX: FileText, V
 const absolute = (url: string) => (url.startsWith('/') ? `${window.location.origin}${url}` : url);
 
 /** A course's Blackboard for students (read, grades, quiz reviews) and its teacher (post, upload, manage). Everything here is live data. */
-export function CourseBoard({ role }: { role: Role }) {
+/** `tabs` (e.g. Course board / AI tutor) show under the page title. */
+export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   const router = useRouter();
   const { data: mine, isLoading: loadingCourses } = useSWR<any[]>('/courses/my', fetcher);
   const courses: Course[] = useMemo(
@@ -91,11 +92,11 @@ export function CourseBoard({ role }: { role: Role }) {
   const title = 'Blackboard';
   const subtitle = role === 'teacher' ? 'Post announcements, share materials and run your courses' : 'Announcements, materials, grades and quizzes for your courses';
 
-  if (loadingCourses) return (<><Topbar title={title} subtitle={subtitle} /><div className="p-8 flex justify-center"><Loader2 className="w-7 h-7 animate-spin text-indigo-400" /></div></>);
+  if (loadingCourses) return (<><Topbar title={title} subtitle={subtitle} />{tabs}<div className="p-8 flex justify-center"><Loader2 className="w-7 h-7 animate-spin text-indigo-400" /></div></>);
   if (!courses.length) {
     return (
       <>
-        <Topbar title={title} subtitle={subtitle} />
+        <Topbar title={title} subtitle={subtitle} />{tabs}
         <div className="flex-1 p-4 md:p-8 overflow-y-auto">
           <FeatureGuide
             icon={BookOpen}
@@ -128,7 +129,7 @@ export function CourseBoard({ role }: { role: Role }) {
 
   return (
     <>
-      <Topbar title={title} subtitle={subtitle} />
+      <Topbar title={title} subtitle={subtitle} />{tabs}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Course switcher */}
         <div className="glass-bar border-b border-zinc-200/70 dark:border-white/[0.06] px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-none">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
+import { spendAi } from '@/server/ai-budget';
 
 
 // gemini-1.5-flash (used before) has been shut down by Google. The model is configurable so it
@@ -60,6 +61,9 @@ export async function POST(req: NextRequest) {
   if (!apiKey) {
     return plainTextStream("I'm your AI Study Assistant! The assistant isn't configured yet — an administrator needs to add a GEMINI_API_KEY in the hosting settings.");
   }
+
+  const spend = await spendAi(user);
+  if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
 
   const history = Array.isArray(payload.history) ? payload.history.slice(-MAX_HISTORY) : [];
   const contents = [

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireFeature } from '@/lib/billing';
+import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
 
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
@@ -61,6 +62,13 @@ export async function POST(req: Request) {
     impactCertificatesIssued: certificates,
   };
 
+  // The same numbers give the same report: hand out the one made earlier today.
+  const key = ['ai-report', auth.org.id, JSON.stringify({ ...data, generatedAt: undefined })];
+  const saved = await cachedAi<string>(key, 1);
+  if (saved) return NextResponse.json({ report: saved, data });
+  const spend = await spendAi(auth.user);
+  if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
+
   const prompt = `Write the executive impact report from this live platform data:\n\n${JSON.stringify(data, null, 2)}`;
   let res = await callGemini(PRIMARY_MODEL, apiKey, prompt);
   if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK_MODEL !== PRIMARY_MODEL) {
@@ -73,6 +81,7 @@ export async function POST(req: Request) {
   const json = await res.json();
   const report: string = json?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
   if (!report.trim()) return NextResponse.json({ error: 'The AI returned an empty report. Please try again.' }, { status: 502 });
+  await saveAi(key, report);
 
   return NextResponse.json({ report, data });
 }

@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import { geminiJson } from './gemini';
+import { requireAi } from './ai-budget';
 import { LANGUAGES, isLanguage } from '@/lib/languages';
 
 // Machine translation for chat messages (Gemini). Translations are stored per message and language
@@ -8,6 +9,8 @@ import { LANGUAGES, isLanguage } from '@/lib/languages';
 // never sent to the AI again.
 
 export { isLanguage } from '@/lib/languages';
+
+type AiUser = Parameters<typeof requireAi>[0];
 const name = (code: string) => LANGUAGES[code].name;
 
 export interface Translation { text: string; from: string; same: boolean }
@@ -50,7 +53,7 @@ function nothingToTranslate(text: string) {
 async function translateBatch(items: { id: string; text: string }[], to: string) {
   if (!items.length) return new Map<string, { lang: string; text: string }>();
   const prompt = `Target language: ${name(to)} (${to}).\nMessages (JSON):\n${JSON.stringify(items.map((i) => ({ id: i.id, text: i.text.slice(0, MAX_CHARS) })))}`;
-  const out = await geminiJson<{ items: { id: string; lang: string; text: string }[] }>(SYSTEM, prompt, SCHEMA, 4096);
+  const out = await geminiJson<{ items: { id: string; lang: string; text: string }[] }>(SYSTEM, prompt, SCHEMA, 4096, true);
   if (!out?.items) return null;
   const map = new Map<string, { lang: string; text: string }>();
   for (const r of out.items) {
@@ -64,9 +67,11 @@ async function translateBatch(items: { id: string; text: string }[], to: string)
 
 /**
  * Translations of these messages into `to`, from the store or (for the rest) the AI, which are then
- * stored. Only pass messages the caller may read. Missing entries mean translation failed.
+ * stored. Only pass messages the caller may read. Missing entries mean translation failed. Asking
+ * the AI counts as one AI request for `who` (null: the app itself, counted for the site only) and
+ * throws AiLimitError when there's none left today.
  */
-export async function translateMessages(messages: { id: string; body: string }[], to: string): Promise<Record<string, Translation>> {
+export async function translateMessages(messages: { id: string; body: string }[], to: string, who: AiUser = null): Promise<Record<string, Translation>> {
   const result: Record<string, Translation> = {};
   if (!messages.length) return result;
   const stored = await prisma.messageTranslation.findMany({ where: { messageId: { in: messages.map((m) => m.id) }, lang: to }, select: { messageId: true, sourceLang: true, text: true } });
@@ -78,6 +83,14 @@ export async function translateMessages(messages: { id: string; body: string }[]
   const ask = todo.filter((m) => !nothingToTranslate(m.body));
 
   const fresh: { messageId: string; lang: string; sourceLang: string; text: string }[] = skip.map((m) => ({ messageId: m.id, lang: to, sourceLang: to, text: '' }));
+  if (ask.length) {
+    try {
+      await requireAi(who);
+    } catch (e) {
+      if (Object.keys(result).length) return result; // out of AI for today: hand back what's stored
+      throw e;
+    }
+  }
   for (let i = 0; i < ask.length; i += MAX_BATCH) {
     const batch = ask.slice(i, i + MAX_BATCH);
     const got = await translateBatch(batch.map((m) => ({ id: m.id, text: m.body })), to);
@@ -120,8 +133,9 @@ export async function pretranslate(conversationId: string, messageId: string, bo
   ]);
 }
 
-/** Translates a draft before it's sent (not stored). */
-export async function translateDraft(text: string, to: string): Promise<{ text: string; from: string } | null> {
+/** Translates a draft before it's sent (not stored). Counts as one AI request for `who`. */
+export async function translateDraft(text: string, to: string, who: AiUser): Promise<{ text: string; from: string } | null> {
+  await requireAi(who);
   const got = await translateBatch([{ id: 'draft', text: text.slice(0, MAX_CHARS) }], to);
   const r = got?.get('draft');
   if (!r) return null;
