@@ -7,7 +7,7 @@ export const COMPANY = {
   website: 'universeimpact.com',
   email: {
     general: 'myuniverseimpact@gmail.com',
-    support: 'support@universeimpact.com',
+    support: 'myuniverseimpact@gmail.com',
     privacy: 'privacy@universeimpact.com',
     legal: 'legal@universeimpact.com',
     security: 'security@universeimpact.com',
