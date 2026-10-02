@@ -145,7 +145,7 @@ export default {
     // No www → main address redirect: phones that installed the app from www.universeimpact.com
     // were sent outside their app (and its saved files) on every launch.
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/')) return revalidatePages(request, await nextApp.fetch(request, env, ctx));
-    return withNotice(await edgeCachedPage(request, url, env, ctx, () => nextApp.fetch(request, env, ctx)), pageNotice(request, env));
+    return withNotice(await edgeCachedPage(request, url, env, ctx, () => nextApp.fetch(request, env, ctx)), pageNotice());
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {

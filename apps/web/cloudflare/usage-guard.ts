@@ -363,14 +363,13 @@ export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: Execu
 }
 
 /** The notice shown at the top of every page: the owner's, or read-only mode's own. */
-export function pageNotice(request: Request, env: GuardEnv): string | null {
+export function pageNotice(): string | null {
   const now = Date.now();
   const mode: Mode = state.until && toMs(state.until) <= now ? 'LIVE' : state.mode;
-  const owner = !!state.bypass && cookie(request, 'uv_owner') === state.bypass;
+  // The owner sees the site as it is (no "only you can use UniVerse" reminder); the console's
+  // Server tab shows the mode.
   const parts = [state.banner];
   if (mode === 'READ_ONLY') parts.push(`${state.message || 'Read-only mode'}: you can look around, but changes can't be saved right now.`);
-  if (owner && mode === 'MAINTENANCE') parts.push('Maintenance mode is on: only you can use UniVerse. Turn it off in the owner console → Server.');
-  if (owner && state.paused && !env.CF_GUARD_OFF) parts.push('The spending guard has paused UniVerse for everyone else.');
   const text = parts.filter(Boolean).join(' · ');
   return text || null;
 }
