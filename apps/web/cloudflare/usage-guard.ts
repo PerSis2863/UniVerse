@@ -298,7 +298,7 @@ const cookie = (request: Request, name: string) => request.headers.get('cookie')
 
 // While paused or in maintenance, nobody but the owner gets in, so nothing else uses Cloudflare:
 // every other request gets the small "back soon" answer without touching the app or the database.
-// The owner's way in: the sign-in page when opened as /login?owner (linked from that answer), and
+// The owner's way in: the sign-in page when opened as /login?owner (typed in; not linked), and
 // the sign-in and owner console API when the sign-in token carries an owner's email. The token is
 // only peeked at here; the app still checks it properly.
 const OWNER_API = /^\/api\/core\/(owner|auth)\//;
@@ -330,15 +330,25 @@ const READ_ONLY_OK = /^\/api\/(bootstrap$|core\/auth\/|core\/owner\/|core\/activ
 export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: ExecutionContext): Response | null {
   refresh(env, ctx);
   if (url.pathname.startsWith('/api/webhooks/')) return null; // payments are never lost
-  if (state.bypass && cookie(request, 'uv_owner') === state.bypass) return null;
+  // The owner's pass works only for the owner: once someone else signs in on that device (their
+  // token names another email), the pass is ignored and removed, so they meet the gate like anyone.
+  let dropPass = false;
+  if (state.bypass && cookie(request, 'uv_owner') === state.bypass) {
+    if (!request.headers.has('authorization')) return null;
+    const email = tokenEmail(request);
+    if (email && ownerEmailList(env.SUPER_ADMIN_EMAILS).includes(email)) return null;
+    dropPass = true;
+  }
   const now = Date.now();
   const mode: Mode = state.until && toMs(state.until) <= now ? 'LIVE' : state.mode;
   const spending = state.paused && !env.CF_GUARD_OFF;
   if (spending || mode === 'MAINTENANCE') {
     if (ownerWayIn(request, url, env)) return null;
-    return spending
+    const res = spending
       ? pausedResponse(url, { title: 'Back soon', message: 'UniVerse is taking a short break. Your work is saved.', back: state.resumeAt })
       : pausedResponse(url, { title: 'Down for maintenance', message: state.message || 'UniVerse is being updated. Your work is saved.', back: state.until });
+    if (dropPass) res.headers.append('Set-Cookie', 'uv_owner=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax');
+    return res;
   }
   if (mode === 'READ_ONLY' && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname.startsWith('/api/') && !READ_ONLY_OK.test(url.pathname)) {
     const message = `${state.message || 'UniVerse is in read-only mode for maintenance'}: you can look around, but changes can't be saved right now.`;
@@ -391,7 +401,7 @@ export function pausedResponse(url: URL, { title, message, back }: { title: stri
   return new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UniVerse · ${esc(title)}</title>
 <style>html{background:#0b0b14;color:#e4e4e7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:radial-gradient(60% 50% at 20% 10%,rgba(99,102,241,.25),transparent),radial-gradient(50% 40% at 90% 90%,rgba(217,70,239,.18),transparent)}main{max-width:420px;text-align:center}h1{font-size:22px;color:#fff;margin:0 0 12px}p{line-height:1.6;margin:0 0 20px;color:#a1a1aa}a{display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-weight:600;padding:10px 20px;border-radius:10px}</style></head>
-<body><main><h1>${esc(title)}</h1><p>${esc(message)}<span id="back">${esc(backText)}</span></p><a href="/">Try again</a><p style="margin:28px 0 0;font-size:12px"><a href="/login?owner" style="background:none;padding:0;color:#71717a;font-weight:500">Site owner sign-in</a></p></main>${local}${unlock}</body></html>`,
+<body><main><h1>${esc(title)}</h1><p>${esc(message)}<span id="back">${esc(backText)}</span></p><a href="/">Try again</a></main>${local}${unlock}</body></html>`,
     { status: 503, headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } },
   );
 }
