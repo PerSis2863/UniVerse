@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
-import { AlertTriangle, CheckCircle2, ChevronDown, Loader2, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
+import { AlertTriangle, CheckCircle2, ChevronDown, Loader2, Mail, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { api } from '@/lib/api';
+import { parseSwitches } from '@/lib/feature-switches';
 import { cn } from '@/lib/utils';
-import { fetcher } from './shared';
+import { errorMessage, fetcher } from './shared';
 
 // Health check: security and error checks across the app, ranked and explained by AI
 // (src/server/owner-health.ts). Reads only; nothing here changes the site.
@@ -100,6 +103,8 @@ export function HealthPanel() {
         </ul>
       )}
 
+      <WeeklyEmailSwitch />
+
       {data.passed.length > 0 && (
         <div className="tone-panel rounded-2xl border border-zinc-200/80 dark:border-white/[0.06] p-4">
           <button onClick={() => setShowPassed((v) => !v)} className="w-full flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-white">
@@ -114,6 +119,41 @@ export function HealthPanel() {
         </div>
       )}
       <p className="text-xs text-zinc-500">Only counts, error messages and page addresses are sent to AI, never people&apos;s personal details or secret values.</p>
+    </div>
+  );
+}
+
+/** On/off for the Monday security email (the "security" feature switch, also on the Server tab). */
+function WeeklyEmailSwitch() {
+  const { data, mutate } = useSWR<{ control: { switches: string | null } }>('/owner/server', fetcher);
+  const [busy, setBusy] = useState(false);
+  if (!data) return null;
+  const off = parseSwitches(data.control.switches);
+  const on = !off.includes('security');
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const next = on ? [...off, 'security'] : off.filter((x) => x !== 'security');
+      await api.post('/owner/server', { switches: next });
+      await mutate();
+      toast.success(on ? 'Weekly security email turned off' : 'Weekly security email turned on');
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="tone-panel rounded-2xl border border-zinc-200/80 dark:border-white/[0.06] p-4 flex items-center gap-3">
+      <span className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center"><Mail className="w-5 h-5 text-white" /></span>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-zinc-900 dark:text-white">Weekly security email</p>
+        <p className="text-xs text-zinc-500">Every Monday morning, this check is emailed to you.</p>
+      </div>
+      <button role="switch" aria-checked={on} aria-label="Weekly security email" onClick={toggle} disabled={busy}
+        className={cn('relative w-12 h-7 shrink-0 rounded-full transition-colors disabled:opacity-60', on ? 'bg-gradient-to-r from-indigo-500 to-fuchsia-500' : 'bg-zinc-300 dark:bg-white/15')}>
+        <span className={cn('absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform', on && 'translate-x-5')} />
+      </button>
     </div>
   );
 }

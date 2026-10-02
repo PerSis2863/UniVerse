@@ -888,6 +888,8 @@ a.group:not(.sidebar-item):active { scale: 0.985; transition-duration: 70ms; }
 /* Theme switch: one soft crossfade of the whole page (View Transitions) */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 320ms; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
 .theme-fading * { transition: none !important; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 320ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 
 /* Content that fades in once data arrives (replaces per-row staggering) */
 @keyframes fade-up { from { opacity: 0; transform: translate3d(0, 6px, 0); } }

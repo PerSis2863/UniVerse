@@ -22,9 +22,9 @@ export function ThemeToggle() {
     return () => window.removeEventListener('universe:theme', sync);
   }, []);
 
-  const handleSet = (t: Theme) => {
+  const handleSet = (t: Theme, e?: React.MouseEvent) => {
     setTheme(t);
-    applyTheme(t);
+    applyTheme(t, e ? { from: { x: e.clientX, y: e.clientY } } : undefined);
     setIsOpen(false);
   };
 
@@ -63,7 +63,7 @@ export function ThemeToggle() {
                 {(['light', 'dark', 'system'] as Theme[]).map(t => (
                   <button
                     key={t}
-                    onClick={() => handleSet(t)}
+                    onClick={(e) => handleSet(t, e)}
                     className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all"
                     style={{
                       background: theme === t ? 'rgba(99,102,241,0.12)' : 'transparent',

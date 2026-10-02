@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Ban, Bell, ChevronDown, Crown, Download, Loader2, MessageSquare, Pencil, Send, ShieldCheck, Trash2 } from 'lucide-react';
+import { ArrowLeft, Ban, Bell, ChevronDown, Crown, Download, Loader2, LogOut, MessageSquare, Pencil, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,17 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
       const { data: res } = await api.post(`/owner/people/${u.id}/ban`, { ban: on });
       toastWithUndo(on ? `${name} is banned` : `${name} can sign in again`, res.changeId);
       await refreshConsole();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  };
+
+  const signOutEverywhere = async () => {
+    const name = String(u.name);
+    if (!(await confirmDialog({ title: `Sign ${name} out everywhere?`, message: 'Every phone, tablet and computer they are signed in on is signed out. They can sign in again straight away with their password or Google. Use this if their account may have been taken over.', confirmLabel: 'Sign out everywhere', destructive: true }))) return;
+    try {
+      await api.post(`/owner/people/${u.id}/sign-out`);
+      toast.success(`${name} is signed out on every device`);
     } catch (e) {
       toast.error(errorMessage(e));
     }
@@ -135,7 +146,7 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
             <select aria-label="Status" disabled={u.owner} className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2 text-sm" value={String(u.status)} onChange={(e) => quick({ status: e.target.value }, `Status set to ${e.target.value}`)}>
               {(schema.enums.UserStatus ?? []).map((r) => <option key={r}>{r}</option>)}
             </select>
-            <button onClick={() => setEditing({ model: 'User', record: u })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Pencil className="w-4 h-4" /> Edit all</button>
+            <button onClick={() => setEditing({ model: 'User', record: u })} className="btn-secondary"><Pencil className="w-4 h-4" /> Edit all</button>
             <button onClick={() => setChats(true)} className="btn-primary"><MessageSquare className="w-4 h-4" /> Messages & calls</button>
             {!u.owner && (
               <select aria-label="Chat mute" value="" onChange={(e) => e.target.value && void mute(Number(e.target.value))}
@@ -148,15 +159,16 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
                 {muted && <option value="0">Unmute now</option>}
               </select>
             )}
-            <button onClick={() => setCompose('message')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Send className="w-4 h-4" /> Message as UniVerse</button>
-            <button onClick={() => setCompose('notify')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Bell className="w-4 h-4" /> Notify</button>
-            <button onClick={() => void download()} disabled={saving} aria-busy={saving || undefined} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download data</button>
+            <button onClick={() => setCompose('message')} className="btn-secondary"><Send className="w-4 h-4" /> Message as UniVerse</button>
+            <button onClick={() => setCompose('notify')} className="btn-secondary"><Bell className="w-4 h-4" /> Notify</button>
+            <button onClick={() => void download()} disabled={saving} aria-busy={saving || undefined} className="btn-secondary">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download data</button>
+            <button onClick={() => void signOutEverywhere()} className="btn-secondary"><LogOut className="w-4 h-4" /> Sign out everywhere</button>
             {!u.owner && (u.status === 'SUSPENDED' ? (
-              <button onClick={() => void ban(false)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"><ShieldCheck className="w-4 h-4" /> Let back in</button>
+              <button onClick={() => void ban(false)} className="btn-secondary !text-emerald-600 dark:!text-emerald-400 !border-emerald-500/30"><ShieldCheck className="w-4 h-4" /> Let back in</button>
             ) : (
-              <button onClick={() => void ban(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-500/30 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"><Ban className="w-4 h-4" /> Ban</button>
+              <button onClick={() => void ban(true)} className="btn-secondary !text-amber-600 dark:!text-amber-400 !border-amber-500/30"><Ban className="w-4 h-4" /> Ban</button>
             ))}
-            {!u.owner && <button onClick={() => void purge()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-500/30 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" /> Delete permanently</button>}
+            {!u.owner && <button onClick={() => void purge()} className="btn-secondary !text-rose-600 dark:!text-rose-400 !border-rose-500/30"><Trash2 className="w-4 h-4" /> Delete permanently</button>}
           </div>
         </div>
         <dl className="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">

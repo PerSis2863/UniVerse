@@ -9,6 +9,7 @@
 import { jwtVerify, type JWTPayload } from 'jose';
 import { jwksFor, keysMayHaveRotated } from '../src/server/jwks-cache';
 import { isSessionToken, verifySessionToken } from '../src/server/session-token';
+import { hasPass, needsTwoStep } from '../src/server/two-step';
 import { securityHeaders } from '../security-headers';
 import { bool, dbDate, isoDate, json, parseJson, type Caller } from './fast-db';
 import { conversations, notifications, presence, thread } from './fast-chat';
@@ -32,7 +33,7 @@ function isDemoAccount(email: string) {
   return (raw && raw.trim() ? raw.split(',') : DEFAULT_DEMO_EMAILS).map((e) => e.trim().toLowerCase()).includes(email.trim().toLowerCase());
 }
 
-async function firebaseUid(token: string): Promise<{ uid: string; exp?: number } | null> {
+async function firebaseUid(token: string): Promise<{ uid: string; exp?: number; authTime?: number } | null> {
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'universe-71e68';
   const test = process.env.FIREBASE_TEST_JWKS_URL;
   const url = test && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(test) ? test : GOOGLE_JWKS_URL;
@@ -53,22 +54,26 @@ async function firebaseUid(token: string): Promise<{ uid: string; exp?: number }
   if (typeof payload.auth_time === 'number' && payload.auth_time * 1000 > Date.now() + 60_000) return null;
   // Unverified email + password sign-ins get their explanation from the Next.js route.
   if (payload.firebase?.sign_in_provider === 'password' && payload.email_verified !== true) return null;
-  return { uid: payload.sub, exp: payload.exp };
+  return { uid: payload.sub, exp: payload.exp, authTime: typeof payload.auth_time === 'number' ? payload.auth_time : undefined };
 }
 
-const USER_COLUMNS = 'SELECT id, name, email, role, status FROM users WHERE';
-type UserRow = { id: string; name: string; email: string; role: string; status: string };
+const USER_COLUMNS = 'SELECT id, name, email, role, status, signedOutAt FROM users WHERE';
+type UserRow = { id: string; name: string; email: string; role: string; status: string; signedOutAt: string | null };
 
 /** The signed-in caller, or null when the Next.js route should decide (see the top of the file). */
 async function callerOf(request: Request, db: D1Database): Promise<Caller | null> {
   const header = request.headers.get('authorization')?.trim() ?? '';
   const token = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
   if (!token) return null;
+  // Admins and the owner need the pass from the emailed sign-in code (src/server/two-step.ts);
+  // without it the Next.js route answers (and asks for the code).
+  const gate = (c: Caller | null) => (c && needsTwoStep(c.role, token) && !hasPass(request, c.id, token) ? null : c);
   const hit = callers.get(token);
-  if (hit && hit.until > Date.now()) return hit.caller;
+  if (hit && hit.until > Date.now()) return gate(hit.caller);
 
   let row: UserRow | null = null;
   let exp: number | undefined;
+  let authTime: number | undefined;
   let demo = false;
   if (isSessionToken(token)) {
     const uid = verifySessionToken(token);
@@ -83,14 +88,17 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
     const verified = await firebaseUid(token);
     if (!verified) return null;
     exp = verified.exp;
+    authTime = verified.authTime;
     // No account yet (first sign-in): the Next.js route creates or links it.
     row = await db.prepare(`${USER_COLUMNS} firebaseUid = ?`).bind(verified.uid).first<UserRow>();
   }
   if (!row || row.status === 'SUSPENDED') return null;
+  // Signed out everywhere after this sign-in: the Next.js route explains.
+  if (row.signedOutAt && authTime !== undefined && authTime * 1000 < Date.parse(isoDate(String(row.signedOutAt)) ?? '')) return null;
   const caller = { id: row.id, name: row.name, email: row.email, role: row.role, demo };
   if (callers.size >= 1000) callers.delete(callers.keys().next().value as string);
   callers.set(token, { caller, until: Math.min(Date.now() + 60_000, exp ? exp * 1000 : Infinity) });
-  return caller;
+  return gate(caller);
 }
 
 /** GET /api/chat/incoming (src/app/api/chat/incoming/route.ts): calls started in the last 45 s. */

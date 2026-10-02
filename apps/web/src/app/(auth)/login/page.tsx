@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { reportSession } from '@/lib/sign-in-history';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
+import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +26,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null); // password account whose email isn't confirmed yet
+  // Admin or owner account that still has to type the emailed sign-in code: how it signed in.
+  const [twoStep, setTwoStep] = useState<{ token: string; method?: 'google' | 'password' | 'phone' | 'apple' } | null>(null);
+
+  // Sent here by the app (?step=code) when an admin's session still needs the emailed code.
+  useEffect(() => {
+    if (!new URLSearchParams(location.search).has('step')) return;
+    void auth.authStateReady().then(async () => {
+      const token = await auth.currentUser?.getIdToken().catch(() => null);
+      if (token) setTwoStep({ token }); // eslint-disable-line react-hooks/set-state-in-effect
+    });
+  }, []);
 
   const handleLoginSuccess = async (token: string, method?: 'google' | 'password' | 'phone' | 'apple') => {
     try {
@@ -35,6 +47,11 @@ export default function LoginPage() {
         ({ data: user } = await api.get('/auth/me'));
       } catch (err) {
         // Email + password account that hasn't confirmed its address yet: show the verify step.
+        // Admin or owner: type the emailed code first (src/server/two-step.ts).
+        if ((err as { response?: { data?: { code?: string } } }).response?.data?.code === 'TWO_STEP_REQUIRED') {
+          setTwoStep({ token, method });
+          return;
+        }
         if ((err as { response?: { data?: { code?: string } } }).response?.data?.code === 'EMAIL_NOT_VERIFIED') {
           localStorage.removeItem('accessToken');
           setVerifyEmail(auth.currentUser?.email ?? email);
@@ -59,7 +76,8 @@ export default function LoginPage() {
         router.push('/register?continue=1');
         return;
       }
-      router.push(user.owner ? '/console' : user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
+      const next = new URLSearchParams(location.search).get('next');
+      router.push(next && /^\/[a-z]/.test(next) ? next : user.owner ? '/console' : user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Login successful, but failed to retrieve user data. Please contact support.');
@@ -150,7 +168,12 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white/[0.04] backdrop-blur-xl shadow-2xl shadow-indigo-950/40 border border-white/10 rounded-2xl p-6 sm:p-8">
-          {verifyEmail ? (
+          {twoStep ? (
+            <TwoStepPanel
+              onDone={() => { const t = twoStep; setTwoStep(null); void handleLoginSuccess(t.token, t.method); }}
+              onCancel={async () => { await auth.signOut().catch(() => {}); localStorage.removeItem('accessToken'); setTwoStep(null); }}
+            />
+          ) : verifyEmail ? (
             <EmailVerifyPanel email={verifyEmail} sendOnMount onVerified={(token) => { setVerifyEmail(null); return handleLoginSuccess(token, 'password'); }} onCancel={async () => { await auth.signOut().catch(() => {}); setVerifyEmail(null); }} />
           ) : (
           <>

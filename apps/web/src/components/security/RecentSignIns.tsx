@@ -2,8 +2,11 @@
 
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
-import { Laptop, Loader2, LogIn, MonitorSmartphone, Smartphone, UserPlus } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Laptop, Loader2, LogIn, LogOut, MonitorSmartphone, Smartphone, UserPlus } from 'lucide-react';
 import { api } from '@/lib/api';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 interface SignIn { id: string; kind: 'SIGN_IN' | 'SIGN_UP' | 'SESSION'; method: string | null; ip: string | null; country: string | null; city: string | null; device: string | null; createdAt: string }
 
@@ -21,12 +24,31 @@ const regionName = (code: string | null) => {
 /** The signed-in person's own recent sign-ins, so they can spot any that weren't them. */
 export function RecentSignIns() {
   const { data, isLoading, error } = useSWR<SignIn[]>('/auth/sessions', (url: string) => api.get(url).then((r) => r.data));
+  const [busy, setBusy] = useState(false);
+  // Every device, this one included, has to sign in again (src/server/modules/auth.ts).
+  const signOutEverywhere = async () => {
+    if (!(await confirmDialog({ title: 'Sign out on all devices?', message: 'Every phone, tablet and computer signed in to your account is signed out, including this one. Then sign in again.', confirmLabel: 'Sign out everywhere', destructive: true }))) return;
+    setBusy(true);
+    try {
+      await api.post('/auth/sign-out-everywhere');
+      const { auth } = await import('@/lib/firebase');
+      await auth.signOut().catch(() => {});
+      for (const k of ['accessToken', 'refreshToken', 'universe-auth', 'uv-pass']) localStorage.removeItem(k);
+      window.location.href = '/login';
+    } catch (e) {
+      toast.error((e as Error).message);
+      setBusy(false);
+    }
+  };
   return (
     <div className="space-y-3">
       <div>
         <h3 className="font-semibold text-zinc-900 dark:text-white">Recent sign-ins</h3>
-        <p className="text-sm text-zinc-500">If you see one that wasn&apos;t you, change your password and tell an administrator.</p>
+        <p className="text-sm text-zinc-500">If you see one that wasn&apos;t you, sign out everywhere and change your password.</p>
       </div>
+      <button onClick={() => void signOutEverywhere()} disabled={busy} aria-busy={busy || undefined} className="btn-secondary">
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />} Sign out on all devices
+      </button>
       {isLoading ? (
         <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
       ) : error ? (

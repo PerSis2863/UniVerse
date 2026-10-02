@@ -4,6 +4,7 @@ import { later } from './email';
 import type { RateLimit } from '@cloudflare/workers-types';
 import { ForbiddenException, HttpException, NotFoundException } from './http';
 import { extractBearer, resolveUser, demoWriteBlocked, isOwner } from './auth';
+import { hasPass, needsTwoStep } from './two-step';
 
 // A small router for the API that used to run as a NestJS app on Render. Routes keep
 // their NestJS paths, guards (sign-in + @Roles) and response conventions, and are served from
@@ -94,6 +95,10 @@ export class Router {
       const user = route.public ? null : await resolveUser(token);
       if (route.roles && (!user || !route.roles.includes(user.role))) throw new ForbiddenException('Forbidden resource');
       if (user && demoWriteBlocked(req, user, token)) throw new ForbiddenException('The demo admin account is read-only.');
+      // Admins and the owner type an emailed code after signing in (src/server/two-step.ts).
+      if (user && !path.startsWith('auth/two-step') && needsTwoStep(user.role, token) && !hasPass(req, user.id, token)) {
+        throw new ForbiddenException({ message: 'Enter the code we emailed you to finish signing in.', code: 'TWO_STEP_REQUIRED', error: 'Forbidden' });
+      }
 
       const result = await route.handler({ user: user as User, params, query: parseQuery(new URL(req.url)), body: await readBody(req), req });
       if (result instanceof Response) return result;

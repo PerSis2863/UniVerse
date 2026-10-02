@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- response data is untyped by default, like axios */
-import { getAuthToken } from './auth-token';
+import { getAuthToken, twoStepPass } from './auth-token';
 import { isSampleMode } from './sample-mode';
 import { fromBootstrap, inBootstrap } from './bootstrap';
 
@@ -86,6 +86,8 @@ async function request<T>(method: string, url: string, body: unknown, config: Ap
   const token = await getAuthToken();
   const headers: Record<string, string> = { ...config.headers };
   if (token) headers.Authorization = `Bearer ${token}`;
+  const pass = twoStepPass();
+  if (pass) headers['X-UV-Pass'] = pass;
   let payload: BodyInit | undefined;
   if (body instanceof FormData || body instanceof Blob || typeof body === 'string') {
     payload = body as BodyInit;
@@ -110,6 +112,11 @@ async function request<T>(method: string, url: string, body: unknown, config: Ap
   // show the "back soon" page, so open tabs don't keep using Cloudflare.
   if (status === 503 && resHeaders.get('x-universe-paused') && typeof window !== 'undefined') {
     window.location.replace('/');
+    return new Promise<never>(() => {});
+  }
+  // An admin or the owner who hasn't typed the emailed sign-in code yet: finish signing in.
+  if (status === 403 && (data as { code?: string } | null)?.code === 'TWO_STEP_REQUIRED' && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    window.location.href = `/login?step=code&next=${encodeURIComponent(window.location.pathname)}`;
     return new Promise<never>(() => {});
   }
   if (status === 401 && !retried) {

@@ -23,6 +23,7 @@ export const FEATURE_SWITCHES: FeatureSwitch[] = [
   { id: 'boards', label: 'Whiteboards', hint: 'Whiteboards become view-only.', paths: /^\/api\/(boards(\/.*)?|courses\/[^/]+\/board)$/ },
   { id: 'signups', label: 'New sign-ups', hint: 'New people can’t finish creating an account. Existing accounts are fine.', paths: /^\/api\/core\/auth\/register$/ },
   { id: 'payments', label: 'Payments', hint: 'Nobody can start a new payment or subscription.', paths: /^\/api\/(billing\/checkout|create-checkout-session)$/ },
+  { id: 'security', label: 'Your weekly security email', hint: 'Stops the Monday email with the Health check: security and error problems ranked by AI. Only affects you.' },
   { id: 'digest', label: 'Your daily summary email', hint: 'Stops the 07:30 UTC email with yesterday’s numbers and what needs a look. Only affects you.' },
 ];
 

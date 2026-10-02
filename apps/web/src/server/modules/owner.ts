@@ -337,6 +337,20 @@ export default function ownerModule(router: Router) {
     return { ok: true, changeId: change.id };
   });
 
+  // "Sign out everywhere": every device this person is signed in on has to sign in again
+  // (sign-ins older than now are refused, see resolveUser). Their account stays as it is.
+  r.post<{ id: string }>('people/:id/sign-out', async ({ params, user }) => {
+    const target = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, name: true, email: true, signedOutAt: true } });
+    if (!target) throw new NotFoundException('Person not found');
+    const now = new Date();
+    await prisma.user.update({ where: { id: target.id }, data: { signedOutAt: now } });
+    forgetUser(target.id);
+    const change = await prisma.ownerChange.create({
+      data: { ownerId: user.id, action: 'UPDATE', model: 'User', recordId: target.id, summary: `Signed out ${label(target)} on every device`, before: { signedOutAt: target.signedOutAt?.toISOString() ?? null }, after: { signedOutAt: now.toISOString() } },
+    });
+    return { ok: true, changeId: change.id };
+  });
+
   /** Removes the account and everything that belongs only to it. Can't be undone. */
   r.delete<{ id: string }>('people/:id', async ({ params, query, user }) => {
     const before = (await prisma.user.findUnique({ where: { id: params.id }, select: select(model('User')) })) as Record<string, unknown> | null;
