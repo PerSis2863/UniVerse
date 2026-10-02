@@ -5,7 +5,7 @@ const MESSAGES: Record<string, string> = {
   'auth/user-not-found': 'There’s no account with that email. Check it, or sign up.',
   'auth/invalid-email': 'That doesn’t look like a valid email address.',
   'auth/too-many-requests': 'Too many attempts. Please wait a few minutes, or reset your password.',
-  'auth/user-disabled': 'This account has been disabled. Contact your administrator or support@universeimpact.com.',
+  'auth/user-disabled': 'This account has been disabled. Contact your administrator or myuniverseimpact@gmail.com.',
   'auth/network-request-failed': 'You seem to be offline. Check your connection and try again.',
   'auth/popup-closed-by-user': 'The sign-in window was closed before finishing.',
   'auth/cancelled-popup-request': 'The sign-in window was closed before finishing.',

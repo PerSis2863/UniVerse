@@ -230,14 +230,25 @@ export default function ApplicationPage() {
           />
         )}
         {app.status === 'APPROVED' && (
-          <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 sm:p-8 text-center">
-            <BadgeCheck className="w-12 h-12 mx-auto text-emerald-500" />
-            <h2 className="mt-3 text-xl font-bold text-zinc-900 dark:text-white">You&apos;re approved!</h2>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Your account now has {ROLE_INFO[app.requestedRole]?.label.toLowerCase() ?? 'staff'} access.</p>
-            {app.adminNote && <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300 italic">“{app.adminNote}”</p>}
-            <button onClick={openDashboard} className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold">
-              Open your dashboard <ArrowRight className="w-4 h-4" />
-            </button>
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 text-white shadow-xl shadow-indigo-500/20">
+            <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
+            <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-fuchsia-300/20 blur-2xl" />
+            <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+              <div className="w-16 h-16 shrink-0 rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur flex items-center justify-center">
+                <BadgeCheck className="w-9 h-9" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 text-[11px] font-bold uppercase tracking-wider">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Approved{app.reviewedAt ? ` · ${format(new Date(app.reviewedAt), 'd MMM yyyy')}` : ''}
+                </span>
+                <h2 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight">You&apos;re approved!</h2>
+                <p className="mt-1 text-sm text-white/85">Your account now has {ROLE_INFO[app.requestedRole]?.label.toLowerCase() ?? 'staff'} access.</p>
+                {app.adminNote && <p className="mt-3 text-sm text-white/90 italic">“{app.adminNote}”</p>}
+              </div>
+              <button onClick={openDashboard} className="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white text-indigo-700 text-sm font-bold shadow-lg hover:bg-indigo-50 transition-colors">
+                Open your dashboard <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
         {app.status === 'REJECTED' && (
@@ -276,8 +287,9 @@ export default function ApplicationPage() {
     );
   }
 
-  const studentApp = app?.requestedRole === 'STUDENT' && app.status !== 'WITHDRAWN';
-  const pageTitle = studentApp ? 'Student verification' : 'Staff application';
+  const shownRole = app && app.status !== 'WITHDRAWN' ? app.requestedRole : null;
+  const studentApp = shownRole === 'STUDENT';
+  const pageTitle = studentApp ? 'Student verification' : shownRole === 'ADMIN' ? 'Organisation application' : shownRole === 'TEACHER' ? 'Staff / mentor application' : 'Apply to UniVerse';
   const content = <div className="max-w-3xl mx-auto w-full">{body}</div>;
 
   if (standalone) {
@@ -296,7 +308,7 @@ export default function ApplicationPage() {
   }
   return (
     <>
-      <Topbar title={pageTitle} subtitle={studentApp ? 'Confirm where you study to get your student account' : 'Apply as staff / mentor or for an organisation on UniVerse'} />
+      <Topbar title={pageTitle} subtitle={studentApp ? 'Confirm where you study to get your student account' : shownRole === 'ADMIN' ? 'Your organisation account on UniVerse Impact' : shownRole === 'TEACHER' ? 'Your staff / mentor account on UniVerse Impact' : 'Apply as staff / mentor or for an organisation on UniVerse'} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">{content}</div>
     </>
   );
@@ -317,8 +329,8 @@ function Intro({ onPick }: { onPick: (r: Requested) => void }) {
         {(Object.keys(ROLE_INFO) as Requested[]).map((r) => {
           const Icon = ROLE_INFO[r].icon;
           return (
-            <button key={r} onClick={() => onPick(r)} className="text-left p-5 rounded-2xl border border-zinc-200 dark:border-white/[0.08] bg-white dark:bg-zinc-900/50 hover:border-indigo-500/50 transition-colors">
-              <Icon className="w-6 h-6 text-indigo-500" />
+            <button key={r} onClick={() => onPick(r)} className="tone-panel text-left p-5 rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] hover:border-indigo-500/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/10 transition-all">
+              <RoleIcon icon={Icon} />
               <p className="mt-3 font-semibold text-zinc-900 dark:text-white">{ROLE_INFO[r].label}</p>
               <p className="mt-1 text-sm text-zinc-500">{ROLE_INFO[r].blurb}</p>
             </button>
@@ -327,8 +339,8 @@ function Intro({ onPick }: { onPick: (r: Requested) => void }) {
       </div>
       <ol className="grid sm:grid-cols-3 gap-3 text-sm">
         {['Tell us where you work and how to confirm it', 'An admin reviews it (usually within 1–2 days)', 'You get staff access, or a clear reason why not'].map((t, i) => (
-          <li key={t} className="flex gap-3 p-4 rounded-2xl bg-zinc-100/70 dark:bg-white/[0.03]">
-            <span className="w-6 h-6 shrink-0 rounded-full bg-indigo-500/15 text-indigo-500 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+          <li key={t} className="tone-panel flex gap-3 p-4 rounded-2xl border border-zinc-200/80 dark:border-white/[0.06]">
+            <span className="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-xs font-bold flex items-center justify-center">{i + 1}</span>
             <span className="text-zinc-600 dark:text-zinc-300">{t}</span>
           </li>
         ))}
@@ -337,19 +349,34 @@ function Intro({ onPick }: { onPick: (r: Requested) => void }) {
   );
 }
 
+function RoleIcon({ icon: Icon }: { icon: typeof GraduationCap }) {
+  return (
+    <span className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+      <Icon className="w-5 h-5 text-white" />
+    </span>
+  );
+}
+
 function StatusSteps({ status }: { status: ApplicationStatus }) {
   const steps = ['Your details', 'Sent', 'Admin review', 'Decision'];
   const at = status === 'DRAFT' ? 0 : status === 'PENDING' ? 2 : status === 'NEEDS_INFO' ? 2 : 3;
   const failed = status === 'REJECTED' || status === 'WITHDRAWN';
   return (
-    <ol className="flex items-center gap-2" aria-label="Application progress">
+    <ol className="tone-panel flex items-start gap-2 p-4 rounded-2xl border border-zinc-200/80 dark:border-white/[0.06]" aria-label="Application progress">
       {steps.map((s, i) => {
         const done = i < at || (i === 3 && status === 'APPROVED');
         const current = i === at && !done;
+        const bad = failed && i === 3;
         return (
           <li key={s} className="flex-1 min-w-0">
-            <div className={cn('h-1.5 rounded-full', done ? (failed && i === 3 ? 'bg-rose-500' : 'bg-emerald-500') : current ? (status === 'NEEDS_INFO' ? 'bg-amber-500' : failed ? 'bg-rose-500' : 'bg-indigo-500') : 'bg-zinc-200 dark:bg-white/10')} />
-            <p className={cn('mt-1.5 text-[11px] font-semibold truncate', current ? 'text-zinc-900 dark:text-white' : 'text-zinc-400')}>
+            <div className="flex items-center gap-1.5">
+              <span className={cn('w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold',
+                bad ? 'bg-rose-500 text-white' : done ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white' : current ? (status === 'NEEDS_INFO' ? 'bg-amber-500 text-white' : 'ring-2 ring-indigo-500 text-indigo-500 bg-white dark:bg-transparent') : 'bg-zinc-200 dark:bg-white/10 text-zinc-400')}>
+                {bad ? <XCircle className="w-3.5 h-3.5" /> : done ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+              </span>
+              {i < steps.length - 1 && <span className={cn('flex-1 h-1 rounded-full', done && !bad ? 'bg-gradient-to-r from-indigo-500 to-fuchsia-500' : 'bg-zinc-200 dark:bg-white/10')} />}
+            </div>
+            <p className={cn('mt-1.5 text-[11px] font-semibold truncate', current || done ? 'text-zinc-900 dark:text-white' : 'text-zinc-400')}>
               {i === 2 && status === 'NEEDS_INFO' ? 'Waiting for you' : i === 3 && status === 'REJECTED' ? 'Not approved' : i === 3 && status === 'WITHDRAWN' ? 'Withdrawn' : s}
             </p>
           </li>
@@ -361,7 +388,7 @@ function StatusSteps({ status }: { status: ApplicationStatus }) {
 
 function Notice({ icon: Icon, tone, title, text }: { icon: typeof Clock; tone: 'info' | 'warning' | 'danger' | 'neutral'; title: string; text: string }) {
   const colors = {
-    info: 'border-indigo-500/25 bg-indigo-500/[0.07] text-indigo-500',
+    info: 'tone-panel border-indigo-500/25 text-indigo-500',
     warning: 'border-amber-500/30 bg-amber-500/10 text-amber-500',
     danger: 'border-rose-500/30 bg-rose-500/10 text-rose-500',
     neutral: 'border-zinc-200 dark:border-white/10 bg-zinc-100/70 dark:bg-white/[0.03] text-zinc-500',
@@ -391,18 +418,25 @@ function Summary({ app }: { app: Application }) {
     ['Profile', app.profileUrl && <a href={safeHref(app.profileUrl)} target="_blank" rel="noopener noreferrer" className="text-indigo-500 break-all">{app.profileUrl}</a>],
     ['Document', app.proofUrl && <a href={safeHref(app.proofUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-500"><Paperclip className="w-3.5 h-3.5" />{app.proofName || 'Attachment'}</a>],
   ];
+  const info = ROLE_INFO[app.requestedRole];
   return (
-    <div className="rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-5">
-      <h3 className="font-semibold text-zinc-900 dark:text-white mb-3">What you sent</h3>
-      <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+    <div className="tone-panel rounded-3xl border border-zinc-200/80 dark:border-white/[0.06] p-5 sm:p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <RoleIcon icon={info?.icon ?? Building2} />
+        <div className="min-w-0">
+          <h3 className="font-bold text-zinc-900 dark:text-white">What you sent</h3>
+          <p className="text-xs text-zinc-500">{info?.label ?? app.requestedRole} application{app.submittedAt ? ` · sent ${format(new Date(app.submittedAt), 'd MMM yyyy')}` : ''}</p>
+        </div>
+      </div>
+      <dl className="grid sm:grid-cols-2 gap-2.5 text-sm">
         {rows.filter(([, v]) => v).map(([k, v]) => (
-          <div key={k} className="min-w-0">
-            <dt className="text-xs text-zinc-500">{k}</dt>
-            <dd className="text-zinc-900 dark:text-zinc-100 break-words">{v}</dd>
+          <div key={k} className="min-w-0 px-3.5 py-2.5 rounded-xl bg-white/70 dark:bg-white/[0.04] border border-zinc-200/60 dark:border-white/[0.05]">
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-indigo-500 dark:text-indigo-300">{k}</dt>
+            <dd className="mt-0.5 text-zinc-900 dark:text-zinc-100 break-words">{v}</dd>
           </div>
         ))}
       </dl>
-      {app.message && <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap border-t border-zinc-100 dark:border-white/[0.05] pt-3">{app.message}</p>}
+      {app.message && <p className="mt-3 px-3.5 py-3 rounded-xl bg-white/70 dark:bg-white/[0.04] border border-zinc-200/60 dark:border-white/[0.05] text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap">{app.message}</p>}
     </div>
   );
 }
@@ -410,12 +444,12 @@ function Summary({ app }: { app: Application }) {
 function History({ events }: { events: HistoryEvent[] }) {
   if (!events?.length) return null;
   return (
-    <div className="rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-5">
-      <h3 className="font-semibold text-zinc-900 dark:text-white mb-4">History</h3>
-      <ol className="space-y-4">
+    <div className="tone-panel rounded-3xl border border-zinc-200/80 dark:border-white/[0.06] p-5 sm:p-6">
+      <h3 className="font-bold text-zinc-900 dark:text-white mb-4">History</h3>
+      <ol className="relative space-y-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-gradient-to-b before:from-indigo-500/40 before:to-fuchsia-500/40">
         {[...events].reverse().map((e, i) => (
-          <li key={i} className="flex gap-3">
-            <span className={cn('mt-1.5 w-2 h-2 rounded-full shrink-0', e.type === 'approved' || e.type === 'invited' ? 'bg-emerald-500' : e.type === 'rejected' ? 'bg-rose-500' : e.type === 'info_requested' ? 'bg-amber-500' : 'bg-indigo-500')} />
+          <li key={i} className="relative flex gap-3">
+            <span className={cn('mt-1 w-3 h-3 rounded-full shrink-0 ring-4 ring-white dark:ring-[#0b0e1a]', e.type === 'approved' || e.type === 'invited' ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : e.type === 'rejected' ? 'bg-rose-500' : e.type === 'info_requested' ? 'bg-amber-500' : 'bg-indigo-500')} />
             <div className="min-w-0">
               <p className="text-sm text-zinc-900 dark:text-white">{EVENT_LABEL[e.type] ?? e.type}</p>
               {e.note && <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap break-words">“{e.note}”</p>}
@@ -502,7 +536,7 @@ function ApplicationForm({
         e.preventDefault();
         void save(true);
       }}
-      className="space-y-6 rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-5 sm:p-7"
+      className="tone-panel space-y-6 rounded-3xl border border-zinc-200/80 dark:border-white/[0.06] p-5 sm:p-7"
     >
       {canChangeRole && (
         <fieldset>
@@ -513,7 +547,7 @@ function ApplicationForm({
               const on = f.requestedRole === r;
               return (
                 <button type="button" key={r} onClick={() => setF((p) => ({ ...p, requestedRole: r }))} aria-pressed={on}
-                  className={cn('flex items-center gap-3 p-3 rounded-xl border text-left text-sm', on ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-200 dark:border-white/10')}>
+                  className={cn('flex items-center gap-3 p-3 rounded-xl border text-left text-sm transition-colors', on ? 'border-indigo-500 bg-gradient-to-r from-indigo-500/10 to-fuchsia-500/10' : 'border-zinc-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.02]')}>
                   <Icon className={cn('w-5 h-5', on ? 'text-indigo-500' : 'text-zinc-400')} />
                   <span className="font-semibold text-zinc-900 dark:text-white">{ROLE_INFO[r].label}</span>
                 </button>

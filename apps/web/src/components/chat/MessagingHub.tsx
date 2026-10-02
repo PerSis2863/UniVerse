@@ -6,16 +6,24 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
-import { StarredPanel } from './ChatDialogs';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from './MessageBubble';
-import { ChatWindow } from './ChatWindow';
-import { NewChatDialog } from './NewChatDialog';
 import { type ConversationSummary, chatJson, previewText, timeLabel } from './chat-client';
 import { useLiveInterval } from '@/lib/realtime-client';
 
 type Filter = 'all' | 'unread' | 'groups';
+
+// The open chat (composer, calls, files, translations...) and the dialogs are most of Messages'
+// code. Loading them separately lets the chat list show first; they're fetched in the background
+// right after, so opening a chat doesn't wait either.
+const loadChatWindow = () => import('./ChatWindow');
+const ChatWindow = dynamic(() => loadChatWindow().then((m) => m.ChatWindow), {
+  loading: () => <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-500" /></div>,
+});
+const NewChatDialog = dynamic(() => import('./NewChatDialog').then((m) => m.NewChatDialog));
+const StarredPanel = dynamic(() => import('./ChatDialogs').then((m) => m.StarredPanel));
 
 export function MessagingHub() {
   const refreshInterval = useLiveInterval(15_000, 0);
@@ -32,6 +40,11 @@ export function MessagingHub() {
   const [jumpTo, setJumpTo] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => { void loadChatWindow().catch(() => {}); }, 600);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const setPref = async (c: ConversationSummary, body: Record<string, unknown>, ok?: string) => {
     setMenuFor(null);
