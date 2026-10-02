@@ -1,6 +1,7 @@
 import Link from '@/components/ui/Link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { ApiWarmup } from '@/components/ApiWarmup';
+import { MaintenanceGate } from '@/components/MaintenanceGate';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -84,7 +85,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <UniverseLogo size="md" showText={true} animated={false} withGlow={false} />
         </div>
         <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center pb-8 lg:pb-0">
-          {children}
+          <MaintenanceGate>{children}</MaintenanceGate>
         </div>
       </div>
     </div>

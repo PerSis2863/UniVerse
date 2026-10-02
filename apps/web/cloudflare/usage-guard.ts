@@ -326,10 +326,25 @@ function ownerWayIn(request: Request, url: URL, env: GuardEnv): boolean {
 // and the owner console's API (owner only).
 const READ_ONLY_OK = /^\/api\/(bootstrap$|core\/auth\/|core\/owner\/|core\/activity\/ui$|errors$|chat\/conversations\/[^/]+\/typing$)/;
 
+const currentMode = (): Mode => (state.until && toMs(state.until) <= Date.now() ? 'LIVE' : state.mode);
+
+/** When nobody but the owner may get in: what to tell everyone else. */
+function closedNotice(env: GuardEnv): { title: string; message: string; back: string | null } | null {
+  if (state.paused && !env.CF_GUARD_OFF) return { title: 'Back soon', message: 'UniVerse is taking a short break. Your work is saved.', back: state.resumeAt };
+  if (currentMode() === 'MAINTENANCE') return { title: 'Down for maintenance', message: state.message || 'UniVerse is being updated. Your work is saved.', back: state.until };
+  return null;
+}
+
 /** What the switches say about this request: null to let it through, or the answer to give. */
 export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: ExecutionContext): Response | null {
   refresh(env, ctx);
   if (url.pathname.startsWith('/api/webhooks/')) return null; // payments are never lost
+  // Asked by the sign-in and sign-up pages, so they show "down for maintenance" instead of a form
+  // nobody can use, even on a device that holds the owner's pass. No database, no app.
+  if (url.pathname === '/api/server-state') {
+    const shut = closedNotice(env);
+    return Response.json(shut ? { closed: true, ...shut } : { closed: false }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   // The owner's pass works only for the owner: once someone else signs in on that device (their
   // token names another email), the pass is ignored and removed, so they meet the gate like anyone.
   let dropPass = false;
@@ -339,14 +354,11 @@ export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: Execu
     if (email && ownerEmailList(env.SUPER_ADMIN_EMAILS).includes(email)) return null;
     dropPass = true;
   }
-  const now = Date.now();
-  const mode: Mode = state.until && toMs(state.until) <= now ? 'LIVE' : state.mode;
-  const spending = state.paused && !env.CF_GUARD_OFF;
-  if (spending || mode === 'MAINTENANCE') {
+  const mode = currentMode();
+  const shut = closedNotice(env);
+  if (shut) {
     if (ownerWayIn(request, url, env)) return null;
-    const res = spending
-      ? pausedResponse(url, { title: 'Back soon', message: 'UniVerse is taking a short break. Your work is saved.', back: state.resumeAt })
-      : pausedResponse(url, { title: 'Down for maintenance', message: state.message || 'UniVerse is being updated. Your work is saved.', back: state.until });
+    const res = pausedResponse(url, shut);
     if (dropPass) res.headers.append('Set-Cookie', 'uv_owner=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax');
     return res;
   }
