@@ -23,6 +23,7 @@ interface Env {
   REALTIME: DurableObjectNamespace<RealtimeHub>;
   BOARDS?: DurableObjectNamespace<BoardRoom>;
   CODE?: DurableObjectNamespace<CodeRoom>;
+  CALLS?: DurableObjectNamespace<CallRoom>;
   API_RATE_LIMITER?: RateLimit; // per signed-in user (or per IP when signed out)
   IP_RATE_LIMITER?: RateLimit; // per IP, generous: stops floods from one address
   COSTLY_RATE_LIMITER?: RateLimit; // per user, for AI, email and uploads
@@ -45,7 +46,7 @@ async function rateLimited(request: Request, url: URL, env: Env): Promise<boolea
   const token = request.headers.get('authorization')?.slice(-40);
   // Live connections can't send headers: they carry the user (and a one-time ticket) in the
   // address, so count them per user too, not per shared campus address.
-  const live = url.pathname === '/realtime' ? url.searchParams.get('user') : url.pathname === '/board-live' || url.pathname === '/code-live' ? url.searchParams.get('ticket') : null;
+  const live = url.pathname === '/realtime' ? url.searchParams.get('user') : url.pathname === '/board-live' || url.pathname === '/code-live' || url.pathname === '/call-live' ? url.searchParams.get('ticket') : null;
   const who = token ? `u:${token}` : live ? `live:${live.slice(0, 80)}` : `ip:${ip}`;
   const checks: Promise<{ success: boolean }>[] = [];
   if (env.IP_RATE_LIMITER) checks.push(env.IP_RATE_LIMITER.limit({ key: ip }));
@@ -127,7 +128,7 @@ export default {
     const gate = serverGate(request, url, env, ctx);
     if (gate) return gate;
     // Stripe's webhook is signed and comes from Stripe's servers, so it's never rate limited.
-    if ((url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/webhooks/')) || url.pathname === '/realtime' || url.pathname === '/board-live' || url.pathname === '/code-live') {
+    if ((url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/webhooks/')) || url.pathname === '/realtime' || url.pathname === '/board-live' || url.pathname === '/code-live' || url.pathname === '/call-live') {
       if (await rateLimited(request, url, env)) return tooMany();
     }
     if (url.pathname === '/realtime') {
@@ -147,6 +148,12 @@ export default {
       const room = url.searchParams.get('room');
       if (!room || !url.searchParams.get('ticket') || !env.CODE) return new Response('Forbidden', { status: 403 });
       return env.CODE.get(env.CODE.idFromName(room)).fetch(request);
+    }
+    if (url.pathname === '/call-live') {
+      if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('Expected a WebSocket', { status: 426 });
+      const callId = url.searchParams.get('call');
+      if (!callId || !url.searchParams.get('ticket') || !env.CALLS) return new Response('Forbidden', { status: 403 });
+      return env.CALLS.get(env.CALLS.idFromName(callId)).fetch(request);
     }
     const fast = url.pathname.startsWith('/api/') ? await fastApi(request, url, env, ctx, (r) => nextApp.fetch(r, env, ctx)) : null;
     if (fast) return fast;
@@ -618,5 +625,94 @@ export class CodeRoom extends DurableObject<Env> {
     try { ws.close(code === 1005 || code === 1006 ? 1000 : code); } catch { /* already closed */ }
     // Last one out: save now rather than waiting for the alarm.
     if (this.ctx.getWebSockets().length <= 1) await this.alarm();
+  }
+}
+
+// ─── Calls ───────────────────────────────────────────────────────────────────────────────────────
+
+/** Someone in a call (kept on the socket so it survives hibernation). */
+interface CallPeer { peerId: string; userId: string; name: string }
+
+const MAX_CALL_PEERS = 6; // everyone connects to everyone, so calls stay small
+const MAX_SIGNAL_BYTES = 64 * 1024;
+
+/**
+ * One per call (src/server/calls.ts). Passes WebRTC connection details (offers, answers, network
+ * candidates) between the people in the call and tells everyone who joined, left, muted or
+ * turned their camera off. Audio and video never come through here: they go browser to browser.
+ * Nothing is stored except one-time join tickets.
+ */
+export class CallRoom extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+  }
+
+  private peers() {
+    return this.ctx.getWebSockets().map((ws) => ({ ws, peer: ws.deserializeAttachment() as CallPeer | null })).filter((p): p is { ws: WebSocket; peer: CallPeer } => !!p.peer);
+  }
+
+  private send(ws: WebSocket, msg: unknown) {
+    try { ws.send(JSON.stringify(msg)); } catch { /* closing */ }
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === '/ticket' && request.method === 'POST') {
+      const who = (await request.json()) as { userId: string; name: string };
+      const now = Date.now();
+      const stale = [...(await this.ctx.storage.list<{ exp: number }>({ prefix: 'ticket:' }))].filter(([, t]) => t.exp < now).map(([k]) => k);
+      if (stale.length) await this.ctx.storage.delete(stale.slice(0, 128));
+      const ticket = crypto.randomUUID();
+      await this.ctx.storage.put(`ticket:${ticket}`, { ...who, exp: now + TICKET_TTL_MS });
+      return Response.json({ ticket });
+    }
+    // From the app: someone declined (sent to everyone waiting in the call).
+    if (url.pathname === '/notify' && request.method === 'POST') {
+      const note = (await request.json()) as { type: string; name: string };
+      for (const { ws } of this.peers()) this.send(ws, { type: note.type === 'declined' ? 'declined' : 'note', name: String(note.name ?? '').slice(0, 80) });
+      return Response.json({ ok: true });
+    }
+    if (url.pathname === '/call-live') {
+      const key = `ticket:${url.searchParams.get('ticket')}`;
+      const who = await this.ctx.storage.get<{ userId: string; name: string; exp: number }>(key);
+      if (!who) return new Response('Forbidden', { status: 403 });
+      await this.ctx.storage.delete(key); // single use
+      if (who.exp < Date.now()) return new Response('Forbidden', { status: 403 });
+      const current = this.peers();
+      if (current.length >= MAX_CALL_PEERS) return new Response('This call is full', { status: 429 });
+      const { 0: client, 1: server } = new WebSocketPair();
+      this.ctx.acceptWebSocket(server);
+      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name };
+      server.serializeAttachment(me);
+      // The newcomer calls everyone already here (so two people never offer to each other at once).
+      this.send(server, { type: 'welcome', you: me.peerId, peers: current.map(({ peer }) => peer) });
+      for (const { ws } of current) this.send(ws, { type: 'joined', peer: me });
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    return new Response('Not found', { status: 404 });
+  }
+
+  async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
+    if (typeof raw !== 'string' || raw.length > MAX_SIGNAL_BYTES) return;
+    const me = ws.deserializeAttachment() as CallPeer | null;
+    if (!me) return;
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown };
+    try { msg = JSON.parse(raw); } catch { return; }
+    if (msg.type === 'signal' && typeof msg.to === 'string') {
+      const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
+      if (target) this.send(target.ws, { type: 'signal', from: me.peerId, data: msg.data });
+      return;
+    }
+    if (msg.type === 'state') {
+      const state = { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true };
+      for (const { ws: other } of this.peers()) if (other !== ws) this.send(other, state);
+    }
+  }
+
+  async webSocketClose(ws: WebSocket, code: number) {
+    const me = ws.deserializeAttachment() as CallPeer | null;
+    try { ws.close(code === 1005 || code === 1006 ? 1000 : code); } catch { /* already closed */ }
+    if (me) for (const { ws: other } of this.peers()) if (other !== ws) this.send(other, { type: 'left', peerId: me.peerId });
   }
 }

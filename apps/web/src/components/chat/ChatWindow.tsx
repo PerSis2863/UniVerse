@@ -1,4 +1,6 @@
 'use client';
+import { useRouter } from 'next/navigation';
+import { AttachmentInline } from './AttachmentInline';
 import { haptic } from '@/lib/haptics';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 
@@ -31,6 +33,7 @@ function byDay<T extends { createdAt: string }>(list: T[]) {
 }
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
+  const router = useRouter();
   const key = `/api/chat/conversations/${conversationId}/messages`;
   // Live updates refresh the thread on every change, so it only polls without them.
   const refreshInterval = useLiveInterval(5000, 0);
@@ -327,17 +330,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const typing = () => { chatJson(`/api/chat/conversations/${conversationId}/typing`, { method: 'POST' }).catch(() => {}); };
 
   const call = async (kind: 'audio' | 'video') => {
-    // Open the tab synchronously so the browser doesn't block it as a pop-up.
-    const win = window.open('', '_blank');
     try {
       const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ type: 'CALL', kind }) });
       appendSent(msg, '');
-      if (msg.metadata?.url) {
-        if (win) win.location.href = msg.metadata.url;
-        else toast('Call started', { description: 'Your browser blocked the new tab — use the Join button in the chat.' });
-      }
+      // UniVerse's own call screen; everyone in the chat gets a ringing card with Join.
+      router.push(`/call/${msg.id}`);
     } catch (e: any) {
-      win?.close();
       toast.error(e.message);
     }
   };
@@ -506,6 +504,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                 return (
                   <div key={m.id} id={`msg-${m.id}`} className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
                     <MessageBubble
+                      onCallBack={(kind) => void call(kind)}
                       m={m}
                       mine={m.senderId === me}
                       me={me}
@@ -723,7 +722,10 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
             </div>
           )}
           <div className="space-y-1.5">
-            {files.map((f) => (
+            {files.filter((f) => f.type === 'AUDIO' || f.type === 'VIDEO').map((f) => (
+              <div key={f.id} className="p-1"><AttachmentInline url={f.attachmentUrl!} name={f.attachmentName} mime={f.attachmentMime} type={f.type} durationSec={f.metadata?.durationSec} /></div>
+            ))}
+            {files.filter((f) => f.type !== 'AUDIO' && f.type !== 'VIDEO').map((f) => (
               <a key={f.id} href={f.attachmentUrl!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
                 <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
                 <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate flex-1">{f.attachmentName || 'File'}</span>

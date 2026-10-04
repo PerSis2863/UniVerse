@@ -72,7 +72,7 @@ export default function AdminInsightsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[0, 1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
                 <Tile icon={Users} label="Active students" value={data.totals.students.toLocaleString()} sub={`${data.totals.teachers} teachers · ${data.totals.courses} courses`} />
                 <Tile icon={GraduationCap} label="Average grade" value={data.totals.grade30 === null ? '–' : `${data.totals.grade30}%`} sub="graded in the last 30 days" />
                 <Tile icon={Building2} label="Attendance" value={data.totals.attendance30 === null ? '–' : `${data.totals.attendance30}%`} sub="present or late, last 30 days" />

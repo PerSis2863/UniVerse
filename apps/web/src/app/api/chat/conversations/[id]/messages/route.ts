@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { later, notify } from '@/server/email';
@@ -172,9 +171,9 @@ export async function POST(req: Request, { params }: Ctx) {
     if (type === 'CALL') {
       if (await featureOff('calls')) return NextResponse.json({ error: 'Voice and video calls: turned off on UniVerse for now. Please try again later.' }, { status: 503 });
       const kind = b.kind === 'video' ? 'video' : 'audio';
-      const room = `UniVerse-${randomBytes(9).toString('base64url')}`;
       data.body = kind === 'video' ? 'Video call' : 'Voice call';
-      data.metadata = { kind, room, url: `https://meet.jit.si/${room}${kind === 'audio' ? '#config.startWithVideoMuted=true' : ''}` };
+      // UniVerse's own call (/call/<this message's id>, src/server/calls.ts). Older calls have a Jitsi url.
+      data.metadata = { kind, inApp: true };
     } else if (type === 'POLL') {
       const question = String(b.poll?.question ?? '').trim().slice(0, 300);
       const options: string[] = Array.isArray(b.poll?.options) ? [...new Set<string>(b.poll.options.map((o: unknown) => String(o ?? '').trim().slice(0, 100)).filter(Boolean))] : [];

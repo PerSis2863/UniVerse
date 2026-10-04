@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, AlertCircle, Ban, Bug, CheckCircle2, CreditCard, Eye, Hammer, History, Loader2, Megaphone, MessageSquare, Power, RefreshCw, Server, ShieldCheck, Sparkles, ToggleRight, Trash2, Users, Wrench, XCircle } from 'lucide-react';
+import { Activity, AlertCircle, Ban, BarChart3, Bug, CheckCircle2, ClipboardList, Code2, CreditCard, Eye, Flame, Gauge, Hammer, History, Loader2, Mail, Megaphone, PenTool, Phone, Power, Radio, RefreshCw, Server, Settings2, ShieldCheck, Sparkles, ToggleRight, Trash2, Users, Wifi, Wrench, XCircle } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,8 @@ interface ServerData {
   settings?: { name: string; what: string; needed: boolean; set: boolean; problem: string | null }[];
   email?: { sentToday: number; skippedToday: number; sentMonth: number; daily: number; monthly: number; dailyReserve: number; monthlyReserve: number } | null;
   ai?: AiToday | null;
+  online?: { count: number; people: { id: string; name: string; role: string; avatar: string | null; lastSeenAt: string | null }[] };
+  adoption?: Record<string, number>;
   history: { id: string; summary: string; createdAt: string; undoneAt: string | null }[];
 }
 
@@ -47,44 +49,194 @@ const TONES: Record<string, string> = {
 // datetime-local wants "yyyy-MM-ddTHH:mm" in the viewer's time.
 const toLocalInput = (iso: string | null) => (iso ? format(new Date(iso), "yyyy-MM-dd'T'HH:mm") : '');
 
+type Section = 'status' | 'usage' | 'cloudflare' | 'setup' | 'activity';
+const SECTIONS: { id: Section; label: string; icon: typeof Power }[] = [
+  { id: 'status', label: 'Status & switches', icon: Power },
+  { id: 'usage', label: 'Usage & limits', icon: Gauge },
+  { id: 'cloudflare', label: 'Cloudflare', icon: Server },
+  { id: 'setup', label: 'Setup', icon: Settings2 },
+  { id: 'activity', label: 'Activity', icon: Activity },
+];
+const SECTION_KEY = 'universe-console-server-section';
+const readSection = (): Section => {
+  try { const v = localStorage.getItem(SECTION_KEY); return SECTIONS.some((s) => s.id === v) ? (v as Section) : 'status'; } catch { return 'status'; }
+};
+
 export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'deletions' | 'activity') => void }) {
   const { data, mutate } = useSWR<ServerData>('/owner/server', fetcher, { refreshInterval: 60_000 });
+  const [section, setSection] = useState<Section>(readSection);
+  const pick = (id: Section) => { setSection(id); try { localStorage.setItem(SECTION_KEY, id); } catch { /* storage unavailable */ } };
   if (!data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
   const h = data.health;
-  const tiles: [string, number, typeof Users, 'people' | 'errors' | 'deletions' | 'activity'][] = [
-    ['People', h.people, Users, 'people'], ['Active today', h.activeToday, Activity, 'activity'], ['Sign-ins today', h.signInsToday, Activity, 'activity'], ['Messages today', h.messagesToday, MessageSquare, 'activity'],
-    ['Open errors', h.openErrors, Bug, 'errors'], ['Errors seen today', h.newErrors, Bug, 'errors'], ['Deletion requests', h.pendingDeletions, Trash2, 'deletions'], ['Banned', h.suspended, Ban, 'people'],
+  const mode = MODES.find((m) => m.id === data.control.mode) ?? MODES[0];
+  const tiles: { label: string; value: number | string; sub?: string; icon: typeof Users; to: 'people' | 'errors' | 'deletions' | 'activity'; alert?: boolean }[] = [
+    { label: 'Online now', value: data.online?.count ?? 0, sub: `${h.activeToday} active today`, icon: Wifi, to: 'activity' },
+    { label: 'People', value: h.people, sub: h.suspended ? `${h.suspended} banned` : 'all accounts', icon: Users, to: 'people' },
+    { label: 'Sign-ins today', value: h.signInsToday, sub: `${h.messagesToday} messages`, icon: Activity, to: 'activity' },
+    { label: 'Open errors', value: h.openErrors, sub: `${h.newErrors} seen today`, icon: Bug, to: 'errors', alert: h.openErrors > 0 },
+    { label: 'Deletion requests', value: h.pendingDeletions, sub: 'waiting for you', icon: Trash2, to: 'deletions', alert: h.pendingDeletions > 0 },
+    { label: 'Emails today', value: data.email ? data.email.sentToday : '–', sub: data.email ? `of ${data.email.daily} · ${data.email.sentMonth} this month` : 'email not set up', icon: Mail, to: 'activity' },
   ];
   return (
-    <div className="space-y-6">
-      <SwitchCard key={data.control.updatedAt} control={data.control} onSaved={() => void mutate()} />
-      <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
-      <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
-      <PlanUsageCard usage={data.usage} />
-      {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
-      <CloudflareCard />
-      {data.email && <EmailCard email={data.email} />}
-      {data.settings && <SettingsCard settings={data.settings} />}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {tiles.map(([label, n, Icon, to]) => (
-          <button key={label} onClick={() => onTab(to)} className={cn(card, 'p-4 text-left hover:border-indigo-500/40')}>
-            <Icon className="w-4 h-4 text-zinc-400 mb-2" />
-            <p className="text-2xl font-bold text-zinc-900 dark:text-white">{n}</p>
-            <p className="text-xs text-zinc-500">{label}</p>
+    <div className="space-y-8">
+      {/* Status header */}
+      <div className={cn(card, 'p-6 sm:p-7 flex flex-col lg:flex-row lg:items-center gap-5 justify-between relative overflow-hidden')}>
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-indigo-500/[0.07] via-transparent to-fuchsia-500/[0.07] pointer-events-none" />
+        <div className="relative flex items-center gap-4">
+          <span className={cn('w-14 h-14 rounded-2xl flex items-center justify-center border', TONES[mode.tone])}><mode.icon className="w-7 h-7" /></span>
+          <div>
+            <p className="text-sm text-zinc-500">UniVerse is</p>
+            <p className="text-2xl font-bold text-zinc-900 dark:text-white">{mode.label}</p>
+            <p className="text-sm text-zinc-500 mt-0.5">{mode.text}</p>
+          </div>
+        </div>
+        <div className="relative flex flex-wrap gap-2">
+          <button onClick={() => pick('status')} className="btn-secondary">Change status</button>
+          <button onClick={() => void mutate()} className="btn-ghost inline-flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Refresh</button>
+        </div>
+      </div>
+
+      {/* Headline numbers */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 stagger">
+        {tiles.map((t) => (
+          <button key={t.label} onClick={() => onTab(t.to)} className={cn(card, 'lift p-5 text-left hover:border-indigo-500/40')}>
+            <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center mb-3', t.alert ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-500')}><t.icon className="w-[18px] h-[18px]" /></span>
+            <p className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white tabular-nums">{typeof t.value === 'number' ? t.value.toLocaleString() : t.value}</p>
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mt-1">{t.label}</p>
+            {t.sub && <p className="text-xs text-zinc-500 mt-0.5 truncate">{t.sub}</p>}
           </button>
         ))}
       </div>
-      <div className={cn(card, 'p-5')}>
-        <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Server changes</h2>
-        {data.history.length === 0 ? <p className="text-sm text-zinc-500">No changes yet.</p> : (
-          <ul className="space-y-2">{data.history.map((c) => (
-            <li key={c.id} className="text-sm">
-              <span className={cn('text-zinc-800 dark:text-zinc-200', c.undoneAt && 'line-through opacity-60')}>{c.summary}</span>
-              <span className="text-xs text-zinc-400"> · {format(new Date(c.createdAt), 'd MMM, HH:mm')}</span>
-            </li>
-          ))}</ul>
-        )}
+
+      {/* Sections */}
+      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-zinc-50/80 dark:bg-[#0a0d13]/80 backdrop-blur-xl">
+        <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Server sections">
+          {SECTIONS.map((x) => (
+            <button key={x.id} role="tab" aria-selected={section === x.id} onClick={() => pick(x.id)}
+              className={cn('shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors', section === x.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-white/[0.06] hover:border-indigo-400/50')}>
+              <x.icon className="w-4 h-4" />{x.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {section === 'status' && (
+        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
+          <SwitchCard key={data.control.updatedAt} control={data.control} onSaved={() => void mutate()} />
+          <div className="space-y-6">
+            <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
+            <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
+          </div>
+        </div>
+      )}
+
+      {section === 'usage' && (
+        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
+          <div className="space-y-6">
+            <PlanUsageCard usage={data.usage} />
+            {data.email && <EmailCard email={data.email} />}
+          </div>
+          <div className="space-y-6">
+            {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
+            {data.adoption && <AdoptionCard adoption={data.adoption} />}
+          </div>
+        </div>
+      )}
+
+      {section === 'cloudflare' && <CloudflareCard />}
+
+      {section === 'setup' && (
+        <div className="grid xl:grid-cols-[2fr_1fr] gap-6 items-start stagger">
+          {data.settings && <SettingsCard settings={data.settings} />}
+          <TestEmailCard configured={!!data.email} />
+        </div>
+      )}
+
+      {section === 'activity' && (
+        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
+          <OnlineCard online={data.online} />
+          <div className={cn(card, 'p-6')}>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-1"><History className="w-5 h-5 text-indigo-500" /> Server changes</h2>
+            <p className="text-sm text-zinc-500 mb-4">Status, notices, feature switches and limits, newest first. Undo them from Changes &amp; undo.</p>
+            {data.history.length === 0 ? <p className="text-sm text-zinc-500">No changes yet.</p> : (
+              <ul className="divide-y divide-zinc-200 dark:divide-white/10">{data.history.map((c) => (
+                <li key={c.id} className="py-3 flex items-start justify-between gap-4">
+                  <span className={cn('text-sm text-zinc-800 dark:text-zinc-200', c.undoneAt && 'line-through opacity-60')}>{c.summary}</span>
+                  <span className="text-xs text-zinc-400 shrink-0">{format(new Date(c.createdAt), 'd MMM, HH:mm')}</span>
+                </li>
+              ))}</ul>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Who has UniVerse open right now (active in the last 5 minutes). */
+function OnlineCard({ online }: { online: ServerData['online'] }) {
+  return (
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-1"><Wifi className="w-5 h-5 text-emerald-500" /> Online now</h2>
+      <p className="text-sm text-zinc-500 mb-4">{online?.count ? `${online.count} ${online.count === 1 ? 'person has' : 'people have'} UniVerse open (active in the last 5 minutes).` : 'Nobody else is online right now.'}</p>
+      {!!online?.people.length && (
+        <ul className="divide-y divide-zinc-200 dark:divide-white/10">{online.people.map((p) => (
+          <li key={p.id} className="py-3 flex items-center gap-3">
+            <span className="relative w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+              {p.name.split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+            </span>
+            <span className="flex-1 min-w-0"><span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{p.name}</span><span className="block text-xs text-zinc-500">{p.role.toLowerCase()}</span></span>
+            <span className="text-xs text-zinc-400 shrink-0">{p.lastSeenAt ? formatDistanceToNow(new Date(p.lastSeenAt), { addSuffix: true }) : ''}</span>
+          </li>
+        ))}</ul>
+      )}
+    </div>
+  );
+}
+
+/** How much the newer features were used in the last 7 days. */
+function AdoptionCard({ adoption }: { adoption: Record<string, number> }) {
+  const rows: [string, string, typeof Activity][] = [
+    ['assignments', 'Assignments set', ClipboardList], ['answers', 'Answers handed in', ClipboardList], ['aiDrafts', 'AI grading drafts', Sparkles],
+    ['livePolls', 'Live polls', Radio], ['pollAnswers', 'Poll answers', Radio], ['calls', 'Calls started', Phone],
+    ['codeRooms', 'Code rooms used', Code2], ['whiteboards', 'Whiteboards used', PenTool], ['studyDays', 'Study-streak days', Flame], ['safetyReports', 'Safety reports', ShieldCheck],
+  ];
+  return (
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-1"><BarChart3 className="w-5 h-5 text-indigo-500" /> Feature use · last 7 days</h2>
+      <p className="text-sm text-zinc-500 mb-4">What people are actually using, to see which features are worth promoting.</p>
+      <div className="grid grid-cols-2 gap-3">
+        {rows.map(([k, label, Icon]) => (
+          <div key={k} className="rounded-xl border border-zinc-200 dark:border-white/[0.06] p-4">
+            <p className="text-xs text-zinc-500 flex items-center gap-1.5"><Icon className="w-3.5 h-3.5" />{label}</p>
+            <p className="text-2xl font-bold text-zinc-900 dark:text-white tabular-nums mt-1">{(adoption[k] ?? 0).toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Sends a test email to the owner, to check email works (counts as one email). */
+function TestEmailCard({ configured }: { configured: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const send = async () => {
+    setBusy(true);
+    try {
+      const { data: res } = await api.post('/owner/server/test-email');
+      toast.success(`Test email sent to ${res.sentTo}`);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-1"><Mail className="w-5 h-5 text-indigo-500" /> Test email</h2>
+      <p className="text-sm text-zinc-500 mb-4">{configured ? 'Sends one email to you to check delivery. It counts toward today’s allowance.' : 'Add the RESEND_API_KEY secret to send email.'}</p>
+      <button onClick={() => void send()} disabled={busy || !configured} className="btn-secondary inline-flex items-center gap-2">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Send me a test email</button>
     </div>
   );
 }
@@ -115,8 +267,8 @@ function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
     </label>
   );
   return (
-    <div className={cn(card, 'p-5')}>
-      <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-indigo-500" /> AI use today</h2>
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-indigo-500" /> AI use today</h2>
       <p className="text-sm text-zinc-500 mt-1 mb-3">
         Every AI tutor answer, summary, translation and report counts as one request. Answers many people ask for again (the same tutor question, a summary of the same file) are saved and don’t count. Limits reset at midnight UTC. You’re never limited.
       </p>
@@ -166,13 +318,13 @@ type CfAccount = {
 const size = (b: number | null) => (b == null ? '?' : b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(2)} GB` : `${(b / 1024 ** 2).toFixed(1)} MB`);
 const short = (n: number) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 const okOf = <T,>(p?: CfPart<T>) => (p?.ok ? (p as { data: T }).data : null);
-const panel = 'rounded-2xl border border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-white/[0.025] p-4';
+const panel = 'rounded-2xl border border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-white/[0.025] p-5 sm:p-6';
 
 function Panel({ icon: Icon, title, tone = 'text-indigo-500 bg-indigo-500/10', className, children }: { icon: typeof Activity; title: string; tone?: string; className?: string; children: React.ReactNode }) {
   return (
     <section className={cn(panel, className)}>
-      <h3 className="flex items-center gap-2 text-[13px] font-semibold text-zinc-800 dark:text-zinc-100 mb-3">
-        <span className={cn('w-7 h-7 rounded-lg flex items-center justify-center', tone)}><Icon className="w-3.5 h-3.5" /></span>{title}
+      <h3 className="flex items-center gap-3 text-base font-semibold text-zinc-800 dark:text-zinc-100 mb-5">
+        <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center', tone)}><Icon className="w-[18px] h-[18px]" /></span>{title}
       </h3>
       {children}
     </section>
@@ -183,15 +335,15 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
   return (
     <div className={cn(panel, 'relative overflow-hidden')}>
       <span className={cn('absolute inset-x-0 top-0 h-0.5', tone)} />
-      <p className="text-xs font-medium text-zinc-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white tabular-nums">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-zinc-500 truncate">{sub}</p>}
+      <p className="text-sm font-medium text-zinc-500">{label}</p>
+      <p className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white tabular-nums">{value}</p>
+      {sub && <p className="mt-1 text-sm text-zinc-500 truncate">{sub}</p>}
     </div>
   );
 }
 
 const Pill = ({ tone, children }: { tone: 'good' | 'bad' | 'warn' | 'plain'; children: React.ReactNode }) => (
-  <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold', {
+  <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold shrink-0', {
     good: 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400', bad: 'bg-rose-500/12 text-rose-600 dark:text-rose-400',
     warn: 'bg-amber-500/12 text-amber-600 dark:text-amber-400', plain: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300',
   }[tone])}>{children}</span>
@@ -220,10 +372,10 @@ function CloudflareCard() {
   const totalReq = t?.countries.reduce((a, c) => a + c.requests, 0) || 1;
   const domainBad = dom?.checks.filter((c) => c.ok === false).length ?? 0;
   return (
-    <div className={cn(card, 'p-5 sm:p-6')}>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+    <div className={cn(card, 'p-6 sm:p-8')}>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-7">
         <div>
-          <h2 className="font-semibold text-lg text-zinc-900 dark:text-white flex items-center gap-2"><Server className="w-5 h-5 text-orange-500" /> Cloudflare account</h2>
+          <h2 className="font-semibold text-xl text-zinc-900 dark:text-white flex items-center gap-2"><Server className="w-5 h-5 text-orange-500" /> Cloudflare account</h2>
           {data?.checkedAt && <p className="text-xs text-zinc-500 mt-0.5">Updated {formatDistanceToNow(new Date(data.checkedAt), { addSuffix: true })}</p>}
         </div>
         <button onClick={() => setFresh((n) => n + 1)} disabled={isValidating} className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 text-xs">
@@ -233,32 +385,32 @@ function CloudflareCard() {
       {!data ? <Loader2 className="w-5 h-5 animate-spin text-zinc-400" /> : !data.setup ? (
         <p className="text-sm text-zinc-500">Add the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets to see this.</p>
       ) : (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
             <Stat label="Visitors · 7 days" value={t ? short(t.visitors) : '–'} sub={t ? `${short(t.pageViews)} page views` : undefined} tone="bg-indigo-500" />
             <Stat label="Threats stopped · 7 days" value={t ? short(t.threats) : '–'} sub={t ? `${size(t.bytes)} sent` : undefined} tone="bg-rose-500" />
             <Stat label="Build minutes" value={b ? `${b.minutesUsed}${b.partial ? '+' : ''}` : '–'} sub={b ? `of ${b.minutesLimit.toLocaleString()} this month · ${b.count} builds` : undefined} tone={buildPct > 80 ? 'bg-rose-500' : 'bg-violet-500'} />
             <Stat label="Database" value={db ? size(db.bytes) : '–'} sub={db ? `of 5 GB${db.tables ? ` · ${db.tables} tables` : ''}` : undefined} tone="bg-emerald-500" />
           </div>
-          <div className="grid lg:grid-cols-2 gap-4">
+          <div className="grid xl:grid-cols-2 gap-6">
             <Panel icon={Users} title="Visitors · last 7 days">
               {t ? (
                 <>
-                  <div className="flex items-end gap-2 h-24">{t.days.map((d) => (
+                  <div className="flex items-end gap-3 h-40">{t.days.map((d) => (
                     <div key={d.day} className="flex-1 flex flex-col items-center gap-1 h-full justify-end" title={`${d.visitors} visitors, ${d.pageViews} page views`}>
-                      <span className="text-[10px] tabular-nums text-zinc-500">{short(d.visitors)}</span>
+                      <span className="text-xs tabular-nums text-zinc-500">{short(d.visitors)}</span>
                       <div className="w-full rounded-lg bg-gradient-to-t from-indigo-600 to-fuchsia-400" style={{ height: `${Math.max(6, (d.visitors / maxDay) * 100)}%` }} />
-                      <span className="text-[10px] text-zinc-500">{format(new Date(d.day), 'EEE')}</span>
+                      <span className="text-xs text-zinc-500">{format(new Date(d.day), 'EEE')}</span>
                     </div>
                   ))}</div>
                   {t.countries.length > 0 && (
-                    <div className="mt-4 space-y-1.5">{t.countries.map((c) => {
+                    <div className="mt-6 space-y-2.5">{t.countries.map((c) => {
                       const pct = Math.round((c.requests / totalReq) * 100);
                       return (
-                        <div key={c.code} className="flex items-center gap-2 text-xs">
-                          <span className="w-8 font-semibold text-zinc-700 dark:text-zinc-200">{c.code}</span>
+                        <div key={c.code} className="flex items-center gap-3 text-sm">
+                          <span className="w-10 font-semibold text-zinc-700 dark:text-zinc-200">{c.code}</span>
                           <div className="flex-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.max(2, pct)}%` }} /></div>
-                          <span className="w-10 text-right tabular-nums text-zinc-500">{pct}%</span>
+                          <span className="w-12 text-right tabular-nums text-zinc-500">{pct}%</span>
                         </div>
                       );
                     })}</div>
@@ -272,8 +424,8 @@ function CloudflareCard() {
               ) : at.total === 0 ? <p className="text-sm text-emerald-600 dark:text-emerald-400">Nothing needed blocking.</p> : (
                 <>
                   <p className="text-sm text-zinc-700 dark:text-zinc-200 mb-2"><b>{at.total.toLocaleString()}</b> requests stopped</p>
-                  <ul className="space-y-1.5">{at.top.map((x, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs"><Pill tone="bad">{x.count}</Pill><span className="text-zinc-600 dark:text-zinc-300">{x.action} by {x.source}</span>{x.clientCountryName && <span className="text-zinc-400">· {x.clientCountryName}</span>}</li>
+                  <ul className="space-y-3">{at.top.map((x, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm"><Pill tone="bad">{x.count}</Pill><span className="text-zinc-600 dark:text-zinc-300">{x.action} by {x.source}</span>{x.clientCountryName && <span className="text-zinc-400">· {x.clientCountryName}</span>}</li>
                   ))}</ul>
                 </>
               )) : missing(data.attacks)}
@@ -281,10 +433,10 @@ function CloudflareCard() {
             <Panel icon={Hammer} title="Builds" tone="text-violet-500 bg-violet-500/10">
               {b ? (
                 <>
-                  <div className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className={cn('h-full rounded-full', buildPct > 80 ? 'bg-rose-500' : 'bg-gradient-to-r from-violet-500 to-indigo-500')} style={{ width: `${Math.max(1, buildPct)}%` }} /></div>
-                  <p className="mt-1.5 text-xs text-zinc-500">{b.minutesUsed} of {b.minutesLimit.toLocaleString()} minutes used this month</p>
-                  <ul className="mt-3 space-y-2">{b.recent.map((x) => (
-                    <li key={x.at} className="flex items-start gap-2 text-xs">
+                  <div className="h-2.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className={cn('h-full rounded-full', buildPct > 80 ? 'bg-rose-500' : 'bg-gradient-to-r from-violet-500 to-indigo-500')} style={{ width: `${Math.max(1, buildPct)}%` }} /></div>
+                  <p className="mt-2 text-sm text-zinc-500">{b.minutesUsed} of {b.minutesLimit.toLocaleString()} minutes used this month</p>
+                  <ul className="mt-5 space-y-3.5">{b.recent.map((x) => (
+                    <li key={x.at} className="flex items-start gap-3 text-sm">
                       <Pill tone={x.outcome === 'success' ? 'good' : /fail/.test(x.outcome) ? 'bad' : 'warn'}>{x.outcome === 'success' ? 'OK' : x.outcome}</Pill>
                       <span className="min-w-0 flex-1"><span className="block truncate text-zinc-700 dark:text-zinc-200">{x.message || x.branch}</span><span className="text-zinc-400">{formatDistanceToNow(new Date(x.at), { addSuffix: true })} · {x.minutes} min{x.branch === 'main' ? ' · live site' : ''}</span></span>
                     </li>
@@ -294,8 +446,8 @@ function CloudflareCard() {
             </Panel>
             <Panel icon={History} title="Live site versions" tone="text-emerald-500 bg-emerald-500/10">
               {data.versions?.ok ? (
-                <ul className="space-y-2">{data.versions.data.map((v, i) => (
-                  <li key={v.at} className="flex items-center gap-2 text-xs">
+                <ul className="space-y-3.5">{data.versions.data.map((v, i) => (
+                  <li key={v.at} className="flex items-center gap-3 text-sm">
                     {i === 0 ? <Pill tone="good">Live</Pill> : <Pill tone="plain">{v.version || 'earlier'}</Pill>}
                     <span className="flex-1 min-w-0 truncate text-zinc-600 dark:text-zinc-300">{format(new Date(v.at), 'd MMM, HH:mm')}{v.by ? ` · ${v.by}` : ''}{v.note ? ` · ${v.note}` : ''}</span>
                     {i > 0 && data.canEdit && v.versionId && <button onClick={() => void putBack(v.versionId!, format(new Date(v.at), 'd MMM, HH:mm'))} className="shrink-0 font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Put back live</button>}
@@ -305,8 +457,8 @@ function CloudflareCard() {
             </Panel>
             <Panel icon={ShieldCheck} title="Domain health" tone={domainBad ? 'text-rose-500 bg-rose-500/10' : 'text-emerald-500 bg-emerald-500/10'}>
               {dom ? (
-                <ul className="space-y-2">{dom.checks.map((c) => (
-                  <li key={c.name} className="flex items-start gap-2 text-xs">
+                <ul className="space-y-3.5">{dom.checks.map((c) => (
+                  <li key={c.name} className="flex items-start gap-3 text-sm">
                     {c.ok === true ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : c.ok === false ? <XCircle className="w-4 h-4 text-rose-500 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />}
                     <span><span className="font-medium text-zinc-800 dark:text-zinc-100">{c.name}</span><span className="block text-zinc-500 break-words">{c.note}</span></span>
                   </li>
@@ -315,15 +467,15 @@ function CloudflareCard() {
             </Panel>
             <Panel icon={CreditCard} title="Plan and storage" tone="text-orange-500 bg-orange-500/10">
               {data.plan?.ok ? (
-                <ul className="space-y-2">{data.plan.data.map((x, i) => (
+                <ul className="space-y-3.5">{data.plan.data.map((x, i) => (
                   <li key={i} className="flex items-center justify-between gap-2 text-sm">
                     <span className="text-zinc-800 dark:text-zinc-100">{x.name}</span>
                     <span className="text-xs text-zinc-500">{x.price ? `${new Intl.NumberFormat('en', { style: 'currency', currency: x.currency }).format(x.price)}${x.frequency ? ` ${x.frequency}` : ''}` : <Pill tone="good">Free</Pill>}{x.renews ? ` · renews ${format(new Date(x.renews), 'd MMM')}` : ''}</span>
                   </li>
                 ))}</ul>
               ) : missing(data.plan)}
-              <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-white/10 text-sm flex items-center justify-between gap-2">
-                <span className="text-zinc-500 text-xs">File storage</span>
+              <div className="mt-5 pt-4 border-t border-zinc-200 dark:border-white/10 text-sm flex items-center justify-between gap-2">
+                <span className="text-zinc-500">File storage</span>
                 {data.storage?.ok ? <span className="text-zinc-800 dark:text-zinc-100">{data.storage.data.buckets.join(', ') || 'none yet'}</span> : missing(data.storage)}
               </div>
             </Panel>
@@ -342,9 +494,9 @@ function EmailCard({ email }: { email: NonNullable<ServerData['email']> }) {
   ];
   const tight = rows.some((r) => r.sent >= r.limit - r.reserve);
   return (
-    <div className={cn(card, 'p-5')}>
+    <div className={cn(card, 'p-6')}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-        <h2 className="font-semibold text-zinc-900 dark:text-white">Email allowance</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Email allowance</h2>
         <span className={cn('text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border', tight ? TONES.rose : TONES.emerald)}>{tight ? 'Routine email paused' : 'OK'}</span>
       </div>
       <p className="text-sm text-zinc-500 mb-4">Notification emails stop before the plan runs out, keeping the rest for sign-in codes. People still get every notification in the app.{email.skippedToday ? ` ${email.skippedToday} email${email.skippedToday === 1 ? '' : 's'} skipped today.` : ''}</p>
@@ -366,9 +518,9 @@ function EmailCard({ email }: { email: NonNullable<ServerData['email']> }) {
 function SettingsCard({ settings }: { settings: NonNullable<ServerData['settings']> }) {
   const bad = settings.filter((s) => s.problem || (s.needed && !s.set)).length;
   return (
-    <div className={cn(card, 'p-5')}>
+    <div className={cn(card, 'p-6')}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-        <h2 className="font-semibold text-zinc-900 dark:text-white">Server settings</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Server settings</h2>
         <span className={cn('text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border', bad ? TONES.rose : TONES.emerald)}>{bad ? `${bad} to fix` : 'All good'}</span>
       </div>
       <p className="text-sm text-zinc-500 mb-4">What the live site can see in Cloudflare → universe-web → Settings → Variables and Secrets. Add each one there as type Secret, then Deploy. Values are never shown.</p>
@@ -414,9 +566,9 @@ function SwitchCard({ control, onSaved }: { control: Control; onSaved: () => voi
 
   const shown = MODES.find((m) => m.id === current)!;
   return (
-    <div className={cn(card, 'p-5')}>
+    <div className={cn(card, 'p-6')}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-        <h2 className="font-semibold text-zinc-900 dark:text-white">Server</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Server</h2>
         <span className={cn('text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border', TONES[shown.tone])}>Now: {shown.label}</span>
       </div>
       <p className="text-sm text-zinc-500 mb-4">
@@ -468,8 +620,8 @@ function NoticeCard({ banner, onSaved }: { banner: string | null; onSaved: () =>
     }
   };
   return (
-    <div className={cn(card, 'p-5')}>
-      <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Megaphone className="w-4 h-4 text-indigo-500" /> Notice for everyone</h2>
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Megaphone className="w-4 h-4 text-indigo-500" /> Notice for everyone</h2>
       <p className="text-sm text-zinc-500 mt-1 mb-3">Shown at the top of every page when it opens, for example “Maintenance tonight 22:00 to 23:00”. People can close it.</p>
       <div className="flex flex-col sm:flex-row gap-2">
         <input className={field} maxLength={300} value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a short notice" />
@@ -501,8 +653,8 @@ function FeatureCard({ switches, onSaved }: { switches: string | null; onSaved: 
     }
   };
   return (
-    <div className={cn(card, 'p-5')}>
-      <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><ToggleRight className="w-4 h-4 text-indigo-500" /> Feature switches</h2>
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><ToggleRight className="w-4 h-4 text-indigo-500" /> Feature switches</h2>
       <p className="text-sm text-zinc-500 mt-1 mb-3">Turn one part of UniVerse off for everyone while the rest keeps working. People see a short “turned off for now” message. Changes reach everyone within a minute, and you can still use everything.</p>
       <ul className="grid sm:grid-cols-2 gap-2">
         {FEATURE_SWITCHES.map((f) => {
@@ -537,7 +689,7 @@ export function PlanUsageCard({ usage }: { usage: PlanUsage | null }) {
   return (
     <div className={cn(card, 'p-5', usage?.paused && 'border-rose-500/50')}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-        <h2 className="font-semibold text-zinc-900 dark:text-white">Cloudflare plan · this billing month</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Cloudflare plan · this billing month</h2>
         {usage?.checkedAt && <span className="text-xs text-zinc-400">checked {formatDistanceToNow(new Date(usage.checkedAt), { addSuffix: true })}</span>}
       </div>
       {!usage ? (

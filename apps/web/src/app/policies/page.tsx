@@ -22,7 +22,6 @@ const PROVIDERS = [
   ['Google LLC — Gemini API', 'AI features (only when you use them)', 'United States / global'],
   ['Stripe, Inc.', 'Payments', 'United States / Ireland'],
   ['Resend, Inc.', 'Notification and account emails', 'United States'],
-  ['8x8, Inc. — Jitsi Meet', 'Voice and video calls', 'United States / global'],
   ['Polygon public blockchain', 'Verification fingerprints of credentials (no personal data)', 'Public network'],
 ];
 

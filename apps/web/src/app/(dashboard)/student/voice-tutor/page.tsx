@@ -140,7 +140,7 @@ export default function VoiceTutorPage() {
     <>
       <Topbar title="Voice tutor" subtitle="Talk through a topic out loud with your AI tutor" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-2xl mx-auto space-y-5">
+        <div className="max-w-2xl mx-auto space-y-5 stagger">
           <div className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-6 text-center space-y-4">
             <div className={cn('w-24 h-24 mx-auto rounded-full flex items-center justify-center transition-all', phase === 'live' ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white shadow-xl shadow-fuchsia-500/30' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-400', speaking && 'scale-110')}>
               {phase === 'starting' ? <Loader2 className="w-9 h-9 animate-spin" /> : speaking ? <Volume2 className="w-9 h-9" /> : <Mic className="w-9 h-9" />}

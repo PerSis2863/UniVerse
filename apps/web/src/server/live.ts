@@ -5,6 +5,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { later, notifyMany } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
+import { planLimits } from '@/lib/plan-limits';
 
 // Live polls during class: the teacher asks a question, students answer on their phones, and
 // results update live. Open tabs refresh through the live-updates connection ('refresh' events
@@ -15,14 +16,15 @@ const KEY = ['/api/live*'];
 const optionsOf = (p: { options: Prisma.JsonValue }) => (Array.isArray(p.options) ? (p.options as string[]) : []);
 
 /** The course's teacher and its students. `online`: only students active in the last 15 minutes
- *  (the ones with UniVerse open), at most 500: each live push is a request to that person's hub. */
+ *  (the ones with UniVerse open), at most 40: each live push is a request to that person's hub, and
+ *  Workers Free allows 50 per request. Everyone else's page re-checks on its own. */
 async function members(courseId: string, online = true) {
   const [course, students] = await Promise.all([
     prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, code: true } }),
     prisma.enrollment.findMany({
       where: { courseId, ...(online ? { student: { lastSeenAt: { gt: new Date(Date.now() - 15 * 60_000) } } } : {}) },
       select: { studentId: true },
-      take: online ? 500 : 2000,
+      take: online ? planLimits().livePushes : 1000,
     }),
   ]);
   return { teacherId: course?.teacherId ?? null, code: course?.code ?? '', students: students.map((s) => s.studentId) };

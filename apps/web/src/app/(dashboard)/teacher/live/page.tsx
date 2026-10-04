@@ -30,7 +30,7 @@ export default function TeacherLivePage() {
     <>
       <Topbar title="Live class" subtitle="Ask a quick question; students answer on their phones and you see results as they come in" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6 stagger">
           <div className="flex flex-wrap items-end gap-3">
             <label className="space-y-1 text-sm flex-1 min-w-48">
               <span className="text-zinc-600 dark:text-zinc-400">Course</span>

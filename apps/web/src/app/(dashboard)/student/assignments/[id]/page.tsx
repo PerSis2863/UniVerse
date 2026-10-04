@@ -63,7 +63,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
     <>
       <Topbar title={data?.title ?? 'Assignment'} subtitle={data ? `${data.course.code} · ${data.course.name}` : undefined} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-3xl mx-auto space-y-5">
+        <div className="max-w-3xl mx-auto space-y-5 stagger">
           <Link href="/student/assignments" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"><ArrowLeft className="w-4 h-4" /> All assignments</Link>
           {isLoading || !data ? (
             <div className="h-64 rounded-2xl skeleton" />

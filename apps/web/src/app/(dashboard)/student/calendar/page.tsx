@@ -13,7 +13,7 @@ import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
 
 // Shapes of /timetable/my and /calendar/my, as this page uses them.
-interface Slot { id: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; course?: { name?: string; code?: string; color?: string | null } | null; room?: { name?: string } | null }
+interface Slot { id: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; course?: { id?: string; name?: string; code?: string; color?: string | null } | null; room?: { name?: string } | null }
 interface CalEvent { id: string; title: string; description?: string | null; startAt: string; endAt: string; type?: string; color?: string | null }
 // True once the page runs in the browser (false while rendering on the server), without an effect.
 const noSubscribe = () => () => {};
@@ -77,6 +77,7 @@ export default function CalendarPage() {
   const mappedTimetable = useMemo(() => {
     return timetableSlots.map(slot => ({
       id: slot.id,
+      courseId: slot.course?.id,
       day: DAYS[slot.dayOfWeek] || 'Monday',
       time: slot.startTime,
       duration: getDuration(slot.startTime, slot.endTime),

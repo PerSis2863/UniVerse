@@ -674,6 +674,37 @@ html, body { overflow-x: clip; max-width: 100%; }
 }
 .page-enter { animation: page-enter 260ms var(--ease-out-soft); }
 
+/* Lists and card grids: children glide in with a short cascade (the first 12, 30 ms apart; the
+   rest with the 12th). transform/opacity only and nothing left behind afterwards, so it's cheap
+   and fixed-position children are unaffected. */
+@keyframes rise {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+.stagger > * { animation: rise 340ms var(--ease-out-soft) both; animation-delay: 360ms; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 30ms; }
+.stagger > *:nth-child(3) { animation-delay: 60ms; }
+.stagger > *:nth-child(4) { animation-delay: 90ms; }
+.stagger > *:nth-child(5) { animation-delay: 120ms; }
+.stagger > *:nth-child(6) { animation-delay: 150ms; }
+.stagger > *:nth-child(7) { animation-delay: 180ms; }
+.stagger > *:nth-child(8) { animation-delay: 210ms; }
+.stagger > *:nth-child(9) { animation-delay: 240ms; }
+.stagger > *:nth-child(10) { animation-delay: 270ms; }
+.stagger > *:nth-child(11) { animation-delay: 300ms; }
+.stagger > *:nth-child(12) { animation-delay: 330ms; }
+
+/* Cards that respond to the pointer: a small lift on hover, a press on tap. */
+.lift { transition: transform 220ms var(--ease-out-soft), box-shadow 220ms var(--ease-out-soft), border-color 200ms ease; }
+@media (hover: hover) { .lift:hover { transform: translate3d(0, -2px, 0); box-shadow: 0 12px 30px -14px rgb(79 70 229 / 0.35); } }
+.lift:active { transform: scale(0.985); }
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger > * { animation: none; }
+  .lift, .lift:hover, .lift:active { transition: none; transform: none; }
+}
+
 /* Fixed mobile header, content spacing and tab bar */
 .mobile-header {
   padding-top: var(--safe-top);

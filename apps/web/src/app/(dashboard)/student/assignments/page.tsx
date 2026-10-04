@@ -51,12 +51,12 @@ export default function StudentAssignmentsPage() {
             />
           ) : (
             [{ title: 'To do', list: todo }, { title: 'Handed in and past', list: rest }].filter((g) => g.list.length).map((g) => (
-              <section key={g.title} className="space-y-3">
+              <section key={g.title} className="space-y-3 stagger">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{g.title}</h2>
                 {g.list.map((a) => {
                   const s = state(a);
                   return (
-                    <Link key={a.id} href={`/student/assignments/${a.id}`} className={`${card} p-4 flex items-center gap-4 hover:border-indigo-400/50 transition-colors`}>
+                    <Link key={a.id} href={`/student/assignments/${a.id}`} className={`${card} lift p-4 flex items-center gap-4 hover:border-indigo-400/50`}>
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-300">{a.course.code}</p>
                         <h3 className="font-semibold text-zinc-900 dark:text-white truncate">{a.title}</h3>

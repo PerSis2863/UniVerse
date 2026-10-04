@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { fileCsp } from '@/lib/file-csp';
 
 type Ctx = { params: Promise<{ key: string }> };
 
@@ -17,9 +18,8 @@ export async function GET(req: Request, { params }: Ctx) {
     'Content-Disposition': `${safeInline ? 'inline' : 'attachment'}; filename="${file.name.replace(/"/g, '')}"`,
     'X-Content-Type-Options': 'nosniff',
   };
-  // A file can never run scripts on this site, whatever it contains. (Not for PDFs: Chrome won't
-  // show a sandboxed PDF, and its viewer is isolated anyway.)
-  if (file.mime !== 'application/pdf') headers['Content-Security-Policy'] = "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox";
+  const csp = fileCsp(file.mime);
+  if (csp) headers['Content-Security-Policy'] = csp;
 
   // Support range requests so audio/video can be played and scrubbed.
   const range = req.headers.get('range');

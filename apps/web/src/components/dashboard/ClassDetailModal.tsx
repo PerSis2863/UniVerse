@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 
 export interface ClassData {
   id?: string;
+  /** The course, for its class call room. */
+  courseId?: string;
   subject: string;
   time: string;
   duration: number;
@@ -135,10 +137,11 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
                   }, {
                     label: 'Assignments & quizzes', icon: FileText, action: () => { onClose(); router.push('/student/quizzes'); }
                   }, {
-                    // A free video room shared by everyone in this class (same link for the whole class).
-                    label: 'Join class video room', icon: Video, action: () => {
-                      const room = `UniVerse-class-${(selectedClass.id || selectedClass.subject).replace(/[^A-Za-z0-9]/g, '')}`;
-                      window.open(`https://meet.jit.si/${room}`, '_blank', 'noopener,noreferrer');
+                    // The class's own call room in UniVerse (src/server/calls.ts): its teacher and students.
+                    label: selectedClass.courseId ? 'Join class video call' : 'Class video call (not available for this event)', icon: Video, action: () => {
+                      if (!selectedClass.courseId) return;
+                      onClose();
+                      router.push(`/call/c_${selectedClass.courseId}?kind=video`);
                     }
                   }, {
                     label: 'Message classmates', icon: Users, action: () => { onClose(); router.push('/student/inbox'); }

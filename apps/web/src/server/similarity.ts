@@ -69,8 +69,9 @@ export interface Signals {
 }
 
 /** Signals for a new answer: its signature and its overlap with the course's materials. */
-export function signalsFor(text: string, sources: { title: string; text: string }[]): Signals {
-  const set = shingles(text);
+export function signalsFor(text: string, sources: { title: string; text: string }[], answerChars = 12_000): Signals {
+  // The first 12,000 characters (on Workers Free) are plenty to recognise copied work, and keep this to a few ms.
+  const set = shingles(text.slice(0, answerChars));
   let material: Signals['material'] = null;
   for (const s of sources) {
     const share = containment(set, s.text);

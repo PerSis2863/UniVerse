@@ -81,10 +81,10 @@ export default function CodeRoomsPage() {
             />
           ) : (
             byCourse.map((c) => (
-              <section key={c.id} className="space-y-2">
+              <section key={c.id} className="space-y-2 stagger">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{c.code} · {c.name}</h2>
                 {c.rooms.map((r) => (
-                  <Link key={r.id} href={`/code/${r.id}`} className={`${card} p-4 flex items-center gap-3 hover:border-indigo-400/50 transition-colors`}>
+                  <Link key={r.id} href={`/code/${r.id}`} className={`${card} lift p-4 flex items-center gap-3 hover:border-indigo-400/50`}>
                     <Code2 className="w-5 h-5 text-indigo-500 shrink-0" />
                     <span className="flex-1 min-w-0">
                       <span className="block font-medium text-zinc-900 dark:text-white truncate">{r.title}</span>
