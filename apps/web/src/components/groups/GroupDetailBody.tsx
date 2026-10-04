@@ -19,7 +19,7 @@ function fileName(url: string) {
 
 /** Real members and files shared in the group's chat. */
 export function GroupDetailBody({ groupId }: { groupId: string | number }) {
-  const refreshInterval = useLiveInterval(60_000, 60_000);
+  const refreshInterval = useLiveInterval(60_000, 0); // pushed live when posts change
   const { data, isLoading, error } = useSWR<GroupDetail>(`/api/groups/${groupId}`, authedJson, { refreshInterval });
 
   if (isLoading) return <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>;
@@ -36,7 +36,7 @@ export function GroupDetailBody({ groupId }: { groupId: string | number }) {
           {data.members.map((m) => (
             <div key={m.user.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
               {m.user.avatar ? (
-                <img src={m.user.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                <img loading="lazy" decoding="async" src={m.user.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-xs text-white font-bold">
                   {m.user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}

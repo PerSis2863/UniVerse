@@ -139,6 +139,31 @@ servers find a direct route on most networks. For strict networks (some campus a
 Cloudflare → Realtime → TURN Server (free up to 1,000 GB a month) and add `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` as
 secrets. Jitsi is no longer used anywhere; old Jitsi calls in chat history show as ended, with Call back.
 
+**Bigger calls (classes of 30+).** Create an app in Cloudflare → Realtime → Serverless SFU (free up to 1,000 GB a
+month, then $0.05/GB) and add `CALLS_APP_ID` and `CALLS_APP_SECRET` as secrets. Then every call except one-to-one
+goes through the SFU (up to 50 people on Workers Free, 150 with `WORKERS_PAID=true`); one-to-one calls stay browser to
+browser. The `CallRoom` Durable Object talks to the SFU, so the secret never reaches a browser. To keep a class within
+the free 1,000 GB, each person receives video from at most 6 people at a time (4 on phones: screen shares and
+anyone tapped "Show video" first), video goes out at 360p / 450 kbps, and a muted mic or camera sends nothing. Rough
+cost: a one-hour class of 30 with cameras on is about 30 GB; with most cameras off, a few GB.
+
+**Live captions.** The CC button in a call: each person's browser turns their own speech into text (Chrome, Edge
+and Safari) and the call shares it. Nothing runs unless someone has captions on.
+
+**Recording.** A class's teacher can record a class call (the record button). The teacher's browser records what it
+shows and hears and uploads it straight to R2 (needs the R2 secrets), and it appears in the class materials;
+students get an in-app notice (no email). Up to 2 hours (about 450 MB for video, 30 MB for voice).
+
+**Scheduled calls.** /calls → Schedule: for a class (its teacher), a study group or a chat. Class calls also go on the
+class calendar. About 15 minutes before, members get an in-app and push reminder (no email) from the 15-minute cron,
+which only starts the app when a call is due (one small D1 query otherwise). Migration `0034_scheduled_calls.sql`.
+
+**Push notifications.** With `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` (secrets) and
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY` (build variable, the same public key), calls ring devices with UniVerse closed (Answer and
+Decline on the notification), and new messages reach people who are away (at most once an hour per chat). Generate a
+key pair with `npx web-push generate-vapid-keys`. Each push is a subrequest, so one send reaches at most 15 devices on
+Workers Free (300 on Paid).
+
 ## Email allowance (Resend)
 
 Every email is counted per day (`email_usage`, src/server/email-budget.ts). Routine email (notification copies,

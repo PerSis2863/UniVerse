@@ -240,7 +240,7 @@ function BehindList({ a, starting, onMessage }: { a: CourseAnalytics; starting: 
                 <div className="flex items-start gap-3">
                   <span className="w-6 text-center text-xs font-black text-zinc-400 pt-2.5 shrink-0">{i + 1}</span>
                   {b.student.avatar
-                    ? <img src={b.student.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                    ? <img loading="lazy" decoding="async" src={b.student.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
                     : <span className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-sm font-bold flex items-center justify-center shrink-0">{initials}</span>}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-zinc-900 dark:text-white break-words">{b.student.name}</p>

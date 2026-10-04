@@ -16,7 +16,7 @@ import { useLiveInterval } from '@/lib/realtime-client';
 import { EmailNotificationsSwitch } from '@/components/notifications/EmailNotificationsSwitch';
 
 type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
-const NOTIF_ICON: Record<string, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔', message: '💬', grade: '🎓', event: '📅', announcement: '📣' };
+const NOTIF_ICON: Record<string, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔', message: '💬', grade: '🎓', event: '📅', announcement: '📣', chat: '💬', call: '📞' };
 
 interface TopbarProps {
   title: string;

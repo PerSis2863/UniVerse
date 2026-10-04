@@ -46,3 +46,6 @@ next-env.d.ts
 
 # whiteboard fonts, copied from node_modules at build time (scripts/copy-excalidraw-assets.mjs)
 /public/excalidraw-assets
+
+# next-pwa builds src/worker into this on every build (sw.js loads it)
+/public/worker-*.js

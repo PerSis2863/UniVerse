@@ -63,7 +63,7 @@ export default function StudentDirectory() {
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-xl font-bold text-indigo-400 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
                     {student.avatar ? (
-                      <img src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
+                      <img loading="lazy" decoding="async" src={student.avatar} alt={student.name} className="w-full h-full object-cover" />
                     ) : (
                       student.name.charAt(0).toUpperCase()
                     )}

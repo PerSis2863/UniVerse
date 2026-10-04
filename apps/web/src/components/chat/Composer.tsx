@@ -204,7 +204,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               <Smile className="w-5 h-5" />
             </button>
             {emoji && (
-              <div className="absolute bottom-full mb-2 left-0 z-30 w-72 p-2 grid grid-cols-8 gap-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl">
+              <div className="absolute bottom-full mb-2 left-0 z-30 w-72 max-w-[calc(100vw-1.5rem)] p-2 grid grid-cols-8 gap-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl">
                 {EMOJIS.map((e) => (
                   <button key={e} onClick={() => { setText((t) => t + e); areaRef.current?.focus(); }} className="w-8 h-8 rounded-lg text-lg hover:bg-zinc-100 dark:hover:bg-white/10">{e}</button>
                 ))}
@@ -256,7 +256,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             const list = mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6);
             if (!list.length) return null;
             return (
-              <div className="absolute bottom-full mb-2 left-0 z-30 w-64 py-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl">
+              <div className="absolute bottom-full mb-2 left-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl">
                 {list.map((u) => (
                   <button key={u.id} onMouseDown={(e) => {
                     e.preventDefault();

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { publishGroup } from '@/server/groups-live';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { groupRole, postSelect, MAX_POST_LENGTH } from '@/lib/groups';
@@ -25,6 +26,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!text) return NextResponse.json({ error: 'Message is empty.' }, { status: 400 });
 
   const post = await prisma.groupPost.update({ where: { id: postId }, data: { body: text }, select: postSelect });
+  await publishGroup(r.post.groupId).catch(() => {});
   return NextResponse.json(post);
 }
 
@@ -39,5 +41,6 @@ export async function DELETE(req: Request, { params }: Ctx) {
     return NextResponse.json({ error: 'You can only delete your own messages.' }, { status: 403 });
   }
   await prisma.groupPost.delete({ where: { id: postId } });
+  await publishGroup(r.post.groupId).catch(() => {});
   return NextResponse.json({ ok: true });
 }

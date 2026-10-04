@@ -65,7 +65,7 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       {src && failed !== src ? (
-        <img src={src} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
+        <img loading="lazy" decoding="async" src={src} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
       ) : (
         <div className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold', avatarGradient(name))} style={{ fontSize: size * 0.36 }}>
           {letters}
@@ -178,7 +178,7 @@ export function MessageBubble(p: Props) {
   }
 
   const bubble = cn(
-    'relative max-w-[min(78%,34rem)] rounded-2xl text-sm shadow-sm transition-shadow',
+    'relative min-w-0 max-w-full rounded-2xl text-sm shadow-sm transition-shadow',
     mine
       ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-br-md'
       : 'bg-white dark:bg-white/[0.07] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.06] rounded-bl-md',
@@ -187,7 +187,7 @@ export function MessageBubble(p: Props) {
   );
 
   const meta = (
-    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none', mine ? 'text-white/70' : 'text-zinc-400')}>
+    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine ? 'text-white/70' : 'text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
       {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : 'edited ·')} {time}
@@ -210,7 +210,7 @@ export function MessageBubble(p: Props) {
     content = <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} />;
   } else if (m.type === 'FILE' && m.attachmentUrl) {
     content = (
-      <a href={safeHref(m.attachmentUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 min-w-[14rem]">
+      <a href={safeHref(m.attachmentUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 w-64 max-w-full">
         <span className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', mine ? 'bg-white/15' : 'bg-indigo-500/10 text-indigo-500')}>
           <FileText className="w-5 h-5" />
         </span>
@@ -236,20 +236,20 @@ export function MessageBubble(p: Props) {
     const sub = live ? (mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`) : mine ? 'Outgoing' : 'Incoming';
     const Icon = live ? (video ? Video : Phone) : missed ? PhoneMissed : mine ? PhoneOutgoing : PhoneIncoming;
     content = (
-      <div className="flex items-center gap-3 p-3 min-w-[15rem]">
+      <div className="flex items-center gap-3 p-3 w-[17rem] max-w-full">
         <span className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0', missed ? 'bg-rose-500/15 text-rose-500' : mine ? 'bg-white/15' : 'bg-emerald-500/15 text-emerald-500', live && 'animate-pulse')}>
           <Icon className="w-5 h-5" />
         </span>
         <span className="flex-1 min-w-0">
-          <span className={cn('block font-semibold truncate', missed && !mine && 'text-rose-500')}>{title}</span>
+          <span className={cn('block font-semibold leading-tight line-clamp-2', missed && !mine && 'text-rose-500')}>{title}</span>
           <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{sub}</span>
         </span>
         {live ? (
-          <a href={`/call/${m.id}`} className={cn('px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
+          <a href={`/call/${m.id}`} className={cn('shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
             {mine ? 'Rejoin' : 'Join'}
           </a>
         ) : p.onCallBack ? (
-          <button type="button" onClick={() => p.onCallBack?.(video ? 'video' : 'audio')} className={cn('px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white/20 text-white' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300')}>
+          <button type="button" onClick={() => p.onCallBack?.(video ? 'video' : 'audio')} className={cn('shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20')}>
             Call back
           </button>
         ) : null}
@@ -366,10 +366,10 @@ export function MessageBubble(p: Props) {
         dragDirectionLock
         style={{ x }}
         onDragEnd={(_, info) => { if (info.offset.x > 60) { haptic('tap'); p.onReply(); } }}
-        className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}
+        className={cn('flex flex-col min-w-0 max-w-[min(82%,34rem)]', mine ? 'items-end' : 'items-start')}
       >
         {showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2">{m.sender.name}</span>}
-        <div className={cn('flex items-center gap-1', mine && 'flex-row-reverse')}>
+        <div className={cn('flex items-center gap-1 min-w-0 max-w-full', mine && 'flex-row-reverse')}>
           <div
             className={bubble}
             onDoubleClick={() => { if (interactive) { haptic('tap'); p.onReact('❤️'); } }}

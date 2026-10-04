@@ -765,6 +765,9 @@ html, body { overflow-x: clip; max-width: 100%; }
   :is(.backdrop-blur-sm, .backdrop-blur, .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl, .backdrop-blur-2xl, .backdrop-blur-3xl):not(.fixed):not(.sticky):not(.absolute) {
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
+  /* Decorative glow blobs: a smaller blur radius looks the same at phone size and costs far
+     less to paint (blur cost grows with the radius). */
+  .blur-3xl { --tw-blur: blur(32px); filter: blur(32px); }
   /* No sticky hover lift after a tap */
   .card-hover:hover, .kpi-card:hover { transform: none; }
 

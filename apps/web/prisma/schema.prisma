@@ -231,6 +231,7 @@ model User {
   livePollVotes         LivePollVote[]
   codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
 
+  scheduledCalls ScheduledCall[]
   @@index([role])
   @@index([status])
   @@map("users")
@@ -336,6 +337,7 @@ model Course {
   livePolls             LivePoll[]
   codeRooms             CodeRoom[]
 
+  scheduledCalls        ScheduledCall[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -526,6 +528,7 @@ model Conversation {
   participants ConversationParticipant[]
   messages     Message[]
 
+  scheduledCalls ScheduledCall[]
   @@map("conversations")
 }
 
@@ -1200,6 +1203,7 @@ model Group {
   members GroupMembership[]
   posts   GroupPost[]
 
+  scheduledCalls ScheduledCall[]
   @@index([createdById])
   @@map("groups")
 }
@@ -2237,4 +2241,35 @@ model EmailUsage {
   skipped Int    @default(0)
 
   @@map("email_usage")
+}
+
+// A call booked ahead (src/server/scheduled-calls.ts) for a class, a study group or a chat.
+// Shown on the Calls page; class calls also go on the class calendar. Members get an in-app and
+// push reminder about 15 minutes before (never an email).
+model ScheduledCall {
+  id              String        @id @default(cuid())
+  title           String
+  kind            String        @default("video") // video | audio
+  startAt         DateTime
+  durationMin     Int           @default(60)
+  courseId        String?
+  course          Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  groupId         String?
+  group           Group?        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  conversationId  String?
+  conversation    Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// Chat calls: the CALL message, once someone starts it.
+  callId          String?
+  calendarEventId String?
+  createdById     String?
+  createdBy       User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  remindedAt      DateTime?
+  createdAt       DateTime      @default(now())
+
+  @@index([startAt])
+  @@index([courseId])
+  @@index([groupId])
+  @@index([conversationId])
+  @@index([createdById])
+  @@map("scheduled_calls")
 }

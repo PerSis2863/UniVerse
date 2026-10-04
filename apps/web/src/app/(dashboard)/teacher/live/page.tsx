@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { BarChart3, Eye, EyeOff, Loader2, Lock, PenTool, Plus, Radio, Trash2, Unlock } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
+import { useLiveInterval } from '@/lib/realtime-client';
 import { fetcher } from '@/lib/fetcher';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { PollResults } from '@/components/live/PollResults';
@@ -21,9 +22,11 @@ export default function TeacherLivePage() {
   const { data: courses } = useSWR<{ id: string; code: string; name: string }[]>('/courses/my', fetcher);
   const [courseId, setCourseId] = useState('');
   const active = courseId || courses?.[0]?.id || '';
+  // Votes arrive over live updates; poll quickly only without them.
+  const openPoll = useLiveInterval(5000, 20_000);
   const { data, mutate } = useSWR<{ enrolled: number; polls: Poll[] }>(active ? `/api/live?courseId=${active}` : null, authedJson, {
     // Live updates refresh this instantly; this is the fallback while a poll is open.
-    refreshInterval: (d) => (d?.polls.some((p) => p.status === 'OPEN') ? 5000 : 0),
+    refreshInterval: (d) => (d?.polls.some((p) => p.status === 'OPEN') ? openPoll : 0),
   });
 
   return (

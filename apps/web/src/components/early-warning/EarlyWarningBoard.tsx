@@ -130,7 +130,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
               return (
                 <li key={f.id} className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03]">
                   <button onClick={() => setOpen(expanded ? null : f.id)} aria-expanded={expanded} className="w-full flex items-center gap-3 p-4 text-left">
-                    {f.student.avatar ? <img src={f.student.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" /> : <span className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-sm font-bold flex items-center justify-center shrink-0">{initials}</span>}
+                    {f.student.avatar ? <img loading="lazy" decoding="async" src={f.student.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" /> : <span className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-sm font-bold flex items-center justify-center shrink-0">{initials}</span>}
                     <span className="flex-1 min-w-0">
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="font-semibold text-zinc-900 dark:text-white">{f.student.name}</span>

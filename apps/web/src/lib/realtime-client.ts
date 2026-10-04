@@ -147,6 +147,7 @@ function handle(event: ServerEvent) {
       break;
     case 'chat':
       void mutate('/api/chat/conversations');
+      void mutate('/api/calls'); // a call started or ended (only refetches if the Calls page is open)
       void mutate(startsWith(`/api/chat/conversations/${event.conversationId}/`));
       // Only a new call can change the ringing card (other chat events used to refetch it too).
       if (event.call) void mutate('/api/chat/incoming');

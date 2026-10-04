@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { publishGroup } from '@/server/groups-live';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { groupRole, postSelect, MAX_POST_LENGTH } from '@/lib/groups';
@@ -45,5 +46,6 @@ export async function POST(req: Request, { params }: Ctx) {
     data: { groupId: id, authorId: user.id, body: text, imageUrl },
     select: postSelect,
   });
+  await publishGroup(id).catch(() => {});
   return NextResponse.json(post, { status: 201 });
 }
