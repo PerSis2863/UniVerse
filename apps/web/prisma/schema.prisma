@@ -222,8 +222,10 @@ model User {
   impactCertificates ImpactCertificate[]
 
   // Billing: the organization (and its subscription) this admin owns
-  ownedOrganization Organization?
-  studyDays         StudyDay[]
+  ownedOrganization     Organization?
+  studyDays             StudyDay[]
+  assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
+  assignmentSubmissions AssignmentSubmission[]
 
   @@index([role])
   @@index([status])
@@ -326,6 +328,7 @@ model Course {
   calendarEvents        CalendarEvent[]
   riskFlags             StudentRiskFlag[]
   sources               CourseSource[]
+  assignments           Assignment[]
 
   @@index([teacherId])
   @@index([status])
@@ -2101,4 +2104,51 @@ model StudyDay {
 
   @@id([userId, day])
   @@map("study_days")
+}
+
+/// A written assignment with a rubric (src/server/assignments.ts).
+model Assignment {
+  id           String                 @id @default(cuid())
+  courseId     String
+  course       Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?                  @relation("AssignmentAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  title        String
+  instructions String
+  rubric       Json // [{ id, criterion, description?, points }]
+  maxScore     Float
+  weight       Float                  @default(1)
+  dueDate      DateTime?
+  status       String                 @default("OPEN") // OPEN, CLOSED
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  submissions  AssignmentSubmission[]
+
+  @@index([courseId])
+  @@index([createdById])
+  @@map("assignments")
+}
+
+/// A student's answer, the AI's draft grade and the teacher's final grade.
+model AssignmentSubmission {
+  id             String     @id @default(cuid())
+  assignmentId   String
+  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  text           String
+  status         String     @default("SUBMITTED") // SUBMITTED, DRAFTED (AI draft ready), RETURNED (graded)
+  aiDraft        Json? // { criteria: [{ id, score, comment }], summary, strengths, improvements, concerns }
+  aiDraftedAt    DateTime?
+  criteriaScores Json? // the teacher's final [{ id, score, comment }]
+  score          Float?
+  feedback       String?
+  gradeId        String? // the row in "grades" written when returned
+  submittedAt    DateTime   @default(now())
+  returnedAt     DateTime?
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+  @@map("assignment_submissions")
 }

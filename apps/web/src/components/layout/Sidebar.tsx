@@ -45,6 +45,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/information', label: 'Information', keywords: 'news announcements updates' },
     { href: '/student/attendance', label: 'Attendance', keywords: 'absences presence' },
     { href: '/student/quizzes', label: 'Quizzes', keywords: 'tests exams' },
+    { href: '/student/assignments', label: 'Assignments', keywords: 'essay homework coursework hand in' },
     { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
@@ -68,6 +69,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor'] },
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
+        { href: '/student/assignments', label: 'Assignments' },
         { href: '/student/grades', label: 'My progress', also: ['/student/attendance', '/student/quizzes'] },
         { href: '/student/skills', label: 'nav.skills' },
         { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },
@@ -118,6 +120,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/attendance', label: 'nav.attendance' },
         { href: '/teacher/grades', label: 'nav.grades' },
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
+        { href: '/teacher/assignments', label: 'Assignments' },
         { href: '/teacher/calendar', label: 'nav.timetable' },
       ]
     },
