@@ -1,6 +1,7 @@
 import type { Router } from '../router';
 import { QuizzesService } from '../services/quizzes.service';
 import { CreateQuizDto, UpdateQuizDto, validate } from '../dto';
+import { recordStudy } from '../streaks';
 
 const quizzes = new QuizzesService();
 
@@ -15,5 +16,9 @@ export default function quizzesModule(router: Router) {
   r.get<{ id: string }>(':id/submissions', { roles: ['ADMIN', 'TEACHER'] }, ({ params, user }) => quizzes.getSubmissions(params.id, user));
   r.get('teacher/my-quizzes', { roles: ['TEACHER', 'ADMIN'] }, ({ user }) => quizzes.getTeacherQuizzes(user.id));
   r.get('student/my-quizzes', { roles: ['STUDENT', 'ADMIN'] }, ({ user }) => quizzes.getStudentQuizzes(user.id));
-  r.post<{ id: string }>(':id/submit', { roles: ['STUDENT'] }, ({ user, params, body }) => quizzes.submitQuiz(user.id, params.id, body.answers));
+  r.post<{ id: string }>(':id/submit', { roles: ['STUDENT'] }, async ({ user, params, body, req }) => {
+    const result = await quizzes.submitQuiz(user.id, params.id, body.answers);
+    recordStudy(user.id, req);
+    return result;
+  });
 }

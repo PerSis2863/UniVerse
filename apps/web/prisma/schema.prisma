@@ -115,17 +115,21 @@ model User {
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
   accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION (what they chose at sign-up)
   lastSeenAt         DateTime?
+  // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
+  streakCurrent      Int       @default(0)
+  streakBest         Int       @default(0)
+  streakLastDay      String? // YYYY-MM-DD in the student's time zone
   chatMutedUntil     DateTime? // owner console: can't send chat messages until then
   signedOutAt        DateTime? // "sign out everywhere": sign-ins that started before this are refused
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
 
   // Profiles
-  studentProfile StudentProfile?
-  skillPassport  SkillPassport?
-  riskFlags      StudentRiskFlag[]
-  studyCards     StudyCard[]
+  studentProfile   StudentProfile?
+  skillPassport    SkillPassport?
+  riskFlags        StudentRiskFlag[]
+  studyCards       StudyCard[]
   deletionRequests AccountDeletionRequest[]
-  teacherProfile TeacherProfile?
+  teacherProfile   TeacherProfile?
 
   // Core Academic
   enrollments           Enrollment[]
@@ -219,6 +223,7 @@ model User {
 
   // Billing: the organization (and its subscription) this admin owns
   ownedOrganization Organization?
+  studyDays         StudyDay[]
 
   @@index([role])
   @@index([status])
@@ -2053,14 +2058,14 @@ model UsageGuard {
 ///   LIVE: normal. READ_ONLY: everyone can look around but nothing can be changed.
 ///   MAINTENANCE: everyone sees a "back soon" page. The owner always gets through (uv_owner cookie).
 model ServerControl {
-  id        String    @id // always "main"
-  mode      String    @default("LIVE") // LIVE, READ_ONLY, MAINTENANCE
-  message   String? // shown to people while not LIVE
-  until     DateTime? // back to LIVE by itself at this time
-  banner    String? // a notice shown at the top of every page while set
-  bypass    String // the owner's pass (uv_owner cookie), set when the row is created
-  updatedAt DateTime  @default(now())
-  updatedBy String?
+  id         String    @id // always "main"
+  mode       String    @default("LIVE") // LIVE, READ_ONLY, MAINTENANCE
+  message    String? // shown to people while not LIVE
+  until      DateTime? // back to LIVE by itself at this time
+  banner     String? // a notice shown at the top of every page while set
+  bypass     String // the owner's pass (uv_owner cookie), set when the row is created
+  updatedAt  DateTime  @default(now())
+  updatedBy  String?
   switches   String? // JSON list of features turned off, e.g. ["ai","uploads"] (src/lib/feature-switches.ts)
   watchWords String? // words that alert the owner when they appear in a chat, one per line
   aiLimits   String? // JSON { student, staff, site }: AI requests allowed per day (src/server/ai-budget.ts)
@@ -2085,4 +2090,15 @@ model AiCache {
   createdAt DateTime @default(now())
 
   @@map("ai_cache")
+}
+
+/// One row per student per day they studied (src/server/streaks.ts).
+model StudyDay {
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day     String // YYYY-MM-DD in the student's time zone
+  actions Int    @default(1)
+
+  @@id([userId, day])
+  @@map("study_days")
 }

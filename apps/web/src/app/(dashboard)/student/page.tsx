@@ -5,7 +5,7 @@ import { m as motion } from 'framer-motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import {
   ArrowUpRight, BookOpen, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, Clock, GraduationCap,
-  MapPin, Sparkles, Target, TrendingUp, FileText, Brain, Trophy, type LucideIcon,
+  MapPin, Sparkles, Target, TrendingUp, FileText, Brain, Trophy, Flame, type LucideIcon,
 } from 'lucide-react';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
@@ -25,6 +25,7 @@ interface Overview {
   schedule: { id: string; start: string; end: string; type: string; room: string | null; course: { code: string; name: string; color: string | null } }[];
   upcoming: { id: string; title: string; dueDate: string; course: { code: string; name: string } }[];
   recentGrades: { id: string; name: string; course: string; percent: number; gradedAt: string }[];
+  streak?: { current: number; best: number; today: boolean; week: { day: string; studied: boolean }[] };
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -321,6 +322,8 @@ export default function StudentDashboard() {
                 </div>
               </motion.section>
 
+              {data.streak && <StreakCard streak={data.streak} />}
+
               <Panel title={t('dashboard.deadlines')} icon={Target} delay={0.15}
                 action={s!.upcoming > 0 ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500">{s!.upcoming}</span> : undefined}
               >
@@ -378,5 +381,50 @@ export default function StudentDashboard() {
         )}
       </div>
     </>
+  );
+}
+
+/** Days in a row with real study (quiz, flashcards, tutor): src/server/streaks.ts. */
+function StreakCard({ streak }: { streak: NonNullable<Overview['streak']> }) {
+  const { current, best, today, week } = streak;
+  const message = current === 0
+    ? 'Take a quiz, review flashcards or ask your course tutor to start a streak.'
+    : today
+      ? `Done for today. Come back tomorrow for day ${current + 1}.`
+      : `Study today to keep your ${current}-day streak going.`;
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.12, ease: EASE }}
+      className={cn(card, 'overflow-hidden')}
+      aria-label={`Study streak: ${current} day${current === 1 ? '' : 's'}`}
+    >
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-amber-500/10 pointer-events-none" />
+      <div className="relative">
+        <div className="flex items-center gap-3">
+          <div className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', current > 0 ? 'bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/25' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-400')}>
+            <Flame className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-orange-500 dark:text-orange-300">Study streak</p>
+            <p className="text-lg font-black text-zinc-900 dark:text-white leading-tight">{current} day{current === 1 ? '' : 's'}</p>
+          </div>
+          {best > 0 && <span className="ml-auto text-xs text-zinc-500 shrink-0">Best {best}</span>}
+        </div>
+        <div className="flex justify-between gap-1 mt-4">
+          {week.map((d, i) => (
+            <div key={d.day} className="flex flex-col items-center gap-1 flex-1">
+              <span
+                className={cn('w-full max-w-8 h-2 rounded-full', d.studied ? 'bg-gradient-to-r from-orange-500 to-amber-400' : 'bg-zinc-200 dark:bg-white/[0.08]', i === week.length - 1 && !d.studied && 'ring-1 ring-orange-400/60')}
+                title={`${new Date(`${d.day}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}: ${d.studied ? 'studied' : 'no study'}`}
+              />
+              <span className="text-[10px] text-zinc-500">{new Date(`${d.day}T12:00:00`).toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-zinc-500 mt-3">{message}</p>
+      </div>
+    </motion.section>
   );
 }
