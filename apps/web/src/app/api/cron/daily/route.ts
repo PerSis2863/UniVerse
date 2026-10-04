@@ -4,6 +4,7 @@ import { notifyMany } from '@/server/email';
 import { deleteFile } from '@/lib/storage';
 import { diagnoseErrors, emailErrorDigest } from '@/server/errors';
 import { assessCourses } from '@/server/early-warning';
+import { sendWeeklyDigests } from '@/server/guardians';
 
 // Daily job, run by the Worker's cron trigger (cloudflare/worker.ts → wrangler.jsonc "triggers").
 // It isn't reachable from outside: the scheduled handler calls it in-process with a random
@@ -19,13 +20,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   const reminders = await quizReminders();
+  const guardianDigests = await sendWeeklyDigests().catch((e) => (console.error('guardian digests failed:', e), 0));
   const deleted = await enforceRetention();
   // Early warning: students who may be struggling, for their teachers to review.
   const earlyWarning = await assessCourses().catch((e) => (console.error('early warning failed:', e), null));
   // Error monitoring: AI diagnoses the day's new problems, then the owner gets a digest.
   const diagnosed = await diagnoseErrors({ limit: 8 }).catch((e) => (console.error('diagnoseErrors failed:', e), 0));
   const reported = await emailErrorDigest(new Date(Date.now() - DAY)).catch((e) => (console.error('emailErrorDigest failed:', e), 0));
-  return NextResponse.json({ reminders, deleted, earlyWarning, errors: { diagnosed, reported } });
+  return NextResponse.json({ reminders, guardianDigests, deleted, earlyWarning, errors: { diagnosed, reported } });
 }
 
 const DAY = 24 * 60 * 60_000;

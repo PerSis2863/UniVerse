@@ -10,6 +10,7 @@ import { later, notify, notifyMany } from './email';
 import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { recordStudy } from './streaks';
+import { closestPeers, signalsFor, type Signals } from './similarity';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
 // score and comment, and nothing reaches the student until the teacher returns the grade, which
@@ -170,7 +171,19 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     }),
     prisma.enrollment.count({ where: { courseId: course.id } }),
   ]);
-  return { ...base, enrolled, submissions };
+  // Similarity signals (teacher only): the classmate with the most shared phrasing, and the
+  // course material the answer borrows most from.
+  const sig = (x: Prisma.JsonValue | null) => ((x as unknown as Signals | null)?.sig ?? null);
+  const peers = closestPeers(submissions.map((x) => ({ id: x.id, sig: sig(x.signals) })));
+  const nameOf = new Map(submissions.map((x) => [x.id, x.student.name]));
+  return {
+    ...base,
+    enrolled,
+    submissions: submissions.map(({ signals, ...x }) => {
+      const peer = peers.get(x.id);
+      return { ...x, similarity: { peer: peer ? { name: nameOf.get(peer.id) ?? 'A classmate', percent: Math.round(peer.share * 100) } : null, material: (signals as unknown as Signals | null)?.material ?? null } };
+    }),
+  };
 }
 
 export async function createAssignment(user: SessionUser, body: Record<string, unknown>, req: Request) {
@@ -222,11 +235,18 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   if (text.length > MAX_TEXT) throw new BadRequestException(`Answers can be up to ${MAX_TEXT.toLocaleString()} characters.`);
   const existing = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { status: true } });
   if (existing?.status === 'RETURNED') throw new BadRequestException('This has already been graded, so it can’t be changed.');
+  // Similarity signals for the teacher (src/server/similarity.ts), against the course's materials.
+  const sources = await prisma.courseSource.findMany({
+    where: { courseId: assignment.courseId, status: 'READY', chars: { lte: 300_000 } },
+    select: { title: true, text: true },
+    take: 20,
+  });
+  const signals = signalsFor(text, sources) as unknown as Prisma.InputJsonValue;
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-    create: { assignmentId, studentId: user.id, text },
-    update: { text, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
+    create: { assignmentId, studentId: user.id, text, signals },
+    update: { text, signals, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
     select: { id: true, submittedAt: true },
   });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON

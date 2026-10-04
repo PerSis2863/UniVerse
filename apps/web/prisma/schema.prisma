@@ -226,6 +226,7 @@ model User {
   studyDays             StudyDay[]
   assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
   assignmentSubmissions AssignmentSubmission[]
+  guardianContacts      GuardianContact[]
 
   @@index([role])
   @@index([status])
@@ -2144,6 +2145,7 @@ model AssignmentSubmission {
   score          Float?
   feedback       String?
   gradeId        String? // the row in "grades" written when returned
+  signals        Json? // similarity signals for the teacher: { sig, material } (src/server/similarity.ts)
   submittedAt    DateTime   @default(now())
   returnedAt     DateTime?
   updatedAt      DateTime   @updatedAt
@@ -2151,4 +2153,23 @@ model AssignmentSubmission {
   @@unique([assignmentId, studentId])
   @@index([studentId])
   @@map("assignment_submissions")
+}
+
+/// A parent or guardian a student keeps informed (src/server/guardians.ts).
+model GuardianContact {
+  id            String    @id @default(cuid())
+  studentId     String
+  student       User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  email         String
+  name          String?
+  token         String    @unique // confirm / manage / stop link in their emails
+  confirmedAt   DateTime? // nothing is sent until they confirm
+  weeklyDigest  Boolean   @default(true)
+  absenceAlerts Boolean   @default(true)
+  lastDigestAt  DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([studentId, email])
+  @@index([confirmedAt])
+  @@map("guardian_contacts")
 }

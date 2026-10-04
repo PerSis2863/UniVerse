@@ -2,6 +2,9 @@ import type { Router } from '../router';
 import { AttendanceService } from '../services/attendance.service';
 import { assertManagesCourse } from '../access';
 import { BadRequestException } from '../http';
+import { later } from '../email';
+import { alertAbsence } from '../guardians';
+import prisma from '@/lib/db';
 
 const STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
 
@@ -21,7 +24,11 @@ export default function attendanceModule(router: Router) {
     if (!date) throw new BadRequestException('date must be YYYY-MM-DD');
     if (!STATUSES.includes(body?.status)) throw new BadRequestException(`status must be one of ${STATUSES.join(', ')}`);
     if (typeof body?.studentId !== 'string') throw new BadRequestException('studentId is required');
-    return attendance.markAttendance(params.courseId, date, body.studentId, body.status);
+    const before = await prisma.attendance.findUnique({ where: { studentId_courseId_date: { studentId: body.studentId, courseId: params.courseId, date: new Date(date) } }, select: { status: true } });
+    const saved = await attendance.markAttendance(params.courseId, date, body.studentId, body.status);
+    // Newly absent (not re-saved): tell the guardians who asked for absence alerts.
+    if (body.status === 'ABSENT' && before?.status !== 'ABSENT') later(() => alertAbsence(body.studentId, params.courseId, date));
+    return saved;
   });
 }
 

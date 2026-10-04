@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Lock, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Copy, Loader2, Lock, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
@@ -25,6 +25,7 @@ interface Submission {
   submittedAt: string;
   returnedAt: string | null;
   student: { id: string; name: string; email: string };
+  similarity?: { peer: { name: string; percent: number } | null; material: { title: string; percent: number } | null };
 }
 interface Detail {
   id: string;
@@ -131,6 +132,7 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
                       <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{s.student.name}</span>
                       <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{data.dueDate && new Date(s.submittedAt) > new Date(data.dueDate) ? ' · late' : ''}</span>
                     </span>
+                    {(s.similarity?.peer || s.similarity?.material) && <Copy className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Similarity to check" />}
                     <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', STATUS[s.status].style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}` : STATUS[s.status].label}</span>
                   </button>
                 ))}
@@ -199,6 +201,17 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
         </div>
         <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words max-h-96 overflow-y-auto">{sub.text}</p>
       </div>
+
+      {(sub.similarity?.peer || sub.similarity?.material) && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">
+          <p className="font-semibold flex items-center gap-2 mb-1"><Copy className="w-4 h-4" /> Similar wording (worth a look, not proof)</p>
+          <ul className="list-disc pl-5 space-y-0.5">
+            {sub.similarity.peer && <li>About {sub.similarity.peer.percent}% of the phrasing is shared with {sub.similarity.peer.name}&apos;s answer.</li>}
+            {sub.similarity.material && <li>About {sub.similarity.material.percent}% of its phrases appear in the course material “{sub.similarity.material.title}”.</li>}
+          </ul>
+          <p className="text-xs mt-2 opacity-80">Quotes, set definitions and group work can share wording too.</p>
+        </div>
+      )}
 
       {sub.aiDraft?.concerns?.length ? (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">
