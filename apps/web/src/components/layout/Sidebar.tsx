@@ -70,6 +70,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/assignments', label: 'Assignments' },
+        { href: '/student/live', label: 'Live class' },
         { href: '/student/grades', label: 'My progress', also: ['/student/attendance', '/student/quizzes'] },
         { href: '/student/skills', label: 'nav.skills' },
         { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },
@@ -121,6 +122,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/grades', label: 'nav.grades' },
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
         { href: '/teacher/assignments', label: 'Assignments' },
+        { href: '/teacher/live', label: 'Live class' },
         { href: '/teacher/calendar', label: 'nav.timetable' },
       ]
     },

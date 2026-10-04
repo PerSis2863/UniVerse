@@ -250,6 +250,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/assignments$/, () => ok([])],
   [/^\/api\/admin\/insights$/, () => ok({ totals: { students: 0, teachers: 0, courses: 0, grade30: null, attendance30: null, flaggedStudents: 0 }, atRisk: [], departments: [], teachers: [] })],
   [/^\/api\/student\/guardians$/, () => ok([])],
+  [/^\/api\/live$/, ({ q }) => ok(q.get('courseId') ? { enrolled: 0, polls: [] } : [])],
   [/^\/impact\/blockchain-credentials\/pending$/, ({ db: d }) => ok(d.pendingCredentials)],
   [/^\/collaborations\/projects$/, ({ db: d }) => ok(d.projects)],
   [/^\/collaborations\/projects\/([^/]+)$/, ({ db: d, m }) => { const p = d.projects.find((x) => x.id === m[1]); return p ? ok({ ...p, members: [], milestones: [] }) : fail('Not found', 404); }],

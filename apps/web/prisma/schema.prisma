@@ -227,6 +227,8 @@ model User {
   assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
   assignmentSubmissions AssignmentSubmission[]
   guardianContacts      GuardianContact[]
+  livePollsCreated      LivePoll[]             @relation("LivePollAuthor")
+  livePollVotes         LivePollVote[]
 
   @@index([role])
   @@index([status])
@@ -330,6 +332,7 @@ model Course {
   riskFlags             StudentRiskFlag[]
   sources               CourseSource[]
   assignments           Assignment[]
+  livePolls             LivePoll[]
 
   @@index([teacherId])
   @@index([status])
@@ -2172,4 +2175,37 @@ model GuardianContact {
   @@unique([studentId, email])
   @@index([confirmedAt])
   @@map("guardian_contacts")
+}
+
+/// A live poll during class (src/server/live.ts).
+model LivePoll {
+  id          String         @id @default(cuid())
+  courseId    String
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?          @relation("LivePollAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  question    String
+  options     Json // string[]
+  status      String         @default("OPEN") // OPEN, CLOSED
+  showResults Boolean        @default(false) // students see the results while it's open
+  createdAt   DateTime       @default(now())
+  closedAt    DateTime?
+  votes       LivePollVote[]
+
+  @@index([courseId, status])
+  @@index([createdById])
+  @@map("live_polls")
+}
+
+model LivePollVote {
+  pollId    String
+  poll      LivePoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option    Int
+  createdAt DateTime @default(now())
+
+  @@id([pollId, userId])
+  @@index([userId])
+  @@map("live_poll_votes")
 }
