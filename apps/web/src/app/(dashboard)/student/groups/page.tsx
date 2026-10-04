@@ -1,9 +1,10 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
-import { Users, MessageSquare, FileText, Search, Plus, MoreHorizontal, Hash, BookOpen, Star, X, ChevronRight, Upload, Video, Calendar, Send, Mic, MicOff, VideoOff, PhoneOff, Paperclip, Download, ExternalLink, Edit2, Trash2, Check, Image as ImageIcon, BarChart2, Contact, Sparkles, Loader2 } from 'lucide-react';
+import { Users, MessageSquare, Search, Plus, MoreHorizontal, X, ChevronRight, Upload, Video, Mic, Trash2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import useSWR from 'swr';
@@ -82,6 +83,7 @@ const gradientColors: Record<string, string> = {
 const TABS = ['All', 'Study', 'Project', 'Impact', 'Research'];
 
 export default function GroupsPage() {
+  const router = useRouter();
   const [groupsList, setGroupsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('All');
@@ -146,11 +148,8 @@ export default function GroupsPage() {
   const { data: activityData } = useSWR<ActivityItem[]>('/api/groups/activity?limit=30', authedJson, { refreshInterval: activityPoll });
   const activity = Array.isArray(activityData) ? activityData : [];
 
-  const openMeeting = (group: GroupItem) => {
-    // Free, real video call for the group (Jitsi Meet), opened in a new tab.
-    const room = `UniVerse-${String(group.name).replace(/[^A-Za-z0-9]/g, '')}-${String(group.id).slice(-8)}`;
-    window.open(`https://meet.jit.si/${room}`, '_blank', 'noopener,noreferrer');
-  };
+  // The group's own call room in UniVerse (src/server/calls.ts): members join from here.
+  const openMeeting = (group: GroupItem, kind: 'audio' | 'video' = 'video') => router.push(`/call/g_${group.id}?kind=${kind}`);
 
   const filtered = groupsList.filter(g =>
     (filter === 'All' || g.type === filter) &&
@@ -406,6 +405,9 @@ export default function GroupsPage() {
                         onClick={() => openMeeting(selectedGroup)}
                       >
                         <Video className="w-4 h-4 mr-1" /> Meet
+                      </button>
+                      <button className="btn-secondary py-2 px-3 text-sm flex items-center justify-center" onClick={() => openMeeting(selectedGroup, 'audio')} aria-label="Voice call with the group" title="Voice call">
+                        <Mic className="w-4 h-4" />
                       </button>
                     </>
                   )}

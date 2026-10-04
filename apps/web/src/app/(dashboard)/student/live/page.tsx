@@ -37,7 +37,7 @@ export default function StudentLivePage() {
     <>
       <Topbar title="Live class" subtitle="Answer your teacher’s questions during class" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4 stagger">
           {error ? (
             <p className="text-sm text-rose-500">{(error as Error).message}</p>
           ) : isLoading ? (

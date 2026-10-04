@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Code2, PenTool, ShieldCheck } from 'lucide-react';
+import { Code2, PenTool, Phone, ShieldCheck } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
@@ -62,6 +62,7 @@ export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
     { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
+    { href: '/calls', label: 'Calls', icon: Phone },
     {
       label: 'nav.schooling', icon: GraduationCap,
       subItems: [
@@ -139,6 +140,7 @@ export const navByRole: Record<string, NavItem[]> = {
     },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
     { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
+    { href: '/calls', label: 'Calls', icon: Phone },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
@@ -192,6 +194,7 @@ export const navByRole: Record<string, NavItem[]> = {
     },
     { href: '/admin/announcements', label: 'nav.announcements', icon: Bell },
     { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare },
+    { href: '/calls', label: 'Calls', icon: Phone },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
     { href: '/boards', label: 'Whiteboards', icon: PenTool },
     { href: '/code', label: 'Code together', icon: Code2 },

@@ -53,9 +53,9 @@ export default function TeacherAssignmentsPage() {
               />
             )
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-3 stagger">
               {data.map((a) => (
-                <Link key={a.id} href={`/teacher/assignments/${a.id}`} className={`${card} p-4 flex items-center gap-4 hover:border-indigo-400/50 transition-colors`}>
+                <Link key={a.id} href={`/teacher/assignments/${a.id}`} className={`${card} lift p-4 flex items-center gap-4 hover:border-indigo-400/50`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">{a.course.code}</span>

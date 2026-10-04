@@ -97,9 +97,9 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       </div>
 
       {/* Headline numbers */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 stagger">
         {tiles.map((t) => (
-          <button key={t.label} onClick={() => onTab(t.to)} className={cn(card, 'p-5 text-left hover:border-indigo-500/40 transition-colors')}>
+          <button key={t.label} onClick={() => onTab(t.to)} className={cn(card, 'lift p-5 text-left hover:border-indigo-500/40')}>
             <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center mb-3', t.alert ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-500')}><t.icon className="w-[18px] h-[18px]" /></span>
             <p className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white tabular-nums">{typeof t.value === 'number' ? t.value.toLocaleString() : t.value}</p>
             <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mt-1">{t.label}</p>
@@ -121,7 +121,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       </div>
 
       {section === 'status' && (
-        <div className="grid xl:grid-cols-2 gap-6 items-start">
+        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
           <SwitchCard key={data.control.updatedAt} control={data.control} onSaved={() => void mutate()} />
           <div className="space-y-6">
             <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
@@ -131,7 +131,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       )}
 
       {section === 'usage' && (
-        <div className="grid xl:grid-cols-2 gap-6 items-start">
+        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
           <div className="space-y-6">
             <PlanUsageCard usage={data.usage} />
             {data.email && <EmailCard email={data.email} />}
@@ -146,14 +146,14 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       {section === 'cloudflare' && <CloudflareCard />}
 
       {section === 'setup' && (
-        <div className="grid xl:grid-cols-[2fr_1fr] gap-6 items-start">
+        <div className="grid xl:grid-cols-[2fr_1fr] gap-6 items-start stagger">
           {data.settings && <SettingsCard settings={data.settings} />}
           <TestEmailCard configured={!!data.email} />
         </div>
       )}
 
       {section === 'activity' && (
-        <div className="grid xl:grid-cols-2 gap-6 items-start">
+        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
           <OnlineCard online={data.online} />
           <div className={cn(card, 'p-6')}>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-1"><History className="w-5 h-5 text-indigo-500" /> Server changes</h2>

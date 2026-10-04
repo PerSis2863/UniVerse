@@ -11,6 +11,7 @@ import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { recordStudy } from './streaks';
 import { closestPeers, signalsFor, type Signals } from './similarity';
+import { planLimits } from '@/lib/plan-limits';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
 // score and comment, and nothing reaches the student until the teacher returns the grade, which
@@ -175,7 +176,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
   // course material the answer borrows most from.
   const sig = (x: Prisma.JsonValue | null) => ((x as unknown as Signals | null)?.sig ?? null);
   // Every pair is compared, so very large classes skip this (CPU time on Workers Free).
-  const peers = submissions.length <= 150 ? closestPeers(submissions.map((x) => ({ id: x.id, sig: sig(x.signals) }))) : new Map<string, { id: string; share: number }>();
+  const peers = submissions.length <= planLimits().similarityPeers ? closestPeers(submissions.map((x) => ({ id: x.id, sig: sig(x.signals) }))) : new Map<string, { id: string; share: number }>();
   const nameOf = new Map(submissions.map((x) => [x.id, x.student.name]));
   return {
     ...base,
@@ -239,14 +240,14 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   // Similarity signals for the teacher (src/server/similarity.ts), against the course's materials.
   // At most about 30 KB of material text per answer: comparing costs CPU time, and Workers Free
   // allows 10 ms per request (signalsFor also reads only the answer's first 12,000 characters).
-  let budget = 30_000;
+  let budget = planLimits().similarityMaterialChars;
   const sources = (await prisma.courseSource.findMany({
     where: { courseId: assignment.courseId, status: 'READY', chars: { lte: 300_000 } },
     orderBy: { updatedAt: 'desc' },
     select: { title: true, text: true },
     take: 20,
   })).filter((s) => (budget -= s.text.length) >= 0);
-  const signals = signalsFor(text, sources) as unknown as Prisma.InputJsonValue;
+  const signals = signalsFor(text, sources, planLimits().similarityAnswerChars) as unknown as Prisma.InputJsonValue;
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_studentId: { assignmentId, studentId: user.id } },

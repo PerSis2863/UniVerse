@@ -504,6 +504,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                 return (
                   <div key={m.id} id={`msg-${m.id}`} className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
                     <MessageBubble
+                      onCallBack={(kind) => void call(kind)}
                       m={m}
                       mine={m.senderId === me}
                       me={me}

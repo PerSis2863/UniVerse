@@ -37,7 +37,7 @@ export default function AccessibilityPage() {
           'Whiteboards are drawing canvases. Screen readers can’t describe what is drawn; export a board as an image or add text notes to share it.',
           'Some older pages and charts don’t yet have full text alternatives.',
           'Files that users upload (documents, images, videos) may not be accessible; we can’t control their content.',
-          'Video calls use Jitsi Meet, whose accessibility depends on that service.',
+          'In calls, captions aren’t available yet; each person’s name is always shown on their tile.',
         ]} />
       </Section>
 

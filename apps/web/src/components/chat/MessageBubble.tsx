@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck } from 'lucide-react';
+import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
@@ -138,6 +138,8 @@ interface Props {
   /** The reader chose to see the original instead of the translation. */
   showOriginal?: boolean;
   onTranslate?: () => void;
+  /** Starts a new call of this kind in the chat (Call back on a finished call). */
+  onCallBack?: (kind: 'audio' | 'video') => void;
   onToggleOriginal?: () => void;
 }
 
@@ -220,25 +222,36 @@ export function MessageBubble(p: Props) {
       </a>
     );
   } else if (m.type === 'CALL') {
-    const video = m.metadata?.kind === 'video';
-    const fresh = Date.now() - new Date(m.createdAt).getTime() < 60 * 60 * 1000;
+    // A call reads like a phone's call log: live (Join), how long it lasted, missed, no answer
+    // or declined. Calls from before UniVerse had its own (Jitsi links) show as ended.
+    const meta = m.metadata ?? {};
+    const video = meta.kind === 'video';
+    const live = !!meta.inApp && !meta.endedAt && Date.now() - new Date(m.createdAt).getTime() < 4 * 3600_000;
+    const dur = meta.durationSec ? `${Math.floor(meta.durationSec / 60)}:${String(meta.durationSec % 60).padStart(2, '0')}` : null;
+    const missed = !live && !mine && !meta.answered;
+    const title = live ? (video ? 'Video call' : 'Voice call')
+      : meta.answered && dur ? `${video ? 'Video' : 'Voice'} call · ${dur}`
+      : meta.declinedBy ? (mine ? `Declined by ${meta.declinedBy.split(' ')[0]}` : 'You declined')
+      : mine ? 'No answer' : `Missed ${video ? 'video' : 'voice'} call`;
+    const sub = live ? (mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`) : mine ? 'Outgoing' : 'Incoming';
+    const Icon = live ? (video ? Video : Phone) : missed ? PhoneMissed : mine ? PhoneOutgoing : PhoneIncoming;
     content = (
       <div className="flex items-center gap-3 p-3 min-w-[15rem]">
-        <span className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0', mine ? 'bg-white/15' : 'bg-emerald-500/15 text-emerald-500')}>
-          {video ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
+        <span className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0', missed ? 'bg-rose-500/15 text-rose-500' : mine ? 'bg-white/15' : 'bg-emerald-500/15 text-emerald-500', live && 'animate-pulse')}>
+          <Icon className="w-5 h-5" />
         </span>
-        <span className="flex-1">
-          <span className="block font-semibold">{video ? 'Video call' : 'Voice call'}</span>
-          <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`}</span>
+        <span className="flex-1 min-w-0">
+          <span className={cn('block font-semibold truncate', missed && !mine && 'text-rose-500')}>{title}</span>
+          <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{sub}</span>
         </span>
-        {m.metadata?.inApp && fresh ? (
-          <a href={`/call/${m.id}`} className={cn('px-3 py-1.5 rounded-full text-xs font-bold', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
-            Join
+        {live ? (
+          <a href={`/call/${m.id}`} className={cn('px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
+            {mine ? 'Rejoin' : 'Join'}
           </a>
-        ) : m.metadata?.url && fresh ? (
-          <a href={safeHref(m.metadata.url)} target="_blank" rel="noopener noreferrer" className={cn('px-3 py-1.5 rounded-full text-xs font-bold', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
-            Join
-          </a>
+        ) : p.onCallBack ? (
+          <button type="button" onClick={() => p.onCallBack?.(video ? 'video' : 'audio')} className={cn('px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white/20 text-white' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300')}>
+            Call back
+          </button>
         ) : null}
       </div>
     );

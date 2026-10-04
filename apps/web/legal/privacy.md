@@ -1,6 +1,6 @@
 # UniVerse Impact - Global Privacy Policy
 
-**Last Updated: September 29, 2026**
+**Last Updated: October 4, 2026**
 
 Universe Impact, located at Rue de la Patouillerie, 44700 Orvault (Nantes), France ("UniVerse Impact," "we," "our," or "us"), is deeply committed to protecting your privacy and ensuring the security of your personal data globally. This Privacy Policy outlines our practices regarding the collection, use, sharing, and safeguarding of personal information processed through the UniVerse Impact platform at universeimpact.com (the "Platform").
 
@@ -135,10 +135,9 @@ We utilize industry-leading technology partners bound by strict Data Processing 
 
 - **Google LLC (Firebase Authentication):** Authentication and identity infrastructure.
 - **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, data included in AI impact reports, chat messages you choose to translate (or that are translated because you or another member of the chat turned on auto-translate), questions you ask the course AI tutor together with the relevant passages of that course's materials, and course materials your teacher prepares for the tutor are sent to Google to produce a response. Tutor conversations are not stored by us; flashcards you create are saved to your account until you delete them. Translations are stored with the message so each one is only produced once, and are deleted when the message is edited or deleted.
-- **Cloudflare, Inc.:** Hosting and serverless computing (Workers), database (D1), file storage (R2), and real-time features.
+- **Cloudflare, Inc.:** Hosting and serverless computing (Workers), database (D1), file storage (R2), and real-time features. For voice and video calls, Cloudflare passes the connection details between participants; call audio and video then go directly between participants' devices and are not recorded or stored. On networks that block direct connections, they may be relayed (encrypted) through Cloudflare's servers.
 - **Stripe, Inc.:** PCI-compliant payment processing.
 - **Resend, Inc.:** Delivery of notification and account emails.
-- **8x8, Inc. (Jitsi Meet):** Voice and video calls started from chats. Call audio and video pass through Jitsi's servers.
 - **Polygon public blockchain:** A fingerprint (hash) of each Impact Credential is recorded on this public network so anyone can verify it. No names or other personal details are written to the blockchain.
 
 ### 5.4 Legal Authorities

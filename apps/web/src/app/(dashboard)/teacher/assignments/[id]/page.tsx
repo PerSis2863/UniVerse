@@ -119,7 +119,7 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
             </div>
           ) : (
             <div className="grid lg:grid-cols-[18rem_1fr] gap-5 items-start">
-              <nav aria-label="Submissions" className={`${card} p-2 max-h-[70vh] overflow-y-auto`}>
+              <nav aria-label="Submissions" className={`${card} p-2 max-h-[70vh] overflow-y-auto stagger`}>
                 {subs.map((s) => (
                   <button
                     key={s.id}
@@ -193,7 +193,7 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
   };
 
   return (
-    <section className="space-y-4" aria-label={`Answer by ${sub.student.name}`}>
+    <section className="space-y-4 stagger" aria-label={`Answer by ${sub.student.name}`}>
       <div className={`${card} p-5`}>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-semibold text-zinc-900 dark:text-white">{sub.student.name}</h3>

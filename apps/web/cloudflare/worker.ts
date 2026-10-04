@@ -667,6 +667,12 @@ export class CallRoom extends DurableObject<Env> {
       await this.ctx.storage.put(`ticket:${ticket}`, { ...who, exp: now + TICKET_TTL_MS });
       return Response.json({ ticket });
     }
+    // From the app: someone declined (sent to everyone waiting in the call).
+    if (url.pathname === '/notify' && request.method === 'POST') {
+      const note = (await request.json()) as { type: string; name: string };
+      for (const { ws } of this.peers()) this.send(ws, { type: note.type === 'declined' ? 'declined' : 'note', name: String(note.name ?? '').slice(0, 80) });
+      return Response.json({ ok: true });
+    }
     if (url.pathname === '/call-live') {
       const key = `ticket:${url.searchParams.get('ticket')}`;
       const who = await this.ctx.storage.get<{ userId: string; name: string; exp: number }>(key);

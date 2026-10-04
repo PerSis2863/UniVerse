@@ -5,6 +5,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { later, notifyMany } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
+import { planLimits } from '@/lib/plan-limits';
 
 // Live polls during class: the teacher asks a question, students answer on their phones, and
 // results update live. Open tabs refresh through the live-updates connection ('refresh' events
@@ -23,7 +24,7 @@ async function members(courseId: string, online = true) {
     prisma.enrollment.findMany({
       where: { courseId, ...(online ? { student: { lastSeenAt: { gt: new Date(Date.now() - 15 * 60_000) } } } : {}) },
       select: { studentId: true },
-      take: online ? 40 : 1000,
+      take: online ? planLimits().livePushes : 1000,
     }),
   ]);
   return { teacherId: course?.teacherId ?? null, code: course?.code ?? '', students: students.map((s) => s.studentId) };

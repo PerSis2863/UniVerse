@@ -1,6 +1,6 @@
 # UniVerse Impact - Global Terms and Conditions
 
-**Last Updated: September 29, 2026**
+**Last Updated: October 4, 2026**
 
 These Terms and Conditions ("Terms") form a legally binding agreement between you ("User", "you", or "your") and Universe Impact, located at Rue de la Patouillerie, 44700 Orvault (Nantes), France ("UniVerse Impact", "we", "us", "our", or the "Company") governing your access to and use of the UniVerse Impact platform, accessible at universeimpact.com, including any mobile applications, APIs, and associated services (collectively, the "Platform").
 
@@ -134,10 +134,9 @@ The Platform integrates with several third-party services to deliver its functio
 
 - **Google LLC (Firebase Authentication):** For sign-in and identity management.
 - **Google LLC (Gemini API):** For AI features such as the study assistant, summaries, project matching, and AI reports.
-- **Cloudflare, Inc.:** For hosting and serverless execution (Workers), database hosting (D1), file storage (R2), and real-time features.
+- **Cloudflare, Inc.:** For hosting and serverless execution (Workers), database hosting (D1), file storage (R2), real-time features, and connecting voice and video calls.
 - **Stripe, Inc.:** For payment processing.
 - **Resend, Inc.:** For delivering notification and account emails.
-- **8x8, Inc. (Jitsi Meet):** For voice and video calls.
 - **Polygon public blockchain:** For anchoring the fingerprints (hashes) of Impact Credentials so they can be independently verified.
 
 Your use of the Platform signifies your acknowledgment that these third-party services operate under their own terms of service and privacy policies.

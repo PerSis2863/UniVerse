@@ -122,13 +122,22 @@ The Durable Objects are created by **production** deploys (the `migrations` bloc
 `v1` RealtimeHub, `v2` BoardRoom, `v3` CodeRoom, `v4` CallRoom). Preview builds (`opennextjs-cloudflare upload`) can't create them, so a
 preview build of a branch that adds one fails until that change has been deployed from `main` once.
 
+## Workers Free and Workers Paid
+
+The live site runs on Workers Free (per request: 10 ms CPU, 50 subrequests, 50 D1 queries). Features
+that fan out or compare text stay inside that (src/lib/plan-limits.ts). After upgrading to Workers
+Paid ($5/month), add the variable `WORKERS_PAID=true` to raise those limits (live-poll pushes 40 → 500,
+similarity checks read more text and compare bigger classes). Nothing else needs to change.
+
 ## Calls
 
 Voice and video calls in chats are UniVerse's own (src/server/calls.ts): audio and video go straight between
-browsers (WebRTC, up to 6 people), and the call's Durable Object (`CallRoom`) only passes connection details. Free STUN
+browsers (WebRTC, up to 6 people), and the call's Durable Object (`CallRoom`) only passes connection details.
+Chats, study groups (Meet) and classes (timetable → class video call) all use it; the chat shows each call's
+outcome (duration, missed, declined) and /calls lists them. Free STUN
 servers find a direct route on most networks. For strict networks (some campus and office Wi-Fi), create a TURN key in
 Cloudflare → Realtime → TURN Server (free up to 1,000 GB a month) and add `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` as
-secrets. Older calls in chat history still open Jitsi.
+secrets. Jitsi is no longer used anywhere; old Jitsi calls in chat history show as ended, with Call back.
 
 ## Email allowance (Resend)
 

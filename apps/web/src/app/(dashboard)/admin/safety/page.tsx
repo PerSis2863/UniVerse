@@ -87,7 +87,7 @@ export default function AdminSafetyPage() {
               <p className="text-zinc-500 dark:text-zinc-400 text-sm">Reports sent from BeeSafe appear here, and every admin is notified.</p>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-4 stagger">
               {shown.map((r) => (
                 <article key={r.id} className={`p-5 rounded-2xl border bg-white dark:bg-zinc-900/50 ${r.isResolved ? 'border-zinc-200 dark:border-zinc-800 opacity-70' : 'border-zinc-200 dark:border-zinc-800'}`}>
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">

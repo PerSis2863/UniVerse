@@ -59,7 +59,7 @@ export default function OfflinePage() {
           ) : open ? (
             <PackView pack={open} onBack={() => setOpen(null)} />
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-3 stagger">
               {packs.map((p) => (
                 <div key={p.courseId} className={`${card} p-4 flex items-center gap-3`}>
                   <button type="button" onClick={async () => setOpen(await getPack(p.courseId))} className="flex-1 min-w-0 text-left">
