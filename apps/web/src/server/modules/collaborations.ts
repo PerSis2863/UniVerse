@@ -11,7 +11,7 @@ export default function collaborationsModule(router: Router) {
   r.post('', ({ user, body }) => collaborations.create(user.id, body));
   r.patch<{ id: string }>(':id', ({ params, user, body }) => collaborations.update(params.id, user, body));
   r.get('projects', ({ user }) => collaborations.getProjects({ detailed: user.role === 'ADMIN' }));
-  r.get<{ id: string }>('projects/:id', ({ params }) => collaborations.getProjectById(params.id));
+  r.get<{ id: string }>('projects/:id', ({ params, user }) => collaborations.getProjectById(params.id, user));
   r.post('projects', { roles: ['TEACHER', 'ADMIN'] }, ({ user, body }) => collaborations.createProject(user.id, body));
   r.patch<{ id: string }>('projects/:id', ({ params, user, body }) => collaborations.updateProject(params.id, user, body));
   r.delete<{ id: string }>('projects/:id', ({ params, user }) => collaborations.deleteProject(params.id, user));

@@ -572,6 +572,8 @@ model Message {
 
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
+  @@index([replyToId])
+  @@index([expiresAt])
   @@map("messages")
 }
 
@@ -636,6 +638,7 @@ model PollVote {
 
   @@unique([messageId, userId, option])
   @@index([messageId])
+  @@index([userId])
   @@map("poll_votes")
 }
 
@@ -650,6 +653,7 @@ model MessageReaction {
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+  @@index([userId])
   @@map("message_reactions")
 }
 

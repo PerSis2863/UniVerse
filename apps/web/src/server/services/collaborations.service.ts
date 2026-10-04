@@ -46,11 +46,13 @@ export class CollaborationsService {
         _count: { select: { members: true } },
       },
       orderBy: { createdAt: 'desc' },
+      take: 300,
     });
   }
 
-  getProjectById(id: string) {
-    return prisma.collaborationProject.findUnique({
+  /** Members' email addresses only for admins and the supervising teacher, like getProjects. */
+  async getProjectById(id: string, viewer: { id: string; role: string }) {
+    const project = await prisma.collaborationProject.findUnique({
       where: { id },
       include: {
         supervisingTeacher: { select: { id: true, name: true, avatar: true } },
@@ -59,6 +61,8 @@ export class CollaborationsService {
         milestones: { orderBy: { dueDate: 'asc' } },
       },
     });
+    if (!project || viewer.role === 'ADMIN' || project.supervisingTeacherId === viewer.id) return project;
+    return { ...project, members: project.members.map((m) => ({ ...m, user: { ...m.user, email: undefined } })) };
   }
 
   createProject(supervisingTeacherId: string, data: any) {

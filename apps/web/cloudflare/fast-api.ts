@@ -7,6 +7,7 @@
 // anything is unusual (no token, a new account, a suspended one, a demo admin writing, an error),
 // the call returns null and the Next.js route answers as before.
 import { jwtVerify, type JWTPayload } from 'jose';
+import { ownerEmailList } from '../src/lib/owner-emails';
 import { jwksFor, keysMayHaveRotated } from '../src/server/jwks-cache';
 import { isSessionToken, verifySessionToken } from '../src/server/session-token';
 import { hasPass, needsTwoStep } from '../src/server/two-step';
@@ -57,6 +58,16 @@ async function firebaseUid(token: string): Promise<{ uid: string; exp?: number; 
   return { uid: payload.sub, exp: payload.exp, authTime: typeof payload.auth_time === 'number' ? payload.auth_time : undefined };
 }
 
+/** When a (verified) "ut1." session token was issued, in seconds. */
+function sessionIssuedAt(token: string): number | undefined {
+  try {
+    const { iat } = JSON.parse(atob(token.slice(4).split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))) as { iat?: unknown };
+    return typeof iat === 'number' ? iat : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const USER_COLUMNS = 'SELECT id, name, email, role, status, signedOutAt FROM users WHERE';
 type UserRow = { id: string; name: string; email: string; role: string; status: string; signedOutAt: string | null };
 
@@ -78,6 +89,8 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
   if (isSessionToken(token)) {
     const uid = verifySessionToken(token);
     if (uid) row = await db.prepare(`${USER_COLUMNS} id = ?`).bind(uid).first<UserRow>();
+    // The session's start (iat), so "sign out everywhere" applies here too (src/server/auth.ts signInTime).
+    authTime = sessionIssuedAt(token);
   } else if (token.startsWith('mock-token-')) {
     if (!demoLoginEnabled()) return null;
     const who = token.slice('mock-token-'.length);
@@ -195,7 +208,7 @@ async function file(request: Request, key: string, db: D1Database, ctx: Executio
   const cacheKey = new Request(`${new URL(request.url).origin}/api/files/${key}`);
   const cache = (caches as unknown as { default: Cache }).default;
   const stored = await cache.match(cacheKey).catch(() => undefined);
-  let bytes: Uint8Array;
+  let bytes: Uint8Array<ArrayBuffer>;
   let headers: Headers;
   if (stored) {
     bytes = new Uint8Array(await stored.arrayBuffer());

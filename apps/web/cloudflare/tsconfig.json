@@ -1,0 +1,8 @@
+// The Worker entry and its light API path are left out of the app's tsconfig (Next.js would try to
+// build them), so they're checked on their own: `pnpm typecheck`.
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "noEmit": true, "types": ["@cloudflare/workers-types", "node"] },
+  "include": ["./**/*.ts"],
+  "exclude": []
+}
