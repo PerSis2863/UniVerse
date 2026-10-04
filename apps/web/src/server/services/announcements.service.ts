@@ -12,17 +12,19 @@ export class AnnouncementsService {
     });
   }
 
+  // Every signed-in user can read these: authors' email addresses stay out (the UI never shows them).
   findAll() {
     return prisma.announcement.findMany({
-      include: { author: { select: { name: true, email: true, avatar: true } }, course: { select: { name: true } } },
+      include: { author: { select: { name: true, avatar: true } }, course: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
+      take: 200,
     });
   }
 
   async findOne(id: string) {
     const announcement = await prisma.announcement.findUnique({
       where: { id },
-      include: { author: { select: { name: true, email: true, avatar: true } } },
+      include: { author: { select: { name: true, avatar: true } } },
     });
     if (!announcement) throw new NotFoundException('Announcement not found');
     return announcement;

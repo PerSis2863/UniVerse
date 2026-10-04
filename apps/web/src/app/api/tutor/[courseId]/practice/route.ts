@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
 import { practiceQuestions, tutorAccess } from '@/server/tutor';
+import { recordStudy } from '@/server/streaks';
 
 // POST { topic?, count? } → { questions: [{ question, options, answer, explanation, sourceTitle }] }
 export async function POST(req: Request, { params }: { params: Promise<{ courseId: string }> }) {
@@ -16,5 +17,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   const r = await practiceQuestions(a, typeof b.topic === 'string' ? b.topic : '', Math.min(10, Math.max(3, Number(b.count) || 5)));
   if (r.reason === 'no-sources') return NextResponse.json({ error: 'This course has no materials the tutor can read yet.', code: 'no-sources' }, { status: 409 });
   if (!r.questions) return NextResponse.json({ error: 'Couldn’t make questions right now. Please try again.' }, { status: 503 });
+  if (user.role === 'STUDENT') recordStudy(user.id, req);
   return NextResponse.json({ questions: r.questions });
 }

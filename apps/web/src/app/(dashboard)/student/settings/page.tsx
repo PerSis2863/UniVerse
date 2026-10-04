@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermissionPrompt';
 import { RecentSignIns } from '@/components/security/RecentSignIns';
 import { GuardianShareCard } from '@/components/settings/GuardianShareCard';
+import { GuardianContactsCard } from '@/components/settings/GuardianContactsCard';
 
 interface Me { name?: string; email?: string; emailNotifications?: boolean }
 const SECTION_IDS = ['profile', 'language', 'notifications', 'privacy', 'family', 'consents', 'ai'];
@@ -115,7 +116,8 @@ export default function StudentSettings() {
                 <AnimatePresence mode="wait">
 
                   {activeSection === 'family' && (
-                    <motion.div key="family" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                    <motion.div key="family" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                      <GuardianContactsCard />
                       <GuardianShareCard />
                     </motion.div>
                   )}

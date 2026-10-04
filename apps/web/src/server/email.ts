@@ -1,6 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import prisma from '@/lib/db';
 import { publish } from './realtime';
+import { claimEmails, type EmailKind } from './email-budget';
 
 // In-app notifications, plus an email copy for people who have "Email notifications" on
 // (Settings → Notifications). Email is sent through Resend and is skipped when RESEND_API_KEY
@@ -18,9 +19,11 @@ export function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
-export async function sendEmail(to: string, subject: string, html: string, text: string): Promise<boolean> {
+/** Sends one email. Routine email is skipped once the plan's allowance is nearly used (src/server/email-budget.ts). */
+export async function sendEmail(to: string, subject: string, html: string, text: string, kind: EmailKind = 'routine'): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
+  if ((await claimEmails(1, kind)) < 1) return false;
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -97,7 +100,9 @@ export async function notifyMany(userIds: string[], n: NotifyInput): Promise<num
     // Ring the bell now for people using UniVerse at the moment (the rest see it next time).
     publish(people.filter((p) => p.lastSeenAt && p.lastSeenAt.getTime() > Date.now() - 5 * 60_000).slice(0, 40).map((p) => p.id), { type: 'notification' });
     const key = process.env.RESEND_API_KEY;
-    const to = n.email === false || !key ? [] : people.filter((p) => p.emailNotifications && p.email);
+    const wanted = n.email === false || !key ? [] : people.filter((p) => p.emailNotifications && p.email);
+    // Within the plan's allowance (the rest still get the in-app notification).
+    const to = wanted.slice(0, await claimEmails(wanted.length, 'routine'));
     const { html, text } = layout(n.title, n.body, n.link);
     for (let i = 0; i < to.length; i += 100) {
       const res = await fetch('https://api.resend.com/emails/batch', {

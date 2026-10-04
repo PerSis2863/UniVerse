@@ -10,6 +10,7 @@ import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
+import { emailUsage } from '../email-budget';
 import { aiUsageToday, forgetAiLimits, parseLimits } from '../ai-budget';
 import { cloudflareAccount } from '../cloudflare-account';
 import { healthCheck } from '../owner-health';
@@ -266,6 +267,7 @@ export default function ownerModule(router: Router) {
       health: { people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended },
       settings: serverSettings(),
       ai: await aiUsageToday().catch(() => null),
+      email: process.env.RESEND_API_KEY ? await emailUsage().catch(() => null) : null,
       history,
     });
   });

@@ -6,6 +6,7 @@ import { CheckCircle, Clock, XCircle, Award } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { promptDialog } from '@/components/ui/Dialogs';
 import { SearchBox, matchesQuery, RoleChip, StatusChip, fmtDate, fmtAgo, shownSummary } from '@/components/impact/AdminPeople';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
@@ -48,6 +49,27 @@ export default function AdminCertificationsPage() {
       mutate();
     } catch {
       toast.error('Failed to approve certificate.');
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  const handleReject = async (req: PendingCertificate) => {
+    const reason = await promptDialog({
+      title: `Turn down “${req.title}”?`,
+      message: `${req.user.name} will be told, with your reason, and can request it again later.`,
+      placeholder: 'Reason (optional), e.g. impact hours not yet verified',
+      confirmLabel: 'Turn down',
+      maxLength: 500,
+    });
+    if (reason === null) return;
+    setApproving(req.id);
+    try {
+      await api.post(`/impact/certificates/${req.id}/reject`, { reason });
+      toast.success('Request turned down. The student has been told.');
+      mutate();
+    } catch {
+      toast.error('Could not turn down the request. Please try again.');
     } finally {
       setApproving(null);
     }
@@ -132,9 +154,8 @@ export default function AdminCertificationsPage() {
                       <div className="flex items-center gap-3 shrink-0">
                         <button
                           className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border text-rose-600 border-rose-200 dark:border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                          onClick={() => {
-                            toast.error('Rejection functionality not implemented for MVP');
-                          }}
+                          disabled={approving === req.id}
+                          onClick={() => handleReject(req)}
                         >
                           <XCircle className="w-4 h-4 mr-1" /> Reject
                         </button>

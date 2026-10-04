@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
+import { streakSummary } from '@/server/streaks';
 
 // Same thresholds as the impact levels in src/server/services/impact.service.ts.
 const LEVELS = [
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
   const now = new Date();
 
   const [me, enrollments, attendance, grades, impact] = await Promise.all([
-    prisma.user.findUnique({ where: { id: user.id }, select: { name: true, impactXP: true } }),
+    prisma.user.findUnique({ where: { id: user.id }, select: { name: true, impactXP: true, streakCurrent: true, streakBest: true, streakLastDay: true } }),
     prisma.enrollment.findMany({
       where: { studentId: user.id },
       select: { course: { select: { id: true, code: true, name: true, color: true, emoji: true } } },
@@ -50,7 +51,7 @@ export async function GET(req: Request) {
   ]);
 
   const courseIds = enrollments.map((e) => e.course.id);
-  const [schedule, quizzes] = await Promise.all([
+  const [schedule, quizzes, streak] = await Promise.all([
     courseIds.length
       ? prisma.timetableSlot.findMany({
           where: { courseId: { in: courseIds }, dayOfWeek: dow },
@@ -66,6 +67,7 @@ export async function GET(req: Request) {
           select: { id: true, title: true, dueDate: true, course: { select: { code: true, name: true } } },
         })
       : [],
+    streakSummary(user.id, req, me),
   ]);
 
   // Attendance: present or late counts as attended; excused days are left out.
@@ -112,6 +114,7 @@ export async function GET(req: Request) {
         impactPoints: impact._sum.points ?? 0,
       },
       level: levelInfo(xp),
+      streak,
       courses,
       schedule: schedule.map((s) => ({
         id: s.id,

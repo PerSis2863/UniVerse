@@ -551,6 +551,14 @@ export class ImpactService {
     return prisma.studentDocument.update({ where: { id }, data: { isVerified: true, issuedAt: new Date() } });
   }
 
+  /** Turns down a pending certificate request: it's removed, so the student can ask again later. */
+  async rejectCertificate(id: string) {
+    const doc = await prisma.studentDocument.findUnique({ where: { id }, select: { id: true, userId: true, title: true, type: true, isVerified: true } });
+    if (!doc || doc.type !== 'CERTIFICATE' || doc.isVerified) throw new NotFoundException('This request was already handled.');
+    await prisma.studentDocument.delete({ where: { id } });
+    return doc;
+  }
+
   /**
    * The certificate as a print-ready page (the old API rendered a PDF with a headless browser,
    * which Workers can't run). It opens the browser's print dialog, where "Save as PDF" gives the file.

@@ -39,7 +39,7 @@ export async function studentProgress(studentId: string, days = 21): Promise<Stu
   const until = new Date(now.getTime() + days * 86_400_000);
   const enrolled = { enrollments: { some: { studentId } } };
 
-  const [enrollments, grades, attendance, quizzes, events] = await Promise.all([
+  const [enrollments, grades, attendance, quizzes, events, assignments] = await Promise.all([
     prisma.enrollment.findMany({
       where: { studentId },
       orderBy: { enrolledAt: 'asc' },
@@ -66,6 +66,13 @@ export async function studentProgress(studentId: string, days = 21): Promise<Stu
       orderBy: { startAt: 'asc' },
       take: 30,
       select: { id: true, title: true, type: true, startAt: true, course: { select: { code: true, name: true } } },
+    }),
+    // Open written assignments in my courses that I haven't handed in yet.
+    prisma.assignment.findMany({
+      where: { course: enrolled, status: 'OPEN', dueDate: { gte: now, lte: until }, submissions: { none: { studentId } } },
+      orderBy: { dueDate: 'asc' },
+      take: 30,
+      select: { id: true, title: true, dueDate: true, course: { select: { code: true, name: true } } },
     }),
   ]);
 
@@ -100,6 +107,7 @@ export async function studentProgress(studentId: string, days = 21): Promise<Stu
 
   const deadlines: Deadline[] = [
     ...quizzes.map((q) => ({ id: `q-${q.id}`, kind: 'quiz' as const, title: q.title, due: q.dueDate!.toISOString(), course: q.course })),
+    ...assignments.map((a) => ({ id: `a-${a.id}`, kind: 'deadline' as const, title: a.title, due: a.dueDate!.toISOString(), course: a.course })),
     ...events.map((e) => ({ id: `e-${e.id}`, kind: e.type === 'EXAM' ? ('exam' as const) : ('deadline' as const), title: e.title, due: e.startAt.toISOString(), course: e.course })),
   ].sort((a, b) => a.due.localeCompare(b.due));
 

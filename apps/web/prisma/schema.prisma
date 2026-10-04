@@ -115,17 +115,21 @@ model User {
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
   accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION (what they chose at sign-up)
   lastSeenAt         DateTime?
+  // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
+  streakCurrent      Int       @default(0)
+  streakBest         Int       @default(0)
+  streakLastDay      String? // YYYY-MM-DD in the student's time zone
   chatMutedUntil     DateTime? // owner console: can't send chat messages until then
   signedOutAt        DateTime? // "sign out everywhere": sign-ins that started before this are refused
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
 
   // Profiles
-  studentProfile StudentProfile?
-  skillPassport  SkillPassport?
-  riskFlags      StudentRiskFlag[]
-  studyCards     StudyCard[]
+  studentProfile   StudentProfile?
+  skillPassport    SkillPassport?
+  riskFlags        StudentRiskFlag[]
+  studyCards       StudyCard[]
   deletionRequests AccountDeletionRequest[]
-  teacherProfile TeacherProfile?
+  teacherProfile   TeacherProfile?
 
   // Core Academic
   enrollments           Enrollment[]
@@ -218,7 +222,14 @@ model User {
   impactCertificates ImpactCertificate[]
 
   // Billing: the organization (and its subscription) this admin owns
-  ownedOrganization Organization?
+  ownedOrganization     Organization?
+  studyDays             StudyDay[]
+  assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
+  assignmentSubmissions AssignmentSubmission[]
+  guardianContacts      GuardianContact[]
+  livePollsCreated      LivePoll[]             @relation("LivePollAuthor")
+  livePollVotes         LivePollVote[]
+  codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
 
   @@index([role])
   @@index([status])
@@ -321,6 +332,9 @@ model Course {
   calendarEvents        CalendarEvent[]
   riskFlags             StudentRiskFlag[]
   sources               CourseSource[]
+  assignments           Assignment[]
+  livePolls             LivePoll[]
+  codeRooms             CodeRoom[]
 
   @@index([teacherId])
   @@index([status])
@@ -2053,14 +2067,14 @@ model UsageGuard {
 ///   LIVE: normal. READ_ONLY: everyone can look around but nothing can be changed.
 ///   MAINTENANCE: everyone sees a "back soon" page. The owner always gets through (uv_owner cookie).
 model ServerControl {
-  id        String    @id // always "main"
-  mode      String    @default("LIVE") // LIVE, READ_ONLY, MAINTENANCE
-  message   String? // shown to people while not LIVE
-  until     DateTime? // back to LIVE by itself at this time
-  banner    String? // a notice shown at the top of every page while set
-  bypass    String // the owner's pass (uv_owner cookie), set when the row is created
-  updatedAt DateTime  @default(now())
-  updatedBy String?
+  id         String    @id // always "main"
+  mode       String    @default("LIVE") // LIVE, READ_ONLY, MAINTENANCE
+  message    String? // shown to people while not LIVE
+  until      DateTime? // back to LIVE by itself at this time
+  banner     String? // a notice shown at the top of every page while set
+  bypass     String // the owner's pass (uv_owner cookie), set when the row is created
+  updatedAt  DateTime  @default(now())
+  updatedBy  String?
   switches   String? // JSON list of features turned off, e.g. ["ai","uploads"] (src/lib/feature-switches.ts)
   watchWords String? // words that alert the owner when they appear in a chat, one per line
   aiLimits   String? // JSON { student, staff, site }: AI requests allowed per day (src/server/ai-budget.ts)
@@ -2085,4 +2099,142 @@ model AiCache {
   createdAt DateTime @default(now())
 
   @@map("ai_cache")
+}
+
+/// One row per student per day they studied (src/server/streaks.ts).
+model StudyDay {
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day     String // YYYY-MM-DD in the student's time zone
+  actions Int    @default(1)
+
+  @@id([userId, day])
+  @@map("study_days")
+}
+
+/// A written assignment with a rubric (src/server/assignments.ts).
+model Assignment {
+  id           String                 @id @default(cuid())
+  courseId     String
+  course       Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?                  @relation("AssignmentAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  title        String
+  instructions String
+  rubric       Json // [{ id, criterion, description?, points }]
+  maxScore     Float
+  weight       Float                  @default(1)
+  dueDate      DateTime?
+  status       String                 @default("OPEN") // OPEN, CLOSED
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  submissions  AssignmentSubmission[]
+
+  @@index([courseId])
+  @@index([createdById])
+  @@map("assignments")
+}
+
+/// A student's answer, the AI's draft grade and the teacher's final grade.
+model AssignmentSubmission {
+  id             String     @id @default(cuid())
+  assignmentId   String
+  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  text           String
+  status         String     @default("SUBMITTED") // SUBMITTED, DRAFTED (AI draft ready), RETURNED (graded)
+  aiDraft        Json? // { criteria: [{ id, score, comment }], summary, strengths, improvements, concerns }
+  aiDraftedAt    DateTime?
+  criteriaScores Json? // the teacher's final [{ id, score, comment }]
+  score          Float?
+  feedback       String?
+  gradeId        String? // the row in "grades" written when returned
+  signals        Json? // similarity signals for the teacher: { sig, material } (src/server/similarity.ts)
+  submittedAt    DateTime   @default(now())
+  returnedAt     DateTime?
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+  @@map("assignment_submissions")
+}
+
+/// A parent or guardian a student keeps informed (src/server/guardians.ts).
+model GuardianContact {
+  id            String    @id @default(cuid())
+  studentId     String
+  student       User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  email         String
+  name          String?
+  token         String    @unique // confirm / manage / stop link in their emails
+  confirmedAt   DateTime? // nothing is sent until they confirm
+  weeklyDigest  Boolean   @default(true)
+  absenceAlerts Boolean   @default(true)
+  lastDigestAt  DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([studentId, email])
+  @@index([confirmedAt])
+  @@map("guardian_contacts")
+}
+
+/// A live poll during class (src/server/live.ts).
+model LivePoll {
+  id          String         @id @default(cuid())
+  courseId    String
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?          @relation("LivePollAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  question    String
+  options     Json // string[]
+  status      String         @default("OPEN") // OPEN, CLOSED
+  showResults Boolean        @default(false) // students see the results while it's open
+  createdAt   DateTime       @default(now())
+  closedAt    DateTime?
+  votes       LivePollVote[]
+
+  @@index([courseId, status])
+  @@index([createdById])
+  @@map("live_polls")
+}
+
+model LivePollVote {
+  pollId    String
+  poll      LivePoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option    Int
+  createdAt DateTime @default(now())
+
+  @@id([pollId, userId])
+  @@index([userId])
+  @@map("live_poll_votes")
+}
+
+/// A shared code editor for a course (src/server/code-rooms.ts); the code is in its Durable Object.
+model CodeRoom {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?    @relation("CodeRoomAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  title       String
+  language    String   @default("javascript") // javascript, typescript, python, java, cpp
+  locked      Boolean  @default(false) // only the teacher (and the creator) can edit
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([createdById])
+  @@map("code_rooms")
+}
+
+/// Emails sent and routine emails skipped per UTC day "YYYY-MM-DD" (src/server/email-budget.ts).
+model EmailUsage {
+  day     String @id
+  sent    Int    @default(0)
+  skipped Int    @default(0)
+
+  @@map("email_usage")
 }

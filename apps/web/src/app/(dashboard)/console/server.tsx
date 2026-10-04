@@ -28,6 +28,7 @@ interface ServerData {
   usage: PlanUsage | null;
   health: { people: number; activeToday: number; signInsToday: number; messagesToday: number; openErrors: number; newErrors: number; pendingDeletions: number; suspended: number };
   settings?: { name: string; what: string; needed: boolean; set: boolean; problem: string | null }[];
+  email?: { sentToday: number; skippedToday: number; sentMonth: number; daily: number; monthly: number; dailyReserve: number; monthlyReserve: number } | null;
   ai?: AiToday | null;
   history: { id: string; summary: string; createdAt: string; undoneAt: string | null }[];
 }
@@ -62,6 +63,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       <PlanUsageCard usage={data.usage} />
       {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
       <CloudflareCard />
+      {data.email && <EmailCard email={data.email} />}
       {data.settings && <SettingsCard settings={data.settings} />}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map(([label, n, Icon, to]) => (
@@ -328,6 +330,35 @@ function CloudflareCard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Email sent against the Resend plan's allowance (src/server/email-budget.ts). */
+function EmailCard({ email }: { email: NonNullable<ServerData['email']> }) {
+  const rows = [
+    { label: 'Today', sent: email.sentToday, limit: email.daily, reserve: email.dailyReserve },
+    { label: 'This month', sent: email.sentMonth, limit: email.monthly, reserve: email.monthlyReserve },
+  ];
+  const tight = rows.some((r) => r.sent >= r.limit - r.reserve);
+  return (
+    <div className={cn(card, 'p-5')}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+        <h2 className="font-semibold text-zinc-900 dark:text-white">Email allowance</h2>
+        <span className={cn('text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border', tight ? TONES.rose : TONES.emerald)}>{tight ? 'Routine email paused' : 'OK'}</span>
+      </div>
+      <p className="text-sm text-zinc-500 mb-4">Notification emails stop before the plan runs out, keeping the rest for sign-in codes. People still get every notification in the app.{email.skippedToday ? ` ${email.skippedToday} email${email.skippedToday === 1 ? '' : 's'} skipped today.` : ''}</p>
+      <div className="space-y-3">
+        {rows.map((r) => {
+          const pct = Math.min(100, Math.round((r.sent / r.limit) * 100));
+          return (
+            <div key={r.label} title={`${r.sent} of ${r.limit}; the last ${r.reserve} are kept for sign-in codes`}>
+              <div className="flex justify-between text-sm"><span className="text-zinc-700 dark:text-zinc-300">{r.label}</span><span className="tabular-nums text-zinc-900 dark:text-white">{r.sent.toLocaleString()} / {r.limit.toLocaleString()}</span></div>
+              <div className="h-1.5 mt-1 rounded-full bg-zinc-200 dark:bg-white/[0.08] overflow-hidden" aria-hidden><div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} /></div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

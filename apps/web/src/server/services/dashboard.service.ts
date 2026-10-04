@@ -73,7 +73,7 @@ export class DashboardService {
 
   async getTeacherDashboard(user: { id: string }) {
     // Independent queries, run in parallel.
-    const [activeCourses, totalStudentsData, pendingGrades, grades, myCoursesRaw] = await Promise.all([
+    const [activeCourses, totalStudentsData, pendingGrades, grades, myCoursesRaw, recent] = await Promise.all([
       prisma.course.count({
         where: { teacherId: user.id },
       }),
@@ -89,21 +89,21 @@ export class DashboardService {
       prisma.grade.findMany({
         where: { course: { teacherId: user.id }, status: 'GRADED' },
         orderBy: { gradedAt: 'desc' },
-        select: {
-          studentId: true,
-          courseId: true,
-          score: true,
-          maxScore: true,
-          gradedAt: true,
-          student: { select: { name: true } },
-          course: { select: { name: true } },
-        },
+        // Every grade feeds the averages and charts below, but only these columns: names are
+        // needed for the five most recent ones only (the last query), not for every row.
+        select: { studentId: true, courseId: true, score: true, maxScore: true, gradedAt: true },
       }),
       prisma.course.findMany({
         where: { teacherId: user.id },
         select: { id: true, name: true, code: true, color: true, enrollments: { select: { studentId: true } } },
         orderBy: { createdAt: 'desc' },
         take: 5,
+      }),
+      prisma.grade.findMany({
+        where: { course: { teacherId: user.id }, status: 'GRADED' },
+        orderBy: { gradedAt: 'desc' },
+        take: 5,
+        select: { score: true, maxScore: true, student: { select: { name: true } }, course: { select: { name: true } } },
       }),
     ]);
 
@@ -152,7 +152,7 @@ export class DashboardService {
       .slice(-6)
       .map((m) => ({ month: m.label, avgScore: Math.round(m.sum / m.n) }));
 
-    const recentStudents = grades.slice(0, 5).map((g) => {
+    const recentStudents = recent.map((g) => {
       const score = Math.round(pct(g));
       return { name: g.student.name, course: g.course.name, score, status: score >= 85 ? 'excellent' : score >= 70 ? 'good' : 'needs-help' };
     });

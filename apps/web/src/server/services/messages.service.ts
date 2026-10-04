@@ -40,15 +40,17 @@ export class MessagesService {
       throw new NotFoundException('Conversation not found');
     }
 
-    return prisma.message.findMany({
+    const latest = await prisma.message.findMany({
       where: { conversationId },
       include: {
         sender: {
           select: { id: true, name: true, avatar: true, role: true }
         }
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'desc' },
+      take: 200,
     });
+    return latest.reverse();
   }
 
   async sendMessage(senderId: string, receiverId: string, body: string) {

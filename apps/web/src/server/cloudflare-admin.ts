@@ -47,7 +47,7 @@ export async function emailCode(owner: { id: string; email: string }) {
   const code = await codeFor(owner.id, Math.floor(Date.now() / SLOT));
   const sent = await sendEmail(owner.email, `UniVerse: your code is ${code}`,
     `<p>Your code to change Cloudflare settings from the owner console is <b style="font-size:20px">${code}</b>.</p><p>It works for about 10 minutes. If you didn't ask for it, someone may be using your owner sign-in: sign out everywhere and change your email password.</p>`,
-    `Your code to change Cloudflare settings from the owner console is ${code}. It works for about 10 minutes. If you didn't ask for it, someone may be using your owner sign-in.`);
+    `Your code to change Cloudflare settings from the owner console is ${code}. It works for about 10 minutes. If you didn't ask for it, someone may be using your owner sign-in.`, 'essential');
   if (!sent) throw new CloudflareAdminError('The code email could not be sent (check RESEND_API_KEY).');
 }
 
@@ -68,7 +68,7 @@ async function checkCode(ownerId: string, code: unknown) {
 
 async function tellOwner(email: string, what: string) {
   await sendEmail(email, 'UniVerse: Cloudflare was changed', `<p>From the owner console: ${escapeHtml(what)}.</p><p>If this wasn't you, sign out everywhere, change your email password and delete CF_ADMIN_TOKEN in Cloudflare.</p>`,
-    `From the owner console: ${what}. If this wasn't you, sign out everywhere, change your email password and delete CF_ADMIN_TOKEN in Cloudflare.`).catch(() => false);
+    `From the owner console: ${what}. If this wasn't you, sign out everywhere, change your email password and delete CF_ADMIN_TOKEN in Cloudflare.`, 'essential').catch(() => false);
 }
 
 // ─── What the owner can do ──────────────────────────────────────────────────────────────────

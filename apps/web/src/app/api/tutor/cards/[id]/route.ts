@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { schedule, type ReviewGrade } from '@/server/tutor';
+import { recordStudy } from '@/server/streaks';
 
 const GRADES = ['again', 'hard', 'good', 'easy'];
 
@@ -16,6 +17,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!card) return NextResponse.json({ error: 'Card not found.' }, { status: 404 });
   const next = schedule(card, b.grade as ReviewGrade);
   await prisma.studyCard.update({ where: { id }, data: next });
+  if (user.role === 'STUDENT') recordStudy(user.id, req);
   return NextResponse.json(next);
 }
 

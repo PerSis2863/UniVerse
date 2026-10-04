@@ -119,8 +119,19 @@ OpenNext builds and adds:
   (linked from that page) with an email listed in `SUPER_ADMIN_EMAILS`.
 
 The Durable Objects are created by **production** deploys (the `migrations` block in `wrangler.jsonc`:
-`v1` RealtimeHub, `v2` BoardRoom). Preview builds (`opennextjs-cloudflare upload`) can't create them, so a
+`v1` RealtimeHub, `v2` BoardRoom, `v3` CodeRoom). Preview builds (`opennextjs-cloudflare upload`) can't create them, so a
 preview build of a branch that adds one fails until that change has been deployed from `main` once.
+
+## Email allowance (Resend)
+
+Every email is counted per day (`email_usage`, src/server/email-budget.ts). Routine email (notification copies,
+reminders, digests) stops before the Resend plan's allowance runs out, keeping a reserve for essential email
+(admin sign-in codes, owner console codes, account-deletion confirmations). People still get every notification in
+the app. Limits default to Resend's free plan (100 a day, 3,000 a month); set `EMAIL_DAILY_LIMIT` and
+`EMAIL_MONTHLY_LIMIT` on a bigger plan. Usage is on the owner console → Server → Email allowance.
+
+Parent/guardian emails (weekly progress, absence alerts) are off until `GUARDIAN_EMAILS=on` is set: the card in
+student Settings → Parent or guardian is hidden while it's off.
 
 ## Security
 
