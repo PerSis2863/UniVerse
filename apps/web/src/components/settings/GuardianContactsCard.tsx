@@ -14,7 +14,10 @@ interface Contact { id: string; email: string; name: string | null; confirmedAt:
 const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 
 export function GuardianContactsCard() {
-  const { data, mutate, isLoading } = useSWR<Contact[]>('/api/student/guardians', authedJson);
+  const { data: res, mutate: refresh, isLoading } = useSWR<{ enabled: boolean; contacts: Contact[] }>('/api/student/guardians', authedJson);
+  const data = res?.contacts;
+  const mutate = async (update?: (list: Contact[] | undefined) => Contact[] | undefined, opts?: { revalidate: boolean }) =>
+    refresh(update ? (r) => (r ? { ...r, contacts: update(r.contacts) ?? [] } : r) : undefined, opts);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -54,6 +57,9 @@ export function GuardianContactsCard() {
       toast.error((err as Error).message);
     }
   };
+
+  // Hidden until the school switches guardian emails on (they all go out by email).
+  if (res && !res.enabled) return null;
 
   return (
     <div className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-6 space-y-5">

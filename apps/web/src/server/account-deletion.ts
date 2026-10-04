@@ -56,6 +56,7 @@ export async function decideDeletion(id: string, decision: 'approve' | 'decline'
     await sendEmail(req.email, 'Your UniVerse account has been deleted',
       `<p>Hello ${escapeHtml(req.name)},</p><p>As you asked, your UniVerse account and the personal data linked to it have been deleted.</p><p>If you didn’t ask for this, reply to this email straight away.</p><p>— UniVerse Impact</p>`,
       `Hello ${req.name},\n\nAs you asked, your UniVerse account and the personal data linked to it have been deleted.\n\nIf you didn't ask for this, reply to this email straight away.\n\n— UniVerse Impact`,
+      'essential',
     ).catch(() => {});
     await eraseAccount(req.userId);
   } else {

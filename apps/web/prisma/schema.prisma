@@ -2229,3 +2229,12 @@ model CodeRoom {
   @@index([createdById])
   @@map("code_rooms")
 }
+
+/// Emails sent and routine emails skipped per UTC day "YYYY-MM-DD" (src/server/email-budget.ts).
+model EmailUsage {
+  day     String @id
+  sent    Int    @default(0)
+  skipped Int    @default(0)
+
+  @@map("email_usage")
+}

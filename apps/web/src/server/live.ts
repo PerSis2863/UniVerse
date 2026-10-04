@@ -14,10 +14,16 @@ import { publish } from './realtime';
 const KEY = ['/api/live*'];
 const optionsOf = (p: { options: Prisma.JsonValue }) => (Array.isArray(p.options) ? (p.options as string[]) : []);
 
-async function members(courseId: string) {
+/** The course's teacher and its students. `online`: only students active in the last 15 minutes
+ *  (the ones with UniVerse open), at most 500: each live push is a request to that person's hub. */
+async function members(courseId: string, online = true) {
   const [course, students] = await Promise.all([
     prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, code: true } }),
-    prisma.enrollment.findMany({ where: { courseId }, select: { studentId: true }, take: 1000 }),
+    prisma.enrollment.findMany({
+      where: { courseId, ...(online ? { student: { lastSeenAt: { gt: new Date(Date.now() - 15 * 60_000) } } } : {}) },
+      select: { studentId: true },
+      take: online ? 500 : 2000,
+    }),
   ]);
   return { teacherId: course?.teacherId ?? null, code: course?.code ?? '', students: students.map((s) => s.studentId) };
 }
@@ -69,10 +75,10 @@ export async function createPoll(user: SessionUser, body: Record<string, unknown
   if (options.length < 2 || options.length > 6) throw new BadRequestException('Give 2 to 6 answers.');
   if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) throw new BadRequestException('Each answer must be different.');
   const poll = await prisma.livePoll.create({ data: { courseId, createdById: user.id, question, options, showResults: body.showResults === true } });
-  const m = await members(courseId);
-  publish(m.students, { type: 'refresh', keys: KEY });
-  // The bell too, for students who aren't on the live page yet (no email: it's happening now).
-  later(() => notifyMany(m.students, { type: 'live', title: `Live poll in ${a.course.code}`, body: question, link: '/student/live', email: false }));
+  publish((await members(courseId)).students, { type: 'refresh', keys: KEY });
+  // The bell for everyone in the course (no email: it's happening now).
+  const all = await members(courseId, false);
+  later(() => notifyMany(all.students, { type: 'live', title: `Live poll in ${a.course.code}`, body: question, link: '/student/live', email: false }));
   return poll;
 }
 

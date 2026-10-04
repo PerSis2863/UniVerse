@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
 import { APP_URL, escapeHtml, sendEmail } from './email';
-import { BadRequestException, NotFoundException } from './http';
+import { BadRequestException, HttpException, NotFoundException } from './http';
 import { issueGuardianToken, shareLinksEnabled } from './share-tokens';
 import { studentProgress } from './student-progress';
 
@@ -9,6 +9,10 @@ import { studentProgress } from './student-progress';
 // they're marked absent. The student adds them; nothing is sent until the guardian confirms
 // from the first email (so the feature can't be used to email strangers), and every email
 // has a link to change or stop the updates. Students can remove a guardian at any time.
+
+/** Off unless GUARDIAN_EMAILS=on: every part of this feature is email, and the Resend plan's
+ *  allowance is small (src/server/email-budget.ts). */
+export const guardianEmailsEnabled = () => process.env.GUARDIAN_EMAILS?.trim().toLowerCase() === 'on';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MAX_CONTACTS = 3;
@@ -39,6 +43,7 @@ export function listContacts(studentId: string) {
 }
 
 export async function addContact(student: { id: string; name: string }, body: Record<string, unknown>) {
+  if (!guardianEmailsEnabled()) throw new HttpException('Guardian emails aren’t switched on for this school yet.', 503);
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 200) : '';
   if (!EMAIL_RE.test(email)) throw new BadRequestException('Enter a valid email address.');
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 80) || null : null;
@@ -102,6 +107,7 @@ export async function actOnToken(token: string, body: Record<string, unknown>) {
 
 /** From the daily job: the weekly email for confirmed guardians whose last one is a week old. */
 export async function sendWeeklyDigests(limit = 40) {
+  if (!guardianEmailsEnabled()) return 0;
   const due = await prisma.guardianContact.findMany({
     where: { confirmedAt: { not: null }, weeklyDigest: true, OR: [{ lastDigestAt: null }, { lastDigestAt: { lt: new Date(Date.now() - WEEK_MS) } }] },
     orderBy: { lastDigestAt: 'asc' },
@@ -132,6 +138,7 @@ ${dueSoon ? `<p style="margin-top:16px"><b>Due in the next 7 days</b></p><ul sty
 
 /** A student was just marked absent (not before): their confirmed guardians who want alerts hear about it. */
 export async function alertAbsence(studentId: string, courseId: string, date: string) {
+  if (!guardianEmailsEnabled()) return 0;
   const [contacts, course, student] = await Promise.all([
     prisma.guardianContact.findMany({ where: { studentId, confirmedAt: { not: null }, absenceAlerts: true }, select: { email: true, token: true } }),
     prisma.course.findUnique({ where: { id: courseId }, select: { code: true, name: true } }),

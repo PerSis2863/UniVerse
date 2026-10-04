@@ -26,7 +26,8 @@ export class SafetyService {
     const alert = await prisma.safetyAlert.create({
       data: { title, description, location: str(data?.location, 300) || null, severity, reporterId: isAnonymous ? null : reporterId, isAnonymous },
     });
-    // Every active admin hears about it at once in the app; urgent ones are emailed too.
+    // Every active admin hears about it at once in the app (no email: it keeps the plan's allowance
+    // for sign-in codes; urgent reports are marked Urgent in the bell).
     later(async () => {
       const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' }, select: { id: true }, take: 500 });
       const urgent = alert.severity === 'HIGH' || alert.severity === 'CRITICAL';
@@ -35,7 +36,7 @@ export class SafetyService {
         body: `${alert.location ? `Location: ${alert.location}\n` : ''}${description.slice(0, 300)}${description.length > 300 ? '…' : ''}`,
         link: '/admin/safety',
         type: 'safety',
-        email: urgent,
+        email: false,
       });
     });
     return { id: alert.id, createdAt: alert.createdAt };

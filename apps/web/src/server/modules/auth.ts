@@ -37,7 +37,7 @@ export default function auth(router: Router) {
     const code = codeFor(user.id, at);
     const sent = await sendEmail(user.email, `UniVerse sign-in code: ${code}`,
       `<p>Your code to finish signing in to UniVerse is <b style="font-size:22px;letter-spacing:2px">${code}</b>.</p><p>It works for about 10 minutes. If you didn't just sign in, someone may know your password: change it now.</p>`,
-      `Your code to finish signing in to UniVerse is ${code}. It works for about 10 minutes. If you didn't just sign in, change your password now.`);
+      `Your code to finish signing in to UniVerse is ${code}. It works for about 10 minutes. If you didn't just sign in, change your password now.`, 'essential');
     if (!sent) throw new BadRequestException('The code email could not be sent. Try again in a minute.');
     return { sentTo: maskEmail(user.email) };
   });

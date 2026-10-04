@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
 import { HttpException } from '@/server/http';
-import { addContact, listContacts } from '@/server/guardians';
+import { addContact, guardianEmailsEnabled, listContacts } from '@/server/guardians';
 
 // GET: the parents and guardians this student keeps informed. POST { email, name?, weeklyDigest?,
 // absenceAlerts? }: add one (they get a confirmation email first). See src/server/guardians.ts.
@@ -15,7 +15,8 @@ async function student(req: Request) {
 export async function GET(req: Request) {
   const { user, error } = await student(req);
   if (error) return error;
-  return NextResponse.json(await listContacts(user.id), { headers: { 'Cache-Control': 'no-store' } });
+  // enabled: whether the school switched guardian emails on (GUARDIAN_EMAILS); the card hides when off.
+  return NextResponse.json({ enabled: guardianEmailsEnabled(), contacts: await listContacts(user.id) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {

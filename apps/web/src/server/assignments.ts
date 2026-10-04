@@ -236,11 +236,14 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   const existing = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { status: true } });
   if (existing?.status === 'RETURNED') throw new BadRequestException('This has already been graded, so it can’t be changed.');
   // Similarity signals for the teacher (src/server/similarity.ts), against the course's materials.
-  const sources = await prisma.courseSource.findMany({
+  // At most about 1 MB of material text per answer, so handing in stays quick.
+  let budget = 1_000_000;
+  const sources = (await prisma.courseSource.findMany({
     where: { courseId: assignment.courseId, status: 'READY', chars: { lte: 300_000 } },
+    orderBy: { updatedAt: 'desc' },
     select: { title: true, text: true },
     take: 20,
-  });
+  })).filter((s) => (budget -= s.text.length) >= 0);
   const signals = signalsFor(text, sources) as unknown as Prisma.InputJsonValue;
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
@@ -350,6 +353,7 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
     title: `${existing ? 'Updated grade' : 'Graded'}: ${assignment.title}`,
     body: `${course.code} · ${score}/${assignment.maxScore}`,
     link: `/student/assignments/${assignment.id}`,
+    email: false, // in-app only (keeps email within the plan's allowance)
   }));
   return { ok: true, score, gradeId: grade.id };
 }
