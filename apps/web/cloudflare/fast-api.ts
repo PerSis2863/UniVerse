@@ -12,6 +12,7 @@ import { jwksFor, keysMayHaveRotated } from '../src/server/jwks-cache';
 import { isSessionToken, verifySessionToken } from '../src/server/session-token';
 import { hasPass, needsTwoStep } from '../src/server/two-step';
 import { securityHeaders } from '../security-headers';
+import { fileCsp } from '../src/lib/file-csp';
 import { bool, dbDate, isoDate, json, parseJson, type Caller } from './fast-db';
 import { conversations, notifications, presence, thread } from './fast-chat';
 
@@ -224,9 +225,8 @@ async function file(request: Request, key: string, db: D1Database, ctx: Executio
       'X-Content-Type-Options': 'nosniff',
       'Accept-Ranges': 'bytes',
     });
-    // A file can never run scripts on this site, whatever it contains (not for PDFs: Chrome won't
-    // show a sandboxed PDF, and its viewer is isolated anyway).
-    if (row.mime !== 'application/pdf') headers.set('Content-Security-Policy', "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox");
+    const csp = fileCsp(row.mime);
+    if (csp) headers.set('Content-Security-Policy', csp);
     const copy = new Headers(headers);
     // Kept a day at the edge, so a deleted file (src/lib/storage.ts) stops being served soon after.
     copy.set('Cache-Control', 'public, max-age=86400');

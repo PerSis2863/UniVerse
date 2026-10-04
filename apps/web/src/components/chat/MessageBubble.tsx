@@ -77,7 +77,7 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
 }
 
 /** Voice-note player: play/pause, scrubbable progress and 1× / 1.5× / 2× speed. */
-function VoicePlayer({ src, mine, durationSec }: { src: string; mine: boolean; durationSec?: number }) {
+export function VoicePlayer({ src, mine, durationSec }: { src: string; mine: boolean; durationSec?: number }) {
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
@@ -458,7 +458,7 @@ function ChatPhoto({ url, name, size, mine, onOpen }: { url: string; name?: stri
 }
 
 /** A video in a chat: nothing is downloaded until play in low-data mode. */
-function ChatVideo({ url }: { url: string }) {
+export function ChatVideo({ url }: { url: string }) {
   const lowData = useLowData((s) => s.enabled);
   return <video src={url} controls preload={lowData ? 'none' : 'metadata'} className="rounded-xl max-h-80 m-1" />;
 }

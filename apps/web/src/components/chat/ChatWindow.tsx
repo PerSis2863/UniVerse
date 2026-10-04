@@ -1,4 +1,5 @@
 'use client';
+import { AttachmentInline } from './AttachmentInline';
 import { haptic } from '@/lib/haptics';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 
@@ -723,7 +724,10 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
             </div>
           )}
           <div className="space-y-1.5">
-            {files.map((f) => (
+            {files.filter((f) => f.type === 'AUDIO' || f.type === 'VIDEO').map((f) => (
+              <div key={f.id} className="p-1"><AttachmentInline url={f.attachmentUrl!} name={f.attachmentName} mime={f.attachmentMime} type={f.type} durationSec={f.metadata?.durationSec} /></div>
+            ))}
+            {files.filter((f) => f.type !== 'AUDIO' && f.type !== 'VIDEO').map((f) => (
               <a key={f.id} href={f.attachmentUrl!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
                 <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
                 <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate flex-1">{f.attachmentName || 'File'}</span>

@@ -1,13 +1,13 @@
 'use client';
 
+import { AttachmentInline } from '@/components/chat/AttachmentInline';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { AlertTriangle, ArrowLeft, Check, ChevronDown, Eye, Loader2, Megaphone, MessageSquare, Paperclip, Pencil, RotateCcw, Send, ShieldCheck, Trash2, UserMinus, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, Eye, Loader2, Megaphone, MessageSquare, Pencil, RotateCcw, Send, ShieldCheck, Trash2, UserMinus, Users, X } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
-import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, errorMessage, fetcher, field, refreshConsole, toastWithUndo, useDebounced } from './shared';
 
@@ -309,7 +309,7 @@ export function LiveChat({ id, onBack, onPerson, highlight }: { id: string; onBa
                   {m.type === 'CALL' ? `📞 ${m.body}` : m.type === 'TEXT' ? m.body : m.body || m.type.toLowerCase()}
                 </p>
               )}
-              {!!m.attachmentUrl && <a href={safeHref(m.attachmentUrl)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-indigo-500"><Paperclip className="w-3 h-3" />{m.attachmentName ?? m.type.toLowerCase()}</a>}
+              {!!m.attachmentUrl && <div className="mt-1.5"><AttachmentInline url={m.attachmentUrl} name={m.attachmentName} mime={m.attachmentMime} type={m.type} /></div>}
               {m.reactions.length > 0 && <p className="mt-1 text-xs">{m.reactions.map((r) => r.emoji).join(' ')}</p>}
             </li>
           );
