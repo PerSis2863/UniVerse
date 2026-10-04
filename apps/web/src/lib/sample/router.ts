@@ -250,6 +250,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/assignments$/, () => ok([])],
   [/^\/api\/admin\/insights$/, () => ok({ totals: { students: 0, teachers: 0, courses: 0, grade30: null, attendance30: null, flaggedStudents: 0 }, atRisk: [], departments: [], teachers: [] })],
   [/^\/api\/student\/guardians$/, () => ok([])],
+  [/^\/api\/code$/, () => ok({ courses: [], rooms: [] })],
   [/^\/api\/live$/, ({ q }) => ok(q.get('courseId') ? { enrolled: 0, polls: [] } : [])],
   [/^\/impact\/blockchain-credentials\/pending$/, ({ db: d }) => ok(d.pendingCredentials)],
   [/^\/collaborations\/projects$/, ({ db: d }) => ok(d.projects)],

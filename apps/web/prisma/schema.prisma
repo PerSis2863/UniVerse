@@ -229,6 +229,7 @@ model User {
   guardianContacts      GuardianContact[]
   livePollsCreated      LivePoll[]             @relation("LivePollAuthor")
   livePollVotes         LivePollVote[]
+  codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
 
   @@index([role])
   @@index([status])
@@ -333,6 +334,7 @@ model Course {
   sources               CourseSource[]
   assignments           Assignment[]
   livePolls             LivePoll[]
+  codeRooms             CodeRoom[]
 
   @@index([teacherId])
   @@index([status])
@@ -2208,4 +2210,22 @@ model LivePollVote {
   @@id([pollId, userId])
   @@index([userId])
   @@map("live_poll_votes")
+}
+
+/// A shared code editor for a course (src/server/code-rooms.ts); the code is in its Durable Object.
+model CodeRoom {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?    @relation("CodeRoomAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  title       String
+  language    String   @default("javascript") // javascript, typescript, python, java, cpp
+  locked      Boolean  @default(false) // only the teacher (and the creator) can edit
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([createdById])
+  @@map("code_rooms")
 }

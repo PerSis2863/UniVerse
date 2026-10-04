@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { PenTool, ShieldCheck } from 'lucide-react';
+import { Code2, PenTool, ShieldCheck } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
@@ -47,6 +47,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/quizzes', label: 'Quizzes', keywords: 'tests exams' },
     { href: '/student/assignments', label: 'Assignments', keywords: 'essay homework coursework hand in' },
     { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
+    { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
     { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
@@ -72,6 +73,8 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/assignments', label: 'Assignments' },
         { href: '/student/live', label: 'Live class' },
         { href: '/student/offline', label: 'Offline courses' },
+        { href: '/code', label: 'Code together' },
+        { href: '/student/voice-tutor', label: 'Voice tutor' },
         { href: '/student/grades', label: 'My progress', also: ['/student/attendance', '/student/quizzes'] },
         { href: '/student/skills', label: 'nav.skills' },
         { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },
@@ -124,6 +127,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
         { href: '/teacher/assignments', label: 'Assignments' },
         { href: '/teacher/live', label: 'Live class' },
+        { href: '/code', label: 'Code together' },
         { href: '/teacher/calendar', label: 'nav.timetable' },
       ]
     },
@@ -190,6 +194,7 @@ export const navByRole: Record<string, NavItem[]> = {
     { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
     { href: '/boards', label: 'Whiteboards', icon: PenTool },
+    { href: '/code', label: 'Code together', icon: Code2 },
   ],
 };
 

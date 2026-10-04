@@ -64,12 +64,18 @@
         // Live whiteboards: one per board, holding its drawing and everyone editing it.
         "name": "BOARDS",
         "class_name": "BoardRoom"
+      },
+      {
+        // Shared code editors, one per room (Yjs document + cursors).
+        "name": "CODE",
+        "class_name": "CodeRoom"
       }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["RealtimeHub"] },
-    { "tag": "v2", "new_sqlite_classes": ["BoardRoom"] }
+    { "tag": "v2", "new_sqlite_classes": ["BoardRoom"] },
+    { "tag": "v3", "new_sqlite_classes": ["CodeRoom"] }
   ],
   "triggers": {
     // Daily at 08:00 UTC (13:30 in India): reminders for quizzes due in the next 24 hours.
