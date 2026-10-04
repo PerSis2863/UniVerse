@@ -19,7 +19,7 @@ const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
-  avatar: true, phone: true, googleId: true, emailNotifications: true, termsVersion: true, termsAcceptedAt: true, onboardedAt: true, createdAt: true, updatedAt: true,
+  avatar: true, phone: true, googleId: true, emailNotifications: true, termsVersion: true, termsAcceptedAt: true, onboardedAt: true, tourDoneAt: true, createdAt: true, updatedAt: true,
   studentProfile: true, teacherProfile: true,
 };
 
@@ -233,6 +233,7 @@ export default function users(router: Router) {
       else data.avatar = a;
     }
     if (typeof body?.emailNotifications === 'boolean') data.emailNotifications = body.emailNotifications;
+    if (body?.tourDone === true) data.tourDoneAt = new Date();
     const updated = await prisma.user.update({ where: { id: user.id }, data, select: safeSelect });
     forgetUser(user.id);
     return updated;

@@ -321,6 +321,17 @@
      "updatedAt": false
     },
     {
+     "name": "tourDoneAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "onboardedAt",
      "type": "DateTime",
      "kind": "scalar",

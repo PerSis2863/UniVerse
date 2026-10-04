@@ -1,12 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import useSWR from 'swr';
+import { api } from '@/lib/api';
+import { authedJson } from '@/lib/authed-fetch';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Globe2, GraduationCap, LayoutDashboard, MessageSquare, Search, type LucideIcon } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
-// A short first-time tour of the main places in the menu, shown once per person on this device.
+// A short first-time tour of the main places in the menu, shown once per person: skipping or
+// finishing it is saved on the account (tourDoneAt), so it doesn't come back on another device,
+// in the installed app, or after the browser's storage is cleared.
 // Search can bring it back ("Take the tour"): window.dispatchEvent(new Event('universe:tour')).
 
 type Stop = { icon: LucideIcon; title: string; text: string; href?: string; search?: boolean };
@@ -36,16 +41,24 @@ export function WelcomeTour({ role }: { role?: string }) {
   const stops = STOPS[role ?? ''];
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
+  // The account (already loaded with the app's startup data, so no extra request).
+  const { data: account } = useSWR<{ id: string; tourDoneAt?: string | null }>(user?.id ? '/api/core/users/me' : null, authedJson, { revalidateOnFocus: false });
 
   useEffect(() => {
-    if (!user?.id || !stops) return;
-    let seen = true;
-    try { seen = !!localStorage.getItem(doneKey(user.id)); } catch { /* storage blocked: don't nag */ }
+    if (!user?.id || !stops || !account) return;
+    let seen = !!account.tourDoneAt;
+    try {
+      if (localStorage.getItem(doneKey(user.id))) {
+        // Skipped on this device before the account remembered it: save it there now.
+        if (!seen) void api.patch('/users/me', { tourDone: true }).catch(() => {});
+        seen = true;
+      }
+    } catch { /* storage blocked: the account decides */ }
     const t = seen ? undefined : setTimeout(() => setOpen(true), 800);
     const again = () => { setStep(0); setOpen(true); };
     window.addEventListener('universe:tour', again);
     return () => { if (t) clearTimeout(t); window.removeEventListener('universe:tour', again); };
-  }, [user?.id, stops]);
+  }, [user?.id, stops, account]);
 
   if (!open || !stops || !user) return null;
   const stop = stops[step];
@@ -53,6 +66,7 @@ export function WelcomeTour({ role }: { role?: string }) {
   const finish = () => {
     try { localStorage.setItem(doneKey(user.id), '1'); } catch { /* ignore */ }
     setOpen(false);
+    void api.patch('/users/me', { tourDone: true }).catch(() => {});
   };
   const show = () => {
     finish();
