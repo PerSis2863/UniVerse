@@ -246,6 +246,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/announcements$/, ({ db: d }) => ok(d.adminAnnouncements)],
   [/^\/quizzes$/, ({ db: d }) => ok(d.quizzes.map((x) => ({ id: x.id, title: x.title, status: x.status, dueDate: x.dueDate, timeLimit: x.timeLimit, courseId: x.courseId, course: { name: course(d, x.courseId)?.name } })))],
   [/^\/impact\/certificates\/pending$/, ({ db: d }) => ok(d.pendingCertificates)],
+  [/^\/safety$/, () => ok([])],
   [/^\/impact\/blockchain-credentials\/pending$/, ({ db: d }) => ok(d.pendingCredentials)],
   [/^\/collaborations\/projects$/, ({ db: d }) => ok(d.projects)],
   [/^\/collaborations\/projects\/([^/]+)$/, ({ db: d, m }) => { const p = d.projects.find((x) => x.id === m[1]); return p ? ok({ ...p, members: [], milestones: [] }) : fail('Not found', 404); }],

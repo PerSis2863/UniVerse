@@ -128,7 +128,15 @@ export default function impactModule(router: Router) {
   r.post<{ id: string }>('certificates/:id/approve', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
     const doc = await impact.approveCertificate(params.id);
     audit(user, async () => ({ action: 'certificate.approved', summary: `Approved certificate “${doc.title}” for ${await userName(doc.userId)}`, targetType: 'certificate', targetId: params.id }), req);
+    later(() => notify(doc.userId, { title: 'Your certificate is ready', body: `“${doc.title}” was approved. You can download it now.`, link: '/student/impact/certifications', type: 'credential' }));
     return doc;
+  });
+  r.post<{ id: string }>('certificates/:id/reject', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
+    const reason = typeof body?.reason === 'string' ? body.reason.trim().slice(0, 500) : '';
+    const doc = await impact.rejectCertificate(params.id);
+    audit(user, async () => ({ action: 'certificate.rejected', summary: `Turned down certificate “${doc.title}” for ${await userName(doc.userId)}${reason ? `: ${reason}` : ''}`, targetType: 'certificate', targetId: params.id }), req);
+    later(() => notify(doc.userId, { title: 'Your certificate request was not approved', body: `“${doc.title}”${reason ? `\nReason: ${reason}` : ''}\nYou can request it again once the details are in order.`, link: '/student/impact/certifications', type: 'credential' }));
+    return { ok: true };
   });
 
   // Opened in a new tab (window.open), so the token may come as ?token= instead of a header.

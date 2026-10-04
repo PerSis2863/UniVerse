@@ -119,7 +119,7 @@ export default function StudentSkills() {
             <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 md:p-8">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Technical Skills</h3>
-                <button onClick={() => window.open('/assets/dummy.pdf', '_blank')} className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View Catalog</button>
+                <button onClick={() => setEditor({ name: '', category: 'Technical', level: 'BEGINNER' })} className="text-sm font-medium text-indigo-400 hover:text-indigo-300">+ Add technical skill</button>
               </div>
               
               <div className="space-y-6">

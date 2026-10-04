@@ -149,6 +149,7 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/admin/users', label: 'nav.users' },
         { href: '/admin/early-warning', label: 'Early warning' },
+        { href: '/admin/safety', label: 'Safety reports' },
         { href: '/admin/approvals', label: 'Approvals' },
         { href: '/admin/audit', label: 'Activity Log' },
         { href: '/admin/integrations/lti', label: 'LMS integration' },
