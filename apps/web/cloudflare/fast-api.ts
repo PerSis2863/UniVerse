@@ -206,7 +206,8 @@ async function account(me: Caller, db: D1Database) {
  * cache here for a day, without touching the database.
  */
 async function file(request: Request, key: string, db: D1Database, ctx: ExecutionContext) {
-  const cacheKey = new Request(`${new URL(request.url).origin}/api/files/${key}`);
+  // v2: copies cached before audio/video stopped being sandboxed (src/lib/file-csp.ts) are skipped.
+  const cacheKey = new Request(`${new URL(request.url).origin}/api/files/${key}?v=2`);
   const cache = (caches as unknown as { default: Cache }).default;
   const stored = await cache.match(cacheKey).catch(() => undefined);
   let bytes: Uint8Array<ArrayBuffer>;

@@ -231,11 +231,15 @@ export function MessageBubble(p: Props) {
           <span className="block font-semibold">{video ? 'Video call' : 'Voice call'}</span>
           <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`}</span>
         </span>
-        {m.metadata?.url && fresh && (
+        {m.metadata?.inApp && fresh ? (
+          <a href={`/call/${m.id}`} className={cn('px-3 py-1.5 rounded-full text-xs font-bold', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
+            Join
+          </a>
+        ) : m.metadata?.url && fresh ? (
           <a href={safeHref(m.metadata.url)} target="_blank" rel="noopener noreferrer" className={cn('px-3 py-1.5 rounded-full text-xs font-bold', mine ? 'bg-white text-indigo-600' : 'bg-emerald-500 text-white')}>
             Join
           </a>
-        )}
+        ) : null}
       </div>
     );
   } else if (m.type === 'POLL') {

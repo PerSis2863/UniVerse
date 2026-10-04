@@ -14,6 +14,8 @@ const SETTINGS: { name: string; what: string; needed?: boolean }[] = [
   { name: 'EMAIL_MONTHLY_LIMIT', what: 'Emails per month on your Resend plan (3,000 if not set)' },
   { name: 'GUARDIAN_EMAILS', what: 'Set to on to let students add parents for weekly emails and absence alerts' },
   { name: 'GEMINI_LIVE_MODEL', what: 'Voice tutor model (optional)' },
+  { name: 'TURN_KEY_ID', what: 'Calls on strict networks: Cloudflare Realtime TURN key ID (optional, free up to 1,000 GB a month)' },
+  { name: 'TURN_KEY_API_TOKEN', what: 'Calls on strict networks: that TURN key’s API token (optional)' },
   { name: 'GEMINI_API_KEY', what: 'AI features' },
   { name: 'R2_ACCOUNT_ID', what: 'File storage (large chat files)' },
   { name: 'R2_BUCKET', what: 'File storage (large chat files)' },

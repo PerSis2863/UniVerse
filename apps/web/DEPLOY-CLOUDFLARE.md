@@ -119,8 +119,16 @@ OpenNext builds and adds:
   (linked from that page) with an email listed in `SUPER_ADMIN_EMAILS`.
 
 The Durable Objects are created by **production** deploys (the `migrations` block in `wrangler.jsonc`:
-`v1` RealtimeHub, `v2` BoardRoom, `v3` CodeRoom). Preview builds (`opennextjs-cloudflare upload`) can't create them, so a
+`v1` RealtimeHub, `v2` BoardRoom, `v3` CodeRoom, `v4` CallRoom). Preview builds (`opennextjs-cloudflare upload`) can't create them, so a
 preview build of a branch that adds one fails until that change has been deployed from `main` once.
+
+## Calls
+
+Voice and video calls in chats are UniVerse's own (src/server/calls.ts): audio and video go straight between
+browsers (WebRTC, up to 6 people), and the call's Durable Object (`CallRoom`) only passes connection details. Free STUN
+servers find a direct route on most networks. For strict networks (some campus and office Wi-Fi), create a TURN key in
+Cloudflare → Realtime → TURN Server (free up to 1,000 GB a month) and add `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` as
+secrets. Older calls in chat history still open Jitsi.
 
 ## Email allowance (Resend)
 

@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import { AttachmentInline } from './AttachmentInline';
 import { haptic } from '@/lib/haptics';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
@@ -32,6 +33,7 @@ function byDay<T extends { createdAt: string }>(list: T[]) {
 }
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
+  const router = useRouter();
   const key = `/api/chat/conversations/${conversationId}/messages`;
   // Live updates refresh the thread on every change, so it only polls without them.
   const refreshInterval = useLiveInterval(5000, 0);
@@ -328,17 +330,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const typing = () => { chatJson(`/api/chat/conversations/${conversationId}/typing`, { method: 'POST' }).catch(() => {}); };
 
   const call = async (kind: 'audio' | 'video') => {
-    // Open the tab synchronously so the browser doesn't block it as a pop-up.
-    const win = window.open('', '_blank');
     try {
       const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ type: 'CALL', kind }) });
       appendSent(msg, '');
-      if (msg.metadata?.url) {
-        if (win) win.location.href = msg.metadata.url;
-        else toast('Call started', { description: 'Your browser blocked the new tab — use the Join button in the chat.' });
-      }
+      // UniVerse's own call screen; everyone in the chat gets a ringing card with Join.
+      router.push(`/call/${msg.id}`);
     } catch (e: any) {
-      win?.close();
       toast.error(e.message);
     }
   };

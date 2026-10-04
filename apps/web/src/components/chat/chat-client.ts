@@ -15,7 +15,7 @@ export interface ChatMessage {
   attachmentSize: number | null;
   attachmentMime: string | null;
   metadata: {
-    kind?: 'audio' | 'video'; room?: string; url?: string; durationSec?: number;
+    kind?: 'audio' | 'video'; room?: string; url?: string; inApp?: boolean; durationSec?: number; // CALL (inApp: UniVerse's own call) / voice notes
     question?: string; options?: string[]; multiple?: boolean; // POLL
     lat?: number; lng?: number; label?: string | null; // LOCATION
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT

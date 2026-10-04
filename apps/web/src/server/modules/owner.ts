@@ -11,6 +11,7 @@ import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
 import { emailUsage } from '../email-budget';
+import { sendEmail } from '../email';
 import { aiUsageToday, forgetAiLimits, parseLimits } from '../ai-budget';
 import { cloudflareAccount } from '../cloudflare-account';
 import { healthCheck } from '../owner-health';
@@ -268,8 +269,17 @@ export default function ownerModule(router: Router) {
       settings: serverSettings(),
       ai: await aiUsageToday().catch(() => null),
       email: process.env.RESEND_API_KEY ? await emailUsage().catch(() => null) : null,
+      ...(await liveExtras()),
       history,
     });
+  });
+
+  // A test email to the owner (counts as one routine email toward the plan's allowance).
+  r.post('server/test-email', async ({ user }) => {
+    if (!process.env.RESEND_API_KEY) throw new BadRequestException('Add the RESEND_API_KEY secret first.');
+    const sent = await sendEmail(user.email, 'UniVerse test email', '<p>Email from UniVerse is working.</p><p>Sent from the owner console.</p>', 'Email from UniVerse is working. Sent from the owner console.');
+    if (!sent) throw new BadRequestException('The email wasn’t sent: today’s routine email allowance is used up, or Resend refused it (see Errors).');
+    return { sentTo: user.email };
   });
 
   r.post('server', async ({ body, user }) => {
@@ -814,4 +824,27 @@ function pickKeys(o: Record<string, unknown>, keys: string[]) {
 /** Plain JSON for the change history (dates become ISO strings). */
 function json(o: unknown) {
   return JSON.parse(JSON.stringify(o ?? null));
+}
+
+/** Who's online now, and how much the newer features were used in the last 7 days (two queries). */
+async function liveExtras() {
+  const iso = (ms: number) => new Date(ms).toISOString().replace('Z', '+00:00'); // how dates are stored in D1
+  const now = Date.now(), week = iso(now - 7 * 86_400_000), d7 = new Date(now - 7 * 86_400_000).toISOString().slice(0, 10);
+  const [online, onlineCount, used] = await Promise.all([
+    prisma.user.findMany({ where: { lastSeenAt: { gt: new Date(now - 5 * 60_000) } }, orderBy: { lastSeenAt: 'desc' }, take: 12, select: { id: true, name: true, role: true, avatar: true, lastSeenAt: true } }),
+    prisma.user.count({ where: { lastSeenAt: { gt: new Date(now - 5 * 60_000) } } }),
+    selectColumns([
+      ['assignments', `(SELECT COUNT(*) FROM assignments WHERE createdAt > '${week}')`],
+      ['answers', `(SELECT COUNT(*) FROM assignment_submissions WHERE submittedAt > '${week}')`],
+      ['aiDrafts', `(SELECT COUNT(*) FROM assignment_submissions WHERE aiDraftedAt > '${week}')`],
+      ['livePolls', `(SELECT COUNT(*) FROM live_polls WHERE createdAt > '${week}')`],
+      ['pollAnswers', `(SELECT COUNT(*) FROM live_poll_votes WHERE createdAt > '${week}')`],
+      ['codeRooms', `(SELECT COUNT(*) FROM code_rooms WHERE updatedAt > '${week}')`],
+      ['calls', `(SELECT COUNT(*) FROM messages WHERE type = 'CALL' AND createdAt > '${week}')`],
+      ['studyDays', `(SELECT COUNT(*) FROM study_days WHERE day >= '${d7}')`],
+      ['safetyReports', `(SELECT COUNT(*) FROM safety_alerts WHERE createdAt > '${week}')`],
+      ['whiteboards', `(SELECT COUNT(*) FROM boards WHERE updatedAt > '${week}')`],
+    ]).catch(() => ({} as Record<string, unknown>)),
+  ]);
+  return { online: { count: onlineCount, people: online }, adoption: Object.fromEntries(Object.entries(used).map(([k, v]) => [k, Number(v ?? 0)])) };
 }

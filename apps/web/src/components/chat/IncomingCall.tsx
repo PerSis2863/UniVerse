@@ -11,7 +11,7 @@ import { useLiveInterval } from '@/lib/realtime-client';
 type IncomingCallItem = {
   id: string;
   conversationId: string;
-  metadata: { kind?: 'audio' | 'video'; url?: string } | null;
+  metadata: { kind?: 'audio' | 'video'; url?: string; inApp?: boolean } | null;
   createdAt: string;
   sender: { name: string; avatar: string | null };
   conversation: { isGroup: boolean; name: string | null };
@@ -68,8 +68,8 @@ export function IncomingCall({ inboxPath }: { inboxPath: string }) {
               <PhoneOff className="w-5 h-5" />
             </button>
             <a
-              href={call.metadata?.url || `${inboxPath}?c=${call.conversationId}`}
-              target={call.metadata?.url ? '_blank' : undefined}
+              href={call.metadata?.inApp ? `/call/${call.id}` : call.metadata?.url || `${inboxPath}?c=${call.conversationId}`}
+              target={call.metadata?.url && !call.metadata?.inApp ? '_blank' : undefined}
               rel="noopener noreferrer"
               onClick={() => dismiss(call.id)}
               aria-label="Join call"
