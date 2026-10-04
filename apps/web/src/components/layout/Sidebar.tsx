@@ -71,6 +71,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/assignments', label: 'Assignments' },
         { href: '/student/live', label: 'Live class' },
+        { href: '/student/offline', label: 'Offline courses' },
         { href: '/student/grades', label: 'My progress', also: ['/student/attendance', '/student/quizzes'] },
         { href: '/student/skills', label: 'nav.skills' },
         { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },

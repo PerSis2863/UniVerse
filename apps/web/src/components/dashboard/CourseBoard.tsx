@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 import { safeHref } from '@/lib/safe-href';
 import { courseColor } from '@/lib/course-color';
+import { SaveOfflineButton } from '@/components/offline/SaveOfflineButton';
 
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -156,6 +157,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
           <div className="flex gap-2">
             {role === 'student' ? (
               <>
+                {course && <SaveOfflineButton courseId={course.id} code={course.code} />}
                 <Link href="/student/grades" className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> All my grades</Link>
                 <button onClick={messageInstructor} className="btn-primary text-xs py-2 flex items-center gap-1.5"><Send className="w-3.5 h-3.5" /> Message instructor</button>
               </>
