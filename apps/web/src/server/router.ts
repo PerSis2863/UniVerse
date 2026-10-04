@@ -69,8 +69,15 @@ export class Router {
       let ok = true;
       for (let i = 0; i < parts.length; i++) {
         const seg = r.segments[i];
-        if (seg.startsWith(':')) params[seg.slice(1)] = decodeURIComponent(parts[i]);
-        else if (seg !== parts[i]) {
+        if (seg.startsWith(':')) {
+          // A malformed escape (e.g. "%E0") is a bad address, not a server error.
+          try {
+            params[seg.slice(1)] = decodeURIComponent(parts[i]);
+          } catch {
+            ok = false;
+            break;
+          }
+        } else if (seg !== parts[i]) {
           ok = false;
           break;
         }
