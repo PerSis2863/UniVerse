@@ -136,13 +136,18 @@ export async function listAssignments(user: SessionUser, courseId: string | null
     take: 200,
     select: {
       id: true, title: true, dueDate: true, status: true, maxScore: true, createdAt: true, course: { select: { ...COURSE.select, _count: { select: { enrollments: true } } } },
-      submissions: { select: { status: true } },
     },
   });
-  return rows.map(({ submissions, ...a }) => ({
-    ...a,
-    counts: { submitted: submissions.length, toGrade: submissions.filter((s) => s.status !== 'RETURNED').length, returned: submissions.filter((s) => s.status === 'RETURNED').length },
-  }));
+  // Counted in the database (one row per assignment and status), not by loading every answer.
+  // (D1 takes up to 100 values per query, so ids go in chunks of 90.)
+  const ids = rows.map((r) => r.id);
+  const chunks = Array.from({ length: Math.ceil(ids.length / 90) }, (_, i) => ids.slice(i * 90, (i + 1) * 90));
+  const groups = (await Promise.all(chunks.map((part) =>
+    prisma.assignmentSubmission.groupBy({ by: ['assignmentId', 'status'], where: { assignmentId: { in: part } }, _count: { _all: true } }),
+  ))).flat();
+  const count = (id: string, returned?: boolean) =>
+    groups.filter((g) => g.assignmentId === id && (returned === undefined || (g.status === 'RETURNED') === returned)).reduce((t, g) => t + g._count._all, 0);
+  return rows.map((a) => ({ ...a, counts: { submitted: count(a.id), toGrade: count(a.id, false), returned: count(a.id, true) } }));
 }
 
 export async function assignmentDetail(assignmentId: string, user: SessionUser) {

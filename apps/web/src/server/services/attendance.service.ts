@@ -5,9 +5,7 @@ export class AttendanceService {
   async getStudentAttendance(studentId: string) {
     const attendanceRecords = await prisma.attendance.findMany({
       where: { studentId },
-      include: {
-        course: true,
-      },
+      include: { course: { select: { id: true, name: true, code: true } } },
       orderBy: { date: 'desc' },
     });
 

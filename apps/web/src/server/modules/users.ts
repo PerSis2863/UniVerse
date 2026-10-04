@@ -109,11 +109,13 @@ export default function users(router: Router) {
 
   r.get('directory', ({ query }) => {
     const where: any = { role: 'STUDENT', status: 'ACTIVE' };
-    if (query.search) where.OR = [{ name: { contains: query.search } }, { email: { contains: query.search } }];
+    if (typeof query.search === 'string' && query.search.trim()) where.name = { contains: query.search.trim().slice(0, 100) };
+    // Any signed-in user can open this: names and departments only, never email addresses.
     return prisma.user.findMany({
       where,
-      select: { id: true, name: true, email: true, avatar: true, studentProfile: { select: { department: true, year: true } } },
+      select: { id: true, name: true, avatar: true, studentProfile: { select: { department: true, year: true } } },
       orderBy: { name: 'asc' },
+      take: 1000,
     });
   });
 
