@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Avatar } from './MessageBubble';
 import { chatJson } from './chat-client';
 import { Switch } from '@/components/ui/Switch';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Communities (Discord server / WhatsApp community), src/server/communities.ts: a list of
 // communities, each opening to its channels. Text channels open in the chat on the right; voice
@@ -102,7 +103,7 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
 function ChannelRow({ ch, active, onOpen }: { ch: Channel; active: boolean; onOpen: () => void }) {
   const router = useRouter();
   // Voice rooms show who's inside (one small request when the list opens).
-  const { data: peers } = useSWR<{ count: number; names: string[] }>(ch.kind === 'VOICE' ? `/api/calls/r_${ch.id}/peers` : null, authedJson, { revalidateOnFocus: false, refreshInterval: 60_000 });
+  const { data: peers } = useSWR<{ count: number; names: string[] }>(ch.kind === 'VOICE' ? `/api/calls/r_${ch.id}/peers` : null, authedJson, { revalidateOnFocus: false, refreshInterval: useActivePoll(60_000) });
   if (ch.kind === 'VOICE') {
     return (
       <li>

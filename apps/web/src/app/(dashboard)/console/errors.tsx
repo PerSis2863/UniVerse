@@ -8,6 +8,7 @@ import { Bot, CheckCircle2, ChevronDown, Copy, ExternalLink, EyeOff, Loader2, Ro
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, fetcher, matches } from './shared';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Errors tab: problems collected automatically from browsers and the server (src/server/errors.ts),
 // grouped, with an AI diagnosis. Mark them resolved once fixed; if one happens again it comes back.
@@ -97,7 +98,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
   const [source, setSource] = useState<'ALL' | 'SERVER' | 'CLIENT'>('ALL');
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('latest');
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number>; summary?: Summary }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: 60_000 });
+  const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number>; summary?: Summary }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: useActivePoll(60_000) });
   const openCount = (data?.counts.NEW ?? 0) + (data?.counts.DIAGNOSED ?? 0);
   const items = (data?.items ?? [])
     .filter((e) => (source === 'ALL' || e.source === source) && matches(q, e.message, e.path, e.kind, e.source, e.diagnosis, e.userAgent, e.severity, e.lastUser?.name, e.lastUser?.email))

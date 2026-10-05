@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
 import { EmailScheduleCard } from './email-schedule';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // The owner console's Server tab: switch UniVerse between live, read-only and maintenance, show a
 // notice on every page, and see the Cloudflare plan usage and the app's health at a glance. The
@@ -64,7 +65,7 @@ const readSection = (): Section => {
 };
 
 export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'deletions' | 'activity') => void }) {
-  const { data, mutate } = useSWR<ServerData>('/owner/server', fetcher, { refreshInterval: 60_000 });
+  const { data, mutate } = useSWR<ServerData>('/owner/server', fetcher, { refreshInterval: useActivePoll(60_000) });
   const [section, setSection] = useState<Section>(readSection);
   const pick = (id: Section) => { setSection(id); try { localStorage.setItem(SECTION_KEY, id); } catch { /* storage unavailable */ } };
   if (!data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
@@ -400,7 +401,7 @@ const Pill = ({ tone, children }: { tone: 'good' | 'bad' | 'warn' | 'plain'; chi
 /** Live version, build minutes, visitors, security, domain, database and plan, read from Cloudflare with the read-only token. */
 function CloudflareCard() {
   const [fresh, setFresh] = useState(0);
-  const { data, isValidating } = useSWR<CfAccount>(`/owner/cloudflare${fresh ? `?fresh=1&n=${fresh}` : ''}`, fetcher, { refreshInterval: 300_000 });
+  const { data, isValidating } = useSWR<CfAccount>(`/owner/cloudflare${fresh ? `?fresh=1&n=${fresh}` : ''}`, fetcher, { refreshInterval: useActivePoll(300_000) });
   const missing = (p?: CfPart<unknown>) => (p && !p.ok ? <p className="text-xs text-zinc-500">Can&apos;t read this yet: {(p as { error: string }).error}</p> : null);
   // Every change to Cloudflare needs a code sent to the owner's email.
   const putBack = async (versionId: string, when: string) => {

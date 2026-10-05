@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { PLANS, type PlanId } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 import { card, downloadCsv, errorMessage, fetcher, field, refreshConsole, toastWithUndo, useDebounced } from './shared';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Owner console pieces that read across the app (server side: src/server/modules/owner-insights.ts):
 // the "Needs your attention" card, the console-wide search, Analytics and Money.
@@ -20,7 +21,7 @@ export type Attention = {
 };
 
 /** What needs the owner now, shared by the Overview card and the counts on the tabs. */
-export const useAttention = () => useSWR<Attention>('/owner/attention', fetcher, { refreshInterval: 60_000 });
+export const useAttention = () => useSWR<Attention>('/owner/attention', fetcher, { refreshInterval: useActivePoll(60_000) });
 
 const LEVEL = {
   high: 'bg-rose-500',
@@ -211,7 +212,7 @@ const ROLE_NAMES: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teac
 
 export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void }) {
   const [days, setDays] = useState(30);
-  const { data, isLoading } = useSWR<AnalyticsData>(`/owner/analytics?days=${days}`, fetcher, { keepPreviousData: true, refreshInterval: 120_000 });
+  const { data, isLoading } = useSWR<AnalyticsData>(`/owner/analytics?days=${days}`, fetcher, { keepPreviousData: true, refreshInterval: useActivePoll(120_000) });
   if (isLoading && !data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
   if (!data) return null;
   const t = data.totals;
@@ -300,7 +301,7 @@ const STATUS_NAME: Record<string, string> = { COMPLETED: 'Paid', PENDING: 'Waiti
 const nice = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
 
 export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
-  const { data, isLoading } = useSWR<MoneyData>('/owner/money', fetcher, { refreshInterval: 120_000 });
+  const { data, isLoading } = useSWR<MoneyData>('/owner/money', fetcher, { refreshInterval: useActivePoll(120_000) });
   const [status, setStatus] = useState('');
   if (isLoading || !data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
   const money = (n: number, c = data.currency) => new Intl.NumberFormat('en', { style: 'currency', currency: c, maximumFractionDigits: 2 }).format(n);

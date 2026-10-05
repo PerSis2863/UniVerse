@@ -10,6 +10,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, errorMessage, fetcher, field, refreshConsole, toastWithUndo, useDebounced } from './shared';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // The owner console's Chats and Announce tabs. Chats shows every conversation on UniVerse as it
 // happens; the owner can step in as UniVerse (edit or remove a message, post a team notice, take
@@ -51,7 +52,7 @@ export function ChatsPanel({ onPerson, initialChat }: { onPerson: (id: string) =
     const id = initialChat ?? (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('chat'));
     return id ? { id } : null;
   });
-  const { data, isLoading } = useSWR<{ chats: ChatRow[]; hits: Hit[]; activeNow: number }>(`/owner/chats${dq ? `?q=${encodeURIComponent(dq)}` : ''}`, fetcher, { refreshInterval: 5000 });
+  const { data, isLoading } = useSWR<{ chats: ChatRow[]; hits: Hit[]; activeNow: number }>(`/owner/chats${dq ? `?q=${encodeURIComponent(dq)}` : ''}`, fetcher, { refreshInterval: useActivePoll(5000) });
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 justify-between">
@@ -120,7 +121,7 @@ export function ChatsPanel({ onPerson, initialChat }: { onPerson: (id: string) =
 
 /** Words that alert the owner (the bell) when someone writes them, and where they were written. */
 function WatchWords({ onOpen }: { onOpen: (conversationId: string, messageId: string) => void }) {
-  const { data, mutate } = useSWR<{ words: string[]; flagged: Hit[] }>('/owner/watch-words', fetcher, { refreshInterval: 30_000 });
+  const { data, mutate } = useSWR<{ words: string[]; flagged: Hit[] }>('/owner/watch-words', fetcher, { refreshInterval: useActivePoll(30_000) });
   const [show, setShow] = useState(false);
   const [text, setText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -176,7 +177,7 @@ function WatchWords({ onOpen }: { onOpen: (conversationId: string, messageId: st
 
 /** A chat as it happens (refreshes every few seconds), with UniVerse's moderation tools. */
 export function LiveChat({ id, onBack, onPerson, highlight }: { id: string; onBack: () => void; onPerson?: (id: string) => void; highlight?: string }) {
-  const { data, mutate, isLoading } = useSWR<ChatData>(`/owner/chats/${id}`, fetcher, { refreshInterval: 3000 });
+  const { data, mutate, isLoading } = useSWR<ChatData>(`/owner/chats/${id}`, fetcher, { refreshInterval: useActivePoll(3000) });
   const list = useRef<HTMLOListElement>(null);
   const stick = useRef(true);
   const [editing, setEditing] = useState<string | null>(null);

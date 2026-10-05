@@ -19,6 +19,7 @@ import { AnnouncePanel, ChatsPanel, ComposeDialog } from './chats';
 import { DatabasePanel } from './database';
 import { HealthPanel } from './health';
 import { AnalyticsPanel, AttentionCard, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
@@ -171,7 +172,7 @@ type PersonRow = {
 };
 
 function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: (t: Tab, status?: string) => void }) {
-  const { data } = useSWR<OverviewData>('/owner/overview', fetcher, { refreshInterval: 60_000 });
+  const { data } = useSWR<OverviewData>('/owner/overview', fetcher, { refreshInterval: useActivePoll(60_000) });
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim());
   const { data: found } = useSWR<{ total: number; people: PersonRow[] }>(dq ? `/owner/people?q=${encodeURIComponent(dq)}` : null, fetcher);
@@ -295,7 +296,7 @@ function Feed({ onPerson }: { onPerson: (id: string) => void }) {
   const { data, size, setSize, isLoading, isValidating } = useSWRInfinite<{ items: FeedItem[]; next: string | null }>(
     (i, prev) => (i === 0 ? base : prev?.next ? `${base}&before=${encodeURIComponent(prev.next)}` : null),
     fetcher,
-    { refreshInterval: dq ? 0 : 30_000 },
+    { refreshInterval: useActivePoll(dq ? 0 : 30_000) },
   );
   const items = (data ?? []).flatMap((p) => p.items);
   const more = !!data?.[data.length - 1]?.next;
