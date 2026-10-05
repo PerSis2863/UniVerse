@@ -186,13 +186,17 @@ export default {
   },
 };
 
-/** Is a scheduled call starting within about 15 minutes that hasn't been reminded yet? */
+/** Is a scheduled call starting within about 15 minutes, or a chat reminder due, not yet sent? */
 async function callsDue(env: Env): Promise<boolean> {
   if (!env.DB) return false;
   const now = Date.now();
   try {
-    const row = await env.DB.prepare('SELECT 1 FROM scheduled_calls WHERE "remindedAt" IS NULL AND "startAt" > ? AND "startAt" <= ? LIMIT 1')
-      .bind(dbDate(now - 5 * 60_000), dbDate(now + 16 * 60_000))
+    // A scheduled call starting soon, or a "/remind" reminder that's due.
+    const row = await env.DB.prepare(
+      `SELECT 1 FROM scheduled_calls WHERE "remindedAt" IS NULL AND "startAt" > ?1 AND "startAt" <= ?2
+       UNION ALL SELECT 1 FROM chat_reminders WHERE "sentAt" IS NULL AND "dueAt" <= ?3 LIMIT 1`,
+    )
+      .bind(dbDate(now - 5 * 60_000), dbDate(now + 16 * 60_000), dbDate(now + 5 * 60_000))
       .first();
     return !!row;
   } catch (e) {
@@ -710,6 +714,11 @@ export class CallRoom extends DurableObject<Env> {
       const ticket = crypto.randomUUID();
       await this.ctx.storage.put(`ticket:${ticket}`, { ...who, exp: now + TICKET_TTL_MS });
       return Response.json({ ticket });
+    }
+    // From the app: who is in the room (names only), for voice channel lists.
+    if (url.pathname === '/peers') {
+      const peers = this.peers().map(({ peer }) => peer.name);
+      return Response.json({ count: peers.length, names: peers.slice(0, 12) });
     }
     // From the app: someone declined (sent to everyone waiting in the call).
     if (url.pathname === '/notify' && request.method === 'POST') {

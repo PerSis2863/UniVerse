@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { presenceOf } from '@/lib/presence';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { isOnline, SYSTEM_EMAIL } from '@/lib/chat';
@@ -18,10 +19,10 @@ export async function GET(req: Request) {
     },
     orderBy: [{ lastSeenAt: { sort: 'desc', nulls: 'last' } }, { name: 'asc' }],
     take: 25,
-    select: { id: true, name: true, avatar: true, role: true, lastSeenAt: true },
+    select: { id: true, name: true, avatar: true, role: true, lastSeenAt: true, presence: true, statusText: true, statusEmoji: true, statusUntil: true },
   });
   return NextResponse.json(
-    people.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, role: p.role, online: isOnline(p.lastSeenAt) })),
+    people.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, role: p.role, online: isOnline(p.lastSeenAt, p.presence), status: presenceOf(p) })),
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

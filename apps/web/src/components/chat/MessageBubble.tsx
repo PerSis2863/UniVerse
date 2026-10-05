@@ -142,6 +142,8 @@ interface Props {
   /** Starts a new call of this kind in the chat (Call back on a finished call). */
   onCallBack?: (kind: 'audio' | 'video') => void;
   onToggleOriginal?: () => void;
+  /** Opens this message's thread (Discord-style); absent inside a thread or where threads don't apply. */
+  onThread?: () => void;
 }
 
 export type TranslationState = { status: 'pending' } | { status: 'error'; message?: string } | { status: 'done'; text: string; from: string; same: boolean };
@@ -378,7 +380,9 @@ export function MessageBubble(p: Props) {
         onDragEnd={(_, info) => { if (info.offset.x > 60) { haptic('tap'); p.onReply(); } }}
         className={cn('flex flex-col min-w-0 max-w-[min(82%,34rem)]', mine ? 'items-end' : 'items-start')}
       >
-        {showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2">{m.sender.name}</span>}
+        {m.metadata?.ai
+          ? <span className="text-[11px] font-semibold text-fuchsia-500 mb-1 ml-2 inline-flex items-center gap-1">✨ UniVerse AI{m.metadata.askedBy ? <span className="font-normal text-zinc-500"> · asked by {m.metadata.askedBy.split(' ')[0]}</span> : null}</span>
+          : showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2">{m.sender.name}</span>}
         <div className={cn('flex items-center gap-1 min-w-0 max-w-full', mine && 'flex-row-reverse')}>
           <div
             className={bubble}
@@ -419,6 +423,7 @@ export function MessageBubble(p: Props) {
               {menu && (
                 <div className={cn('absolute z-20 w-48 py-1 rounded-xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', picker ? 'top-full mt-1' : 'bottom-full mb-1', mine ? 'right-0' : 'left-0')} onMouseLeave={() => !touch && setMenu(false)}>
                   <MenuItem icon={CornerUpLeft} label="Reply" onClick={() => { p.onReply(); close(); }} />
+                  {p.onThread && <MenuItem icon={MessageCircle} label="Reply in thread" onClick={() => { p.onThread!(); close(); }} />}
                   {FORWARDABLE.has(m.type) && <MenuItem icon={CornerUpRight} label="Forward" onClick={() => { p.onForward(); close(); }} />}
                   <MenuItem icon={m.starred ? StarOff : Star} label={m.starred ? 'Unstar' : 'Star'} onClick={() => { p.onStar(); close(); }} />
                   {p.onPin && <MenuItem icon={m.pinnedAt ? PinOff : Pin} label={m.pinnedAt ? 'Unpin' : 'Pin'} onClick={() => { p.onPin!(); close(); }} />}
@@ -439,6 +444,11 @@ export function MessageBubble(p: Props) {
           )}
         </div>
 
+        {m.thread && m.thread.count > 0 && p.onThread && (
+          <button type="button" onClick={p.onThread} className={cn('mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-500 hover:underline', mine ? 'mr-2' : 'ml-2')}>
+            <MessageCircle className="w-3.5 h-3.5" /> {m.thread.count} {m.thread.count === 1 ? 'reply' : 'replies'}
+          </button>
+        )}
         {reactionEntries.length > 0 && (
           <div className={cn('flex gap-1 -mt-1.5 z-10', mine ? 'mr-2' : 'ml-2')}>
             {reactionEntries.map(([emoji, users]) => (

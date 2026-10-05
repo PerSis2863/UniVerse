@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { presenceOf } from '@/lib/presence';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { later, notify } from '@/server/email';
@@ -7,6 +8,8 @@ import { deliver, publishChat } from '@/server/realtime';
 import { pushService } from '@/server/services/push.service';
 import { linkScheduledCall } from '@/server/scheduled-calls';
 import { firstUrl, linkPreview } from '@/server/link-preview';
+import { channelSendCheck } from '@/server/communities';
+import { planLimits } from '@/lib/plan-limits';
 import type { Prisma } from '@prisma/client';
 import { pretranslate, storedTranslations } from '@/server/translate';
 import { recordServerError } from '@/server/errors';
@@ -53,6 +56,16 @@ async function getThread(req: Request, { params }: Ctx) {
     return NextResponse.json({ results }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
+  // A thread (Discord-style): the message it started from and its replies, oldest first.
+  const threadOf = sp.get('thread');
+  if (threadOf) {
+    const root = await prisma.message.findFirst({ where: { id: threadOf, conversationId: id, threadId: null, ...visibleTo(user.id) }, select: { ...messageSelect, sender } });
+    if (!root) return NextResponse.json({ error: 'This thread no longer exists.' }, { status: 404 });
+    const replies = await prisma.message.findMany({ where: { conversationId: id, threadId: root.id, ...visibleTo(user.id) }, orderBy: { createdAt: 'asc' }, take: 200, select: { ...messageSelect, sender } });
+    const [r, ...rest] = await decorate([root, ...replies].map(serializeMessage), user.id);
+    return NextResponse.json({ root: r, messages: rest, me: user.id }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
   // Housekeeping writes below never stop the chat from opening: a failure is only recorded.
   const quietly = (p: Promise<unknown>) => p.catch((e) => recordServerError(e, req, user.id).catch(() => {}));
 
@@ -61,7 +74,7 @@ async function getThread(req: Request, { params }: Ctx) {
 
   const [rows, convo, system, prefs] = await Promise.all([
     prisma.message.findMany({
-      where: { conversationId: id, ...visibleTo(user.id), ...(beforeDate && !isNaN(+beforeDate) ? { createdAt: { lt: beforeDate } } : {}) },
+      where: { conversationId: id, threadId: null, ...visibleTo(user.id), ...(beforeDate && !isNaN(+beforeDate) ? { createdAt: { lt: beforeDate } } : {}) },
       orderBy: { createdAt: 'desc' },
       take: PAGE + 1,
       select: { ...messageSelect, sender },
@@ -70,7 +83,9 @@ async function getThread(req: Request, { params }: Ctx) {
       where: { id },
       select: {
         id: true, isGroup: true, name: true, avatarUrl: true, createdById: true, disappearingSec: true,
-        participants: { select: { userId: true, role: true, lastReadAt: true, typingUntil: true, user: userCard } },
+        communityId: true, channelKind: true, slowModeSec: true, community: { select: { name: true, color: true } },
+        // Big community channels: the first 300 members are enough for mentions and read marks.
+        participants: { take: 300, select: { userId: true, role: true, lastReadAt: true, typingUntil: true, user: userCard } },
       },
     }),
     getSystemUser(),
@@ -105,6 +120,15 @@ async function getThread(req: Request, { params }: Ctx) {
     prefs?.translateTo ? storedTranslations(page.filter((m) => m.senderId !== user.id).map((m) => m.id), prefs.translateTo) : Promise.resolve({}),
   ]);
   const others = convo.participants.filter((p) => p.userId !== user.id);
+  // Threads started from messages on this page: how many replies, and when the last one came.
+  const threads = page.length
+    ? await prisma.message.groupBy({ by: ['threadId'], where: { threadId: { in: page.map((m) => m.id) }, deletedAt: null }, _count: { _all: true }, _max: { createdAt: true } })
+    : [];
+  const threadOf2 = new Map(threads.map((t) => [t.threadId!, { count: t._count._all, lastAt: t._max.createdAt }]));
+  const withThreads = messages.map((m) => (threadOf2.has(m.id) ? { ...m, thread: threadOf2.get(m.id) } : m));
+  const communityRole = convo.communityId
+    ? (await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: convo.communityId, userId: user.id } }, select: { role: true } }))?.role ?? null
+    : null;
 
   return NextResponse.json(
     {
@@ -120,21 +144,25 @@ async function getThread(req: Request, { params }: Ctx) {
         muted: !!prefs?.mutedUntil && prefs.mutedUntil > now,
         archived: !!prefs?.archivedAt,
         translateTo: prefs?.translateTo ?? null,
+        channel: convo.communityId
+          ? { kind: convo.channelKind ?? 'TEXT', communityId: convo.communityId, communityName: convo.community?.name ?? '', color: convo.community?.color ?? null, slowModeSec: convo.slowModeSec, role: communityRole }
+          : null,
         members: convo.participants.map((p) => ({
           id: p.user.id,
           name: p.user.name,
           avatar: p.user.avatar,
           role: p.user.role,
           groupRole: p.role,
-          online: isOnline(p.user.lastSeenAt),
-          lastSeenAt: p.user.lastSeenAt,
+          online: isOnline(p.user.lastSeenAt, p.user.presence),
+          lastSeenAt: presenceOf(p.user).hidden ? null : p.user.lastSeenAt,
+          status: presenceOf(p.user),
           lastReadAt: p.lastReadAt,
         })),
       },
       typing: others.filter((p) => p.typingUntil && p.typingUntil > now).map((p) => p.user.name.split(' ')[0]),
       pinned: pinnedRows,
       translations,
-      messages,
+      messages: withThreads,
       hasMore,
       me: user.id,
     },
@@ -157,7 +185,12 @@ export async function POST(req: Request, { params }: Ctx) {
   if (muted) return NextResponse.json({ error: muted }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
-  const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true } });
+  const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true, communityId: true } });
+  // Community channels: announcements are for moderators, voice rooms have no messages, slow mode.
+  if (convo?.communityId) {
+    const why = await channelSendCheck(id, user.id);
+    if (why) return NextResponse.json({ error: why }, { status: 403 });
+  }
   const data: Record<string, unknown> = { conversationId: id, senderId: user.id };
 
   if (typeof b.forwardOf === 'string') {
@@ -213,6 +246,13 @@ export async function POST(req: Request, { params }: Ctx) {
   }
   if (convo?.disappearingSec) data.expiresAt = new Date(Date.now() + convo.disappearingSec * 1000);
 
+  // A reply inside a thread: the thread's first message must be in this chat (and not a reply itself).
+  if (typeof b.threadId === 'string') {
+    const root = await prisma.message.findFirst({ where: { id: b.threadId, conversationId: id, threadId: null, deletedAt: null }, select: { id: true } });
+    if (!root) return NextResponse.json({ error: 'This thread no longer exists.' }, { status: 404 });
+    data.threadId = root.id;
+  }
+
   if (typeof b.replyToId === 'string') {
     const parent = await prisma.message.findFirst({ where: { id: b.replyToId, conversationId: id }, select: { id: true } });
     if (parent) data.replyToId = parent.id;
@@ -239,7 +279,10 @@ export async function POST(req: Request, { params }: Ctx) {
   later(async () => {
     // Members with auto-translate get the message already translated (a few seconds at most).
     if (data.type === 'TEXT' && String(data.body ?? '').trim()) await pretranslate(id, message.id, String(data.body), user.id).catch(() => {});
-    await notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? ''), message.id);
+    // Community channels can be large: live updates go to members active lately (capped), and
+    // nobody is notified per message (only @mentions, below). Chats and groups notify as usual.
+    if (convo?.communityId) await publishGroupChannel(id);
+    else await notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? ''), message.id);
   });
   if (data.type === 'TEXT' && String(data.body ?? '').includes('@')) later(() => notifyMentions(id, user, String(data.body)));
   // Watch words (owner console → Live chats) alert the owner.
@@ -353,4 +396,14 @@ async function notifyMentions(conversationId: string, from: { id: string; name: 
       }),
     ),
   );
+}
+
+/** A new message in a community channel: refresh the open tabs of members active in the last 15 minutes. */
+async function publishGroupChannel(conversationId: string) {
+  const active = await prisma.conversationParticipant.findMany({
+    where: { conversationId, user: { lastSeenAt: { gt: new Date(Date.now() - 15 * 60_000) } } },
+    select: { userId: true },
+    take: planLimits().livePushes,
+  });
+  await deliver(active.map((a) => a.userId), { type: 'chat', conversationId });
 }

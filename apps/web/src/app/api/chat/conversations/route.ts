@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { presenceOf } from '@/lib/presence';
 import prisma from '@/lib/db';
 import { chatMuted } from '@/server/moderation';
 import { getSessionUser } from '@/lib/server-auth';
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
   const system = await getSystemUser();
 
   const conversations = await prisma.conversation.findMany({
-    where: { participants: { some: { userId: user.id } } },
+    where: { communityId: null, participants: { some: { userId: user.id } } }, // channels are under Communities
     orderBy: { updatedAt: 'desc' },
     take: 100,
     select: {
@@ -59,8 +60,9 @@ export async function GET(req: Request) {
         title: c.isGroup ? c.name || 'Group chat' : other?.name || 'Unknown user',
         avatarUrl: c.isGroup ? c.avatarUrl : other?.avatar ?? null,
         otherUserId: c.isGroup ? null : other?.id ?? null,
-        online: !c.isGroup && isOnline(other?.lastSeenAt),
-        lastSeenAt: c.isGroup ? null : other?.lastSeenAt ?? null,
+        online: !c.isGroup && isOnline(other?.lastSeenAt, other?.presence),
+        status: c.isGroup || !other ? null : presenceOf(other),
+        lastSeenAt: c.isGroup || (other && presenceOf(other).hidden) ? null : other?.lastSeenAt ?? null,
         memberCount: c.participants.length,
         typing: others.filter((p) => p.typingUntil && p.typingUntil.getTime() > now).map((p) => p.user.name.split(' ')[0]),
         lastMessage: last
