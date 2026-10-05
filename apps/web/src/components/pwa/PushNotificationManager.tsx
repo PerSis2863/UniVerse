@@ -3,19 +3,8 @@
 import { useState, useEffect } from 'react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { Bell, BellOff, CheckCircle, X } from 'lucide-react';
-import { api } from '@/lib/api';
+import { subscribePush } from '@/lib/push-subscribe';
 import { useAuthStore } from '@/store/auth';
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
 // Detect iOS (Safari on iPhone/iPad) — no push support there
 function isIOS() {
@@ -84,42 +73,14 @@ export function PushNotificationManager() {
         }
       }
 
-      // Get service worker registration
       const registration = await navigator.serviceWorker.ready;
-
-      // Check for existing subscription
-      let subscription = await registration.pushManager.getSubscription();
-
-      if (!subscription) {
-        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidKey) {
-          // No VAPID key — still mark as "success" (notifications will use SW directly)
-          setStatus('success');
-          setShowPrompt(false);
-          localStorage.setItem('pushSubscribed', 'true');
-          return;
-        }
-
-        try {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidKey),
-          });
-        } catch (subErr) {
-          // Brave or Firefox may block pushManager.subscribe even with permission granted
-          // Still consider it "success" from the user's perspective
-          console.warn('Push subscription blocked by browser (Brave/FF shield?):', subErr);
-          setStatus('success');
-          setShowPrompt(false);
-          localStorage.setItem('pushSubscribed', 'true');
-          return;
-        }
+      const result = await subscribePush(registration);
+      // Only a real sign-up counts as done; anything else is tried again next visit.
+      if (result !== 'ok') {
+        setStatus(result === 'blocked' && !silent ? 'denied' : 'idle');
+        setShowPrompt(false);
+        return;
       }
-
-      // Try to register with backend (fire-and-forget — don't block on this)
-      api.post('/notifications/subscribe', {
-        subscription: subscription.toJSON(),
-      }).catch(() => {}); // Backend may be offline — that's OK
 
       setStatus('success');
       setShowPrompt(false);

@@ -2,19 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
-
-const PUBLIC_VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(new ArrayBuffer(rawData.length));
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
+import { subscribePush } from '@/lib/push-subscribe';
 
 interface UsePushNotifications {
   isSupported: boolean;
@@ -50,23 +38,9 @@ export function usePushNotifications(): UsePushNotifications {
     setPermission(perm);
     if (perm !== 'granted') return false;
 
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY),
-      });
-
-      await api.post('/notifications/subscribe', {
-        subscription: subscription.toJSON(),
-      });
-
-      setIsSubscribed(true);
-      return true;
-    } catch (err) {
-      console.error('Failed to subscribe to push notifications:', err);
-      return false;
-    }
+    const ok = (await subscribePush(await navigator.serviceWorker.ready)) === 'ok';
+    setIsSubscribed(ok);
+    return ok;
   }, [isSupported]);
 
   const unsubscribe = useCallback(async (): Promise<void> => {
