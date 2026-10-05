@@ -84,6 +84,8 @@ export function MessagingHub() {
     const sp = new URLSearchParams(window.location.search);
     const c = sp.get('c');
     if (c) setActiveId(c);
+    // A club's space (upgrade 7) opens on Communities.
+    if (sp.get('space') === 'communities') setSpace('communities');
     const join = sp.get('join');
     if (join) {
       setSpace('communities');

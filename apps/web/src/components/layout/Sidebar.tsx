@@ -52,7 +52,9 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
     { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
-    { href: '/student/life/everyday', label: 'Everyday life', keywords: 'dining transport events campus' },
+    { href: '/student/life/everyday', label: 'Everyday life', keywords: 'dining menu food transport campus' },
+    { href: '/student/life/events', label: 'Campus events', keywords: 'rsvp check in qr ticket event' },
+    { href: '/student/life/lost-found', label: 'Lost & found', keywords: 'lost found missing item' },
   ],
   TEACHER: [
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
@@ -94,13 +96,13 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.global_impact', icon: Globe2,
       subItems: [
         { href: '/student/impact/ai-match', label: 'AI project match' },
-        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies'] },
+        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies', '/student/impact/shifts'] },
         { href: '/student/impact/edu-society', label: 'nav.edu_society' },
         { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport'] },
         { href: '/student/impact/leaderboard', label: 'Leaderboard' },
       ]
     },
-    { href: '/student/life/associations', label: 'nav.student_life', icon: Coffee, also: ['/student/life/rooms', '/student/life/medical', '/student/life/everyday'] },
+    { href: '/student/life/associations', label: 'nav.student_life', icon: Coffee, also: ['/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found'] },
     { href: '/student/community', label: 'nav.community', icon: Users },
     { href: '/student/support', label: 'Support & BeeSafe', icon: AlertTriangle, also: ['/student/beesafe'] },
     { href: '/student/settings?section=language', label: 'nav.settings', icon: Settings },
@@ -188,7 +190,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.campus_monitoring', icon: Shield,
       subItems: [
         { href: '/admin/monitoring/rooms', label: 'nav.room_bookings' },
-        { href: '/admin/monitoring/associations', label: 'nav.associations' },
+        { href: '/admin/monitoring/associations', label: 'nav.associations', also: ['/admin/monitoring/events', '/admin/monitoring/lost-found'] },
       ]
     },
     { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/admin/announcements'] },

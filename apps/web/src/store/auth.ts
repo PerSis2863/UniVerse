@@ -51,6 +51,8 @@ export const useAuthStore = create<AuthStore>()(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('uv-pass');
         localStorage.removeItem('refreshToken');
+        // Offline outbox, saved chats and drafts belong to this person, not the next one on the device.
+        void import('@/lib/outbox').then((o) => o.clearOffline()).catch(() => {});
         set({ user: null, accessToken: null, refreshToken: null });
       },
 

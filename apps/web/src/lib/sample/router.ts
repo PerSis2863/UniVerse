@@ -88,12 +88,61 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
 
+  // Offline quizzes finished late, waiting for the teacher (Quizzes page): none in the sample
+  [/^\/quizzes\/teacher\/offline-pending$/, () => ok([])],
+  // Verified volunteering (upgrade 5): shifts, the impact map and the yearly report
+  [/^\/api\/volunteer\/shifts$/, () => ok([
+    { id: 'sample-sh1', title: 'Saturday tree planting', startAt: at(3, 9), endAt: at(3, 13), location: 'Riverside Park', lat: 12.9716, lng: 77.5946, radiusM: 200, capacity: 25, taken: 14, project: { id: 'sample-p1', name: 'Green City Drive', sdgNumber: 13, ngo: { name: 'Earth Collective' } }, mine: null },
+    { id: 'sample-sh2', title: 'Reading club for kids', startAt: at(-5, 15), endAt: at(-5, 17), location: 'Community library', lat: 12.9352, lng: 77.6245, radiusM: 150, capacity: 10, taken: 8, project: { id: 'sample-p2', name: 'Read Together', sdgNumber: 4, ngo: { name: 'Bright Minds' } }, mine: { checkInAt: at(-5, 15), checkOutAt: at(-5, 17), minutes: 120, verified: true, method: 'QR' } },
+  ])],
+  [/^\/api\/volunteer\/report$/, () => ok({ year: new Date().getFullYear(), totals: { hours: 412.5, volunteers: 63, shifts: 28 },
+    places: [{ lat: 12.9716, lng: 77.5946, label: 'Riverside Park', hours: 180, people: 31 }, { lat: 12.9352, lng: 77.6245, label: 'Community library', hours: 96, people: 14 }, { lat: 13.0358, lng: 77.597, label: 'Shelter kitchen', hours: 136.5, people: 22 }],
+    projects: [{ name: 'Green City Drive', ngo: 'Earth Collective', sdg: 13, hours: 180, people: 31 }, { name: 'Shelter kitchen', ngo: 'Food For All', sdg: 2, hours: 136.5, people: 22 }, { name: 'Read Together', ngo: 'Bright Minds', sdg: 4, hours: 96, people: 14 }],
+    sdgs: [{ sdg: 2, hours: 136.5 }, { sdg: 4, hours: 96 }, { sdg: 13, hours: 180 }] })],
+  [/^\/api\/volunteer\/shifts\/[^/]+\/roster$/, ({ db: d }) => ok({ people: d.classmates.slice(0, 3).map((u, i) => ({ id: `sample-c${i}`, checkInAt: i ? null : at(-5, 15), checkOutAt: i ? null : at(-5, 17), method: i ? null : 'QR', minutes: i ? 0 : 120, verified: !i, student: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
+  [/^\/api\/volunteer\/projects$/, () => ok([{ id: 'sample-p1', name: 'Green City Drive', ngo: { name: 'Earth Collective' } }])],
+  // Campus super-app (upgrade 7): events with RSVPs, room status, lost & found
+  [/^\/api\/campus\/events$/, ({ db: d }) => ok(d.campusItems.filter((c) => c.kind === 'EVENT').map((c, i) => ({ ...c, capacity: (c as { capacity?: number }).capacity ?? null, going: 34 + i * 11, waiting: 0, mine: i === 0 && !d.teacherView ? { status: 'GOING', checkedInAt: null } : null })))],
+  [/^\/api\/campus\/events\/[^/]+\/attendees$/, ({ db: d }) => ok({ item: { id: 'sample', title: 'Event', capacity: null }, people: d.classmates.slice(0, 4).map((u, i) => ({ id: `sample-r${i}`, status: 'GOING', checkedInAt: i < 2 ? at(0, 18, i * 5) : null, createdAt: at(-2), user: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
+  [/^\/api\/campus\/events\/[^/]+\/code$/, () => ok({ code: 'e1.sample.0.sample-sample-sample-sa', expiresIn: 30 })],
+  [/^\/api\/campus\/rooms$/, () => ok({})],
+  [/^\/api\/campus\/lost-found$/, ({ db: d, q }) => ok([
+    { id: 'sample-lf1', kind: 'FOUND', title: 'Blue water bottle', description: 'Left in Lecture Hall 2 after the 10am class.', photoUrl: null, location: 'Lecture Hall 2 → now at the front desk', status: 'OPEN', createdAt: at(-1, 11), expiresAt: at(29), reporter: { id: d.classmates[0]?.id ?? 'sample-u1', name: d.classmates[0]?.name ?? 'Rohan', avatar: null } },
+    { id: 'sample-lf2', kind: 'LOST', title: 'Calculator (Casio fx-991)', description: 'Name sticker on the back.', photoUrl: null, location: 'Library, 2nd floor', status: 'OPEN', createdAt: at(-3, 15), expiresAt: at(27), reporter: { id: d.classmates[1]?.id ?? 'sample-u2', name: d.classmates[1]?.name ?? 'Ishita', avatar: null } },
+  ].filter((x) => !q.get('kind') || x.kind === q.get('kind')).filter(() => q.get('mine') !== '1'))],
+  // Smart study planner: a week of study sessions around classes (Study planner)
+  [/^\/api\/student\/smart-plan$/, ({ db: d }) => {
+    const code = (i: number) => d.courses[i % Math.max(1, d.courses.length)]?.code ?? 'CS301';
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(Date.now() + i * 86_400_000).toISOString().slice(0, 10);
+      const blocks = d.teacherView || i === 6 ? [] : [
+        { id: `sample-b${i}a`, date, start: '17:00', end: '18:00', kind: i % 3 === 0 ? 'QUIZ' : 'DEADLINE', title: i % 3 === 0 ? 'Prepare for the weekly quiz' : 'Work on the lab report (part 1)', courseCode: code(i), done: i === 0, pinned: false, movedFrom: null },
+        ...(i % 2 ? [{ id: `sample-b${i}b`, date, start: '18:30', end: '19:00', kind: 'FLASHCARDS', title: 'Review due flashcards', courseCode: null, done: false, pinned: false, movedFrom: null }] : []),
+      ];
+      return { date, busy: i < 5 ? [{ start: '09:00', end: '12:00' }] : [], blocks };
+    });
+    return ok({ prefs: { capMin: 120, start: '16:00', end: '21:00', ical: false }, note: null, days });
+  }],
+  // Early help: a study plan from a teacher (shown in the Study planner)
+  [/^\/api\/student\/support-plans$/, ({ db: d }) => ok({ plans: d.teacherView ? [] : [{
+    id: 'sample-plan', course: { code: d.courses[0]?.code ?? 'CS301', name: d.courses[0]?.name ?? 'Operating Systems' }, from: d.courses[0]?.teacher.name ?? 'Your teacher',
+    message: 'Come to office hours on Thursday if anything is unclear.', stepsDone: [0], active: true, createdAt: at(-2, 10),
+    plan: {
+      intro: `Hi ${d.me.name.split(' ')[0]}, here are a few steps to get the most out of this week.`,
+      steps: [
+        { title: 'Redo the scheduling practice questions', detail: 'Work through the FCFS and Round Robin examples from week 3 without looking at the answers first.', minutes: 40 },
+        { title: 'Review your lab 2 feedback', detail: 'Read the comments on the concurrency criterion and fix the two points mentioned.', minutes: 30 },
+        { title: 'Make 10 flashcards on deadlocks', detail: 'One card per condition and per prevention strategy, then review them twice this week.', minutes: 25 },
+      ],
+      closing: 'Reply to me in Messages any time if you want to talk it through.',
+    },
+  }] })],
   [/^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
     if (!c) return fail('Course not found.', 404);
     const canManage = d.teacherView && c.teacher.id === d.me.id;
     const b = d.board[c.id];
-    const base = { course: { ...c, _count: { enrollments: d.classmates.length + (canManage ? 0 : 1) } }, canManage, announcements: b.announcements, materials: b.materials, readings: b.readings, events: b.events };
+    const base = { course: { ...c, _count: { enrollments: d.classmates.length + (canManage ? 0 : 1) } }, canManage, announcements: b.announcements, materials: b.materials, readings: b.readings, events: b.events, sessions: b.sessions ?? [] };
     if (canManage) {
       const roster = d.classmates.map((s) => {
         const gs = d.classGrades.filter((g) => g.courseId === c.id && g.studentId === s.id);
@@ -274,6 +323,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
+  ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m, body }) => {
     const b = d.board[m[1]]; if (!b) return fail('Course not found.', 404);
     const id = sid('b');

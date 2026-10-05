@@ -1,3 +1,5 @@
+import { evidenceFromGrade, safely } from './skill-evidence';
+import { styleSignalsFor } from './feedback-studio';
 import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import type { Prisma } from '@prisma/client';
@@ -10,6 +12,7 @@ import { later, notify, notifyMany } from './email';
 import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { recordStudy } from './streaks';
+import { offlineTime } from './offline';
 import { closestPeers, signalsFor, type Signals } from './similarity';
 import { planLimits } from '@/lib/plan-limits';
 
@@ -105,7 +108,7 @@ async function manage(assignmentId: string, user: SessionUser) {
   return a;
 }
 
-async function submissionForTeacher(submissionId: string, user: SessionUser) {
+export async function submissionForTeacher(submissionId: string, user: SessionUser) {
   const sub = await prisma.assignmentSubmission.findUnique({ where: { id: submissionId } });
   if (!sub) throw new NotFoundException('Submission not found.');
   const a = await manage(sub.assignmentId, user);
@@ -158,11 +161,11 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
   if (!canManage) {
     const mine = await prisma.assignmentSubmission.findUnique({
       where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-      select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, feedback: true, criteriaScores: true },
+      select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true },
     });
     // Until it's returned, a student sees their answer only (never the AI's draft).
     const returned = mine?.status === 'RETURNED';
-    return { ...base, mine: mine ? { ...mine, status: returned ? 'RETURNED' : 'SUBMITTED', score: returned ? mine.score : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null } : null };
+    return { ...base, mine: mine ? { ...mine, status: returned ? 'RETURNED' : 'SUBMITTED', score: returned ? mine.score : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null, feedbackMediaUrl: returned ? mine.feedbackMediaUrl : null, feedbackMediaKind: returned ? mine.feedbackMediaKind : null, feedbackTranscript: returned ? mine.feedbackTranscript : null } : null };
   }
   const [submissions, enrolled] = await Promise.all([
     prisma.assignmentSubmission.findMany({
@@ -231,7 +234,11 @@ export async function deleteAssignment(assignmentId: string, user: SessionUser, 
 export async function submitAnswer(assignmentId: string, user: SessionUser, body: Record<string, unknown>, req: Request) {
   const { assignment, canManage } = await access(assignmentId, user);
   if (canManage || user.role !== 'STUDENT') throw new ForbiddenException('Only students in this course can submit.');
-  if (assignment.status !== 'OPEN') throw new BadRequestException('This assignment is closed. Ask your teacher if you still need to hand it in.');
+  // Written offline (upgrade 4) and sent later from the device's outbox: it still counts if the
+  // teacher closed the assignment after the student handed it in on their device.
+  const offlineAt = offlineTime(body.offlineAt);
+  const closedAfter = !!offlineAt && offlineAt < assignment.updatedAt;
+  if (assignment.status !== 'OPEN' && !closedAfter) throw new BadRequestException('This assignment is closed. Ask your teacher if you still need to hand it in.');
   const text = typeof body.text === 'string' ? body.text.replace(/\r\n/g, '\n').trim() : '';
   if (text.length < 20) throw new BadRequestException('Your answer is too short to submit.');
   if (text.length > MAX_TEXT) throw new BadRequestException(`Answers can be up to ${MAX_TEXT.toLocaleString()} characters.`);
@@ -248,16 +255,19 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
     take: 20,
   })).filter((s) => (budget -= s.text.length) >= 0);
   const signals = signalsFor(text, sources, planLimits().similarityAnswerChars) as unknown as Prisma.InputJsonValue;
+  // Writing style compared with this student's earlier answers (feedback studio, upgrade 8; no AI)
+  const style = await styleSignalsFor(user.id, assignmentId, text);
+  const styleSignals = (style ?? undefined) as unknown as Prisma.InputJsonValue | undefined;
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-    create: { assignmentId, studentId: user.id, text, signals },
-    update: { text, signals, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
+    create: { assignmentId, studentId: user.id, text, signals, styleSignals, offlineAt },
+    update: { text, signals, styleSignals, offlineAt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
     select: { id: true, submittedAt: true },
   });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON
   recordStudy(user.id, req);
-  return { ...saved, late: !!assignment.dueDate && saved.submittedAt > assignment.dueDate };
+  return { ...saved, late: !!assignment.dueDate && (offlineAt ?? saved.submittedAt) > assignment.dueDate };
 }
 
 // ─── AI draft ───────────────────────────────────────────────────────────────────────────────────
@@ -350,6 +360,8 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
     where: { id: sub.id },
     data: { criteriaScores: criteria as unknown as Prisma.InputJsonValue, score, feedback, gradeId: grade.id, status: 'RETURNED', returnedAt: new Date() },
   });
+  // Proof of learning (upgrade 2): 60%+ becomes evidence for the course's skills.
+  await safely(evidenceFromGrade({ studentId: sub.studentId, submissionId: sub.id, assignmentTitle: assignment.title, score, maxScore: assignment.maxScore, course, teacher: { id: user.id, name: user.name } }));
   audit(user, { action: existing ? 'grade.updated' : 'grade.posted', summary: `${existing ? 'Updated' : 'Returned'} “${assignment.title}” grade ${score}/${assignment.maxScore} in ${course.code}`, targetType: 'grade', targetId: grade.id, metadata: { assignmentId: assignment.id, submissionId: sub.id, studentId: sub.studentId } }, req);
   later(() => notify(sub.studentId, {
     type: 'grade',

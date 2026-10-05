@@ -461,3 +461,24 @@ request goes over the query cap.
 - Bot Fight Mode on.
 - Request brake (`src/lib/request-guard.ts`).
 - No prefetching anywhere.
+
+## 5. Progress (stage-3-upgrades branch)
+
+**Done (one commit each, migrations 0039–0046):** 1 class companion (0039), 2 proof-of-learning
+passport (0040), 3 early help plans (0041), 8 feedback studio (0042), 6 smart planner (0043),
+4 offline-first classroom (0044), 7 campus super-app (0045), 5 verified volunteering (0046).
+
+**Still to build:** 10 school analytics, then 9 multi-campus network. **Next migration: 0047.**
+
+**Reusable pieces added in this stage:**
+- `src/server/campus-life.ts` → `rotatingCode(prefix, id)` / `readRotatingCode(prefix, code)`:
+  30-second HMAC check-in codes (e1 = events, s1 = shifts; add a new prefix per use).
+- `src/components/ui/RotatingQr.tsx`: full-screen rotating QR for any of those codes.
+- `src/components/impact/ImpactMap.tsx`: SVG dot map (no tiles).
+- `src/lib/outbox.ts`: IndexedDB outbox, chat cache and drafts (cleared on sign-out).
+- `src/server/offline.ts`: `clientIdOf`, `offlineTime`, `tellTeacher` (in-app + push).
+- Tab groups added in `SectionTabs.tsx`: `MONITORING_TABS`, `IMPACT_REPORT_TABS`.
+
+**Known gaps to check on the preview:** cron follow-up reminders for support plans (upgrade 3),
+the CallRoom notes relay (upgrade 1), event/shift check-in on a real phone (needs SESSION_SECRET).
+Offline quiz finish times come from the device, so late ones always wait for the teacher.

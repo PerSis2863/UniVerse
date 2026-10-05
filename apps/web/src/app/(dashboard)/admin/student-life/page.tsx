@@ -20,11 +20,12 @@ export default function AdminStudentLifePage() {
             <AdminSearch className="flex-1" value={q} onChange={setQ} placeholder="Search titles, places, categories, or who added them (name, email, role)…" />
             <label className="inline-flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300 shrink-0">
               <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} className="rounded" />
-              Include past events
+              Include past events and menus
             </label>
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             <CampusItemManager kind="EVENT" label="Event" query={q} showPast={showPast} categories={['Career', 'Social', 'Academic', 'Impact', 'Sports', 'Culture']} />
+            <CampusItemManager kind="MENU" label="Menu" query={q} showPast={showPast} categories={['Breakfast', 'Lunch', 'Dinner', 'Snacks']} />
             <CampusItemManager kind="SERVICE" label="Service" query={q} categories={['Dining', 'Cafés', 'Transport', 'Store', 'Health', 'Housing', 'Other']} />
             <CampusItemManager kind="LINK" label="Link" query={q} categories={['Academics', 'Library', 'Careers', 'IT & Accounts', 'Wellbeing', 'Other']} />
             <Link href="/admin/monitoring/associations" className="group rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-5 flex items-center gap-4 hover:border-indigo-500/30 transition-colors">

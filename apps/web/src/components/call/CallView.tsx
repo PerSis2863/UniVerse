@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, ChevronDown, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
+import { Captions, CaptionsOff, ChevronDown, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -23,6 +23,9 @@ import { cn } from '@/lib/utils';
 //    which keeps a class of 30+ smooth on phones and within the SFU's free 1,000 GB a month.
 // The call's room (cloudflare/worker.ts CallRoom) passes connection details, who is muted,
 // recording and captions; it never carries audio or video.
+// Class notes (class calls, the teacher): while on, everyone's browser captions their own speech
+// and the teacher's browser collects the final captions; when notes stop, they're sent once to
+// /api/calls/[id]/companion, which turns them into a study pack (src/server/class-companion.ts).
 
 interface Ticket {
   kind: 'audio' | 'video'; type: 'chat' | 'group' | 'class'; title: string; oneToOne: boolean; conversationId: string | null; host: boolean; sfu?: boolean; max?: number;
@@ -31,7 +34,7 @@ interface Ticket {
 interface Peer { peerId: string; userId: string; name: string; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 type Quality = 'good' | 'fair' | 'poor' | null;
 interface Remote {
-  peer: Peer; stream: MediaStream | null; muted: boolean; camera: boolean; sharing: boolean; cc: boolean; recording: boolean;
+  peer: Peer; stream: MediaStream | null; muted: boolean; camera: boolean; sharing: boolean; cc: boolean; recording: boolean; notes: boolean;
   state: RTCPeerConnectionState | 'new'; quality: Quality;
   /** SFU calls: their video isn't being received right now (to save data); tap to see it. */
   paused: boolean;
@@ -39,13 +42,16 @@ interface Remote {
 type Phase = 'starting' | 'live' | 'ended' | 'error';
 type Info = Omit<Ticket, 'path' | 'iceServers'>;
 interface Caption { name: string; text: string; final: boolean; at: number }
+interface NoteLine { t: number; who: string; text: string }
+/** Class notes sent to the server at most this big (fits a keepalive request if the tab closes). */
+const MAX_NOTES_CHARS = 55_000;
 
 const NO_ANSWER_MS = 45_000;
 const CAPTION_MS = 5000;
 const MAX_REC_MS = 2 * 3600_000;
 const MAX_REC_BYTES = 950 * 1024 * 1024;
 
-const fresh = (peer: Peer): Remote => ({ peer, stream: null, muted: false, camera: true, sharing: false, cc: false, recording: false, state: 'new', quality: null, paused: false });
+const fresh = (peer: Peer): Remote => ({ peer, stream: null, muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false });
 
 // One audio context and one timer measure everyone's voice (a call of 30 doesn't run 30 of
 // each), and a tile re-renders only when its person starts or stops talking.
@@ -174,6 +180,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [captions, setCaptions] = useState<Record<string, Caption>>({});
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
+  const [notes, setNotes] = useState(false);
+  const notesRef = useRef<{ start: number; lines: NoteLine[]; chars: number } | null>(null);
 
   const ws = useRef<WebSocket | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
@@ -185,7 +193,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const localRef = useRef<MediaStream | null>(null);
   const screenRef = useRef<MediaStreamTrack | null>(null);
   const ice = useRef<RTCIceServer[]>([]);
-  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false });
+  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false });
   const ended = useRef(false);
   const everJoined = useRef(false);
   const talkStart = useRef<number | null>(null);
@@ -301,6 +309,39 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     }
   }, [callId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Class notes (class calls, the teacher) ───────────────────────────────────────────────
+  /** Keeps a final caption for the study pack (only while my class notes are on). */
+  const noteLine = (who: string, text: string) => {
+    const n = notesRef.current;
+    const clean = text.trim();
+    if (!n || !clean || n.chars + clean.length > MAX_NOTES_CHARS) return;
+    n.chars += clean.length;
+    n.lines.push({ t: Math.round((Date.now() - n.start) / 1000), who, text: clean });
+  };
+
+  /** Stops class notes and sends them once to be turned into a study pack. */
+  const submitNotes = useCallback(async () => {
+    const n = notesRef.current;
+    if (!n) return;
+    notesRef.current = null;
+    setNotes(false);
+    stateRef.current.notes = false;
+    announce();
+    if (!n.lines.length) {
+      toast.error('No transcript: captions need Chrome, Edge or Safari, and someone has to speak while class notes are on.', { duration: 10_000 });
+      return;
+    }
+    const body = JSON.stringify({ transcript: n.lines, durationSec: Math.round((Date.now() - n.start) / 1000) });
+    const t = toast.loading('Making the study pack…');
+    try {
+      // keepalive: still delivered if the tab is closing (requests that size are allowed it).
+      const res = await authedJson<{ message: string }>(`/api/calls/${callId}/companion`, { method: 'POST', body, keepalive: body.length < 60_000 });
+      toast.success(res.message, { id: t, duration: 8000 });
+    } catch (e) {
+      toast.error((e as Error).message || 'Couldn’t save the class notes.', { id: t, duration: 10_000 });
+    }
+  }, [callId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** Leaves the call. The last one out of a chat call records how it went (shown on the call in the chat). */
   const finish = useCallback((why?: string) => {
     if (ended.current) return;
@@ -310,6 +351,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       ? Object.values(remotesRef.current).length === 0
       : pcs.current.size === 0 || [...pcs.current.values()].every((pc) => pc.connectionState !== 'connected');
     if (recRef.current) void stopRecording();
+    if (notesRef.current) void submitNotes();
     ws.current?.close(1000);
     for (const pc of pcs.current.values()) pc.close();
     pcs.current.clear();
@@ -326,7 +368,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     // Nobody answered a one-to-one call: offer to leave a voice message (like voicemail).
     if (why === 'No answer' && i?.oneToOne && i.conversationId) { setVoicemail('offer'); return; }
     setTimeout(() => onLeave(i?.conversationId ?? null), why ? 1400 : 250);
-  }, [callId, onLeave, stopRecording]);
+  }, [callId, onLeave, stopRecording, submitNotes]);
 
   // A call that couldn't connect while on hold (out of sight) closes itself instead of lingering.
   useEffect(() => {
@@ -495,10 +537,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         } else if (msg.type === 'state') {
           const before = remotesRef.current[msg.from];
           if (msg.recording && before && !before.recording) toast(`${before.peer.name} started recording this class`, { icon: '⏺' });
-          patch(msg.from, { muted: msg.muted, camera: msg.camera, sharing: msg.sharing, cc: msg.cc === true, recording: msg.recording === true });
+          if (msg.notes && before && !before.notes) toast(`${before.peer.name} turned on class notes: what’s said in the class becomes a study pack (summary, notes and flashcards). Only text is kept, never audio.`, { icon: '📝', duration: 8000 });
+          patch(msg.from, { muted: msg.muted, camera: msg.camera, sharing: msg.sharing, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true });
           if (sfuRef.current && before && (before.camera !== msg.camera || before.sharing !== msg.sharing)) syncSfu();
         } else if (msg.type === 'caption') {
           const who = remotesRef.current[msg.from];
+          if (msg.final) noteLine(who?.peer.name ?? 'Someone', String(msg.text));
           if (who && stateRef.current.cc) setCaptions((c) => ({ ...c, [msg.from]: { name: who.peer.name, text: String(msg.text), final: !!msg.final, at: Date.now() } }));
         } else if (msg.type === 'left') {
           pcs.current.get(msg.peerId)?.close();
@@ -585,11 +629,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
 
   // ── Captions ──────────────────────────────────────────────────────────────────────────────
   // My browser listens only while someone in the call wants captions and I'm not muted.
-  const wantCaptions = phase === 'live' && (cc || list.some((r) => r.cc));
+  const someoneNotes = notes || list.some((r) => r.notes);
+  const wantCaptions = phase === 'live' && (cc || someoneNotes || list.some((r) => r.cc));
   useCaptions(
     wantCaptions && !muted,
     (text, final) => {
       send({ type: 'caption', text, final });
+      if (final) noteLine(myName, text);
       if (stateRef.current.cc) setCaptions((c) => ({ ...c, me: { name: 'You', text, final, at: Date.now() } }));
     },
     (why) => toast.error(why),
@@ -613,6 +659,25 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (!captionsSupported()) toast('This browser can’t caption your voice, but you’ll see everyone else’s captions. Chrome, Edge and Safari can.');
     announce();
   };
+
+  const toggleNotes = () => {
+    haptic('tap');
+    if (notesRef.current) { void submitNotes(); return; }
+    notesRef.current = { start: Date.now(), lines: [], chars: 0 };
+    setNotes(true);
+    stateRef.current.notes = true;
+    announce();
+    toast.success(captionsSupported()
+      ? 'Class notes are on. Everyone sees the Notes badge. When you stop (or leave), the class gets a study pack: summary, notes, key moments, flashcards and a draft quiz for you to check.'
+      : 'Class notes are on, but this browser can’t caption your own voice: your students’ words are still collected. Chrome, Edge or Safari capture everyone.', { duration: 9000 });
+  };
+
+  useEffect(() => {
+    if (!notes) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [notes]);
 
   // ── Recording (class teacher) ──────────────────────────────────────────────────────────────
   useEffect(() => { recSourcesRef.current = () => {
@@ -742,6 +807,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canShare = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia && kind === 'video';
   const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled && kind === 'video' && list.length > 0;
   const canRec = !!info?.host && info.type === 'class' && canRecord();
+  const canNotes = !!info?.host && info.type === 'class';
   const btn = 'w-14 h-14 rounded-full flex items-center justify-center transition-colors';
   const status = phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
   const firstRemoteId = list[0]?.peer.peerId;
@@ -782,6 +848,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               {someoneRecording && (
                 <motion.span key="rec" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={spring.snappy} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-wide bg-rose-600/90 rounded-full px-2 py-0.5" title="This call is being recorded">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />REC{recording ? ` ${clock(recSeconds)}` : ''}
+                </motion.span>
+              )}
+              {someoneNotes && (
+                <motion.span key="notes" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={spring.snappy} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-wide bg-amber-500/90 text-amber-950 rounded-full px-2 py-0.5" title="Class notes are on: what’s said becomes a study pack (text only)">
+                  <NotebookPen className="w-3 h-3" />Notes
                 </motion.span>
               )}
             </AnimatePresence>
@@ -848,6 +919,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               {canRec && (
                 <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => (recording ? void stopRecording() : startRecording())} aria-pressed={recording} aria-label={recording ? 'Stop recording' : 'Record the class'} title={recording ? 'Stop and save to class materials' : 'Record the class'} className={cn(btn, 'shrink-0', recording ? 'bg-rose-600 hover:bg-rose-500' : 'bg-white/10 hover:bg-white/20')}>
                   {recording ? <Square className="w-5 h-5 fill-current" /> : <Circle className="w-5 h-5 fill-rose-500 text-rose-500" />}
+                </motion.button>
+              )}
+              {canNotes && (
+                <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleNotes} aria-pressed={notes} aria-label={notes ? 'Stop class notes and make the study pack' : 'Take class notes'} title={notes ? 'Stop and make the study pack' : 'Class notes: turn this class into a study pack'} className={cn(btn, 'shrink-0', notes ? 'bg-amber-500 text-amber-950 hover:bg-amber-400' : 'bg-white/10 hover:bg-white/20')}>
+                  <NotebookPen className="w-5 h-5" />
                 </motion.button>
               )}
               {canPip && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={pip} aria-label="Picture in picture" className={cn(btn, 'shrink-0', 'bg-white/10 hover:bg-white/20')}><PictureInPicture2 /></motion.button>}

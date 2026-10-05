@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages } from 'lucide-react';
+import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
@@ -17,6 +17,7 @@ import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDia
 import { type ChatMessage, type ThreadResponse, chatJson, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
 import { useLanguageStore } from '@/store/language';
+import { cachedChat, cacheChat, enqueue, isOfflineError, listOutbox, newClientId, onOutbox, type OutboxItem } from '@/lib/outbox';
 import { LANGUAGES, languageName } from '@/lib/languages';
 import { LanguagePicker } from './LanguagePicker';
 import { useChatTranslations } from './useChatTranslations';
@@ -40,7 +41,16 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const key = `/api/chat/conversations/${conversationId}/messages`;
   // Live updates refresh the thread on every change, so it only polls without them.
   const refreshInterval = useLiveInterval(5000, 0);
-  const { data, error, isLoading, mutate } = useSWR<ThreadResponse>(key, authedJson, { refreshInterval, revalidateOnFocus: true });
+  const { data: fresh, error, isLoading, mutate } = useSWR<ThreadResponse>(key, authedJson, { refreshInterval, revalidateOnFocus: true });
+  // Offline-first (upgrade 4): the last ~50 messages of recent chats are kept on this device and
+  // shown with an "Offline" note when the chat can't load.
+  const [saved, setSaved] = useState<{ id: string; data: ThreadResponse } | null>(null);
+  useEffect(() => {
+    if (fresh) { void cacheChat(conversationId, fresh).catch(() => {}); return; }
+    if (error) cachedChat<ThreadResponse>(conversationId).then((c) => { if (c) setSaved({ id: conversationId, data: c.data }); }).catch(() => {});
+  }, [fresh, error, conversationId]);
+  const offlineCopy = !fresh && saved?.id === conversationId ? saved.data : undefined;
+  const data = fresh ?? offlineCopy;
   // "typing…": from live updates when connected, else from the last load (polling).
   const live = useRealtimeConnected();
   const liveTyping = useLiveTyping(conversationId);
@@ -88,6 +98,29 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   useEffect(() => {
     setOlder([]); setHasMoreOlder(null); setPending([]); setReplyTo(null); setEditing(null); setInfoOpen(false); lastCount.current = 0;
   }, [conversationId]);
+
+  // Messages written offline wait in the outbox (src/lib/outbox.ts) as pending bubbles, and turn
+  // into real messages when they're sent.
+  useEffect(() => {
+    const bubble = (i: OutboxItem): ChatMessage => ({
+      id: `outbox-${i.id}`, conversationId, senderId: data?.me ?? '', createdAt: new Date(i.createdAt).toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null,
+      sender: { id: data?.me ?? '', name: 'You', avatar: null }, pending: true, replyTo: null, type: 'TEXT', body: String(i.body.body ?? ''),
+      attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null,
+    } as unknown as ChatMessage);
+    const load = () => listOutbox().then((all) => {
+      const mine = all.filter((i) => i.kind === 'message' && i.ref === conversationId && !i.error);
+      setPending((p) => [...p.filter((x) => !x.id.startsWith('outbox-')), ...mine.map(bubble)]);
+    }).catch(() => {});
+    void load();
+    return onOutbox((e) => {
+      if (e.item?.kind !== 'message' || e.item.ref !== conversationId) return;
+      if (e.type === 'sent' && e.result && typeof e.result === 'object' && 'id' in e.result) {
+        const msg = e.result as ChatMessage;
+        setPending((p) => p.filter((x) => x.id !== `outbox-${e.item!.id}`));
+        mutate((prev) => (prev ? { ...prev, messages: [...prev.messages.filter((x) => x.id !== msg.id), msg] } : prev), { revalidate: false });
+      } else void load();
+    });
+  }, [conversationId, data?.me, mutate]);
 
   const me = data?.me ?? '';
   const convo = data?.conversation;
@@ -281,8 +314,16 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         if (text) await send({ text });
       } else if (text) {
         setPending((p) => [...p, { ...base, type: 'TEXT', body: text, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null } as ChatMessage]);
-        const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: text, replyToId }) });
-        appendSent(msg, tempId);
+        const clientId = newClientId();
+        try {
+          const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: text, replyToId, clientId }) });
+          appendSent(msg, tempId);
+        } catch (err) {
+          if (!isOfflineError(err)) throw err;
+          // No connection: it waits in the outbox and is sent when the connection is back.
+          setPending((p) => p.filter((x) => x.id !== tempId));
+          await enqueue({ id: clientId, kind: 'message', method: 'POST', url: key, ref: conversationId, label: `Message: ${text.slice(0, 40)}${text.length > 40 ? '…' : ''}`, body: { body: text, replyToId, clientId } });
+        }
       }
     } catch (e: any) {
       setPending((p) => p.filter((x) => x.id !== tempId));
@@ -468,6 +509,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           <button onClick={() => { setSearchOpen((v) => !v); setResults(null); setSearchQ(''); }} aria-label="Search in chat" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', searchOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Search className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} aria-label="Chat info" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', infoOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Info className="w-5 h-5" /></button>
         </div>
+        {offlineCopy && (
+          <p role="status" className="shrink-0 px-4 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 flex items-center gap-1.5"><WifiOff className="w-3.5 h-3.5" /> Offline: showing the messages saved on this device. New messages are sent when you&apos;re back online.</p>
+        )}
 
         {convo.translateTo && (
           <div className="flex items-center gap-2 px-3 md:px-5 py-1.5 border-b border-zinc-200/80 dark:border-white/[0.06] bg-sky-50/80 dark:bg-sky-500/[0.07] text-xs text-sky-800 dark:text-sky-200">

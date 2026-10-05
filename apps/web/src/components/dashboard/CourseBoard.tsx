@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  Loader2, Paperclip, PenTool, Plus, Send, Star, Trash2, Users, X, type LucideIcon,
+  BadgeCheck, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, X, type LucideIcon,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
@@ -25,6 +25,9 @@ import { isUploadedFileUrl } from '@/lib/file-urls';
 import { safeHref } from '@/lib/safe-href';
 import { courseColor } from '@/lib/course-color';
 import { SaveOfflineButton } from '@/components/offline/SaveOfflineButton';
+import { ClassSessions, type ClassSession } from '@/components/dashboard/ClassSessions';
+import { Combobox } from '@/components/ui/Combobox';
+import { SUBJECTS } from '@/lib/options/academic';
 
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -34,12 +37,14 @@ const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhi
 type Role = 'student' | 'teacher';
 interface Course { id: string; name: string; code: string; color: string | null; teacher?: { id: string; name: string } | null }
 interface Board {
-  course: Course & { _count: { enrollments: number } };
+  course: Course & { _count: { enrollments: number }; skills?: string | null };
   canManage: boolean;
   announcements: { id: string; title: string; body: string; createdAt: string; author: { name: string } }[];
   materials: { id: string; title: string; type: 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER'; fileUrl: string; size: string | null; createdAt: string }[];
   readings: { id: string; title: string; description: string | null; url: string | null; category: string | null }[];
   events: { id: string; title: string; description: string | null; startAt: string; endAt: string; type: string }[];
+  /** Study packs from class calls (AI class companion) */
+  sessions?: ClassSession[];
   // Student view
   grades?: { id: string; assignmentName: string; score: number; maxScore: number; status: string; feedback: string | null; gradedAt: string }[];
   quizResults?: { id: string; score: number | null; maxScore: number | null; submittedAt: string; quiz: { id: string; title: string; status: string } }[];
@@ -50,6 +55,7 @@ interface Board {
 
 const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'board', label: 'Announcements', icon: Bell },
+  { id: 'sessions', label: 'Class sessions', icon: NotebookPen },
   { id: 'materials', label: 'Materials', icon: FileText },
   { id: 'readings', label: 'Reading list', icon: BookOpen },
   { id: 'grades', label: 'Grades', icon: Star },
@@ -77,12 +83,14 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   );
   const [courseId, setCourseId] = useState<string | null>(null);
   const [tab, setTab] = useState('board');
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Deep links: ?course=<id>&tab=<tab>
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get('tab') && TABS.some((t) => t.id === sp.get('tab'))) setTab(sp.get('tab')!);
     if (sp.get('course')) setCourseId(sp.get('course'));
+    if (sp.get('session')) setSessionId(sp.get('session'));
   }, []);
   useEffect(() => {
     if (courses.length && (!courseId || !courses.some((c) => c.id === courseId))) setCourseId(courses[0].id);
@@ -187,7 +195,10 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
             : isLoading || !board ? <div className="max-w-3xl mx-auto space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>
             : (
               <div key={`${courseId}-${tab}`} className={cn('fade-up mx-auto', tab === 'whiteboard' ? 'max-w-6xl' : 'max-w-3xl')}>
+                {tab === 'board' && <CourseSkills board={board} canManage={canManage} refresh={() => void mutate()} />}
+                {tab === 'board' && <LatestPack board={board} onOpen={(id) => { setSessionId(id); setTab('sessions'); }} />}
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}
+                {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'grades' && (canManage ? <Roster board={board} /> : <MyGrades board={board} />)}
@@ -207,6 +218,78 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
         </div>
       </div>
     </>
+  );
+}
+
+const parseSkills = (raw: string | null | undefined): string[] => { try { const v = raw ? JSON.parse(raw) : []; return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch { return []; } };
+
+/** The skills this course builds (proof-of-learning passport): graded work becomes evidence for
+ *  them on students' passports. The teacher edits them; students see them. */
+function CourseSkills({ board, canManage, refresh }: { board: Board; canManage: boolean; refresh: () => void }) {
+  const saved = parseSkills(board.course.skills);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState<null | 'save' | 'ai'>(null);
+  if (!canManage && !saved.length) return null;
+  const list = value.split(',').map((x) => x.trim()).filter(Boolean);
+  const start = () => { setValue(saved.join(', ')); setEditing(true); };
+  const save = async () => {
+    setBusy('save');
+    try {
+      await authedJson(`/api/courses/${board.course.id}/skills`, { method: 'PUT', body: JSON.stringify({ skills: list.slice(0, 6) }) });
+      toast.success('Course skills saved. Graded work now counts as evidence for them.');
+      setEditing(false); refresh();
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
+  };
+  const suggest = async () => {
+    setBusy('ai');
+    try {
+      const r = await authedJson<{ skills: string[] }>(`/api/courses/${board.course.id}/skills`, { method: 'POST' });
+      setValue(r.skills.join(', '));
+      toast('Suggestions added. Check them, then save.');
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
+  };
+  return (
+    <motion.div layout transition={spring.smooth} className={cn(card, 'mb-5 p-4')}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5"><BadgeCheck className="w-4 h-4 text-emerald-500" /> {canManage ? 'Skills this course builds' : 'Skills you build in this course'}</p>
+        {canManage && !editing && <button onClick={start} className="text-xs font-semibold text-indigo-500 hover:underline">{saved.length ? 'Edit' : 'Choose skills'}</button>}
+      </div>
+      {!editing ? (
+        saved.length ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">{saved.map((x) => <span key={x} className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">{x}</span>)}</div>
+        ) : (
+          <p className="mt-1 text-xs text-zinc-500">Pick 3–6 skills. When you grade work at 60% or more, it becomes evidence for them on each student’s skills passport.</p>
+        )
+      ) : (
+        <div className="mt-3 space-y-2">
+          <Combobox multiple value={value} onChange={setValue} options={SUBJECTS} maxLength={300} placeholder="e.g. Data structures, Technical writing" aria-label="Course skills" />
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={save} disabled={busy !== null || list.length > 6} className="btn-primary btn-sm rounded-full">{busy === 'save' && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Save{list.length > 6 ? ' (6 at most)' : ''}</button>
+            <button onClick={suggest} disabled={busy !== null} className="btn-secondary btn-sm rounded-full inline-flex">{busy === 'ai' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Suggest with AI</button>
+            <button onClick={() => setEditing(false)} className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">Cancel</button>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/** On the Announcements tab: the newest study pack from the last week, one tap from the pack. */
+function LatestPack({ board, onOpen }: { board: Board; onOpen: (id: string) => void }) {
+  const [now] = useState(() => Date.now());
+  const s = board.sessions?.find((x) => x.status === 'READY');
+  if (!s || now - new Date(s.startedAt).getTime() > 7 * 86_400_000) return null;
+  return (
+    <motion.button type="button" onClick={() => onOpen(s.id)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
+      className="w-full mb-5 text-left rounded-2xl p-4 flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/25 lift">
+      <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center"><NotebookPen className="w-5 h-5" /></div>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-zinc-900 dark:text-white text-sm">Study pack from {new Date(s.startedAt).toLocaleDateString(undefined, { weekday: 'long' })}’s class</p>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-1">{s.summary}</p>
+      </div>
+      <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 shrink-0">Open →</span>
+    </motion.button>
   );
 }
 

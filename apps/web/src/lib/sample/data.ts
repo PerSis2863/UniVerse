@@ -158,6 +158,25 @@ export function buildSampleDb(me: Me) {
         { id: sid('ev'), title: 'Assignment deadline', description: null, startAt: at(5, 23, 59), endAt: at(5, 23, 59), type: 'DEADLINE' },
         { id: sid('ev'), title: 'End-term exam', description: 'Hall 2 · 2 hours', startAt: at(24, 10), endAt: at(24, 12), type: 'EXAM' },
       ],
+      // A study pack made from a class call with class notes on (AI class companion)
+      sessions: c.id !== os.id ? [] : [{
+        id: sid('cs'), startedAt: at(-1, 10), durationSec: 3120, status: 'READY', recordingMaterialId: null, quiz: { id: 'sample-q-pack', status: teacherView ? 'DRAFT' : 'PUBLISHED' },
+        summary: 'We compared the main CPU scheduling policies (FCFS, SJF, Round Robin and multi-level feedback queues), worked through an example of average waiting time, and saw why Round Robin\'s time slice is a trade-off between responsiveness and overhead.',
+        notes: [
+          'The scheduler picks which ready process runs next; it runs on every interrupt, system call or process exit.',
+          'FCFS is simple but suffers the convoy effect: short jobs wait behind a long one.',
+          'SJF minimises average waiting time but needs the next CPU burst length, which is only estimated.',
+          'Round Robin gives each process a time slice; too small means lots of context switches, too big behaves like FCFS.',
+          'MLFQ moves CPU-heavy jobs down and keeps interactive jobs responsive, with periodic priority boosts to avoid starvation.',
+        ],
+        keyMoments: [{ t: 240, text: 'What a scheduler decides and when it runs' }, { t: 905, text: 'Worked example: average waiting time with FCFS vs SJF' }, { t: 1810, text: 'Choosing a Round Robin time slice' }, { t: 2560, text: 'MLFQ rules and the priority boost' }],
+        flashcards: [
+          { front: 'What is the convoy effect?', back: 'Short jobs stuck waiting behind one long job under FCFS, raising average waiting time.' },
+          { front: 'Which policy minimises average waiting time?', back: 'Shortest Job First (SJF), if burst lengths were known.' },
+          { front: 'Cost of a very small Round Robin time slice?', back: 'Too many context switches: overhead eats CPU time.' },
+          { front: 'Why does MLFQ boost priorities periodically?', back: 'So long-running jobs aren\'t starved and jobs that change behaviour are re-evaluated.' },
+        ],
+      }],
     };
   }
 
@@ -326,7 +345,11 @@ export function buildSampleDb(me: Me) {
     { id: sid('ci'), kind: 'LINK', category: 'Academics', title: 'Library catalogue', description: null, url: 'https://openlibrary.org', location: null, hours: null, startAt: null },
     { id: sid('ci'), kind: 'LINK', category: 'Wellbeing', title: 'Counselling booking', description: null, url: 'https://en.wikipedia.org/wiki/Student_counselling', location: null, hours: null, startAt: null },
     { id: sid('ci'), kind: 'EVENT', category: null, title: 'Freshers’ Welcome Night', description: 'Music, food and clubs fair.', url: null, location: 'Main Quad', hours: null, startAt: at(6, 18) },
-    { id: sid('ci'), kind: 'EVENT', category: null, title: 'Guest lecture: Future of Energy', description: null, url: null, location: 'Lecture Hall 2', hours: null, startAt: at(11, 16) },
+    { id: sid('ci'), kind: 'EVENT', category: null, title: 'Guest lecture: Future of Energy', description: null, url: null, location: 'Lecture Hall 2', hours: null, startAt: at(11, 16), capacity: 120 },
+    // Dining menu (upgrade 7)
+    { id: sid('ci'), kind: 'MENU', category: 'Lunch', title: 'Central Cafeteria', description: 'Rajma chawal\nPaneer tikka wrap\nLentil soup (vegan)\nFruit salad', url: null, location: 'Student Centre', hours: null, startAt: at(0, 12) },
+    { id: sid('ci'), kind: 'MENU', category: 'Dinner', title: 'Central Cafeteria', description: 'Veg biryani\nGrilled chicken\nCucumber raita', url: null, location: 'Student Centre', hours: null, startAt: at(0, 12) },
+    { id: sid('ci'), kind: 'MENU', category: 'Lunch', title: 'Central Cafeteria', description: 'Chole bhature\nPasta primavera\nSalad bar', url: null, location: 'Student Centre', hours: null, startAt: at(1, 12) },
   ];
 
   const profile = {

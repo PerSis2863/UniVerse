@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Copy, Eye, EyeOff, ExternalLink, FileCheck2, Loader2, Sparkles } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, IMPACT_REPORT_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { ReportView, type ReportData } from '@/components/reports/ReportView';
 import { SearchBox, matchesQuery, RoleChip, fmtDate } from '@/components/impact/AdminPeople';
@@ -51,6 +52,7 @@ export default function ImpactReportsPage() {
   return (
     <>
       <Topbar title="Verified impact reports" subtitle="Signed reports of verified student impact for sponsors and partners (CSRD-ready)" />
+      <SectionTabs tabs={IMPACT_REPORT_TABS} />
       <div className="p-4 md:p-8 max-w-6xl mx-auto min-w-0 w-full space-y-6">
       <SearchBox
         value={q}

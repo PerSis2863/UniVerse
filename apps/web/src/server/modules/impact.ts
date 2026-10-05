@@ -1,3 +1,4 @@
+import { evidenceFromCredential, safely } from '../skill-evidence';
 import { createHash } from 'node:crypto';
 import type { Router } from '../router';
 import { impactService as impact } from '../services/impact.service';
@@ -87,6 +88,7 @@ export default function impactModule(router: Router) {
     const dto = validate<IssueCredentialDto>(IssueCredentialDto, body);
     const result = await impact.issueCredentialDirect({ id: user.id, name: user.name }, dto);
     const id = (result as { id?: string })?.id;
+    if (id) await safely(evidenceFromCredential(id)); // proof of learning (upgrade 2)
     audit(user, async () => ({
       action: 'credential.issued',
       summary: `Issued credential ${id ? await credentialLabel(id) : `“${dto.title}”`}`,
@@ -99,6 +101,7 @@ export default function impactModule(router: Router) {
   r.post('blockchain-credentials/anchor/retry', { roles: ['ADMIN'] }, () => impact.anchorOutstandingCredentials());
   r.post<{ id: string }>('blockchain-credentials/:id/approve', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
     const result = await impact.approveCredential(params.id, { id: user.id, name: user.name });
+    await safely(evidenceFromCredential(params.id));
     audit(user, async () => ({ action: 'credential.approved', summary: `Approved and signed ${await credentialLabel(params.id)}`, targetType: 'credential', targetId: params.id }), req);
     notifyCredential(params.id, 'approved');
     return result;
@@ -113,6 +116,7 @@ export default function impactModule(router: Router) {
   r.post<{ id: string }>('blockchain-credentials/:id/revoke', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
     const { reason } = validate<CredentialDecisionDto>(CredentialDecisionDto, body);
     const result = await impact.revokeCredential(params.id, reason);
+    await safely(evidenceFromCredential(params.id)); // a revoked credential is no longer evidence
     audit(user, async () => ({ action: 'credential.revoked', summary: `Revoked ${await credentialLabel(params.id)}${reason ? `: ${reason}` : ''}`, targetType: 'credential', targetId: params.id }), req);
     notifyCredential(params.id, 'revoked', reason);
     return result;

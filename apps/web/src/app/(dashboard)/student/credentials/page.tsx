@@ -75,8 +75,8 @@ function apiErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-function RequestCredentialModal({ onClose, onRequested }: { onClose: () => void; onRequested: (c: Credential) => void }) {
-  const [form, setForm] = useState({ title: '', projectName: '', organization: '', hoursCompleted: '', peopleImpacted: '', description: '', evidenceUrl: '' });
+function RequestCredentialModal({ onClose, onRequested, initial }: { onClose: () => void; onRequested: (c: Credential) => void; initial?: Partial<Record<'title' | 'projectName' | 'organization' | 'hoursCompleted' | 'description', string>> }) {
+  const [form, setForm] = useState({ title: '', projectName: '', organization: '', hoursCompleted: '', peopleImpacted: '', description: '', evidenceUrl: '', ...initial });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -318,6 +318,20 @@ export default function VerifiedCredentialsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  // Verified volunteering (upgrade 5): "Request certificate" on a checked-out shift opens this
+  // form filled in (?project=…&org=…&hours=…).
+  const [prefill, setPrefill] = useState<{ title: string; projectName: string; organization: string; hoursCompleted: string; description: string } | undefined>();
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (!q.get('project')) return;
+    // Opened after the first paint, so the page and the server render agree.
+    const t = setTimeout(() => {
+      window.history.replaceState(null, '', window.location.pathname);
+      setPrefill({ title: `Volunteer: ${q.get('project')}`.slice(0, 120), projectName: q.get('project') ?? '', organization: q.get('org') ?? '', hoursCompleted: q.get('hours') ?? '', description: 'Hours verified by check-in on UniVerse.' });
+      setShowModal(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
 
   // Bumping `attempt` (Try again) re-runs the load; state only changes once the request settles
   const [attempt, setAttempt] = useState(0);
@@ -412,7 +426,7 @@ export default function VerifiedCredentialsPage() {
       </div>
 
       <AnimatePresence>
-        {showModal && <RequestCredentialModal onClose={() => setShowModal(false)} onRequested={c => setCredentials(prev => [c, ...prev])} />}
+        {showModal && <RequestCredentialModal initial={prefill} onClose={() => { setShowModal(false); setPrefill(undefined); }} onRequested={c => setCredentials(prev => [c, ...prev])} />}
       </AnimatePresence>
     </>
   );

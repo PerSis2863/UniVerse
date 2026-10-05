@@ -185,6 +185,14 @@ model User {
   // Career & Internships
   careerProfile           CareerProfile?
   skills                  StudentSkill[]
+  skillEvidence           SkillEvidence[]
+  supportPlans            SupportPlan[]
+  planBlocks              PlanBlock[]
+  shiftCheckins           ShiftCheckin[]
+  eventRsvps              EventRsvp[]
+  lostFoundItems          LostFoundItem[]
+  /// Smart planner settings: JSON { capMin, start, end, ical, sig, plannedFor }
+  studyPrefs              String?
   internshipApplications  InternshipApplication[]
   postedInternships       Internship[]             @relation("InternshipPoster")
   scholarshipApplications ScholarshipApplication[]
@@ -232,18 +240,19 @@ model User {
   livePollVotes         LivePollVote[]
   codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
 
-  scheduledCalls ScheduledCall[]
-  voiceSessions VoiceSession[]
-  statuses      ChatStatus[]
-  statusViews   ChatStatusView[]
+  scheduledCalls       ScheduledCall[]
+  voiceSessions        VoiceSession[]
+  statuses             ChatStatus[]
+  statusViews          ChatStatusView[]
   // Messages: availability (auto | busy | in_class | studying | sleeping | invisible) and a custom
   // status. Busy, in class and sleeping are Focus modes: calls don't ring and pushes wait, except
   // from favourites.
-  presence      String    @default("auto")
-  statusText    String?
-  statusEmoji   String?
-  statusUntil   DateTime?
+  presence             String            @default("auto")
+  statusText           String?
+  statusEmoji          String?
+  statusUntil          DateTime?
   communityMemberships CommunityMember[]
+
   @@index([role])
   @@index([status])
   @@map("users")
@@ -323,6 +332,8 @@ model Course {
   code        String       @unique
   name        String
   description String?
+  /// Skills this course builds (JSON string[], 3–6, chosen by the teacher): graded work becomes evidence for them
+  skills      String?
   credits     Int          @default(3)
   department  String?
   status      CourseStatus @default(DRAFT)
@@ -338,6 +349,7 @@ model Course {
   attendance            Attendance[]
   grades                Grade[]
   quizzes               Quiz[]
+  classSessions         ClassSession[]
   materials             Material[]
   announcements         Announcement[]
   knowledgeHubResources KnowledgeHubResource[]
@@ -349,7 +361,8 @@ model Course {
   livePolls             LivePoll[]
   codeRooms             CodeRoom[]
 
-  scheduledCalls        ScheduledCall[]
+  scheduledCalls ScheduledCall[]
+
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -442,15 +455,22 @@ model QuizQuestion {
 }
 
 model QuizSubmission {
-  id          String   @id @default(cuid())
-  quizId      String
-  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  studentId   String
-  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  answers     Json // { questionId: answer }
-  score       Float?
-  maxScore    Float?
-  submittedAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  quizId           String
+  quiz             Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers          Json // { questionId: answer }
+  score            Float?
+  maxScore         Float?
+  submittedAt      DateTime  @default(now())
+  /// Offline-first (upgrade 4): a quiz taken with no connection. When the student started and
+  /// finished it on their device, the outbox id (a retried send is saved once), and LATE when it
+  /// was finished after the due date (the teacher accepts or removes it) or ACCEPTED
+  clientId         String?
+  offlineStartedAt DateTime?
+  offlineAt        DateTime?
+  offlineStatus    String?
 
   @@unique([quizId, studentId])
   @@index([quizId])
@@ -528,26 +548,27 @@ model Announcement {
 }
 
 model Conversation {
-  id              String   @id @default(cuid())
-  isGroup         Boolean  @default(false)
+  id              String     @id @default(cuid())
+  isGroup         Boolean    @default(false)
   name            String?
   avatarUrl       String?
   createdById     String?
   disappearingSec Int? // new messages expire after this many seconds (null = off)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
   // A channel inside a community (Discord-style): TEXT, ANNOUNCE (only moderators post) or VOICE
   // (a drop-in call room). Channels aren't listed under Chats.
   communityId     String?
   community       Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
   channelKind     String?
-  position        Int      @default(0)
-  slowModeSec     Int      @default(0) // seconds between one person's messages (0 = off)
+  position        Int        @default(0)
+  slowModeSec     Int        @default(0) // seconds between one person's messages (0 = off)
 
   participants ConversationParticipant[]
   messages     Message[]
 
   scheduledCalls ScheduledCall[]
+
   @@index([communityId])
   @@map("conversations")
 }
@@ -607,13 +628,19 @@ model Message {
   pinnedAt   DateTime? // pinned to the top of the chat
   pinnedById String?
 
-  threadId       String? // a reply inside a thread started from this message id (Discord-style)
+  threadId String? // a reply inside a thread started from this message id (Discord-style)
+
+  /// Offline-first (upgrade 4): the sender's own id for a message queued offline, so a retried send
+  /// is saved once
+  clientId String?
+
+  @@unique([senderId, clientId])
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@index([replyToId])
   @@index([expiresAt])
-  @@map("messages")
   @@index([threadId])
+  @@map("messages")
 }
 
 // Uploaded files stored in the database (used when no external file storage is configured).
@@ -633,7 +660,7 @@ model StoredFile {
 
 // Admin-managed campus information: services (dining, transport…), useful links and campus events.
 model CampusItem {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   kind        String // SERVICE, LINK, EVENT
   category    String?
   title       String
@@ -642,12 +669,51 @@ model CampusItem {
   location    String?
   hours       String?
   startAt     DateTime?
+  /// Events (upgrade 7): seats; null means no limit. RSVPs and QR check-ins in event_rsvps
+  capacity    Int?
   createdById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  rsvps       EventRsvp[]
 
   @@index([kind])
   @@map("campus_items")
+}
+
+/// Campus super-app (upgrade 7): a student's place at an event (GOING, or WAITLIST when it's full)
+/// and when they checked in by scanning the event's rotating QR code
+model EventRsvp {
+  id          String     @id @default(cuid())
+  itemId      String
+  item        CampusItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String     @default("GOING") // GOING | WAITLIST
+  checkedInAt DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@unique([itemId, userId])
+  @@index([userId])
+  @@map("event_rsvps")
+}
+
+/// Campus super-app (upgrade 7): something lost or found on campus. Hidden after 30 days.
+model LostFoundItem {
+  id          String   @id @default(cuid())
+  kind        String // LOST | FOUND
+  title       String
+  description String?
+  photoUrl    String?
+  location    String?
+  reporterId  String
+  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  status      String   @default("OPEN") // OPEN | RESOLVED | HIDDEN (by an admin)
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([status, expiresAt])
+  @@index([reporterId])
+  @@map("lost_found_items")
 }
 
 /// Per-person state of a message: starred, or hidden ("delete for me").
@@ -926,6 +992,8 @@ model Association {
   members     Int               @default(0)
   status      AssociationStatus @default(PENDING)
   budget      Float             @default(0)
+  /// The club's own space (upgrade 7): a Community with its members
+  communityId String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
@@ -1226,6 +1294,7 @@ model Group {
   posts   GroupPost[]
 
   scheduledCalls ScheduledCall[]
+
   @@index([createdById])
   @@map("groups")
 }
@@ -1316,9 +1385,55 @@ model NGOProject {
 
   applications         NGOProjectApplication[]
   collaborationProject CollaborationProject?
+  shifts               VolunteerShift[]
 
   @@index([ngoId])
   @@map("ngo_projects")
+}
+
+/// Verified volunteering (upgrade 5): a time slot on an NGO project. Students check in on site by
+/// scanning a rotating QR code (or by GPS within radiusM of lat/lng); hours are verified at check-out.
+model VolunteerShift {
+  id          String         @id @default(cuid())
+  projectId   String
+  project     NGOProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  startAt     DateTime
+  endAt       DateTime
+  location    String?
+  lat         Float?
+  lng         Float?
+  radiusM     Int            @default(200)
+  capacity    Int            @default(20)
+  createdById String?
+  createdAt   DateTime       @default(now())
+  checkins    ShiftCheckin[]
+
+  @@index([projectId])
+  @@index([startAt])
+  @@map("volunteer_shifts")
+}
+
+/// Verified volunteering (upgrade 5): one student's attendance at one shift
+model ShiftCheckin {
+  id           String         @id @default(cuid())
+  shiftId      String
+  shift        VolunteerShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  signedUpAt   DateTime       @default(now())
+  checkInAt    DateTime?
+  checkOutAt   DateTime?
+  method       String? // QR | GPS | MANUAL
+  lat          Float?
+  lng          Float?
+  minutes      Int            @default(0)
+  verified     Boolean        @default(false)
+  verifiedById String?
+
+  @@unique([shiftId, studentId])
+  @@index([studentId])
+  @@map("shift_checkins")
 }
 
 model NGOProjectApplication {
@@ -1888,49 +2003,111 @@ model MessageTranslation {
 // Skills passport: a public page a student can choose to share (verified credentials, skills,
 // courses), and Open Badges 3.0 exports of their credentials.
 model SkillPassport {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  slug            String   @unique // random, part of the public link
-  isPublic        Boolean  @default(false)
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String    @unique // random, part of the public link
+  isPublic        Boolean   @default(false)
   headline        String?
-  showSkills      Boolean  @default(true)
-  showCredentials Boolean  @default(true)
-  showCourses     Boolean  @default(false)
-  showImpact      Boolean  @default(true)
-  views           Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  showSkills      Boolean   @default(true)
+  showCredentials Boolean   @default(true)
+  showCourses     Boolean   @default(false)
+  showImpact      Boolean   @default(true)
+  showEvidence    Boolean   @default(true)
+  /// A short strengths paragraph (AI draft the student can edit)
+  strengths       String?
+  strengthsAt     DateTime?
+  views           Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@map("skill_passports")
+}
+
+/// Proof of learning (upgrade 2): a skill backed by something checked by someone else, created
+/// automatically when an assignment is graded (60%+), a quiz is passed (60%+) or an impact
+/// credential is issued. The student can hide items from their public passport.
+model SkillEvidence {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill          String // normalised key (lower case, single spaces)
+  label          String // as shown
+  kind           String // QUIZ | ASSIGNMENT | COURSE | IMPACT | PROJECT
+  sourceId       String
+  title          String
+  detail         String?
+  level          String? // Developing | Proficient | Advanced
+  verifiedById   String?
+  verifiedByName String?
+  occurredAt     DateTime @default(now())
+  hidden         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, kind, sourceId, skill])
+  @@index([userId, skill])
+  @@map("skill_evidence")
 }
 
 // Early warning: students who may be struggling in a course, found each day from attendance,
 // grades, missed quizzes and inactivity (plain rules, no AI). Only teachers and admins see them,
 // and a person decides what to do — nothing happens to the student automatically.
 model StudentRiskFlag {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   studentId     String
-  student       User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student       User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   courseId      String
-  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   score         Int // 0–100
   level         String // AT_RISK | WATCH | OK (improved since it was flagged)
   reasons       Json // [{ code, text }]
-  status        String    @default("OPEN") // OPEN | CONTACTED | RESOLVED | DISMISSED
+  status        String        @default("OPEN") // OPEN | CONTACTED | RESOLVED | DISMISSED
   note          String?
   handledById   String?
   handledByName String?
   handledAt     DateTime?
   handledScore  Int? // score when it was last handled (reopens only if it gets clearly worse)
-  computedAt    DateTime  @default(now())
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  followUpScore Int? // score at the 7-day follow-up of a support plan (upgrade 3)
+  plans         SupportPlan[]
+  computedAt    DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@unique([studentId, courseId])
   @@index([courseId])
   @@index([status])
   @@map("student_risk_flags")
+}
+
+/// Early help (upgrade 3): a study plan a teacher made for a student after an early-warning flag.
+/// The student sees it in their Study planner as encouragement (never as a warning); the teacher is
+/// reminded in the app after 7 days and sees whether things improved.
+model SupportPlan {
+  id                 String           @id @default(cuid())
+  flagId             String?
+  flag               StudentRiskFlag? @relation(fields: [flagId], references: [id], onDelete: SetNull)
+  studentId          String
+  student            User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId           String
+  createdById        String
+  createdByName      String
+  plan               String // JSON { intro, steps: [{ title, detail, minutes }], closing }
+  message            String? // the teacher's note to the student
+  stepsDone          String           @default("[]") // JSON number[]: steps the student ticked
+  status             String           @default("ACTIVE") // ACTIVE | DONE | CANCELLED
+  followUpAt         DateTime
+  followUpNotifiedAt DateTime?
+  followUpDoneAt     DateTime?
+  startScore         Int?
+  endScore           Int?
+  outcome            String? // IMPROVED | SAME | WORSE
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([studentId, status])
+  @@index([status, followUpAt])
+  @@index([flagId])
+  @@map("support_plans")
 }
 
 // Course AI tutor: the text the tutor answers from — course materials (read once) and teacher notes.
@@ -2138,6 +2315,30 @@ model StudyDay {
   @@map("study_days")
 }
 
+/// Smart study planner (upgrade 6): a study session placed in the student's free time by a plain
+/// scheduler (no AI): free time = the week minus classes and calendar events; tasks = due work,
+/// flashcards due and weaker courses; a daily cap the student sets. Re-planned when the page opens
+/// and something changed. Times are the student's local time.
+model PlanBlock {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       String // YYYY-MM-DD (local)
+  start      String // HH:MM (local)
+  end        String // HH:MM (local)
+  kind       String // DEADLINE | QUIZ | EXAM | FLASHCARDS | REVIEW
+  refId      String? // the deadline / course it's for
+  title      String
+  courseCode String?
+  done       Boolean  @default(false)
+  pinned     Boolean  @default(false) // moved by the student: kept when re-planning
+  movedFrom  String? // "YYYY-MM-DD HH:MM" when the scheduler moved it
+  createdAt  DateTime @default(now())
+
+  @@index([userId, date])
+  @@map("plan_blocks")
+}
+
 /// A written assignment with a rubric (src/server/assignments.ts).
 model Assignment {
   id           String                 @id @default(cuid())
@@ -2163,23 +2364,31 @@ model Assignment {
 
 /// A student's answer, the AI's draft grade and the teacher's final grade.
 model AssignmentSubmission {
-  id             String     @id @default(cuid())
-  assignmentId   String
-  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  studentId      String
-  student        User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  text           String
-  status         String     @default("SUBMITTED") // SUBMITTED, DRAFTED (AI draft ready), RETURNED (graded)
-  aiDraft        Json? // { criteria: [{ id, score, comment }], summary, strengths, improvements, concerns }
-  aiDraftedAt    DateTime?
-  criteriaScores Json? // the teacher's final [{ id, score, comment }]
-  score          Float?
-  feedback       String?
-  gradeId        String? // the row in "grades" written when returned
-  signals        Json? // similarity signals for the teacher: { sig, material } (src/server/similarity.ts)
-  submittedAt    DateTime   @default(now())
-  returnedAt     DateTime?
-  updatedAt      DateTime   @updatedAt
+  id                 String     @id @default(cuid())
+  assignmentId       String
+  assignment         Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId          String
+  student            User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  text               String
+  status             String     @default("SUBMITTED") // SUBMITTED, DRAFTED (AI draft ready), RETURNED (graded)
+  aiDraft            Json? // { criteria: [{ id, score, comment }], summary, strengths, improvements, concerns }
+  aiDraftedAt        DateTime?
+  criteriaScores     Json? // the teacher's final [{ id, score, comment }]
+  score              Float?
+  feedback           String?
+  gradeId            String? // the row in "grades" written when returned
+  signals            Json? // similarity signals for the teacher: { sig, material } (src/server/similarity.ts)
+  /// Feedback studio (upgrade 8): the teacher's recorded voice or video feedback, its transcript,
+  /// and writing-style signals compared with the student's own earlier answers (a hint, never a verdict)
+  feedbackMediaUrl   String?
+  feedbackMediaKind  String? // AUDIO | VIDEO
+  feedbackTranscript String?
+  styleSignals       Json?
+  /// Offline-first (upgrade 4): when the student handed it in on their device with no connection
+  offlineAt          DateTime?
+  submittedAt        DateTime   @default(now())
+  returnedAt         DateTime?
+  updatedAt          DateTime   @updatedAt
 
   @@unique([assignmentId, studentId])
   @@index([studentId])
@@ -2311,6 +2520,31 @@ model VoiceSession {
   @@index([createdAt])
   @@index([userId])
   @@map("voice_sessions")
+}
+
+/// A class call turned into a study pack (upgrade 1: AI class companion). The teacher turns on
+/// "Class notes" in a class call; everyone's captions are collected by the teacher's browser and
+/// sent here once, when notes stop. One AI request makes the pack. The transcript (text only,
+/// never audio) is deleted after 90 days by the daily job; the pack itself stays with the course.
+model ClassSession {
+  id                  String   @id @default(cuid())
+  courseId            String
+  course              Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById         String
+  startedAt           DateTime
+  durationSec         Int      @default(0)
+  status              String   @default("READY") // READY | PENDING (AI wasn't available; the teacher can retry)
+  summary             String?
+  notes               String   @default("[]") // JSON string[]
+  keyMoments          String   @default("[]") // JSON [{ t: seconds from start, text }]
+  flashcards          String   @default("[]") // JSON [{ front, back }]
+  quizId              String?
+  recordingMaterialId String?
+  transcript          String? // JSON [{ t, who, text }]; removed after 90 days
+  createdAt           DateTime @default(now())
+
+  @@index([courseId, createdAt])
+  @@map("class_sessions")
 }
 
 // Status updates ("stories"), like WhatsApp's: a photo or a coloured text card that disappears

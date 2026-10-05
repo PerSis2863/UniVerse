@@ -1,6 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, MONITORING_TABS } from '@/components/layout/SectionTabs';
 import { useMemo, useState } from 'react';
 import { AlertCircle, ChevronDown, Crown, Users } from 'lucide-react';
 import { format } from 'date-fns';
@@ -86,6 +87,7 @@ export default function AdminAssociationsMonitoringPage() {
   return (
     <>
       <Topbar title="Associations Monitoring" subtitle="Student clubs and societies, and every member in them" />
+      <SectionTabs tabs={MONITORING_TABS} />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">

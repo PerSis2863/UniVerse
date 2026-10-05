@@ -1,6 +1,7 @@
 // Shared validation for admin-managed campus info (/api/campus-items).
 
-export const CAMPUS_KINDS = ['SERVICE', 'LINK', 'EVENT'] as const;
+// MENU (upgrade 7): one dining menu: startAt is its day, category the meal, description one dish per line.
+export const CAMPUS_KINDS = ['SERVICE', 'LINK', 'EVENT', 'MENU'] as const;
 
 export function cleanCampusItem(b: any) {
   const str = (v: unknown, n: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : null);
@@ -14,5 +15,7 @@ export function cleanCampusItem(b: any) {
     location: str(b.location, 120),
     hours: str(b.hours, 120),
     startAt,
+    // Event seats (upgrade 7); empty means no limit.
+    capacity: Number.isInteger(Number(b.capacity)) && Number(b.capacity) > 0 ? Math.min(Number(b.capacity), 100_000) : null,
   };
 }

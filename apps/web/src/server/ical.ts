@@ -1,3 +1,4 @@
+import { feedBlocks } from './smart-planner';
 import prisma from '@/lib/db';
 
 // The calendar feed (/api/calendar/<token>): a person's weekly classes, quiz due dates, exams and
@@ -101,6 +102,16 @@ export async function calendarFeed(userId: string): Promise<string> {
       `DTSTART:${utc(e.startAt)}`, `DTEND:${utc(end)}`,
       `SUMMARY:${esc(`${label}${e.title}${e.course ? ` (${e.course.code})` : ''}`)}`,
       ...(e.description ? [`DESCRIPTION:${esc(e.description.slice(0, 1000))}`] : []),
+    ]);
+  }
+
+  // Study sessions from the smart planner, when the student turned that on (local times).
+  for (const b of await feedBlocks(userId)) {
+    const day = new Date(`${b.date}T00:00:00Z`);
+    event(`study-${b.id}`, [
+      `DTSTART:${floating(day, b.start)}`, `DTEND:${floating(day, b.end)}`,
+      `SUMMARY:${esc(`${b.done ? '✓ ' : ''}Study: ${b.title}${b.courseCode ? ` (${b.courseCode})` : ''}`)}`,
+      'TRANSP:OPAQUE',
     ]);
   }
 

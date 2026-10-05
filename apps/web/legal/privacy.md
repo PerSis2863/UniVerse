@@ -70,7 +70,8 @@ Certain data is considered "special category" (GDPR) or "sensitive personal data
 ### 2.6 Communications and Interaction Data
 
 - Contents of direct messages sent in private conversations and group chats, including photos, files, and voice notes.
-- Call history (who called whom, when, and for how long). Calls themselves are not recorded.
+- Call history (who called whom, when, and for how long). Calls are not recorded, except class calls that the class's teacher chooses to record (everyone in the call sees a REC badge); those recordings are added to the course's materials.
+- Class notes: when a teacher turns on "Class notes" in a class call (everyone in the call sees a Notes badge and a notice), each participant's browser turns their speech into text and the teacher's browser sends that text transcript to us when the class ends. Audio is never sent or stored. The transcript is used once to make a study pack for the course (summary, notes, key moments, flashcards and a quiz the teacher reviews), which enrolled students can see. The transcript is deleted after 90 days; the study pack stays with the course until the teacher deletes it.
 - Whiteboards you create or edit, including drawings and photos added to them.
 - Public or semi-public group posts, knowledge hub articles, and announcements.
 - Notes, feedback, and scheduling data from mentorship sessions and collaborative projects.
@@ -134,7 +135,7 @@ When you actively submit an application for an NGO project, internship, startup 
 We utilize industry-leading technology partners bound by strict Data Processing Agreements (DPAs):
 
 - **Google LLC (Firebase Authentication):** Authentication and identity infrastructure.
-- **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, data included in AI impact reports, chat messages you choose to translate (or that are translated because you or another member of the chat turned on auto-translate), questions you ask the course AI tutor together with the relevant passages of that course's materials, and course materials your teacher prepares for the tutor are sent to Google to produce a response. Tutor conversations are not stored by us; flashcards you create are saved to your account until you delete them. Translations are stored with the message so each one is only produced once, and are deleted when the message is edited or deleted.
+- **Google LLC (Gemini API):** AI features. The text you enter into the study assistant, documents you ask us to summarize, data included in AI impact reports, chat messages you choose to translate (or that are translated because you or another member of the chat turned on auto-translate), questions you ask the course AI tutor together with the relevant passages of that course's materials, the text transcript of a class call when its teacher turns on class notes, and course materials your teacher prepares for the tutor are sent to Google to produce a response. Tutor conversations are not stored by us; flashcards you create are saved to your account until you delete them. Translations are stored with the message so each one is only produced once, and are deleted when the message is edited or deleted.
 - **Cloudflare, Inc.:** Hosting and serverless computing (Workers), database (D1), file storage (R2), and real-time features. For voice and video calls, Cloudflare passes the connection details between participants; call audio and video then go directly between participants' devices and are not recorded or stored. On networks that block direct connections, they may be relayed (encrypted) through Cloudflare's servers.
 - **Stripe, Inc.:** PCI-compliant payment processing.
 - **Resend, Inc.:** Delivery of notification and account emails.
@@ -183,6 +184,7 @@ We retain your personal data only for as long as necessary to fulfill the purpos
 | Staff Application Documents | Until the application is decided, and for up to 12 months afterwards. |
 | Credential Hashes | Indefinite (necessary for blockchain integrity; public display is suppressed upon request). |
 | Technical / Log Data (including sign-in history) | 90 days. |
+| Class notes transcripts (text only) | 90 days (the study pack made from them stays with the course until the teacher deletes it). |
 
 ## 9. Your Global Data Protection Rights
 

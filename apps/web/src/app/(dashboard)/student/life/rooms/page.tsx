@@ -6,6 +6,9 @@ import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useState } from 'react';import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
+import { authedJson } from '@/lib/authed-fetch';
+
+type RoomStatus = { free: boolean; freeAt: string | null; busyUntil: string | null; nextBusy: string | null };
 
 type Room = { id: string, name: string, capacity: number, type: string, features: string[] };
 
@@ -24,6 +27,20 @@ export default function RoomReservationPage() {
   const [bookingId, setBookingId] = useState('');
 
   const { data: allRooms } = useSWR('/rooms', fetcher);
+  // "Free now / Free at 14:00" (upgrade 7), from today's bookings and the class timetable, in this
+  // device's local time.
+  const [nowKey] = useState(() => {
+    const d = new Date();
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return `/api/campus/rooms?date=${date}&min=${d.getHours() * 60 + d.getMinutes()}&dow=${(d.getDay() + 6) % 7}`;
+  });
+  const { data: status } = useSWR<Record<string, RoomStatus>>(nowKey, authedJson, { revalidateOnFocus: false });
+  const badge = (id: string) => {
+    const st = status?.[id];
+    if (!status) return null;
+    if (!st || st.free) return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">Free now{st?.nextBusy ? ` · until ${st.nextBusy}` : ''}</span>;
+    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">{st.freeAt ? `Free at ${st.freeAt}` : 'Busy for the rest of today'}</span>;
+  };
 
   const handleSearch = () => {
     setIsSearching(true);
@@ -188,6 +205,21 @@ export default function RoomReservationPage() {
             </button>
           </motion.div>
 
+          {/* Right now: which rooms are free */}
+          {!!allRooms?.length && status && (
+            <section aria-label="Rooms right now" className="space-y-2">
+              <h3 className="text-sm font-bold text-zinc-300">Right now</h3>
+              <div className="flex flex-wrap gap-2">
+                {(allRooms as { id: string; name: string }[]).slice(0, 30).map((r) => (
+                  <motion.button key={r.id} type="button" layout onClick={() => handleBookClick({ id: r.id, name: r.name, capacity: (r as { capacity?: number }).capacity ?? 0, type: (r as { type?: string }).type ?? '', features: [] })}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e1427] px-3 py-2 text-sm text-white hover:bg-white/[0.04]">
+                    {r.name} {badge(r.id)}
+                  </motion.button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Results */}
           {hasSearched && (
             <motion.div 
@@ -205,7 +237,7 @@ export default function RoomReservationPage() {
               })).map((room: Room, i: number) => (
                 <div key={i} className="bg-[#0e1427] border border-white/[0.08] rounded-2xl p-6 flex flex-col sm:flex-row gap-6 justify-between items-center hover:bg-white/[0.02] transition-colors shadow-lg">
                   <div>
-                    <h4 className="font-bold text-white text-lg">{room.name}</h4>
+                    <h4 className="font-bold text-white text-lg flex flex-wrap items-center gap-2">{room.name} {badge(room.id)}</h4>
                     <div className="flex items-center gap-4 mt-2 text-sm text-zinc-400">
                       <span className="flex items-center gap-1"><Users className="w-4 h-4" /> Up to {room.capacity}</span>
                       <span className="flex items-center gap-1"><Map className="w-4 h-4" /> {room.type}</span>
