@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { notifyMany } from '@/server/email';
 import { deleteFile } from '@/lib/storage';
 import { diagnoseErrors, emailErrorDigest } from '@/server/errors';
+import { emailDue, parseEmailSchedule } from '@/lib/feature-switches';
 import { assessCourses } from '@/server/early-warning';
 import { sendWeeklyDigests } from '@/server/guardians';
 
@@ -26,7 +27,10 @@ export async function POST(req: Request) {
   const earlyWarning = await assessCourses().catch((e) => (console.error('early warning failed:', e), null));
   // Error monitoring: AI diagnoses the day's new problems, then the owner gets a digest.
   const diagnosed = await diagnoseErrors({ limit: 8 }).catch((e) => (console.error('diagnoseErrors failed:', e), 0));
-  const reported = await emailErrorDigest(new Date(Date.now() - DAY)).catch((e) => (console.error('emailErrorDigest failed:', e), 0));
+  // The problems email follows the owner's schedule (daily / weekly / monthly / off), covering the time since the last one.
+  const ctl = await prisma.serverControl.findUnique({ where: { id: 'main' }, select: { switches: true } }).catch(() => null);
+  const errorsEmail = emailDue(parseEmailSchedule(ctl?.switches).errors);
+  const reported = errorsEmail.due ? await emailErrorDigest(new Date(Date.now() - errorsEmail.days * DAY)).catch((e) => (console.error('emailErrorDigest failed:', e), 0)) : 0;
   return NextResponse.json({ reminders, guardianDigests, deleted, earlyWarning, errors: { diagnosed, reported } });
 }
 
