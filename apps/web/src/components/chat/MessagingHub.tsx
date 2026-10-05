@@ -24,6 +24,9 @@ const ChatWindow = dynamic(() => loadChatWindow().then((m) => m.ChatWindow), {
 });
 const NewChatDialog = dynamic(() => import('./NewChatDialog').then((m) => m.NewChatDialog));
 const StarredPanel = dynamic(() => import('./ChatDialogs').then((m) => m.StarredPanel));
+const StatusBar = dynamic(() => import('./StatusBar').then((m) => m.StatusBar), { loading: () => <div className="h-[88px]" /> });
+
+interface FoundMessage { id: string; conversationId: string; title: string; avatar: string | null; sender: string; snippet: string; createdAt: string }
 
 export function MessagingHub() {
   const refreshInterval = useLiveInterval(15_000, 0);
@@ -40,6 +43,13 @@ export function MessagingHub() {
   const [jumpTo, setJumpTo] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Searching also looks inside messages of every chat (after a short pause in typing).
+  const [deepQ, setDeepQ] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDeepQ(search.trim()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+  const { data: found, isLoading: searching } = useSWR<FoundMessage[]>(deepQ.length >= 2 ? `/api/chat/search?q=${encodeURIComponent(deepQ)}` : null, authedJson, { revalidateOnFocus: false });
 
   useEffect(() => {
     const t = window.setTimeout(() => { void loadChatWindow().catch(() => {}); }, 600);
@@ -127,6 +137,7 @@ export function MessagingHub() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
+          {view === 'chats' && !search && <div className="-mx-2 -mt-2 mb-1"><StatusBar /></div>}
           {isLoading && <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>}
           {error && <p className="p-6 text-center text-sm text-rose-500">{(error as Error).message}</p>}
           {view === 'chats' && archivedCount > 0 && !search && (
@@ -136,7 +147,7 @@ export function MessagingHub() {
               <span className="text-xs text-zinc-500">{archivedUnread > 0 ? <span className="text-indigo-500 font-semibold">{archivedUnread} unread</span> : archivedCount}</span>
             </button>
           )}
-          {!isLoading && !error && conversations.length === 0 && (
+          {!isLoading && !error && conversations.length === 0 && !(found && found.length) && (
             <div className="p-8 text-center">
               <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{view === 'archived' ? 'No archived chats' : search || filter !== 'all' ? 'No chats match' : 'No chats yet'}</p>
               <button onClick={() => setDialog('chat')} className="mt-3 text-sm font-semibold text-indigo-500">Start a new chat</button>
@@ -198,6 +209,21 @@ export function MessagingHub() {
               </motion.div>
             );
           })}
+          {deepQ.length >= 2 && (
+            <div className="mt-2">
+              <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-zinc-400 flex items-center gap-2">Messages {searching && <Loader2 className="w-3 h-3 animate-spin" />}</p>
+              {found && found.length === 0 && !searching && <p className="px-3 pb-3 text-sm text-zinc-500">No messages contain “{deepQ}”.</p>}
+              {found?.map((m) => (
+                <button key={m.id} onClick={() => { select(m.conversationId); setJumpTo(m.id); }} className="w-full flex items-start gap-3 p-3 rounded-2xl text-left hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
+                  <Avatar name={m.title} src={m.avatar} size={40} />
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-center justify-between gap-2"><span className="font-semibold text-sm text-zinc-900 dark:text-white truncate">{m.title}</span><span className="text-[11px] text-zinc-400 shrink-0">{timeLabel(m.createdAt)}</span></span>
+                    <span className="block text-sm text-zinc-500 line-clamp-2"><span className="text-zinc-700 dark:text-zinc-300">{m.sender}: </span>{m.snippet}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

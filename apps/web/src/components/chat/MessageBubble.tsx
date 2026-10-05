@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck } from 'lucide-react';
+import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes } from './chat-client';
 import { safeHref } from '@/lib/safe-href';
+import { authedJson } from '@/lib/authed-fetch';
 
 const URL_SPLIT = /(https?:\/\/[^\s]+)/g;
 const MENTION_SPLIT = /(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)/g;
@@ -200,6 +201,8 @@ export function MessageBubble(p: Props) {
     content = m.metadata?.moderated === 'removed'
       ? <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Removed by UniVerse</p>
       : <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
+  } else if (m.metadata?.viewOnce && (m.type === 'IMAGE' || m.type === 'VIDEO' || m.type === 'AUDIO')) {
+    content = <ViewOnce m={m} mine={mine} />;
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
       <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />
@@ -207,7 +210,13 @@ export function MessageBubble(p: Props) {
   } else if (m.type === 'VIDEO' && m.attachmentUrl) {
     content = <ChatVideo url={m.attachmentUrl} />;
   } else if (m.type === 'AUDIO' && m.attachmentUrl) {
-    content = <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} />;
+    content = (
+      <div>
+        {m.metadata?.voicemail && <p className={cn('px-3 pt-2.5 text-[11px] font-semibold flex items-center gap-1', mine ? 'text-white/80' : 'text-indigo-500')}><PhoneMissed className="w-3 h-3" /> Voicemail</p>}
+        <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} />
+        <VoiceTranscript id={m.id} transcript={m.metadata?.transcript} mine={mine} pending={!!m.pending} />
+      </div>
+    );
   } else if (m.type === 'FILE' && m.attachmentUrl) {
     content = (
       <a href={safeHref(m.attachmentUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 w-64 max-w-full">
@@ -330,6 +339,7 @@ export function MessageBubble(p: Props) {
     content = (
       <div className="px-3.5 py-2.5">
         <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} />
+        {m.metadata?.link && <LinkCard link={m.metadata.link} mine={mine} />}
         {translated && (
           <button onClick={p.onToggleOriginal} className={cn('mt-1.5 flex items-center gap-1 text-[11px] font-medium', mine ? 'text-white/75 hover:text-white' : 'text-indigo-500 dark:text-indigo-300 hover:underline')}>
             <Languages className="w-3 h-3" />
@@ -478,4 +488,83 @@ function ChatPhoto({ url, name, size, mine, onOpen }: { url: string; name?: stri
 export function ChatVideo({ url }: { url: string }) {
   const lowData = useLowData((s) => s.enabled);
   return <video src={url} controls preload={lowData ? 'none' : 'metadata'} className="rounded-xl max-h-80 m-1" />;
+}
+
+/** A view-once photo, video or voice message: opened once, full screen, then gone for you. */
+function ViewOnce({ m, mine }: { m: ChatMessage; mine: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [used, setUsed] = useState(false);
+  const label = m.type === 'IMAGE' ? 'Photo' : m.type === 'VIDEO' ? 'Video' : 'Voice message';
+  const meta = m.metadata ?? {};
+  const gone = used || meta.opened || !m.attachmentUrl;
+  const show = () => {
+    if (mine || gone) return;
+    haptic('tap');
+    setOpen(true);
+    void authedJson(`/api/chat/messages/${m.id}/opened`, { method: 'POST' }).catch(() => {});
+  };
+  return (
+    <>
+      <button type="button" onClick={show} disabled={mine || gone} className="flex items-center gap-2.5 px-3.5 py-3 text-left w-60 max-w-full">
+        <span className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0 border-2 border-dashed', mine ? 'border-white/60' : gone ? 'border-zinc-300 dark:border-zinc-600 text-zinc-400' : 'border-indigo-500 text-indigo-500')}><Flame className="w-4 h-4" /></span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold">{label}</span>
+          <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>
+            {mine ? (meta.openedCount ? `Opened${meta.openedCount > 1 ? ` by ${meta.openedCount}` : ''}` : 'View once · not opened yet') : gone ? 'Opened' : 'View once · tap to open'}
+          </span>
+        </span>
+      </button>
+      {open && m.attachmentUrl && (
+        <div className="fixed inset-0 z-[160] bg-black/95 flex flex-col items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={`View once ${label.toLowerCase()}`} onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setUsed(true); } }}>
+          <p className="text-white/70 text-xs mb-3 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> View once: it disappears when you close it</p>
+          {m.type === 'IMAGE' && <img src={m.attachmentUrl} alt="" className="max-w-full max-h-[80vh] object-contain rounded-xl" onContextMenu={(e) => e.preventDefault()} draggable={false} />}
+          {m.type === 'VIDEO' && <video src={m.attachmentUrl} autoPlay controls controlsList="nodownload" className="max-w-full max-h-[80vh] rounded-xl" />}
+          {m.type === 'AUDIO' && <div className="bg-white/10 rounded-2xl pb-2"><VoicePlayer src={m.attachmentUrl} mine durationSec={meta.durationSec} /></div>}
+          <button type="button" onClick={() => { setOpen(false); setUsed(true); }} className="mt-5 px-5 py-2 rounded-full bg-white/15 text-white text-sm font-semibold">Close</button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** The text of a voice message: made by AI on request (once), then saved for everyone in the chat. */
+function VoiceTranscript({ id, transcript, mine, pending }: { id: string; transcript?: string; mine: boolean; pending: boolean }) {
+  const [text, setText] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const shown = text ?? transcript;
+  const ask = async () => {
+    if (shown) return setOpen((o) => !o);
+    setBusy(true);
+    try {
+      const r = await authedJson<{ transcript: string }>(`/api/chat/messages/${id}/transcribe`, { method: 'POST' });
+      setText(r.transcript);
+      setOpen(true);
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (pending) return null;
+  return (
+    <div className="px-3 pt-1">
+      <button type="button" onClick={() => void ask()} className={cn('text-[11px] font-semibold inline-flex items-center gap-1', mine ? 'text-white/80 hover:text-white' : 'text-indigo-500 hover:underline')}>
+        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />} {shown ? (open ? 'Hide transcript' : 'Show transcript') : 'Transcript'}
+      </button>
+      {open && shown && <p className={cn('text-[13px] mt-1 leading-snug whitespace-pre-wrap', mine ? 'text-white/90' : 'text-zinc-700 dark:text-zinc-300')}>{shown}</p>}
+    </div>
+  );
+}
+
+/** A link's title and description (read by the server when the message was sent). */
+function LinkCard({ link, mine }: { link: NonNullable<NonNullable<ChatMessage['metadata']>['link']>; mine: boolean }) {
+  return (
+    <a href={safeHref(link.url)} target="_blank" rel="noopener noreferrer nofollow" className={cn('mt-2 block rounded-xl border-l-4 px-3 py-2 transition-colors', mine ? 'bg-white/10 border-white/60 hover:bg-white/15' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400 hover:bg-zinc-200/70 dark:hover:bg-white/[0.08]')}>
+      <span className={cn('flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide', mine ? 'text-white/70' : 'text-zinc-500')}><ExternalLink className="w-3 h-3" />{link.site}</span>
+      <span className="block text-sm font-semibold leading-snug line-clamp-2 mt-0.5">{link.title}</span>
+      {link.description && <span className={cn('block text-xs leading-snug line-clamp-2 mt-0.5', mine ? 'text-white/80' : 'text-zinc-600 dark:text-zinc-400')}>{link.description}</span>}
+    </a>
+  );
 }

@@ -234,6 +234,8 @@ model User {
 
   scheduledCalls ScheduledCall[]
   voiceSessions VoiceSession[]
+  statuses      ChatStatus[]
+  statusViews   ChatStatusView[]
   @@index([role])
   @@index([status])
   @@map("users")
@@ -2291,4 +2293,35 @@ model VoiceSession {
   @@index([createdAt])
   @@index([userId])
   @@map("voice_sessions")
+}
+
+// Status updates ("stories"), like WhatsApp's: a photo or a coloured text card that disappears
+// after 24 hours. Seen by the people you share a chat with (src/app/api/chat/status).
+model ChatStatus {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String           @default("TEXT") // TEXT | IMAGE
+  body       String           @default("")
+  mediaUrl   String?
+  background String?
+  createdAt  DateTime         @default(now())
+  expiresAt  DateTime
+  views      ChatStatusView[]
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("chat_statuses")
+}
+
+model ChatStatusView {
+  statusId String
+  status   ChatStatus @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  viewedAt DateTime   @default(now())
+
+  @@id([statusId, userId])
+  @@index([userId])
+  @@map("chat_status_views")
 }

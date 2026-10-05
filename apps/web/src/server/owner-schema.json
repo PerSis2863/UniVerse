@@ -1351,6 +1351,30 @@
      "hasDefault": false,
      "updatedAt": false,
      "relationFields": []
+    },
+    {
+     "name": "statuses",
+     "type": "ChatStatus",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "statusViews",
+     "type": "ChatStatusView",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
     }
    ]
   },
@@ -15212,6 +15236,195 @@
     },
     {
      "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ChatStatus",
+   "delegate": "chatStatus",
+   "table": "chat_statuses",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "user",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "userId"
+     ]
+    },
+    {
+     "name": "kind",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "body",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "mediaUrl",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "background",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "expiresAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "views",
+     "type": "ChatStatusView",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    }
+   ]
+  },
+  {
+   "name": "ChatStatusView",
+   "delegate": "chatStatusView",
+   "table": "chat_status_views",
+   "fields": [
+    {
+     "name": "statusId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "status",
+     "type": "ChatStatus",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "statusId"
+     ]
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "user",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "userId"
+     ]
+    },
+    {
+     "name": "viewedAt",
      "type": "DateTime",
      "kind": "scalar",
      "list": false,

@@ -3,9 +3,11 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { later, notify } from '@/server/email';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
-import { deliver } from '@/server/realtime';
+import { deliver, publishChat } from '@/server/realtime';
 import { pushService } from '@/server/services/push.service';
 import { linkScheduledCall } from '@/server/scheduled-calls';
+import { firstUrl, linkPreview } from '@/server/link-preview';
+import type { Prisma } from '@prisma/client';
 import { pretranslate, storedTranslations } from '@/server/translate';
 import { recordServerError } from '@/server/errors';
 import { alertOwner, chatMuted, featureOff, watchWordsIn } from '@/server/moderation';
@@ -163,6 +165,7 @@ export async function POST(req: Request, { params }: Ctx) {
     const src = await prisma.message.findUnique({ where: { id: b.forwardOf }, select: { conversationId: true, type: true, body: true, attachmentUrl: true, attachmentName: true, attachmentSize: true, attachmentMime: true, metadata: true, deletedAt: true } });
     if (!src || src.deletedAt || !(await membership(src.conversationId, user.id))) return NextResponse.json({ error: 'Message not found.' }, { status: 404 });
     if (!['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'LOCATION', 'CONTACT'].includes(src.type)) return NextResponse.json({ error: 'This message can’t be forwarded.' }, { status: 400 });
+    if ((src.metadata as { viewOnce?: boolean } | null)?.viewOnce) return NextResponse.json({ error: 'View-once messages can’t be forwarded.' }, { status: 400 });
     Object.assign(data, { type: src.type, body: src.body, attachmentUrl: src.attachmentUrl, attachmentName: src.attachmentName, attachmentSize: src.attachmentSize, attachmentMime: src.attachmentMime, metadata: src.metadata ?? undefined, forwarded: true });
   } else {
     const type = TYPES.has(b.type) ? (b.type as string) : 'TEXT';
@@ -199,7 +202,11 @@ export async function POST(req: Request, { params }: Ctx) {
       data.attachmentName = String(b.attachmentName ?? 'file').slice(0, 200);
       data.attachmentSize = Number.isFinite(b.attachmentSize) ? Math.max(0, Math.floor(b.attachmentSize)) : null;
       data.attachmentMime = typeof b.attachmentMime === 'string' ? b.attachmentMime.slice(0, 120) : null;
-      if (type === 'AUDIO' && Number.isFinite(b.durationSec)) data.metadata = { durationSec: Math.round(b.durationSec) };
+      const meta: Record<string, unknown> = {};
+      if (type === 'AUDIO' && Number.isFinite(b.durationSec)) meta.durationSec = Math.round(b.durationSec);
+      // View once (photos, videos, voice messages): each person can open it once (…/messages/[id]/opened).
+      if (b.viewOnce === true && type !== 'FILE') Object.assign(meta, { viewOnce: true, openedBy: [] });
+      if (Object.keys(meta).length) data.metadata = meta;
     } else if (!text) {
       return NextResponse.json({ error: 'Message is empty.' }, { status: 400 });
     }
@@ -219,6 +226,16 @@ export async function POST(req: Request, { params }: Ctx) {
   const [out] = await decorate([serializeMessage(message)], user.id);
   // Started from a scheduled call: everyone else's Join now opens this call.
   if (data.type === 'CALL' && typeof b.scheduledId === 'string') await linkScheduledCall(b.scheduledId, id, message.id);
+  // A link gets a preview card (title and description, read once by the server).
+  const link = data.type === 'TEXT' ? firstUrl(String(data.body ?? '')) : null;
+  if (link) {
+    later(async () => {
+      const preview = await linkPreview(link);
+      if (!preview) return;
+      await prisma.message.update({ where: { id: message.id }, data: { metadata: { ...((message.metadata as object | null) ?? {}), link: { ...preview } } as unknown as Prisma.InputJsonValue } });
+      publishChat(id);
+    });
+  }
   later(async () => {
     // Members with auto-translate get the message already translated (a few seconds at most).
     if (data.type === 'TEXT' && String(data.body ?? '').trim()) await pretranslate(id, message.id, String(data.body), user.id).catch(() => {});

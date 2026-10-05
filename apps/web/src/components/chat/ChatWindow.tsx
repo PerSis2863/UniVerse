@@ -254,7 +254,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     onChanged();
   };
 
-  const send = async ({ text, file, voice }: SendPayload) => {
+  const send = async ({ text, file, voice, viewOnce }: SendPayload) => {
     haptic('tap');
     const tempId = `temp-${Date.now()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
@@ -264,13 +264,13 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       if (file || voice) {
         const upload = file ?? new File([voice!.blob], `voice-${Date.now()}.${voice!.blob.type.includes('mp4') ? 'm4a' : voice!.blob.type.includes('ogg') ? 'ogg' : 'webm'}`, { type: voice!.blob.type });
         const type = voice ? 'AUDIO' : messageTypeFor(upload.type);
-        setPending((p) => [...p, { ...base, type, body: '', attachmentUrl: null, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type } as ChatMessage]);
+        setPending((p) => [...p, { ...base, type, body: '', attachmentUrl: null, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, metadata: viewOnce ? { viewOnce: true } : null } as ChatMessage]);
         setUploadProgress(0);
         const url = await uploadChatFile(upload, setUploadProgress);
         setUploadProgress(null);
         const msg = await chatJson<ChatMessage>(key, {
           method: 'POST',
-          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec, replyToId }),
+          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec, replyToId, viewOnce: viewOnce || undefined }),
         });
         appendSent(msg, tempId);
         if (text) await send({ text });

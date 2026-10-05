@@ -1054,3 +1054,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 .nav-progress-done { width: 100%; opacity: 0; transition: width 0.2s ease, opacity 0.3s ease 0.15s; }
 
 @keyframes btn-spin { to { transform: rotate(360deg); } }
+
+/* Status viewer: the bar along the top fills once per update (src/components/chat/StatusBar.tsx). */
+@keyframes status-progress { from { width: 0%; } to { width: 100%; } }
+.status-progress { width: 0%; animation-name: status-progress; animation-timing-function: linear; animation-fill-mode: forwards; }

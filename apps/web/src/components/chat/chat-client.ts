@@ -21,6 +21,10 @@ export interface ChatMessage {
     lat?: number; lng?: number; label?: string | null; // LOCATION
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
     moderated?: 'edited' | 'removed'; team?: boolean; // changed or posted by UniVerse (owner console)
+    viewOnce?: boolean; opened?: boolean; openedCount?: number; // view-once photo / video / voice message
+    transcript?: string; voicemail?: boolean; // voice message text (AI); a voicemail left after a missed call
+    link?: { url: string; title: string; description: string | null; site: string } | null; // link preview
+    broadcast?: boolean;
   } | null;
   createdAt: string;
   editedAt: string | null;

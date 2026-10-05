@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Camera, FileText, ImageIcon, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, Camera, FileText, Flame, ImageIcon, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
@@ -14,6 +14,8 @@ export interface SendPayload {
   text?: string;
   file?: File;
   voice?: { blob: Blob; durationSec: number };
+  /** Photo, video or voice message that each person can open only once. */
+  viewOnce?: boolean;
 }
 
 export type ComposerExtra = 'poll' | 'location' | 'contact';
@@ -39,6 +41,10 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  // View once for the next photo, video or voice message (a ref too: the recorder's callback reads it).
+  const [once, setOnceState] = useState(false);
+  const onceRef = useRef(false);
+  const setOnce = (v: boolean) => { onceRef.current = v; setOnceState(v); };
   const [emoji, setEmoji] = useState(false);
   const [attach, setAttach] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
@@ -111,8 +117,10 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     if (!file) return;
     setBusy(true);
     try {
-      await onSend({ file, text: text.trim() || undefined });
-      setText('');
+      const once = onceRef.current && /^(image|video)\//.test(file.type);
+      await onSend({ file, text: once ? undefined : text.trim() || undefined, viewOnce: once || undefined });
+      setOnce(false);
+      if (!once) setText('');
     } finally {
       setBusy(false);
     }
@@ -138,7 +146,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         const blob = new Blob(chunks.current, { type: rec.mimeType || 'audio/webm' });
         const durationSec = Math.max(1, Math.round((Date.now() - start) / 1000));
         setBusy(true);
-        try { await onSend({ voice: { blob, durationSec } }); } finally { setBusy(false); }
+        try { await onSend({ voice: { blob, durationSec }, viewOnce: onceRef.current || undefined }); } finally { setBusy(false); setOnce(false); }
       };
       rec.start();
       recorder.current = rec;
@@ -193,6 +201,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             </span>
             <span className="text-xs text-zinc-500">Recording voice message…</span>
           </div>
+          <button onClick={() => setOnce(!once)} aria-pressed={once} aria-label="View once" title="View once: they can play it one time" className={cn('w-9 h-9 rounded-full flex items-center justify-center border-2 border-dashed transition-colors', once ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-300 dark:border-zinc-600 text-zinc-500')}><Flame className="w-4 h-4" /></button>
           <button onClick={() => stopRecording(false)} aria-label="Send voice message" className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg">
             <Send className="w-4 h-4" />
           </button>
@@ -236,6 +245,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                   </button>
                   <button onClick={() => docRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-500 flex items-center justify-center"><FileText className="w-4 h-4" /></span> Document
+                  </button>
+                  <button onClick={() => setOnce(!once)} role="switch" aria-checked={once} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className={cn('w-8 h-8 rounded-full flex items-center justify-center border-2 border-dashed', once ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-300 dark:border-zinc-600 text-zinc-500')}><Flame className="w-4 h-4" /></span>
+                    <span className="flex-1 text-left">View once</span>
+                    <span className={cn('text-[10px] font-bold uppercase', once ? 'text-indigo-500' : 'text-zinc-400')}>{once ? 'On' : 'Off'}</span>
                   </button>
                   <button onClick={() => { setAttach(false); onExtra('poll'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center"><BarChart3 className="w-4 h-4" /></span> Poll
