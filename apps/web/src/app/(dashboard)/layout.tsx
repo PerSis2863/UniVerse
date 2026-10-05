@@ -78,7 +78,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           useAuthStore.getState().setUser(toUser(res.data, photoURL));
         }
       } catch (e) {
-        console.error('Failed to fetch user data', e);
+        // Offline or the server restarting ("Failed to fetch"): keep the saved profile, it refreshes
+        // on the next focus. Only real errors are logged (and reach error reports).
+        if (!(e instanceof TypeError)) console.error('Failed to fetch user data', e);
       }
     };
 

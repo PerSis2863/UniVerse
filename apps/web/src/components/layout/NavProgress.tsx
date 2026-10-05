@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { setPendingNav } from '@/lib/nav-pending';
+import { motionFor, startPageTransition } from '@/lib/page-transition';
 
 /**
  * A slim bar at the top of the screen while a page is opening, so every tap on a link gets
@@ -24,14 +25,44 @@ export function NavProgress() {
       if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search) || url.pathname.startsWith('/api/')) return;
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => setState('loading'), 80); // quick pages don't flash the bar
-      // Another page: menus switch to it now and the content area shows it loading (see nav-pending).
-      if (url.pathname !== location.pathname) setPendingNav(url.pathname);
+      // Another page: menus switch to it now and the content area shows it loading (see nav-pending),
+      // and the page moves like iOS: menus crossfade, deeper pages push in, going up pops back.
+      if (url.pathname !== location.pathname) {
+        startPageTransition(motionFor(location.pathname, url.pathname, a.dataset.vt));
+        setPendingNav(url.pathname);
+      }
     };
-    // Back/forward (and anything else that changes the address without a tap) cancels it.
-    const onPop = () => setPendingNav(null);
+    // Back/forward (and anything else that changes the address without a tap) cancels it; going
+    // back slides the page in from the left, like iOS.
+    // Back/forward: the page moves like iOS (back slides in from the left, forward from the right).
+    // Where the browser has the Navigation API, its "traverse" event comes before the router
+    // replaces the page (the old page is still on screen to animate from); popstate is the fallback.
+    // A traversal that only changes the query (closing a chat) keeps the same page: no transition.
+    const onScreen = () => document.querySelector('[data-page-path]')?.getAttribute('data-page-path');
+    type Nav = EventTarget & { currentEntry?: { index: number } };
+    type NavigateEvent = Event & { navigationType: string; destination: { url: string; index: number } };
+    const nav = (window as Window & { navigation?: Nav }).navigation;
+    const onNavigate = (e: Event) => {
+      const n = e as NavigateEvent;
+      if (n.navigationType !== 'traverse') return;
+      setPendingNav(null);
+      const to = new URL(n.destination.url).pathname;
+      const here = onScreen();
+      if (here && here !== to) startPageTransition(n.destination.index < (nav?.currentEntry?.index ?? 0) ? 'pop' : 'push');
+    };
+    const onPop = () => {
+      setPendingNav(null);
+      const here = onScreen();
+      if (!nav && here && here !== location.pathname) startPageTransition('pop');
+    };
     document.addEventListener('click', onClick, true);
-    window.addEventListener('popstate', onPop);
-    return () => { document.removeEventListener('click', onClick, true); window.removeEventListener('popstate', onPop); };
+    window.addEventListener('popstate', onPop, true);
+    nav?.addEventListener('navigate', onNavigate);
+    return () => {
+      document.removeEventListener('click', onClick, true);
+      window.removeEventListener('popstate', onPop, true);
+      nav?.removeEventListener('navigate', onNavigate);
+    };
   }, []);
 
   // The new page is shown: finish the bar.
@@ -55,7 +86,7 @@ export function NavProgress() {
   if (state === 'idle') return null;
   return (
     <div aria-hidden className="fixed top-0 inset-x-0 z-[200] h-[2px] pointer-events-none">
-      <div className={state === 'loading' ? 'nav-progress-run h-full bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500' : 'nav-progress-done h-full bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500'} />
+      <div className={state === 'loading' ? 'nav-progress-run h-full bg-tint' : 'nav-progress-done h-full bg-tint'} />
     </div>
   );
 }

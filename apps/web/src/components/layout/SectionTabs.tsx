@@ -141,7 +141,7 @@ export function SectionTabs({ tabs, small, label = 'Sections' }: { tabs: Section
         {tabs.map((t) => {
           const on = pathname === t.href || !!t.also?.includes(pathname);
           return (
-            <Link key={t.href} href={t.href} aria-current={on ? 'page' : undefined} className="ios-segment">
+            <Link key={t.href} href={t.href} data-vt="fade" aria-current={on ? 'page' : undefined} className="ios-segment">
               {on && <motion.span layoutId={`tabs-${group}`} transition={spring.snappy} className="ios-segment-thumb" aria-hidden />}
               {t.label}
             </Link>

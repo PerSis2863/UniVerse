@@ -706,10 +706,16 @@ html, body { overflow-x: clip; max-width: 100%; }
    animation ends no transform remains — position:fixed children (modals, sheets)
    keep positioning against the viewport. */
 @keyframes page-enter {
-  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.995); }
   to   { opacity: 1; transform: none; }
 }
-.page-enter { animation: page-enter 260ms var(--ease-out-soft); }
+@keyframes page-push { from { opacity: 0; transform: translate3d(min(12%, 56px), 0, 0); } }
+@keyframes page-pop  { from { opacity: 0; transform: translate3d(max(-12%, -56px), 0, 0); } }
+.page-enter { animation: page-enter 340ms var(--ease-ios); }
+.page-push { animation: page-push 380ms var(--ease-ios); }
+.page-pop { animation: page-pop 380ms var(--ease-ios); }
+/* The app fades in once it's ready after a reload, instead of snapping over its placeholder. */
+.shell-in { animation: backdrop-in 260ms ease-out; }
 
 /* Lists and card grids: children glide in with a short cascade (the first 12, 30 ms apart; the
    rest with the 12th). transform/opacity only and nothing left behind afterwards, so it's cheap
@@ -909,11 +915,13 @@ body.scroll-locked { overflow: hidden; touch-action: none; }
 /* Dialogs and sheets: the backdrop fades, the panel rises (bottom sheet on phones, soft pop on desktop).
    transform/opacity only and no fill-mode, so nothing lingers once the animation ends. */
 @keyframes backdrop-in { from { opacity: 0; } }
-@keyframes sheet-in { from { opacity: 0; transform: translate3d(0, 28px, 0); } }
+/* Phones: the sheet slides all the way up from the bottom edge, like an iOS sheet. Larger screens:
+   a soft pop. */
+@keyframes sheet-in { from { transform: translate3d(0, 100%, 0); } }
 @keyframes pop-in { from { opacity: 0; transform: scale(0.96); } }
-.backdrop-in { animation: backdrop-in 200ms ease-out; }
-.sheet-in { animation: sheet-in 340ms var(--ease-ios); }
-@media (min-width: 640px) { .sheet-in { animation: pop-in 240ms var(--ease-ios); } }
+.backdrop-in { animation: backdrop-in 240ms ease-out; }
+.sheet-in { animation: sheet-in 460ms var(--ease-ios); }
+@media (min-width: 640px) { .sheet-in { animation: pop-in 280ms var(--ease-ios); } }
 
 /* Grabber on bottom sheets (phones) — hints that the sheet can be swiped down */
 @media (max-width: 639px) {
@@ -1185,4 +1193,28 @@ html[data-collapsed] .nav-brand-text { opacity: 0; }
 [data-sonner-toaster] [data-sonner-toast] {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
+}
+
+/* ─── Page transitions (src/lib/page-transition.ts) ───────────────────────────────────────────
+   Only the page area moves (<main> is its own transition layer while one runs); the bars, sidebar
+   and tab bar (the root) switch without animating, so they stay still. Named only during the
+   transition: a named element is its own stacking context, which would put the page's pop-ups
+   under the tab bar and header. */
+html.vt-nav main.mobile-main { view-transition-name: page; }
+html.vt-nav::view-transition-old(root), html.vt-nav::view-transition-new(root) { animation: none; }
+html.vt-nav::view-transition-group(page) { animation: none; }
+html.vt-fade::view-transition-old(page) { animation: 180ms var(--ease-ios) both vt-out-fade; }
+html.vt-fade::view-transition-new(page) { animation: 340ms var(--ease-ios) both vt-in-rise; }
+html.vt-push::view-transition-old(page) { animation: 380ms var(--ease-ios) both vt-out-left; }
+html.vt-push::view-transition-new(page) { animation: 380ms var(--ease-ios) both vt-in-right; }
+html.vt-pop::view-transition-old(page) { animation: 380ms var(--ease-ios) both vt-out-right; }
+html.vt-pop::view-transition-new(page) { animation: 380ms var(--ease-ios) both vt-in-left; }
+@keyframes vt-out-fade { to { opacity: 0; } }
+@keyframes vt-in-rise { from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.995); } }
+@keyframes vt-out-left { to { opacity: 0; transform: translate3d(max(-8%, -40px), 0, 0); } }
+@keyframes vt-in-right { from { opacity: 0; transform: translate3d(min(12%, 56px), 0, 0); } }
+@keyframes vt-out-right { to { opacity: 0; transform: translate3d(min(8%, 40px), 0, 0); } }
+@keyframes vt-in-left { from { opacity: 0; transform: translate3d(max(-12%, -56px), 0, 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .page-push, .page-pop, .shell-in { animation: none; }
 }

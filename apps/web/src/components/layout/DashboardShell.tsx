@@ -90,6 +90,7 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
             <Link
               key={item.href}
               href={item.href}
+              data-vt="fade"
               aria-current={active ? 'page' : undefined}
               onClick={() => { if (!active) haptic('tap'); }}
               className={cn(tab, active ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
@@ -142,7 +143,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   };
 
   return (
-    <div className="flex min-h-[100dvh]">
+    <div className="shell-in flex min-h-[100dvh]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">

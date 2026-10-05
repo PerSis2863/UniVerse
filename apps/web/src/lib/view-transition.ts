@@ -1,5 +1,6 @@
+import { startPageTransition } from './page-transition';
+
 type Router = { push: (href: string) => void };
-type VTDocument = Document & { startViewTransition?: (cb: () => Promise<void>) => unknown };
 
 /**
  * Navigate with a View Transition so elements sharing a `view-transition-name`
@@ -7,23 +8,10 @@ type VTDocument = Document & { startViewTransition?: (cb: () => Promise<void>) =
  * Falls back to a normal navigation where unsupported or with "Reduce motion".
  */
 export function navigateWithTransition(router: Router, href: string) {
-  const doc = document as VTDocument;
-  if (!doc.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    router.push(href);
-    return;
-  }
-  doc.startViewTransition(() => new Promise<void>((resolve) => {
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      window.removeEventListener('universe:route-rendered', finish);
-      resolve();
-    };
-    window.addEventListener('universe:route-rendered', finish);
-    setTimeout(finish, 900); // never hold the screen longer than this
-    router.push(href);
-  }));
+  // A tap on a link has already started the page transition (NavProgress); a call from code
+  // starts one here. Elements sharing a view-transition-name morph within it either way.
+  startPageTransition('push');
+  router.push(href);
 }
 
 /** CSS-safe view-transition-name for a record id. */
