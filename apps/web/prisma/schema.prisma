@@ -232,18 +232,19 @@ model User {
   livePollVotes         LivePollVote[]
   codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
 
-  scheduledCalls ScheduledCall[]
-  voiceSessions VoiceSession[]
-  statuses      ChatStatus[]
-  statusViews   ChatStatusView[]
+  scheduledCalls       ScheduledCall[]
+  voiceSessions        VoiceSession[]
+  statuses             ChatStatus[]
+  statusViews          ChatStatusView[]
   // Messages: availability (auto | busy | in_class | studying | sleeping | invisible) and a custom
   // status. Busy, in class and sleeping are Focus modes: calls don't ring and pushes wait, except
   // from favourites.
-  presence      String    @default("auto")
-  statusText    String?
-  statusEmoji   String?
-  statusUntil   DateTime?
+  presence             String            @default("auto")
+  statusText           String?
+  statusEmoji          String?
+  statusUntil          DateTime?
   communityMemberships CommunityMember[]
+
   @@index([role])
   @@index([status])
   @@map("users")
@@ -338,6 +339,7 @@ model Course {
   attendance            Attendance[]
   grades                Grade[]
   quizzes               Quiz[]
+  classSessions         ClassSession[]
   materials             Material[]
   announcements         Announcement[]
   knowledgeHubResources KnowledgeHubResource[]
@@ -349,7 +351,8 @@ model Course {
   livePolls             LivePoll[]
   codeRooms             CodeRoom[]
 
-  scheduledCalls        ScheduledCall[]
+  scheduledCalls ScheduledCall[]
+
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -528,26 +531,27 @@ model Announcement {
 }
 
 model Conversation {
-  id              String   @id @default(cuid())
-  isGroup         Boolean  @default(false)
+  id              String     @id @default(cuid())
+  isGroup         Boolean    @default(false)
   name            String?
   avatarUrl       String?
   createdById     String?
   disappearingSec Int? // new messages expire after this many seconds (null = off)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
   // A channel inside a community (Discord-style): TEXT, ANNOUNCE (only moderators post) or VOICE
   // (a drop-in call room). Channels aren't listed under Chats.
   communityId     String?
   community       Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
   channelKind     String?
-  position        Int      @default(0)
-  slowModeSec     Int      @default(0) // seconds between one person's messages (0 = off)
+  position        Int        @default(0)
+  slowModeSec     Int        @default(0) // seconds between one person's messages (0 = off)
 
   participants ConversationParticipant[]
   messages     Message[]
 
   scheduledCalls ScheduledCall[]
+
   @@index([communityId])
   @@map("conversations")
 }
@@ -607,13 +611,14 @@ model Message {
   pinnedAt   DateTime? // pinned to the top of the chat
   pinnedById String?
 
-  threadId       String? // a reply inside a thread started from this message id (Discord-style)
+  threadId String? // a reply inside a thread started from this message id (Discord-style)
+
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@index([replyToId])
   @@index([expiresAt])
-  @@map("messages")
   @@index([threadId])
+  @@map("messages")
 }
 
 // Uploaded files stored in the database (used when no external file storage is configured).
@@ -1226,6 +1231,7 @@ model Group {
   posts   GroupPost[]
 
   scheduledCalls ScheduledCall[]
+
   @@index([createdById])
   @@map("groups")
 }
@@ -2311,6 +2317,31 @@ model VoiceSession {
   @@index([createdAt])
   @@index([userId])
   @@map("voice_sessions")
+}
+
+/// A class call turned into a study pack (upgrade 1: AI class companion). The teacher turns on
+/// "Class notes" in a class call; everyone's captions are collected by the teacher's browser and
+/// sent here once, when notes stop. One AI request makes the pack. The transcript (text only,
+/// never audio) is deleted after 90 days by the daily job; the pack itself stays with the course.
+model ClassSession {
+  id                  String   @id @default(cuid())
+  courseId            String
+  course              Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById         String
+  startedAt           DateTime
+  durationSec         Int      @default(0)
+  status              String   @default("READY") // READY | PENDING (AI wasn't available; the teacher can retry)
+  summary             String?
+  notes               String   @default("[]") // JSON string[]
+  keyMoments          String   @default("[]") // JSON [{ t: seconds from start, text }]
+  flashcards          String   @default("[]") // JSON [{ front, back }]
+  quizId              String?
+  recordingMaterialId String?
+  transcript          String? // JSON [{ t, who, text }]; removed after 90 days
+  createdAt           DateTime @default(now())
+
+  @@index([courseId, createdAt])
+  @@map("class_sessions")
 }
 
 // Status updates ("stories"), like WhatsApp's: a photo or a coloured text card that disappears

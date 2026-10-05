@@ -56,6 +56,8 @@ async function enforceRetention() {
   const oldStatuses = await prisma.chatStatus.findMany({ where: { expiresAt: { lt: new Date(now) } }, select: { id: true, mediaUrl: true }, take: 300 });
   for (const st of oldStatuses) if (st.mediaUrl) await deleteFile(st.mediaUrl).catch(() => {});
   if (oldStatuses.length) await prisma.chatStatus.deleteMany({ where: { id: { in: oldStatuses.map((st) => st.id) } } });
+  // Class notes transcripts (upgrade 1) after 90 days; the study pack itself stays with the course.
+  await prisma.classSession.updateMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) }, transcript: { not: null } }, data: { transcript: null } });
   // Voice tutor conversations (kept as text for the owner console) after 90 days.
   await prisma.voiceSession.deleteMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) } } });
   // Disappearing chat messages that have expired (chats hide them already; this removes them).

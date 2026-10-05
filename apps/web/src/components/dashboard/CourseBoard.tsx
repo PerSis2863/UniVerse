@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  Loader2, Paperclip, PenTool, Plus, Send, Star, Trash2, Users, X, type LucideIcon,
+  Loader2, NotebookPen, Paperclip, PenTool, Plus, Send, Star, Trash2, Users, X, type LucideIcon,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
@@ -25,6 +25,7 @@ import { isUploadedFileUrl } from '@/lib/file-urls';
 import { safeHref } from '@/lib/safe-href';
 import { courseColor } from '@/lib/course-color';
 import { SaveOfflineButton } from '@/components/offline/SaveOfflineButton';
+import { ClassSessions, type ClassSession } from '@/components/dashboard/ClassSessions';
 
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -40,6 +41,8 @@ interface Board {
   materials: { id: string; title: string; type: 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER'; fileUrl: string; size: string | null; createdAt: string }[];
   readings: { id: string; title: string; description: string | null; url: string | null; category: string | null }[];
   events: { id: string; title: string; description: string | null; startAt: string; endAt: string; type: string }[];
+  /** Study packs from class calls (AI class companion) */
+  sessions?: ClassSession[];
   // Student view
   grades?: { id: string; assignmentName: string; score: number; maxScore: number; status: string; feedback: string | null; gradedAt: string }[];
   quizResults?: { id: string; score: number | null; maxScore: number | null; submittedAt: string; quiz: { id: string; title: string; status: string } }[];
@@ -50,6 +53,7 @@ interface Board {
 
 const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'board', label: 'Announcements', icon: Bell },
+  { id: 'sessions', label: 'Class sessions', icon: NotebookPen },
   { id: 'materials', label: 'Materials', icon: FileText },
   { id: 'readings', label: 'Reading list', icon: BookOpen },
   { id: 'grades', label: 'Grades', icon: Star },
@@ -77,12 +81,14 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   );
   const [courseId, setCourseId] = useState<string | null>(null);
   const [tab, setTab] = useState('board');
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   // Deep links: ?course=<id>&tab=<tab>
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     if (sp.get('tab') && TABS.some((t) => t.id === sp.get('tab'))) setTab(sp.get('tab')!);
     if (sp.get('course')) setCourseId(sp.get('course'));
+    if (sp.get('session')) setSessionId(sp.get('session'));
   }, []);
   useEffect(() => {
     if (courses.length && (!courseId || !courses.some((c) => c.id === courseId))) setCourseId(courses[0].id);
@@ -187,7 +193,9 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
             : isLoading || !board ? <div className="max-w-3xl mx-auto space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>
             : (
               <div key={`${courseId}-${tab}`} className={cn('fade-up mx-auto', tab === 'whiteboard' ? 'max-w-6xl' : 'max-w-3xl')}>
+                {tab === 'board' && <LatestPack board={board} onOpen={(id) => { setSessionId(id); setTab('sessions'); }} />}
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}
+                {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'grades' && (canManage ? <Roster board={board} /> : <MyGrades board={board} />)}
@@ -207,6 +215,24 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
         </div>
       </div>
     </>
+  );
+}
+
+/** On the Announcements tab: the newest study pack from the last week, one tap from the pack. */
+function LatestPack({ board, onOpen }: { board: Board; onOpen: (id: string) => void }) {
+  const [now] = useState(() => Date.now());
+  const s = board.sessions?.find((x) => x.status === 'READY');
+  if (!s || now - new Date(s.startedAt).getTime() > 7 * 86_400_000) return null;
+  return (
+    <motion.button type="button" onClick={() => onOpen(s.id)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
+      className="w-full mb-5 text-left rounded-2xl p-4 flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/25 lift">
+      <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center"><NotebookPen className="w-5 h-5" /></div>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-zinc-900 dark:text-white text-sm">Study pack from {new Date(s.startedAt).toLocaleDateString(undefined, { weekday: 'long' })}’s class</p>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-1">{s.summary}</p>
+      </div>
+      <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 shrink-0">Open →</span>
+    </motion.button>
   );
 }
 

@@ -93,7 +93,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     if (!c) return fail('Course not found.', 404);
     const canManage = d.teacherView && c.teacher.id === d.me.id;
     const b = d.board[c.id];
-    const base = { course: { ...c, _count: { enrollments: d.classmates.length + (canManage ? 0 : 1) } }, canManage, announcements: b.announcements, materials: b.materials, readings: b.readings, events: b.events };
+    const base = { course: { ...c, _count: { enrollments: d.classmates.length + (canManage ? 0 : 1) } }, canManage, announcements: b.announcements, materials: b.materials, readings: b.readings, events: b.events, sessions: b.sessions ?? [] };
     if (canManage) {
       const roster = d.classmates.map((s) => {
         const gs = d.classGrades.filter((g) => g.courseId === c.id && g.studentId === s.id);
@@ -274,6 +274,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m, body }) => {
     const b = d.board[m[1]]; if (!b) return fail('Course not found.', 404);
     const id = sid('b');

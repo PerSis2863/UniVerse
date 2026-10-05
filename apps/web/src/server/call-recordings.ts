@@ -55,6 +55,8 @@ export async function saveRecording(callId: string, user: SessionUser, body: Rec
     data: { title, fileUrl: url, courseId: course.id, uploadedById: user.id, type: 'VIDEO', size: `${mb} MB` },
     select: { id: true, title: true, fileUrl: true },
   });
+  // Taking class notes too? Link the recording to that class's study pack.
+  await prisma.classSession.updateMany({ where: { courseId: course.id, recordingMaterialId: null, createdAt: { gte: new Date(Date.now() - 3 * 3600_000) } }, data: { recordingMaterialId: material.id } });
   const students = await prisma.enrollment.findMany({ where: { courseId: course.id }, select: { studentId: true }, take: 500 });
   if (students.length) {
     await prisma.notification.createMany({

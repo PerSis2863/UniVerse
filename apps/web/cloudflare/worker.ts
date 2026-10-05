@@ -750,7 +750,7 @@ export class CallRoom extends DurableObject<Env> {
     if (typeof raw !== 'string' || raw.length > MAX_SIGNAL_BYTES) return;
     const me = ws.deserializeAttachment() as CallPeer | null;
     if (!me) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -758,8 +758,9 @@ export class CallRoom extends DurableObject<Env> {
       return;
     }
     if (msg.type === 'state') {
-      // Only the class's teacher (or an admin) can record; everyone sees the REC badge.
-      this.others(ws, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording: me.host === true && msg.recording === true });
+      // Only the class's teacher (or an admin) can record or take class notes; everyone sees the
+      // REC and Notes badges.
+      this.others(ws, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording: me.host === true && msg.recording === true, notes: me.host === true && msg.notes === true });
       return;
     }
     if (msg.type === 'caption' && typeof msg.text === 'string') {
