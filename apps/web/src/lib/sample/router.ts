@@ -90,6 +90,17 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
   // Offline quizzes finished late, waiting for the teacher (Quizzes page): none in the sample
   [/^\/quizzes\/teacher\/offline-pending$/, () => ok([])],
+  // Verified volunteering (upgrade 5): shifts, the impact map and the yearly report
+  [/^\/api\/volunteer\/shifts$/, () => ok([
+    { id: 'sample-sh1', title: 'Saturday tree planting', startAt: at(3, 9), endAt: at(3, 13), location: 'Riverside Park', lat: 12.9716, lng: 77.5946, radiusM: 200, capacity: 25, taken: 14, project: { id: 'sample-p1', name: 'Green City Drive', sdgNumber: 13, ngo: { name: 'Earth Collective' } }, mine: null },
+    { id: 'sample-sh2', title: 'Reading club for kids', startAt: at(-5, 15), endAt: at(-5, 17), location: 'Community library', lat: 12.9352, lng: 77.6245, radiusM: 150, capacity: 10, taken: 8, project: { id: 'sample-p2', name: 'Read Together', sdgNumber: 4, ngo: { name: 'Bright Minds' } }, mine: { checkInAt: at(-5, 15), checkOutAt: at(-5, 17), minutes: 120, verified: true, method: 'QR' } },
+  ])],
+  [/^\/api\/volunteer\/report$/, () => ok({ year: new Date().getFullYear(), totals: { hours: 412.5, volunteers: 63, shifts: 28 },
+    places: [{ lat: 12.9716, lng: 77.5946, label: 'Riverside Park', hours: 180, people: 31 }, { lat: 12.9352, lng: 77.6245, label: 'Community library', hours: 96, people: 14 }, { lat: 13.0358, lng: 77.597, label: 'Shelter kitchen', hours: 136.5, people: 22 }],
+    projects: [{ name: 'Green City Drive', ngo: 'Earth Collective', sdg: 13, hours: 180, people: 31 }, { name: 'Shelter kitchen', ngo: 'Food For All', sdg: 2, hours: 136.5, people: 22 }, { name: 'Read Together', ngo: 'Bright Minds', sdg: 4, hours: 96, people: 14 }],
+    sdgs: [{ sdg: 2, hours: 136.5 }, { sdg: 4, hours: 96 }, { sdg: 13, hours: 180 }] })],
+  [/^\/api\/volunteer\/shifts\/[^/]+\/roster$/, ({ db: d }) => ok({ people: d.classmates.slice(0, 3).map((u, i) => ({ id: `sample-c${i}`, checkInAt: i ? null : at(-5, 15), checkOutAt: i ? null : at(-5, 17), method: i ? null : 'QR', minutes: i ? 0 : 120, verified: !i, student: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
+  [/^\/api\/volunteer\/projects$/, () => ok([{ id: 'sample-p1', name: 'Green City Drive', ngo: { name: 'Earth Collective' } }])],
   // Campus super-app (upgrade 7): events with RSVPs, room status, lost & found
   [/^\/api\/campus\/events$/, ({ db: d }) => ok(d.campusItems.filter((c) => c.kind === 'EVENT').map((c, i) => ({ ...c, capacity: (c as { capacity?: number }).capacity ?? null, going: 34 + i * 11, waiting: 0, mine: i === 0 && !d.teacherView ? { status: 'GOING', checkedInAt: null } : null })))],
   [/^\/api\/campus\/events\/[^/]+\/attendees$/, ({ db: d }) => ok({ item: { id: 'sample', title: 'Event', capacity: null }, people: d.classmates.slice(0, 4).map((u, i) => ({ id: `sample-r${i}`, status: 'GOING', checkedInAt: i < 2 ? at(0, 18, i * 5) : null, createdAt: at(-2), user: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],

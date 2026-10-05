@@ -96,7 +96,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.global_impact', icon: Globe2,
       subItems: [
         { href: '/student/impact/ai-match', label: 'AI project match' },
-        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies'] },
+        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies', '/student/impact/shifts'] },
         { href: '/student/impact/edu-society', label: 'nav.edu_society' },
         { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport'] },
         { href: '/student/impact/leaderboard', label: 'Leaderboard' },

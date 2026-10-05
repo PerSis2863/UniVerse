@@ -19,6 +19,7 @@ export const SUPPORT_TABS: SectionTab[] = [
 
 export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/ngo-marketplace', label: 'NGO projects' },
+  { href: '/student/impact/shifts', label: 'Volunteer shifts' },
   { href: '/student/impact/startups', label: 'Startups' },
   { href: '/student/impact/companies', label: 'Companies' },
 ];
@@ -95,6 +96,13 @@ export const LIFE_TABS: SectionTab[] = [
   { href: '/student/life/rooms', label: 'Room booking' },
   { href: '/student/life/medical', label: 'Medical & disability' },
   { href: '/student/life/everyday', label: 'Everyday life' },
+];
+
+// Impact reports (admin): signed reports, volunteer shifts and the yearly volunteering report (upgrade 5)
+export const IMPACT_REPORT_TABS: SectionTab[] = [
+  { href: '/admin/impact-reports', label: 'Signed reports' },
+  { href: '/admin/impact-reports/shifts', label: 'Volunteer shifts' },
+  { href: '/admin/impact-reports/volunteering', label: 'Yearly volunteering' },
 ];
 
 // Campus Monitoring (admin): rooms, clubs, and the campus super-app's events and lost & found (upgrade 7)

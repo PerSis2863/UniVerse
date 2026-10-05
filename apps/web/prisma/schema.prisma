@@ -188,6 +188,7 @@ model User {
   skillEvidence           SkillEvidence[]
   supportPlans            SupportPlan[]
   planBlocks              PlanBlock[]
+  shiftCheckins           ShiftCheckin[]
   eventRsvps              EventRsvp[]
   lostFoundItems          LostFoundItem[]
   /// Smart planner settings: JSON { capMin, start, end, ical, sig, plannedFor }
@@ -1384,9 +1385,55 @@ model NGOProject {
 
   applications         NGOProjectApplication[]
   collaborationProject CollaborationProject?
+  shifts               VolunteerShift[]
 
   @@index([ngoId])
   @@map("ngo_projects")
+}
+
+/// Verified volunteering (upgrade 5): a time slot on an NGO project. Students check in on site by
+/// scanning a rotating QR code (or by GPS within radiusM of lat/lng); hours are verified at check-out.
+model VolunteerShift {
+  id          String         @id @default(cuid())
+  projectId   String
+  project     NGOProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  startAt     DateTime
+  endAt       DateTime
+  location    String?
+  lat         Float?
+  lng         Float?
+  radiusM     Int            @default(200)
+  capacity    Int            @default(20)
+  createdById String?
+  createdAt   DateTime       @default(now())
+  checkins    ShiftCheckin[]
+
+  @@index([projectId])
+  @@index([startAt])
+  @@map("volunteer_shifts")
+}
+
+/// Verified volunteering (upgrade 5): one student's attendance at one shift
+model ShiftCheckin {
+  id           String         @id @default(cuid())
+  shiftId      String
+  shift        VolunteerShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  signedUpAt   DateTime       @default(now())
+  checkInAt    DateTime?
+  checkOutAt   DateTime?
+  method       String? // QR | GPS | MANUAL
+  lat          Float?
+  lng          Float?
+  minutes      Int            @default(0)
+  verified     Boolean        @default(false)
+  verifiedById String?
+
+  @@unique([shiftId, studentId])
+  @@index([studentId])
+  @@map("shift_checkins")
 }
 
 model NGOProjectApplication {

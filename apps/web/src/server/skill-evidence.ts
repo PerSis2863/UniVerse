@@ -87,6 +87,17 @@ export async function evidenceFromCredential(certificateId: string) {
   });
 }
 
+/** A verified volunteer shift (upgrade 5): the project's skills, checked in on site. */
+export async function evidenceFromShift(v: { userId: string; checkinId: string; title: string; projectName: string; organization: string; minutes: number; skills: unknown; verifiedById?: string | null; verifiedByName?: string | null; at: Date }) {
+  const asked = Array.isArray(v.skills) ? (v.skills as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+  const hours = Math.round((v.minutes / 60) * 10) / 10;
+  await record({
+    userId: v.userId, kind: 'IMPACT', sourceId: `shift:${v.checkinId}`, skills: asked.length ? asked : ['Social impact', 'Teamwork'],
+    title: `Volunteering: ${v.title}`, detail: `${hours} h · ${v.projectName} · ${v.organization}`, level: 'Developing',
+    verifiedById: v.verifiedById ?? null, verifiedByName: v.verifiedByName ?? 'Checked in on site', occurredAt: v.at,
+  });
+}
+
 /** Never lets evidence break the action that triggered it (grading, submitting, issuing). */
 export const safely = (p: Promise<unknown>) => p.catch((e) => console.error('skill evidence', e));
 

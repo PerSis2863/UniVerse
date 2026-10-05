@@ -76,24 +76,31 @@ function secret() {
   if (!s || s.length < 32) throw new BadRequestException('Check-in codes need SESSION_SECRET on the server.');
   return s;
 }
-const mac = (body: string) => createHmac('sha256', secret()).update(`event-checkin:${body}`).digest('base64url').slice(0, 22);
+const mac = (label: string, body: string) => createHmac('sha256', secret()).update(`${label}:${body}`).digest('base64url').slice(0, 22);
 
-/** The code shown on the organiser's screen for one 30-second window (nothing is stored). */
-export function checkinCode(itemId: string, now = Date.now()) {
+/**
+ * A code for one 30-second window, signed for one purpose (`prefix`: e1 = campus event, s1 =
+ * volunteer shift), so a code for one thing can never be used for another. Nothing is stored.
+ */
+export function rotatingCode(prefix: 'e1' | 's1', id: string, now = Date.now()) {
   const w = Math.floor(now / WINDOW);
-  const body = `e1.${itemId}.${w.toString(36)}`;
-  return { code: `${body}.${mac(body)}`, expiresIn: Math.ceil(((w + 1) * WINDOW - now) / 1000) };
+  const body = `${prefix}.${id}.${w.toString(36)}`;
+  return { code: `${body}.${mac(prefix, body)}`, expiresIn: Math.ceil(((w + 1) * WINDOW - now) / 1000) };
 }
 
-/** The event id in a code from this window or the one before (a minute's grace), or null. */
-export function readCheckinCode(code: string, now = Date.now()): string | null {
-  const m = /^e1\.([A-Za-z0-9_-]{1,64})\.([0-9a-z]{1,12})\.([A-Za-z0-9_-]{22})$/.exec(code);
-  if (!m) return null;
-  const w = parseInt(m[2], 36), current = Math.floor(now / WINDOW);
+/** The id in a code from this window or the one before (a minute's grace), or null. */
+export function readRotatingCode(prefix: 'e1' | 's1', code: string, now = Date.now()): string | null {
+  const m = /^(e1|s1)\.([A-Za-z0-9_-]{1,64})\.([0-9a-z]{1,12})\.([A-Za-z0-9_-]{22})$/.exec(code);
+  if (!m || m[1] !== prefix) return null;
+  const w = parseInt(m[3], 36), current = Math.floor(now / WINDOW);
   if (w !== current && w !== current - 1) return null;
-  const want = Buffer.from(mac(`e1.${m[1]}.${m[2]}`)), got = Buffer.from(m[3]);
-  return want.length === got.length && timingSafeEqual(want, got) ? m[1] : null;
+  const want = Buffer.from(mac(prefix, `${prefix}.${m[2]}.${m[3]}`)), got = Buffer.from(m[4]);
+  return want.length === got.length && timingSafeEqual(want, got) ? m[2] : null;
 }
+
+/** The code shown on the organiser's screen at an event's door. */
+export const checkinCode = (itemId: string, now = Date.now()) => rotatingCode('e1', itemId, now);
+export const readCheckinCode = (code: string, now = Date.now()) => readRotatingCode('e1', code, now);
 
 const upcoming = () => ({ kind: 'EVENT', startAt: { gte: new Date(Date.now() - DAY) } });
 
