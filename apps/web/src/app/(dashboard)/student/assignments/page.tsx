@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { ChevronRight, ClipboardList } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 
@@ -35,6 +36,7 @@ export default function StudentAssignmentsPage() {
   return (
     <>
       <Topbar title="Assignments" subtitle="Written work from your courses" />
+      <SectionTabs tabs={PROGRESS_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           {error ? (

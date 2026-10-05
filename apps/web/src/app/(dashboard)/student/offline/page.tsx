@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { Bell, BookOpen, Calendar, CloudOff, Download, FileText, Layers, Loader2, RefreshCw, Trash2, WifiOff } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, STUDENT_COURSE_TABS } from '@/components/layout/SectionTabs';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { deletePack, getPack, listPacks, offlineSupported, savedFileUrl, savePack, type Pack, type PackSummary } from '@/lib/offline-packs';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ export default function OfflinePage() {
   return (
     <>
       <Topbar title="Offline courses" subtitle="Courses saved on this device: open them with no connection" />
+      <SectionTabs tabs={STUDENT_COURSE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-5">
           {!online && <p className="rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm p-3 flex items-center gap-2"><WifiOff className="w-4 h-4" /> You&apos;re offline. Saved courses still open.</p>}

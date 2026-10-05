@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Copy, Globe2, Loader2, LogOut, MoreHorizontal, PenTool, Plus, Search, Trash2, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
@@ -106,6 +107,7 @@ export default function BoardsPage() {
   return (
     <>
       <Topbar title="Whiteboards" subtitle="Draw, add photos and work on a canvas together, live" />
+      <SectionTabs tabs={COLLAB_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto" onClick={() => setMenu(null)}>
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">

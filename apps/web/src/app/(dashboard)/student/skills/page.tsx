@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, STUDENT_LEARN_TABS } from '@/components/layout/SectionTabs';
 import { Target, Award, CheckCircle2, ChevronRight, BookOpen, Code, Terminal, Monitor, Layout, Database, MessageSquare, Users, Brain, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -78,6 +79,7 @@ export default function StudentSkills() {
   return (
     <>
       <Topbar title="My Skills" subtitle="Professional and academic skill tracking" />
+      <SectionTabs tabs={STUDENT_LEARN_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-8">

@@ -7,6 +7,7 @@ import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Users, HeartHandshake, FolderKanban, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { SearchBox, RoleChip, StatusChip, fmtDate, fmtAgo, ROLE_LABEL } from '@/components/impact/AdminPeople';
 
@@ -112,6 +113,7 @@ export default function ImpactMetricsPage() {
         subtitle="Live social and educational impact across your platform"
         action={{ label: 'Export Report', onClick: handleExport }}
       />
+      <SectionTabs tabs={ADMIN_INSIGHT_TABS} />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         {error && <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 text-rose-500 text-sm">{(error as Error).message}</div>}

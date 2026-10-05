@@ -52,9 +52,40 @@ export const HOME_TABS: SectionTab[] = [
 ];
 
 export const PROGRESS_TABS: SectionTab[] = [
+  { href: '/student/assignments', label: 'Assignments' },
   { href: '/student/grades', label: 'Grades' },
   { href: '/student/attendance', label: 'Attendance' },
   { href: '/student/quizzes', label: 'Quizzes' },
+];
+
+/** Whiteboards and shared code editors: one "Collaborate" entry in every portal. */
+export const COLLAB_TABS: SectionTab[] = [
+  { href: '/boards', label: 'Whiteboards' },
+  { href: '/code', label: 'Code together' },
+];
+
+export const STUDENT_COURSE_TABS: SectionTab[] = [
+  { href: '/student/courses', label: 'My courses' },
+  { href: '/student/live', label: 'Live class' },
+  { href: '/student/offline', label: 'Offline' },
+];
+
+export const STUDENT_LEARN_TABS: SectionTab[] = [
+  { href: '/student/skills', label: 'Skills' },
+  { href: '/student/knowledge-hub', label: 'Knowledge Hub' },
+];
+
+export const TEACHER_STUDENT_TABS: SectionTab[] = [
+  { href: '/teacher/students', label: 'Students' },
+  { href: '/teacher/early-warning', label: 'Early warning' },
+  { href: '/teacher/analytics', label: 'Course analytics' },
+];
+
+export const ADMIN_INSIGHT_TABS: SectionTab[] = [
+  { href: '/admin/insights', label: 'School insights' },
+  { href: '/admin/analytics', label: 'Analytics' },
+  { href: '/admin/reports', label: 'Reports' },
+  { href: '/admin/impact-metrics', label: 'Impact' },
 ];
 
 export const LIFE_TABS: SectionTab[] = [
@@ -108,7 +139,7 @@ function MessagesTabsInner({ chatOpen }: { chatOpen: boolean }) {
   const base = role === 'ADMIN' ? '/admin' : role === 'TEACHER' ? '/teacher' : '/student';
   return (
     <div className={cn(chatOpen && 'hidden md:block')}>
-      <SectionTabs tabs={[{ href: `${base}/inbox`, label: 'Chats' }, { href: '/calls', label: 'Calls' }]} />
+      <SectionTabs tabs={[{ href: `${base}/inbox`, label: 'Chats' }, { href: '/calls', label: 'Calls' }, ...(role === 'ADMIN' ? [{ href: '/admin/announcements', label: 'Announcements' }] : [])]} />
     </div>
   );
 }

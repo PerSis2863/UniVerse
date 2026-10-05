@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { MessagesTabs } from '@/components/layout/SectionTabs';
 import { api } from '@/lib/api';
 import { Megaphone, Edit, Trash2, Plus, Calendar, User, X, Send } from 'lucide-react';
 import { toast } from 'sonner';
@@ -64,6 +65,7 @@ export default function AdminAnnouncements() {
   return (
     <>
       <Topbar title="Announcements" subtitle="Manage system-wide and course-specific announcements" />
+      <MessagesTabs />
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="flex justify-end mb-6">
           <button

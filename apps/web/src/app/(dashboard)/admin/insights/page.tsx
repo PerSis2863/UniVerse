@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Building2, Eye, GraduationCap, Minus, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 
@@ -64,6 +65,7 @@ export default function AdminInsightsPage() {
   return (
     <>
       <Topbar title="School insights" subtitle="Students who need help, how departments are doing, and teacher workload (last 30 days)" />
+      <SectionTabs tabs={ADMIN_INSIGHT_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-8">
           {error ? (

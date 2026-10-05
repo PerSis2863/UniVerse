@@ -7,6 +7,7 @@ import { m as motion } from 'framer-motion';
 import { BookOpen, ChevronRight, FileText, GraduationCap, CheckCircle2 } from 'lucide-react';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, STUDENT_COURSE_TABS } from '@/components/layout/SectionTabs';
 import { fetcher } from '@/lib/fetcher';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ export default function CoursesPage() {
   return (
     <>
       <Topbar title="My Courses" subtitle="Your enrolled courses — open one to see its Blackboard" />
+      <SectionTabs tabs={STUDENT_COURSE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         {error && <p className="text-sm text-rose-500 mb-4">Couldn&apos;t load your courses right now. Please try again shortly.</p>}
         {isLoading ? (

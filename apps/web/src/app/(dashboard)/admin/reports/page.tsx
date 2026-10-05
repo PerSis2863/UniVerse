@@ -6,6 +6,7 @@ import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Download, FileSpreadsheet, Loader2, Sparkles, Users, HeartHandshake, Wand2, Copy } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { PremiumGate } from '@/components/billing/PremiumGate';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { AdminSearch, PersonCell, type PersonInfo } from '@/components/admin/AdminPeople';
@@ -254,6 +255,7 @@ export default function ReportsPage() {
   return (
     <>
       <Topbar title="Reports & Exports" subtitle="Take your organization's data anywhere" />
+      <SectionTabs tabs={ADMIN_INSIGHT_TABS} />
       <div className="flex-1 overflow-y-auto flex flex-col">
         <section className="px-4 md:px-8 pt-8">
           <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4">Data exports · Pro</h2>
