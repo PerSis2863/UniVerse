@@ -88,6 +88,20 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
 
+  // Early help: a study plan from a teacher (shown in the Study planner)
+  [/^\/api\/student\/support-plans$/, ({ db: d }) => ok({ plans: d.teacherView ? [] : [{
+    id: 'sample-plan', course: { code: d.courses[0]?.code ?? 'CS301', name: d.courses[0]?.name ?? 'Operating Systems' }, from: d.courses[0]?.teacher.name ?? 'Your teacher',
+    message: 'Come to office hours on Thursday if anything is unclear.', stepsDone: [0], active: true, createdAt: at(-2, 10),
+    plan: {
+      intro: `Hi ${d.me.name.split(' ')[0]}, here are a few steps to get the most out of this week.`,
+      steps: [
+        { title: 'Redo the scheduling practice questions', detail: 'Work through the FCFS and Round Robin examples from week 3 without looking at the answers first.', minutes: 40 },
+        { title: 'Review your lab 2 feedback', detail: 'Read the comments on the concurrency criterion and fix the two points mentioned.', minutes: 30 },
+        { title: 'Make 10 flashcards on deadlocks', detail: 'One card per condition and per prevention strategy, then review them twice this week.', minutes: 25 },
+      ],
+      closing: 'Reply to me in Messages any time if you want to talk it through.',
+    },
+  }] })],
   [/^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
     if (!c) return fail('Course not found.', 404);

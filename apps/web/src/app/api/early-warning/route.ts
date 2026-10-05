@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
+import { plansForFlags } from '@/server/support-plans';
 
 // Early-warning flags: teachers see their own courses, admins every course.
 // GET ?view=open (default: open + contacted) | handled | all  &courseId=  &q=
@@ -31,6 +32,8 @@ export async function GET(req: Request) {
     prisma.course.findMany({ where: user.role === 'ADMIN' ? { status: 'PUBLISHED' } : { teacherId: user.id }, select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 200 }),
   ]);
   const count = (f: (c: (typeof counts)[number]) => boolean) => counts.filter(f).reduce((n, c) => n + c._count._all, 0);
+  // Each flag's latest study plan and its follow-up (upgrade 3: early help)
+  const plans = await plansForFlags(flags.map((f) => f.id));
   return NextResponse.json({
     // Email and year help whoever follows up; admins also see when the student was last active and who teaches the course.
     flags: flags.map((f) => ({
@@ -41,6 +44,7 @@ export async function GET(req: Request) {
         ...(user.role === 'ADMIN' ? { lastSeenAt: f.student.lastSeenAt } : {}),
       },
       course: user.role === 'ADMIN' ? f.course : { id: f.course.id, code: f.course.code, name: f.course.name },
+      plan: plans.get(f.id) ?? null,
     })),
     summary: {
       atRisk: count((c) => (c.status === 'OPEN' || c.status === 'CONTACTED') && c.level === 'AT_RISK'),

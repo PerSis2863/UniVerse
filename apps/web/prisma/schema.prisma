@@ -186,6 +186,7 @@ model User {
   careerProfile           CareerProfile?
   skills                  StudentSkill[]
   skillEvidence           SkillEvidence[]
+  supportPlans            SupportPlan[]
   internshipApplications  InternshipApplication[]
   postedInternships       Internship[]             @relation("InternshipPoster")
   scholarshipApplications ScholarshipApplication[]
@@ -1947,28 +1948,61 @@ model SkillEvidence {
 // grades, missed quizzes and inactivity (plain rules, no AI). Only teachers and admins see them,
 // and a person decides what to do — nothing happens to the student automatically.
 model StudentRiskFlag {
-  id            String    @id @default(cuid())
+  id            String        @id @default(cuid())
   studentId     String
-  student       User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student       User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   courseId      String
-  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   score         Int // 0–100
   level         String // AT_RISK | WATCH | OK (improved since it was flagged)
   reasons       Json // [{ code, text }]
-  status        String    @default("OPEN") // OPEN | CONTACTED | RESOLVED | DISMISSED
+  status        String        @default("OPEN") // OPEN | CONTACTED | RESOLVED | DISMISSED
   note          String?
   handledById   String?
   handledByName String?
   handledAt     DateTime?
   handledScore  Int? // score when it was last handled (reopens only if it gets clearly worse)
-  computedAt    DateTime  @default(now())
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  followUpScore Int? // score at the 7-day follow-up of a support plan (upgrade 3)
+  plans         SupportPlan[]
+  computedAt    DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@unique([studentId, courseId])
   @@index([courseId])
   @@index([status])
   @@map("student_risk_flags")
+}
+
+/// Early help (upgrade 3): a study plan a teacher made for a student after an early-warning flag.
+/// The student sees it in their Study planner as encouragement (never as a warning); the teacher is
+/// reminded in the app after 7 days and sees whether things improved.
+model SupportPlan {
+  id                 String           @id @default(cuid())
+  flagId             String?
+  flag               StudentRiskFlag? @relation(fields: [flagId], references: [id], onDelete: SetNull)
+  studentId          String
+  student            User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId           String
+  createdById        String
+  createdByName      String
+  plan               String // JSON { intro, steps: [{ title, detail, minutes }], closing }
+  message            String? // the teacher's note to the student
+  stepsDone          String           @default("[]") // JSON number[]: steps the student ticked
+  status             String           @default("ACTIVE") // ACTIVE | DONE | CANCELLED
+  followUpAt         DateTime
+  followUpNotifiedAt DateTime?
+  followUpDoneAt     DateTime?
+  startScore         Int?
+  endScore           Int?
+  outcome            String? // IMPROVED | SAME | WORSE
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([studentId, status])
+  @@index([status, followUpAt])
+  @@index([flagId])
+  @@map("support_plans")
 }
 
 // Course AI tutor: the text the tutor answers from — course materials (read once) and teacher notes.

@@ -10,6 +10,7 @@ import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
+import { SupportPlans } from '@/components/planner/SupportPlans';
 
 interface PlanBlock { course: string; task: string; minutes: number; why: string }
 interface Plan { summary: string; days: { date: string; focus: string; blocks: PlanBlock[] }[]; madeAt: string }
@@ -96,6 +97,9 @@ export default function StudyPlannerPage() {
     <>
       <Topbar title="Study planner" subtitle="A week of study built around what’s due" />
       <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
+
+        {/* Plans a teacher made for me (early help) */}
+        <SupportPlans />
 
         {/* Header: what this is, and the button to make a new plan */}
         <section className="relative overflow-hidden rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-7">
