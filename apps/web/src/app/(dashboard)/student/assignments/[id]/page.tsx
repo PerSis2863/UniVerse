@@ -26,6 +26,7 @@ interface Detail {
     score: number | null;
     feedback: string | null;
     criteriaScores: { id: string; score: number; comment: string }[] | null;
+    feedbackMediaUrl?: string | null; feedbackMediaKind?: string | null; feedbackTranscript?: string | null;
   } | null;
 }
 
@@ -95,6 +96,15 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
                 <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 space-y-2" aria-label="Your grade">
                   <p className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="w-5 h-5" /> Graded: {data.mine.score}/{data.maxScore}</p>
                   {data.mine.feedback && <p className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{data.mine.feedback}</p>}
+                  {data.mine.feedbackMediaUrl && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{data.mine.feedbackMediaKind === 'VIDEO' ? 'Video' : 'Voice'} feedback from your teacher</p>
+                      {data.mine.feedbackMediaKind === 'VIDEO'
+                        ? <video src={data.mine.feedbackMediaUrl} controls preload="metadata" playsInline className="w-full max-h-72 rounded-xl bg-black" />
+                        : <audio src={data.mine.feedbackMediaUrl} controls preload="metadata" className="w-full" />}
+                      {data.mine.feedbackTranscript && <details className="text-xs text-zinc-600 dark:text-zinc-400"><summary className="cursor-pointer font-semibold">Read the transcript</summary><p className="mt-1 whitespace-pre-wrap">{data.mine.feedbackTranscript}</p></details>}
+                    </div>
+                  )}
                 </section>
               )}
 

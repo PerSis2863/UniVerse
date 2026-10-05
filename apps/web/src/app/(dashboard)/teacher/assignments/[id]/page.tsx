@@ -5,7 +5,8 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Copy, Loader2, Lock, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Copy, Loader2, Lock, PenLine, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
+import { FeedbackRecorder } from '@/components/assignments/FeedbackRecorder';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
@@ -26,6 +27,8 @@ interface Submission {
   returnedAt: string | null;
   student: { id: string; name: string; email: string };
   similarity?: { peer: { name: string; percent: number } | null; material: { title: string; percent: number } | null };
+  feedbackMediaUrl: string | null; feedbackMediaKind: string | null; feedbackTranscript: string | null;
+  styleSignals: { baseline: number; differs: { label: string; now: number; usual: number }[] } | null;
 }
 interface Detail {
   id: string;
@@ -76,20 +79,32 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
     } catch (err) { toast.error((err as Error).message); }
   };
 
-  // One at a time: each draft is a separate AI request (and counts toward today's AI limit).
+  // Two at a time: each draft is a separate AI request (counted toward today's AI limit) and
+  // one server request, so the Worker's per-request limits are never stretched. Stops as soon as
+  // the daily AI limit is reached; other failures are skipped and reported at the end.
   const draftAll = async () => {
-    const list = waiting;
+    const list = [...waiting];
+    let done = 0, failed = 0, stopped: string | null = null;
     setBulk({ done: 0, total: list.length });
-    for (let i = 0; i < list.length; i++) {
-      try {
-        await authedJson(`/api/assignments/submissions/${list[i].id}/draft`, { method: 'POST' });
-      } catch (err) {
-        toast.error((err as Error).message);
-        break;
+    const worker = async () => {
+      while (list.length && !stopped) {
+        const s = list.shift()!;
+        try {
+          await authedJson(`/api/assignments/submissions/${s.id}/draft`, { method: 'POST' });
+        } catch (err) {
+          const e = err as Error & { status?: number };
+          if (e.status === 429 || /limit|today/i.test(e.message)) stopped = e.message; else failed += 1;
+        }
+        done += 1;
+        setBulk({ done, total: done + list.length });
+        mutate();
       }
-      setBulk({ done: i + 1, total: list.length });
-    }
+    };
+    await Promise.all([worker(), worker()]);
     setBulk(null);
+    if (stopped) toast.error(stopped);
+    else if (failed) toast.error(`${failed} draft${failed === 1 ? '' : 's'} couldn’t be made. Try those again one by one.`);
+    else toast.success('AI drafts ready. Check each one before returning it.');
     mutate();
   };
 
@@ -159,6 +174,14 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
   const total = detail.rubric.reduce((t, r) => t + (Number(scores[r.id]?.score) || 0), 0);
+  // Per-criterion AI suggestions the teacher can accept one by one (or all at once).
+  const aiFor = (id: string) => sub.aiDraft?.criteria.find((c) => c.id === id) ?? null;
+  const applyAi = (id: string) => {
+    const a = aiFor(id);
+    if (a) setScores((s) => ({ ...s, [id]: { score: String(a.score), comment: s[id]?.comment || a.comment } }));
+  };
+  const aiChanged = detail.rubric.filter((r) => aiFor(r.id) && String(aiFor(r.id)!.score) !== scores[r.id]?.score).length;
+  const acceptAllAi = () => detail.rubric.forEach((r) => applyAi(r.id));
 
 
   const draft = async () => {
@@ -213,6 +236,14 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
         </div>
       )}
 
+      {sub.styleSignals?.differs?.length ? (
+        <div className="rounded-2xl border border-sky-500/30 bg-sky-500/[0.07] p-4 text-sm text-sky-800 dark:text-sky-200" role="note">
+          <p className="font-semibold flex items-center gap-2 mb-1"><PenLine className="w-4 h-4" /> Writing style differs from {sub.student.name.split(' ')[0]}’s earlier writing</p>
+          <ul className="space-y-0.5">{sub.styleSignals.differs.map((d) => <li key={d.label}>{d.label}: <b>{d.now}</b> here, usually about {d.usual}</li>)}</ul>
+          <p className="text-xs mt-2 opacity-80">Compared with their {sub.styleSignals.baseline} earlier answers. Worth a conversation, not a conclusion: people write differently for different tasks, and they may simply have improved. This is not an AI-detection result.</p>
+        </div>
+      ) : null}
+
       {sub.aiDraft?.concerns?.length ? (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">
           <p className="font-semibold flex items-center gap-2 mb-1"><AlertTriangle className="w-4 h-4" /> For you to check (not shown to the student)</p>
@@ -229,7 +260,12 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
             </button>
           )}
         </div>
-        {sub.aiDraft && sub.status !== 'RETURNED' && <p className="text-xs text-indigo-600 dark:text-indigo-300">Filled in from the AI draft. Change anything that isn’t right; the student only sees what you return.</p>}
+        {sub.aiDraft && sub.status !== 'RETURNED' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-indigo-600 dark:text-indigo-300 flex-1 min-w-[12rem]">Filled in from the AI draft. Change anything that isn’t right; the student only sees what you return.</p>
+            {aiChanged > 0 && <button type="button" onClick={acceptAllAi} className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20">Use all AI scores</button>}
+          </div>
+        )}
 
         {detail.rubric.map((r) => (
           <div key={r.id} className="grid sm:grid-cols-[1fr_7rem] gap-2">
@@ -258,9 +294,14 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
                 className={field}
               />
               <span className="text-xs text-zinc-500 sm:text-center">out of {r.points}</span>
+              {aiFor(r.id) && String(aiFor(r.id)!.score) !== scores[r.id]?.score && (
+                <button type="button" onClick={() => applyAi(r.id)} title={aiFor(r.id)!.comment || 'AI suggestion'} className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20 whitespace-nowrap">AI: {aiFor(r.id)!.score} · use</button>
+              )}
             </div>
           </div>
         ))}
+
+        <FeedbackRecorder submissionId={sub.id} media={{ url: sub.feedbackMediaUrl, kind: sub.feedbackMediaKind, transcript: sub.feedbackTranscript }} onChange={onChange} />
 
         <label className="block space-y-1">
           <span className="text-sm font-medium text-zinc-900 dark:text-white">Overall feedback</span>

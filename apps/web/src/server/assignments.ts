@@ -1,4 +1,5 @@
 import { evidenceFromGrade, safely } from './skill-evidence';
+import { styleSignalsFor } from './feedback-studio';
 import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import type { Prisma } from '@prisma/client';
@@ -106,7 +107,7 @@ async function manage(assignmentId: string, user: SessionUser) {
   return a;
 }
 
-async function submissionForTeacher(submissionId: string, user: SessionUser) {
+export async function submissionForTeacher(submissionId: string, user: SessionUser) {
   const sub = await prisma.assignmentSubmission.findUnique({ where: { id: submissionId } });
   if (!sub) throw new NotFoundException('Submission not found.');
   const a = await manage(sub.assignmentId, user);
@@ -159,11 +160,11 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
   if (!canManage) {
     const mine = await prisma.assignmentSubmission.findUnique({
       where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-      select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, feedback: true, criteriaScores: true },
+      select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true },
     });
     // Until it's returned, a student sees their answer only (never the AI's draft).
     const returned = mine?.status === 'RETURNED';
-    return { ...base, mine: mine ? { ...mine, status: returned ? 'RETURNED' : 'SUBMITTED', score: returned ? mine.score : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null } : null };
+    return { ...base, mine: mine ? { ...mine, status: returned ? 'RETURNED' : 'SUBMITTED', score: returned ? mine.score : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null, feedbackMediaUrl: returned ? mine.feedbackMediaUrl : null, feedbackMediaKind: returned ? mine.feedbackMediaKind : null, feedbackTranscript: returned ? mine.feedbackTranscript : null } : null };
   }
   const [submissions, enrolled] = await Promise.all([
     prisma.assignmentSubmission.findMany({
@@ -249,11 +250,14 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
     take: 20,
   })).filter((s) => (budget -= s.text.length) >= 0);
   const signals = signalsFor(text, sources, planLimits().similarityAnswerChars) as unknown as Prisma.InputJsonValue;
+  // Writing style compared with this student's earlier answers (feedback studio, upgrade 8; no AI)
+  const style = await styleSignalsFor(user.id, assignmentId, text);
+  const styleSignals = (style ?? undefined) as unknown as Prisma.InputJsonValue | undefined;
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-    create: { assignmentId, studentId: user.id, text, signals },
-    update: { text, signals, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
+    create: { assignmentId, studentId: user.id, text, signals, styleSignals },
+    update: { text, signals, styleSignals, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
     select: { id: true, submittedAt: true },
   });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON

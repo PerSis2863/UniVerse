@@ -2235,23 +2235,29 @@ model Assignment {
 
 /// A student's answer, the AI's draft grade and the teacher's final grade.
 model AssignmentSubmission {
-  id             String     @id @default(cuid())
-  assignmentId   String
-  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  studentId      String
-  student        User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  text           String
-  status         String     @default("SUBMITTED") // SUBMITTED, DRAFTED (AI draft ready), RETURNED (graded)
-  aiDraft        Json? // { criteria: [{ id, score, comment }], summary, strengths, improvements, concerns }
-  aiDraftedAt    DateTime?
-  criteriaScores Json? // the teacher's final [{ id, score, comment }]
-  score          Float?
-  feedback       String?
-  gradeId        String? // the row in "grades" written when returned
-  signals        Json? // similarity signals for the teacher: { sig, material } (src/server/similarity.ts)
-  submittedAt    DateTime   @default(now())
-  returnedAt     DateTime?
-  updatedAt      DateTime   @updatedAt
+  id                 String     @id @default(cuid())
+  assignmentId       String
+  assignment         Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId          String
+  student            User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  text               String
+  status             String     @default("SUBMITTED") // SUBMITTED, DRAFTED (AI draft ready), RETURNED (graded)
+  aiDraft            Json? // { criteria: [{ id, score, comment }], summary, strengths, improvements, concerns }
+  aiDraftedAt        DateTime?
+  criteriaScores     Json? // the teacher's final [{ id, score, comment }]
+  score              Float?
+  feedback           String?
+  gradeId            String? // the row in "grades" written when returned
+  signals            Json? // similarity signals for the teacher: { sig, material } (src/server/similarity.ts)
+  /// Feedback studio (upgrade 8): the teacher's recorded voice or video feedback, its transcript,
+  /// and writing-style signals compared with the student's own earlier answers (a hint, never a verdict)
+  feedbackMediaUrl   String?
+  feedbackMediaKind  String? // AUDIO | VIDEO
+  feedbackTranscript String?
+  styleSignals       Json?
+  submittedAt        DateTime   @default(now())
+  returnedAt         DateTime?
+  updatedAt          DateTime   @updatedAt
 
   @@unique([assignmentId, studentId])
   @@index([studentId])
