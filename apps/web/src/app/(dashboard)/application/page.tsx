@@ -294,8 +294,8 @@ export default function ApplicationPage() {
 
   if (standalone) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-[#0b0b0d]">
-        <header className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 h-16 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#0b0b0d]/80 backdrop-blur">
+      <div className="min-h-screen bg-zinc-50 dark:bg-[#0a0d16]">
+        <header className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 h-16 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#0a0d16]/80 backdrop-blur">
           <div className="flex items-center gap-2">
             <UniverseLogo className="w-8 h-8" />
             <span className="font-bold text-zinc-900 dark:text-white">{pageTitle}</span>
@@ -449,7 +449,7 @@ function History({ events }: { events: HistoryEvent[] }) {
       <ol className="relative space-y-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-gradient-to-b before:from-indigo-500/40 before:to-fuchsia-500/40">
         {[...events].reverse().map((e, i) => (
           <li key={i} className="relative flex gap-3">
-            <span className={cn('mt-1 w-3 h-3 rounded-full shrink-0 ring-4 ring-white dark:ring-[#1c1c1e]', e.type === 'approved' || e.type === 'invited' ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : e.type === 'rejected' ? 'bg-rose-500' : e.type === 'info_requested' ? 'bg-amber-500' : 'bg-indigo-500')} />
+            <span className={cn('mt-1 w-3 h-3 rounded-full shrink-0 ring-4 ring-white dark:ring-[#121830]', e.type === 'approved' || e.type === 'invited' ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : e.type === 'rejected' ? 'bg-rose-500' : e.type === 'info_requested' ? 'bg-amber-500' : 'bg-indigo-500')} />
             <div className="min-w-0">
               <p className="text-sm text-zinc-900 dark:text-white">{EVENT_LABEL[e.type] ?? e.type}</p>
               {e.note && <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap break-words">“{e.note}”</p>}

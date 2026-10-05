@@ -84,7 +84,7 @@ export function FeatureGuide({ icon: Icon, title, description, steps, example, a
             <span className="absolute -top-3 left-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-400 text-amber-950 shadow">
               <Sparkles className="w-3 h-3" /> Example
             </span>
-            <div aria-hidden className="pointer-events-none select-none rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/80 dark:bg-[#1c1c1e]/80 p-4 opacity-90">
+            <div aria-hidden className="pointer-events-none select-none rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/80 dark:bg-[#121830]/80 p-4 opacity-90">
               {example}
             </div>
           </div>

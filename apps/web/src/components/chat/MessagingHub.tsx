@@ -222,12 +222,12 @@ export function MessagingHub() {
               </button>
               {(
                 <button onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === c.id ? null : c.id); }} aria-label="Chat options"
-                  className={cn('absolute right-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#1c1c1e]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+                  className={cn('absolute right-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#121830]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               )}
               {menuFor === c.id && (
-                <div className="absolute right-2 top-9 z-30 w-52 py-1 rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm" onMouseLeave={() => setMenuFor(null)}>
+                <div className="absolute right-2 top-9 z-30 w-52 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm" onMouseLeave={() => setMenuFor(null)}>
                   {!c.archived && <ListItem icon={c.pinned ? PinOff : Pin} label={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => setPref(c, { pinned: !c.pinned })} />}
                   {c.muted
                     ? <ListItem icon={Bell} label="Unmute" onClick={() => setPref(c, { muted: false }, 'Unmuted')} />

@@ -2,7 +2,7 @@
 export function AppSkeleton() {
   return (
     <div className="flex min-h-[100dvh]" aria-busy="true" aria-label="Loading">
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col gap-3 border-r border-zinc-200 dark:border-white/[0.06] bg-white/70 dark:bg-[#0b0b0d]/70 p-4">
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col gap-3 border-r border-zinc-200 dark:border-white/[0.06] bg-white/70 dark:bg-[#0a0d16]/70 p-4">
         <p className="h-10 flex items-center gap-2 mb-4 px-1 font-black text-lg text-zinc-900 dark:text-white"><span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-sm flex items-center justify-center">U</span>UniVerse</p>
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="skeleton h-9 rounded-xl" />

@@ -24,19 +24,18 @@ export function NavProgress() {
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search) || url.pathname.startsWith('/api/')) return;
       if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => setState('loading'), 80); // quick pages don't flash the bar
-      // Another page: menus switch to it now and the content area shows it loading (see nav-pending),
-      // and the page moves like iOS: menus crossfade, deeper pages push in, going up pops back.
+      timer.current = setTimeout(() => setState('loading'), 60); // quick pages don't flash the bar
+      // Another page: menus switch to it now, the old page eases back and the new one comes in like
+      // iOS (sections rise in, deeper pages slide in from the right, going up from the left): see
+      // nav-pending and PendingPage.
       if (url.pathname !== location.pathname) {
         startPageTransition(motionFor(location.pathname, url.pathname, a.dataset.vt));
         setPendingNav(url.pathname);
       }
     };
-    // Back/forward (and anything else that changes the address without a tap) cancels it; going
-    // back slides the page in from the left, like iOS.
-    // Back/forward: the page moves like iOS (back slides in from the left, forward from the right).
-    // Where the browser has the Navigation API, its "traverse" event comes before the router
-    // replaces the page (the old page is still on screen to animate from); popstate is the fallback.
+    // Back/forward (and anything else that changes the address without a tap) cancels a pending tap.
+    // The page moves like iOS: back slides in from the left, forward from the right. Where the
+    // browser has the Navigation API, its "traverse" event says which way; popstate is the fallback.
     // A traversal that only changes the query (closing a chat) keeps the same page: no transition.
     const onScreen = () => document.querySelector('[data-page-path]')?.getAttribute('data-page-path');
     type Nav = EventTarget & { currentEntry?: { index: number } };
@@ -86,7 +85,7 @@ export function NavProgress() {
   if (state === 'idle') return null;
   return (
     <div aria-hidden className="fixed top-0 inset-x-0 z-[200] h-[2px] pointer-events-none">
-      <div className={state === 'loading' ? 'nav-progress-run h-full bg-tint' : 'nav-progress-done h-full bg-tint'} />
+      <div className={`${state === 'loading' ? 'nav-progress-run' : 'nav-progress-done'} h-full rounded-r-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_0_10px_rgba(168,85,247,0.6)]`} />
     </div>
   );
 }

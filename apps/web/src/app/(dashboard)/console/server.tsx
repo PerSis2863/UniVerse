@@ -112,7 +112,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       </div>
 
       {/* Sections */}
-      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-zinc-50/80 dark:bg-[#0b0b0d]/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-zinc-50/80 dark:bg-[#0a0d16]/80 backdrop-blur-xl">
         <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Server sections">
           {SECTIONS.map((x) => (
             <button key={x.id} role="tab" aria-selected={section === x.id} onClick={() => pick(x.id)}

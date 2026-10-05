@@ -1,19 +1,17 @@
 'use client';
 
-// iOS-style page transitions. Switching sections (menus, tabs, the tab bar) crossfades; opening
-// something deeper pushes in from the right; going back pops in from the left. They run as a View
-// Transition on the page area only (<main> is named "page" in globals.css), so the navigation bar,
-// sidebar and tab bar stay still while the content moves, and the browser animates snapshots on
-// the compositor (smooth even while the new page is still rendering).
+// Page transitions with an iOS feel: switching sections (menus, tabs, the tab bar) eases the old
+// page back and rises the new one in; opening something deeper slides in from the right; going back
+// slides in from the left. They run on the live page (src/components/layout/PendingPage.tsx), with
+// the Web Animations API on transform and opacity only, so they stay smooth and never block input.
 //
-// The screen waits at most 300 ms for the new page: a slower page glides into its loading
-// skeleton instead, and fades in when it arrives (the template's CSS animation). Browsers without
-// View Transitions, and "Reduce motion", get the CSS animation alone.
+// (They used to be View Transitions. Those freeze the whole screen while the next page loads, up to
+// 300 ms here, so a tap looked dead, the sidebar highlight slid while nobody could see it, and the
+// page then jumped. Templates also don't re-mount between pages of the same portal, so their CSS
+// entrance didn't play there either.)
 
 export type PageMotion = 'push' | 'pop' | 'fade';
-type VTDocument = Document & { startViewTransition?: (cb: () => Promise<void>) => { finished: Promise<void>; ready: Promise<void> } };
 
-let active = false;
 let nextMotion: PageMotion = 'fade';
 
 const depth = (path: string) => path.split('/').filter(Boolean).length;
@@ -25,48 +23,38 @@ export function motionFor(from: string, to: string, hint?: string | null): PageM
   return b > a ? 'push' : b < a ? 'pop' : 'fade';
 }
 
-/** Starts a transition for a navigation that's about to happen (call before the router changes page). */
+/** Remembers how the next page should move (on a tap on a link, or back/forward). */
 export function startPageTransition(motion: PageMotion) {
   nextMotion = motion;
-  const doc = document as VTDocument;
-  if (active || !doc.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const root = document.documentElement;
-  root.classList.add('vt-nav', `vt-${motion}`);
-  active = true;
-  const end = () => {
-    active = false;
-    root.classList.remove('vt-nav', 'vt-push', 'vt-pop', 'vt-fade');
-  };
-  try {
-    const t = doc.startViewTransition(() => new Promise<void>((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        window.removeEventListener('universe:route-rendered', finish);
-        resolve();
-      };
-      window.addEventListener('universe:route-rendered', finish);
-      setTimeout(finish, 300);
-    }));
-    t.ready.catch(() => {}); // skipped (e.g. another transition started): not an error
-    t.finished.then(end, end);
-  } catch {
-    end();
-  }
 }
 
-/**
- * The CSS entrance for a page that just mounted: none while a View Transition is animating it,
- * otherwise the motion of the navigation that opened it. Pure (React may call it twice); the page
- * calls pageEntranceShown() once it has mounted.
- */
-export function pageEntrance(): string {
-  if (active) return '';
-  return nextMotion === 'push' ? 'page-push' : nextMotion === 'pop' ? 'page-pop' : 'page-enter';
-}
+/** How the page that's arriving should move. */
+export const pageMotion = () => nextMotion;
 
-/** The entrance has been used: later pages (without a tap, e.g. a redirect) just fade. */
+/** The arriving page has used its motion: later changes (e.g. a redirect) just fade. */
 export function pageEntranceShown() {
-  if (!active) nextMotion = 'fade';
+  nextMotion = 'fade';
 }
+
+export const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/** Fast start, soft landing: the page is readable almost at once, then settles. */
+export const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
+/** UIKit's curve for the old page easing back. */
+export const EASE_IOS = 'cubic-bezier(0.32, 0.72, 0, 1)';
+
+/** The old page as a tap leaves it: dims and drifts the way the new one will come from. */
+export function leaveFrames(m: PageMotion): Keyframe[] {
+  const to = m === 'push' ? 'translate3d(-18px, 0, 0)' : m === 'pop' ? 'translate3d(18px, 0, 0)' : 'translate3d(0, 6px, 0) scale(0.996)';
+  return [{ opacity: 1, transform: 'none' }, { opacity: 0.4, transform: to }];
+}
+
+/** The new page coming in. */
+export function enterFrames(m: PageMotion): Keyframe[] {
+  const from = m === 'push' ? 'translate3d(36px, 0, 0)' : m === 'pop' ? 'translate3d(-36px, 0, 0)' : 'translate3d(0, 10px, 0) scale(0.996)';
+  return [{ opacity: 0, transform: from }, { opacity: 1, transform: 'none' }];
+}
+
+/** Durations in ms: quick enough that the page's information is there almost at once. */
+export const LEAVE_MS = 170;
+export const enterMs = (m: PageMotion) => (m === 'fade' ? 300 : 340);

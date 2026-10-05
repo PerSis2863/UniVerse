@@ -36,7 +36,7 @@ export function LowDataSync() {
   if (!offer) return null;
   const close = () => { markSuggested(); setOffer(false); };
   return (
-    <div role="dialog" aria-label="Low-data mode" className="fixed left-3 right-3 sm:left-auto sm:right-4 sm:w-96 bottom-[calc(var(--mobile-tabbar-h,3.5rem)+env(safe-area-inset-bottom)+12px)] md:bottom-4 z-[120] rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1c1c1e] shadow-2xl p-4">
+    <div role="dialog" aria-label="Low-data mode" className="fixed left-3 right-3 sm:left-auto sm:right-4 sm:w-96 bottom-[calc(var(--mobile-tabbar-h,3.5rem)+env(safe-area-inset-bottom)+12px)] md:bottom-4 z-[120] rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121830] shadow-2xl p-4">
       <div className="flex items-start gap-3">
         <Gauge className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
         <div className="flex-1">

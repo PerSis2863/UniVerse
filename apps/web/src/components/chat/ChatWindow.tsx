@@ -620,7 +620,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {byDay(messages).map((day) => (
             <section key={day[0].m.id}>
               <div className="flex justify-center py-2 sticky top-0 z-10">
-                <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/90 dark:bg-[#1c1c1e]/90 backdrop-blur border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(day[0].m.createdAt)}</span>
+                <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/90 dark:bg-[#121830]/90 backdrop-blur border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(day[0].m.createdAt)}</span>
               </div>
               {day.map(({ m, i }, n) => {
                 const prev = messages[i - 1];
@@ -665,7 +665,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {showJump && (
             <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
               onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })}
-              className="absolute bottom-28 right-6 md:right-10 z-20 w-10 h-10 rounded-full bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300">
+              className="absolute bottom-28 right-6 md:right-10 z-20 w-10 h-10 rounded-full bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300">
               <ArrowDown className="w-4 h-4" />
             </motion.button>
           )}
@@ -771,7 +771,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
   return (
     <motion.aside
       initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}
-      className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-l border-zinc-200/80 dark:border-white/[0.06] bg-white dark:bg-[#1c1c1e] md:bg-white/60 md:dark:bg-white/[0.02] backdrop-blur-xl overflow-y-auto"
+      className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-l border-zinc-200/80 dark:border-white/[0.06] bg-white dark:bg-[#121830] md:bg-white/60 md:dark:bg-white/[0.02] backdrop-blur-xl overflow-y-auto"
     >
       <div className="flex items-center justify-between px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06]">
         <h3 className="font-bold text-zinc-900 dark:text-white">{convo.isGroup ? 'Group info' : 'Contact info'}</h3>
@@ -811,7 +811,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
             <div className="grid grid-cols-6 gap-1.5">
               {WALLPAPERS.map((w) => (
                 <button key={w.id} onClick={() => { setWallpaper(w.id); setWp(w.id); }} aria-label={w.label} title={w.label}
-                  className={cn('aspect-square rounded-lg border-2 bg-white dark:bg-[#1c1c1e]', wp === w.id ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10')}
+                  className={cn('aspect-square rounded-lg border-2 bg-white dark:bg-[#121830]', wp === w.id ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10')}
                   style={w.style} />
               ))}
             </div>

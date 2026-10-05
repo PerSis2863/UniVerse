@@ -19,9 +19,9 @@
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* iOS system greys (light: systemGray6 → label; dark surfaces: systemGray6/5 dark). Every
-     zinc-* class in the app picks these up. 500 is a touch darker than systemGray so small
-     secondary text stays readable on white. */
+  /* Greys: iOS system greys for light mode; the darkest ones are tinted deep navy, so dark mode
+     has UniVerse's two-tone (navy with indigo and fuchsia light) instead of flat black. Every
+     zinc-* class in the app picks these up. */
   --color-zinc-50: #f9f9fb;
   --color-zinc-100: #f2f2f7;
   --color-zinc-200: #e5e5ea;
@@ -29,16 +29,12 @@
   --color-zinc-400: #aeaeb2;
   --color-zinc-500: #737378;
   --color-zinc-600: #636366;
-  --color-zinc-700: #48484a;
-  --color-zinc-800: #2c2c2e;
-  --color-zinc-900: #1c1c1e;
-  --color-zinc-950: #0b0b0d;
+  --color-zinc-700: #353d5c;
+  --color-zinc-800: #212843;
+  --color-zinc-900: #141a30;
+  --color-zinc-950: #0b0f1c;
 
-  /* iOS system colours for the tint and the semantic states. */
-  --color-indigo-400: #7d7bff;
-  --color-indigo-500: #5e5ce6;
-  --color-indigo-600: #5856d6;
-  --color-indigo-700: #4644b8;
+  /* iOS system colours for the semantic states (indigo and fuchsia stay UniVerse's two tones). */
   --color-emerald-500: #34c759;
   --color-green-500: #34c759;
   --color-rose-500: #ff3b30;
@@ -53,23 +49,23 @@
 
 /* ─── Color tokens (light defaults, dark overrides) ─ */
 /* iOS semantic colours: grouped background, secondary background for cards, separators, labels
-   and fills. Dark mode is iOS dark: near-black with #1c1c1e cards. */
+   and fills. Dark mode is deep navy with see-through cards over the indigo/fuchsia glows. */
 @layer base {
   :root {
-    --tint: #5856d6;
-    --tint-rgb: 88 86 214;
-    --tint-text: #5856d6;
+    --tint: #4f46e5;
+    --tint-rgb: 79 70 229;
+    --tint-text: #4f46e5;
     --ios-green: #34c759;
     --ios-red: #ff3b30;
     --ios-orange: #ff9500;
     --fill: rgba(118, 118, 128, 0.12);
     --fill-strong: rgba(118, 118, 128, 0.2);
     --separator: rgba(60, 60, 67, 0.16);
-    --material: rgba(249, 249, 251, 0.78);
-    --material-thick: rgba(249, 249, 251, 0.9);
+    --material: rgba(250, 250, 255, 0.78);
+    --material-thick: rgba(250, 250, 255, 0.9);
     --material-highlight: rgba(255, 255, 255, 0.7);
 
-    --background: #f2f2f7;
+    --background: #f5f6fb;
     --foreground: #1c1c1e;
     --surface: #ffffff;
     --surface-2: #f2f2f7;
@@ -78,8 +74,8 @@
     --sidebar-item-color: #3a3a3c;
     --sidebar-item-hover-bg: rgba(118, 118, 128, 0.1);
     --sidebar-item-hover-color: #1c1c1e;
-    --sidebar-item-active-bg: rgba(88, 86, 214, 0.13);
-    --sidebar-item-active-color: #5856d6;
+    --sidebar-item-active-bg: rgba(99, 102, 241, 0.12);
+    --sidebar-item-active-color: #4f46e5;
     --sidebar-item-active-border: transparent;
     --card-bg: #ffffff;
     --toast-bg: rgba(255, 255, 255, 0.88);
@@ -87,17 +83,17 @@
     --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px -12px rgba(0, 0, 0, 0.12);
     --card-hover-bg: #ffffff;
     --card-hover-border: rgba(60, 60, 67, 0.16);
-    --topbar-bg: rgba(249, 249, 251, 0.78);
+    --topbar-bg: rgba(250, 250, 255, 0.78);
     --topbar-border: rgba(60, 60, 67, 0.16);
     --text-primary: #1c1c1e;
     --text-secondary: #6c6c70;
     --text-muted: #8e8e93;
-    --btn-ghost-color: #5856d6;
-    --btn-ghost-hover-bg: rgba(118, 118, 128, 0.12);
-    --btn-ghost-hover-color: #4644b8;
-    --btn-secondary-bg: rgba(118, 118, 128, 0.12);
+    --btn-ghost-color: #4f46e5;
+    --btn-ghost-hover-bg: rgba(99, 102, 241, 0.1);
+    --btn-ghost-hover-color: #4338ca;
+    --btn-secondary-bg: rgba(99, 102, 241, 0.1);
     --btn-secondary-border: transparent;
-    --btn-secondary-color: #5856d6;
+    --btn-secondary-color: #4f46e5;
     --input-bg: rgba(118, 118, 128, 0.12);
     --input-border: transparent;
     --input-color: #1c1c1e;
@@ -107,64 +103,65 @@
     --badge-green-bg: rgba(52, 199, 89, 0.15);  --badge-green-color: #248a3d;
     --badge-amber-bg: rgba(255, 149, 0, 0.15);  --badge-amber-color: #c93400;
     --badge-red-bg: rgba(255, 59, 48, 0.12);    --badge-red-color: #d70015;
-    --badge-blue-bg: rgba(88, 86, 214, 0.12);   --badge-blue-color: #5856d6;
+    --badge-blue-bg: rgba(99, 102, 241, 0.12);  --badge-blue-color: #4f46e5;
     --transition: 220ms cubic-bezier(0.32, 0.72, 0, 1);
     accent-color: var(--tint);
   }
 
   .dark {
-    --tint: #5e5ce6;
-    --tint-rgb: 94 92 230;
-    --tint-text: #9d9bff;
+    --tint: #6366f1;
+    --tint-rgb: 99 102 241;
+    --tint-text: #a5b4fc;
     --ios-green: #30d158;
     --ios-red: #ff453a;
     --ios-orange: #ff9f0a;
-    --fill: rgba(118, 118, 128, 0.24);
-    --fill-strong: rgba(118, 118, 128, 0.32);
-    --separator: rgba(84, 84, 88, 0.55);
-    --material: rgba(28, 28, 30, 0.72);
-    --material-thick: rgba(28, 28, 30, 0.88);
+    --fill: rgba(129, 140, 200, 0.18);
+    --fill-strong: rgba(129, 140, 200, 0.28);
+    --separator: rgba(129, 140, 200, 0.24);
+    --material: rgba(12, 16, 32, 0.72);
+    --material-thick: rgba(12, 16, 32, 0.88);
     --material-highlight: rgba(255, 255, 255, 0.08);
 
-    --background: #0b0b0d;
-    --foreground: #f5f5f7;
-    --surface: #1c1c1e;
-    --surface-2: #2c2c2e;
-    --sidebar-bg: rgba(20, 20, 22, 0.86);
-    --sidebar-border: rgba(84, 84, 88, 0.36);
-    --sidebar-item-color: #aeaeb2;
-    --sidebar-item-hover-bg: rgba(118, 118, 128, 0.18);
+    /* Deep navy: the indigo and fuchsia glows behind the page (.ambient-bg) give it its two tones. */
+    --background: #0a0d16;
+    --foreground: #f1f5f9;
+    --surface: #121830;
+    --surface-2: #1c2340;
+    --sidebar-bg: rgba(11, 14, 26, 0.55);
+    --sidebar-border: rgba(255, 255, 255, 0.06);
+    --sidebar-item-color: #a3acc9;
+    --sidebar-item-hover-bg: rgba(129, 140, 248, 0.1);
     --sidebar-item-hover-color: #ffffff;
-    --sidebar-item-active-bg: rgba(94, 92, 230, 0.26);
-    --sidebar-item-active-color: #b4b3ff;
+    --sidebar-item-active-bg: rgba(99, 102, 241, 0.22);
+    --sidebar-item-active-color: #c7d2fe;
     --sidebar-item-active-border: transparent;
-    --card-bg: #1c1c1e;
-    --toast-bg: rgba(44, 44, 46, 0.9);
-    --card-border: rgba(255, 255, 255, 0.06);
-    --card-shadow: none;
-    --card-hover-bg: #232325;
-    --card-hover-border: rgba(255, 255, 255, 0.1);
-    --topbar-bg: rgba(22, 22, 24, 0.74);
-    --topbar-border: rgba(84, 84, 88, 0.5);
-    --text-primary: #f5f5f7;
-    --text-secondary: #a1a1a6;
-    --text-muted: #8e8e93;
-    --btn-ghost-color: #9d9bff;
-    --btn-ghost-hover-bg: rgba(118, 118, 128, 0.2);
-    --btn-ghost-hover-color: #b4b3ff;
-    --btn-secondary-bg: rgba(118, 118, 128, 0.24);
+    --card-bg: rgba(255, 255, 255, 0.045);
+    --toast-bg: rgba(18, 24, 48, 0.92);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --card-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.6);
+    --card-hover-bg: rgba(255, 255, 255, 0.07);
+    --card-hover-border: rgba(255, 255, 255, 0.14);
+    --topbar-bg: rgba(10, 13, 24, 0.62);
+    --topbar-border: rgba(255, 255, 255, 0.07);
+    --text-primary: #f1f5f9;
+    --text-secondary: #a3acc9;
+    --text-muted: #7c86a6;
+    --btn-ghost-color: #a5b4fc;
+    --btn-ghost-hover-bg: rgba(129, 140, 248, 0.12);
+    --btn-ghost-hover-color: #c7d2fe;
+    --btn-secondary-bg: rgba(129, 140, 248, 0.14);
     --btn-secondary-border: transparent;
-    --btn-secondary-color: #9d9bff;
-    --input-bg: rgba(118, 118, 128, 0.24);
+    --btn-secondary-color: #c7d2fe;
+    --input-bg: rgba(255, 255, 255, 0.05);
     --input-border: transparent;
-    --input-color: #f5f5f7;
-    --input-placeholder: #6e6e73;
+    --input-color: #f1f5f9;
+    --input-placeholder: #6b7393;
     --scrollbar-thumb: rgba(235, 235, 245, 0.18);
     --scrollbar-thumb-hover: rgba(235, 235, 245, 0.3);
     --badge-green-bg: rgba(48, 209, 88, 0.18);  --badge-green-color: #30d158;
     --badge-amber-bg: rgba(255, 159, 10, 0.18); --badge-amber-color: #ff9f0a;
     --badge-red-bg: rgba(255, 69, 58, 0.18);    --badge-red-color: #ff6961;
-    --badge-blue-bg: rgba(94, 92, 230, 0.26);   --badge-blue-color: #b4b3ff;
+    --badge-blue-bg: rgba(99, 102, 241, 0.22);  --badge-blue-color: #a5b4fc;
   }
 
   /* The page colour sits on <html>; <body> stays see-through so the indigo/purple glows
@@ -223,8 +220,13 @@
     transition: var(--transition);
     transition-property: background-color, color, box-shadow, scale, opacity, filter;
   }
-  .btn-primary { color: #fff; background-color: var(--tint); }
-  .btn-primary:not(:disabled):hover { filter: brightness(1.07); }
+  /* Primary: UniVerse's two tones, indigo into violet and fuchsia, with a soft glow. */
+  .btn-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 55%, #a855f7 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 6px 16px -6px rgb(124 58 237 / 0.55);
+  }
+  .btn-primary:not(:disabled):hover { filter: brightness(1.08); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 8px 22px -6px rgb(168 85 247 / 0.6); }
   .btn-primary:not(:disabled):active { filter: brightness(0.9); }
 
   .btn-secondary { color: var(--btn-secondary-color); background-color: var(--btn-secondary-bg); }
@@ -361,7 +363,12 @@
   .sidebar-item.pill-host.active:hover { background: none; }
   .sidebar-pill {
     position: absolute; inset: 0; border-radius: inherit;
-    background-color: var(--sidebar-item-active-bg);
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.16), rgba(192, 38, 211, 0.1));
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.16);
+  }
+  .dark .sidebar-pill {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.32), rgba(192, 38, 211, 0.2));
+    box-shadow: inset 0 0 0 1px rgba(165, 180, 252, 0.16), 0 6px 18px -10px rgba(139, 92, 246, 0.7);
   }
   .sidebar-item.active {
     background-color: var(--sidebar-item-active-bg);
@@ -992,34 +999,96 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 .mkt-float { animation: mkt-float 5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .mkt-float { animation: none; } }
 
-/* ─── Background ─── */
-/* iOS uses a plain grouped background; the old indigo/fuchsia glow and grid are gone. The element
-   stays (other pages render it) but draws nothing. */
-.ambient-bg { display: none; }
+/* ─── Background: UniVerse's two tones ─── */
+/* Indigo light from the top left, fuchsia from the bottom right, and a faint grid, behind every
+   page. Still on purpose: moving glow behind the frosted bars made the browser redo every blur on
+   every frame (jank while scrolling, battery drain on phones). */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ambient-bg::before,
+.ambient-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+}
+.ambient-bg::before {
+  top: -25%; left: -35%; width: max(80vw, 760px); height: max(80vw, 760px);
+  background: radial-gradient(closest-side, rgba(79, 70, 229, 0.12), transparent);
+}
+.ambient-bg::after {
+  bottom: -30%; right: -40%; width: max(75vw, 720px); height: max(75vw, 720px);
+  background: radial-gradient(closest-side, rgba(192, 38, 211, 0.08), transparent);
+}
+.dark .ambient-bg::before { background: radial-gradient(closest-side, rgba(79, 70, 229, 0.26), transparent); }
+.dark .ambient-bg::after { background: radial-gradient(closest-side, rgba(192, 38, 211, 0.17), transparent); }
+.ambient-bg__grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: linear-gradient(rgba(99, 102, 241, 0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(99, 102, 241, 0.6) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse at top, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at top, black 20%, transparent 70%);
+}
+.dark .ambient-bg__grid { background-image: linear-gradient(rgba(255, 255, 255, 0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.6) 1px, transparent 1px); }
 
-/* ─── Materials (iOS "regular" and "thick" blur) ─── */
-/* Bars: translucent, blurred and saturated, so content glides underneath them like on iOS. */
+/* Pull-to-refresh ring (installed app): an indigo → fuchsia arc that fills as you pull. */
+.ptr-ring { background: conic-gradient(from 0deg, #6366f1, #a855f7, #d946ef, transparent 85%); }
+
+/* ─── Materials: frosted, in the two tones ─── */
+/* Bars: translucent and blurred so content glides underneath them, tinted indigo → fuchsia. */
 .glass-bar {
-  background: var(--material);
+  background: linear-gradient(90deg, rgba(238, 242, 255, 0.85), rgba(255, 255, 255, 0.75) 50%, rgba(253, 244, 255, 0.85));
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
 }
-/* Sidebar: grouped grey on iPad; opaque when it slides over content on phones. */
-.glass-sidebar { background: var(--surface-2); }
-.dark .glass-sidebar { background: #1c1c1e; }
+.dark .glass-bar {
+  background: linear-gradient(90deg, rgba(49, 46, 129, 0.34) 0%, rgba(11, 14, 26, 0.6) 45%, rgba(112, 26, 117, 0.26) 100%);
+}
+/* Sidebar: opaque when it slides over content on phones, frosted on desktop. */
+.glass-sidebar { background: linear-gradient(180deg, #eef2ff 0%, #ffffff 45%, #fdf4ff 100%); }
+.dark .glass-sidebar {
+  background:
+    radial-gradient(130% 50% at 0% 0%, rgba(99, 102, 241, 0.40), transparent 70%),
+    radial-gradient(130% 50% at 100% 100%, rgba(192, 38, 211, 0.30), transparent 70%),
+    #0b0e1a;
+}
 @media (min-width: 1024px) {
-  .glass-sidebar, .dark .glass-sidebar {
-    background: var(--sidebar-bg);
+  .glass-sidebar {
+    background: linear-gradient(180deg, rgba(238, 242, 255, 0.85) 0%, rgba(255, 255, 255, 0.75) 45%, rgba(253, 244, 255, 0.85) 100%);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
     backdrop-filter: blur(30px) saturate(180%);
   }
+  .dark .glass-sidebar {
+    background:
+      radial-gradient(120% 45% at 0% 0%, rgba(99, 102, 241, 0.28), transparent 70%),
+      radial-gradient(120% 45% at 100% 100%, rgba(192, 38, 211, 0.20), transparent 70%),
+      rgba(11, 14, 26, 0.55);
+  }
 }
-/* Pop-ups (dialogs and sheets): the system background (white, or elevated #1c1c1e in dark). */
-.tone-panel { background: var(--surface); }
+/* Pop-ups (dialogs and sheets): the same two-tone light as the page, on a solid base so the page
+   behind doesn't show through. */
+.tone-panel {
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(99, 102, 241, 0.10), transparent 70%),
+    radial-gradient(120% 60% at 100% 100%, rgba(192, 38, 211, 0.08), transparent 70%),
+    #ffffff;
+}
+.dark .tone-panel {
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(99, 102, 241, 0.30), transparent 70%),
+    radial-gradient(120% 60% at 100% 100%, rgba(192, 38, 211, 0.22), transparent 70%),
+    #0b0e1a;
+}
 
 /* Liquid glass: floating controls (tab bar, call bar) — material with a light rim and a soft shadow. */
 .ios-glass {
-  background: var(--material);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.12), transparent 50%, rgba(192, 38, 211, 0.1)), var(--material);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
   backdrop-filter: blur(24px) saturate(190%);
   box-shadow: inset 0 0.5px 0 var(--material-highlight), 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 10px 34px -10px rgba(0, 0, 0, 0.28);
@@ -1068,7 +1137,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
   transition: background-color 240ms var(--ease-ios), box-shadow 240ms var(--ease-ios), -webkit-backdrop-filter 240ms var(--ease-ios), backdrop-filter 240ms var(--ease-ios);
 }
 html[data-scrolled] .nav-edge {
-  background: var(--topbar-bg);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.1), transparent 45%, rgba(192, 38, 211, 0.08)), var(--topbar-bg);
   box-shadow: 0 0.5px 0 var(--topbar-border);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
@@ -1122,7 +1191,7 @@ html[data-collapsed] .nav-brand-text { opacity: 0; }
   background: #ffffff;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
 }
-.dark .ios-segment-thumb { background: #636366; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.24); }
+.dark .ios-segment-thumb { background: linear-gradient(135deg, rgba(99, 102, 241, 0.55), rgba(168, 85, 247, 0.42)); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3), inset 0 0.5px 0 rgba(255, 255, 255, 0.12); }
 /* Separators between unselected segments, like UISegmentedControl. */
 .ios-segment + .ios-segment::before {
   content: ''; position: absolute; left: 0; top: 25%; bottom: 25%; width: 1px;
@@ -1195,26 +1264,10 @@ html[data-collapsed] .nav-brand-text { opacity: 0; }
   backdrop-filter: blur(24px) saturate(180%);
 }
 
-/* ─── Page transitions (src/lib/page-transition.ts) ───────────────────────────────────────────
-   Only the page area moves (<main> is its own transition layer while one runs); the bars, sidebar
-   and tab bar (the root) switch without animating, so they stay still. Named only during the
-   transition: a named element is its own stacking context, which would put the page's pop-ups
-   under the tab bar and header. */
-html.vt-nav main.mobile-main { view-transition-name: page; }
-html.vt-nav::view-transition-old(root), html.vt-nav::view-transition-new(root) { animation: none; }
-html.vt-nav::view-transition-group(page) { animation: none; }
-html.vt-fade::view-transition-old(page) { animation: 180ms var(--ease-ios) both vt-out-fade; }
-html.vt-fade::view-transition-new(page) { animation: 340ms var(--ease-ios) both vt-in-rise; }
-html.vt-push::view-transition-old(page) { animation: 380ms var(--ease-ios) both vt-out-left; }
-html.vt-push::view-transition-new(page) { animation: 380ms var(--ease-ios) both vt-in-right; }
-html.vt-pop::view-transition-old(page) { animation: 380ms var(--ease-ios) both vt-out-right; }
-html.vt-pop::view-transition-new(page) { animation: 380ms var(--ease-ios) both vt-in-left; }
-@keyframes vt-out-fade { to { opacity: 0; } }
-@keyframes vt-in-rise { from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.995); } }
-@keyframes vt-out-left { to { opacity: 0; transform: translate3d(max(-8%, -40px), 0, 0); } }
-@keyframes vt-in-right { from { opacity: 0; transform: translate3d(min(12%, 56px), 0, 0); } }
-@keyframes vt-out-right { to { opacity: 0; transform: translate3d(min(8%, 40px), 0, 0); } }
-@keyframes vt-in-left { from { opacity: 0; transform: translate3d(max(-12%, -56px), 0, 0); } }
+/* ─── Page transitions ───────────────────────────────────────────────────────────────────────
+   Run on the live page with the Web Animations API (src/lib/page-transition.ts, PendingPage), so
+   nothing freezes while the next page loads. The page area is its own compositor layer only while
+   it moves (the animation promotes it), so the bars, sidebar and tab bar stay still. */
 @media (prefers-reduced-motion: reduce) {
-  .page-push, .page-pop, .shell-in { animation: none; }
+  .page-enter, .page-push, .page-pop, .shell-in { animation: none; }
 }

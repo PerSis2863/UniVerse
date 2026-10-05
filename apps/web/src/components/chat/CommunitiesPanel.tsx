@@ -162,7 +162,7 @@ function CreateCommunity({ onClose, onDone }: { onClose: () => void; onDone: () 
       <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Name (e.g. CS Department, Chess Club)" className={input} />
       <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} placeholder="What it's for (optional)" className={input} />
       <div className="flex gap-2" role="radiogroup" aria-label="Colour">{COLORS.map((c) => (
-        <button key={c} type="button" role="radio" aria-checked={color === c} onClick={() => setColor(c)} className={cn('w-8 h-8 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#1c1c1e]', color === c ? 'ring-indigo-500' : 'ring-transparent')} style={{ background: c }} />
+        <button key={c} type="button" role="radio" aria-checked={color === c} onClick={() => setColor(c)} className={cn('w-8 h-8 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#121830]', color === c ? 'ring-indigo-500' : 'ring-transparent')} style={{ background: c }} />
       ))}</div>
       <p className="text-xs text-zinc-500">It starts with #general, #announcements (only moderators post) and a Study room voice channel.</p>
       <button type="button" onClick={() => void create()} disabled={busy || !name.trim()} className="btn-primary w-full py-3">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create community</button>

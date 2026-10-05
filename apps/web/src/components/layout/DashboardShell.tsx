@@ -24,6 +24,7 @@ import { haptic } from '@/lib/haptics';
 import { authedJson } from '@/lib/authed-fetch';
 import useSWR from 'swr';
 import { PendingPage } from './PendingPage';
+import { PullToRefresh } from './PullToRefresh';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -96,7 +97,7 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
               className={cn(tab, active ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
             >
               {active && (
-                <motion.span layoutId="tabbar-pill" transition={spring.snappy} aria-hidden className="absolute inset-0 rounded-full bg-zinc-500/[0.14] dark:bg-white/[0.12]" />
+                <motion.span layoutId="tabbar-pill" transition={spring.snappy} aria-hidden className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/[0.18] to-fuchsia-500/[0.14] dark:from-indigo-500/[0.38] dark:to-fuchsia-500/[0.26] ring-1 ring-indigo-400/20" />
               )}
               <item.icon className="relative w-[23px] h-[23px]" strokeWidth={active ? 2.3 : 1.8} />
               <span className={cn('relative text-[10px] leading-none', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
@@ -109,7 +110,7 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
           aria-expanded={moreOpen}
           className={cn(tab, moreOpen ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
         >
-          {moreOpen && <motion.span layoutId="tabbar-pill" transition={spring.snappy} aria-hidden className="absolute inset-0 rounded-full bg-zinc-500/[0.14] dark:bg-white/[0.12]" />}
+          {moreOpen && <motion.span layoutId="tabbar-pill" transition={spring.snappy} aria-hidden className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/[0.18] to-fuchsia-500/[0.14] dark:from-indigo-500/[0.38] dark:to-fuchsia-500/[0.26] ring-1 ring-indigo-400/20" />}
           <Menu className="relative w-[23px] h-[23px]" strokeWidth={moreOpen ? 2.3 : 1.8} />
           <span className={cn('relative text-[10px] leading-none', moreOpen ? 'font-semibold' : 'font-medium')}>More</span>
         </button>
@@ -179,6 +180,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <DeferredShell role={user?.role} showAssistant={!pathname.endsWith('/inbox')} signedIn={!!user} />
       {user && <MobileTabBar role={user.role} onMore={() => setSidebarOpen((v) => !v)} moreOpen={sidebarOpen} />}
       <OfflineBar />
+      <PullToRefresh />
       <InstallBanner />
       {user && <IncomingCall inboxPath={`${tabsForRole(user.role).base}/inbox`} />}
     </div>

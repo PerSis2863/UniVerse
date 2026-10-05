@@ -87,7 +87,7 @@ export function IncomingCall({ inboxPath }: { inboxPath: string }) {
           transition={spring.smooth}
           role="alertdialog"
           aria-label={`Incoming ${video ? 'video' : 'voice'} call from ${call.sender.name}`}
-          className="fixed top-[calc(env(safe-area-inset-top)+0.75rem)] left-1/2 -translate-x-1/2 z-[200] w-[min(94vw,400px)] rounded-[28px] bg-[#1c1c1e]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-indigo-900/50 p-4"
+          className="fixed top-[calc(env(safe-area-inset-top)+0.75rem)] left-1/2 -translate-x-1/2 z-[200] w-[min(94vw,400px)] rounded-[28px] bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-indigo-900/50 p-4"
         >
           <div className="flex items-center gap-3">
             <div className="relative">
