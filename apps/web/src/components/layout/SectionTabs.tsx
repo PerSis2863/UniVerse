@@ -2,8 +2,11 @@
 
 import { Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { m as motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
+import { useOptimisticPath } from '@/lib/nav-pending';
+import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 // Tabs that join related pages into one menu entry (e.g. Support and BeeSafe reporting): each tab
@@ -125,23 +128,21 @@ export const MONITORING_TABS: SectionTab[] = [
   { href: '/admin/monitoring/lost-found', label: 'Lost & found' },
 ];
 
+/**
+ * The tabs as an iOS segmented control. The tapped segment's thumb slides over at once (before its
+ * page has loaded), so switching feels instant.
+ */
 export function SectionTabs({ tabs, small, label = 'Sections' }: { tabs: SectionTab[]; small?: boolean; label?: string }) {
-  const pathname = usePathname();
+  const pathname = useOptimisticPath(usePathname());
+  const group = tabs.map((t) => t.href).join('|');
   return (
     <nav aria-label={label} className={small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4'}>
-      <div className="inline-flex max-w-full overflow-x-auto scrollbar-none gap-1 p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] border border-zinc-200/70 dark:border-white/[0.06]">
+      <div className={cn('ios-segmented', !small && 'large')}>
         {tabs.map((t) => {
           const on = pathname === t.href || !!t.also?.includes(pathname);
           return (
-            <Link
-              key={t.href}
-              href={t.href}
-              aria-current={on ? 'page' : undefined}
-              className={cn(
-                small ? 'px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors' : 'px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors',
-                on ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white',
-              )}
-            >
+            <Link key={t.href} href={t.href} aria-current={on ? 'page' : undefined} className="ios-segment">
+              {on && <motion.span layoutId={`tabs-${group}`} transition={spring.snappy} className="ios-segment-thumb" aria-hidden />}
               {t.label}
             </Link>
           );

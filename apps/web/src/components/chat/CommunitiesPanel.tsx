@@ -12,6 +12,7 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Avatar } from './MessageBubble';
 import { chatJson } from './chat-client';
+import { Switch } from '@/components/ui/Switch';
 
 // Communities (Discord server / WhatsApp community), src/server/communities.ts: a list of
 // communities, each opening to its channels. Text channels open in the chat on the right; voice
@@ -160,7 +161,7 @@ function CreateCommunity({ onClose, onDone }: { onClose: () => void; onDone: () 
       <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Name (e.g. CS Department, Chess Club)" className={input} />
       <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} placeholder="What it's for (optional)" className={input} />
       <div className="flex gap-2" role="radiogroup" aria-label="Colour">{COLORS.map((c) => (
-        <button key={c} type="button" role="radio" aria-checked={color === c} onClick={() => setColor(c)} className={cn('w-8 h-8 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#11152a]', color === c ? 'ring-indigo-500' : 'ring-transparent')} style={{ background: c }} />
+        <button key={c} type="button" role="radio" aria-checked={color === c} onClick={() => setColor(c)} className={cn('w-8 h-8 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#1c1c1e]', color === c ? 'ring-indigo-500' : 'ring-transparent')} style={{ background: c }} />
       ))}</div>
       <p className="text-xs text-zinc-500">It starts with #general, #announcements (only moderators post) and a Study room voice channel.</p>
       <button type="button" onClick={() => void create()} disabled={busy || !name.trim()} className="btn-primary w-full py-3">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create community</button>
@@ -260,7 +261,7 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
           )}
 
           {mod && (
-            <label className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] p-3 cursor-pointer">
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] p-3">
               <span className="flex items-start gap-2.5">
                 <Globe2 className="w-4 h-4 mt-0.5 text-indigo-500 shrink-0" />
                 <span>
@@ -268,13 +269,11 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
                   <span className="block text-xs text-zinc-500">Listed under Discover communities, also for partner campuses.</span>
                 </span>
               </span>
-              <input type="checkbox" className="sr-only peer" checked={data.discoverable} onChange={async (e) => {
-                const on = e.target.checked;
+              <Switch checked={data.discoverable} label="Anyone can find and join" onChange={async (on) => {
                 try { await chatJson(`/api/chat/communities/${community.id}`, { method: 'PATCH', body: JSON.stringify({ discoverable: on }) }); await mutate(); toast.success(on ? 'Anyone can now find and join it' : 'Only people with the invite link can join now'); }
                 catch (err) { toast.error((err as Error).message); }
               }} />
-              <span aria-hidden className="relative w-11 h-6 shrink-0 rounded-full bg-zinc-300 dark:bg-white/15 peer-checked:bg-indigo-500 transition-colors after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500/50" />
-            </label>
+            </div>
           )}
 
           {mod && (

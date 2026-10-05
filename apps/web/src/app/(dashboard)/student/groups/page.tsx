@@ -336,7 +336,7 @@ export default function GroupsPage() {
             <motion.div
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[420px] glass-sidebar sheet-safe-top border-l border-indigo-100 dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto"
+              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[420px] glass-sidebar sheet-safe-top border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto"
             >
               <div className={`h-28 bg-gradient-to-br ${selectedGroup.color} relative flex items-end p-5`}>
                 <div className="absolute top-4 right-14">

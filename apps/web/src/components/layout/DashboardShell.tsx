@@ -19,6 +19,10 @@ import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
 import { IncomingCall } from '@/components/chat/IncomingCall';
 import { useOptimisticPath } from '@/lib/nav-pending';
+import { usePageTitle, useScrollEdges } from '@/lib/chrome';
+import { haptic } from '@/lib/haptics';
+import { authedJson } from '@/lib/authed-fetch';
+import useSWR from 'swr';
 import { PendingPage } from './PendingPage';
 
 interface DashboardShellProps {
@@ -61,7 +65,10 @@ function tabsForRole(role: string): { base: string; items: TabItem[] } {
   };
 }
 
-/** iOS-style tab bar. The last tab ("More") opens the full navigation sheet. */
+/**
+ * iOS tab bar: a floating, frosted capsule (iOS 26). The chosen tab sits on a soft capsule that
+ * springs between tabs; the last tab ("More") opens the full navigation sheet.
+ */
 function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => void; moreOpen: boolean }) {
   // The tapped tab lights up at once, not when its page has downloaded.
   const pathname = useOptimisticPath(usePathname());
@@ -72,13 +79,11 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
     const prefixes = item.match ?? [item.href];
     return prefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
   };
+  const tab = 'relative flex flex-col items-center justify-center gap-[3px] select-none rounded-full transition-colors';
 
   return (
-    <nav
-      aria-label="Primary"
-      className="mobile-tabbar lg:hidden fixed bottom-0 inset-x-0 z-[35] border-t border-indigo-100 dark:border-white/[0.08] glass-bar"
-    >
-      <div className="grid grid-cols-5 h-[var(--mobile-tabbar-h)]">
+    <nav aria-label="Primary" className="ios-tabbar ios-glass lg:hidden z-[35] p-1">
+      <div className="grid grid-cols-5 h-full">
         {items.map((item) => {
           const active = isActive(item);
           return (
@@ -86,35 +91,26 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
               key={item.href}
               href={item.href}
               aria-current={active ? 'page' : undefined}
-              className={cn(
-                'pressable relative flex flex-col items-center justify-center gap-0.5 select-none transition-colors',
-                active ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400',
-              )}
+              onClick={() => { if (!active) haptic('tap'); }}
+              className={cn(tab, active ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
             >
               {active && (
-                <motion.span
-                  layoutId="tabbar-pill"
-                  transition={spring.snappy}
-                  aria-hidden
-                  className="absolute top-1 h-8 w-14 rounded-full bg-indigo-500/12 dark:bg-indigo-400/15"
-                />
+                <motion.span layoutId="tabbar-pill" transition={spring.snappy} aria-hidden className="absolute inset-0 rounded-full bg-zinc-500/[0.14] dark:bg-white/[0.12]" />
               )}
-              <item.icon className="relative w-[22px] h-[22px]" strokeWidth={active ? 2.4 : 1.9} />
-              <span className={cn('relative text-[10px] leading-none tracking-tight', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
+              <item.icon className="relative w-[23px] h-[23px]" strokeWidth={active ? 2.3 : 1.8} />
+              <span className={cn('relative text-[10px] leading-none', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
             </Link>
           );
         })}
         <button
           type="button"
-          onClick={onMore}
+          onClick={() => { haptic('tap'); onMore(); }}
           aria-expanded={moreOpen}
-          className={cn(
-            'pressable flex flex-col items-center justify-center gap-0.5 select-none',
-            moreOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400',
-          )}
+          className={cn(tab, moreOpen ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
         >
-          <Menu className="w-[22px] h-[22px]" strokeWidth={moreOpen ? 2.4 : 1.9} />
-          <span className={cn('text-[10px] leading-none tracking-tight', moreOpen ? 'font-semibold' : 'font-medium')}>More</span>
+          {moreOpen && <motion.span layoutId="tabbar-pill" transition={spring.snappy} aria-hidden className="absolute inset-0 rounded-full bg-zinc-500/[0.14] dark:bg-white/[0.12]" />}
+          <Menu className="relative w-[23px] h-[23px]" strokeWidth={moreOpen ? 2.3 : 1.8} />
+          <span className={cn('relative text-[10px] leading-none', moreOpen ? 'font-semibold' : 'font-medium')}>More</span>
         </button>
       </div>
     </nav>
@@ -127,6 +123,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const { user } = useAuthStore();
   const pathname = usePathname();
   const openingPath = useOptimisticPath(pathname);
+  const pageTitle = usePageTitle();
+  useScrollEdges(pathname);
+  // The unread count from the notifications list the page's Topbar already loaded (no extra request).
+  const { data: notes } = useSWR<{ read: boolean }[]>(user ? '/api/notifications' : null, authedJson, { revalidateOnMount: false, revalidateOnFocus: false, revalidateIfStale: false });
+  const unread = Array.isArray(notes) ? notes.filter((n) => !n.read).length : 0;
 
   // Close the navigation sheet as soon as a page in it is tapped (and on any route change).
   useEffect(() => {
@@ -145,21 +146,23 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
-        {/* Mobile navigation bar (fixed, translucent, respects the notch) */}
-        <header className="mobile-header lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between border-b border-indigo-100 dark:border-white/[0.08] glass-bar">
+        {/* Mobile navigation bar (iOS): clear at the top, frosted once content scrolls under it; the
+            brand gives way to the page's title when its large title has scrolled away. */}
+        <header className="mobile-header nav-edge lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between">
           <Link href={tabsForRole(user?.role ?? 'STUDENT').base} className="flex items-center gap-2 min-w-0 pressable" aria-label="Home">
             <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
-            <span className="font-black text-[17px] tracking-tight text-zinc-900 dark:text-white">
-              Uni<span className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">Verse</span>
-            </span>
+            <span className="nav-brand-text font-bold text-[17px] tracking-tight text-zinc-900 dark:text-white">UniVerse</span>
           </Link>
+          {pageTitle && (
+            <span aria-hidden className="nav-inline-title absolute left-1/2 -translate-x-1/2 max-w-[52%] truncate text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ top: 'calc(var(--safe-top) + 0.875rem)' }}>{pageTitle}</span>
+          )}
           <div className="flex items-center">
-            <button type="button" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-zinc-600 dark:text-zinc-300">
-              <Search className="w-[21px] h-[21px]" />
+            <button type="button" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
+              <Search className="w-[21px] h-[21px]" strokeWidth={2.1} />
             </button>
-            <button type="button" onClick={openNotifications} aria-label="Notifications" className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-zinc-600 dark:text-zinc-300">
-              <Bell className="w-[21px] h-[21px]" />
-              <span className="absolute top-[11px] right-[11px] w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-white dark:ring-[#0b0f1c]" />
+            <button type="button" onClick={openNotifications} aria-label={unread ? `Notifications (${unread} unread)` : 'Notifications'} className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
+              <Bell className="w-[21px] h-[21px]" strokeWidth={2.1} />
+              {unread > 0 && <span className="absolute top-[9px] right-[8px] min-w-[16px] h-4 px-1 rounded-full bg-[var(--ios-red)] text-white text-[10px] font-bold leading-4 text-center">{unread > 9 ? '9+' : unread}</span>}
             </button>
           </div>
         </header>

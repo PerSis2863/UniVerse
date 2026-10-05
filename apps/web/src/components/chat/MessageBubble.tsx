@@ -72,7 +72,7 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
           {letters}
         </div>
       )}
-      {online && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#0f1322]" />}
+      {online && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#1c1c1e]" />}
     </div>
   );
 }
@@ -181,10 +181,11 @@ export function MessageBubble(p: Props) {
   }
 
   const bubble = cn(
-    'relative min-w-0 max-w-full rounded-2xl text-sm shadow-sm transition-shadow',
+    // iMessage: your messages filled with the tint, theirs in system grey; 20px corners with a tight corner by the sender.
+    'relative min-w-0 max-w-full rounded-[20px] text-[15px] leading-[1.35]',
     mine
-      ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-br-md'
-      : 'bg-white dark:bg-white/[0.07] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-white/[0.06] rounded-bl-md',
+      ? 'bg-tint text-white rounded-br-[6px]'
+      : 'bg-[#e9e9eb] dark:bg-[#26252a] text-zinc-900 dark:text-white rounded-bl-[6px]',
     m.pending && 'opacity-60',
     highlight && 'ring-4 ring-amber-400/70',
   );
@@ -414,14 +415,14 @@ export function MessageBubble(p: Props) {
                 <MoreVertical className="w-4 h-4" />
               </button>
               {picker && (
-                <div className={cn('absolute z-20 bottom-full mb-1 flex gap-1 p-1.5 rounded-full bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-xl', mine ? 'right-0' : 'left-0')}>
+                <div className={cn('absolute z-20 bottom-full mb-1 flex gap-1 p-1.5 rounded-full bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-xl', mine ? 'right-0' : 'left-0')}>
                   {REACTIONS.map((e) => (
                     <button key={e} onClick={() => { p.onReact(e); close(); }} className="w-8 h-8 rounded-full text-lg hover:bg-zinc-100 dark:hover:bg-white/10 hover:scale-125 transition-transform">{e}</button>
                   ))}
                 </div>
               )}
               {menu && (
-                <div className={cn('absolute z-20 w-48 py-1 rounded-xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', picker ? 'top-full mt-1' : 'bottom-full mb-1', mine ? 'right-0' : 'left-0')} onMouseLeave={() => !touch && setMenu(false)}>
+                <div className={cn('absolute z-20 w-48 py-1 rounded-xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', picker ? 'top-full mt-1' : 'bottom-full mb-1', mine ? 'right-0' : 'left-0')} onMouseLeave={() => !touch && setMenu(false)}>
                   <MenuItem icon={CornerUpLeft} label="Reply" onClick={() => { p.onReply(); close(); }} />
                   {p.onThread && <MenuItem icon={MessageCircle} label="Reply in thread" onClick={() => { p.onThread!(); close(); }} />}
                   {FORWARDABLE.has(m.type) && <MenuItem icon={CornerUpRight} label="Forward" onClick={() => { p.onForward(); close(); }} />}
@@ -455,7 +456,7 @@ export function MessageBubble(p: Props) {
               <button
                 key={emoji}
                 onClick={() => p.onReact(emoji)}
-                className={cn('px-1.5 py-0.5 rounded-full text-xs border shadow-sm', users.includes(me) ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-400/40' : 'bg-white dark:bg-[#161b2e] border-zinc-200 dark:border-white/10')}
+                className={cn('px-1.5 py-0.5 rounded-full text-xs border shadow-sm', users.includes(me) ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-400/40' : 'bg-white dark:bg-[#1c1c1e] border-zinc-200 dark:border-white/10')}
               >
                 {emoji} {users.length > 1 && <span className="text-zinc-600 dark:text-zinc-300">{users.length}</span>}
               </button>

@@ -249,7 +249,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               <Smile className="w-5 h-5" />
             </button>
             {emoji && (
-              <div className="absolute bottom-full mb-2 left-0 z-30 w-72 max-w-[calc(100vw-1.5rem)] p-2 grid grid-cols-8 gap-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl">
+              <div className="absolute bottom-full mb-2 left-0 z-30 w-72 max-w-[calc(100vw-1.5rem)] p-2 grid grid-cols-8 gap-1 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-2xl">
                 {EMOJIS.map((e) => (
                   <button key={e} onClick={() => { setText((t) => t + e); areaRef.current?.focus(); }} className="w-8 h-8 rounded-lg text-lg hover:bg-zinc-100 dark:hover:bg-white/10">{e}</button>
                 ))}
@@ -272,7 +272,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                 <Paperclip className="w-5 h-5" />
               </button>
               {attach && (
-                <div className="absolute bottom-full mb-2 left-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
+                <div className="absolute bottom-full mb-2 left-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
                   <button onClick={() => mediaRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span> Photos & videos
                   </button>
@@ -303,7 +303,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
 
           <div className="relative flex-1 min-w-0 flex">
           {slash.length > 0 && (
-            <div className="absolute bottom-full mb-2 left-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
+            <div className="absolute bottom-full mb-2 left-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
               {slash.map((c) => (
                 <button key={c.name} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); setText(`/${c.name} `); areaRef.current?.focus(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{c.name}</span>
@@ -315,7 +315,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           {suggestions && suggestions.length > 0 && !text && (
             <div className="absolute bottom-full mb-2 left-0 right-0 z-20 flex gap-1.5 overflow-x-auto scrollbar-none">
               {suggestions.map((sug) => (
-                <button key={sug} type="button" onClick={() => { setText(sug); setSuggestions(null); areaRef.current?.focus(); }} className="shrink-0 px-3 py-1.5 rounded-full bg-white dark:bg-[#161b2e] border border-indigo-300/60 dark:border-indigo-400/30 text-xs font-medium text-indigo-700 dark:text-indigo-200 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10">{sug}</button>
+                <button key={sug} type="button" onClick={() => { setText(sug); setSuggestions(null); areaRef.current?.focus(); }} className="shrink-0 px-3 py-1.5 rounded-full bg-white dark:bg-[#1c1c1e] border border-indigo-300/60 dark:border-indigo-400/30 text-xs font-medium text-indigo-700 dark:text-indigo-200 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10">{sug}</button>
               ))}
             </div>
           )}
@@ -323,7 +323,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             const list = mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6);
             if (!list.length) return null;
             return (
-              <div className="absolute bottom-full mb-2 left-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl">
+              <div className="absolute bottom-full mb-2 left-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-2xl">
                 {list.map((u) => (
                   <button key={u.id} onMouseDown={(e) => {
                     e.preventDefault();

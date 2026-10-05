@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users,
   MessageSquare, Settings, LogOut,
   GraduationCap, Brain,
-  AlertTriangle, Folder, ChevronDown, ChevronRight,
+  AlertTriangle, Folder, ChevronDown,
   Coffee, Shield, Map, Globe2, Crown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -223,13 +223,13 @@ function NavItemComponent({
         <button
           onClick={onToggle}
           aria-expanded={isOpen}
-          className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active text-indigo-400')}
+          className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active')}
         >
           <div className="flex items-center gap-3">
-            <item.icon className="w-4 h-4 flex-shrink-0" />
+            <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
             <span>{t(item.label)}</span>
           </div>
-          <ChevronDown className={cn('w-4 h-4 transition-transform duration-300', !isOpen && '-rotate-90')} />
+          <ChevronDown className={cn('w-3.5 h-3.5 text-zinc-400 transition-transform duration-300', !isOpen && '-rotate-90')} strokeWidth={2.5} />
         </button>
         <AnimatePresence initial={false}>
           {isOpen && (
@@ -241,12 +241,12 @@ function NavItemComponent({
               transition={spring.smooth}
               className="overflow-hidden"
             >
-              <div className="pl-9 space-y-1 pt-1">
+              <div className="pl-[1.875rem] space-y-0.5 pt-0.5">
                 {item.subItems.map(sub => {
                   const on = isOn(pathname, sub.href, sub.also);
                   return (
                     <Link key={sub.href} href={sub.href} onClick={onClose} aria-current={on ? 'page' : undefined}
-                      className={cn('sidebar-item pill-host relative block text-sm py-1.5', on && 'active text-indigo-400')}>
+                      className={cn('sidebar-item pill-host relative block text-[15px] py-1.5', on && 'active')}>
                       {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
                       <span className="relative block truncate">{t(sub.label)}</span>
                     </Link>
@@ -262,8 +262,8 @@ function NavItemComponent({
 
   if (item.action) {
     return (
-      <button className="sidebar-item w-full justify-start text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-        <item.icon className="w-4 h-4 flex-shrink-0" />
+      <button className="sidebar-item w-full justify-start">
+        <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
         <span>{t(item.label)}</span>
       </button>
     );
@@ -276,7 +276,7 @@ function NavItemComponent({
         className={cn('sidebar-item pill-host relative block', on && 'active')}>
         {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
         <div className="relative flex items-center gap-3">
-          <item.icon className="w-4 h-4 flex-shrink-0" />
+          <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
           <span>{t(item.label)}</span>
         </div>
       </Link>
@@ -339,32 +339,22 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <aside
         aria-label="Navigation"
         className={cn(
-          "fixed left-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 glass-sidebar border-r border-indigo-100 dark:border-white/[0.07] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0",
+          "fixed left-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 glass-sidebar border-r border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-r-[28px] lg:rounded-none",
           "transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform lg:translate-x-0",
           isOpen ? "translate-x-0 shadow-2xl lg:shadow-none" : "-translate-x-full"
         )}
       >
         {/* Brand */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-indigo-100 dark:border-white/[0.07]">
-        <UniverseLogo size="md" animated={true} withGlow={true} />
-        <div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-black text-sm tracking-tight text-zinc-900 dark:text-white">
-              Uni<span className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500 dark:from-indigo-400 dark:via-pink-400 dark:to-amber-400 bg-clip-text text-transparent">Verse</span>
-            </span>
-            <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-500/20 to-amber-500/20 text-indigo-300 font-bold border border-indigo-400/30">
-              IMPACT
-            </span>
-          </div>
-          <div className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium tracking-wider flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            {user.owner ? 'OWNER' : user.role} PORTAL
-          </div>
+      <div className="flex items-center gap-3 px-5 h-16">
+        <UniverseLogo size="md" animated={false} withGlow={false} />
+        <div className="min-w-0">
+          <div className="font-bold text-[17px] leading-tight tracking-tight text-zinc-900 dark:text-white">UniVerse</div>
+          <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-medium">{user.owner ? 'Owner' : user.role === 'ADMIN' ? 'Admin' : user.role === 'TEACHER' ? 'Teacher' : 'Student'}</div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto min-h-0 px-3 py-4 space-y-1 custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
         {nav.map((item, i) => (
           <NavItemComponent 
             key={i} 
@@ -378,29 +368,26 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       </nav>
 
       {/* User */}
-      <div className="px-3 pt-4 sheet-safe-bottom lg:pb-4 border-t border-zinc-200 dark:border-white/[0.06]">
-
-        <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-colors cursor-pointer group">
-          <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
+      <div className="px-3 pt-3 sheet-safe-bottom lg:pb-4" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
+        <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-b from-[#a5abb8] to-[#848993] flex items-center justify-center text-[13px] font-semibold text-white flex-shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-zinc-900 dark:text-white truncate group-hover:text-indigo-400 transition-colors flex items-center justify-between">
-              {user.name}
-              <ChevronRight className="w-4 h-4 opacity-50" />
-            </div>
+            <div className="text-[15px] font-semibold text-zinc-900 dark:text-white truncate">{user.name}</div>
+            <div className="text-[12px] text-zinc-500 truncate">{user.email}</div>
           </div>
         </div>
         <button onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-zinc-500 dark:text-zinc-500 hover:text-rose-400 hover:bg-rose-900/20 transition-all text-sm">
-          <LogOut className="w-4 h-4" />
+          className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[15px] text-[var(--ios-red)] hover:bg-[var(--fill)] transition-colors">
+          <LogOut className="w-[18px] h-[18px]" />
           <span>{t('nav.logout')}</span>
         </button>
-        <div className="px-3 pt-2 pb-1 flex gap-3 text-[11px] text-zinc-400 dark:text-zinc-600">
-          <Link href="/terms" target="_blank" className="hover:text-indigo-400">Terms</Link>
-          <Link href="/privacy" target="_blank" className="hover:text-indigo-400">Privacy</Link>
-          <Link href="/policies" target="_blank" className="hover:text-indigo-400">Policies</Link>
-          <Link href="/contact" target="_blank" className="hover:text-indigo-400">Contact</Link>
+        <div className="px-3 pt-2 pb-1 flex gap-3 text-[12px] text-zinc-400 dark:text-zinc-500">
+          <Link href="/terms" target="_blank" className="hover:text-tint-text">Terms</Link>
+          <Link href="/privacy" target="_blank" className="hover:text-tint-text">Privacy</Link>
+          <Link href="/policies" target="_blank" className="hover:text-tint-text">Policies</Link>
+          <Link href="/contact" target="_blank" className="hover:text-tint-text">Contact</Link>
         </div>
       </div>
     </aside>

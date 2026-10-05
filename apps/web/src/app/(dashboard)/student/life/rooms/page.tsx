@@ -121,7 +121,7 @@ export default function RoomReservationPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="p-8 rounded-3xl bg-[#0e1427] border border-white/[0.08] shadow-2xl"
+            className="p-8 rounded-3xl bg-[#1c1c1e] border border-white/[0.08] shadow-2xl"
           >
             <h3 className="text-lg font-bold text-white mb-6">Find a Space</h3>
             
@@ -212,7 +212,7 @@ export default function RoomReservationPage() {
               <div className="flex flex-wrap gap-2">
                 {(allRooms as { id: string; name: string }[]).slice(0, 30).map((r) => (
                   <motion.button key={r.id} type="button" layout onClick={() => handleBookClick({ id: r.id, name: r.name, capacity: (r as { capacity?: number }).capacity ?? 0, type: (r as { type?: string }).type ?? '', features: [] })}
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#0e1427] px-3 py-2 text-sm text-white hover:bg-white/[0.04]">
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#1c1c1e] px-3 py-2 text-sm text-white hover:bg-white/[0.04]">
                     {r.name} {badge(r.id)}
                   </motion.button>
                 ))}
@@ -235,7 +235,7 @@ export default function RoomReservationPage() {
                 type: r.type,
                 features: r.amenities ? r.amenities.split(',').map((s: string) => s.trim()) : []
               })).map((room: Room, i: number) => (
-                <div key={i} className="bg-[#0e1427] border border-white/[0.08] rounded-2xl p-6 flex flex-col sm:flex-row gap-6 justify-between items-center hover:bg-white/[0.02] transition-colors shadow-lg">
+                <div key={i} className="bg-[#1c1c1e] border border-white/[0.08] rounded-2xl p-6 flex flex-col sm:flex-row gap-6 justify-between items-center hover:bg-white/[0.02] transition-colors shadow-lg">
                   <div>
                     <h4 className="font-bold text-white text-lg flex flex-wrap items-center gap-2">{room.name} {badge(room.id)}</h4>
                     <div className="flex items-center gap-4 mt-2 text-sm text-zinc-400">
@@ -269,7 +269,7 @@ export default function RoomReservationPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#0e1427] border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+              className="bg-[#1c1c1e] border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col"
             >
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
                 <h2 className="text-xl font-bold text-white">Booking Confirmation</h2>
