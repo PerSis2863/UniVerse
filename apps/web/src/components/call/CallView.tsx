@@ -328,6 +328,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setTimeout(() => onLeave(i?.conversationId ?? null), why ? 1400 : 250);
   }, [callId, onLeave, stopRecording]);
 
+  // A call that couldn't connect while on hold (out of sight) closes itself instead of lingering.
+  useEffect(() => {
+    if (phase === 'error' && held) onLeave(null);
+  }, [phase, held, onLeave]);
+
   // "End & answer" (IncomingCall) ends this call through the call list.
   useEffect(() => {
     useCalls.getState().setEnder(callId, () => finish());
