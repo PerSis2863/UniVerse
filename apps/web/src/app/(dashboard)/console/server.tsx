@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
+import { EmailScheduleCard } from './email-schedule';
 
 // The owner console's Server tab: switch UniVerse between live, read-only and maintenance, show a
 // notice on every page, and see the Cloudflare plan usage and the app's health at a glance. The
@@ -37,8 +38,8 @@ interface ServerData {
 
 const MODES: { id: Mode; label: string; icon: typeof Power; text: string; tone: string }[] = [
   { id: 'LIVE', label: 'Live', icon: Power, text: 'Everyone can use UniVerse normally.', tone: 'emerald' },
-  { id: 'READ_ONLY', label: 'Read-only', icon: Eye, text: 'People can sign in and look around, but nothing can be changed or sent. Good for backups and data fixes.', tone: 'amber' },
-  { id: 'MAINTENANCE', label: 'Maintenance', icon: Wrench, text: 'Everyone except you sees a "down for maintenance" page and nobody else can sign in, so almost nothing counts toward your Cloudflare limits. Payments still go through.', tone: 'rose' },
+  { id: 'READ_ONLY', label: 'Read-only', icon: Eye, text: 'People can sign in and look around, but can’t change or send anything. For backups and data fixes.', tone: 'amber' },
+  { id: 'MAINTENANCE', label: 'Maintenance', icon: Wrench, text: 'Only you can get in; everyone else sees a maintenance page. Almost nothing counts toward Cloudflare limits.', tone: 'rose' },
 ];
 const TONES: Record<string, string> = {
   emerald: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
@@ -122,7 +123,11 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
 
       {section === 'status' && (
         <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
-          <SwitchCard key={data.control.updatedAt} control={data.control} onSaved={() => void mutate()} />
+          {/* Two columns of about equal height: the site and your emails | what everyone sees. */}
+          <div className="space-y-6">
+            <SwitchCard key={data.control.updatedAt} control={data.control} onSaved={() => void mutate()} />
+            <EmailScheduleCard className={cn(card, 'p-6')} />
+          </div>
           <div className="space-y-6">
             <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
             <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
@@ -578,7 +583,7 @@ function SwitchCard({ control, onSaved }: { control: Control; onSaved: () => voi
       <div className="grid sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Server mode">
         {MODES.map((m) => (
           <button key={m.id} role="radio" aria-checked={mode === m.id} onClick={() => setMode(m.id)}
-            className={cn('text-left rounded-2xl border p-4 transition-colors', mode === m.id ? TONES[m.tone] : 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40')}>
+            className={cn('h-full text-left rounded-2xl border p-4 flex flex-col items-start justify-start transition-colors', mode === m.id ? TONES[m.tone] : 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40')}>
             <m.icon className="w-5 h-5 mb-2" />
             <p className="font-semibold text-zinc-900 dark:text-white">{m.label}</p>
             <p className="text-xs text-zinc-500 mt-1">{m.text}</p>

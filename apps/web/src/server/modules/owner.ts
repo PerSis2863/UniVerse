@@ -6,7 +6,7 @@ import { forgetUser, isOwnerEmail } from '../auth';
 import schema from '../owner-schema.json';
 import { decideDeletion, eraseAccount } from '../account-deletion';
 import { publishChat } from '../realtime';
-import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
+import { emailScheduleEntries, FEATURE_SWITCHES, OWNER_EMAILS, parseEmailSchedule, parseSwitches } from '@/lib/feature-switches';
 import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
@@ -302,11 +302,28 @@ export default function ownerModule(router: Router) {
       if (!Array.isArray(body.switches)) throw new BadRequestException('switches must be a list');
       const off = parseSwitches(JSON.stringify(body.switches));
       const was = parseSwitches(ctl.switches);
-      data.switches = off.length ? JSON.stringify(off) : null;
+      const keep = emailScheduleEntries(parseEmailSchedule(ctl.switches)); // the email schedule lives in the same list
+      data.switches = off.length || keep.length ? JSON.stringify([...off, ...keep]) : null;
       const name = (id: string) => FEATURE_SWITCHES.find((f) => f.id === id)?.label ?? id;
       const turnedOff = off.filter((x) => !was.includes(x)).map(name);
       const turnedOn = was.filter((x) => !off.includes(x)).map(name);
       switched = [turnedOff.length && `Turned off: ${turnedOff.join(', ')}`, turnedOn.length && `Turned back on: ${turnedOn.join(', ')}`].filter(Boolean).join(' · ');
+    }
+    // How often each owner email comes (daily / weekly / monthly / off).
+    if (body?.emails !== undefined) {
+      const v = body.emails ?? {};
+      const before = parseEmailSchedule(ctl.switches);
+      const next = { ...before };
+      for (const e of OWNER_EMAILS) {
+        if (v[e.id] === undefined) continue;
+        if (!e.options.includes(v[e.id])) throw new BadRequestException(`${e.label}: choose ${e.options.join(', ')}`);
+        next[e.id] = v[e.id];
+      }
+      const off = parseSwitches(data.switches ?? ctl.switches);
+      const entries = emailScheduleEntries(next);
+      data.switches = off.length || entries.length ? JSON.stringify([...off, ...entries]) : null;
+      const changed = OWNER_EMAILS.filter((e) => next[e.id] !== before[e.id]).map((e) => `${e.label} email: ${next[e.id]}`);
+      if (changed.length) switched = [switched, changed.join(' · ')].filter(Boolean).join(' · ');
     }
     // Daily AI limits (src/server/ai-budget.ts).
     let aiChange = '';

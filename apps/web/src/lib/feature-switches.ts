@@ -23,11 +23,54 @@ export const FEATURE_SWITCHES: FeatureSwitch[] = [
   { id: 'boards', label: 'Whiteboards', hint: 'Whiteboards become view-only.', paths: /^\/api\/(boards(\/.*)?|courses\/[^/]+\/board)$/ },
   { id: 'signups', label: 'New sign-ups', hint: 'New people can’t finish creating an account. Existing accounts are fine.', paths: /^\/api\/core\/auth\/register$/ },
   { id: 'payments', label: 'Payments', hint: 'Nobody can start a new payment or subscription.', paths: /^\/api\/(billing\/checkout|create-checkout-session)$/ },
-  { id: 'security', label: 'Your weekly security email', hint: 'Stops the Monday email with the Health check: security and error problems ranked by AI. Only affects you.' },
-  { id: 'digest', label: 'Your daily summary email', hint: 'Stops the 07:30 UTC email with yesterday’s numbers and what needs a look. Only affects you.' },
 ];
 
 const IDS = new Set(FEATURE_SWITCHES.map((f) => f.id));
+
+// ─── Your emails: how often each owner email comes ─────────────────────────────────────────────
+// Stored in the same server_control.switches list as "email:<id>=<every>" (no database change).
+// Weekly emails come on Mondays, monthly ones on the 1st (UTC), each covering the time since
+// the last one. Fewer emails also leave more of the Resend allowance for everyone else.
+
+export type EmailEvery = 'daily' | 'weekly' | 'monthly' | 'off';
+
+export interface OwnerEmail { id: 'digest' | 'errors' | 'security'; label: string; hint: string; options: EmailEvery[]; normal: EmailEvery }
+
+export const OWNER_EMAILS: OwnerEmail[] = [
+  { id: 'digest', label: 'Summary', hint: 'People active, new accounts, messages, money and what needs a look (07:30 UTC).', options: ['daily', 'weekly', 'monthly', 'off'], normal: 'daily' },
+  { id: 'errors', label: 'New problems', hint: 'Errors found since the last email, with the AI’s diagnosis (08:00 UTC).', options: ['daily', 'weekly', 'monthly', 'off'], normal: 'daily' },
+  { id: 'security', label: 'Security check', hint: 'The Health check: security and error problems ranked by AI (Mondays or the 1st).', options: ['weekly', 'monthly', 'off'], normal: 'weekly' },
+];
+
+const EVERY = new Set<string>(['daily', 'weekly', 'monthly', 'off']);
+
+/** How often each owner email comes. Older settings ("digest"/"security" switched off) count as off. */
+export function parseEmailSchedule(raw: string | null | undefined): Record<OwnerEmail['id'], EmailEvery> {
+  const out = Object.fromEntries(OWNER_EMAILS.map((e) => [e.id, e.normal])) as Record<OwnerEmail['id'], EmailEvery>;
+  let list: unknown = [];
+  try { list = raw ? JSON.parse(raw) : []; } catch { /* keep defaults */ }
+  if (!Array.isArray(list)) return out;
+  for (const item of list) {
+    if (item === 'digest' || item === 'security') out[item] = 'off';
+    const m = typeof item === 'string' ? /^email:(digest|errors|security)=(\w+)$/.exec(item) : null;
+    const def = m && OWNER_EMAILS.find((e) => e.id === m[1]);
+    if (m && def && EVERY.has(m[2]) && def.options.includes(m[2] as EmailEvery)) out[m[1] as OwnerEmail['id']] = m[2] as EmailEvery;
+  }
+  return out;
+}
+
+/** The schedule as list entries, to store next to the switched-off features. */
+export function emailScheduleEntries(schedule: Partial<Record<OwnerEmail['id'], EmailEvery>>): string[] {
+  return OWNER_EMAILS.filter((e) => schedule[e.id] && schedule[e.id] !== e.normal).map((e) => `email:${e.id}=${schedule[e.id]}`);
+}
+
+/** Whether an email on this schedule goes out today (UTC), and how many days it covers. */
+export function emailDue(every: EmailEvery, now = new Date()): { due: boolean; days: number } {
+  if (every === 'daily') return { due: true, days: 1 };
+  if (every === 'weekly') return { due: now.getUTCDay() === 1, days: 7 };
+  if (every === 'monthly') return { due: now.getUTCDate() === 1, days: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0)).getUTCDate() };
+  return { due: false, days: 0 };
+}
 
 /** The switched-off feature ids stored in server_control.switches (a JSON list). */
 export function parseSwitches(raw: string | null | undefined): string[] {
