@@ -11,6 +11,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
 import { SupportPlans } from '@/components/planner/SupportPlans';
+import { SmartWeek } from '@/components/planner/SmartWeek';
 
 interface PlanBlock { course: string; task: string; minutes: number; why: string }
 interface Plan { summary: string; days: { date: string; focus: string; blocks: PlanBlock[] }[]; madeAt: string }
@@ -100,6 +101,9 @@ export default function StudyPlannerPage() {
 
         {/* Plans a teacher made for me (early help) */}
         <SupportPlans />
+
+        {/* This week: study sessions placed around classes and deadlines */}
+        <SmartWeek today={today} tz={tz} />
 
         {/* Header: what this is, and the button to make a new plan */}
         <section className="relative overflow-hidden rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-7">

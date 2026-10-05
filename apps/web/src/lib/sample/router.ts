@@ -88,6 +88,19 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
 
+  // Smart study planner: a week of study sessions around classes (Study planner)
+  [/^\/api\/student\/smart-plan$/, ({ db: d }) => {
+    const code = (i: number) => d.courses[i % Math.max(1, d.courses.length)]?.code ?? 'CS301';
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(Date.now() + i * 86_400_000).toISOString().slice(0, 10);
+      const blocks = d.teacherView || i === 6 ? [] : [
+        { id: `sample-b${i}a`, date, start: '17:00', end: '18:00', kind: i % 3 === 0 ? 'QUIZ' : 'DEADLINE', title: i % 3 === 0 ? 'Prepare for the weekly quiz' : 'Work on the lab report (part 1)', courseCode: code(i), done: i === 0, pinned: false, movedFrom: null },
+        ...(i % 2 ? [{ id: `sample-b${i}b`, date, start: '18:30', end: '19:00', kind: 'FLASHCARDS', title: 'Review due flashcards', courseCode: null, done: false, pinned: false, movedFrom: null }] : []),
+      ];
+      return { date, busy: i < 5 ? [{ start: '09:00', end: '12:00' }] : [], blocks };
+    });
+    return ok({ prefs: { capMin: 120, start: '16:00', end: '21:00', ical: false }, note: null, days });
+  }],
   // Early help: a study plan from a teacher (shown in the Study planner)
   [/^\/api\/student\/support-plans$/, ({ db: d }) => ok({ plans: d.teacherView ? [] : [{
     id: 'sample-plan', course: { code: d.courses[0]?.code ?? 'CS301', name: d.courses[0]?.name ?? 'Operating Systems' }, from: d.courses[0]?.teacher.name ?? 'Your teacher',

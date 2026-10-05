@@ -187,6 +187,9 @@ model User {
   skills                  StudentSkill[]
   skillEvidence           SkillEvidence[]
   supportPlans            SupportPlan[]
+  planBlocks              PlanBlock[]
+  /// Smart planner settings: JSON { capMin, start, end, ical, sig, plannedFor }
+  studyPrefs              String?
   internshipApplications  InternshipApplication[]
   postedInternships       Internship[]             @relation("InternshipPoster")
   scholarshipApplications ScholarshipApplication[]
@@ -2208,6 +2211,30 @@ model StudyDay {
 
   @@id([userId, day])
   @@map("study_days")
+}
+
+/// Smart study planner (upgrade 6): a study session placed in the student's free time by a plain
+/// scheduler (no AI): free time = the week minus classes and calendar events; tasks = due work,
+/// flashcards due and weaker courses; a daily cap the student sets. Re-planned when the page opens
+/// and something changed. Times are the student's local time.
+model PlanBlock {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       String // YYYY-MM-DD (local)
+  start      String // HH:MM (local)
+  end        String // HH:MM (local)
+  kind       String // DEADLINE | QUIZ | EXAM | FLASHCARDS | REVIEW
+  refId      String? // the deadline / course it's for
+  title      String
+  courseCode String?
+  done       Boolean  @default(false)
+  pinned     Boolean  @default(false) // moved by the student: kept when re-planning
+  movedFrom  String? // "YYYY-MM-DD HH:MM" when the scheduler moved it
+  createdAt  DateTime @default(now())
+
+  @@index([userId, date])
+  @@map("plan_blocks")
 }
 
 /// A written assignment with a rubric (src/server/assignments.ts).
