@@ -1,16 +1,15 @@
+import { setPendingNav } from './nav-pending';
 import { startPageTransition } from './page-transition';
 
 type Router = { push: (href: string) => void };
 
 /**
- * Navigate with a View Transition so elements sharing a `view-transition-name`
- * (e.g. a course card and the Blackboard header) morph from one page to the next.
- * Falls back to a normal navigation where unsupported or with "Reduce motion".
+ * Opens a page from code (not a link) with the same transition as a tap on a link: the current page
+ * eases back and the new one slides in from the right (src/lib/page-transition.ts).
  */
 export function navigateWithTransition(router: Router, href: string) {
-  // A tap on a link has already started the page transition (NavProgress); a call from code
-  // starts one here. Elements sharing a view-transition-name morph within it either way.
   startPageTransition('push');
+  setPendingNav(new URL(href, window.location.href).pathname);
   router.push(href);
 }
 

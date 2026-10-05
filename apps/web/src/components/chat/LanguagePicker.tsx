@@ -46,7 +46,7 @@ export function LanguagePicker({ value, onPick, onClose, offLabel, title, placem
       role="dialog"
       aria-label={title}
       className={cn(
-        'absolute z-40 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-[#1c1c1e] border border-zinc-200 dark:border-white/10 shadow-2xl overflow-hidden',
+        'absolute z-40 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl overflow-hidden',
         placement === 'below' ? 'top-full mt-2' : 'bottom-full mb-2',
         align === 'right' ? 'right-0' : 'left-0',
       )}

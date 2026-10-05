@@ -6,7 +6,7 @@
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "browser"],
-  "background_color": "#09090b",
+  "background_color": "#0a0d16",
   "theme_color": "#6366f1",
   "orientation": "portrait-primary",
   "categories": ["education", "productivity"],

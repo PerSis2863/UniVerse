@@ -49,8 +49,8 @@ export const viewport: Viewport = {
   // Lets the app draw under the iPhone notch / home indicator; the shell pads with safe-area insets.
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f2f2f7' },
-    { media: '(prefers-color-scheme: dark)', color: '#0b0b0d' },
+    { media: '(prefers-color-scheme: light)', color: '#f5f6fb' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0d16' },
   ],
 };
 
@@ -61,7 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
-        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f2f2f7}html.dark{background:#0b0b0d;color-scheme:dark}' }} />
+        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f5f6fb}html.dark{background:#0a0d16;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}
         <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />

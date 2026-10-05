@@ -40,9 +40,9 @@ export function StatusBar() {
         <div role="listitem" className="shrink-0 flex flex-col items-center gap-1 w-14">
           <button type="button" onClick={() => (mine ? setWatching(people.indexOf(mine)) : setComposing(true))} aria-label={mine ? 'Your status' : 'Add a status'} className="relative">
             <span className={cn('block rounded-full p-[2px]', mine ? 'bg-zinc-300 dark:bg-zinc-600' : '')}>
-              <span className="block rounded-full bg-white dark:bg-[#1c1c1e] p-[2px]"><Avatar name={me?.name ?? "You"} src={me?.avatar ?? null} size={48} /></span>
+              <span className="block rounded-full bg-white dark:bg-[#121830] p-[2px]"><Avatar name={me?.name ?? "You"} src={me?.avatar ?? null} size={48} /></span>
             </span>
-            <span onClick={(e) => { e.stopPropagation(); setComposing(true); }} className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center ring-2 ring-white dark:ring-[#1c1c1e]"><Plus className="w-3 h-3" /></span>
+            <span onClick={(e) => { e.stopPropagation(); setComposing(true); }} className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center ring-2 ring-white dark:ring-[#121830]"><Plus className="w-3 h-3" /></span>
           </button>
           <span className="text-[11px] text-zinc-500 truncate w-full text-center">{mine ? 'You' : 'Add'}</span>
         </div>
@@ -50,7 +50,7 @@ export function StatusBar() {
           <div key={p.user.id} role="listitem" className="shrink-0 flex flex-col items-center gap-1 w-14">
             <button type="button" onClick={() => setWatching(people.indexOf(p))} aria-label={`${p.user.name}'s status${p.unseen ? ', new' : ''}`}>
               <span className={cn('block rounded-full p-[2px]', p.unseen ? 'bg-gradient-to-tr from-emerald-400 via-indigo-500 to-fuchsia-500' : 'bg-zinc-300 dark:bg-zinc-600')}>
-                <span className="block rounded-full bg-white dark:bg-[#1c1c1e] p-[2px]"><Avatar name={p.user.name} src={p.user.avatar} size={48} /></span>
+                <span className="block rounded-full bg-white dark:bg-[#121830] p-[2px]"><Avatar name={p.user.name} src={p.user.avatar} size={48} /></span>
               </span>
             </button>
             <span className={cn('text-[11px] truncate w-full text-center', p.unseen ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-500')}>{p.user.name.split(' ')[0]}</span>
@@ -141,7 +141,7 @@ function StatusViewer({ people, start, onClose, onDeleted }: { people: Person[];
         )}
         <AnimatePresence>
           {showViewers && (
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={spring.smooth} className="absolute bottom-0 inset-x-0 max-h-[55%] overflow-y-auto rounded-t-3xl bg-white dark:bg-[#1c1c1e] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={spring.smooth} className="absolute bottom-0 inset-x-0 max-h-[55%] overflow-y-auto rounded-t-3xl bg-white dark:bg-[#121830] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
               <div className="flex items-center justify-between mb-2"><p className="font-semibold text-zinc-900 dark:text-white">Viewed by</p><button type="button" onClick={() => setShowViewers(false)} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
               {!item.viewers?.length ? <p className="text-sm text-zinc-500 py-4">Nobody yet.</p> : item.viewers.map((v) => (
                 <div key={v.id} className="flex items-center gap-3 py-2"><Avatar name={v.name} src={v.avatar} size={36} /><span className="flex-1 text-sm text-zinc-900 dark:text-white">{v.name}</span><span className="text-xs text-zinc-500">{formatDistanceToNowStrict(new Date(v.viewedAt), { addSuffix: true })}</span></div>

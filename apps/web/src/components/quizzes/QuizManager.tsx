@@ -52,7 +52,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
   return (
     <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet-in w-full sm:max-w-2xl max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-b border-zinc-200/70 dark:border-white/[0.07] bg-white/70 dark:bg-[#1c1c1e]/80 backdrop-blur-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-b border-zinc-200/70 dark:border-white/[0.07] bg-white/70 dark:bg-[#121830]/80 backdrop-blur-xl">
           <div className="min-w-0">
             <p className="text-xs text-zinc-500 truncate">{quiz ? `${quiz.course.code} · ${quiz.course.name}` : 'Quiz'}</p>
             <h3 className="text-lg font-black text-zinc-900 dark:text-white truncate">{quiz?.title ?? 'Loading…'}</h3>
