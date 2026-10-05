@@ -6,6 +6,7 @@ import { m as motion } from 'framer-motion';
 import { Users, UserCheck, BookOpen, Sparkles, Trophy, GraduationCap, ShieldCheck, Presentation } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { PremiumGate } from '@/components/billing/PremiumGate';
 import { authedJson } from '@/lib/authed-fetch';
 import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
@@ -291,6 +292,7 @@ export default function AdvancedAnalyticsPage() {
   return (
     <>
       <Topbar title="Advanced Analytics" subtitle="Live growth, engagement and impact across your organization" />
+      <SectionTabs tabs={ADMIN_INSIGHT_TABS} />
       <PremiumGate feature="advanced_analytics">
         <AnalyticsDashboard />
       </PremiumGate>

@@ -24,6 +24,11 @@ const ChatWindow = dynamic(() => loadChatWindow().then((m) => m.ChatWindow), {
 });
 const NewChatDialog = dynamic(() => import('./NewChatDialog').then((m) => m.NewChatDialog));
 const StarredPanel = dynamic(() => import('./ChatDialogs').then((m) => m.StarredPanel));
+const CommunitiesPanel = dynamic(() => import('./CommunitiesPanel').then((m) => m.CommunitiesPanel), { loading: () => <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div> });
+const PresencePicker = dynamic(() => import('./PresencePicker').then((m) => m.PresencePicker));
+const StatusBar = dynamic(() => import('./StatusBar').then((m) => m.StatusBar), { loading: () => <div className="h-[88px]" /> });
+
+interface FoundMessage { id: string; conversationId: string; title: string; avatar: string | null; sender: string; snippet: string; createdAt: string }
 
 export function MessagingHub() {
   const refreshInterval = useLiveInterval(15_000, 0);
@@ -36,10 +41,19 @@ export function MessagingHub() {
   const [filter, setFilter] = useState<Filter>('all');
   const [dialog, setDialog] = useState<null | 'chat' | 'group'>(null);
   const [view, setView] = useState<'chats' | 'archived'>('chats');
+  // Chats, or Communities (Discord-style servers with channels).
+  const [space, setSpace] = useState<'chats' | 'communities'>('chats');
   const [starredOpen, setStarredOpen] = useState(false);
   const [jumpTo, setJumpTo] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Searching also looks inside messages of every chat (after a short pause in typing).
+  const [deepQ, setDeepQ] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDeepQ(search.trim()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+  const { data: found, isLoading: searching } = useSWR<FoundMessage[]>(deepQ.length >= 2 ? `/api/chat/search?q=${encodeURIComponent(deepQ)}` : null, authedJson, { revalidateOnFocus: false });
 
   useEffect(() => {
     const t = window.setTimeout(() => { void loadChatWindow().catch(() => {}); }, 600);
@@ -64,10 +78,24 @@ export function MessagingHub() {
     finally { mutate(); }
   };
 
-  // Open a conversation from a link (?c=<id>), e.g. from a call notification.
+  // Open a conversation from a link (?c=<id>), e.g. from a call notification; join a community
+  // from its invite link (?join=<code>).
   useEffect(() => {
-    const c = new URLSearchParams(window.location.search).get('c');
+    const sp = new URLSearchParams(window.location.search);
+    const c = sp.get('c');
     if (c) setActiveId(c);
+    const join = sp.get('join');
+    if (join) {
+      setSpace('communities');
+      void chatJson<{ name: string }>('/api/chat/communities/join', { method: 'POST', body: JSON.stringify({ code: join }) })
+        .then((r) => toast.success(`You joined ${r.name}`))
+        .catch((e: Error) => toast.error(e.message))
+        .finally(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('join');
+          window.history.replaceState(null, '', url.toString());
+        });
+    }
   }, []);
 
   const select = useCallback((id: string | null) => {
@@ -107,12 +135,22 @@ export function MessagingHub() {
                 <>Chats {totalUnread > 0 && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">{totalUnread}</span>}</>
               )}
             </h2>
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center">
+              <PresencePicker />
               <button onClick={() => setStarredOpen(true)} aria-label="Starred messages" title="Starred messages" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Star className="w-5 h-5" /></button>
               <button onClick={() => setDialog('group')} aria-label="New group" title="New group" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Users className="w-5 h-5" /></button>
               <button onClick={() => setDialog('chat')} aria-label="New chat" title="New chat" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><MessageSquarePlus className="w-5 h-5" /></button>
             </div>
           </div>
+          <div className="flex p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.05]" role="tablist" aria-label="Chats or communities">
+            {(['chats', 'communities'] as const).map((sp) => (
+              <button key={sp} role="tab" aria-selected={space === sp} onClick={() => setSpace(sp)} className={cn('relative flex-1 py-1.5 rounded-xl text-xs font-semibold transition-colors', space === sp ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200')}>
+                {space === sp && <motion.span layoutId="hub-space" className="absolute inset-0 rounded-xl bg-white dark:bg-white/10 shadow-sm" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
+                <span className="relative">{sp === 'chats' ? 'Chats' : 'Communities'}</span>
+              </button>
+            ))}
+          </div>
+          {space === 'chats' && <>
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats" className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/40" />
@@ -124,9 +162,14 @@ export function MessagingHub() {
               </button>
             ))}
           </div>
+          </>}
         </div>
 
+        {space === 'communities' ? (
+          <div className="flex-1 overflow-y-auto"><CommunitiesPanel activeId={activeId} onOpen={select} /></div>
+        ) : (
         <div className="flex-1 overflow-y-auto p-2">
+          {view === 'chats' && !search && <div className="-mx-2 -mt-2 mb-1"><StatusBar /></div>}
           {isLoading && <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>}
           {error && <p className="p-6 text-center text-sm text-rose-500">{(error as Error).message}</p>}
           {view === 'chats' && archivedCount > 0 && !search && (
@@ -136,7 +179,7 @@ export function MessagingHub() {
               <span className="text-xs text-zinc-500">{archivedUnread > 0 ? <span className="text-indigo-500 font-semibold">{archivedUnread} unread</span> : archivedCount}</span>
             </button>
           )}
-          {!isLoading && !error && conversations.length === 0 && (
+          {!isLoading && !error && conversations.length === 0 && !(found && found.length) && (
             <div className="p-8 text-center">
               <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{view === 'archived' ? 'No archived chats' : search || filter !== 'all' ? 'No chats match' : 'No chats yet'}</p>
               <button onClick={() => setDialog('chat')} className="mt-3 text-sm font-semibold text-indigo-500">Start a new chat</button>
@@ -159,7 +202,7 @@ export function MessagingHub() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-zinc-900 dark:text-white truncate flex items-center gap-1">
-                      {c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}
+                      {c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}{c.status?.statusEmoji && <span className="shrink-0 text-sm" title={c.status.statusText ?? undefined}>{c.status.statusEmoji}</span>}
                     </p>
                     {c.lastMessage && <span className={cn('text-[11px] shrink-0', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
                   </div>
@@ -198,7 +241,23 @@ export function MessagingHub() {
               </motion.div>
             );
           })}
+          {deepQ.length >= 2 && (
+            <div className="mt-2">
+              <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-zinc-400 flex items-center gap-2">Messages {searching && <Loader2 className="w-3 h-3 animate-spin" />}</p>
+              {found && found.length === 0 && !searching && <p className="px-3 pb-3 text-sm text-zinc-500">No messages contain “{deepQ}”.</p>}
+              {found?.map((m) => (
+                <button key={m.id} onClick={() => { select(m.conversationId); setJumpTo(m.id); }} className="w-full flex items-start gap-3 p-3 rounded-2xl text-left hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
+                  <Avatar name={m.title} src={m.avatar} size={40} />
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-center justify-between gap-2"><span className="font-semibold text-sm text-zinc-900 dark:text-white truncate">{m.title}</span><span className="text-[11px] text-zinc-400 shrink-0">{timeLabel(m.createdAt)}</span></span>
+                    <span className="block text-sm text-zinc-500 line-clamp-2"><span className="text-zinc-700 dark:text-zinc-300">{m.sender}: </span>{m.snippet}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+        )}
       </section>
 
       {/* Active chat */}

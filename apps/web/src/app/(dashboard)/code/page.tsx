@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronRight, Code2, Loader2, Lock, Plus } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 
@@ -44,6 +45,7 @@ export default function CodeRoomsPage() {
   return (
     <>
       <Topbar title="Code together" subtitle="Shared code editors for your courses: edit at the same time and see each other’s cursors" />
+      <SectionTabs tabs={COLLAB_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex justify-end">

@@ -15,6 +15,9 @@ import { publishChat } from './realtime';
 //                  written back onto the message so the chat shows it.
 //   g_<group id>   a study group's standing room; its members may join.
 //   c_<course id>  a class's standing room; its teacher and enrolled students may join.
+//   r_<chat id>    a drop-in voice room in a group or a community voice channel: members join and
+//                  leave any time, nobody is rung (Discord-style). Moderators are its hosts.
+//   l_<random>     a call link (like a FaceTime link): anyone signed in with the link may join.
 // STUN finds a direct route on most networks; strict ones (some campus and office Wi-Fi) need a
 // TURN relay, used when TURN_KEY_ID and TURN_KEY_API_TOKEN (Cloudflare Realtime TURN) are set.
 // Bigger calls: with CALLS_APP_ID and CALLS_APP_SECRET (Cloudflare Realtime SFU, 1,000 GB a month
@@ -72,6 +75,24 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
     const group = await prisma.group.findUnique({ where: { id: callId.slice(2) }, select: { name: true, members: { where: { userId: user.id }, select: { id: true } } } });
     if (!group || (!group.members.length && user.role !== 'ADMIN')) throw new NotFoundException('This group call isn’t for one of your groups.');
     return { kind, type: 'group', title: group.name, conversationId: null, oneToOne: false, startedBy: null, ended: false, host: false };
+  }
+  if (callId.startsWith('r_')) {
+    const convo = await prisma.conversation.findUnique({
+      where: { id: callId.slice(2) },
+      select: { isGroup: true, name: true, communityId: true, community: { select: { name: true } }, participants: { where: { userId: user.id }, select: { role: true } } },
+    });
+    if (!convo?.isGroup || !convo.participants.length) throw new NotFoundException('This voice room isn’t in one of your groups.');
+    let host = convo.participants[0].role === 'ADMIN';
+    if (convo.communityId) {
+      const m = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: convo.communityId, userId: user.id } }, select: { role: true } });
+      host = m?.role === 'OWNER' || m?.role === 'MOD';
+    }
+    const title = convo.communityId ? `${convo.name ?? 'Voice room'} · ${convo.community?.name ?? ''}` : `${convo.name ?? 'Group'} · voice room`;
+    return { kind: wantKind === 'video' ? 'video' : 'audio', type: 'group', title, conversationId: null, oneToOne: false, startedBy: null, ended: false, host };
+  }
+  if (callId.startsWith('l_')) {
+    if (!/^l_[A-Za-z0-9_-]{10,40}$/.test(callId)) throw new NotFoundException('This call link isn’t valid.');
+    return { kind: wantKind === 'audio' ? 'audio' : 'video', type: 'group', title: 'Call link', conversationId: null, oneToOne: false, startedBy: null, ended: false, host: false };
   }
   if (callId.startsWith('c_')) {
     const a = await courseAccess(callId.slice(2), user);
@@ -140,8 +161,16 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
   return { ...info, sfu, max, path: `/call-live?call=${encodeURIComponent(callId)}&ticket=${encodeURIComponent(ticket)}`, iceServers: sfu ? SFU_ICE : await iceServers() };
 }
 
+/** Who is in a room call right now (names), for "3 in the room" on voice channels. */
+export async function roomPeers(callId: string, user: SessionUser) {
+  await callAccess(callId, user);
+  const res = await roomFetch(callId, '/peers');
+  if (!res?.ok) return { count: 0, names: [] as string[] };
+  return (await res.json()) as { count: number; names: string[] };
+}
+
 async function chatCall(callId: string, user: SessionUser) {
-  if (callId.startsWith('g_') || callId.startsWith('c_')) throw new BadRequestException('Only chat calls can be declined or ended.');
+  if (/^[gcrl]_/.test(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
   await callAccess(callId, user);
   const msg = await prisma.message.findUnique({ where: { id: callId }, select: { metadata: true, conversationId: true } });
   return { meta: (msg?.metadata ?? {}) as CallMeta, conversationId: msg!.conversationId };

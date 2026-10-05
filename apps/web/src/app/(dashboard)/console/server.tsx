@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, AlertCircle, Ban, BarChart3, Bug, CheckCircle2, ClipboardList, Code2, CreditCard, Eye, Flame, Gauge, Hammer, History, Loader2, Mail, Megaphone, PenTool, Phone, Power, Radio, RefreshCw, Server, Settings2, ShieldCheck, Sparkles, ToggleRight, Trash2, Users, Wifi, Wrench, XCircle } from 'lucide-react';
+import { Activity, AlertCircle, Ban, BarChart3, Bug, CheckCircle2, ClipboardList, Code2, CreditCard, Eye, Flame, Gauge, Hammer, History, Loader2, Mail, Megaphone, Mic, PenTool, Phone, Power, Radio, RefreshCw, Server, Settings2, ShieldCheck, Sparkles, ToggleRight, Trash2, Users, Wifi, Wrench, XCircle } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -143,6 +143,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
           </div>
           <div className="space-y-6">
             {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
+            <VoiceSessionsCard />
             {data.adoption && <AdoptionCard adoption={data.adoption} />}
           </div>
         </div>
@@ -247,6 +248,48 @@ function TestEmailCard({ configured }: { configured: boolean }) {
 }
 
 /** Today's AI use and the daily limits that keep it inside Gemini's free allowance (src/server/ai-budget.ts). */
+interface VoiceSessions {
+  month: { sessions: number; minutes: number };
+  sessions: { id: string; course: string | null; durationSec: number; turns: number; createdAt: string; transcript: { who: 'you' | 'tutor'; text: string }[]; user: { id: string; name: string; role: string } }[];
+}
+
+/** Voice tutor sessions: who talked to the AI tutor, for how long, and what was said (as text). */
+function VoiceSessionsCard() {
+  const { data } = useSWR<VoiceSessions>('/owner/voice-sessions', fetcher, { revalidateOnFocus: false });
+  const [open, setOpen] = useState<string | null>(null);
+  const mins = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60}s` : ''}`);
+  return (
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Mic className="w-4 h-4 text-indigo-500" /> Voice tutor</h2>
+      <p className="text-sm text-zinc-500 mt-1 mb-4">{data ? `${data.month.sessions} session${data.month.sessions === 1 ? '' : 's'} · ${data.month.minutes} min in the last 30 days.` : 'Loading…'} Conversations are kept as text for 90 days.</p>
+      {!data ? <div className="h-16 rounded-xl skeleton" /> : data.sessions.length === 0 ? <p className="text-sm text-zinc-500">No voice sessions yet.</p> : (
+        <ul className="divide-y divide-zinc-200 dark:divide-white/10 max-h-[28rem] overflow-y-auto -mx-2">
+          {data.sessions.map((v) => (
+            <li key={v.id} className="px-2">
+              <button type="button" onClick={() => setOpen(open === v.id ? null : v.id)} aria-expanded={open === v.id} className="w-full py-3 flex items-center justify-between gap-3 text-left">
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{v.user.name}{v.course ? <span className="text-zinc-500 font-normal"> · {v.course}</span> : null}</span>
+                  <span className="block text-xs text-zinc-500">{format(new Date(v.createdAt), 'd MMM, HH:mm')} · {mins(v.durationSec)} · {v.turns} turn{v.turns === 1 ? '' : 's'}</span>
+                </span>
+                <span className="text-xs text-indigo-500 shrink-0">{open === v.id ? 'Hide' : 'Read'}</span>
+              </button>
+              {open === v.id && (
+                <div className="pb-3 space-y-1.5">
+                  {v.transcript.length === 0 ? <p className="text-xs text-zinc-500">Nothing was transcribed.</p> : v.transcript.map((l, i) => (
+                    <p key={i} className={cn('text-xs rounded-xl px-3 py-2 max-w-[90%]', l.who === 'you' ? 'ml-auto bg-indigo-500/10 text-zinc-800 dark:text-zinc-200' : 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-zinc-300')}>
+                      <span className="font-semibold">{l.who === 'you' ? v.user.name.split(' ')[0] : 'Tutor'}: </span>{l.text}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
   const [limits, setLimits] = useState<AiLimits>(ai.limits);
   const [busy, setBusy] = useState(false);

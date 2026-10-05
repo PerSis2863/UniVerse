@@ -21,6 +21,11 @@ export interface ChatMessage {
     lat?: number; lng?: number; label?: string | null; // LOCATION
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
     moderated?: 'edited' | 'removed'; team?: boolean; // changed or posted by UniVerse (owner console)
+    viewOnce?: boolean; opened?: boolean; openedCount?: number; // view-once photo / video / voice message
+    transcript?: string; voicemail?: boolean; // voice message text (AI); a voicemail left after a missed call
+    link?: { url: string; title: string; description: string | null; site: string } | null; // link preview
+    broadcast?: boolean;
+    ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`
   } | null;
   createdAt: string;
   editedAt: string | null;
@@ -33,6 +38,8 @@ export interface ChatMessage {
   forwarded?: boolean;
   starred?: boolean;
   poll?: { counts: number[]; mine: number[]; voters: number } | null;
+  /** Replies in the thread started from this message. */
+  thread?: { count: number; lastAt: string | null };
   pending?: boolean;
 }
 
@@ -45,6 +52,7 @@ export interface ConversationSummary {
   otherUserId: string | null;
   online: boolean;
   lastSeenAt: string | null;
+  status?: UserStatus | null;
   memberCount: number;
   typing: string[];
   lastMessage: { id: string; body: string; type: MessageType; senderId: string; createdAt: string; deletedAt: string | null; attachmentName: string | null; mine: boolean } | null;
@@ -56,11 +64,23 @@ export interface ConversationSummary {
   activityAt: string;
 }
 
+export interface UserStatus { presence: 'auto' | 'busy' | 'in_class' | 'studying' | 'sleeping'; statusText: string | null; statusEmoji: string | null; hidden?: boolean; focus?: boolean }
+export interface ChannelInfo { kind: 'TEXT' | 'ANNOUNCE' | 'VOICE'; communityId: string; communityName: string; color: string | null; slowModeSec: number; role: 'OWNER' | 'MOD' | 'MEMBER' | null }
+
+/** A person's custom status or availability, for under their name ("📚 Revising for finals", "In class"). */
+export function statusLine(s: UserStatus | null | undefined): string | null {
+  if (!s) return null;
+  if (s.statusText) return `${s.statusEmoji ? s.statusEmoji + ' ' : ''}${s.statusText}`;
+  const label: Record<string, string> = { busy: 'Busy', in_class: 'In class', studying: 'Studying', sleeping: 'Sleeping' };
+  return label[s.presence] ? `${s.statusEmoji ? s.statusEmoji + ' ' : ''}${label[s.presence]}` : null;
+}
+
 export interface Member {
   id: string;
   name: string;
   avatar: string | null;
   role: string;
+  status?: UserStatus | null;
   groupRole: string;
   online: boolean;
   lastSeenAt: string | null;
@@ -73,6 +93,8 @@ export interface ThreadResponse {
     disappearingSec?: number | null; pinned?: boolean; muted?: boolean; archived?: boolean;
     /** Auto-translate incoming messages into this language (my setting); null = off. */
     translateTo?: string | null;
+    /** A channel in a community (Discord-style); null for chats and groups. */
+    channel?: ChannelInfo | null;
   };
   /** Stored translations (into `translateTo`) of messages on this page. */
   translations?: Record<string, { text: string; from: string; same: boolean }>;

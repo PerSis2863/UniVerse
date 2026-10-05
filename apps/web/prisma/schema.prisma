@@ -233,6 +233,17 @@ model User {
   codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
 
   scheduledCalls ScheduledCall[]
+  voiceSessions VoiceSession[]
+  statuses      ChatStatus[]
+  statusViews   ChatStatusView[]
+  // Messages: availability (auto | busy | in_class | studying | sleeping | invisible) and a custom
+  // status. Busy, in class and sleeping are Focus modes: calls don't ring and pushes wait, except
+  // from favourites.
+  presence      String    @default("auto")
+  statusText    String?
+  statusEmoji   String?
+  statusUntil   DateTime?
+  communityMemberships CommunityMember[]
   @@index([role])
   @@index([status])
   @@map("users")
@@ -525,11 +536,19 @@ model Conversation {
   disappearingSec Int? // new messages expire after this many seconds (null = off)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  // A channel inside a community (Discord-style): TEXT, ANNOUNCE (only moderators post) or VOICE
+  // (a drop-in call room). Channels aren't listed under Chats.
+  communityId     String?
+  community       Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  channelKind     String?
+  position        Int      @default(0)
+  slowModeSec     Int      @default(0) // seconds between one person's messages (0 = off)
 
   participants ConversationParticipant[]
   messages     Message[]
 
   scheduledCalls ScheduledCall[]
+  @@index([communityId])
   @@map("conversations")
 }
 
@@ -588,11 +607,13 @@ model Message {
   pinnedAt   DateTime? // pinned to the top of the chat
   pinnedById String?
 
+  threadId       String? // a reply inside a thread started from this message id (Discord-style)
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@index([replyToId])
   @@index([expiresAt])
   @@map("messages")
+  @@index([threadId])
 }
 
 // Uploaded files stored in the database (used when no external file storage is configured).
@@ -2273,4 +2294,107 @@ model ScheduledCall {
   @@index([conversationId])
   @@index([createdById])
   @@map("scheduled_calls")
+}
+
+// A voice tutor session (src/app/(dashboard)/student/voice-tutor): who, which course, how long,
+// and the conversation as text (never the audio), for the owner console. Kept 90 days.
+model VoiceSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String?
+  durationSec Int
+  turns       Int      @default(0)
+  transcript  String   @default("[]") // JSON: [{ who: 'you' | 'tutor', text }]
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("voice_sessions")
+}
+
+// Status updates ("stories"), like WhatsApp's: a photo or a coloured text card that disappears
+// after 24 hours. Seen by the people you share a chat with (src/app/api/chat/status).
+model ChatStatus {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String           @default("TEXT") // TEXT | IMAGE
+  body       String           @default("")
+  mediaUrl   String?
+  background String?
+  createdAt  DateTime         @default(now())
+  expiresAt  DateTime
+  views      ChatStatusView[]
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("chat_statuses")
+}
+
+model ChatStatusView {
+  statusId String
+  status   ChatStatus @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  viewedAt DateTime   @default(now())
+
+  @@id([statusId, userId])
+  @@index([userId])
+  @@map("chat_status_views")
+}
+
+// A community (Discord server / WhatsApp community): members, roles and channels
+// (conversations with communityId). src/server/communities.ts
+model Community {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  color       String            @default("#4f46e5")
+  inviteCode  String            @unique
+  createdById String?
+  createdAt   DateTime          @default(now())
+  members     CommunityMember[]
+  channels    Conversation[]
+
+  @@map("communities")
+}
+
+model CommunityMember {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String    @default("MEMBER") // OWNER | MOD | MEMBER
+  joinedAt    DateTime  @default(now())
+
+  @@unique([communityId, userId])
+  @@index([userId])
+  @@map("community_members")
+}
+
+// "/remind" in a chat: an in-app (and push) reminder at a time, sent by the 15-minute cron.
+model ChatReminder {
+  id             String    @id @default(cuid())
+  userId         String
+  conversationId String?
+  text           String
+  dueAt          DateTime
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([dueAt])
+  @@index([userId])
+  @@map("chat_reminders")
+}
+
+// Favourite people (Calls): one-tap calling, and they still reach you in Focus mode.
+model FavoritePerson {
+  userId     String
+  favoriteId String
+  createdAt  DateTime @default(now())
+
+  @@id([userId, favoriteId])
+  @@map("favorite_people")
 }

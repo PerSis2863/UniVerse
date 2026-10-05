@@ -52,6 +52,12 @@ async function enforceRetention() {
   // Pages opened and buttons clicked (technical / usage logs), and error groups nobody has seen
   // for 90 days.
   await prisma.uiEvent.deleteMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) } } });
+  // Status updates are visible for 24 hours; remove them (and their photos) after that.
+  const oldStatuses = await prisma.chatStatus.findMany({ where: { expiresAt: { lt: new Date(now) } }, select: { id: true, mediaUrl: true }, take: 300 });
+  for (const st of oldStatuses) if (st.mediaUrl) await deleteFile(st.mediaUrl).catch(() => {});
+  if (oldStatuses.length) await prisma.chatStatus.deleteMany({ where: { id: { in: oldStatuses.map((st) => st.id) } } });
+  // Voice tutor conversations (kept as text for the owner console) after 90 days.
+  await prisma.voiceSession.deleteMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) } } });
   // Disappearing chat messages that have expired (chats hide them already; this removes them).
   await prisma.message.deleteMany({ where: { expiresAt: { lt: new Date(now) } } });
   await prisma.errorReport.deleteMany({ where: { lastSeen: { lt: new Date(now - 90 * DAY) } } });

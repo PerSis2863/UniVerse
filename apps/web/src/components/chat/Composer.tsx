@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Camera, FileText, ImageIcon, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, Camera, FileText, Flame, ImageIcon, Sparkles, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
@@ -14,9 +14,22 @@ export interface SendPayload {
   text?: string;
   file?: File;
   voice?: { blob: Blob; durationSec: number };
+  /** Photo, video or voice message that each person can open only once. */
+  viewOnce?: boolean;
 }
 
 export type ComposerExtra = 'poll' | 'location' | 'contact';
+
+/** "/" commands in the message box (Discord-style). */
+export const SLASH_COMMANDS: { name: string; hint: string; example?: string }[] = [
+  { name: 'ask', hint: 'Ask UniVerse AI; everyone in the chat sees the answer', example: '/ask what is a mutex?' },
+  { name: 'catchup', hint: 'Summarise what you missed (only you see it)' },
+  { name: 'remind', hint: 'Remind me later', example: '/remind 30m hand in the essay' },
+  { name: 'poll', hint: 'Start a poll' },
+  { name: 'call', hint: 'Start a voice call' },
+  { name: 'video', hint: 'Start a video call' },
+  { name: 'shrug', hint: 'Send ¯\\_(ツ)_/¯' },
+];
 
 interface Props {
   disabled?: boolean;
@@ -32,13 +45,27 @@ interface Props {
   mentionables?: { id: string; name: string }[];
   /** Suggested languages for translating a draft (e.g. the ones others write in here). */
   draftLanguages?: string[];
+  /** Why this person can't post here (official channel, announcements, voice room). */
+  disabledReason?: string;
+  /** Runs a "/" command; true when handled (the text is cleared). */
+  onCommand?: (name: string, arg: string) => Promise<boolean>;
+  /** AI reply suggestions for the latest messages. */
+  onSuggest?: () => Promise<string[]>;
+  /** Slow mode: a hint under the box. */
+  slowModeSec?: number;
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [] }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec }: Props) {
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  // View once for the next photo, video or voice message (a ref too: the recorder's callback reads it).
+  const [once, setOnceState] = useState(false);
+  const onceRef = useRef(false);
+  const setOnce = (v: boolean) => { onceRef.current = v; setOnceState(v); };
   const [emoji, setEmoji] = useState(false);
   const [attach, setAttach] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
@@ -99,8 +126,16 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     setBusy(true);
     try {
       if (editing) await onSaveEdit(value);
-      else await onSend({ text: value });
+      else {
+        // "/command arg": handled by the chat (AI, reminders, calls…) instead of being sent.
+        const cmd = /^\/(\w+)\s*([\s\S]*)$/.exec(value);
+        if (cmd && onCommand && SLASH_COMMANDS.some((c) => c.name === cmd[1].toLowerCase())) {
+          if (cmd[1].toLowerCase() === 'shrug') await onSend({ text: `${cmd[2] ? cmd[2] + ' ' : ''}¯\\_(ツ)_/¯` });
+          else if (!(await onCommand(cmd[1].toLowerCase(), cmd[2].trim()))) return;
+        } else await onSend({ text: value });
+      }
       setText('');
+      setSuggestions(null);
     } finally {
       setBusy(false);
     }
@@ -111,8 +146,10 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     if (!file) return;
     setBusy(true);
     try {
-      await onSend({ file, text: text.trim() || undefined });
-      setText('');
+      const once = onceRef.current && /^(image|video)\//.test(file.type);
+      await onSend({ file, text: once ? undefined : text.trim() || undefined, viewOnce: once || undefined });
+      setOnce(false);
+      if (!once) setText('');
     } finally {
       setBusy(false);
     }
@@ -138,7 +175,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         const blob = new Blob(chunks.current, { type: rec.mimeType || 'audio/webm' });
         const durationSec = Math.max(1, Math.round((Date.now() - start) / 1000));
         setBusy(true);
-        try { await onSend({ voice: { blob, durationSec } }); } finally { setBusy(false); }
+        try { await onSend({ voice: { blob, durationSec }, viewOnce: onceRef.current || undefined }); } finally { setBusy(false); setOnce(false); }
       };
       rec.start();
       recorder.current = rec;
@@ -153,13 +190,20 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     recorder.current?.stop();
   };
 
-  if (disabled) {
+  if (disabled || disabledReason) {
     return (
       <div className="px-4 py-3 text-center text-xs text-zinc-500 border-t border-zinc-200/80 dark:border-white/[0.06]">
-        This is an official UniVerse Impact channel. Replies aren’t monitored — visit Support if you need help.
+        {disabledReason ?? 'This is an official UniVerse Impact channel. Replies aren’t monitored — visit Support if you need help.'}
       </div>
     );
   }
+
+  const suggest = async () => {
+    if (!onSuggest) return;
+    setSuggesting(true);
+    try { setSuggestions(await onSuggest()); } finally { setSuggesting(false); }
+  };
+  const slash = !editing && /^\/\w*$/.test(text) ? SLASH_COMMANDS.filter((c) => c.name.startsWith(text.slice(1).toLowerCase())) : [];
 
   return (
     <div className="border-t border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl px-3 md:px-4 py-3">
@@ -193,6 +237,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             </span>
             <span className="text-xs text-zinc-500">Recording voice message…</span>
           </div>
+          <button onClick={() => setOnce(!once)} aria-pressed={once} aria-label="View once" title="View once: they can play it one time" className={cn('w-9 h-9 rounded-full flex items-center justify-center border-2 border-dashed transition-colors', once ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-300 dark:border-zinc-600 text-zinc-500')}><Flame className="w-4 h-4" /></button>
           <button onClick={() => stopRecording(false)} aria-label="Send voice message" className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg">
             <Send className="w-4 h-4" />
           </button>
@@ -237,6 +282,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                   <button onClick={() => docRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-500 flex items-center justify-center"><FileText className="w-4 h-4" /></span> Document
                   </button>
+                  <button onClick={() => setOnce(!once)} role="switch" aria-checked={once} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className={cn('w-8 h-8 rounded-full flex items-center justify-center border-2 border-dashed', once ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-300 dark:border-zinc-600 text-zinc-500')}><Flame className="w-4 h-4" /></span>
+                    <span className="flex-1 text-left">View once</span>
+                    <span className={cn('text-[10px] font-bold uppercase', once ? 'text-indigo-500' : 'text-zinc-400')}>{once ? 'On' : 'Off'}</span>
+                  </button>
                   <button onClick={() => { setAttach(false); onExtra('poll'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center"><BarChart3 className="w-4 h-4" /></span> Poll
                   </button>
@@ -252,6 +302,23 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           )}
 
           <div className="relative flex-1 min-w-0 flex">
+          {slash.length > 0 && (
+            <div className="absolute bottom-full mb-2 left-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#161b2e] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
+              {slash.map((c) => (
+                <button key={c.name} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); setText(`/${c.name} `); areaRef.current?.focus(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                  <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{c.name}</span>
+                  <span className="block text-xs text-zinc-500">{c.hint}{c.example ? ` · ${c.example}` : ''}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {suggestions && suggestions.length > 0 && !text && (
+            <div className="absolute bottom-full mb-2 left-0 right-0 z-20 flex gap-1.5 overflow-x-auto scrollbar-none">
+              {suggestions.map((sug) => (
+                <button key={sug} type="button" onClick={() => { setText(sug); setSuggestions(null); areaRef.current?.focus(); }} className="shrink-0 px-3 py-1.5 rounded-full bg-white dark:bg-[#161b2e] border border-indigo-300/60 dark:border-indigo-400/30 text-xs font-medium text-indigo-700 dark:text-indigo-200 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10">{sug}</button>
+              ))}
+            </div>
+          )}
           {mentionQuery !== null && (() => {
             const list = mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6);
             if (!list.length) return null;
@@ -293,7 +360,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
               if (e.key === 'Escape' && editing) { onCancelEdit(); setText(''); }
             }}
-            placeholder={editing ? 'Edit your message' : 'Type a message'}
+            placeholder={editing ? 'Edit your message' : onCommand ? 'Type a message, or / for commands' : 'Type a message'}
             className="flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
           />
           </div>
@@ -303,13 +370,21 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           ) : (
+            <>
+            {onSuggest && !editing && (
+              <button type="button" onClick={() => void suggest()} disabled={suggesting} aria-label="Suggest replies" title="Suggest replies (AI)" className="p-2.5 shrink-0 rounded-full text-zinc-500 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60">
+                {suggesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+              </button>
+            )}
             <button onClick={startRecording} aria-busy={busy || undefined} disabled={busy} aria-label="Record voice message" className={cn('w-11 h-11 shrink-0 rounded-full flex items-center justify-center transition-colors disabled:opacity-50', 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300 hover:text-indigo-500')}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-5 h-5" />}
             </button>
+            </>
           )}
         </div>
       )}
 
+      {!!slowModeSec && <p className="mt-1.5 text-[11px] text-zinc-500 text-center">Slow mode: one message every {slowModeSec < 60 ? `${slowModeSec} s` : `${Math.round(slowModeSec / 60)} min`}</p>}
       <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
       <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />

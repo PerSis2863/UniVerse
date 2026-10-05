@@ -73,3 +73,46 @@ export async function geminiFileText(bytes: Uint8Array, mimeType: string): Promi
     return null;
   }
 }
+
+async function firstText(body: unknown, lite: boolean, what: string): Promise<string | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const [first, second] = lite ? [FALLBACK(), PRIMARY()] : [PRIMARY(), FALLBACK()];
+    let res = await call(first, apiKey, body);
+    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && second !== first) res = await call(second, apiKey, body);
+    if (!res.ok) {
+      console.error(`Gemini ${what} failed:`, res.status, (await res.text()).slice(0, 300));
+      return null;
+    }
+    const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('').trim() || null;
+  } catch (e) {
+    console.error(`Gemini ${what} failed:`, e);
+    return null;
+  }
+}
+
+/** A short plain-text answer (chat catch-up summaries, /ask-ai, reply suggestions). */
+export function geminiText(system: string, prompt: string, maxOutputTokens = 700, lite = false): Promise<string | null> {
+  return firstText({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.3, maxOutputTokens },
+  }, lite, 'text');
+}
+
+/** What is said in a voice message or voicemail, as text in its own language (up to ~15 MB). */
+export function geminiAudioText(bytes: Uint8Array, mimeType: string): Promise<string | null> {
+  if (bytes.length > 15 * 1024 * 1024) return Promise.resolve(null);
+  return firstText({
+    contents: [{
+      role: 'user',
+      parts: [
+        { inlineData: { mimeType, data: Buffer.from(bytes).toString('base64') } },
+        { text: 'Transcribe what is said in this voice message, in the language spoken. Add punctuation. Output only the words said; if nothing intelligible is said, output "(no speech)".' },
+      ],
+    }],
+    generationConfig: { temperature: 0, maxOutputTokens: 2000 },
+  }, true, 'audio transcription');
+}

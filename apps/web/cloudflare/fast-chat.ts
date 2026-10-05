@@ -1,6 +1,8 @@
 // Light-path versions of the busiest chat and notification reads (see fast-api.ts). Each one must
 // answer exactly like the Next.js route it stands in for; null hands the call to that route.
 import { bool, dbDate, isoDate, json, parseJson, type Caller } from './fast-db';
+import { applyViewOnce } from '../src/lib/view-once';
+import { presenceOf } from '../src/lib/presence';
 
 // Same as removedBy in src/lib/chat.ts (not imported: that file loads Prisma).
 const removedBy = (metadata: unknown) => ((metadata as { moderated?: string } | null)?.moderated === 'removed' ? { moderated: 'removed' as const } : null);
@@ -55,13 +57,14 @@ export async function notifications(me: Caller, db: D1Database) {
  * chats with auto-translate on are left to the Next.js route.
  */
 export async function thread(me: Caller, conversationId: string, url: URL, db: D1Database, ctx: ExecutionContext): Promise<Response | null> {
-  if (url.searchParams.get('q')?.trim()) return null;
+  // Searches, threads and community channels (roles, slow mode) are left to the Next.js route.
+  if (url.searchParams.get('q')?.trim() || url.searchParams.get('thread')) return null;
   const mine = await db
-    .prepare('SELECT id, role, lastReadAt, markedUnread, pinnedAt, mutedUntil, archivedAt, translateTo FROM conversation_participants WHERE conversationId = ? AND userId = ?')
+    .prepare('SELECT p.id, p.role, p.lastReadAt, p.markedUnread, p.pinnedAt, p.mutedUntil, p.archivedAt, p.translateTo, c.communityId FROM conversation_participants p JOIN conversations c ON c.id = p.conversationId WHERE p.conversationId = ? AND p.userId = ?')
     .bind(conversationId, me.id)
     .first<Row>();
   if (!mine) return json({ error: 'Conversation not found.' }, 404);
-  if (mine.translateTo) return null;
+  if (mine.translateTo || mine.communityId) return null;
   if (!(await systemUser(db))) return null; // created by the Next.js route on first use
 
   const nowMs = Date.now();
@@ -78,15 +81,15 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
            r.id AS replyId, r.body AS replyBody, r.type AS replyType, r.deletedAt AS replyDeletedAt, rs.id AS replySenderId, rs.name AS replySenderName
          FROM messages m JOIN users s ON s.id = m.senderId
            LEFT JOIN messages r ON r.id = m.replyToId LEFT JOIN users rs ON rs.id = r.senderId
-         WHERE m.conversationId = ? AND ${VISIBLE} ${before ? 'AND m.createdAt < ?' : ''}
+         WHERE m.conversationId = ? AND m.threadId IS NULL AND ${VISIBLE} ${before ? 'AND m.createdAt < ?' : ''}
          ORDER BY m.createdAt DESC LIMIT ${PAGE + 1}`,
       )
       .bind(conversationId, now, me.id, ...(before ? [before] : [])),
     db.prepare('SELECT id, isGroup, name, avatarUrl, disappearingSec FROM conversations WHERE id = ?').bind(conversationId),
     db
       .prepare(
-        `SELECT p.userId, p.role AS groupRole, p.lastReadAt, p.typingUntil, u.name, u.avatar, u.role, u.lastSeenAt
-         FROM conversation_participants p JOIN users u ON u.id = p.userId WHERE p.conversationId = ?`,
+        `SELECT p.userId, p.role AS groupRole, p.lastReadAt, p.typingUntil, u.name, u.avatar, u.role, u.lastSeenAt, u.presence, u.statusText, u.statusEmoji, u.statusUntil
+         FROM conversation_participants p JOIN users u ON u.id = p.userId WHERE p.conversationId = ? LIMIT 300`,
       )
       .bind(conversationId),
     db
@@ -119,13 +122,16 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
   const page = rows.slice(0, PAGE).reverse();
   const ids = page.map((m) => m.id as string);
   const pollIds = page.filter((m) => m.type === 'POLL' && !m.deletedAt).map((m) => m.id as string);
-  const [reactionsRes, starsRes, votesRes] = ids.length
+  const [reactionsRes, starsRes, votesRes, threadsRes] = ids.length
     ? await db.batch<Row>([
         db.prepare(`SELECT messageId, emoji, userId FROM message_reactions WHERE messageId IN (${placeholders(ids.length)})`).bind(...ids),
         db.prepare(`SELECT messageId FROM message_user_states WHERE userId = ? AND starred = 1 AND messageId IN (${placeholders(ids.length)})`).bind(me.id, ...ids),
         db.prepare(`SELECT messageId, userId, option FROM poll_votes WHERE messageId IN (${pollIds.length ? placeholders(pollIds.length) : "''"})`).bind(...pollIds),
+        db.prepare(`SELECT threadId, COUNT(*) AS n, MAX(createdAt) AS lastAt FROM messages WHERE deletedAt IS NULL AND threadId IN (${placeholders(ids.length)}) GROUP BY threadId`).bind(...ids),
       ])
-    : [{ results: [] }, { results: [] }, { results: [] }];
+    : [{ results: [] }, { results: [] }, { results: [] }, { results: [] }];
+  const threadOf = new Map<string, { count: number; lastAt: string | null }>();
+  for (const t of threadsRes.results) threadOf.set(t.threadId as string, { count: Number(t.n), lastAt: isoDate(t.lastAt as string) });
 
   const reactionsOf = new Map<string, Record<string, string[]>>();
   for (const r of reactionsRes.results) {
@@ -174,7 +180,8 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
         voters: new Set(these.map((v) => v.userId)).size,
       };
     }
-    return { ...out, starred: starred.has(m.id as string), poll };
+    const thread = threadOf.get(m.id as string);
+    return { ...applyViewOnce(out, me.id), starred: starred.has(m.id as string), poll, ...(thread ? { thread } : {}) };
   });
 
   const members = membersRes.results;
@@ -194,14 +201,16 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
         muted: !!mine.mutedUntil && at(mine.mutedUntil) > nowMs,
         archived: !!mine.archivedAt,
         translateTo: null,
+        channel: null,
         members: members.map((p) => ({
           id: p.userId,
           name: p.name,
           avatar: p.avatar,
           role: p.role,
           groupRole: p.groupRole,
-          online: !!p.lastSeenAt && nowMs - at(p.lastSeenAt) < ONLINE_WINDOW_MS,
-          lastSeenAt: isoDate(p.lastSeenAt as string | null),
+          online: p.presence !== 'invisible' && !!p.lastSeenAt && nowMs - at(p.lastSeenAt) < ONLINE_WINDOW_MS,
+          lastSeenAt: p.presence === 'invisible' ? null : isoDate(p.lastSeenAt as string | null),
+          status: presenceOf({ presence: p.presence as string, statusText: p.statusText as string | null, statusEmoji: p.statusEmoji as string | null, statusUntil: isoDate(p.statusUntil as string | null) }, nowMs),
           lastReadAt: isoDate(p.lastReadAt as string | null),
         })),
       },
@@ -235,7 +244,8 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
   if (!system) return null;
   const nowMs = Date.now();
   const now = dbDate(nowMs);
-  const mineIds = `SELECT c.id FROM conversations c WHERE EXISTS (SELECT 1 FROM conversation_participants x WHERE x.conversationId = c.id AND x.userId = ?1) ORDER BY c.updatedAt DESC LIMIT 100`;
+  // Community channels are listed under Communities, not Chats.
+  const mineIds = `SELECT c.id FROM conversations c WHERE c.communityId IS NULL AND EXISTS (SELECT 1 FROM conversation_participants x WHERE x.conversationId = c.id AND x.userId = ?1) ORDER BY c.updatedAt DESC LIMIT 100`;
   const [welcomeRes, convosRes, membersRes, lastRes, unreadRes] = await db.batch<Row>([
     db
       .prepare(
@@ -247,7 +257,7 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
     db.prepare(`SELECT id, isGroup, name, avatarUrl, updatedAt FROM conversations WHERE id IN (${mineIds}) ORDER BY updatedAt DESC`).bind(me.id),
     db
       .prepare(
-        `SELECT p.conversationId, p.userId, p.typingUntil, p.pinnedAt, p.mutedUntil, p.archivedAt, p.markedUnread, u.name, u.avatar, u.lastSeenAt
+        `SELECT p.conversationId, p.userId, p.typingUntil, p.pinnedAt, p.mutedUntil, p.archivedAt, p.markedUnread, u.name, u.avatar, u.lastSeenAt, u.presence, u.statusText, u.statusEmoji, u.statusUntil
          FROM conversation_participants p JOIN users u ON u.id = p.userId WHERE p.conversationId IN (${mineIds})`,
       )
       .bind(me.id),
@@ -303,8 +313,9 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
         title: isGroup ? c.name || 'Group chat' : other?.name || 'Unknown user',
         avatarUrl: isGroup ? c.avatarUrl : other?.avatar ?? null,
         otherUserId: isGroup ? null : other?.userId ?? null,
-        online: !isGroup && !!other?.lastSeenAt && nowMs - at(other.lastSeenAt) < ONLINE_WINDOW_MS,
-        lastSeenAt: isGroup ? null : isoDate((other?.lastSeenAt as string | null) ?? null),
+        online: !isGroup && other?.presence !== 'invisible' && !!other?.lastSeenAt && nowMs - at(other.lastSeenAt) < ONLINE_WINDOW_MS,
+        status: isGroup || !other ? null : presenceOf({ presence: other.presence as string, statusText: other.statusText as string | null, statusEmoji: other.statusEmoji as string | null, statusUntil: isoDate(other.statusUntil as string | null) }, nowMs),
+        lastSeenAt: isGroup || other?.presence === 'invisible' ? null : isoDate((other?.lastSeenAt as string | null) ?? null),
         memberCount: all.length,
         typing: others.filter((p) => p.typingUntil && at(p.typingUntil) > nowMs).map((p) => String(p.name).split(' ')[0]),
         lastMessage: m

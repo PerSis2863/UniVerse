@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { CheckCircle2, Loader2, Radio } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, STUDENT_COURSE_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
@@ -41,6 +42,7 @@ export default function StudentLivePage() {
   return (
     <>
       <Topbar title="Live class" subtitle="Answer your teacher’s questions during class" />
+      <SectionTabs tabs={STUDENT_COURSE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-4 stagger">
           {error ? (

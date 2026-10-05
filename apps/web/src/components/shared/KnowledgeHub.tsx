@@ -1,5 +1,6 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, STUDENT_LEARN_TABS } from '@/components/layout/SectionTabs';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, Copy } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -186,6 +187,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   return (
     <>
       <Topbar title={titles[role]} subtitle={subtitles[role]} />
+      {role === 'student' && <SectionTabs tabs={STUDENT_LEARN_TABS} />}
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-8">
           

@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
+import { applyViewOnce } from '@/lib/view-once';
 
 // ─── Messaging hub helpers (used by /api/chat/*) ────────────────────────────
 
@@ -9,10 +10,11 @@ export const ONLINE_WINDOW_MS = 60_000;
 export const MAX_BODY = 4000;
 export const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
-export const userCard = { select: { id: true, name: true, avatar: true, role: true, lastSeenAt: true, email: true } } as const;
+export const userCard = { select: { id: true, name: true, avatar: true, role: true, lastSeenAt: true, email: true, presence: true, statusText: true, statusEmoji: true, statusUntil: true } } as const;
 
-export function isOnline(lastSeenAt: Date | null | undefined) {
-  return !!lastSeenAt && Date.now() - lastSeenAt.getTime() < ONLINE_WINDOW_MS;
+/** Active in the last minute, and not set to Invisible. */
+export function isOnline(lastSeenAt: Date | null | undefined, presence?: string | null) {
+  return presence !== 'invisible' && !!lastSeenAt && Date.now() - lastSeenAt.getTime() < ONLINE_WINDOW_MS;
 }
 
 /** Record that the user is active (at most one write every 30s). */
@@ -186,6 +188,6 @@ export async function decorate<T extends { id: string; type: string; metadata: u
       const voters = new Set(votes.filter((v) => v.messageId === m.id).map((v) => v.userId)).size;
       poll = { counts, mine, voters };
     }
-    return { ...m, starred: starred.has(m.id), poll };
+    return { ...applyViewOnce(m as T & { senderId: unknown; attachmentUrl: unknown }, userId), starred: starred.has(m.id), poll };
   });
 }

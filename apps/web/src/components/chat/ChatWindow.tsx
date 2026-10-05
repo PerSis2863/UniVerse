@@ -8,18 +8,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages } from 'lucide-react';
+import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
-import { type ChatMessage, type ThreadResponse, chatJson, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
+import { type ChatMessage, type ThreadResponse, chatJson, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
 import { useLanguageStore } from '@/store/language';
 import { LANGUAGES, languageName } from '@/lib/languages';
 import { LanguagePicker } from './LanguagePicker';
 import { useChatTranslations } from './useChatTranslations';
+import dynamic from 'next/dynamic';
+
+const ThreadPanel = dynamic(() => import('./ThreadPanel').then((m) => m.ThreadPanel));
 
 /** Messages grouped by calendar day, each with its index in the whole list. */
 function byDay<T extends { createdAt: string }>(list: T[]) {
@@ -57,6 +60,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [threadFor, setThreadFor] = useState<string | null>(null);
+  const [catchup, setCatchup] = useState<{ busy: boolean; text: string | null } | null>(null);
   const [showJump, setShowJump] = useState(false);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
@@ -254,7 +259,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     onChanged();
   };
 
-  const send = async ({ text, file, voice }: SendPayload) => {
+  const send = async ({ text, file, voice, viewOnce }: SendPayload) => {
     haptic('tap');
     const tempId = `temp-${Date.now()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
@@ -264,13 +269,13 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       if (file || voice) {
         const upload = file ?? new File([voice!.blob], `voice-${Date.now()}.${voice!.blob.type.includes('mp4') ? 'm4a' : voice!.blob.type.includes('ogg') ? 'ogg' : 'webm'}`, { type: voice!.blob.type });
         const type = voice ? 'AUDIO' : messageTypeFor(upload.type);
-        setPending((p) => [...p, { ...base, type, body: '', attachmentUrl: null, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type } as ChatMessage]);
+        setPending((p) => [...p, { ...base, type, body: '', attachmentUrl: null, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, metadata: viewOnce ? { viewOnce: true } : null } as ChatMessage]);
         setUploadProgress(0);
         const url = await uploadChatFile(upload, setUploadProgress);
         setUploadProgress(null);
         const msg = await chatJson<ChatMessage>(key, {
           method: 'POST',
-          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec, replyToId }),
+          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec, replyToId, viewOnce: viewOnce || undefined }),
         });
         appendSent(msg, tempId);
         if (text) await send({ text });
@@ -329,6 +334,56 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
 
   const typing = () => { chatJson(`/api/chat/conversations/${conversationId}/typing`, { method: 'POST' }).catch(() => {}); };
 
+  // AI catch-up: what you missed since you last read this chat (only you see it).
+  const runCatchup = async () => {
+    setCatchup({ busy: true, text: null });
+    try {
+      const r = await chatJson<{ summary: string | null; count: number }>(`/api/chat/conversations/${conversationId}/ai`, { method: 'POST', body: JSON.stringify({ action: 'catchup' }) });
+      setCatchup({ busy: false, text: r.summary ?? 'Nothing much to catch up on: just a few new messages.' });
+    } catch (e) {
+      setCatchup(null);
+      toast.error((e as Error).message);
+    }
+  };
+
+  // "/" commands from the message box.
+  const command = async (name: string, arg: string): Promise<boolean> => {
+    try {
+      if (name === 'ask') {
+        if (!arg) { toast.error('Type a question after /ask'); return false; }
+        await chatJson(`/api/chat/conversations/${conversationId}/ai`, { method: 'POST', body: JSON.stringify({ action: 'ask', question: arg }) });
+        void mutate();
+        return true;
+      }
+      if (name === 'catchup') { void runCatchup(); return true; }
+      if (name === 'poll') { onExtra('poll'); return true; }
+      if (name === 'call' || name === 'video') { void call(name === 'video' ? 'video' : 'audio'); return true; }
+      if (name === 'remind') {
+        const m = /^(\d+)\s*(m|min|mins|minutes?|h|hrs?|hours?|d|days?)\s+(.+)$/i.exec(arg);
+        if (!m) { toast.error('Try: /remind 30m hand in the essay  (m, h or d)'); return false; }
+        const unit = m[2][0].toLowerCase();
+        const minutes = Number(m[1]) * (unit === 'h' ? 60 : unit === 'd' ? 1440 : 1);
+        const r = await chatJson<{ dueAt: string }>('/api/chat/reminders', { method: 'POST', body: JSON.stringify({ text: m[3], minutes, conversationId }) });
+        toast.success(`I'll remind you ${new Date(r.dueAt).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`);
+        return true;
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+      return false;
+    }
+    return false;
+  };
+  const suggestReplies = async () => {
+    try {
+      const r = await chatJson<{ replies: string[] }>(`/api/chat/conversations/${conversationId}/ai`, { method: 'POST', body: JSON.stringify({ action: 'replies' }) });
+      if (!r.replies.length) toast('No suggestions right now.');
+      return r.replies;
+    } catch (e) {
+      toast.error((e as Error).message);
+      return [];
+    }
+  };
+
   const call = async (kind: 'audio' | 'video') => {
     try {
       const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ type: 'CALL', kind }) });
@@ -353,8 +408,11 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       ? 'Official account'
       : convo?.isGroup
         ? others.map((o) => o.name.split(' ')[0]).slice(0, 5).join(', ') + (others.length > 5 ? ` +${others.length - 5}` : '') + ', you'
-        : other ? lastSeenLabel(other.online, other.lastSeenAt) : '';
-  const subtitle = convo?.disappearingSec && !typingNames.length ? `⏱ ${disappearingLabel(convo.disappearingSec)} · ${subtitleBase}` : subtitleBase;
+        : other ? statusLine(other.status) ?? lastSeenLabel(other.online, other.lastSeenAt) : '';
+  const channel = convo?.channel ?? null;
+  const subtitle = channel && !typingNames.length
+    ? `${channel.communityName} · ${convo!.members.length} member${convo!.members.length === 1 ? '' : 's'}${channel.slowModeSec ? ' · slow mode' : ''}`
+    : convo?.disappearingSec && !typingNames.length ? `⏱ ${disappearingLabel(convo.disappearingSec)} · ${subtitleBase}` : subtitleBase;
 
   // A failed refresh keeps the chat on screen (it retries by itself); only a chat that never loaded shows this.
   if (error && !data) {
@@ -376,7 +434,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         <div className="relative z-20 flex items-center gap-3 px-3 md:px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl">
           <button onClick={onBack} aria-label="Back" className="md:hidden p-2 -ml-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
-            <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />
+            {channel
+              ? <span className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: channel.color ?? '#4f46e5' }}>{channel.kind === 'ANNOUNCE' ? <Megaphone className="w-5 h-5" /> : <Hash className="w-5 h-5" />}</span>
+              : <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />}
             <div className="min-w-0">
               <p className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1">
                 {convo.title} {convo.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />} {convo.muted && <BellOff className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
@@ -384,7 +444,13 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <p className={cn('text-xs truncate', typingNames.length ? 'text-emerald-500 font-medium' : 'text-zinc-500')}>{subtitle}</p>
             </div>
           </button>
-          {!convo.isOfficial && (
+          {convo.isGroup && !convo.isOfficial && (
+            <button onClick={() => void runCatchup()} aria-label="Catch up with AI" title="Catch up: what you missed (AI)" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/10 hidden sm:block"><Sparkles className="w-5 h-5" /></button>
+          )}
+          {convo.isGroup && !channel && !convo.isOfficial && (
+            <button onClick={() => router.push(`/call/r_${conversationId}?kind=audio`)} aria-label="Join the voice room" title="Voice room: drop in, nobody is rung" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
+          )}
+          {!convo.isOfficial && !channel && (
             <>
               <button onClick={() => call('audio')} aria-label="Voice call" title="Voice call" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Phone className="w-5 h-5" /></button>
               <button onClick={() => call('video')} aria-label="Video call" title="Video call" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Video className="w-5 h-5" /></button>
@@ -412,6 +478,21 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             <button onClick={() => setAutoTranslate(null)} className="shrink-0 font-semibold text-sky-700 dark:text-sky-300 hover:underline">Turn off</button>
           </div>
         )}
+
+        <AnimatePresence>
+          {catchup && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-b border-zinc-200/80 dark:border-white/[0.06] bg-fuchsia-50/70 dark:bg-fuchsia-500/[0.07]">
+              <div className="flex items-start gap-2 px-3 md:px-5 py-2.5">
+                <Sparkles className="w-4 h-4 text-fuchsia-500 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0 text-sm text-zinc-800 dark:text-zinc-200">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-fuchsia-600 dark:text-fuchsia-300 mb-1">Catch up · only you see this</p>
+                  {catchup.busy ? <p className="flex items-center gap-2 text-zinc-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Reading what you missed…</p> : <p className="whitespace-pre-wrap">{catchup.text}</p>}
+                </div>
+                <button onClick={() => setCatchup(null)} aria-label="Close summary" className="p-1 rounded-full text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {pins.length > 0 && (() => {
           const current = pins[pinIndex % pins.length];
@@ -524,6 +605,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onOpenContact={openContact}
                       onReact={(e) => react(m, e)}
                       onOpenImage={setLightbox}
+                      onThread={convo.isGroup && !convo.isOfficial && !m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => setThreadFor(m.id) : undefined}
                       {...(m.senderId !== me && m.type === 'TEXT' && !m.pending && m.body?.trim()
                         ? { translation: tr.get(m.id), showOriginal: tr.showingOriginal(m.id), onTranslate: () => tr.translate(m.id), onToggleOriginal: () => tr.toggleOriginal(m.id) }
                         : {})}
@@ -558,8 +640,16 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onExtra={onExtra}
           mentionables={convo.isGroup ? others.map((o) => ({ id: o.id, name: o.name })) : []}
           draftLanguages={[...tr.detected, appLanguage]}
+          disabledReason={channel?.kind === 'ANNOUNCE' && channel.role === 'MEMBER' ? 'Only moderators can post in announcements. You can still react and reply in threads.' : undefined}
+          slowModeSec={channel?.slowModeSec}
+          onCommand={convo.isOfficial ? undefined : command}
+          onSuggest={convo.isOfficial ? undefined : suggestReplies}
         />
       </div>
+
+      <AnimatePresence>
+        {threadFor && <ThreadPanel key={threadFor} conversationId={conversationId} rootId={threadFor} me={me} onClose={() => setThreadFor(null)} />}
+      </AnimatePresence>
 
       <AnimatePresence>
         {infoOpen && (

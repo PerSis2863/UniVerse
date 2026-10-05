@@ -2,13 +2,13 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Code2, PenTool, Phone, ShieldCheck } from 'lucide-react';
+import { BarChart3, PenTool, ShieldCheck } from 'lucide-react';
 import {
   LayoutDashboard, Users,
-  MessageSquare, Bell, Settings, LogOut,
-  GraduationCap, Brain, ClipboardList,
+  MessageSquare, Settings, LogOut,
+  GraduationCap, Brain,
   AlertTriangle, Folder, ChevronDown, ChevronRight,
-  Coffee, Shield, Map, Globe2, Layers, Crown
+  Coffee, Shield, Map, Globe2, Crown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -48,6 +48,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/assignments', label: 'Assignments', keywords: 'essay homework coursework hand in' },
     { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
     { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
+    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
     { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
@@ -55,30 +56,29 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
   ],
   TEACHER: [
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
+    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+  ],
+  ADMIN: [
+    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
   ],
 };
 
 export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
     { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
-    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
-    { href: '/calls', label: 'Calls', icon: Phone },
+    // Messages and calls are one entry: the Calls list is a tab inside Messages.
+    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare, also: ['/calls'] },
     {
       label: 'nav.schooling', icon: GraduationCap,
       subItems: [
-        { href: '/student/courses', label: 'nav.courses' },
+        { href: '/student/courses', label: 'nav.courses', also: ['/student/live', '/student/offline'] },
         { href: '/student/groups', label: 'nav.groups' },
-        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor'] },
+        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor'] },
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
-        { href: '/student/assignments', label: 'Assignments' },
-        { href: '/student/live', label: 'Live class' },
-        { href: '/student/offline', label: 'Offline courses' },
-        { href: '/code', label: 'Code together' },
-        { href: '/student/voice-tutor', label: 'Voice tutor' },
-        { href: '/student/grades', label: 'My progress', also: ['/student/attendance', '/student/quizzes'] },
-        { href: '/student/skills', label: 'nav.skills' },
-        { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },
+        { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes'] },
+        { href: '/boards', label: 'Collaborate', also: ['/code'] },
+        { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub'] },
       ]
     },
     {
@@ -120,15 +120,13 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/teacher/courses', label: 'nav.my_courses' },
         { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor'] },
-        { href: '/teacher/students', label: 'nav.students' },
-        { href: '/teacher/early-warning', label: 'Early warning' },
-        { href: '/teacher/analytics', label: 'Course analytics' },
+        { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics'] },
         { href: '/teacher/attendance', label: 'nav.attendance' },
         { href: '/teacher/grades', label: 'nav.grades' },
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
         { href: '/teacher/assignments', label: 'Assignments' },
         { href: '/teacher/live', label: 'Live class' },
-        { href: '/code', label: 'Code together' },
+        { href: '/boards', label: 'Collaborate', also: ['/code'] },
         { href: '/teacher/calendar', label: 'nav.timetable' },
       ]
     },
@@ -139,8 +137,7 @@ export const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
-    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
-    { href: '/calls', label: 'Calls', icon: Phone },
+    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
@@ -150,54 +147,54 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/admin/partnerships', label: 'nav.partner_institutions' },
         { href: '/admin/partners', label: 'nav.sponsor_portal' },
-        { href: '/admin/impact-metrics', label: 'nav.impact_analytics' },
         { href: '/admin/impact-reports', label: 'Impact reports' },
         { href: '/admin/certifications', label: 'Certifications' },
         { href: '/admin/credentials', label: 'Credential Verification' },
       ]
     },
+    // Management was 15 entries; now three short groups.
     {
-      label: 'nav.management', icon: Settings,
+      label: 'People', icon: Users,
       subItems: [
         { href: '/admin/users', label: 'nav.users' },
-        { href: '/admin/early-warning', label: 'Early warning' },
-        { href: '/admin/insights', label: 'School insights' },
-        { href: '/admin/safety', label: 'Safety reports' },
         { href: '/admin/approvals', label: 'Approvals' },
+        { href: '/admin/early-warning', label: 'Early warning' },
+        { href: '/admin/safety', label: 'Safety reports' },
         { href: '/admin/audit', label: 'Activity Log' },
-        { href: '/admin/integrations/lti', label: 'LMS integration' },
-        { href: '/admin/courses', label: 'nav.courses' },
-        { href: '/admin/administrative', label: 'nav.administrative' },
-        { href: '/admin/internships', label: 'nav.internships' },
-        { href: '/admin/attendance', label: 'nav.attendance' },
-        { href: '/admin/finances', label: 'nav.finances' },
-        { href: '/admin/quizzes', label: 'nav.quizzes' },
-        { href: '/admin/knowledge-hub', label: 'nav.knowledge_hub' },
-        { href: '/admin/student-life', label: 'nav.student_life' },
       ]
     },
+    {
+      label: 'Academics', icon: GraduationCap,
+      subItems: [
+        { href: '/admin/courses', label: 'nav.courses' },
+        { href: '/admin/attendance', label: 'nav.attendance' },
+        { href: '/admin/quizzes', label: 'nav.quizzes' },
+        { href: '/admin/timetable', label: 'nav.timetable_management' },
+        { href: '/admin/knowledge-hub', label: 'nav.knowledge_hub' },
+      ]
+    },
+    {
+      label: 'Operations', icon: Settings,
+      subItems: [
+        { href: '/admin/administrative', label: 'nav.administrative' },
+        { href: '/admin/finances', label: 'nav.finances' },
+        { href: '/admin/internships', label: 'nav.internships' },
+        { href: '/admin/student-life', label: 'nav.student_life' },
+        { href: '/admin/integrations/lti', label: 'LMS integration' },
+      ]
+    },
+    { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/analytics', '/admin/reports', '/admin/impact-metrics'] },
     {
       label: 'nav.campus_monitoring', icon: Shield,
       subItems: [
         { href: '/admin/monitoring/rooms', label: 'nav.room_bookings' },
         { href: '/admin/monitoring/associations', label: 'nav.associations' },
-        { href: '/admin/timetable', label: 'nav.timetable_management' },
       ]
     },
-    {
-      label: 'Premium', icon: Crown,
-      subItems: [
-        { href: '/admin/analytics', label: 'Advanced Analytics' },
-        { href: '/admin/reports', label: 'Reports & Exports' },
-        { href: '/admin/billing', label: 'Billing & Plans' },
-      ]
-    },
-    { href: '/admin/announcements', label: 'nav.announcements', icon: Bell },
-    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare },
-    { href: '/calls', label: 'Calls', icon: Phone },
+    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/admin/announcements'] },
+    { href: '/boards', label: 'Collaborate', icon: PenTool, also: ['/code'] },
+    { href: '/admin/billing', label: 'Billing & plans', icon: Crown },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
-    { href: '/boards', label: 'Whiteboards', icon: PenTool },
-    { href: '/code', label: 'Code together', icon: Code2 },
   ],
 };
 

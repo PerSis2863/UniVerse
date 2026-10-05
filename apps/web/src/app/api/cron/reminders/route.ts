@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { remindDueCalls } from '@/server/scheduled-calls';
+import { remindDueCalls, sendDueReminders } from '@/server/scheduled-calls';
 
 // Reminders for scheduled calls, run by the 15-minute cron (cloudflare/worker.ts) only when a
 // call is actually due, so most runs never start the app. Not reachable from outside: only the
@@ -14,5 +14,7 @@ export async function POST(req: Request) {
   if (!token || !globalThis.__universeCronToken || token !== globalThis.__universeCronToken) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
-  return NextResponse.json(await remindDueCalls());
+  const calls = await remindDueCalls();
+  const reminders = await sendDueReminders().catch((e) => (console.error('chat reminders failed:', e), 0));
+  return NextResponse.json({ ...calls, reminders });
 }

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Check, Loader2, Search, Users, X } from 'lucide-react';
+import { Check, Loader2, Megaphone, Search, Users, X } from 'lucide-react';
+import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from './MessageBubble';
@@ -13,8 +14,14 @@ import { chatJson } from './chat-client';
 type Person = { id: string; name: string; avatar: string | null; role: string; online: boolean };
 const ROLE_LABEL: Record<string, string> = { STUDENT: 'Student', TEACHER: 'Teacher', ADMIN: 'Admin', INDUSTRY_MENTOR: 'Mentor' };
 
-export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initialMode?: 'chat' | 'group'; onClose: () => void; onOpen: (id: string) => void }) {
-  const [mode, setMode] = useState<'chat' | 'group'>(initialMode);
+type Mode = 'chat' | 'group' | 'broadcast';
+
+export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initialMode?: Mode; onClose: () => void; onOpen: (id: string) => void }) {
+  const [mode, setMode] = useState<Mode>(initialMode);
+  const role = useAuthStore((s) => s.user?.role);
+  // Broadcasts (one message, delivered as a private chat to each person) are for staff.
+  const modes: Mode[] = role === 'TEACHER' || role === 'ADMIN' ? ['chat', 'group', 'broadcast'] : ['chat', 'group'];
+  const [text, setText] = useState('');
   const [q, setQ] = useState('');
   const [debounced, setDebounced] = useState('');
   const [selected, setSelected] = useState<Person[]>([]);
@@ -56,6 +63,19 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
     }
   };
 
+  const sendBroadcast = async () => {
+    setBusy(true);
+    try {
+      const { sent } = await chatJson<{ sent: number }>('/api/chat/broadcast', { method: 'POST', body: JSON.stringify({ userIds: selected.map((s) => s.id), body: text.trim() }) });
+      toast.success(`Sent privately to ${sent} ${sent === 1 ? 'person' : 'people'}`);
+      onClose();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const toggle = (p: Person) =>
     setSelected((cur) => (cur.some((s) => s.id === p.id) ? cur.filter((s) => s.id !== p.id) : [...cur, p]));
 
@@ -64,16 +84,31 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
       <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 320 }}
         className="w-full sm:max-w-md max-h-[85vh] flex flex-col rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 shadow-2xl">
         <div className="p-5 pb-3 flex items-center justify-between">
-          <h3 className="text-lg font-black text-zinc-900 dark:text-white">{mode === 'chat' ? 'New chat' : 'New group'}</h3>
+          <h3 className="text-lg font-black text-zinc-900 dark:text-white">{mode === 'chat' ? 'New chat' : mode === 'group' ? 'New group' : 'Broadcast'}</h3>
           <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-5 h-5" /></button>
         </div>
         <div className="px-5 flex gap-2 mb-3">
-          {(['chat', 'group'] as const).map((m) => (
+          {modes.map((m) => (
             <button key={m} onClick={() => setMode(m)} className={cn('flex-1 py-2 rounded-xl text-sm font-semibold transition-colors', mode === m ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300')}>
-              {m === 'chat' ? 'Direct message' : 'Group chat'}
+              {m === 'chat' ? 'Direct' : m === 'group' ? 'Group' : 'Broadcast'}
             </button>
           ))}
         </div>
+        {mode === 'broadcast' && (
+          <div className="px-5 mb-3 space-y-2">
+            <p className="text-xs text-zinc-500">Each person gets it as a private message from you, and their replies come back to you privately.</p>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={4000} rows={3} placeholder="Your message" className="w-full px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40 resize-none" />
+            {selected.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {selected.map((s) => (
+                  <button key={s.id} onClick={() => toggle(s)} className="inline-flex items-center gap-1 pl-2 pr-1.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-medium">
+                    {s.name.split(' ')[0]} <X className="w-3 h-3" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {mode === 'group' && (
           <div className="px-5 mb-3">
             <input value={groupName} onChange={(e) => setGroupName(e.target.value)} maxLength={80} placeholder="Group name" className="w-full px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
@@ -104,7 +139,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{p.name}</p>
                   <p className="text-xs text-zinc-500">{ROLE_LABEL[p.role] ?? p.role}{p.online ? ' · online' : ''}</p>
                 </div>
-                {mode === 'group' && (
+                {mode !== 'chat' && (
                   <span className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center', isSel ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300 dark:border-zinc-600')}>
                     {isSel && <Check className="w-3 h-3" />}
                   </span>
@@ -113,6 +148,13 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
             );
           })}
         </div>
+        {mode === 'broadcast' && (
+          <div className="p-4 border-t border-zinc-200 dark:border-white/10">
+            <button onClick={sendBroadcast} disabled={busy || !text.trim() || selected.length === 0} className="btn-primary w-full py-3">
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />} Send{selected.length ? ` to ${selected.length}` : ''}
+            </button>
+          </div>
+        )}
         {mode === 'group' && (
           <div className="p-4 border-t border-zinc-200 dark:border-white/10">
             <button onClick={createGroup} disabled={busy || !groupName.trim() || selected.length === 0} className="btn-primary w-full py-3">
