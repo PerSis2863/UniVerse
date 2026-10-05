@@ -462,13 +462,55 @@ request goes over the query cap.
 - Request brake (`src/lib/request-guard.ts`).
 - No prefetching anywhere.
 
-## 5. Progress (stage-3-upgrades branch)
+## 5. Progress
 
-**Done (one commit each, migrations 0039–0046):** 1 class companion (0039), 2 proof-of-learning
-passport (0040), 3 early help plans (0041), 8 feedback studio (0042), 6 smart planner (0043),
-4 offline-first classroom (0044), 7 campus super-app (0045), 5 verified volunteering (0046).
+**Stage 3 is complete: all ten upgrades are built.**
+- Upgrades 1–8: branch `stage-3-upgrades`, merged as PR #35, migrations 0039–0046.
+  Order: 1 class companion (0039), 2 proof-of-learning passport (0040), 3 early help plans (0041),
+  8 feedback studio (0042), 6 smart planner (0043), 4 offline-first classroom (0044),
+  7 campus super-app (0045), 5 verified volunteering (0046).
+- Upgrades 10 and 9: branch `stage-3-analytics-network`.
+  - **10, school analytics:** no migration.
+  - **9, multi-campus network:** migration 0047.
 
-**Still to build:** 10 school analytics, then 9 multi-campus network. **Next migration: 0047.**
+**Next migration: 0048.**
+
+**Upgrade 10 (school analytics), Insights → School insights:**
+- `src/lib/school-metrics.ts` is the shared catalogue of 14 safe measures (fixed SQL in
+  `src/server/school-analytics.ts`, at most 50 rows). It also holds the column definitions, the
+  summaries worked out from the numbers (never AI) and a keyword matcher (used when AI is off and in
+  sample mode).
+- `/api/admin/school-analytics`:
+  - GET `?metric=` and `?metrics=` run a measure directly, with no AI.
+  - POST `{ question }` uses one small AI request that only picks a measure. The pick is saved for
+    7 days per wording.
+- The demo admin may POST to it, because it only reads.
+
+**Upgrade 9 (multi-campus network):**
+- Server: `src/server/campus-network.ts`.
+- Data:
+  - `Campus` (emailDomains is a JSON string; shared mail services are refused).
+  - `User.campusId` and `User.networkVisible`.
+  - `CourseCampus`.
+  - `StudentProfile.exchangeCampusId` / `exchangeFrom` / `exchangeUntil`.
+  - `Community.discoverable`.
+- Courses belong to their **teacher's** campus. A student with a campus sees and joins:
+  - courses of unassigned teachers;
+  - courses of their own campus and, during an exchange, of their exchange campus;
+  - courses shared with those campuses.
+
+  This is applied in the course catalogue, electives and enrolment (`courseWhereFor` /
+  `assertCanJoinCourse`). With no campuses, nothing changes.
+- Screens:
+  - Admin: Global Impact → Partner institutions → **Campus network** (`/admin/network`).
+  - Teacher: Global collaboration → Research → **Campus network** (`/teacher/network`).
+  - Student: My courses → "Courses from partner campuses".
+  - Messages → Communities → **Discover communities**.
+  - Settings → Privacy → "Let partner campuses find me".
+- Privacy: other campuses see counts only. Chat search hides people at other campuses unless they
+  opt in.
+- Logos must be uploaded (the image policy blocks other sites).
+- The demo admin can't manage the network (read-only by design).
 
 **Reusable pieces added in this stage:**
 - `src/server/campus-life.ts` → `rotatingCode(prefix, id)` / `readRotatingCode(prefix, code)`:
@@ -477,8 +519,19 @@ passport (0040), 3 early help plans (0041), 8 feedback studio (0042), 6 smart pl
 - `src/components/impact/ImpactMap.tsx`: SVG dot map (no tiles).
 - `src/lib/outbox.ts`: IndexedDB outbox, chat cache and drafts (cleared on sign-out).
 - `src/server/offline.ts`: `clientIdOf`, `offlineTime`, `tellTeacher` (in-app + push).
-- Tab groups added in `SectionTabs.tsx`: `MONITORING_TABS`, `IMPACT_REPORT_TABS`.
+- `src/components/insights/MetricChart.tsx`: one-hue recharts chart (bar, line or column) for a
+  `MetricResult`, loaded on demand.
+- Tab groups added in `SectionTabs.tsx`: `MONITORING_TABS`, `IMPACT_REPORT_TABS`, `PARTNER_TABS`,
+  `RESEARCH_TABS`.
 
-**Known gaps to check on the preview:** cron follow-up reminders for support plans (upgrade 3),
-the CallRoom notes relay (upgrade 1), event/shift check-in on a real phone (needs SESSION_SECRET).
-Offline quiz finish times come from the device, so late ones always wait for the teacher.
+**Known gaps to check on the preview:**
+- Cron follow-up reminders for support plans (upgrade 3).
+- The CallRoom notes relay (upgrade 1).
+- Event/shift check-in on a real phone (upgrades 7 and 5; needs SESSION_SECRET).
+- Typed analytics questions with real AI (locally only the keyword matcher runs: there is no
+  Gemini key).
+- Offline quiz finish times come from the device, so late ones always wait for the teacher.
+
+**Owner to-dos:**
+- Re-export `public/legal` PDFs: the Privacy Policy now covers class notes and the campus network.
+  Last updated 5 Oct 2026.
