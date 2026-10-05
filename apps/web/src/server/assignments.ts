@@ -1,3 +1,4 @@
+import { evidenceFromGrade, safely } from './skill-evidence';
 import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import type { Prisma } from '@prisma/client';
@@ -350,6 +351,8 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
     where: { id: sub.id },
     data: { criteriaScores: criteria as unknown as Prisma.InputJsonValue, score, feedback, gradeId: grade.id, status: 'RETURNED', returnedAt: new Date() },
   });
+  // Proof of learning (upgrade 2): 60%+ becomes evidence for the course's skills.
+  await safely(evidenceFromGrade({ studentId: sub.studentId, submissionId: sub.id, assignmentTitle: assignment.title, score, maxScore: assignment.maxScore, course, teacher: { id: user.id, name: user.name } }));
   audit(user, { action: existing ? 'grade.updated' : 'grade.posted', summary: `${existing ? 'Updated' : 'Returned'} “${assignment.title}” grade ${score}/${assignment.maxScore} in ${course.code}`, targetType: 'grade', targetId: grade.id, metadata: { assignmentId: assignment.id, submissionId: sub.id, studentId: sub.studentId } }, req);
   later(() => notify(sub.studentId, {
     type: 'grade',

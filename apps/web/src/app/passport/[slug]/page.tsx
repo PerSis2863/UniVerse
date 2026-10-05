@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useParams } from 'next/navigation';
-import { BadgeCheck, Loader2, ScanLine, ShieldAlert, ShieldCheck, UserX } from 'lucide-react';
+import { BadgeCheck, Download, Loader2, ScanLine, ShieldAlert, ShieldCheck, UserX } from 'lucide-react';
+import { AnimatePresence, m as motion } from 'framer-motion';
+import { spring } from '@/lib/motion';
 import Link from '@/components/ui/Link';
 import { PassportView, type PassportData } from '@/components/passport/PassportView';
 import { CopyLinkButton } from '@/components/passport/CredentialShare';
@@ -42,6 +44,7 @@ export default function PublicPassportPage() {
         ) : (
           <>
             <PassportView p={p} />
+            {!!p.evidence?.some((g) => g.count > 0) && <VerifyPassport slug={slug} name={p.name} />}
             <PassportQr name={p.name} />
             <BadgeVerifier />
           </>
@@ -49,6 +52,54 @@ export default function PublicPassportPage() {
         <p className="mt-8 text-center text-[11px] text-zinc-500">UniVerse Impact · Paris, France · <Link href="/privacy" className="hover:underline">Privacy</Link></p>
       </div>
     </main>
+  );
+}
+
+/** Checks the passport's skills with evidence: fetches its signed badge and verifies the signature
+ *  with the same public check employers can use (/api/passport/verify). */
+function VerifyPassport({ slug, name }: { slug: string; name: string }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'ok' | 'bad'>('idle');
+  const [detail, setDetail] = useState<{ text: string; jwt?: string; fileName?: string }>({ text: '' });
+  const run = async () => {
+    setState('busy');
+    try {
+      const b = await fetch(`/api/passport/public/${encodeURIComponent(slug)}/badge`);
+      const badge = await b.json();
+      if (!b.ok) throw new Error(badge.error || 'Couldn’t get the signed badge.');
+      const r = await fetch('/api/passport/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ badge: badge.jwt }) });
+      const v = await r.json();
+      if (r.ok && v.valid) { setDetail({ text: v.badge?.criteria ?? '', jwt: badge.jwt, fileName: badge.fileName }); setState('ok'); }
+      else { setDetail({ text: v.reason || v.error || 'Not valid.' }); setState('bad'); }
+    } catch (e) { setDetail({ text: (e as Error).message }); setState('bad'); }
+  };
+  const save = () => {
+    if (!detail.jwt) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([detail.jwt], { type: 'application/jwt' }));
+    a.download = `${detail.fileName ?? 'skills-badge'}.jwt`;
+    a.click();
+  };
+  return (
+    <section className="mt-5 rounded-3xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <ShieldCheck className="w-6 h-6 text-emerald-500 shrink-0" />
+        <div className="flex-1 min-w-[12rem]">
+          <p className="font-bold text-zinc-900 dark:text-white">Verify {name}’s skills</p>
+          <p className="text-xs text-zinc-500">Checks the digital signature on these skills and their evidence (Open Badges 3.0).</p>
+        </div>
+        <button onClick={run} disabled={state === 'busy'} className="btn-primary">{state === 'busy' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />} Verify</button>
+      </div>
+      <AnimatePresence>
+        {(state === 'ok' || state === 'bad') && (
+          <motion.div key={state} role="status" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={spring.smooth}
+            className={state === 'ok' ? 'mt-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-sm text-emerald-800 dark:text-emerald-200' : 'mt-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 p-4 text-sm text-rose-700 dark:text-rose-300'}>
+            <p className="font-bold flex items-center gap-1.5">{state === 'ok' ? <><ShieldCheck className="w-4 h-4" /> Verified: signed by UniVerse Impact</> : <><ShieldAlert className="w-4 h-4" /> Couldn’t verify</>}</p>
+            {detail.text && <p className="mt-1 text-xs opacity-90 break-words">{detail.text}</p>}
+            {state === 'ok' && <button onClick={save} className="mt-2 text-xs font-semibold inline-flex items-center gap-1 hover:underline"><Download className="w-3.5 h-3.5" /> Download the signed badge</button>}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
   );
 }
 

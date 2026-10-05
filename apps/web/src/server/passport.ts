@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
 import { COMPANY } from '@/lib/company';
 import { CredentialSigner, publicAppUrl, verifyUrlFor } from './services/credential-signer';
+import { evidenceGroups } from './skill-evidence';
 
 // Skills passport: the public page a student can share, and Open Badges 3.0 (1EdTech) exports of
 // their verified impact credentials. The badges are Verifiable Credentials signed with the
@@ -39,11 +40,12 @@ export async function resetPassportLink(userId: string) {
   return prisma.skillPassport.update({ where: { userId }, data: { slug: newSlug() } });
 }
 
-type Sections = { showSkills: boolean; showCredentials: boolean; showCourses: boolean; showImpact: boolean };
+type Sections = { showSkills: boolean; showCredentials: boolean; showCourses: boolean; showImpact: boolean; showEvidence?: boolean };
 
-/** What the passport shows (only the sections the student turned on). */
-export async function passportContent(userId: string, sections: Sections) {
-  const [user, skills, credentials, courses, points] = await Promise.all([
+/** What the passport shows (only the sections the student turned on). `owner`: the student's own
+ *  preview, which also lists evidence they hid from the public page. */
+export async function passportContent(userId: string, sections: Sections, owner = false) {
+  const [user, skills, credentials, courses, points, evidence] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true, avatar: true, createdAt: true, studentProfile: { select: { department: true } } } }),
     sections.showSkills
       ? prisma.studentSkill.findMany({ where: { userId }, orderBy: [{ endorsements: 'desc' }, { name: 'asc' }], take: 40, select: { name: true, category: true, level: true, endorsements: true } })
@@ -59,6 +61,7 @@ export async function passportContent(userId: string, sections: Sections) {
       ? prisma.enrollment.findMany({ where: { studentId: userId }, orderBy: { enrolledAt: 'desc' }, take: 30, select: { course: { select: { code: true, name: true, credits: true, department: true } } } })
       : Promise.resolve([]),
     sections.showImpact ? prisma.impactPoint.aggregate({ where: { userId }, _sum: { points: true } }) : Promise.resolve(null),
+    sections.showEvidence !== false ? evidenceGroups(userId, owner) : Promise.resolve([]),
   ]);
   if (!user) return null;
   return {
@@ -69,6 +72,8 @@ export async function passportContent(userId: string, sections: Sections) {
     skills: sections.showSkills ? skills : undefined,
     credentials: sections.showCredentials ? credentials.map((c) => ({ ...c, verifyUrl: verifyUrlFor(c.id) })) : undefined,
     courses: sections.showCourses ? courses.map((e) => e.course) : undefined,
+    // Proof of learning: skills backed by graded work, passed quizzes and issued credentials
+    evidence: sections.showEvidence !== false ? evidence.filter((g) => owner || g.count > 0) : undefined,
     impact: sections.showImpact
       ? {
           hours: credentials.reduce((n, c) => n + c.hoursCompleted, 0),
@@ -88,7 +93,55 @@ export async function publicPassport(slug: string) {
   const content = await passportContent(p.userId, p);
   if (!content) return null;
   void prisma.skillPassport.update({ where: { id: p.id }, data: { views: { increment: 1 } } }).catch(() => {});
-  return { headline: p.headline, updatedAt: p.updatedAt, ...content };
+  return { headline: p.headline, strengths: p.showEvidence ? p.strengths : null, updatedAt: p.updatedAt, ...content };
+}
+
+const skillsBadgeId = (passportId: string) => `${publicAppUrl()}/passport/skills/${passportId}`;
+
+/**
+ * The student's skills with evidence as one signed Open Badges 3.0 credential: one Result per
+ * skill (how many pieces of evidence, best level). Anyone can check it at /api/passport/verify.
+ * null when there's no visible evidence yet.
+ */
+export async function openSkillsBadgeFor(userId: string) {
+  const [p, user, groups] = await Promise.all([
+    getOrCreatePassport(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+    evidenceGroups(userId, false),
+  ]);
+  const shown = groups.filter((g) => g.count > 0);
+  if (!user || !shown.length) return null;
+  const salt = createHash('sha256').update(`skills:${p.id}`).digest('hex').slice(0, 16);
+  const identityHash = `sha256$${createHash('sha256').update(user.email.trim().toLowerCase() + salt).digest('hex')}`;
+  const issued = new Date().toISOString();
+  const id = skillsBadgeId(p.id);
+  const credential = {
+    '@context': ['https://www.w3.org/ns/credentials/v2', 'https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json'],
+    id,
+    type: ['VerifiableCredential', 'OpenBadgeCredential'],
+    name: 'Skills with evidence',
+    issuer: { id: issuerUrl(), type: ['Profile'], name: COMPANY.legalName, url: publicAppUrl() },
+    validFrom: issued,
+    credentialSubject: {
+      type: ['AchievementSubject'],
+      identifier: [{ type: 'IdentityObject', identityHash, identityType: 'emailAddress', hashed: true, salt }],
+      achievement: {
+        id: `${id}#achievement`,
+        type: ['Achievement'],
+        achievementType: 'Competency',
+        name: 'Skills with evidence',
+        description: 'Skills shown in work that someone else checked on UniVerse: assignments graded by teachers (60% or more), quizzes passed (60% or more) and impact credentials verified by staff.',
+        criteria: { narrative: shown.slice(0, 12).map((g) => `${g.label}: ${g.count} piece${g.count === 1 ? '' : 's'} of evidence${g.best ? ` (best: ${g.best})` : ''}`).join('; ') },
+        creator: { id: issuerUrl(), type: ['Profile'], name: COMPANY.legalName },
+      },
+      result: shown.map((g) => ({ type: ['Result'], value: String(g.count), resultDescription: `${g.label}${g.best ? ` · ${g.best}` : ''}` })),
+      name: user.name,
+    },
+    evidence: p.isPublic ? [{ id: passportUrl(p.slug), type: ['Evidence'], name: 'Public skills passport', narrative: 'Each skill lists the work it comes from.' }] : [],
+  };
+  const keyId = CredentialSigner.jwks().keys[0].kid;
+  const jwt = CredentialSigner.signJwt({ iss: issuerUrl(), jti: id, sub: identityHash, nbf: Math.floor(Date.now() / 1000), iat: Math.floor(Date.now() / 1000), vc: credential }, `${jwksUrl()}#${keyId}`);
+  return { credential, jwt, fileName: 'skills-with-evidence-open-badge' };
 }
 
 /**
@@ -163,6 +216,13 @@ export async function verifyOpenBadge(jwt: string) {
   if (!payload) return { valid: false as const, reason: 'The signature doesn’t match. This badge wasn’t issued by UniVerse, or it was changed.' };
   if (payload.iss !== issuerUrl()) return { valid: false as const, reason: 'This badge was issued by someone else.' };
   const vc = payload.vc as { id?: string; name?: string; credentialSubject?: { name?: string; achievement?: { criteria?: { narrative?: string } } }; validFrom?: string } | undefined;
+  // A skills-with-evidence badge: valid while the passport (and so the account) exists.
+  const skillsOf = typeof vc?.id === 'string' && vc.id.startsWith(`${publicAppUrl()}/passport/skills/`) ? vc.id.split('/passport/skills/')[1] : undefined;
+  if (skillsOf) {
+    const p = await prisma.skillPassport.findUnique({ where: { id: skillsOf }, select: { id: true } });
+    if (!p) return { valid: false as const, reason: 'The passport behind this badge no longer exists.' };
+    return { valid: true as const, badge: { name: vc?.name, earner: vc?.credentialSubject?.name, criteria: vc?.credentialSubject?.achievement?.criteria?.narrative, issued: vc?.validFrom, verifyUrl: vc?.id } };
+  }
   const id = typeof vc?.id === 'string' ? vc.id.split('/verify/')[1] : undefined;
   const cert = id ? await prisma.impactCertificate.findUnique({ where: { id }, select: { status: true, revokedAt: true, revokedReason: true } }) : null;
   if (!cert) return { valid: false as const, reason: 'The credential in this badge no longer exists.' };

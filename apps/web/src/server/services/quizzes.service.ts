@@ -1,3 +1,4 @@
+import { evidenceFromQuiz, safely } from '../skill-evidence';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '../http';
 import type { CreateQuizDto, UpdateQuizDto } from '../dto';
 import prisma from '@/lib/db';
@@ -155,7 +156,7 @@ export class QuizzesService {
       }
     });
 
-    return prisma.quizSubmission.create({
+    const submission = await prisma.quizSubmission.create({
       data: {
         studentId,
         quizId,
@@ -164,5 +165,8 @@ export class QuizzesService {
         maxScore,
       }
     });
+    // Proof of learning (upgrade 2): a passed quiz is evidence for the course's skills.
+    await safely(evidenceFromQuiz({ studentId, submissionId: submission.id, quizId, score, maxScore }));
+    return submission;
   }
 }

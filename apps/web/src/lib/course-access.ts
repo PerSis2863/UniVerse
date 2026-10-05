@@ -9,7 +9,7 @@ export async function courseAccess(courseId: string, user: SessionUser) {
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     select: {
-      id: true, name: true, code: true, color: true, teacherId: true,
+      id: true, name: true, code: true, color: true, teacherId: true, skills: true,
       teacher: { select: { id: true, name: true } },
       _count: { select: { enrollments: true } },
     },

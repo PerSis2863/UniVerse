@@ -185,6 +185,7 @@ model User {
   // Career & Internships
   careerProfile           CareerProfile?
   skills                  StudentSkill[]
+  skillEvidence           SkillEvidence[]
   internshipApplications  InternshipApplication[]
   postedInternships       Internship[]             @relation("InternshipPoster")
   scholarshipApplications ScholarshipApplication[]
@@ -324,6 +325,8 @@ model Course {
   code        String       @unique
   name        String
   description String?
+  /// Skills this course builds (JSON string[], 3–6, chosen by the teacher): graded work becomes evidence for them
+  skills      String?
   credits     Int          @default(3)
   department  String?
   status      CourseStatus @default(DRAFT)
@@ -1894,21 +1897,50 @@ model MessageTranslation {
 // Skills passport: a public page a student can choose to share (verified credentials, skills,
 // courses), and Open Badges 3.0 exports of their credentials.
 model SkillPassport {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  slug            String   @unique // random, part of the public link
-  isPublic        Boolean  @default(false)
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug            String    @unique // random, part of the public link
+  isPublic        Boolean   @default(false)
   headline        String?
-  showSkills      Boolean  @default(true)
-  showCredentials Boolean  @default(true)
-  showCourses     Boolean  @default(false)
-  showImpact      Boolean  @default(true)
-  views           Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  showSkills      Boolean   @default(true)
+  showCredentials Boolean   @default(true)
+  showCourses     Boolean   @default(false)
+  showImpact      Boolean   @default(true)
+  showEvidence    Boolean   @default(true)
+  /// A short strengths paragraph (AI draft the student can edit)
+  strengths       String?
+  strengthsAt     DateTime?
+  views           Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@map("skill_passports")
+}
+
+/// Proof of learning (upgrade 2): a skill backed by something checked by someone else, created
+/// automatically when an assignment is graded (60%+), a quiz is passed (60%+) or an impact
+/// credential is issued. The student can hide items from their public passport.
+model SkillEvidence {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill          String // normalised key (lower case, single spaces)
+  label          String // as shown
+  kind           String // QUIZ | ASSIGNMENT | COURSE | IMPACT | PROJECT
+  sourceId       String
+  title          String
+  detail         String?
+  level          String? // Developing | Proficient | Advanced
+  verifiedById   String?
+  verifiedByName String?
+  occurredAt     DateTime @default(now())
+  hidden         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, kind, sourceId, skill])
+  @@index([userId, skill])
+  @@map("skill_evidence")
 }
 
 // Early warning: students who may be struggling in a course, found each day from attendance,
