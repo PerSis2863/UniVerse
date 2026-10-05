@@ -10,6 +10,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { api, fetcher } from '@/lib/fetcher';
 import { safeHref } from '@/lib/safe-href';
 import { AdminSearch, PersonCell, RoleBadge, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 interface Resource {
   id: string; title: string; description?: string | null; category?: string | null; url?: string | null; isPublic: boolean;
@@ -101,7 +102,7 @@ export default function AdminKnowledgeHubPage() {
             <div className="flex flex-wrap gap-1">
               {(['all', 'public', 'private'] as const).map((v) => (
                 <button key={v} onClick={() => setVisibility(v)} aria-pressed={visibility === v}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${visibility === v ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+                  className={`relative isolate px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${visibility === v ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>{visibility === v && <TabPill id="pill-4-0" />}
                   {v === 'all' ? 'All' : v === 'public' ? 'Public' : 'Private'}
                 </button>
               ))}

@@ -9,6 +9,7 @@ import { createTransaction, getTransactions } from '@/app/actions/transaction';
 import { getAuthToken } from '@/lib/auth-token';
 import { isSampleMode } from '@/lib/sample-mode';
 import { AdminSearch, PersonCell, matchesQuery, personText } from '@/components/admin/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 export default function AdminFinances() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -315,7 +316,7 @@ export default function AdminFinances() {
                 <div className="flex gap-1 overflow-x-auto shrink-0">
                   {['ALL', 'COMPLETED', 'PENDING', 'FAILED', 'REFUNDED'].map((st) => (
                     <button key={st} onClick={() => setStatusFilter(st)} aria-pressed={statusFilter === st}
-                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${statusFilter === st ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+                      className={`relative isolate shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${statusFilter === st ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>{statusFilter === st && <TabPill id="pill-3-0" />}
                       {st.charAt(0) + st.slice(1).toLowerCase()}
                     </button>
                   ))}

@@ -10,6 +10,7 @@ import { SectionTabs, MONITORING_TABS } from '@/components/layout/SectionTabs';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { authedJson } from '@/lib/authed-fetch';
 import { AdminSearch, PersonCell, RoleBadge, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 type Reservation = { id: string; date: string; time: string; duration: string; createdAt?: string; user: PersonInfo };
 type Room = { id: string; name: string; capacity: number; type: string; amenities: string; reservations: Reservation[] };
@@ -111,7 +112,7 @@ export default function RoomBookingsPage() {
                     <div className="flex gap-1">
                       {(['upcoming', 'past', 'all'] as const).map((w) => (
                         <button key={w} onClick={() => setWhen(w)} aria-pressed={when === w}
-                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${when === w ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+                          className={`relative isolate px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${when === w ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>{when === w && <TabPill id="pill-0-0" />}
                           {w.charAt(0).toUpperCase() + w.slice(1)}
                         </button>
                       ))}

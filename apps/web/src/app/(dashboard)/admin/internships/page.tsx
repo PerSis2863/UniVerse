@@ -10,6 +10,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { safeHref } from '@/lib/safe-href';
 import { isSampleMode } from '@/lib/sample-mode';
 import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 type StudentPerson = PersonInfo & { studentProfile?: { department: string | null; year: number; gpa: number } | null };
 interface Applicant { id: string; status: string; appliedAt: string; cvUrl?: string | null; student: StudentPerson }
@@ -240,7 +241,7 @@ export default function AdminInternshipsPage() {
             <div className="flex gap-1 shrink-0">
               {(['all', 'active', 'closed'] as const).map((s) => (
                 <button key={s} onClick={() => setStatusFilter(s)} aria-pressed={statusFilter === s}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${statusFilter === s ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+                  className={`relative isolate px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${statusFilter === s ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>{statusFilter === s && <TabPill id="pill-2-0" />}
                   {humanize(s)}
                 </button>
               ))}

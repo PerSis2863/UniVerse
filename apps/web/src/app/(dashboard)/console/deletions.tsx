@@ -8,6 +8,7 @@ import { Check, Loader2, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, fetcher, matches } from './shared';
+import { TabPill } from '@/components/ui/Glide';
 
 interface Req {
   id: string; email: string; name: string; reason: string | null; status: string; note: string | null; createdAt: string; decidedAt: string | null;
@@ -38,7 +39,7 @@ export function DeletionsPanel({ onOpenPerson }: { onOpenPerson: (id: string) =>
     <div className="space-y-4">
       <div className="flex gap-1">
         {(['PENDING', 'all'] as const).map((v) => (
-          <button key={v} onClick={() => setView(v)} className={cn('px-3 py-1.5 rounded-full text-sm font-semibold', view === v ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{v === 'PENDING' ? 'Waiting for you' : 'All'}</button>
+          <button key={v} onClick={() => setView(v)} className={cn('relative isolate px-3 py-1.5 rounded-full text-sm font-semibold', view === v ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{view === v && <TabPill id="pill-6-0" />}{v === 'PENDING' ? 'Waiting for you' : 'All'}</button>
         ))}
       </div>
       <SearchBox value={q} onChange={setQ} placeholder="Search by name, email or reason" />

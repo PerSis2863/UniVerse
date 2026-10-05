@@ -10,7 +10,9 @@ import { toast } from 'sonner';
 import { PLANS, type PlanId } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 import { card, downloadCsv, errorMessage, fetcher, field, refreshConsole, toastWithUndo, useDebounced } from './shared';
+import { ConsoleSkeleton } from './shared';
 import { useActivePoll } from '@/lib/realtime-client';
+import { TabPill } from '@/components/ui/Glide';
 
 // Owner console pieces that read across the app (server side: src/server/modules/owner-insights.ts):
 // the "Needs your attention" card, the console-wide search, Analytics and Money.
@@ -213,7 +215,7 @@ const ROLE_NAMES: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teac
 export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void }) {
   const [days, setDays] = useState(30);
   const { data, isLoading } = useSWR<AnalyticsData>(`/owner/analytics?days=${days}`, fetcher, { keepPreviousData: true, refreshInterval: useActivePoll(120_000) });
-  if (isLoading && !data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
+  if (isLoading && !data) return <ConsoleSkeleton />;
   if (!data) return null;
   const t = data.totals;
   const labels = data.perDay.map((d) => format(new Date(d.day), 'd MMM'));
@@ -303,7 +305,7 @@ const nice = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g,
 export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
   const { data, isLoading } = useSWR<MoneyData>('/owner/money', fetcher, { refreshInterval: useActivePoll(120_000) });
   const [status, setStatus] = useState('');
-  if (isLoading || !data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
+  if (isLoading || !data) return <ConsoleSkeleton />;
   const money = (n: number, c = data.currency) => new Intl.NumberFormat('en', { style: 'currency', currency: c, maximumFractionDigits: 2 }).format(n);
   const paid = data.byStatus.filter((x) => x.status === 'COMPLETED' && x.currency === data.currency);
   const of = (s: string) => data.byStatus.filter((x) => x.status === s && x.currency === data.currency);
@@ -334,7 +336,7 @@ export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
           <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><CreditCard className="w-4 h-4 text-zinc-400" /> Latest payments</h2>
           <div className="flex flex-wrap gap-1">
             {['', 'COMPLETED', 'PENDING', 'FAILED', 'REFUNDED'].map((s) => (
-              <button key={s} onClick={() => setStatus(s)} className={cn('px-3 py-1 rounded-full text-xs font-semibold', status === s ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{s ? STATUS_NAME[s] : 'All'}</button>
+              <button key={s} onClick={() => setStatus(s)} className={cn('relative isolate px-3 py-1 rounded-full text-xs font-semibold', status === s ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{status === s && <TabPill id="pill-5-0" />}{s ? STATUS_NAME[s] : 'All'}</button>
             ))}
             <button onClick={() => downloadCsv('universe-payments', ['Date', 'Person', 'Email', 'What', 'Type', 'Amount', 'Currency', 'Status'], recent.map((p) => [p.createdAt, p.user?.name, p.user?.email, p.description, p.type, p.amount, p.currency, p.status]))}
               className="btn-secondary inline-flex items-center gap-1.5 ml-1"><Download className="w-4 h-4" /> CSV</button>

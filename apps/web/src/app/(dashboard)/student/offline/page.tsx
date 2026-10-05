@@ -9,6 +9,7 @@ import { SectionTabs, STUDENT_COURSE_TABS } from '@/components/layout/SectionTab
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { deletePack, getPack, listPacks, offlineSupported, savedFileUrl, savePack, type Pack, type PackSummary } from '@/lib/offline-packs';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const subscribeOnline = (cb: () => void) => {
@@ -120,7 +121,8 @@ function PackView({ pack, onBack }: { pack: Pack; onBack: () => void }) {
       <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{pack.board.course.code} · {pack.board.course.name}</h2>
       <div className="flex gap-2 overflow-x-auto pb-1" role="tablist">
         {tabs.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn('px-3 py-1.5 rounded-xl text-sm font-medium flex items-center gap-1.5 whitespace-nowrap', tab === t.id ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-zinc-300')}>
+          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn('relative isolate px-3 py-1.5 rounded-xl text-sm font-medium flex items-center gap-1.5 whitespace-nowrap transition-colors', tab === t.id ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-zinc-300')}>
+            {tab === t.id && <TabPill id="offline-tab" />}
             <t.icon className="w-4 h-4" /> {t.label} <span className="opacity-70">{t.n}</span>
           </button>
         ))}

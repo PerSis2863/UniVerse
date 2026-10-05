@@ -136,12 +136,12 @@ export function SectionTabs({ tabs, small, label = 'Sections' }: { tabs: Section
   const pathname = useOptimisticPath(usePathname());
   const group = tabs.map((t) => t.href).join('|');
   return (
-    <nav aria-label={label} className={small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4'}>
+    <nav aria-label={label} data-steady className={small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4'}>
       <div className={cn('ios-segmented', !small && 'large')}>
         {tabs.map((t) => {
           const on = pathname === t.href || !!t.also?.includes(pathname);
           return (
-            <Link key={t.href} href={t.href} data-vt="fade" aria-current={on ? 'page' : undefined} className="ios-segment">
+            <Link key={t.href} href={t.href} data-vt="tab" aria-current={on ? 'page' : undefined} className="ios-segment">
               {on && <motion.span layoutId={`tabs-${group}`} transition={spring.snappy} className="ios-segment-thumb" aria-hidden />}
               {t.label}
             </Link>

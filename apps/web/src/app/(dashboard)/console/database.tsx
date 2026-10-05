@@ -6,6 +6,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ChevronRight, Database, Download, HardDrive, Loader2, Plus, Table2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, downloadCsv, fetcher, matches } from './shared';
+import { ConsoleSkeleton } from './shared';
 import { useActivePoll } from '@/lib/realtime-client';
 
 // Owner console → Database: what the real database holds, table by table (server side:
@@ -31,7 +32,7 @@ export function DatabasePanel({ onOpenTable }: { onOpenTable: (name: string) => 
   const { data, isLoading } = useSWR<DatabaseData>('/owner/database', fetcher, { refreshInterval: useActivePoll(60_000) });
   const [q, setQ] = useState('');
   const [hideEmpty, setHideEmpty] = useState(true);
-  if (isLoading || !data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
+  if (isLoading || !data) return <ConsoleSkeleton />;
 
   const peak = Math.max(1, ...data.added.map((d) => d.added));
   const shown = data.tables.filter((t) => (!hideEmpty || t.rows > 0 || q) && matches(q, t.name, nice(t.name), t.area));

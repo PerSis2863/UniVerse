@@ -14,6 +14,7 @@ import { NewBoardDialog } from '@/components/boards/NewBoardDialog';
 import type { TemplateId } from '@/components/boards/templates';
 import { Avatar } from '@/components/chat/MessageBubble';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 // Whiteboards: every student, teacher and admin can draw on a board, add photos, and share it so
 // classmates and teachers draw on it together live (see /boards/[id]).
@@ -113,7 +114,8 @@ export default function BoardsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="inline-flex p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] text-sm font-semibold">
               {(['all', 'mine', 'shared'] as const).map((t) => (
-                <button key={t} onClick={() => setTab(t)} className={cn('px-4 py-1.5 rounded-xl transition-colors', tab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500')}>
+                <button key={t} onClick={() => setTab(t)} className={cn('relative isolate px-4 py-1.5 rounded-xl transition-colors', tab === t ? 'text-zinc-900 dark:text-white' : 'text-zinc-500')}>
+                  {tab === t && <TabPill id="boards-tab" variant="soft" />}
                   {t === 'all' ? 'All' : t === 'mine' ? 'My boards' : 'Shared with me'}
                 </button>
               ))}

@@ -10,7 +10,8 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
-import { type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, errorMessage, fetcher, field, formatValue, matches, refreshConsole, summarize, toastWithUndo, undoChange, useDebounced } from './shared';
+import { TabPanel, TabPill } from '@/components/ui/Glide';
+import { ConsoleSkeleton, type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, errorMessage, fetcher, field, formatValue, matches, refreshConsole, summarize, toastWithUndo, undoChange, useDebounced } from './shared';
 import { PersonPanel } from './person';
 import { ErrorsPanel } from './errors';
 import { DeletionsPanel } from './deletions';
@@ -106,7 +107,9 @@ export default function OwnerConsole() {
             const badge = attention?.badges[t.id] ?? 0;
             return (
               <button key={t.id} onClick={() => { setTab(t.id); setFocus({ n: focus.n + 1 }); if (t.id !== 'people') setPerson(null); if (t.id === 'data') setDataTable(null); }}
-                className={cn('inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold', tab === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+                aria-current={tab === t.id ? 'page' : undefined}
+                className={cn('relative isolate inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors duration-200', tab === t.id ? 'text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+                {tab === t.id && <TabPill id="console-tab" />}
                 <t.icon className="w-4 h-4" /> {t.label}
                 {badge > 0 && (
                   <span title={t.id === 'activity' ? 'online now' : undefined}
@@ -118,8 +121,9 @@ export default function OwnerConsole() {
         </nav>
       </header>
       <main className="p-4 sm:p-8 max-w-6xl mx-auto">
+        <TabPanel k={`${tab}-${person ?? ''}`}>
         {!tables ? (
-          <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+          <ConsoleSkeleton />
         ) : tab === 'overview' ? (
           <Overview onPerson={openPerson} onTab={(t, status) => show(t, { status })} />
         ) : tab === 'health' ? (
@@ -149,6 +153,7 @@ export default function OwnerConsole() {
         ) : (
           <Changes key={`changes-${focus.n}`} initialQuery={focus.changes} />
         )}
+        </TabPanel>
       </main>
     </div>
   );
@@ -176,7 +181,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim());
   const { data: found } = useSWR<{ total: number; people: PersonRow[] }>(dq ? `/owner/people?q=${encodeURIComponent(dq)}` : null, fetcher);
-  if (!data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
+  if (!data) return <ConsoleSkeleton />;
   const total = Object.values(data.roles).reduce((a, b) => a + b, 0);
   const tiles: [string, number, Tab][] = [
     ['People', total, 'people'], ['Students', data.roles.STUDENT ?? 0, 'people'], ['Teachers', data.roles.TEACHER ?? 0, 'people'], ['Admins', data.roles.ADMIN ?? 0, 'people'],
@@ -565,3 +570,4 @@ function Changes({ initialQuery }: { initialQuery?: string }) {
     </div>
   );
 }
+

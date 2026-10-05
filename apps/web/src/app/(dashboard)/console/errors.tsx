@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, fetcher, matches } from './shared';
 import { useActivePoll } from '@/lib/realtime-client';
+import { TabPill } from '@/components/ui/Glide';
 
 // Errors tab: problems collected automatically from browsers and the server (src/server/errors.ts),
 // grouped, with an AI diagnosis. Mark them resolved once fixed; if one happens again it comes back.
@@ -212,7 +213,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
       <SearchBox value={q} onChange={setQ} placeholder="Search errors (message, page, browser, person, diagnosis)" />
       <div className="flex flex-wrap gap-1 items-center">
         {FILTERS.map((f) => (
-          <button key={f.id} onClick={() => setFilter(f.id)} className={cn('px-3.5 py-1.5 rounded-full text-sm font-semibold', filter === f.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+          <button key={f.id} onClick={() => setFilter(f.id)} className={cn('relative isolate px-3.5 py-1.5 rounded-full text-sm font-semibold', filter === f.id ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{filter === f.id && <TabPill id="pill-7-0" />}
             {f.label}{f.id === 'OPEN' && openCount ? ` (${openCount})` : f.id !== 'OPEN' && data?.counts[f.id] ? ` (${data.counts[f.id]})` : ''}
           </button>
         ))}
