@@ -188,6 +188,8 @@ model User {
   skillEvidence           SkillEvidence[]
   supportPlans            SupportPlan[]
   planBlocks              PlanBlock[]
+  eventRsvps              EventRsvp[]
+  lostFoundItems          LostFoundItem[]
   /// Smart planner settings: JSON { capMin, start, end, ical, sig, plannedFor }
   studyPrefs              String?
   internshipApplications  InternshipApplication[]
@@ -657,7 +659,7 @@ model StoredFile {
 
 // Admin-managed campus information: services (dining, transport…), useful links and campus events.
 model CampusItem {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   kind        String // SERVICE, LINK, EVENT
   category    String?
   title       String
@@ -666,12 +668,51 @@ model CampusItem {
   location    String?
   hours       String?
   startAt     DateTime?
+  /// Events (upgrade 7): seats; null means no limit. RSVPs and QR check-ins in event_rsvps
+  capacity    Int?
   createdById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  rsvps       EventRsvp[]
 
   @@index([kind])
   @@map("campus_items")
+}
+
+/// Campus super-app (upgrade 7): a student's place at an event (GOING, or WAITLIST when it's full)
+/// and when they checked in by scanning the event's rotating QR code
+model EventRsvp {
+  id          String     @id @default(cuid())
+  itemId      String
+  item        CampusItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String     @default("GOING") // GOING | WAITLIST
+  checkedInAt DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@unique([itemId, userId])
+  @@index([userId])
+  @@map("event_rsvps")
+}
+
+/// Campus super-app (upgrade 7): something lost or found on campus. Hidden after 30 days.
+model LostFoundItem {
+  id          String   @id @default(cuid())
+  kind        String // LOST | FOUND
+  title       String
+  description String?
+  photoUrl    String?
+  location    String?
+  reporterId  String
+  reporter    User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  status      String   @default("OPEN") // OPEN | RESOLVED | HIDDEN (by an admin)
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([status, expiresAt])
+  @@index([reporterId])
+  @@map("lost_found_items")
 }
 
 /// Per-person state of a message: starred, or hidden ("delete for me").
@@ -950,6 +991,8 @@ model Association {
   members     Int               @default(0)
   status      AssociationStatus @default(PENDING)
   budget      Float             @default(0)
+  /// The club's own space (upgrade 7): a Community with its members
+  communityId String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 

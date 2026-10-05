@@ -90,6 +90,15 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
   // Offline quizzes finished late, waiting for the teacher (Quizzes page): none in the sample
   [/^\/quizzes\/teacher\/offline-pending$/, () => ok([])],
+  // Campus super-app (upgrade 7): events with RSVPs, room status, lost & found
+  [/^\/api\/campus\/events$/, ({ db: d }) => ok(d.campusItems.filter((c) => c.kind === 'EVENT').map((c, i) => ({ ...c, capacity: (c as { capacity?: number }).capacity ?? null, going: 34 + i * 11, waiting: 0, mine: i === 0 && !d.teacherView ? { status: 'GOING', checkedInAt: null } : null })))],
+  [/^\/api\/campus\/events\/[^/]+\/attendees$/, ({ db: d }) => ok({ item: { id: 'sample', title: 'Event', capacity: null }, people: d.classmates.slice(0, 4).map((u, i) => ({ id: `sample-r${i}`, status: 'GOING', checkedInAt: i < 2 ? at(0, 18, i * 5) : null, createdAt: at(-2), user: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
+  [/^\/api\/campus\/events\/[^/]+\/code$/, () => ok({ code: 'e1.sample.0.sample-sample-sample-sa', expiresIn: 30 })],
+  [/^\/api\/campus\/rooms$/, () => ok({})],
+  [/^\/api\/campus\/lost-found$/, ({ db: d, q }) => ok([
+    { id: 'sample-lf1', kind: 'FOUND', title: 'Blue water bottle', description: 'Left in Lecture Hall 2 after the 10am class.', photoUrl: null, location: 'Lecture Hall 2 → now at the front desk', status: 'OPEN', createdAt: at(-1, 11), expiresAt: at(29), reporter: { id: d.classmates[0]?.id ?? 'sample-u1', name: d.classmates[0]?.name ?? 'Rohan', avatar: null } },
+    { id: 'sample-lf2', kind: 'LOST', title: 'Calculator (Casio fx-991)', description: 'Name sticker on the back.', photoUrl: null, location: 'Library, 2nd floor', status: 'OPEN', createdAt: at(-3, 15), expiresAt: at(27), reporter: { id: d.classmates[1]?.id ?? 'sample-u2', name: d.classmates[1]?.name ?? 'Ishita', avatar: null } },
+  ].filter((x) => !q.get('kind') || x.kind === q.get('kind')).filter(() => q.get('mine') !== '1'))],
   // Smart study planner: a week of study sessions around classes (Study planner)
   [/^\/api\/student\/smart-plan$/, ({ db: d }) => {
     const code = (i: number) => d.courses[i % Math.max(1, d.courses.length)]?.code ?? 'CS301';

@@ -6,6 +6,7 @@ import { diagnoseErrors, emailErrorDigest } from '@/server/errors';
 import { emailDue, parseEmailSchedule } from '@/lib/feature-switches';
 import { assessCourses } from '@/server/early-warning';
 import { sendWeeklyDigests } from '@/server/guardians';
+import { purgeLostFound } from '@/server/campus-life';
 
 // Daily job, run by the Worker's cron trigger (cloudflare/worker.ts → wrangler.jsonc "triggers").
 // It isn't reachable from outside: the scheduled handler calls it in-process with a random
@@ -56,6 +57,8 @@ async function enforceRetention() {
   const oldStatuses = await prisma.chatStatus.findMany({ where: { expiresAt: { lt: new Date(now) } }, select: { id: true, mediaUrl: true }, take: 300 });
   for (const st of oldStatuses) if (st.mediaUrl) await deleteFile(st.mediaUrl).catch(() => {});
   if (oldStatuses.length) await prisma.chatStatus.deleteMany({ where: { id: { in: oldStatuses.map((st) => st.id) } } });
+  // Lost & found posts (upgrade 7): hidden after 30 days, deleted with their photo 60 days later.
+  await purgeLostFound(now).catch(() => 0);
   // Class notes transcripts (upgrade 1) after 90 days; the study pack itself stays with the course.
   await prisma.classSession.updateMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) }, transcript: { not: null } }, data: { transcript: null } });
   // Voice tutor conversations (kept as text for the owner console) after 90 days.

@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { DoorOpen, Loader2, Plus, Trash2, Users, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, MONITORING_TABS } from '@/components/layout/SectionTabs';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { authedJson } from '@/lib/authed-fetch';
 import { AdminSearch, PersonCell, RoleBadge, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
@@ -60,6 +61,7 @@ export default function RoomBookingsPage() {
     <>
       <Topbar title="Room Bookings" subtitle="Campus spaces and everyone who has booked them"
         rightNode={<button onClick={() => setForm({ name: '', capacity: '', type: 'Classroom', amenities: '' })} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> Add room</button>} />
+      <SectionTabs tabs={MONITORING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}

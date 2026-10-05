@@ -345,7 +345,11 @@ export function buildSampleDb(me: Me) {
     { id: sid('ci'), kind: 'LINK', category: 'Academics', title: 'Library catalogue', description: null, url: 'https://openlibrary.org', location: null, hours: null, startAt: null },
     { id: sid('ci'), kind: 'LINK', category: 'Wellbeing', title: 'Counselling booking', description: null, url: 'https://en.wikipedia.org/wiki/Student_counselling', location: null, hours: null, startAt: null },
     { id: sid('ci'), kind: 'EVENT', category: null, title: 'Freshers’ Welcome Night', description: 'Music, food and clubs fair.', url: null, location: 'Main Quad', hours: null, startAt: at(6, 18) },
-    { id: sid('ci'), kind: 'EVENT', category: null, title: 'Guest lecture: Future of Energy', description: null, url: null, location: 'Lecture Hall 2', hours: null, startAt: at(11, 16) },
+    { id: sid('ci'), kind: 'EVENT', category: null, title: 'Guest lecture: Future of Energy', description: null, url: null, location: 'Lecture Hall 2', hours: null, startAt: at(11, 16), capacity: 120 },
+    // Dining menu (upgrade 7)
+    { id: sid('ci'), kind: 'MENU', category: 'Lunch', title: 'Central Cafeteria', description: 'Rajma chawal\nPaneer tikka wrap\nLentil soup (vegan)\nFruit salad', url: null, location: 'Student Centre', hours: null, startAt: at(0, 12) },
+    { id: sid('ci'), kind: 'MENU', category: 'Dinner', title: 'Central Cafeteria', description: 'Veg biryani\nGrilled chicken\nCucumber raita', url: null, location: 'Student Centre', hours: null, startAt: at(0, 12) },
+    { id: sid('ci'), kind: 'MENU', category: 'Lunch', title: 'Central Cafeteria', description: 'Chole bhature\nPasta primavera\nSalad bar', url: null, location: 'Student Centre', hours: null, startAt: at(1, 12) },
   ];
 
   const profile = {

@@ -1,3 +1,4 @@
+import { joinClubSpace } from '../campus-life';
 import { NotFoundException } from '../http';
 import { AssociationStatus } from '@prisma/client';
 import prisma from '@/lib/db';
@@ -40,6 +41,8 @@ export class AssociationsService {
       where: { id: associationId },
       data: { members: { increment: 1 } },
     });
+    // The club's own space (upgrade 7): new members join it too.
+    await joinClubSpace(associationId, userId).catch(() => {});
 
     return membership;
   }

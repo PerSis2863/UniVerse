@@ -1,7 +1,9 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
-import { Search, Users, ExternalLink, Globe } from 'lucide-react';
+import { Search, Users, ExternalLink, Globe, MessagesSquare } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { authedJson } from '@/lib/authed-fetch';
 import { m as motion } from 'framer-motion';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -18,6 +20,19 @@ export default function AssociationsPage() {
 
   const associations = associationsData || [];
   const membershipsSet = new Set(myMemberships?.map((m: any) => m.associationId) || []);
+  // A club's own space (upgrade 7): a Community with its members, made by the founder.
+  const router = useRouter();
+  const [making, setMaking] = useState<string | null>(null);
+  const mine = (id: string) => (myMemberships as { associationId: string; role: string; association?: { communityId?: string | null } }[] | undefined)?.find((m) => m.associationId === id);
+  const clubSpace = async (id: string) => {
+    setMaking(id);
+    try {
+      const r = await authedJson<{ created: boolean }>(`/api/campus/clubs/${id}/space`, { method: 'POST' });
+      if (r.created) toast.success('Club space created with your members. New members join it automatically.');
+      void mutateMemberships();
+      router.push('/student/inbox?space=communities');
+    } catch (e) { toast.error((e as Error).message); } finally { setMaking(null); }
+  };
 
   const filteredAssociations = associations.filter((club: any) => {
     const matchesSearch = club.name.toLowerCase().includes(searchQuery.toLowerCase()) || club.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -133,6 +148,11 @@ export default function AssociationsPage() {
                     <Users className="w-4 h-4" />
                     <span>{club.members ?? club._count?.memberships ?? 0}</span>
                   </div>
+                  {mine(club.id)?.association?.communityId ? (
+                    <button type="button" onClick={() => router.push('/student/inbox?space=communities')} className="text-sm font-semibold text-fuchsia-400 hover:text-fuchsia-300 inline-flex items-center gap-1"><MessagesSquare className="w-4 h-4" /> Club space</button>
+                  ) : mine(club.id)?.role === 'FOUNDER' && club.status === 'ACTIVE' ? (
+                    <button type="button" disabled={making === club.id} onClick={() => void clubSpace(club.id)} className="text-sm font-semibold text-fuchsia-400 hover:text-fuchsia-300 inline-flex items-center gap-1 disabled:opacity-50"><MessagesSquare className="w-4 h-4" /> Create club space</button>
+                  ) : null}
                   <button 
                     onClick={() => handleJoin(club.id, club.name)}
                     className="flex items-center gap-1.5 text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors disabled:opacity-50"
