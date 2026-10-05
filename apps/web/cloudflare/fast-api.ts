@@ -7,6 +7,7 @@
 // anything is unusual (no token, a new account, a suspended one, a demo admin writing, an error),
 // the call returns null and the Next.js route answers as before.
 import { jwtVerify, type JWTPayload } from 'jose';
+import { presenceOf } from '../src/lib/presence';
 import { ownerEmailList } from '../src/lib/owner-emails';
 import { jwksFor, keysMayHaveRotated } from '../src/server/jwks-cache';
 import { isSessionToken, verifySessionToken } from '../src/server/session-token';
@@ -119,7 +120,7 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
 async function incoming(me: Caller, db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT m.id, m.conversationId, m.metadata, m.createdAt, u.name AS senderName, u.avatar AS senderAvatar, c.isGroup, c.name AS conversationName
+      `SELECT m.id, m.conversationId, m.metadata, m.createdAt, m.senderId, u.name AS senderName, u.avatar AS senderAvatar, c.isGroup, c.name AS conversationName
        FROM messages m JOIN users u ON u.id = m.senderId JOIN conversations c ON c.id = m.conversationId
        WHERE m.type = 'CALL' AND m.deletedAt IS NULL AND m.senderId != ?1 AND m.createdAt >= ?2
          AND EXISTS (SELECT 1 FROM conversation_participants p WHERE p.conversationId = m.conversationId AND p.userId = ?1)
@@ -135,6 +136,19 @@ async function incoming(me: Caller, db: D1Database) {
     sender: { name: r.senderName, avatar: r.senderAvatar },
     conversation: { isGroup: !!r.isGroup, name: r.conversationName },
   }));
+  // In Focus (Busy, In class, Sleeping), calls show quietly unless the caller is a favourite
+  // (src/server/focus.ts). Only looked up when a call is actually ringing.
+  if (calls.length) {
+    const [meRes, favRes] = await db.batch<Record<string, string | null>>([
+      db.prepare('SELECT presence, statusUntil FROM users WHERE id = ?').bind(me.id),
+      db.prepare(`SELECT favoriteId FROM favorite_people WHERE userId = ?`).bind(me.id),
+    ]);
+    const mine = meRes.results[0];
+    const focus = !!mine && presenceOf({ presence: mine.presence, statusUntil: isoDate(mine.statusUntil) }).focus;
+    const favs = new Set(favRes.results.map((f) => f.favoriteId));
+    const senders = new Map(results.map((r) => [r.id as string, r.senderId as string]));
+    return json(calls.map((c) => ({ ...c, quiet: focus && !favs.has(senders.get(c.id as string) ?? '') })), 200, { 'Cache-Control': 'no-store' });
+  }
   return json(calls, 200, { 'Cache-Control': 'no-store' });
 }
 

@@ -9,6 +9,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { Loader2, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Video } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { ScheduledCalls } from '@/components/call/ScheduledCalls';
+import { Favorites } from '@/components/call/Favorites';
 import { MessagesTabs } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
@@ -53,6 +54,7 @@ export default function CallsPage() {
       <MessagesTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-5">
+          <Favorites />
           <ScheduledCalls role={role} />
           <div className="flex gap-2" role="tablist">
             {(['all', 'missed'] as const).map((f) => (

@@ -254,6 +254,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/calls$/, () => ok([])],
   [/^\/api\/chat\/status$/, () => ok([])],
   [/^\/api\/chat\/communities$/, () => ok([])],
+  [/^\/api\/calls\/favorites$/, () => ok([])],
   [/^\/api\/me\/presence$/, () => ok({ presence: 'auto', statusText: null, statusEmoji: null, statusUntil: null, effective: { presence: 'auto', hidden: false } })],
   [/^\/api\/chat\/search$/, () => ok([])],
   [/^\/api\/calls\/scheduled$/, ({ q }) => ok(q.get('rooms') ? { classes: [], groups: [], chats: [] } : [])],

@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import ErrorMonitorBootstrap from '@/components/ErrorMonitorBootstrap';
 import { MotionProvider } from '@/components/MotionProvider';
+import { CallHost } from '@/components/call/CallHost';
 import { UpdateNotifier } from '@/components/pwa/UpdateNotifier';
 import { Suspense } from 'react';
 import { NavProgress } from '@/components/layout/NavProgress';
@@ -83,7 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ErrorMonitorBootstrap />
           <UpdateNotifier />
           <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
-          <MotionProvider>{children}</MotionProvider>
+          <MotionProvider>{children}<CallHost /></MotionProvider>
           <Suspense fallback={null}><NavProgress /></Suspense>
           <Toaster 
             position="bottom-right"

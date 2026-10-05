@@ -9,6 +9,7 @@ import { pushService } from '@/server/services/push.service';
 import { linkScheduledCall } from '@/server/scheduled-calls';
 import { firstUrl, linkPreview } from '@/server/link-preview';
 import { channelSendCheck } from '@/server/communities';
+import { quietFor } from '@/server/focus';
 import { planLimits } from '@/lib/plan-limits';
 import type { Prisma } from '@prisma/client';
 import { pretranslate, storedTranslations } from '@/server/translate';
@@ -237,6 +238,8 @@ export async function POST(req: Request, { params }: Ctx) {
       data.attachmentMime = typeof b.attachmentMime === 'string' ? b.attachmentMime.slice(0, 120) : null;
       const meta: Record<string, unknown> = {};
       if (type === 'AUDIO' && Number.isFinite(b.durationSec)) meta.durationSec = Math.round(b.durationSec);
+      // A voice message left after a missed call (shown as Voicemail, transcribed straight away).
+      if (type === 'AUDIO' && b.voicemail === true) meta.voicemail = true;
       // View once (photos, videos, voice messages): each person can open it once (…/messages/[id]/opened).
       if (b.viewOnce === true && type !== 'FILE') Object.assign(meta, { viewOnce: true, openedBy: [] });
       if (Object.keys(meta).length) data.metadata = meta;
@@ -324,7 +327,10 @@ async function notifyAway(conversationId: string, from: { id: string; name: stri
   if (type === 'CALL') {
     // A call rings phones and computers with UniVerse closed (a push notification with Answer and
     // Decline), for everyone who has no tab open, muted or not: a call is worth an interruption.
-    const ring = everyone.map((m) => m.userId).filter((u) => u !== from.id && u !== systemUserId && !online?.has(u));
+    const candidates = everyone.map((m) => m.userId).filter((u) => u !== from.id && u !== systemUserId && !online?.has(u));
+    // Focus (Busy, In class, Sleeping): no ringing push, unless the caller is a favourite.
+    const quiet = await quietFor(candidates, from.id);
+    const ring = candidates.filter((u) => !quiet.has(u));
     if (ring.length) {
       await pushService.sendToMany(ring, {
         title: convo.isGroup ? `${from.name} · ${convo.name ?? 'Group call'}` : from.name,

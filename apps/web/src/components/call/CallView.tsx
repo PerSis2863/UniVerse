@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, Circle, Link2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
+import { Captions, CaptionsOff, ChevronDown, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
+import { haptic } from '@/lib/haptics';
+import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
@@ -95,8 +97,8 @@ const QUALITY: Record<Exclude<Quality, null>, { label: string; className: string
   poor: { label: 'Weak connection', className: 'text-rose-400' },
 };
 
-function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef }: {
-  id: string; name: string; stream: MediaStream | null; mirrored?: boolean; muted?: boolean; camera: boolean; me?: boolean; quality?: Quality; state?: string;
+function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent }: {
+  id: string; name: string; stream: MediaStream | null; mirrored?: boolean; muted?: boolean; camera: boolean; me?: boolean; quality?: Quality; state?: string; silent?: boolean;
   paused?: boolean; compact?: boolean; animateLayout?: boolean; onShow?: () => void; videoRef?: (v: HTMLVideoElement | null) => void;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
@@ -114,7 +116,7 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
       className={cn('relative overflow-hidden bg-zinc-900/80 aspect-video flex items-center justify-center ring-2 transition-shadow duration-200', compact ? 'rounded-2xl' : 'rounded-3xl', speaking ? 'ring-emerald-400/90 shadow-[0_0_40px_-8px_rgba(52,211,153,0.6)]' : 'ring-transparent')}
     >
       {/* Remote audio plays through this element too, so it stays even with the camera off. */}
-      <video ref={(v) => { ref.current = v; videoRef?.(v); }} data-peer={id} autoPlay playsInline muted={me} className={cn('w-full h-full object-cover transition-opacity duration-300', !hasVideo && 'opacity-0 absolute', mirrored && '-scale-x-100')} />
+      <video ref={(v) => { ref.current = v; videoRef?.(v); }} data-peer={id} autoPlay playsInline muted={me || silent} className={cn('w-full h-full object-cover transition-opacity duration-300', !hasVideo && 'opacity-0 absolute', mirrored && '-scale-x-100')} />
       {!hasVideo && (
         <motion.div animate={{ scale: speaking ? 1.08 : 1 }} transition={spring.snappy} className={cn('rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-bold shadow-xl shadow-fuchsia-500/20', compact ? 'w-12 h-12 text-lg' : 'w-24 h-24 text-3xl')}>
           {initials(name)}
@@ -145,7 +147,15 @@ function gridFor(count: number) {
   return 'grid-cols-3 sm:grid-cols-4 lg:grid-cols-6';
 }
 
-export function CallView({ callId, myName, wantKind, onLeave }: { callId: string; myName: string; wantKind?: 'audio' | 'video'; onLeave: (conversationId: string | null) => void }) {
+export function CallView({ callId, myName, wantKind, onLeave, held = false, heldIndex = 0, minimized = false, onMinimize, onExpand, onResume }: {
+  callId: string; myName: string; wantKind?: 'audio' | 'video'; onLeave: (conversationId: string | null) => void;
+  /** Another call is active: this one is on hold (your mic off, their audio silent). */
+  held?: boolean; heldIndex?: number;
+  /** Shrunk to a floating bar while you use the app (CallHost). */
+  minimized?: boolean; onMinimize?: () => void; onExpand?: () => void; onResume?: () => void;
+}) {
+  const [voicemail, setVoicemail] = useState<null | 'offer' | 'recording' | 'sending'>(null);
+  const vmRec = useRef<{ rec: MediaRecorder; stream: MediaStream; chunks: Blob[]; start: number } | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -313,8 +323,64 @@ export function CallView({ callId, myName, wantKind, onLeave }: { callId: string
       void authedJson(`/api/calls/${callId}/end`, { method: 'POST', body: JSON.stringify({ durationSec, answered: everJoined.current }), keepalive: true }).catch(() => {});
     }
     setPhase('ended');
+    // Nobody answered a one-to-one call: offer to leave a voice message (like voicemail).
+    if (why === 'No answer' && i?.oneToOne && i.conversationId) { setVoicemail('offer'); return; }
     setTimeout(() => onLeave(i?.conversationId ?? null), why ? 1400 : 250);
   }, [callId, onLeave, stopRecording]);
+
+  // "End & answer" (IncomingCall) ends this call through the call list.
+  useEffect(() => {
+    useCalls.getState().setEnder(callId, () => finish());
+    return () => useCalls.getState().setEnder(callId, null);
+  }, [callId, finish]);
+
+  // On hold: my microphone sends nothing and their audio is silent (Tile silent), until resumed.
+  useEffect(() => {
+    if (phase !== 'live') return;
+    const mic = localRef.current?.getAudioTracks()[0] ?? null;
+    const off = held || stateRef.current.muted;
+    if (mic) mic.enabled = !off;
+    void sfuRef.current?.replace('audio', off ? null : mic);
+    send({ type: 'state', ...stateRef.current, muted: off });
+  }, [held, phase]);  
+
+  const recordVoicemail = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((t) => MediaRecorder.isTypeSupported(t));
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      const chunks: Blob[] = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      rec.start();
+      vmRec.current = { rec, stream, chunks, start: Date.now() };
+      setVoicemail('recording');
+      haptic('tap');
+    } catch {
+      toast.error('Allow the microphone to leave a voice message.');
+    }
+  };
+  const sendVoicemail = async () => {
+    const v = vmRec.current;
+    const conversationId = infoRef.current?.conversationId;
+    if (!v || !conversationId) return;
+    setVoicemail('sending');
+    await new Promise<void>((resolve) => { v.rec.onstop = () => resolve(); v.rec.stop(); });
+    v.stream.getTracks().forEach((t) => t.stop());
+    try {
+      const type = v.rec.mimeType || 'audio/webm';
+      const file = new File([new Blob(v.chunks, { type })], `voicemail-${Date.now()}.${type.includes('mp4') ? 'm4a' : 'webm'}`, { type });
+      const { uploadChatFile } = await import('@/components/chat/chat-client');
+      const url = await uploadChatFile(file);
+      const msg = await authedJson<{ id: string }>(`/api/chat/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify({ type: 'AUDIO', attachmentUrl: url, attachmentName: file.name, attachmentSize: file.size, attachmentMime: type, durationSec: Math.max(1, Math.round((Date.now() - v.start) / 1000)), voicemail: true }) });
+      // Transcribed straight away, so they can read it at a glance (one AI request).
+      void authedJson(`/api/chat/messages/${msg.id}/transcribe`, { method: 'POST' }).catch(() => {});
+      toast.success('Voice message sent');
+    } catch (e) {
+      toast.error((e as Error).message || 'Couldn’t send the voice message.');
+    }
+    vmRec.current = null;
+    onLeave(conversationId);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -586,6 +652,7 @@ export function CallView({ callId, myName, wantKind, onLeave }: { callId: string
 
   // ── Controls ──────────────────────────────────────────────────────────────────────────────
   const toggleMute = () => {
+    haptic('tap');
     const next = !muted;
     localRef.current?.getAudioTracks().forEach((t) => { t.enabled = !next; });
     // Through the SFU a muted mic sends nothing at all.
@@ -596,6 +663,7 @@ export function CallView({ callId, myName, wantKind, onLeave }: { callId: string
   };
 
   const toggleCamera = () => {
+    haptic('tap');
     const next = !camera;
     localRef.current?.getVideoTracks().forEach((t) => { t.enabled = next; });
     if (!screenRef.current) void sfuRef.current?.replace('video', next ? localRef.current?.getVideoTracks()[0] ?? null : null);
@@ -678,7 +746,29 @@ export function CallView({ callId, myName, wantKind, onLeave }: { callId: string
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
 
   return (
-    <motion.div ref={rootRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="fixed inset-0 z-[300] text-white flex flex-col bg-[radial-gradient(ellipse_at_top,#1e1b4b_0%,#0b0e1a_55%)]">
+    <>
+    {/* Minimised: a floating bar (like the iPhone's), the call keeps going while you use the app. */}
+    <AnimatePresence>
+      {minimized && !held && phase !== 'error' && (
+        <motion.div key="mini" initial={{ y: 40, opacity: 0, scale: 0.96 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0, scale: 0.96 }} transition={spring.smooth}
+          className="fixed left-1/2 -translate-x-1/2 z-[290] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-6 flex items-center gap-2 pl-2 pr-1.5 py-1.5 rounded-full bg-[#11152a]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 text-white max-w-[min(94vw,26rem)]" role="region" aria-label="Call in progress">
+          <button type="button" onClick={onExpand} className="flex items-center gap-2 min-w-0 pl-1" aria-label="Back to the call">
+            <span className="relative flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" /><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" /></span>
+            <span className="min-w-0 text-left"><span className="block text-sm font-semibold truncate">{info?.title ?? 'Call'}</span><span className="block text-[11px] text-zinc-400 tabular-nums">{phase === 'live' && !waiting ? clock(seconds) : status}</span></span>
+          </button>
+          <button type="button" onClick={toggleMute} aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', muted ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>{muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}</button>
+          <button type="button" onClick={() => finish()} aria-label="End call" className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-rose-600 hover:bg-rose-500"><PhoneOff className="w-4 h-4" /></button>
+        </motion.div>
+      )}
+      {held && phase === 'live' && (
+        <motion.button key="held" type="button" onClick={onResume} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} transition={spring.smooth}
+          style={{ marginBottom: heldIndex * 48 }}
+          className="fixed left-4 z-[289] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-20 flex items-center gap-2 px-3 py-2 rounded-full bg-amber-500/95 text-amber-950 text-xs font-semibold shadow-xl" aria-label={`On hold: ${info?.title ?? 'call'}. Resume`}>
+          <Pause className="w-3.5 h-3.5" /> On hold · {info?.title ?? 'Call'} · Resume
+        </motion.button>
+      )}
+    </AnimatePresence>
+    <motion.div ref={rootRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className={cn('fixed inset-0 z-[300] text-white flex flex-col bg-[radial-gradient(ellipse_at_top,#1e1b4b_0%,#0b0e1a_55%)]', (minimized || held) && 'hidden')}>
       <motion.header initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={spring.smooth} className="px-5 pt-[calc(env(safe-area-inset-top)+0.9rem)] pb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold truncate text-lg flex items-center gap-2">
@@ -697,6 +787,7 @@ export function CallView({ callId, myName, wantKind, onLeave }: { callId: string
         </div>
         <div className="flex items-center gap-1">
           {sfuQuality && <span className={cn('p-2', QUALITY[sfuQuality].className)} title={QUALITY[sfuQuality].label} aria-label={QUALITY[sfuQuality].label}><Signal className="w-4 h-4" /></span>}
+          {onMinimize && phase !== 'error' && phase !== 'ended' && <button type="button" onClick={onMinimize} aria-label="Minimise the call" title="Keep using UniVerse during the call" className="p-2.5 rounded-full hover:bg-white/10"><ChevronDown className="w-5 h-5" /></button>}
           {info && info.type !== 'chat' && <button type="button" onClick={copyInvite} aria-label="Copy call link" title="Copy call link" className="p-2.5 rounded-full hover:bg-white/10"><Link2 className="w-5 h-5" /></button>}
           <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Full screen'} className="p-2.5 rounded-full hover:bg-white/10 hidden sm:block">{fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}</button>
           <span className="text-xs text-zinc-400 ml-1">{count} in call</span>
@@ -713,7 +804,7 @@ export function CallView({ callId, myName, wantKind, onLeave }: { callId: string
           <AnimatePresence initial={false}>
             <Tile key="me" id="me" name={myName} stream={sharing && screen ? screen : local} mirrored={!sharing} muted={muted} camera={kind === 'video' && (camera || sharing)} me compact={compact} animateLayout={count <= 12} />
             {list.map((r) => (
-              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} muted={r.muted} camera={kind === 'video' && (r.camera || r.sharing)} quality={r.quality} state={r.state}
+              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={kind === 'video' && (r.camera || r.sharing)} quality={r.quality} state={r.state}
                 paused={r.paused} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12}
                 videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
             ))}
@@ -760,6 +851,27 @@ export function CallView({ callId, myName, wantKind, onLeave }: { callId: string
           <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => finish()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
         </div>
       </motion.footer>
+      {/* Voicemail: nobody answered, leave a voice message instead. */}
+      <AnimatePresence>
+        {voicemail && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={spring.smooth} className="absolute inset-x-0 bottom-0 p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] bg-[#0b0e1a]/95 backdrop-blur-xl border-t border-white/10 flex flex-col items-center gap-3 text-center">
+            <p className="font-semibold">{voicemail === 'recording' ? 'Recording your voice message…' : voicemail === 'sending' ? 'Sending…' : `${info?.title ?? 'They'} didn’t answer`}</p>
+            {voicemail === 'offer' && <p className="text-sm text-zinc-400">Leave a voice message? They’ll get it in the chat with a transcript.</p>}
+            <div className="flex gap-3">
+              {voicemail === 'offer' && <>
+                <button type="button" onClick={() => onLeave(infoRef.current?.conversationId ?? null)} className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">Not now</button>
+                <button type="button" onClick={() => void recordVoicemail()} className="px-5 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-sm font-bold inline-flex items-center gap-2"><Mic className="w-4 h-4" /> Record</button>
+              </>}
+              {voicemail === 'recording' && <>
+                <button type="button" onClick={() => { vmRec.current?.rec.stop(); vmRec.current?.stream.getTracks().forEach((t) => t.stop()); vmRec.current = null; onLeave(infoRef.current?.conversationId ?? null); }} className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">Discard</button>
+                <button type="button" onClick={() => void sendVoicemail()} className="px-5 py-2.5 rounded-full bg-indigo-500 hover:bg-indigo-400 text-sm font-bold inline-flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" /> Send</button>
+              </>}
+              {voicemail === 'sending' && <Loader2 className="w-6 h-6 animate-spin" />}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
+    </>
   );
 }

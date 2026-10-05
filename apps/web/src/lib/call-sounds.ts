@@ -42,5 +42,8 @@ function pattern(tones: { freq: number[]; on: number; off: number }, volume: num
 /** What the caller hears while it rings: 425 Hz, 1 s on, 3 s off (the familiar European ringback). */
 export const ringback = () => pattern({ freq: [425], on: 1000, off: 3000 }, 0.06);
 
-/** Incoming call: two soft tones, repeating. */
-export const ringtone = () => pattern({ freq: [660, 880], on: 900, off: 1400 }, 0.05);
+/** Incoming call: two soft tones, repeating (a short beep instead while already on a call). */
+export const ringtone = (waiting = false) => (waiting
+  // Call waiting: two short soft beeps every few seconds, so the current call isn't drowned out.
+  ? pattern({ freq: [440], on: 180, off: 2800 }, 0.03)
+  : pattern({ freq: [660, 880], on: 900, off: 1400 }, 0.05));

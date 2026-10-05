@@ -1,24 +1,18 @@
 'use client';
 
-import { use } from 'react';
-import dynamic from 'next/dynamic';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuthStore } from '@/store/auth';
+import { use, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useCalls } from '@/store/calls';
 
-// A UniVerse voice or video call, full screen (src/components/call/CallView.tsx). Group and
-// class rooms take ?kind=audio|video; chat calls know their own kind.
-const CallView = dynamic(() => import('@/components/call/CallView').then((m) => m.CallView), { ssr: false });
-
+// A UniVerse voice or video call. The call itself runs in CallHost (root layout), so it keeps going
+// while you use the rest of the app (minimised to a floating bar). This page just opens it full
+// screen. Group and class rooms take ?kind=audio|video; chat calls know their own kind.
 export default function CallPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const kind = useSearchParams().get('kind');
-  const user = useAuthStore((s) => s.user);
-  const leave = (conversationId: string | null) => {
-    const inbox = user?.role === 'ADMIN' ? '/admin/inbox' : user?.role === 'TEACHER' ? '/teacher/inbox' : '/student/inbox';
-    if (conversationId) router.replace(`${inbox}?c=${conversationId}`);
-    else if (window.history.length > 1) router.back();
-    else router.replace(inbox);
-  };
-  return <CallView callId={id} myName={user?.name ?? 'Me'} wantKind={kind === 'audio' ? 'audio' : kind === 'video' ? 'video' : undefined} onLeave={leave} />;
+  useEffect(() => {
+    useCalls.getState().open(id, kind === 'audio' ? 'audio' : kind === 'video' ? 'video' : undefined);
+  }, [id, kind]);
+  // The call's own screen covers this; the backdrop shows for the moment it takes to load.
+  return <div className="fixed inset-0 bg-[#0b0e1a]" aria-hidden />;
 }
