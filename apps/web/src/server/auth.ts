@@ -5,6 +5,7 @@ import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
 import { ForbiddenException, UnauthorizedException } from './http';
 import { isSessionToken, verifySessionToken } from './session-token';
+import { campusForEmail } from './campus-network';
 
 // Turns a bearer token into a platform user (ported from the old NestJS API).
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
@@ -224,6 +225,8 @@ async function resolveUserUncached(token: string): Promise<User> {
         name: decoded.name || decoded.email?.split('@')[0] || 'User',
         role: 'STUDENT',
         avatar: decoded.picture || null,
+        // Campus network: a proven university email puts them in that campus (src/server/campus-network.ts).
+        campusId: decoded.email_verified === true ? await campusForEmail(decoded.email).catch(() => null) : null,
       },
     });
   }

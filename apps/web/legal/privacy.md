@@ -1,6 +1,6 @@
 # UniVerse Impact - Global Privacy Policy
 
-**Last Updated: October 4, 2026**
+**Last Updated: October 5, 2026**
 
 Universe Impact, located at Rue de la Patouillerie, 44700 Orvault (Nantes), France ("UniVerse Impact," "we," "our," or "us"), is deeply committed to protecting your privacy and ensuring the security of your personal data globally. This Privacy Policy outlines our practices regarding the collection, use, sharing, and safeguarding of personal information processed through the UniVerse Impact platform at universeimpact.com (the "Platform").
 
@@ -41,6 +41,7 @@ We collect and process the following categories of personal data globally:
 - Grades, quiz submissions, and calculated scores.
 - Timetable scheduling, elective preferences, and major change requests.
 - Uploaded academic documents, certificates, and assignments.
+- **Campus network:** if your Institution is part of a network of campuses on UniVerse, the campus you belong to (worked out from your email address's domain, or set by an administrator), whether you let people at partner campuses find you in search (off unless you turn it on in Settings → Privacy), and, if you go on an exchange, the host campus and dates.
 
 - **Learning platform (LMS) sign-in:** if your Institution connects UniVerse to its learning platform (e.g. Moodle or Canvas via LTI 1.3), that platform sends us your LMS user identifier, name, email address, role (student or teacher) and the course you opened, so we can sign you in and link the course.
 
@@ -125,6 +126,8 @@ To deliver our services, we may share your data with the following categories of
 ### 5.1 Your Educational Institution
 
 Administrators, teachers, and authorized staff at your Institution possess access to your academic, attendance, grade, financial, and relevant profile data as necessary to conduct institutional operations and fulfill educational mandates.
+
+In a campus network, partner campuses see only counts (for example how many students and courses a campus has), never people's details. When you join a course shared by a partner campus, its teacher and classmates see you as they would any classmate. People at partner campuses can find you in search only if you turn that on, and communities are visible across the network only when their moderators open them.
 
 ### 5.2 NGOs, Companies, and External Partners
 

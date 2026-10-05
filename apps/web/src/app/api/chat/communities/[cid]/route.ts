@@ -4,7 +4,8 @@ import { BadRequestException } from '@/server/http';
 
 type Ctx = { params: Promise<{ cid: string }> };
 
-// GET: members and roles. PATCH: name, description, colour, new invite link, or { delete: true }.
+// GET: members and roles. PATCH: name, description, colour, new invite link, open to everyone
+// ({ discoverable }), or { delete: true }.
 // POST { action: 'add' | 'member' | 'channel' | 'leave', ... }.
 export const GET = (req: Request, { params }: Ctx) => route(req, async (user) => getCommunity(user, (await params).cid));
 export const PATCH = (req: Request, { params }: Ctx) => route(req, async (user) => updateCommunity(user, (await params).cid, await req.json().catch(() => ({}))));

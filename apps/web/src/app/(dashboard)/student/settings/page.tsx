@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
+import { NetworkVisibility } from '@/components/settings/NetworkVisibility';
 import { api } from '@/lib/api';
 import { Bell, Mail, Shield, User, Users, Globe, Check, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
@@ -294,6 +295,7 @@ export default function StudentSettings() {
                         </div>
                         <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
                       </Link>
+                      <NetworkVisibility />
                       <AccountSecurity />
                       <DownloadMyData />
                       <DeleteAccount />

@@ -1,14 +1,18 @@
 import { ForbiddenException, NotFoundException, BadRequestException } from '../http';
 import prisma from '@/lib/db';
+import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-network';
 
 export class ElectivesService {
   async getAvailableElectives(studentId: string) {
     // Return courses that the student hasn't requested or enrolled in
+    // In a campus network: their campus's courses and those shared with it (src/server/campus-network.ts).
+    const campuses = await studentCampuses(studentId);
     return prisma.course.findMany({
       where: {
         status: 'PUBLISHED',
         enrollments: { none: { studentId } },
         electiveRequests: { none: { studentId } },
+        AND: [courseWhereFor(campuses)],
       },
       include: {
         teacher: { select: { id: true, name: true } },
@@ -21,6 +25,8 @@ export class ElectivesService {
   }
 
   async selectElective(studentId: string, data: any) {
+    if (typeof data?.courseId !== 'string') throw new BadRequestException('Pick a course.');
+    await assertCanJoinCourse(data.courseId, studentId);
     return prisma.electiveRequest.upsert({
       where: { studentId_courseId_semesterId: { studentId, courseId: data.courseId, semesterId: data.semesterId ?? '' } },
       create: { courseId: data.courseId, semesterId: data.semesterId ?? '', note: typeof data.note === 'string' ? data.note.slice(0, 500) : undefined, studentId },

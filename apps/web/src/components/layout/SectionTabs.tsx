@@ -89,6 +89,18 @@ export const ADMIN_INSIGHT_TABS: SectionTab[] = [
   { href: '/admin/impact-metrics', label: 'Impact' },
 ];
 
+// Global Impact → Partner institutions (admin), with the campus network (upgrade 9)
+export const PARTNER_TABS: SectionTab[] = [
+  { href: '/admin/partnerships', label: 'Partner institutions' },
+  { href: '/admin/network', label: 'Campus network' },
+];
+
+// Global collaboration → Inter-university research (teacher), with the campus network (upgrade 9)
+export const RESEARCH_TABS: SectionTab[] = [
+  { href: '/teacher/collaborations', label: 'Research' },
+  { href: '/teacher/network', label: 'Campus network' },
+];
+
 export const LIFE_TABS: SectionTab[] = [
   { href: '/student/life/associations', label: 'Associations' },
   { href: '/student/life/events', label: 'Events' },

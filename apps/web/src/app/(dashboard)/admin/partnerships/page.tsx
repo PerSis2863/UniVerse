@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { PlusCircle, CheckCircle, XCircle, ExternalLink, Loader2, Handshake, Trash2, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, PARTNER_TABS } from '@/components/layout/SectionTabs';
 import { api } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { safeHref } from '@/lib/safe-href';
@@ -149,6 +150,7 @@ export default function AdminPartnershipsPage() {
           </button>
         }
       />
+      <SectionTabs tabs={PARTNER_TABS} />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
