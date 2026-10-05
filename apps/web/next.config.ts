@@ -33,6 +33,9 @@ const withPWA = withPWAInit({
   // Off: with it, the page downloaded the home page again in the background whenever its address
   // became "/" (every visitor: one extra Worker request).
   dynamicStartUrl: false,
+  // Our own service worker code (src/worker/index.ts): push notifications, with Answer and Decline
+  // on incoming calls. Bundled into public/worker-<hash>.js and loaded by sw.js.
+  customWorkerSrc: 'src/worker',
   workboxOptions: {
     // A new version waits instead of taking over open tabs: taking over deletes the old version's
     // files that those tabs still need (the next page they opened came up blank). UpdateNotifier

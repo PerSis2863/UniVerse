@@ -56,7 +56,7 @@ export default function CorporatePartnersPage() {
                 <motion.div key={c.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
                   className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-5 flex flex-col gap-3">
                   <div className="flex items-center gap-3">
-                    {c.logoUrl ? <img src={c.logoUrl} alt="" className="w-12 h-12 rounded-xl object-cover bg-white" /> : <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-black">{c.name.slice(0, 2).toUpperCase()}</div>}
+                    {c.logoUrl ? <img loading="lazy" decoding="async" src={c.logoUrl} alt="" className="w-12 h-12 rounded-xl object-cover bg-white" /> : <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-black">{c.name.slice(0, 2).toUpperCase()}</div>}
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-zinc-900 dark:text-white truncate">{c.name}</h3>
                       <p className="text-xs text-zinc-500 inline-flex items-center gap-1">{c.sector ?? 'Company'}{c.country && <><MapPin className="w-3 h-3 ml-1" />{c.country}</>}</p>

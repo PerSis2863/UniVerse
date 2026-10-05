@@ -4,6 +4,8 @@ import { getSessionUser } from '@/lib/server-auth';
 import { later, notify } from '@/server/email';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
 import { deliver } from '@/server/realtime';
+import { pushService } from '@/server/services/push.service';
+import { linkScheduledCall } from '@/server/scheduled-calls';
 import { pretranslate, storedTranslations } from '@/server/translate';
 import { recordServerError } from '@/server/errors';
 import { alertOwner, chatMuted, featureOff, watchWordsIn } from '@/server/moderation';
@@ -215,10 +217,12 @@ export async function POST(req: Request, { params }: Ctx) {
     prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: new Date(), typingUntil: null } }),
   ]);
   const [out] = await decorate([serializeMessage(message)], user.id);
+  // Started from a scheduled call: everyone else's Join now opens this call.
+  if (data.type === 'CALL' && typeof b.scheduledId === 'string') await linkScheduledCall(b.scheduledId, id, message.id);
   later(async () => {
     // Members with auto-translate get the message already translated (a few seconds at most).
     if (data.type === 'TEXT' && String(data.body ?? '').trim()) await pretranslate(id, message.id, String(data.body), user.id).catch(() => {});
-    await notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? ''));
+    await notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? ''), message.id);
   });
   if (data.type === 'TEXT' && String(data.body ?? '').includes('@')) later(() => notifyMentions(id, user, String(data.body)));
   // Watch words (owner console → Live chats) alert the owner.
@@ -238,7 +242,7 @@ const PREVIEW: Record<string, string> = { IMAGE: '📷 Photo', FILE: '📎 File'
 // Pushes the message to everyone's open tabs. Members who don't have UniVerse open get a
 // notification (and an email if they have them on), at most once an hour per chat, so a busy chat
 // doesn't flood their inbox.
-async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string) {
+async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string, messageId: string) {
   const everyone = await prisma.conversationParticipant.findMany({ where: { conversationId }, select: { userId: true } });
   const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId, ...(type === 'CALL' ? { call: true } : {}) });
   const now = new Date();
@@ -256,7 +260,22 @@ async function notifyAway(conversationId: string, from: { id: string; name: stri
   ]);
   // With live updates, "away" means no open tab; without them, no activity for a few minutes.
   const members = online ? allMembers.filter((m) => !online.has(m.userId)) : allMembers;
-  if (!convo || members.length === 0) return;
+  if (!convo) return;
+  if (type === 'CALL') {
+    // A call rings phones and computers with UniVerse closed (a push notification with Answer and
+    // Decline), for everyone who has no tab open, muted or not: a call is worth an interruption.
+    const ring = everyone.map((m) => m.userId).filter((u) => u !== from.id && u !== systemUserId && !online?.has(u));
+    if (ring.length) {
+      await pushService.sendToMany(ring, {
+        title: convo.isGroup ? `${from.name} · ${convo.name ?? 'Group call'}` : from.name,
+        body: `Incoming ${body === 'Video call' ? 'video' : 'voice'} call`,
+        url: `/call/${messageId}`,
+        tag: messageId,
+        call: true,
+      }).catch(() => 0);
+    }
+  }
+  if (members.length === 0) return;
   const recent = await prisma.notification.findMany({
     where: { userId: { in: members.map((m) => m.userId) }, type: 'chat', link: { endsWith: `?c=${conversationId}` }, createdAt: { gt: new Date(now.getTime() - EMAIL_GAP_MS) } },
     select: { userId: true },
@@ -264,15 +283,27 @@ async function notifyAway(conversationId: string, from: { id: string; name: stri
   const skip = new Set(recent.map((r) => r.userId));
   const text = (type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
   const title = convo.isGroup ? `New messages in ${convo.name ?? 'a group chat'}` : `New message from ${from.name}`;
+  const fresh = members.filter((m) => !skip.has(m.userId));
+  const inbox = (role: string) => `/${role === 'ADMIN' ? 'admin' : role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`;
+  if (type !== 'CALL' && fresh.length) {
+    // Same once-an-hour rule as the in-app notification; the tag folds a chat's pushes into one.
+    const byRole = new Map<string, string[]>();
+    for (const m of fresh) byRole.set(m.user.role, [...(byRole.get(m.user.role) ?? []), m.userId]);
+    await Promise.all([...byRole].map(([role, ids]) => pushService.sendToMany(ids, {
+      title,
+      body: convo.isGroup ? `${from.name}: ${text}` : text,
+      url: inbox(role),
+      tag: `chat-${conversationId}`,
+    }).catch(() => 0)));
+  }
   await Promise.all(
-    members
-      .filter((m) => !skip.has(m.userId))
+    fresh
       .map((m) =>
         notify(m.userId, {
           type: 'chat',
           title,
           body: convo.isGroup ? `${from.name}: ${text}` : text,
-          link: `/${m.user.role === 'ADMIN' ? 'admin' : m.user.role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`,
+          link: inbox(m.user.role),
         }),
       ),
   );

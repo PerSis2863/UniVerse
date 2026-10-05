@@ -50,7 +50,8 @@ function initials(name: string) {
 
 export function GroupChat({ group, onClose }: { group: { id: string | number; name: string; members: number }; onClose: () => void }) {
   const key = `/api/groups/${group.id}/posts`;
-  const refreshInterval = useLiveInterval(10_000, 10_000);
+  // Live updates refresh this when anyone posts (src/server/groups-live.ts); poll only without them.
+  const refreshInterval = useLiveInterval(10_000, 0);
   const { data, error, isLoading, mutate } = useSWR<PostsResponse>(key, authedJson, {
     refreshInterval,
     revalidateOnFocus: true,

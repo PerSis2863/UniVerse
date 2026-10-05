@@ -39,7 +39,7 @@ export default function InternshipHistoryPage() {
                 <motion.div key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }}
                   className="flex items-center gap-4 p-4 rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03]">
                   {p.internship.company.logoUrl ? (
-                    <img src={p.internship.company.logoUrl} alt="" className="w-11 h-11 rounded-xl object-cover bg-white" />
+                    <img loading="lazy" decoding="async" src={p.internship.company.logoUrl} alt="" className="w-11 h-11 rounded-xl object-cover bg-white" />
                   ) : (
                     <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-black">{p.internship.company.name.slice(0, 1)}</div>
                   )}

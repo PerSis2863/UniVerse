@@ -8,7 +8,9 @@ import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Loader2, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Video } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { ScheduledCalls } from '@/components/call/ScheduledCalls';
 import { authedJson } from '@/lib/authed-fetch';
+import { useLiveInterval } from '@/lib/realtime-client';
 import { useAuthStore } from '@/store/auth';
 import { fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -25,7 +27,9 @@ const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.f
 export default function CallsPage() {
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
-  const { data, isLoading, error } = useSWR<CallRow[]>('/api/calls', authedJson, { refreshInterval: 30_000 });
+  // Live updates refresh this when a call starts or ends; poll only without them.
+  const poll = useLiveInterval(30_000, 0);
+  const { data, isLoading, error } = useSWR<CallRow[]>('/api/calls', authedJson, { refreshInterval: poll });
   const [filter, setFilter] = useState<'all' | 'missed'>('all');
   const [busy, setBusy] = useState<string | null>(null);
   const inbox = role === 'ADMIN' ? '/admin/inbox' : role === 'TEACHER' ? '/teacher/inbox' : '/student/inbox';
@@ -44,9 +48,10 @@ export default function CallsPage() {
   const rows = (data ?? []).filter((c) => filter === 'all' || (!c.outgoing && !c.answered && !c.live));
   return (
     <>
-      <Topbar title="Calls" subtitle="Your voice and video calls from the last 30 days" />
+      <Topbar title="Calls" subtitle="Scheduled calls, and your calls from the last 30 days" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-5">
+          <ScheduledCalls role={role} />
           <div className="flex gap-2" role="tablist">
             {(['all', 'missed'] as const).map((f) => (
               <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={cn('relative px-4 py-2 rounded-xl text-sm font-semibold transition-colors', filter === f ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]')}>

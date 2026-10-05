@@ -150,7 +150,7 @@ export default function BoardsPage() {
                   <Link href={`/boards/${b.id}`} className="block">
                     <div className="aspect-[16/9] bg-zinc-50 dark:bg-white/[0.03] flex items-center justify-center overflow-hidden border-b border-zinc-100 dark:border-white/[0.05]">
                       {b.thumbnail
-                        ? <img src={b.thumbnail} alt="" className="w-full h-full object-contain" />
+                        ? <img loading="lazy" decoding="async" src={b.thumbnail} alt="" className="w-full h-full object-contain" />
                         : <PenTool className="w-10 h-10 text-zinc-300 dark:text-zinc-700" />}
                     </div>
                     <div className="p-4">

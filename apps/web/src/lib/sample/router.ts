@@ -252,6 +252,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/student\/guardians$/, () => ok({ enabled: false, contacts: [] })],
   [/^\/api\/code$/, () => ok({ courses: [], rooms: [] })],
   [/^\/api\/calls$/, () => ok([])],
+  [/^\/api\/calls\/scheduled$/, ({ q }) => ok(q.get('rooms') ? { classes: [], groups: [], chats: [] } : [])],
   [/^\/api\/live$/, ({ q }) => ok(q.get('courseId') ? { enrolled: 0, polls: [] } : [])],
   [/^\/impact\/blockchain-credentials\/pending$/, ({ db: d }) => ok(d.pendingCredentials)],
   [/^\/collaborations\/projects$/, ({ db: d }) => ok(d.projects)],

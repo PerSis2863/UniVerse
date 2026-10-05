@@ -255,7 +255,7 @@ const OWNER_EMAILS = () => ownerEmailList(process.env.SUPER_ADMIN_EMAILS);
 async function usersMe(me: Caller, db: D1Database): Promise<Response | null> {
   if (OWNER_EMAILS().includes(me.email.trim().toLowerCase())) return null;
   const [userRes, studentRes, teacherRes, appRes] = await db.batch<Record<string, string | number | null>>([
-    db.prepare('SELECT id, name, email, role, status, avatar, phone, googleId, emailNotifications, termsVersion, termsAcceptedAt, onboardedAt, createdAt, updatedAt FROM users WHERE id = ?').bind(me.id),
+    db.prepare('SELECT id, name, email, role, status, avatar, phone, googleId, emailNotifications, termsVersion, termsAcceptedAt, onboardedAt, tourDoneAt, createdAt, updatedAt FROM users WHERE id = ?').bind(me.id),
     db.prepare('SELECT id, userId, studentId, department, year, gpa, createdAt, updatedAt FROM student_profiles WHERE userId = ?').bind(me.id),
     db.prepare('SELECT id, userId, employeeId, department, designation, createdAt, updatedAt FROM teacher_profiles WHERE userId = ?').bind(me.id),
     db.prepare('SELECT id, status, source, requestedRole, adminNote, submittedAt, reviewedAt FROM role_applications WHERE userId = ? ORDER BY createdAt DESC LIMIT 1').bind(me.id),
@@ -265,7 +265,7 @@ async function usersMe(me: Caller, db: D1Database): Promise<Response | null> {
   const dates = <T extends Record<string, unknown>>(row: T | undefined, keys: string[]) =>
     row ? Object.fromEntries(Object.entries(row).map(([k, v]) => [k, keys.includes(k) ? isoDate(v as string | null) : v])) : null;
   return json({
-    ...dates(u, ['termsAcceptedAt', 'onboardedAt', 'createdAt', 'updatedAt']),
+    ...dates(u, ['termsAcceptedAt', 'onboardedAt', 'tourDoneAt', 'createdAt', 'updatedAt']),
     emailNotifications: bool(u.emailNotifications),
     studentProfile: dates(studentRes.results[0], ['createdAt', 'updatedAt']),
     teacherProfile: dates(teacherRes.results[0], ['createdAt', 'updatedAt']),

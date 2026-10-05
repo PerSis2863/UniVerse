@@ -144,7 +144,7 @@ export default function GroupsPage() {
   
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const activityPoll = useLiveInterval(60_000, 60_000);
+  const activityPoll = useLiveInterval(60_000, 0); // pushed live when posts change (src/server/groups-live.ts)
   const { data: activityData } = useSWR<ActivityItem[]>('/api/groups/activity?limit=30', authedJson, { refreshInterval: activityPoll });
   const activity = Array.isArray(activityData) ? activityData : [];
 

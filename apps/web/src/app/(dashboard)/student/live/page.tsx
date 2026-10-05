@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { CheckCircle2, Loader2, Radio } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
+import { useLiveInterval } from '@/lib/realtime-client';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { PollResults } from '@/components/live/PollResults';
 import { cn } from '@/lib/utils';
@@ -16,8 +17,12 @@ const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-
 
 /** Live polls from your teachers during class. */
 export default function StudentLivePage() {
+  // Polls arrive over live updates; re-check while one is open (in case this phone is past the
+  // live-push cap), and only without live updates otherwise.
+  const openPoll = useLiveInterval(5000, 15_000);
+  const idle = useLiveInterval(30_000, 0);
   const { data, error, isLoading, mutate } = useSWR<Poll[]>('/api/live', authedJson, {
-    refreshInterval: (d) => (d?.some((p) => p.status === 'OPEN') ? 5000 : 30000),
+    refreshInterval: (d) => (d?.some((p) => p.status === 'OPEN') ? openPoll : idle),
   });
   const [sending, setSending] = useState<string | null>(null);
 

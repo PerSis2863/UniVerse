@@ -8,12 +8,12 @@ import { isSampleMode } from '@/lib/sample-mode';
 // Records what people do in the app for the owner console: each page they open and each button,
 // link or tab they press, with the time (the Privacy Policy's "pages visited, feature utilization
 // and interaction timestamps", kept 90 days). Only the control's label is kept, never what anyone
-// types. Events are sent in batches (one request a minute at most while something happened, and
-// when the tab is hidden), so this costs very few requests.
+// types. Events are sent in batches (one request every 5 minutes at most while something happened,
+// when 50 have queued, and when the tab is hidden or closed), so this costs very few requests.
 
 type Ev = { k: 'VIEW' | 'CLICK'; l?: string; p: string; t: number };
 
-const FLUSH_MS = 60_000;
+const FLUSH_MS = 5 * 60_000;
 const MAX_QUEUE = 50;
 const CONTROLS = 'button, a[href], [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="switch"], [role="checkbox"], summary, select, input[type="checkbox"], input[type="radio"], input[type="submit"]';
 

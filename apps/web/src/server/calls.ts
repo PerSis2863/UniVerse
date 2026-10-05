@@ -4,6 +4,7 @@ import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, HttpException, NotFoundException } from './http';
+import { planLimits } from '@/lib/plan-limits';
 import { publishChat } from './realtime';
 
 // UniVerse's own voice and video calls. Audio and video go straight between browsers (WebRTC,
@@ -16,6 +17,9 @@ import { publishChat } from './realtime';
 //   c_<course id>  a class's standing room; its teacher and enrolled students may join.
 // STUN finds a direct route on most networks; strict ones (some campus and office Wi-Fi) need a
 // TURN relay, used when TURN_KEY_ID and TURN_KEY_API_TOKEN (Cloudflare Realtime TURN) are set.
+// Bigger calls: with CALLS_APP_ID and CALLS_APP_SECRET (Cloudflare Realtime SFU, 1,000 GB a month
+// free) every call except one-to-one goes through the SFU instead, so a class of 30+ fits; each
+// person sends their audio and video once and receives only the video they look at.
 
 const CALL_HOURS = 4;
 
@@ -58,6 +62,8 @@ export interface CallInfo {
   oneToOne: boolean;
   startedBy: string | null;
   ended: boolean;
+  /** The class's teacher (or an admin): may record the call. */
+  host: boolean;
 }
 
 export async function callAccess(callId: string, user: SessionUser, wantKind?: unknown): Promise<CallInfo> {
@@ -65,12 +71,12 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
   if (callId.startsWith('g_')) {
     const group = await prisma.group.findUnique({ where: { id: callId.slice(2) }, select: { name: true, members: { where: { userId: user.id }, select: { id: true } } } });
     if (!group || (!group.members.length && user.role !== 'ADMIN')) throw new NotFoundException('This group call isn’t for one of your groups.');
-    return { kind, type: 'group', title: group.name, conversationId: null, oneToOne: false, startedBy: null, ended: false };
+    return { kind, type: 'group', title: group.name, conversationId: null, oneToOne: false, startedBy: null, ended: false, host: false };
   }
   if (callId.startsWith('c_')) {
     const a = await courseAccess(callId.slice(2), user);
     if (!a) throw new NotFoundException('This class call isn’t for one of your classes.');
-    return { kind, type: 'class', title: `${a.course.code} · ${a.course.name}`, conversationId: null, oneToOne: false, startedBy: null, ended: false };
+    return { kind, type: 'class', title: `${a.course.code} · ${a.course.name}`, conversationId: null, oneToOne: false, startedBy: null, ended: false, host: a.canManage };
   }
   const msg = await prisma.message.findUnique({
     where: { id: callId },
@@ -93,6 +99,7 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
     oneToOne: !msg.conversation.isGroup,
     startedBy: msg.sender.name,
     ended,
+    host: false,
   };
 }
 
@@ -117,14 +124,20 @@ async function iceServers(): Promise<RTCIceServer[]> {
   }
 }
 
+export const sfuEnabled = () => !!process.env.CALLS_APP_ID?.trim() && !!process.env.CALLS_APP_SECRET?.trim();
+// The SFU is reachable from almost anywhere (TCP and port 443 included), so it needs no TURN.
+const SFU_ICE: RTCIceServer[] = [{ urls: 'stun:stun.cloudflare.com:3478' }];
+
 /** The address for the call's live connection (one use, within 60 seconds) and the ICE servers. */
 export async function callTicket(callId: string, user: SessionUser, wantKind?: unknown) {
   const info = await callAccess(callId, user, wantKind);
   if (info.ended) throw new HttpException('This call has ended. Start a new one from the chat.', 410);
-  const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name }) });
+  const sfu = sfuEnabled() && !info.oneToOne;
+  const max = sfu ? planLimits().callPeers : 6;
+  const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host: info.host, max }) });
   if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
   const { ticket } = (await res.json()) as { ticket: string };
-  return { ...info, path: `/call-live?call=${encodeURIComponent(callId)}&ticket=${encodeURIComponent(ticket)}`, iceServers: await iceServers() };
+  return { ...info, sfu, max, path: `/call-live?call=${encodeURIComponent(callId)}&ticket=${encodeURIComponent(ticket)}`, iceServers: sfu ? SFU_ICE : await iceServers() };
 }
 
 async function chatCall(callId: string, user: SessionUser) {
