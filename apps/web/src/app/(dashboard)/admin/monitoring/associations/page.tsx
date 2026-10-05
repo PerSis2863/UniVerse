@@ -11,6 +11,7 @@ import { isSampleMode } from '@/lib/sample-mode';
 import { toast } from 'sonner';
 import { ManageAssociationModal } from './ManageAssociationModal';
 import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 interface Association {
   id: string; name: string; category: string; description: string; members: number; status: string; budget: number;
@@ -97,7 +98,7 @@ export default function AdminAssociationsMonitoringPage() {
               <div className="flex flex-wrap gap-1">
                 {STATUS_FILTERS.map((s) => (
                   <button key={s} onClick={() => setStatusFilter(s)} aria-pressed={statusFilter === s}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${statusFilter === s ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+                    className={`relative isolate px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${statusFilter === s ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>{statusFilter === s && <TabPill id="pill-1-0" />}
                     {s === 'ALL' ? 'All' : humanize(s)}{s === 'PENDING' && pendingCount > 0 ? ` (${pendingCount})` : ''}
                   </button>
                 ))}

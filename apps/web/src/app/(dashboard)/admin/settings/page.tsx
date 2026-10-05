@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { useState } from 'react';
+import { TabPanel, TabPill } from '@/components/ui/Glide';
 import { EmailNotificationsSwitch } from '@/components/notifications/EmailNotificationsSwitch';
 import { RecentSignIns } from '@/components/security/RecentSignIns';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
@@ -74,20 +75,20 @@ export default function AdminSettings() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
+                aria-current={activeTab === tab.id ? 'page' : undefined}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative isolate ${
                   activeTab === tab.id ? 'text-indigo-400' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
-                {activeTab === tab.id && (
-                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500 rounded-t-full" />
-                )}
+                {activeTab === tab.id && <TabPill id="settings-tab" variant="line" />}
               </button>
             ))}
           </div>
 
           {/* Form Content */}
+          <TabPanel k={activeTab}>
           <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8">
             
             {activeTab === 'general' && (
@@ -162,6 +163,7 @@ export default function AdminSettings() {
             )}
 
           </div>
+          </TabPanel>
         </div>
       </div>
     </>

@@ -7,6 +7,7 @@ import { BookOpen, Brain, Check, ChevronLeft, FileText, GraduationCap, Layers, L
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 interface CourseItem { id: string; code: string; name: string; emoji: string | null; materials: number; readySources: number }
 interface CoursesResp { courses: CourseItem[]; cards: { due: number; total: number }; canManage: boolean }
@@ -71,7 +72,8 @@ export function TutorStudio() {
       </div>
       <div role="tablist" className="flex gap-1 p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] mb-5 overflow-x-auto">
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn('flex-1 min-w-[4.75rem] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold', tab === t.id ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500')}>
+          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn('relative isolate flex-1 min-w-[4.75rem] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors', tab === t.id ? 'text-zinc-900 dark:text-white' : 'text-zinc-500')}>
+            {tab === t.id && <TabPill id="tutor-tab" variant="soft" />}
             <t.icon className="w-4 h-4" /> {t.label}
           </button>
         ))}

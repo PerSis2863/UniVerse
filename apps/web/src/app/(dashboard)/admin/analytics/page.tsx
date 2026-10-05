@@ -10,6 +10,7 @@ import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs
 import { PremiumGate } from '@/components/billing/PremiumGate';
 import { authedJson } from '@/lib/authed-fetch';
 import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 interface Analytics {
   totals: { members: number; activeMembers: number; courses: number; enrollments: number; impactPoints: number };
@@ -181,7 +182,8 @@ function PeoplePanel({ data }: { data: Analytics }) {
         <div className="flex gap-1 overflow-x-auto">
           {tabs.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} aria-pressed={tab === t.id}
-              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${tab === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+              className={`relative isolate shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${tab === t.id ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+              {tab === t.id && <TabPill id="analytics-tab" />}
               <t.icon className="w-3.5 h-3.5" />{t.label} <span className="opacity-70">{t.count}</span>
             </button>
           ))}

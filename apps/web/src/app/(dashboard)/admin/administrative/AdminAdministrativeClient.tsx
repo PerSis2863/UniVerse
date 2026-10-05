@@ -13,6 +13,7 @@ import { safeHref } from '@/lib/safe-href';
 import { useAuthStore } from '@/store/auth';
 import { getTransactions } from '@/app/actions/transaction';
 import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 const TABS = [
   { id: 'documents', label: 'School Documents', icon: FileText },
@@ -293,12 +294,13 @@ export default function AdminAdministrativeClient() {
               <button
                 key={tab.id}
                 onClick={() => switchTab(tab.id)}
-                className={`flex items-center gap-2 py-4 px-2 border-b-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`relative isolate flex items-center gap-2 py-4 px-2 border-b-2 border-transparent text-sm font-medium whitespace-nowrap transition-colors ${
                   isActive
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700'
+                    ? 'text-indigo-600 dark:text-indigo-400'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-300'
                 }`}
               >
+                {isActive && <TabPill id="administrative-tab" variant="line" className="inset-x-0 -bottom-0.5" />}
                 <Icon className="w-4 h-4" />
                 {tab.label}
               </button>

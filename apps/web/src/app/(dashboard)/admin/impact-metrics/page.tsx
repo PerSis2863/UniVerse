@@ -10,6 +10,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { SearchBox, RoleChip, StatusChip, fmtDate, fmtAgo, ROLE_LABEL } from '@/components/impact/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 interface ImpactData {
   kpis: { students: number; ngos: number; activeProjects: number; impactPoints: number };
@@ -206,7 +207,8 @@ export default function ImpactMetricsPage() {
                 .filter((r) => r.role !== 'INDUSTRY_MENTOR' || r.total > 0)
                 .map((r) => (
                   <button key={r.role} role="tab" aria-selected={tab === r.role} onClick={() => setTab(r.role)}
-                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${tab === r.role ? 'bg-indigo-600 text-white border-indigo-600' : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                    className={`relative isolate shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${tab === r.role ? 'text-white border-transparent' : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                    {tab === r.role && <TabPill id="impact-role-tab" />}
                     {ROLE_LABEL[r.role] ?? r.role}s {people ? `(${people.q ? `${nf.format(r.matched)} of ${nf.format(r.total)}` : nf.format(r.total)})` : ''}
                   </button>
                 ))}

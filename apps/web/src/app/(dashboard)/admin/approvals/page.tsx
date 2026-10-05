@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { InviteDialog } from './invite';
 import { InvitationsPanel } from './invitations';
+import { TabPill } from '@/components/ui/Glide';
 
 // Admin → Approvals: review applications to become a teacher or NGO representative.
 // Approving grants the role; declining and "ask for more info" send the applicant your message.
@@ -122,7 +123,8 @@ export default function ApprovalsPage() {
             <div className="flex flex-wrap gap-1">
               {TABS.map((t) => (
                 <button key={t.id} onClick={() => switchTab(t.id)}
-                  className={cn('shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', tab === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+                  className={cn('relative isolate shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', tab === t.id ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+                  {tab === t.id && <TabPill id="approvals-tab" />}
                   {t.label}
                   {!!data?.counts[t.id] && <span className={cn('ml-1.5', t.id === 'PENDING' && tab !== t.id && 'text-indigo-500')}>{data.counts[t.id]}</span>}
                 </button>

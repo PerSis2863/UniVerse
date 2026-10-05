@@ -6,6 +6,7 @@ import { BookmarkPlus, GraduationCap, ArrowRight, CheckCircle2, Loader2 } from '
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { TabPill } from '@/components/ui/Glide';
 
 export default function StudentChoices() {
   const [activeTab, setActiveTab] = useState('electives');
@@ -117,27 +118,23 @@ export default function StudentChoices() {
           <div className="flex space-x-1 border-b border-zinc-200 dark:border-zinc-800">
             <button
               onClick={() => setActiveTab('electives')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative isolate ${
                 activeTab === 'electives' ? 'text-indigo-500 dark:text-indigo-400' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
               }`}
             >
               <BookmarkPlus className="w-4 h-4" />
               Elective Registration
-              {activeTab === 'electives' && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500 rounded-t-full" />
-              )}
+              {activeTab === 'electives' && <TabPill id="choices-tab" variant="line" />}
             </button>
             <button
               onClick={() => setActiveTab('major')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative isolate ${
                 activeTab === 'major' ? 'text-indigo-500 dark:text-indigo-400' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
               }`}
             >
               <GraduationCap className="w-4 h-4" />
               Major / Minor Declaration
-              {activeTab === 'major' && (
-                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500 rounded-t-full" />
-              )}
+              {activeTab === 'major' && <TabPill id="choices-tab" variant="line" />}
             </button>
           </div>
 

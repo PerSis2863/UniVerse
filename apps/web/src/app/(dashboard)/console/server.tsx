@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
+import { ConsoleSkeleton } from './shared';
 import { EmailScheduleCard } from './email-schedule';
 import { AiModelsCard } from './ai-models';
 import { useActivePoll } from '@/lib/realtime-client';
@@ -69,7 +70,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
   const { data, mutate } = useSWR<ServerData>('/owner/server', fetcher, { refreshInterval: useActivePoll(60_000) });
   const [section, setSection] = useState<Section>(readSection);
   const pick = (id: Section) => { setSection(id); try { localStorage.setItem(SECTION_KEY, id); } catch { /* storage unavailable */ } };
-  if (!data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
+  if (!data) return <ConsoleSkeleton />;
   const h = data.health;
   const mode = MODES.find((m) => m.id === data.control.mode) ?? MODES[0];
   const tiles: { label: string; value: number | string; sub?: string; icon: typeof Users; to: 'people' | 'errors' | 'deletions' | 'activity'; alert?: boolean }[] = [
