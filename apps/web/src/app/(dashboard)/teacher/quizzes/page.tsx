@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { QuizManager } from '@/components/quizzes/QuizManager';
+import { OfflineQuizReview } from '@/components/quizzes/OfflineQuizReview';
 
 export default function TeacherQuizzes() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,7 +67,8 @@ export default function TeacherQuizzes() {
     <>
       <Topbar title="Quizzes & Assessments" subtitle="Manage course evaluations" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
-        
+        <OfflineQuizReview />
+
         {/* Actions */}
         <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
           <div className="flex gap-4 items-center w-full md:w-auto">

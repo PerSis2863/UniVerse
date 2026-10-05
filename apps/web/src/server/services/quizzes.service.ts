@@ -2,6 +2,9 @@ import { evidenceFromQuiz, safely } from '../skill-evidence';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '../http';
 import type { CreateQuizDto, UpdateQuizDto } from '../dto';
 import prisma from '@/lib/db';
+import { clientIdOf, offlineTime, tellTeacher } from '../offline';
+import { publish } from '../realtime';
+import { pushService } from './push.service';
 
 export class QuizzesService {
   /** Teachers may only manage quizzes for their own courses; admins may manage any. */
@@ -46,7 +49,7 @@ export class QuizzesService {
     await this.assertQuizOwner(id, user);
     return prisma.quizSubmission.findMany({
       where: { quizId: id },
-      select: { id: true, score: true, maxScore: true, submittedAt: true, student: { select: { id: true, name: true, email: true } } },
+      select: { id: true, score: true, maxScore: true, submittedAt: true, offlineAt: true, offlineStartedAt: true, offlineStatus: true, student: { select: { id: true, name: true, email: true } } },
       orderBy: { submittedAt: 'desc' },
       take: 1000,
     });
@@ -131,18 +134,31 @@ export class QuizzesService {
     });
   }
 
-  async submitQuiz(studentId: string, quizId: string, answers: any) {
+  /**
+   * `offline` (upgrade 4): the quiz was taken with no connection and sent later from the device's
+   * outbox. A retry with the same clientId gets the saved result back. Finished before the due date
+   * it counts as on time; finished after it, it's kept but waits for the teacher to accept it.
+   */
+  async submitQuiz(studentId: string, quizId: string, answers: any, offline?: { clientId?: unknown; startedAt?: unknown; finishedAt?: unknown }) {
+    const clientId = clientIdOf(offline?.clientId);
+    const finishedAt = offlineTime(offline?.finishedAt);
+    const startedAt = offlineTime(offline?.startedAt);
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
-      include: { questions: true },
+      include: { questions: true, course: { select: { teacherId: true, code: true } } },
     });
-    
+
     if (!quiz) throw new NotFoundException('Quiz not found');
-    if (quiz.status !== 'PUBLISHED') throw new BadRequestException('This quiz is not open for submissions');
-    if (quiz.dueDate && quiz.dueDate.getTime() < Date.now()) throw new BadRequestException('The due date for this quiz has passed');
+    const existing = await prisma.quizSubmission.findUnique({ where: { quizId_studentId: { quizId, studentId } } });
+    if (existing && clientId && existing.clientId === clientId) return existing; // the outbox sent it twice
+    if (quiz.status !== 'PUBLISHED' && !(finishedAt && quiz.status === 'CLOSED')) throw new BadRequestException('This quiz is not open for submissions');
+    const late = !!quiz.dueDate && quiz.dueDate.getTime() < Date.now();
+    if (late && !finishedAt) throw new BadRequestException('The due date for this quiz has passed');
+    // Closed meanwhile, or finished after the due date: kept, but the teacher decides.
+    const offlineStatus = finishedAt && (quiz.status === 'CLOSED' || (late && finishedAt > quiz.dueDate!)) ? 'LATE' : null;
     const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId: quiz.courseId } } });
     if (!enrolled) throw new ForbiddenException('You are not enrolled in this course');
-    if (await prisma.quizSubmission.findUnique({ where: { quizId_studentId: { quizId, studentId } } })) {
+    if (existing) {
       throw new ConflictException('You have already submitted this quiz');
     }
 
@@ -163,10 +179,44 @@ export class QuizzesService {
         answers,
         score,
         maxScore,
+        ...(finishedAt ? { clientId, offlineAt: finishedAt, offlineStartedAt: startedAt && startedAt <= finishedAt ? startedAt : null, offlineStatus } : clientId ? { clientId } : {}),
       }
     });
+    if (offlineStatus && quiz.course.teacherId) {
+      const who = await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } });
+      await tellTeacher(quiz.course.teacherId, 'A quiz arrived after its due date', `${who?.name ?? 'A student'} took “${quiz.title}” (${quiz.course.code}) offline and finished after the due date (or after the quiz closed). Accept or remove it in Quizzes.`, '/teacher/quizzes').catch(() => {});
+    }
     // Proof of learning (upgrade 2): a passed quiz is evidence for the course's skills.
-    await safely(evidenceFromQuiz({ studentId, submissionId: submission.id, quizId, score, maxScore }));
+    if (!offlineStatus) await safely(evidenceFromQuiz({ studentId, submissionId: submission.id, quizId, score, maxScore }));
     return submission;
+  }
+
+  /** Offline quizzes finished after their due date, waiting for the teacher (upgrade 4). */
+  async offlinePending(user: { id: string; role: string }) {
+    return prisma.quizSubmission.findMany({
+      where: { offlineStatus: 'LATE', quiz: user.role === 'ADMIN' ? {} : { course: { teacherId: user.id } } },
+      select: { id: true, score: true, maxScore: true, submittedAt: true, offlineAt: true, offlineStartedAt: true, student: { select: { id: true, name: true } }, quiz: { select: { id: true, title: true, dueDate: true, course: { select: { code: true } } } } },
+      orderBy: { submittedAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  /** The teacher accepts a late offline quiz (it counts) or removes it (the student is told). */
+  async decideOffline(submissionId: string, accept: boolean, user: { id: string; role: string }) {
+    const sub = await prisma.quizSubmission.findUnique({ where: { id: submissionId }, select: { id: true, quizId: true, studentId: true, score: true, maxScore: true, offlineStatus: true, quiz: { select: { title: true, courseId: true } } } });
+    if (!sub || sub.offlineStatus !== 'LATE') throw new NotFoundException('Nothing to decide here.');
+    await this.assertCourseOwner(sub.quiz.courseId, user);
+    if (accept) {
+      await prisma.quizSubmission.update({ where: { id: sub.id }, data: { offlineStatus: 'ACCEPTED' } });
+      await safely(evidenceFromQuiz({ studentId: sub.studentId, submissionId: sub.id, quizId: sub.quizId, score: sub.score ?? 0, maxScore: sub.maxScore ?? 0 }));
+    } else {
+      await prisma.quizSubmission.delete({ where: { id: sub.id } });
+    }
+    const title = accept ? 'Your offline quiz was accepted' : 'Your offline quiz wasn’t accepted';
+    const body = accept ? `“${sub.quiz.title}” counts, even though it arrived after the due date.` : `“${sub.quiz.title}” was finished after the due date. Talk to your teacher if you think this is a mistake.`;
+    await prisma.notification.create({ data: { userId: sub.studentId, title, body, type: accept ? 'success' : 'info', link: '/student/quizzes' } });
+    publish([sub.studentId], { type: 'notification' });
+    await pushService.sendToMany([sub.studentId], { title, body, url: '/student/quizzes', tag: `offline-quiz-${sub.id}` }).catch(() => 0);
+    return { ok: true };
   }
 }

@@ -24,6 +24,7 @@ interface Submission {
   score: number | null;
   feedback: string | null;
   submittedAt: string;
+  offlineAt?: string | null;
   returnedAt: string | null;
   student: { id: string; name: string; email: string };
   similarity?: { peer: { name: string; percent: number } | null; material: { title: string; percent: number } | null };
@@ -145,7 +146,7 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{s.student.name}</span>
-                      <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{data.dueDate && new Date(s.submittedAt) > new Date(data.dueDate) ? ' · late' : ''}</span>
+                      <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{data.dueDate && new Date(s.offlineAt ?? s.submittedAt) > new Date(data.dueDate) ? ' · late' : ''}{s.offlineAt ? ' · offline' : ''}</span>
                     </span>
                     {(s.similarity?.peer || s.similarity?.material) && <Copy className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Similarity to check" />}
                     <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', STATUS[s.status].style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}` : STATUS[s.status].label}</span>
@@ -220,7 +221,7 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
       <div className={`${card} p-5`}>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-semibold text-zinc-900 dark:text-white">{sub.student.name}</h3>
-          <span className="text-xs text-zinc-500">{sub.text.trim().split(/\s+/).length} words · handed in {new Date(sub.submittedAt).toLocaleString()}</span>
+          <span className="text-xs text-zinc-500">{sub.text.trim().split(/\s+/).length} words · {sub.offlineAt ? <>written offline, handed in on the device {new Date(sub.offlineAt).toLocaleString()} · arrived {new Date(sub.submittedAt).toLocaleString()}</> : <>handed in {new Date(sub.submittedAt).toLocaleString()}</>}</span>
         </div>
         <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words max-h-96 overflow-y-auto">{sub.text}</p>
       </div>

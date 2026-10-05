@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { Bell, BookOpen, Calendar, CloudOff, Download, FileText, Layers, Loader2, RefreshCw, Trash2, WifiOff } from 'lucide-react';
+import { Bell, BookOpen, BrainCircuit, Calendar, CloudOff, Download, FileText, Layers, Loader2, PenLine, RefreshCw, Trash2, WifiOff } from 'lucide-react';
+import { OfflineAssignment, OfflineQuiz, OutboxList } from '@/components/offline/OfflineWork';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, STUDENT_COURSE_TABS } from '@/components/layout/SectionTabs';
 import { confirmDialog } from '@/components/ui/Dialogs';
@@ -47,7 +48,8 @@ export default function OfflinePage() {
       <SectionTabs tabs={STUDENT_COURSE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-5">
-          {!online && <p className="rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm p-3 flex items-center gap-2"><WifiOff className="w-4 h-4" /> You&apos;re offline. Saved courses still open.</p>}
+          {!online && <p className="rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm p-3 flex items-center gap-2"><WifiOff className="w-4 h-4" /> You&apos;re offline. Saved courses still open, and quizzes and assignments you finish are sent when you&apos;re back.</p>}
+          <OutboxList />
           {!supported ? (
             <p className={`${card} p-6 text-sm text-zinc-500`}>This browser can&apos;t save courses for offline use.</p>
           ) : packs === null ? (
@@ -56,7 +58,7 @@ export default function OfflinePage() {
             <div className={`${card} p-8 text-center space-y-2`}>
               <CloudOff className="w-10 h-10 text-zinc-400 mx-auto" />
               <p className="font-semibold text-zinc-900 dark:text-white">No courses saved yet</p>
-              <p className="text-sm text-zinc-500">Open a course in Blackboard and tap <b>Save offline</b>. Its announcements, materials, reading list and your flashcards are kept on this device.</p>
+              <p className="text-sm text-zinc-500">Open a course in Blackboard and tap <b>Save offline</b>. Its announcements, materials, reading list, your flashcards, and open quizzes and assignments are kept on this device.</p>
             </div>
           ) : open ? (
             <PackView pack={open} onBack={() => setOpen(null)} />
@@ -92,9 +94,13 @@ function StorageNote() {
 }
 
 function PackView({ pack, onBack }: { pack: Pack; onBack: () => void }) {
-  const [tab, setTab] = useState<'news' | 'files' | 'reading' | 'cards' | 'calendar'>('files');
+  const [tab, setTab] = useState<'news' | 'files' | 'reading' | 'cards' | 'calendar' | 'quizzes' | 'work'>('files');
+  const quizzes = pack.quizzes ?? [];
+  const work = pack.assignments ?? [];
   const tabs = [
     { id: 'files', label: 'Materials', icon: FileText, n: pack.files.length },
+    { id: 'quizzes', label: 'Quizzes', icon: BrainCircuit, n: quizzes.length },
+    { id: 'work', label: 'Assignments', icon: PenLine, n: work.length },
     { id: 'news', label: 'Announcements', icon: Bell, n: pack.board.announcements.length },
     { id: 'cards', label: 'Flashcards', icon: Layers, n: pack.cards.length },
     { id: 'reading', label: 'Reading list', icon: BookOpen, n: pack.board.readings.length },
@@ -127,6 +133,8 @@ function PackView({ pack, onBack }: { pack: Pack; onBack: () => void }) {
             {f.saved ? <Download className="w-4 h-4 text-emerald-500" aria-label="Saved" /> : <CloudOff className="w-4 h-4 text-zinc-400" aria-label="Not saved" />}
           </button>
         )) : <p className="p-4 text-sm text-zinc-500">No materials.</p>)}
+        {tab === 'quizzes' && (quizzes.length ? quizzes.map((q) => <OfflineQuiz key={q.id} quiz={q} />) : <p className="p-4 text-sm text-zinc-500">{pack.quizzes ? 'No open quizzes when this course was saved.' : 'Update this course (↻) to take its open quizzes offline.'}</p>)}
+        {tab === 'work' && (work.length ? work.map((a) => <OfflineAssignment key={a.id} assignment={a} />) : <p className="p-4 text-sm text-zinc-500">{pack.assignments ? 'No open assignments when this course was saved.' : 'Update this course (↻) to write its open assignments offline.'}</p>)}
         {tab === 'news' && (pack.board.announcements.length ? pack.board.announcements.map((a) => (
           <article key={a.id} className="p-4"><h3 className="font-medium text-zinc-900 dark:text-white">{a.title}</h3><p className="text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-line mt-1">{a.body}</p><p className="text-xs text-zinc-500 mt-1">{new Date(a.createdAt).toLocaleDateString()} · {a.author.name}</p></article>
         )) : <p className="p-4 text-sm text-zinc-500">No announcements.</p>)}

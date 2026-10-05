@@ -12,6 +12,7 @@ import { later, notify, notifyMany } from './email';
 import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { recordStudy } from './streaks';
+import { offlineTime } from './offline';
 import { closestPeers, signalsFor, type Signals } from './similarity';
 import { planLimits } from '@/lib/plan-limits';
 
@@ -233,7 +234,11 @@ export async function deleteAssignment(assignmentId: string, user: SessionUser, 
 export async function submitAnswer(assignmentId: string, user: SessionUser, body: Record<string, unknown>, req: Request) {
   const { assignment, canManage } = await access(assignmentId, user);
   if (canManage || user.role !== 'STUDENT') throw new ForbiddenException('Only students in this course can submit.');
-  if (assignment.status !== 'OPEN') throw new BadRequestException('This assignment is closed. Ask your teacher if you still need to hand it in.');
+  // Written offline (upgrade 4) and sent later from the device's outbox: it still counts if the
+  // teacher closed the assignment after the student handed it in on their device.
+  const offlineAt = offlineTime(body.offlineAt);
+  const closedAfter = !!offlineAt && offlineAt < assignment.updatedAt;
+  if (assignment.status !== 'OPEN' && !closedAfter) throw new BadRequestException('This assignment is closed. Ask your teacher if you still need to hand it in.');
   const text = typeof body.text === 'string' ? body.text.replace(/\r\n/g, '\n').trim() : '';
   if (text.length < 20) throw new BadRequestException('Your answer is too short to submit.');
   if (text.length > MAX_TEXT) throw new BadRequestException(`Answers can be up to ${MAX_TEXT.toLocaleString()} characters.`);
@@ -256,13 +261,13 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-    create: { assignmentId, studentId: user.id, text, signals, styleSignals },
-    update: { text, signals, styleSignals, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
+    create: { assignmentId, studentId: user.id, text, signals, styleSignals, offlineAt },
+    update: { text, signals, styleSignals, offlineAt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
     select: { id: true, submittedAt: true },
   });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON
   recordStudy(user.id, req);
-  return { ...saved, late: !!assignment.dueDate && saved.submittedAt > assignment.dueDate };
+  return { ...saved, late: !!assignment.dueDate && (offlineAt ?? saved.submittedAt) > assignment.dueDate };
 }
 
 // ─── AI draft ───────────────────────────────────────────────────────────────────────────────────

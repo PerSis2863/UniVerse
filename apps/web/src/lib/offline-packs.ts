@@ -3,7 +3,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 
 // Offline course packs: a course's announcements, materials (the files themselves), reading
-// list, calendar and the student's flashcards, saved on the device with the Cache Storage API
+// list, calendar, the student's flashcards, and open quizzes and assignments to do offline, saved on the device with the Cache Storage API
 // so they open with no connection (/student/offline). Nothing is sent anywhere: this only
 // downloads what the student can already see. Files that can't be downloaded (links to other
 // sites, very large files) stay "needs a connection".
@@ -26,6 +26,37 @@ export interface Pack {
   };
   files: PackFile[];
   cards: { id: string; front: string; back: string }[];
+  /** Open quizzes to take offline: questions and options only, never the answers (upgrade 4). */
+  quizzes?: PackQuiz[];
+  /** Open assignments to write offline (upgrade 4). */
+  assignments?: PackAssignment[];
+}
+export interface PackQuiz { id: string; title: string; description: string | null; dueDate: string | null; timeLimit: number | null; questions: { id: string; question: string; options: string[] }[] }
+export interface PackAssignment { id: string; title: string; instructions: string; dueDate: string | null; maxScore: number; rubric: { id: string; criterion: string; points: number }[] }
+
+const MAX_OFFLINE_ITEMS = 10;
+
+/** The course's open quizzes the student hasn't taken, and open assignments not yet graded. */
+async function openWork(courseId: string): Promise<{ quizzes: PackQuiz[]; assignments: PackAssignment[] }> {
+  type QuizRow = { id: string; courseId: string; status: string; completed: boolean };
+  type AssignmentRow = { id: string; status: string; mine: { status: string } | null };
+  const [quizRows, assignmentRows] = await Promise.all([
+    authedJson<QuizRow[]>('/api/core/quizzes/student/my-quizzes').catch(() => [] as QuizRow[]),
+    authedJson<AssignmentRow[]>(`/api/assignments?courseId=${encodeURIComponent(courseId)}`).catch(() => [] as AssignmentRow[]),
+  ]);
+  const quizIds = (Array.isArray(quizRows) ? quizRows : []).filter((q) => q.courseId === courseId && q.status === 'PUBLISHED' && !q.completed).slice(0, MAX_OFFLINE_ITEMS).map((q) => q.id);
+  const assignmentIds = (Array.isArray(assignmentRows) ? assignmentRows : []).filter((a) => a.status === 'OPEN' && a.mine?.status !== 'RETURNED').slice(0, MAX_OFFLINE_ITEMS).map((a) => a.id);
+  const [quizzes, assignments] = await Promise.all([
+    Promise.all(quizIds.map((id) => authedJson<PackQuiz & { questions: { id: string; question: string; options: string[] }[] }>(`/api/core/quizzes/${encodeURIComponent(id)}`).then((q) => ({
+      id: q.id, title: q.title, description: q.description ?? null, dueDate: q.dueDate ?? null, timeLimit: q.timeLimit ?? null,
+      questions: (q.questions ?? []).map(({ id: qid, question, options }) => ({ id: qid, question, options: Array.isArray(options) ? options : [] })),
+    })).catch(() => null))),
+    Promise.all(assignmentIds.map((id) => authedJson<PackAssignment>(`/api/assignments/${encodeURIComponent(id)}`).then((a) => ({
+      id: a.id, title: a.title, instructions: a.instructions, dueDate: a.dueDate ?? null, maxScore: a.maxScore,
+      rubric: (a.rubric ?? []).map(({ id: rid, criterion, points }) => ({ id: rid, criterion, points })),
+    })).catch(() => null))),
+  ]);
+  return { quizzes: quizzes.filter((q): q is PackQuiz => !!q), assignments: assignments.filter((a): a is PackAssignment => !!a) };
 }
 
 export const offlineSupported = () => typeof window !== 'undefined' && 'caches' in window;
@@ -61,9 +92,10 @@ async function writeIndex(c: Cache, list: PackSummary[]) {
 /** Downloads a course for offline use. `onProgress` gets (done, total) as files download. */
 export async function savePack(courseId: string, onProgress?: (done: number, total: number) => void): Promise<PackSummary> {
   if (!offlineSupported()) throw new Error('This browser can’t save courses for offline use.');
-  const [board, cards] = await Promise.all([
+  const [board, cards, work] = await Promise.all([
     authedJson<Pack['board']>(`/api/courses/${encodeURIComponent(courseId)}/board`),
     authedJson<{ cards: Pack['cards'] }>(`/api/tutor/cards?courseId=${encodeURIComponent(courseId)}`).catch(() => ({ cards: [] })),
+    openWork(courseId),
   ]);
   // Ask the browser to keep this storage (it may clear unpersisted storage when space runs low).
   await navigator.storage?.persist?.().catch(() => false);
@@ -107,6 +139,8 @@ export async function savePack(courseId: string, onProgress?: (done: number, tot
     },
     files,
     cards: (cards.cards ?? []).map(({ id, front, back }) => ({ id, front, back })),
+    quizzes: work.quizzes,
+    assignments: work.assignments,
   };
   await c.put(packKey(courseId), json(pack));
   await writeIndex(c, [...(await listPacks()).filter((p) => p.courseId !== courseId), summary]);

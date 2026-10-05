@@ -14,10 +14,12 @@ export default function quizzesModule(router: Router) {
   r.patch<{ id: string }>(':id', { roles: ['ADMIN', 'TEACHER'] }, ({ params, body, user }) => quizzes.update(params.id, validate<UpdateQuizDto>(UpdateQuizDto, body), user));
   r.delete<{ id: string }>(':id', { roles: ['ADMIN', 'TEACHER'] }, ({ params, user }) => quizzes.remove(params.id, user));
   r.get<{ id: string }>(':id/submissions', { roles: ['ADMIN', 'TEACHER'] }, ({ params, user }) => quizzes.getSubmissions(params.id, user));
+  r.get('teacher/offline-pending', { roles: ['TEACHER', 'ADMIN'] }, ({ user }) => quizzes.offlinePending(user));
+  r.post<{ id: string }>('offline/:id/decide', { roles: ['TEACHER', 'ADMIN'] }, ({ params, body, user }) => quizzes.decideOffline(params.id, body.accept === true, user));
   r.get('teacher/my-quizzes', { roles: ['TEACHER', 'ADMIN'] }, ({ user }) => quizzes.getTeacherQuizzes(user.id));
   r.get('student/my-quizzes', { roles: ['STUDENT', 'ADMIN'] }, ({ user }) => quizzes.getStudentQuizzes(user.id));
   r.post<{ id: string }>(':id/submit', { roles: ['STUDENT'] }, async ({ user, params, body, req }) => {
-    const result = await quizzes.submitQuiz(user.id, params.id, body.answers);
+    const result = await quizzes.submitQuiz(user.id, params.id, body.answers, body.offline);
     recordStudy(user.id, req);
     return result;
   });

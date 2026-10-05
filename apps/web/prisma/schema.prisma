@@ -452,15 +452,22 @@ model QuizQuestion {
 }
 
 model QuizSubmission {
-  id          String   @id @default(cuid())
-  quizId      String
-  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  studentId   String
-  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  answers     Json // { questionId: answer }
-  score       Float?
-  maxScore    Float?
-  submittedAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  quizId           String
+  quiz             Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers          Json // { questionId: answer }
+  score            Float?
+  maxScore         Float?
+  submittedAt      DateTime  @default(now())
+  /// Offline-first (upgrade 4): a quiz taken with no connection. When the student started and
+  /// finished it on their device, the outbox id (a retried send is saved once), and LATE when it
+  /// was finished after the due date (the teacher accepts or removes it) or ACCEPTED
+  clientId         String?
+  offlineStartedAt DateTime?
+  offlineAt        DateTime?
+  offlineStatus    String?
 
   @@unique([quizId, studentId])
   @@index([quizId])
@@ -620,6 +627,11 @@ model Message {
 
   threadId String? // a reply inside a thread started from this message id (Discord-style)
 
+  /// Offline-first (upgrade 4): the sender's own id for a message queued offline, so a retried send
+  /// is saved once
+  clientId String?
+
+  @@unique([senderId, clientId])
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId])
   @@index([replyToId])
@@ -2282,6 +2294,8 @@ model AssignmentSubmission {
   feedbackMediaKind  String? // AUDIO | VIDEO
   feedbackTranscript String?
   styleSignals       Json?
+  /// Offline-first (upgrade 4): when the student handed it in on their device with no connection
+  offlineAt          DateTime?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt

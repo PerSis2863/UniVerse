@@ -11,6 +11,8 @@ import useSWR, { mutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 import { QuizReview } from '@/components/dashboard/CourseBoard';
+import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
+import { getPack } from '@/lib/offline-packs';
 
 export default function QuizzesPage() {
   const { data: quizzes = [], error, isLoading } = useSWR('/quizzes/student/my-quizzes', fetcher);
@@ -30,12 +32,18 @@ export default function QuizzesPage() {
   const [confirming, setConfirming] = useState(false);
   const [showAllResults, setShowAllResults] = useState(false);
   const [loadingQuizId, setLoadingQuizId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
 
   const startQuiz = async (quizSummary: any) => {
     setLoadingQuizId(quizSummary.id);
     try {
-      const res = await api.get(`/quizzes/${quizSummary.id}`);
-      const fullQuiz = res.data;
+      // Offline (upgrade 4): open the copy saved with the course in Courses → Offline, if there is one.
+      const fullQuiz = await api.get(`/quizzes/${quizSummary.id}`).then((r) => r.data).catch(async (e) => {
+        const saved = isOfflineError(e) ? (await getPack(quizSummary.courseId).catch(() => null))?.quizzes?.find((q) => q.id === quizSummary.id) : null;
+        if (!saved) throw e;
+        return saved;
+      });
+      setStartedAt(new Date().toISOString());
       setActiveQuiz(fullQuiz);
       setCurrentQ(0);
       setSelected(null);
@@ -68,9 +76,18 @@ export default function QuizzesPage() {
       toast.success(`Quiz submitted! You scored ${pct}%`);
       mutate('/quizzes/student/my-quizzes');
     } catch (e) {
-      toast.error('Failed to submit quiz');
+      if (!isOfflineError(e)) { toast.error((e as Error).message || 'Failed to submit quiz'); return; }
+      // No connection: keep the answers on this device and send them when it's back (upgrade 4).
+      const id = newClientId();
+      await enqueue({
+        id, kind: 'quiz', method: 'POST', url: `/api/core/quizzes/${encodeURIComponent(activeQuiz.id)}/submit`, ref: activeQuiz.id, label: `Quiz: ${activeQuiz.title}`,
+        body: { answers: finalAnswers, offline: { clientId: id, startedAt, finishedAt: new Date().toISOString() } },
+      }).catch(() => null);
+      setSubmitted(true);
+      setActiveQuiz(null);
+      toast.success('You’re offline: your answers are saved on this device and sent when you’re back online.');
     }
-  }, [activeQuiz, answers, currentQ, selected]);
+  }, [activeQuiz, answers, currentQ, selected, startedAt]);
 
   useEffect(() => {
     if (!activeQuiz || submitted) return;

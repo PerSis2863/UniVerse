@@ -1,12 +1,13 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
+import { enqueue, getDraft, isOfflineError, newClientId, saveDraft } from '@/lib/outbox';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -38,6 +39,19 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
   const { data, error, isLoading, mutate } = useSWR<Detail>(`/api/assignments/${id}`, authedJson);
   const [text, setText] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // Drafts are kept on this device as you type (upgrade 4), so nothing is lost offline.
+  const draftKey = `assignment:${id}`;
+  const draftLoaded = useRef(false);
+  useEffect(() => {
+    getDraft(draftKey).then((d) => {
+      if (d?.text) { setText((cur) => cur ?? d.text); toast('Your draft from this device is back.'); }
+    }).catch(() => {}).finally(() => { draftLoaded.current = true; });
+  }, [draftKey]);
+  useEffect(() => {
+    if (!draftLoaded.current || text === null) return;
+    const t = setTimeout(() => void saveDraft(draftKey, text).catch(() => {}), 600);
+    return () => clearTimeout(t);
+  }, [draftKey, text]);
 
   const answer = text ?? data?.mine?.text ?? '';
   const returned = data?.mine?.status === 'RETURNED';
@@ -50,9 +64,14 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
       const r = await authedJson<{ late: boolean }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer }) });
       toast.success(r.late ? 'Handed in (after the due date).' : 'Handed in. You can change it until it’s graded.');
       setText(null);
+      void saveDraft(draftKey, '').catch(() => {});
       mutate();
     } catch (err) {
-      toast.error((err as Error).message);
+      if (!isOfflineError(err)) { toast.error((err as Error).message); return; }
+      // No connection: hand it in from this device's outbox when it's back.
+      await enqueue({ id: newClientId(), kind: 'assignment', method: 'PUT', url: `/api/assignments/${encodeURIComponent(id)}/submission`, ref: id, label: `Assignment: ${data?.title ?? 'answer'}`, body: { text: answer, offlineAt: new Date().toISOString() } }).catch(() => null);
+      void saveDraft(draftKey, '').catch(() => {});
+      toast.success('You’re offline: it’s saved on this device and handed in when you’re back online.');
     } finally {
       setSending(false);
     }

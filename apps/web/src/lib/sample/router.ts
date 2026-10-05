@@ -88,6 +88,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
 
+  // Offline quizzes finished late, waiting for the teacher (Quizzes page): none in the sample
+  [/^\/quizzes\/teacher\/offline-pending$/, () => ok([])],
   // Smart study planner: a week of study sessions around classes (Study planner)
   [/^\/api\/student\/smart-plan$/, ({ db: d }) => {
     const code = (i: number) => d.courses[i % Math.max(1, d.courses.length)]?.code ?? 'CS301';

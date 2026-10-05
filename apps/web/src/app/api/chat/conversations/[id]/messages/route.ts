@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { clientIdOf } from '@/server/offline';
 import { presenceOf } from '@/lib/presence';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
@@ -193,6 +194,13 @@ export async function POST(req: Request, { params }: Ctx) {
     if (why) return NextResponse.json({ error: why }, { status: 403 });
   }
   const data: Record<string, unknown> = { conversationId: id, senderId: user.id };
+  // Sent from the offline outbox (upgrade 4): a retry of the same message returns the saved one.
+  const clientId = clientIdOf(b.clientId);
+  if (clientId) {
+    const again = await prisma.message.findUnique({ where: { senderId_clientId: { senderId: user.id, clientId } }, select: { ...messageSelect, sender } });
+    if (again) return NextResponse.json((await decorate([serializeMessage(again)], user.id))[0]);
+    data.clientId = clientId;
+  }
 
   if (typeof b.forwardOf === 'string') {
     // Forward: copy a message the sender can see into this chat.
