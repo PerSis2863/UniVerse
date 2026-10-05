@@ -8,6 +8,7 @@ import { Bot, CheckCircle2, ChevronDown, Copy, ExternalLink, EyeOff, Loader2, Ro
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, fetcher, matches } from './shared';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Errors tab: problems collected automatically from browsers and the server (src/server/errors.ts),
 // grouped, with an AI diagnosis. Mark them resolved once fixed; if one happens again it comes back.
@@ -28,6 +29,15 @@ interface ErrorReport {
   firstSeen: string;
   lastSeen: string;
   lastUser: { id: string; name: string; email: string; role: string } | null;
+  repairAgent: string | null;
+  repairUrl: string | null;
+  repairAt: string | null;
+}
+
+interface AiSetup {
+  text: { id: string; label: string; note: string }[];
+  models: { text: string[] };
+  repair: { github: boolean; repo: string; agents: { id: string; label: string; maker: string; model: string; how: 'github' | 'copy'; note: string }[] };
 }
 
 interface Summary {
@@ -97,7 +107,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
   const [source, setSource] = useState<'ALL' | 'SERVER' | 'CLIENT'>('ALL');
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('latest');
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number>; summary?: Summary }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: 60_000 });
+  const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number>; summary?: Summary }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: useActivePoll(60_000) });
   const openCount = (data?.counts.NEW ?? 0) + (data?.counts.DIAGNOSED ?? 0);
   const items = (data?.items ?? [])
     .filter((e) => (source === 'ALL' || e.source === source) && matches(q, e.message, e.path, e.kind, e.source, e.diagnosis, e.userAgent, e.severity, e.lastUser?.name, e.lastUser?.email))
@@ -128,10 +138,10 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
     }
   };
 
-  const diagnose = async (ids?: string[]) => {
+  const diagnose = async (ids?: string[], model?: string) => {
     setBusy(ids?.[0] ?? 'all');
     try {
-      const { data: r } = await api.post('/owner/errors/diagnose', ids ? { ids } : {});
+      const { data: r } = await api.post('/owner/errors/diagnose', { ...(ids ? { ids } : {}), ...(model ? { model } : {}) });
       toast.success(r.diagnosed ? `Diagnosed ${r.diagnosed} problem${r.diagnosed === 1 ? '' : 's'}` : 'Nothing new to diagnose');
       mutate();
     } catch (e) {
@@ -296,14 +306,12 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
                         {e.userAgent ? ` · ${e.userAgent.slice(0, 90)}` : ''}
                       </p>
                     </div>
+                    <AiAgents e={e} busy={busy === e.id} onDiagnose={(model) => diagnose([e.id], model)} onRepaired={() => mutate()} />
                     <div className="flex flex-wrap gap-2">
                       <button onClick={() => void copy(e)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Copy className="w-4 h-4" /> Copy details</button>
                       {e.source !== 'SERVER' && e.path && e.path.startsWith('/') && (
                         <a href={e.path} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><ExternalLink className="w-4 h-4" /> Open page</a>
                       )}
-                      <button onClick={() => diagnose([e.id])} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200 disabled:opacity-60">
-                        {busy === e.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {e.diagnosis ? 'Diagnose again' : 'Diagnose'}
-                      </button>
                       {e.status !== 'RESOLVED' && e.status !== 'IGNORED' ? (
                         <>
                           <button onClick={() => setStatus(e.id, 'RESOLVED')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold disabled:opacity-60"><CheckCircle2 className="w-4 h-4" /> Resolved</button>
@@ -320,6 +328,70 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+const select = 'h-9 rounded-full bg-[var(--fill)] px-3 text-sm font-medium text-zinc-800 dark:text-zinc-100 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 max-w-full';
+
+/**
+ * Diagnose with a chosen Gemini model, or hand the problem to an AI agent that opens a pull request
+ * (Claude Code with a chosen model, Jules) or gives a brief to paste (Antigravity).
+ */
+function AiAgents({ e, busy, onDiagnose, onRepaired }: { e: ErrorReport; busy: boolean; onDiagnose: (model?: string) => void; onRepaired: () => void }) {
+  const { data } = useSWR<AiSetup>('/owner/ai', fetcher, { revalidateOnFocus: false });
+  const [model, setModel] = useState('');
+  const [agent, setAgent] = useState('claude-sonnet');
+  const [starting, setStarting] = useState(false);
+  const chosen = data?.repair.agents.find((a) => a.id === agent);
+
+  const repair = async () => {
+    if (!chosen) return;
+    setStarting(true);
+    try {
+      const { data: r } = await api.post(`/owner/errors/${e.id}/repair`, { agent });
+      if (r.brief) {
+        await navigator.clipboard.writeText(r.brief).catch(() => {});
+        toast.success('Repair brief copied', { description: 'Open the project in Antigravity, paste it into the agent and pick the model there.' });
+      } else {
+        toast.success(`${r.agent} is on it`, { description: 'It opens a pull request on GitHub when it has a fix. Nothing changes until you merge it.' });
+      }
+      onRepaired();
+    } catch (err) {
+      toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Could not start the repair');
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl bg-[var(--surface-2)] dark:bg-white/[0.04] p-3.5 space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-zinc-500 w-24 shrink-0 flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> Diagnose</span>
+        <select aria-label="Gemini model for the diagnosis" value={model} onChange={(ev) => setModel(ev.target.value)} className={select}>
+          <option value="">Usual models{data ? ` (${data.text.find((m) => m.id === data.models.text[0])?.label ?? data.models.text[0]} first)` : ''}</option>
+          {data?.text.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+        </select>
+        <button type="button" onClick={() => onDiagnose(model || undefined)} disabled={busy} className="btn-secondary btn-sm">
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {e.diagnosis ? 'Diagnose again' : 'Diagnose'}
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-zinc-500 w-24 shrink-0 flex items-center gap-1"><Bot className="w-3.5 h-3.5" /> Repair with</span>
+        <select aria-label="AI agent for the repair" value={agent} onChange={(ev) => setAgent(ev.target.value)} className={select}>
+          {(data?.repair.agents ?? []).map((a) => <option key={a.id} value={a.id}>{a.label} · {a.model}</option>)}
+        </select>
+        <button type="button" onClick={() => void repair()} disabled={starting || !chosen || (chosen.how === 'github' && !data?.repair.github)} className="btn-primary btn-sm">
+          {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : chosen?.how === 'copy' ? <Copy className="w-4 h-4" /> : <Bot className="w-4 h-4" />} {chosen?.how === 'copy' ? 'Copy brief' : 'Start repair'}
+        </button>
+      </div>
+      {chosen && <p className="text-xs text-zinc-500 pl-0 sm:pl-[6.5rem]">{chosen.maker} · {chosen.note}{chosen.how === 'github' && data && !data.repair.github ? ' · Needs the GITHUB_REPAIR_TOKEN secret first (Server → AI models).' : ''}</p>}
+      {e.repairAgent && (
+        <p className="text-xs text-zinc-600 dark:text-zinc-300 pl-0 sm:pl-[6.5rem]">
+          Asked {e.repairAgent}{e.repairAt ? ` ${formatDistanceToNow(new Date(e.repairAt), { addSuffix: true })}` : ''}.
+          {e.repairUrl && <> <a href={e.repairUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-tint-text inline-flex items-center gap-0.5">Follow it on GitHub <ExternalLink className="w-3 h-3" /></a></>}
+        </p>
       )}
     </div>
   );

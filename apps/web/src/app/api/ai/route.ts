@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
+import { withTextModels } from '@/server/ai-models';
 
-
-// gemini-1.5-flash (used before) has been shut down by Google. The model is configurable so it
-// can be updated from the hosting settings without a code change; if the primary model is unavailable
-// (404/400 "model not found"), the fallback is tried once.
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
+// The models come from the owner's chain (owner console → Server → AI models): when one is busy
+// or missing, the next answers (src/server/ai-models.ts).
 
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_HISTORY = 8;
@@ -77,14 +74,10 @@ export async function POST(req: NextRequest) {
   ];
 
   try {
-    let res = await callGemini(PRIMARY_MODEL, apiKey, contents);
-    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK_MODEL && FALLBACK_MODEL !== PRIMARY_MODEL) {
-      console.warn(`Gemini model "${PRIMARY_MODEL}" unavailable (${res.status}); falling back to "${FALLBACK_MODEL}"`);
-      res = await callGemini(FALLBACK_MODEL, apiKey, contents);
-    }
-    if (!res.ok || !res.body) {
-      console.error(`Gemini API error: ${res.status}`);
-      if (res.status === 429) return NextResponse.json({ error: 'Lots of people are using the assistant right now. Please try again in a minute.' }, { status: 503, headers: { 'Retry-After': '60' } });
+    const res = await withTextModels(false, (model) => callGemini(model, apiKey, contents));
+    if (!res || !res.ok || !res.body) {
+      console.error(`Gemini API error: ${res?.status}`);
+      if (res?.status === 429) return NextResponse.json({ error: 'Lots of people are using the assistant right now. Please try again in a minute.' }, { status: 503, headers: { 'Retry-After': '60' } });
       return NextResponse.json({ error: 'The AI assistant is temporarily unavailable.' }, { status: 502 });
     }
 

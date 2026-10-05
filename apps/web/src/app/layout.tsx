@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
 
 import { Toaster } from 'sonner';
@@ -12,17 +11,8 @@ import { NavProgress } from '@/components/layout/NavProgress';
 import { recoveryScript } from '@/lib/recovery-script';
 import { bootstrapPrefetchScript } from '@/lib/bootstrap';
 
-const outfit = Outfit({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
+// Fonts: the device's own system font (San Francisco on Apple devices), set in globals.css, so no
+// web font is downloaded and text matches the rest of the phone.
 
 export const metadata: Metadata = {
   title: {
@@ -59,8 +49,8 @@ export const viewport: Viewport = {
   // Lets the app draw under the iPhone notch / home indicator; the shell pads with safe-area insets.
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0d13' },
+    { media: '(prefers-color-scheme: light)', color: '#f2f2f7' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b0b0d' },
   ],
 };
 
@@ -71,7 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
-        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f8fafc}html.dark{background:#0a0d13;color-scheme:dark}' }} />
+        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f2f2f7}html.dark{background:#0b0b0d;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}
         <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />
@@ -80,19 +70,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* PWA: iOS touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
       </head>
-      <body className={`${inter.variable} ${outfit.variable} min-h-screen antialiased`} style={{ color: 'var(--text-primary)' }}>
+      <body className="min-h-screen antialiased" style={{ color: 'var(--text-primary)' }}>
           <ErrorMonitorBootstrap />
           <UpdateNotifier />
           <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
           <MotionProvider>{children}<CallHost /></MotionProvider>
           <Suspense fallback={null}><NavProgress /></Suspense>
-          <Toaster 
-            position="bottom-right"
-            mobileOffset={{ bottom: 'calc(var(--mobile-tabbar-h, 3.5rem) + env(safe-area-inset-bottom) + 12px)' }}
+          {/* iOS notification banners: drop in at the top, frosted, rounded. */}
+          <Toaster
+            position="top-center"
+            offset={{ top: 16 }}
+            mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 8px)', left: 12, right: 12 }}
             gap={8}
             toastOptions={{
-              // Solid background: the page's card colour is see-through in dark mode, which let text show through.
-              style: { background: 'var(--toast-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)', boxShadow: '0 12px 32px -12px rgba(0,0,0,.45)' }
+              style: { background: 'var(--toast-bg)', border: '0.5px solid var(--card-border)', borderRadius: 22, color: 'var(--text-primary)', boxShadow: '0 12px 40px -12px rgba(0,0,0,.35)', padding: '14px 16px' },
             }}
           />
       </body>

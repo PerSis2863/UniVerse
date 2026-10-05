@@ -1,14 +1,17 @@
 import type { Transition, Variants } from 'framer-motion';
 
-// One motion language for the whole app. Springs are critically damped (no wobble),
-// quick to start and soft to settle — the feel of iOS sheets and controls.
+// One motion language for the whole app, tuned like SwiftUI's springs: described by how long they
+// feel (visualDuration) and how much they overshoot (bounce). Controls get a hint of bounce,
+// surfaces settle without wobble.
 export const spring = {
-  /** Default for layout, sheets and cards. */
-  smooth: { type: 'spring', stiffness: 380, damping: 38, mass: 0.9 } as Transition,
-  /** Small controls: toggles, chips, tab indicators. */
-  snappy: { type: 'spring', stiffness: 520, damping: 40, mass: 0.7 } as Transition,
+  /** Default for layout, sheets and cards (SwiftUI .smooth). */
+  smooth: { type: 'spring', visualDuration: 0.38, bounce: 0 } as Transition,
+  /** Small controls: toggles, chips, segmented thumbs, tab indicators (SwiftUI .snappy). */
+  snappy: { type: 'spring', visualDuration: 0.3, bounce: 0.15 } as Transition,
   /** Large surfaces that travel far (full-height sheets, drawers). */
-  gentle: { type: 'spring', stiffness: 260, damping: 34, mass: 1 } as Transition,
+  gentle: { type: 'spring', visualDuration: 0.48, bounce: 0 } as Transition,
+  /** Playful confirmations: a sent message, a completed task (SwiftUI .bouncy). */
+  bouncy: { type: 'spring', visualDuration: 0.42, bounce: 0.3 } as Transition,
 };
 
 export const ease = {
@@ -19,7 +22,7 @@ export const ease = {
 /** Fade + slight rise, for content that appears once. */
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: ease.out } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: ease.ios } },
 };
 
 /** List container: children arrive together with a very short cascade (capped, never slow). */

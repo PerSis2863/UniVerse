@@ -14,5 +14,5 @@ export default function CallPage({ params }: { params: Promise<{ id: string }> }
     useCalls.getState().open(id, kind === 'audio' ? 'audio' : kind === 'video' ? 'video' : undefined);
   }, [id, kind]);
   // The call's own screen covers this; the backdrop shows for the moment it takes to load.
-  return <div className="fixed inset-0 bg-[#0b0e1a]" aria-hidden />;
+  return <div className="fixed inset-0 bg-black" aria-hidden />;
 }

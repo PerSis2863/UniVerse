@@ -54,7 +54,7 @@ export function InstallBanner() {
       role="dialog"
       aria-label="Install UniVerse app"
     >
-      <div className="relative bg-[#13131a] border border-indigo-500/30 rounded-2xl p-4 shadow-2xl shadow-indigo-500/10 overflow-hidden">
+      <div className="relative bg-[#1c1c1e] border border-indigo-500/30 rounded-2xl p-4 shadow-2xl shadow-indigo-500/10 overflow-hidden">
         {/* Gradient accent */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none" />
         

@@ -10,6 +10,7 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { uploadChatFile } from '@/components/chat/chat-client';
+import { Switch } from '@/components/ui/Switch';
 
 // The campus network (upgrade 9) for admins (Global Impact → Partner institutions → Campus network)
 // and teachers (Global collaboration → Research → Campus network): the directory of campuses with a
@@ -120,14 +121,13 @@ export function VisibilitySwitch({ network, onChange }: { network: Network; onCh
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
   return (
-    <label className={cn(card, 'p-4 flex items-center justify-between gap-4 cursor-pointer')}>
+    <div className={cn(card, 'p-4 flex items-center justify-between gap-4')}>
       <span>
         <span className="block text-sm font-semibold text-zinc-900 dark:text-white">Let partner campuses find me</span>
         <span className="block text-xs text-zinc-500 mt-0.5">People at other campuses in the network can find you in search and message you. Your own campus always can.</span>
       </span>
-      <input type="checkbox" className="sr-only peer" checked={on} disabled={busy} onChange={() => void flip()} />
-      <span aria-hidden className="relative w-11 h-6 shrink-0 rounded-full bg-zinc-300 dark:bg-white/15 peer-checked:bg-indigo-500 transition-colors after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500/50" />
-    </label>
+      <Switch checked={on} disabled={busy} label="Let partner campuses find me" onChange={() => void flip()} />
+    </div>
   );
 }
 

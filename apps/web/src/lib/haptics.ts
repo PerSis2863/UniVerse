@@ -5,6 +5,9 @@ const PATTERNS = { tap: 8, success: [10, 40, 12], warning: [18, 60, 18] } as con
 export function haptic(kind: keyof typeof PATTERNS = 'tap') {
   try {
     if (typeof navigator === 'undefined' || !('vibrate' in navigator)) return;
+    // Browsers refuse (and log an error) before the person has tapped the page at least once.
+    const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (activation && !activation.hasBeenActive) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     navigator.vibrate(PATTERNS[kind] as number | number[]);
   } catch { /* unsupported */ }

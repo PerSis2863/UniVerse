@@ -135,6 +135,15 @@ export function useLiveInterval(normal: number, live: number) {
   return useUserActive() ? (lowData && ms ? ms * 3 : ms) : 0;
 }
 
+/**
+ * A refresh interval that only runs while someone is using the tab (0 when they're away), for
+ * screens without live updates (the owner console, voice-room counters). An idle visible tab
+ * used to keep polling every few seconds, all day.
+ */
+export function useActivePoll(ms: number) {
+  return useUserActive() ? ms : 0;
+}
+
 let helloCount = 0;
 
 function handle(event: ServerEvent) {

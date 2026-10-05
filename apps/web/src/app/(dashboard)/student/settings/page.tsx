@@ -8,6 +8,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
 import { NetworkVisibility } from '@/components/settings/NetworkVisibility';
+import { Switch } from '@/components/ui/Switch';
 import { api } from '@/lib/api';
 import { Bell, Mail, Shield, User, Users, Globe, Check, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
@@ -68,14 +69,15 @@ export default function StudentSettings() {
     }
   };
 
+  // iOS Settings: each section has a coloured icon tile.
   const sections = [
-    { id: 'profile', label: t('settings.profile'), icon: User },
-    { id: 'language', label: t('settings.language'), icon: Globe },
-    { id: 'notifications', label: t('settings.notifications'), icon: Bell },
-    { id: 'privacy', label: t('settings.privacy'), icon: Shield },
-    { id: 'family', label: 'Parent or guardian', icon: Users },
-    { id: 'consents', label: 'My consents', icon: ShieldCheck },
-    { id: 'ai', label: 'AI Features', icon: Sparkles },
+    { id: 'profile', label: t('settings.profile'), icon: User, tile: '#8e8e93' },
+    { id: 'language', label: t('settings.language'), icon: Globe, tile: '#007aff' },
+    { id: 'notifications', label: t('settings.notifications'), icon: Bell, tile: '#ff3b30' },
+    { id: 'privacy', label: t('settings.privacy'), icon: Shield, tile: '#0a84ff' },
+    { id: 'family', label: 'Parent or guardian', icon: Users, tile: '#34c759' },
+    { id: 'consents', label: 'My consents', icon: ShieldCheck, tile: '#5856d6' },
+    { id: 'ai', label: 'AI Features', icon: Sparkles, tile: '#af52de' },
   ];
 
   return (
@@ -91,22 +93,18 @@ export default function StudentSettings() {
             <div className="flex flex-col md:flex-row gap-6">
               
               {/* Sidebar Nav */}
-              <div className="md:w-56 flex-shrink-0">
-                <div className="card p-2 space-y-1">
+              <div className="md:w-64 flex-shrink-0">
+                <div className="ios-list inset-separators">
                   {sections.map(sec => (
                     <button
                       key={sec.id}
                       onClick={() => setActiveSection(sec.id)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left",
-                        activeSection === sec.id
-                          ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/[0.04]"
-                      )}
+                      aria-current={activeSection === sec.id ? 'page' : undefined}
+                      className={cn('ios-cell w-full text-left text-[15px] text-zinc-900 dark:text-white', activeSection === sec.id && 'bg-[var(--fill)]')}
                     >
-                      <sec.icon className="w-4 h-4 flex-shrink-0" />
-                      {sec.label}
-                      {activeSection === sec.id && <ChevronRight className="w-3 h-3 ml-auto text-indigo-500" />}
+                      <span className="ios-icon-tile" style={{ background: sec.tile }}><sec.icon className="w-[17px] h-[17px]" strokeWidth={2.2} /></span>
+                      <span className="flex-1 truncate">{sec.label}</span>
+                      <ChevronRight className="w-4 h-4 text-zinc-400" strokeWidth={2.5} />
                     </button>
                   ))}
                 </div>
@@ -261,16 +259,7 @@ export default function StudentSettings() {
                               <p className="text-xs text-zinc-500 mt-0.5">{item.desc}</p>
                             </div>
                           </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={user?.[item.key] ?? true}
-                              onChange={handleToggleEmail}
-                              disabled={saving}
-                            />
-                            <div className="w-11 h-6 bg-zinc-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-                          </label>
+                          <Switch checked={user?.[item.key] ?? true} onChange={() => void handleToggleEmail()} disabled={saving} label={item.label} />
                         </div>
                       ))}
                     </motion.div>
@@ -322,18 +311,7 @@ export default function StudentSettings() {
                           <h3 className="font-medium text-zinc-900 dark:text-white text-sm">AI Study Assistant Chatbot</h3>
                           <p className="text-xs text-zinc-500 mt-0.5">Enable the floating AI chatbot to help you with course material and queries.</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            className="sr-only peer" 
-                            checked={isChatbotEnabled}
-                            onChange={(e) => {
-                              setChatbotEnabled(e.target.checked);
-                              toast.success(`Chatbot ${e.target.checked ? 'enabled' : 'disabled'}`);
-                            }} 
-                          />
-                          <div className="w-11 h-6 bg-zinc-200 dark:bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-                        </label>
+                        <Switch checked={isChatbotEnabled} label="AI Study Assistant Chatbot" onChange={(on) => { setChatbotEnabled(on); toast.success(`Chatbot ${on ? 'enabled' : 'disabled'}`); }} />
                       </div>
                     </motion.div>
                   )}

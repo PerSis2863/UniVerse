@@ -318,7 +318,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@student.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#0b0f1c] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1c1c1e] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Student</div>
               <div className="text-zinc-500 text-xs mt-1">Full access to student dashboard</div>
@@ -326,7 +326,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@teacher.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#0b0f1c] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1c1c1e] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Teacher</div>
               <div className="text-zinc-500 text-xs mt-1">Manage classes &amp; grades</div>
@@ -334,7 +334,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@admin.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#0b0f1c] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1c1c1e] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Admin</div>
               <div className="text-zinc-500 text-xs mt-1">System configuration</div>
@@ -342,7 +342,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-it-support@universe.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#0b0f1c] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1c1c1e] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">IT Support</div>
               <div className="text-zinc-500 text-xs mt-1">Helpdesk access</div>

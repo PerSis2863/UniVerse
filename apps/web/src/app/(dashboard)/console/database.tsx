@@ -6,6 +6,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ChevronRight, Database, Download, HardDrive, Loader2, Plus, Table2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, downloadCsv, fetcher, matches } from './shared';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Owner console → Database: what the real database holds, table by table (server side:
 // src/server/modules/owner-database.ts). A table opens in All data, where every record can be read
@@ -27,7 +28,7 @@ const bytes = (n: number) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} GB
 const when = (s: string | null) => (s ? formatDistanceToNow(new Date(s.replace(' ', 'T')), { addSuffix: true }) : '—');
 
 export function DatabasePanel({ onOpenTable }: { onOpenTable: (name: string) => void }) {
-  const { data, isLoading } = useSWR<DatabaseData>('/owner/database', fetcher, { refreshInterval: 60_000 });
+  const { data, isLoading } = useSWR<DatabaseData>('/owner/database', fetcher, { refreshInterval: useActivePoll(60_000) });
   const [q, setQ] = useState('');
   const [hideEmpty, setHideEmpty] = useState(true);
   if (isLoading || !data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;

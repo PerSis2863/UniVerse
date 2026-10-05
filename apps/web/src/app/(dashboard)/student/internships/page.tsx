@@ -220,7 +220,7 @@ export default function StudentInternships() {
         {showFilterDrawer && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilterDrawer(false)} />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed right-0 top-0 h-[100dvh] w-full sm:w-80 glass-sidebar sheet-safe-top border-l border-indigo-100 dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto">
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed right-0 top-0 h-[100dvh] w-full sm:w-80 glass-sidebar sheet-safe-top border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Filter className="w-5 h-5 text-indigo-500" /> Filters</h2>
                 <button onClick={() => setShowFilterDrawer(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
@@ -313,7 +313,7 @@ export default function StudentInternships() {
         {showMyApplications && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowMyApplications(false)} />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[500px] glass-sidebar sheet-safe-top border-l border-indigo-100 dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto flex flex-col">
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[500px] glass-sidebar sheet-safe-top border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto flex flex-col">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                   <Briefcase className="w-6 h-6 text-indigo-500" /> My Applications

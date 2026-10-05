@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { AlertTriangle, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 
@@ -9,7 +8,8 @@ import { haptic } from '@/lib/haptics';
  * Designed replacements for window.confirm / window.prompt.
  *   if (!(await confirmDialog({ title: 'Delete this course?', destructive: true }))) return;
  *   const name = await promptDialog({ title: 'Rename group', defaultValue: convo.title });
- * <DialogHost /> is mounted once at the app root.
+ * <DialogHost /> is mounted once at the app root. They look like iOS alerts: a compact frosted card
+ * that pops in, with the buttons side by side under a hairline (stacked when the labels are long).
  */
 
 type ConfirmOpts = { title: string; message?: string; confirmLabel?: string; cancelLabel?: string; destructive?: boolean };
@@ -63,51 +63,47 @@ export function DialogHost() {
   };
 
   const destructive = pending.kind === 'confirm' && pending.destructive;
-  const Icon = destructive ? AlertTriangle : HelpCircle;
+  const cancelLabel = pending.cancelLabel ?? 'Cancel';
+  const confirmLabel = pending.confirmLabel ?? (destructive ? 'Delete' : 'OK');
+  const stacked = cancelLabel.length + confirmLabel.length > 22;
+  const button = 'min-h-11 px-3 text-[17px] text-tint-text transition-colors active:bg-[var(--fill)] disabled:opacity-40';
 
   return (
     <div
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="ui-dialog-title"
-      className="backdrop-in fixed inset-0 z-[120] bg-black/45 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-6"
+      className="backdrop-in fixed inset-0 z-[120] bg-black/30 flex items-center justify-center p-8"
       onMouseDown={(e) => e.target === e.currentTarget && close(false)}
       onKeyDown={(e) => { if (e.key === 'Escape') close(false); }}
     >
-      <div data-sheet className="sheet-in w-full sm:max-w-sm rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-5 sheet-safe-bottom sm:pb-5">
-        <div className="flex items-start gap-3">
-          <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center shrink-0', destructive ? 'bg-rose-500/12 text-rose-500' : 'bg-indigo-500/12 text-indigo-500')}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 pt-0.5">
-            <h2 id="ui-dialog-title" className="font-bold text-zinc-900 dark:text-white leading-snug">{pending.title}</h2>
-            {pending.message && <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{pending.message}</p>}
-          </div>
+      <div className="alert-in ios-alert w-[270px] max-w-full rounded-[22px] overflow-hidden text-center">
+        <div className="px-4 pt-5 pb-4">
+          <h2 id="ui-dialog-title" className="text-[17px] font-semibold leading-snug text-zinc-900 dark:text-white">{pending.title}</h2>
+          {pending.message && <p className="text-[13px] leading-snug text-zinc-700 dark:text-zinc-300 mt-1">{pending.message}</p>}
+          {pending.kind === 'prompt' && (
+            <input
+              ref={inputRef}
+              value={value}
+              maxLength={pending.maxLength ?? 200}
+              placeholder={pending.placeholder}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) close(true); }}
+              className="mt-3 w-full h-9 px-2.5 rounded-[9px] bg-white dark:bg-black/40 border border-black/10 dark:border-white/10 text-[15px] text-left text-zinc-900 dark:text-white outline-none focus:border-tint"
+            />
+          )}
         </div>
-
-        {pending.kind === 'prompt' && (
-          <input
-            ref={inputRef}
-            value={value}
-            maxLength={pending.maxLength ?? 200}
-            placeholder={pending.placeholder}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) close(true); }}
-            className="mt-4 w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-          />
-        )}
-
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <button aria-label="Cancel" onClick={() => close(false)} className="py-2.5 rounded-xl text-sm font-semibold text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-white/[0.07] hover:bg-zinc-200 dark:hover:bg-white/10">
-            {pending.cancelLabel ?? 'Cancel'}
+        <div className={cn(stacked ? 'flex flex-col-reverse' : 'grid grid-cols-2')} style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
+          <button aria-label={cancelLabel} onClick={() => close(false)} className={button} style={stacked ? { boxShadow: 'inset 0 0.5px 0 var(--separator)' } : { boxShadow: 'inset -0.5px 0 0 var(--separator)' }}>
+            {cancelLabel}
           </button>
           <button
             ref={confirmRef}
             onClick={() => close(true)}
             disabled={pending.kind === 'prompt' && !value.trim()}
-            className={cn('py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50', destructive ? 'bg-rose-600 hover:bg-rose-500' : 'bg-indigo-600 hover:bg-indigo-500')}
+            className={cn(button, 'font-semibold', destructive && 'text-[var(--ios-red)]')}
           >
-            {pending.confirmLabel ?? (destructive ? 'Delete' : 'OK')}
+            {confirmLabel}
           </button>
         </div>
       </div>

@@ -74,7 +74,7 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
           <motion.div
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] glass-sidebar border-l border-indigo-100 dark:border-white/[0.07] shadow-2xl z-[150] overflow-y-auto flex flex-col"
+            className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] glass-sidebar border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-[150] overflow-y-auto flex flex-col"
           >
             {/* Header (padded below the phone status bar so the close button is always tappable) */}
             <div className="relative flex items-end px-5 pb-5 pt-[calc(env(safe-area-inset-top)+3.5rem)] bg-gradient-to-br from-indigo-500/25 via-transparent to-fuchsia-500/20">

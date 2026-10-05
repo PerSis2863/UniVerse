@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Gauge, X } from 'lucide-react';
 import { connectionIsSlow, useLowData } from '@/store/low-data';
-import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/Switch';
 
 /** The low-data mode switch (Settings). */
 export function LowDataToggle() {
@@ -15,10 +15,7 @@ export function LowDataToggle() {
         <p className="font-semibold text-zinc-900 dark:text-white">Low-data mode</p>
         <p className="text-sm text-zinc-500">For slow or expensive mobile data: photos in chats load only when you tap them, videos don’t preload, pages refresh less often in the background, and effects are lighter. Saved on this device.</p>
       </div>
-      <button role="switch" aria-checked={enabled} aria-label="Low-data mode" onClick={() => setEnabled(!enabled)}
-        className={cn('relative w-11 h-6 rounded-full transition-colors shrink-0 mt-1', enabled ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-white/20')}>
-        <span className={cn('absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all', enabled ? 'left-[22px]' : 'left-0.5')} />
-      </button>
+      <Switch checked={enabled} label="Low-data mode" onChange={setEnabled} className="mt-1" />
     </div>
   );
 }
@@ -39,7 +36,7 @@ export function LowDataSync() {
   if (!offer) return null;
   const close = () => { markSuggested(); setOffer(false); };
   return (
-    <div role="dialog" aria-label="Low-data mode" className="fixed left-3 right-3 sm:left-auto sm:right-4 sm:w-96 bottom-[calc(var(--mobile-tabbar-h,3.5rem)+env(safe-area-inset-bottom)+12px)] md:bottom-4 z-[120] rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#161b2e] shadow-2xl p-4">
+    <div role="dialog" aria-label="Low-data mode" className="fixed left-3 right-3 sm:left-auto sm:right-4 sm:w-96 bottom-[calc(var(--mobile-tabbar-h,3.5rem)+env(safe-area-inset-bottom)+12px)] md:bottom-4 z-[120] rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1c1c1e] shadow-2xl p-4">
       <div className="flex items-start gap-3">
         <Gauge className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
         <div className="flex-1">

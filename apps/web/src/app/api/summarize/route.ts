@@ -3,8 +3,8 @@ import { GoogleGenAI } from '@google/genai';
 import { getSessionUser } from '@/lib/server-auth';
 import { isStorageHostUrl } from '@/lib/file-urls';
 import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
+import { textChain } from '@/server/ai-models';
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const MAX_BYTES = 10 * 1024 * 1024;
 
 // Only summarize files uploaded to this app's storage (prevents fetching arbitrary URLs).
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const response = await ai.models.generateContent({
-      model: MODEL,
+      model: (await textChain())[0],
       contents: [
         {
           role: 'user',

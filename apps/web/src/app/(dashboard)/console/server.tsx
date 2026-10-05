@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
 import { EmailScheduleCard } from './email-schedule';
+import { AiModelsCard } from './ai-models';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // The owner console's Server tab: switch UniVerse between live, read-only and maintenance, show a
 // notice on every page, and see the Cloudflare plan usage and the app's health at a glance. The
@@ -64,7 +66,7 @@ const readSection = (): Section => {
 };
 
 export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'deletions' | 'activity') => void }) {
-  const { data, mutate } = useSWR<ServerData>('/owner/server', fetcher, { refreshInterval: 60_000 });
+  const { data, mutate } = useSWR<ServerData>('/owner/server', fetcher, { refreshInterval: useActivePoll(60_000) });
   const [section, setSection] = useState<Section>(readSection);
   const pick = (id: Section) => { setSection(id); try { localStorage.setItem(SECTION_KEY, id); } catch { /* storage unavailable */ } };
   if (!data) return <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />;
@@ -110,7 +112,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       </div>
 
       {/* Sections */}
-      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-zinc-50/80 dark:bg-[#0a0d13]/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-zinc-50/80 dark:bg-[#0b0b0d]/80 backdrop-blur-xl">
         <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Server sections">
           {SECTIONS.map((x) => (
             <button key={x.id} role="tab" aria-selected={section === x.id} onClick={() => pick(x.id)}
@@ -143,6 +145,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
           </div>
           <div className="space-y-6">
             {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
+            <AiModelsCard />
             <VoiceSessionsCard />
             {data.adoption && <AdoptionCard adoption={data.adoption} />}
           </div>
@@ -400,7 +403,7 @@ const Pill = ({ tone, children }: { tone: 'good' | 'bad' | 'warn' | 'plain'; chi
 /** Live version, build minutes, visitors, security, domain, database and plan, read from Cloudflare with the read-only token. */
 function CloudflareCard() {
   const [fresh, setFresh] = useState(0);
-  const { data, isValidating } = useSWR<CfAccount>(`/owner/cloudflare${fresh ? `?fresh=1&n=${fresh}` : ''}`, fetcher, { refreshInterval: 300_000 });
+  const { data, isValidating } = useSWR<CfAccount>(`/owner/cloudflare${fresh ? `?fresh=1&n=${fresh}` : ''}`, fetcher, { refreshInterval: useActivePoll(300_000) });
   const missing = (p?: CfPart<unknown>) => (p && !p.ok ? <p className="text-xs text-zinc-500">Can&apos;t read this yet: {(p as { error: string }).error}</p> : null);
   // Every change to Cloudflare needs a code sent to the owner's email.
   const putBack = async (versionId: string, when: string) => {

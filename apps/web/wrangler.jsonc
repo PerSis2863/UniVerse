@@ -88,8 +88,12 @@
     // Every 15 minutes: the spending guard (cloudflare/usage-guard.ts).
     "crons": ["0 8 * * *", "*/15 * * * *", "30 7 * * *"]
   },
+  // Workers Logs: keep a quarter of requests (about 90k log events a day were being recorded,
+  // close to the free plan's 200k daily allowance). Request charts stay representative, and app
+  // errors are still caught in full by the owner console's error reports (error_reports).
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "head_sampling_rate": 0.25
   }
   // Secrets (DATABASE_URL, STRIPE_SECRET_KEY, R2_*, GEMINI_API_KEY, …) are set with
   // `wrangler secret put` or in the Cloudflare dashboard — never here. See DEPLOY-CLOUDFLARE.md.

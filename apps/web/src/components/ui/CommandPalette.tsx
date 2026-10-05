@@ -204,14 +204,15 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       {open && (
         <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true" aria-label="Search">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
-            className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={() => setOpen(false)} />
+            className="absolute inset-0 bg-black/25" onClick={() => setOpen(false)} />
           <motion.div
             initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={spring.snappy}
             className="absolute left-1/2 -translate-x-1/2 top-[max(1rem,env(safe-area-inset-top))] sm:top-[12%] w-full max-w-xl px-3"
           >
-            <div className="glass-sidebar border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-zinc-200/70 dark:border-white/[0.07]">
+            {/* Spotlight: a frosted panel with a big search field; the chosen result is filled with the tint. */}
+            <div className="ios-alert rounded-[26px] overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3.5" style={{ boxShadow: 'inset 0 -0.5px 0 var(--separator)' }}>
                 {busy ? <Loader2 className="w-5 h-5 text-zinc-400 animate-spin shrink-0" /> : <Search className="w-5 h-5 text-zinc-400 shrink-0" />}
                 <input
                   ref={inputRef}
@@ -220,9 +221,9 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                   onKeyDown={onKeyDown}
                   placeholder="Search courses, people, groups, projects, internships…"
                   aria-controls="palette-list"
-                  className="flex-1 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none text-base"
+                  className="flex-1 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none text-[20px] font-normal tracking-tight"
                 />
-                <button onClick={() => setOpen(false)} aria-label="Close" className="text-[11px] font-mono px-1.5 py-0.5 rounded border border-zinc-200 dark:border-white/10 text-zinc-500">ESC</button>
+                <button onClick={() => setOpen(false)} className="text-[15px] font-medium text-tint-text">Cancel</button>
               </div>
 
               <div id="palette-list" ref={listRef} role="listbox" className="max-h-[min(60dvh,420px)] overflow-y-auto overscroll-contain p-2">
@@ -235,31 +236,31 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                   const selected = i === index;
                   return (
                     <div key={`${item.group}-${item.id}`}>
-                      {header && <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400">{header}</p>}
+                      {header && <p className="px-3 pt-2.5 pb-1 text-[12px] font-semibold text-zinc-500">{header}</p>}
                       <button
                         data-idx={i}
                         role="option"
                         aria-selected={selected}
                         onClick={() => choose(item)}
                         onMouseMove={() => setIndex(i)}
-                        className={cn('relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left', selected ? 'text-indigo-700 dark:text-indigo-300' : 'text-zinc-800 dark:text-zinc-200')}
+                        className={cn('relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left', selected ? 'text-white' : 'text-zinc-800 dark:text-zinc-200')}
                       >
-                        {selected && <motion.span layoutId="palette-sel" transition={spring.snappy} className="absolute inset-0 rounded-xl bg-indigo-500/10" />}
-                        <span className={cn('relative w-8 h-8 rounded-lg flex items-center justify-center shrink-0', selected ? 'bg-indigo-500/15 text-indigo-500' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-500')}>
+                        {selected && <motion.span layoutId="palette-sel" transition={spring.snappy} className="absolute inset-0 rounded-xl bg-tint" />}
+                        <span className={cn('relative w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0', selected ? 'bg-white/20 text-white' : 'bg-[var(--fill)] text-tint-text')}>
                           <item.icon className="w-4 h-4" />
                         </span>
                         <span className="relative flex-1 min-w-0">
                           <span className="block text-sm font-semibold truncate">{item.label}</span>
-                          {item.hint && <span className="block text-xs text-zinc-500 truncate">{item.hint}</span>}
+                          {item.hint && <span className={cn('block text-xs truncate', selected ? 'text-white/75' : 'text-zinc-500')}>{item.hint}</span>}
                         </span>
-                        {selected ? <CornerDownLeft className="relative w-4 h-4 text-indigo-400" /> : <ChevronRight className="relative w-4 h-4 text-zinc-300 dark:text-zinc-600" />}
+                        {selected ? <CornerDownLeft className="relative w-4 h-4 text-white/80" /> : <ChevronRight className="relative w-4 h-4 text-zinc-300 dark:text-zinc-600" />}
                       </button>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="hidden sm:flex px-4 py-2.5 border-t border-zinc-200/70 dark:border-white/[0.07] items-center justify-between text-[11px] text-zinc-400">
+              <div className="hidden sm:flex px-4 py-2.5 items-center justify-between text-[11px] text-zinc-400" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
                 <span><kbd className="font-mono">↑↓</kbd> move · <kbd className="font-mono">↵</kbd> open · search anything on the platform</span>
                 <span className="flex items-center gap-1"><Command className="w-3 h-3" />K</span>
               </div>

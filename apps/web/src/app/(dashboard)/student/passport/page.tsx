@@ -13,6 +13,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { PassportView, type PassportData } from '@/components/passport/PassportView';
 import { cn } from '@/lib/utils';
 import { QrCode } from '@/components/ui/QrCode';
+import { Switch } from '@/components/ui/Switch';
 
 interface Passport {
   isPublic: boolean; headline: string | null; url: string; views: number;
@@ -85,10 +86,7 @@ export default function SkillsPassportPage() {
                 <p className="font-bold text-zinc-900 dark:text-white">{data.isPublic ? 'Public' : 'Private'}</p>
                 <p className="text-xs text-zinc-500">{data.isPublic ? `Anyone with the link can see it · ${data.views} view${data.views === 1 ? '' : 's'}` : 'Only you can see it'}</p>
               </div>
-              <button role="switch" aria-checked={data.isPublic} aria-label="Public passport" aria-busy={saving || undefined} disabled={saving} onClick={() => save({ isPublic: !data.isPublic }, data.isPublic ? 'Your passport is private again' : 'Your passport is public')}
-                className={cn('relative w-11 h-6 rounded-full transition-colors shrink-0', data.isPublic ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-white/20')}>
-                <span className={cn('absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all', data.isPublic ? 'left-[22px]' : 'left-0.5')} />
-              </button>
+              <Switch checked={data.isPublic} label="Public passport" disabled={saving} onChange={() => save({ isPublic: !data.isPublic }, data.isPublic ? 'Your passport is private again' : 'Your passport is public')} />
             </div>
             {data.isPublic && (
               <div className="mt-4 space-y-2">
