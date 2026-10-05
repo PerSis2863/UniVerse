@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireFeature } from '@/lib/billing';
 import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
-
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
+import { withTextModels } from '@/server/ai-models';
 
 const SYSTEM_PROMPT = `You write concise, board-ready executive impact reports for an education and
 social-impact organization using the UniVerse platform. Use ONLY the figures in the data provided —
@@ -70,12 +68,9 @@ export async function POST(req: Request) {
   if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
 
   const prompt = `Write the executive impact report from this live platform data:\n\n${JSON.stringify(data, null, 2)}`;
-  let res = await callGemini(PRIMARY_MODEL, apiKey, prompt);
-  if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK_MODEL !== PRIMARY_MODEL) {
-    res = await callGemini(FALLBACK_MODEL, apiKey, prompt);
-  }
-  if (!res.ok) {
-    console.error('AI report failed:', res.status, await res.text());
+  const res = await withTextModels(false, (model) => callGemini(model, apiKey, prompt));
+  if (!res || !res.ok) {
+    console.error('AI report failed:', res?.status, res ? await res.text() : 'no model');
     return NextResponse.json({ error: 'The AI service is unavailable right now. Please try again shortly.' }, { status: 502 });
   }
   const json = await res.json();

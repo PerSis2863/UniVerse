@@ -1,8 +1,9 @@
+import { withTextModels } from './ai-models';
+
 // One-shot (non-streaming) Gemini call for server features such as error diagnosis. The chat
 // assistant streams through /api/ai instead. Returns null when AI isn't configured or fails.
-
-const PRIMARY = () => process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-const FALLBACK = () => process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
+// The model comes from the owner's chain (src/server/ai-models.ts): a busy model hands over to
+// the next one.
 
 async function call(model: string, apiKey: string, body: unknown) {
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
@@ -17,7 +18,7 @@ async function call(model: string, apiKey: string, body: unknown) {
  * first (simple jobs such as translation): it has its own free allowance, so the main model's
  * lasts longer.
  */
-export async function geminiJson<T>(system: string, prompt: string, schema: object, maxOutputTokens = 800, lite = false): Promise<T | null> {
+export async function geminiJson<T>(system: string, prompt: string, schema: object, maxOutputTokens = 800, lite = false, model?: string): Promise<T | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const body = {
@@ -26,9 +27,10 @@ export async function geminiJson<T>(system: string, prompt: string, schema: obje
     generationConfig: { temperature: 0.2, maxOutputTokens, responseMimeType: 'application/json', responseSchema: schema },
   };
   try {
-    const [first, second] = lite ? [FALLBACK(), PRIMARY()] : [PRIMARY(), FALLBACK()];
-    let res = await call(first, apiKey, body);
-    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && second !== first) res = await call(second, apiKey, body);
+    // A model the caller picked (e.g. the owner's choice for a diagnosis) goes first; the chain covers it if it's busy.
+    let res = model ? await call(model, apiKey, body) : null;
+    if (!res?.ok) res = (await withTextModels(lite, (m) => call(m, apiKey, body))) ?? res;
+    if (!res) return null;
     if (!res.ok) {
       console.error('Gemini request failed:', res.status, (await res.text()).slice(0, 300));
       return null;
@@ -60,8 +62,8 @@ export async function geminiFileText(bytes: Uint8Array, mimeType: string): Promi
     generationConfig: { temperature: 0, maxOutputTokens: 16000 },
   };
   try {
-    let res = await call(PRIMARY(), apiKey, body);
-    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && FALLBACK() !== PRIMARY()) res = await call(FALLBACK(), apiKey, body);
+    const res = await withTextModels(false, (m) => call(m, apiKey, body));
+    if (!res) return null;
     if (!res.ok) {
       console.error('Gemini file read failed:', res.status, (await res.text()).slice(0, 300));
       return null;
@@ -78,9 +80,8 @@ async function firstText(body: unknown, lite: boolean, what: string): Promise<st
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   try {
-    const [first, second] = lite ? [FALLBACK(), PRIMARY()] : [PRIMARY(), FALLBACK()];
-    let res = await call(first, apiKey, body);
-    if ((res.status === 404 || res.status === 400 || res.status === 429 || res.status >= 500) && second !== first) res = await call(second, apiKey, body);
+    const res = await withTextModels(lite, (m) => call(m, apiKey, body));
+    if (!res) return null;
     if (!res.ok) {
       console.error(`Gemini ${what} failed:`, res.status, (await res.text()).slice(0, 300));
       return null;

@@ -300,3 +300,34 @@ chats) send the owner an in-app alert when one is written in a chat. A person ca
 Europass / European Digital Credentials: issuing EDC-format credentials requires a qualified electronic seal
 from a trust service provider, which can’t be done in code. The skills passport exports Open Badges 3.0,
 which employers and badge platforms can verify.
+
+## AI models and repairs
+
+**Models (owner console → Server → Usage → AI models & agents).** Text features try a chain of
+Gemini text models in order (default Gemini 3.6 Flash → 3.5 Flash-Lite → 3.1 Flash-Lite). Each has
+its own free per-minute allowance; a busy model (429) is skipped for a minute and the next answers,
+so adding models lets more people use AI at once. The voice tutor uses a Live model (default
+`gemini-2.5-flash-native-audio-preview-12-2025`: no per-minute request limit on the free tier,
+1M tokens/min). Live native-audio models only answer by voice, so they can't run the text features.
+The `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL` and `GEMINI_LIVE_MODEL` variables still set the
+defaults until the owner saves a choice.
+
+**Repairs (owner console → Errors → open a problem → Repair with…).** Pick an agent and its model:
+
+- **Claude Code** (Opus 5.5, Sonnet 5.5, Haiku 4.5, Fable 5.1): the console opens a GitHub issue with
+  a repair brief and labels it `repair:claude-<model>`; `.github/workflows/ai-repair.yml` runs Claude
+  Code on your Claude subscription and opens a pull request.
+- **Jules** (Google, Gemini): the issue is labelled `jules`; the Jules GitHub app picks it up.
+- **Antigravity** (Google): a desktop IDE with no API, so the console copies the brief for you to
+  paste into its agent.
+
+Every agent only opens a pull request: nothing ships until you merge it (which deploys as usual,
+and its branch gets a preview build). The repository is public, so the brief leaves out emails,
+long numbers, tokens and link queries, and the workflow only lets Claude read and edit files.
+
+Setup, once:
+1. A fine-grained GitHub token for the repository with **Issues: read and write**, saved in Cloudflare
+   as the secret `GITHUB_REPAIR_TOKEN` (optional `GITHUB_REPO`, default `PerSis2863/UniVerse`).
+2. `claude setup-token` on a computer signed in to your Claude Pro/Max account; save the token in
+   GitHub → Settings → Secrets and variables → Actions as `CLAUDE_CODE_OAUTH_TOKEN`.
+3. For Jules: sign in at jules.google with GitHub and give it access to the repository.

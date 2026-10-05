@@ -1993,6 +1993,10 @@ model ErrorReport {
   resolvedAt  DateTime?
   firstSeen   DateTime  @default(now())
   lastSeen    DateTime  @default(now())
+  // An AI agent asked to repair it (src/server/repair-agents.ts): which one, the GitHub issue it works from, when.
+  repairAgent String?
+  repairUrl   String?
+  repairAt    DateTime?
 
   @@index([status, lastSeen])
   @@map("error_reports")
@@ -2294,6 +2298,7 @@ model ServerControl {
   switches   String? // JSON list of features turned off, e.g. ["ai","uploads"] (src/lib/feature-switches.ts)
   watchWords String? // words that alert the owner when they appear in a chat, one per line
   aiLimits   String? // JSON { student, staff, site }: AI requests allowed per day (src/server/ai-budget.ts)
+  aiModels   String? // JSON { text: string[], live: string }: which Gemini models answer (src/server/ai-models.ts)
 
   @@map("server_control")
 }

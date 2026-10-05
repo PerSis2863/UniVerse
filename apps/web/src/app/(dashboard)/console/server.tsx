@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
 import { EmailScheduleCard } from './email-schedule';
+import { AiModelsCard } from './ai-models';
 import { useActivePoll } from '@/lib/realtime-client';
 
 // The owner console's Server tab: switch UniVerse between live, read-only and maintenance, show a
@@ -144,6 +145,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
           </div>
           <div className="space-y-6">
             {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
+            <AiModelsCard />
             <VoiceSessionsCard />
             {data.adoption && <AdoptionCard adoption={data.adoption} />}
           </div>

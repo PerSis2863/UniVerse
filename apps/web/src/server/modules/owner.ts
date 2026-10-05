@@ -13,6 +13,8 @@ import { serverSettings } from '../server-settings';
 import { emailUsage } from '../email-budget';
 import { sendEmail } from '../email';
 import { aiUsageToday, forgetAiLimits, parseLimits } from '../ai-budget';
+import { aiModels, LIVE_MODELS, saveModels, TEXT_MODELS } from '../ai-models';
+import { repairSetup, startRepair } from '../repair-agents';
 import { cloudflareAccount } from '../cloudflare-account';
 import { healthCheck } from '../owner-health';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
@@ -186,7 +188,20 @@ export default function ownerModule(router: Router) {
   r.post('errors/diagnose', async ({ body }) => {
     const ids = Array.isArray((body as { ids?: unknown })?.ids) ? ((body as { ids: unknown[] }).ids.filter((x) => typeof x === 'string') as string[]).slice(0, 10) : undefined;
     if (!process.env.GEMINI_API_KEY) throw new BadRequestException('AI diagnosis needs the GEMINI_API_KEY secret.');
-    return { diagnosed: await diagnoseErrors(ids ? { ids } : { limit: 10 }) };
+    // The owner can pick the Gemini model for a diagnosis (otherwise the usual chain answers).
+    const wanted = (body as { model?: unknown })?.model;
+    const model = TEXT_MODELS.some((m) => m.id === wanted) ? (wanted as string) : undefined;
+    return { diagnosed: await diagnoseErrors(ids ? { ids, model } : { limit: 10, model }) };
+  });
+
+  // Repair with an AI agent (Claude Code, Jules, Antigravity): src/server/repair-agents.ts.
+  r.post<{ id: string }>('errors/:id/repair', async ({ params, body }) => startRepair(params.id, (body as { agent?: unknown })?.agent));
+
+  // AI models (text chain and voice) and the repair agents' setup: owner console → Server → AI models.
+  r.get('ai', async () => ({ models: await aiModels(), text: TEXT_MODELS, live: LIVE_MODELS, repair: repairSetup() }));
+  r.post('ai', async ({ body }) => {
+    await serverControl();
+    return { models: await saveModels((body as { models?: unknown })?.models) };
   });
 
   r.patch<{ id: string }>('errors/:id', async ({ params, body }) => {

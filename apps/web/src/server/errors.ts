@@ -141,7 +141,7 @@ const SCHEMA = {
 };
 
 /** Asks AI to diagnose error groups (the given ids, or up to `limit` new ones). Returns how many. */
-export async function diagnoseErrors(opts: { ids?: string[]; limit?: number } = {}): Promise<number> {
+export async function diagnoseErrors(opts: { ids?: string[]; limit?: number; model?: string } = {}): Promise<number> {
   const rows = await prisma.errorReport.findMany({
     where: opts.ids ? { id: { in: opts.ids } } : { status: 'NEW', diagnosedAt: null },
     orderBy: [{ count: 'desc' }, { lastSeen: 'desc' }],
@@ -157,7 +157,7 @@ export async function diagnoseErrors(opts: { ids?: string[]; limit?: number } = 
       `Message: ${r.message}`,
       r.stack ? `Stack:\n${r.stack.slice(0, 2500)}` : 'No stack trace.',
     ].filter(Boolean).join('\n');
-    const out = await geminiJson<{ severity: string; summary: string; cause: string; where: string; fix: string }>(SYSTEM, prompt, SCHEMA, 800, true);
+    const out = await geminiJson<{ severity: string; summary: string; cause: string; where: string; fix: string }>(SYSTEM, prompt, SCHEMA, 800, true, opts.model);
     if (!out) continue;
     await prisma.errorReport.update({
       where: { id: r.id },
