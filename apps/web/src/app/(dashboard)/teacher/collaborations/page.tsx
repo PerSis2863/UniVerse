@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, RESEARCH_TABS } from '@/components/layout/SectionTabs';
 import {
   Globe2, Building2, Users, PlusCircle, CheckCircle2, ArrowUpRight,
   BookOpen, HeartHandshake, Sparkles, FileText, Send, X, User, MessageSquare
@@ -72,6 +73,7 @@ export default function TeacherCollaborationsPage() {
           </button>
         }
       />
+      <SectionTabs tabs={RESEARCH_TABS} />
 
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">

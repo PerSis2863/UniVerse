@@ -2,6 +2,8 @@
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data';
+import { sampleAsk, sampleMetric } from './analytics';
+import { isMetricId } from '@/lib/school-metrics';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -33,6 +35,21 @@ const fail = (error: string, status = 400): Result => ({ status, data: { error, 
 const pct = (s: number, m: number) => (m > 0 ? (s / m) * 100 : 0);
 const course = (d: SampleDb, id: string) => d.courses.find((c) => c.id === id);
 const counts = (d: SampleDb, id: string) => ({ materials: d.board[id]?.materials.length ?? 0, quizzes: d.quizzes.filter((x) => x.courseId === id).length });
+
+/** A sample campus network (upgrade 9): three campuses, you at the first. */
+function sampleNetwork() {
+  const campus = (id: string, name: string, city: string, country: string, lat: number, lng: number, students: number, teachers: number, courses: number, shared: number, exchange: number) =>
+    ({ id, name, city, country, logoUrl: null, lat, lng, students, teachers, courses, shared, exchange, domains: [`${name.split(' ')[0].toLowerCase()}.example.edu`] });
+  return {
+    campuses: [
+      campus('sample-campus-1', 'Riverside University', 'Lyon', 'France', 45.76, 4.84, 1240, 86, 142, 3, 2),
+      campus('sample-campus-2', 'Lakeside University', 'Geneva', 'Switzerland', 46.2, 6.14, 860, 61, 97, 5, 4),
+      campus('sample-campus-3', 'Mountain Institute', 'Turin', 'Italy', 45.07, 7.69, 530, 38, 64, 2, 1),
+    ],
+    me: { campusId: 'sample-campus-1', campusName: 'Riverside University', networkVisible: false, exchange: null },
+    unassigned: 12,
+  };
+}
 
 function decorateMsg(d: SampleDb, m: any) {
   const out: any = { ...m, starred: d.starred.has(m.id), poll: null };
@@ -297,12 +314,31 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/impact\/certificates\/pending$/, ({ db: d }) => ok(d.pendingCertificates)],
   [/^\/safety$/, () => ok([])],
   [/^\/api\/assignments$/, () => ok([])],
+  [/^\/api\/admin\/school-analytics$/, ({ q }) => {
+    const many = q.get('metrics');
+    if (many) return ok({ results: many.split(',').filter(isMetricId).slice(0, 4).map((id) => sampleMetric(id)) });
+    const id = q.get('metric');
+    return isMetricId(id) ? ok(sampleMetric(id, { days: Number(q.get('days')) || null, order: q.get('order'), department: q.get('department') })) : fail('Unknown measure.');
+  }],
   [/^\/api\/admin\/insights$/, () => ok({ totals: { students: 0, teachers: 0, courses: 0, grade30: null, attendance30: null, flaggedStudents: 0 }, atRisk: [], departments: [], teachers: [] })],
   [/^\/api\/student\/guardians$/, () => ok({ enabled: false, contacts: [] })],
   [/^\/api\/code$/, () => ok({ courses: [], rooms: [] })],
   [/^\/api\/calls$/, () => ok([])],
   [/^\/api\/chat\/status$/, () => ok([])],
   [/^\/api\/chat\/communities$/, () => ok([])],
+  [/^\/api\/chat\/communities\/discover$/, () => ok([
+    { id: 'sample-open-1', name: 'Climate Action Network', description: 'Students across campuses working on climate projects', color: '#059669', members: 214, campus: 'Lakeside University' },
+    { id: 'sample-open-2', name: 'Women in Tech', description: 'Mentoring, events and job tips', color: '#7c3aed', members: 98, campus: null },
+  ])],
+  [/^\/api\/network$/, () => ok(sampleNetwork())],
+  [/^\/api\/network\/courses$/, ({ db: d }) => ok(d.courses.slice(0, 4).map((c, i) => ({ id: c.id, code: c.code, name: c.name, status: 'PUBLISHED', teacher: c.teacher.name, students: 24 + i * 7, home: { id: 'sample-campus-1', name: 'Riverside University' }, sharedWith: i === 0 ? [{ id: 'sample-campus-2', name: 'Lakeside University' }] : [] })))],
+  [/^\/api\/network\/exchange$/, () => ok([
+    { id: 'sample-ex-1', name: 'Lena Fischer', email: 'lena.fischer@example.edu', home: 'Riverside University', host: 'Lakeside University', from: at(-20), until: at(70), now: true },
+  ])],
+  [/^\/api\/network\/joint$/, () => ok({ courses: [
+    { id: 'sample-joint-1', code: 'LAK210', name: 'Urban Water Systems', description: 'How cities manage water, with field data from both campuses.', credits: 4, color: '#0891b2', teacher: 'Dr. Hana Sato', campus: 'Lakeside University', viaExchange: false, enrolled: false, students: 31 },
+    { id: 'sample-joint-2', code: 'MTN105', name: 'Data Ethics', description: null, credits: 3, color: '#7c3aed', teacher: 'Prof. Omar Haddad', campus: 'Mountain Institute', viaExchange: false, enrolled: true, students: 58 },
+  ], exchange: null })],
   [/^\/api\/calls\/favorites$/, () => ok([])],
   [/^\/api\/me\/presence$/, () => ok({ presence: 'auto', statusText: null, statusEmoji: null, statusUntil: null, effective: { presence: 'auto', hidden: false } })],
   [/^\/api\/chat\/search$/, () => ok([])],
@@ -474,6 +510,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PATCH', /^\/users\/([^/]+)(\/status)?$/, ({ db: d, m, body }) => { const u = d.users.find((x) => x.id === m[1]); if (u) Object.assign(u, body.status ? { status: body.status } : {}, body.role ? { role: body.role } : {}); return ok(u ?? { ok: true }); }],
   ['DELETE', /^\/api\/admin\/rooms$/, ({ db: d, q }) => { for (const r of d.adminRooms) r.reservations = r.reservations.filter((x: any) => x.id !== q.get('reservationId')); return ok({ ok: true }); }],
   ['DELETE', /^\/api\/admin\/timetable$/, ({ db: d, q }) => { d.slots.splice(d.slots.findIndex((x) => x.id === q.get('id')) >>> 0, 1); return ok({ ok: true }); }],
+  ['POST', /^\/api\/admin\/school-analytics$/, ({ body }) => ok(sampleAsk(body.question))],
   ['POST', /^\/api\/premium\/ai-report$/, () => ok({ report: [
     '## Executive summary (sample)',
     'Engagement grew steadily this term: sign-ups peaked in the enrolment month and impact points are up about 10% month over month.',

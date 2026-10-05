@@ -112,7 +112,7 @@ export const navByRole: Record<string, NavItem[]> = {
     {
       label: 'nav.global_collab', icon: Globe2,
       subItems: [
-        { href: '/teacher/collaborations', label: 'nav.inter_uni_research' },
+        { href: '/teacher/collaborations', label: 'nav.inter_uni_research', also: ['/teacher/network'] },
         { href: '/teacher/collaborations/projects', label: 'nav.ngo_mentorship' },
         { href: '/teacher/mentorship', label: 'nav.volunteer_mentor' },
       ]
@@ -147,7 +147,7 @@ export const navByRole: Record<string, NavItem[]> = {
     {
       label: 'nav.global_impact', icon: Globe2,
       subItems: [
-        { href: '/admin/partnerships', label: 'nav.partner_institutions' },
+        { href: '/admin/partnerships', label: 'nav.partner_institutions', also: ['/admin/network'] },
         { href: '/admin/partners', label: 'nav.sponsor_portal' },
         { href: '/admin/impact-reports', label: 'Impact reports' },
         { href: '/admin/certifications', label: 'Certifications' },

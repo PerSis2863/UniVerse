@@ -7,7 +7,7 @@ const courses = new CoursesService();
 export default function coursesModule(router: Router) {
   const r = router.controller('courses');
 
-  r.get('', ({ query }) => courses.findAll(query));
+  r.get('', ({ query, user }) => courses.findAll(query, user));
   r.get('admin/all', { roles: ['ADMIN'] }, () => courses.findAllForAdmin());
   r.get('my', ({ user }) => (user.role === 'TEACHER' ? courses.findForTeacher(user.id) : courses.findForStudent(user.id)));
   r.get('my-students', ({ user }) => (user.role === 'TEACHER' ? courses.findMyStudents(user.id) : []));

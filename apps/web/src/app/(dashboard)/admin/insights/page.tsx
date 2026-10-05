@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Building2, Eye, GraduationCap, Minus, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
+import { SchoolAnalytics } from '@/components/insights/SchoolAnalytics';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 
@@ -64,7 +65,7 @@ export default function AdminInsightsPage() {
 
   return (
     <>
-      <Topbar title="School insights" subtitle="Students who need help, how departments are doing, and teacher workload (last 30 days)" />
+      <Topbar title="School insights" subtitle="Ask about your school, see trends, and find students who need help and teacher workload" />
       <SectionTabs tabs={ADMIN_INSIGHT_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-8">
@@ -80,6 +81,8 @@ export default function AdminInsightsPage() {
                 <Tile icon={Building2} label="Attendance" value={data.totals.attendance30 === null ? '–' : `${data.totals.attendance30}%`} sub="present or late, last 30 days" />
                 <Tile icon={AlertTriangle} label="Students flagged" value={String(data.totals.flaggedStudents)} sub="open early-warning flags" />
               </div>
+
+              <SchoolAnalytics />
 
               <section className="space-y-3">
                 <div className="flex items-center justify-between">

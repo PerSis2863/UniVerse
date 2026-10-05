@@ -5,6 +5,7 @@ import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
 import { ForbiddenException, UnauthorizedException } from './http';
 import { isSessionToken, verifySessionToken } from './session-token';
+import { campusForEmail } from './campus-network';
 
 // Turns a bearer token into a platform user (ported from the old NestJS API).
 // Accepts Firebase ID tokens (verified against Google's public keys, no firebase-admin needed) and,
@@ -70,9 +71,9 @@ export function isDemoAccount(email: string | null | undefined): boolean {
 /**
  * The demo admin account is read-only: anyone can sign in as it when demo login is on, so it
  * must not be able to change real people's roles, accounts, grades or credentials. It can still
- * browse, chat and read notifications.
+ * browse, chat, read notifications and ask school analytics questions (a POST that only reads).
  */
-const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$|bootstrap$|boards(\/|$))/;
+const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$|bootstrap$|boards(\/|$)|admin\/school-analytics$)/;
 export function demoWriteBlocked(req: Request, user: { role: string }, token: string | null): boolean {
   if (!token?.startsWith('mock-token-') || user.role !== 'ADMIN') return false;
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return false;
@@ -224,6 +225,8 @@ async function resolveUserUncached(token: string): Promise<User> {
         name: decoded.name || decoded.email?.split('@')[0] || 'User',
         role: 'STUDENT',
         avatar: decoded.picture || null,
+        // Campus network: a proven university email puts them in that campus (src/server/campus-network.ts).
+        campusId: decoded.email_verified === true ? await campusForEmail(decoded.email).catch(() => null) : null,
       },
     });
   }

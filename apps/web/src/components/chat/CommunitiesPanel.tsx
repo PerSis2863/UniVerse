@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronDown, Crown, Hash, Headphones, Link2, Loader2, LogOut, Megaphone, Plus, Search, Settings2, Shield, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Compass, Crown, Globe2, Hash, Headphones, Link2, Loader2, LogOut, Megaphone, Plus, Search, Settings2, Shield, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { spring } from '@/lib/motion';
@@ -15,7 +15,8 @@ import { chatJson } from './chat-client';
 
 // Communities (Discord server / WhatsApp community), src/server/communities.ts: a list of
 // communities, each opening to its channels. Text channels open in the chat on the right; voice
-// channels are drop-in calls. Moderators manage members, roles, channels and the invite link.
+// channels are drop-in calls. Moderators manage members, roles, channels and the invite link, and
+// can open a community to everyone (Discover, which includes partner campuses in a campus network).
 
 type Kind = 'TEXT' | 'ANNOUNCE' | 'VOICE';
 interface Channel { id: string; name: string; kind: Kind; slowModeSec: number; unread: number }
@@ -28,6 +29,7 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
   const [managing, setManaging] = useState<Community | null>(null);
   const list = data ?? [];
   const isOpen = (c: Community) => open[c.id] ?? list.length <= 3;
@@ -76,7 +78,18 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
           </div>
         );
       })}
+      {data && (
+        <button type="button" onClick={() => setDiscovering(true)} className="w-full mt-1 flex items-center gap-3 p-2.5 rounded-2xl text-left hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
+          <span className="w-11 h-11 rounded-2xl flex items-center justify-center bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 shrink-0"><Compass className="w-5 h-5" /></span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-semibold text-zinc-900 dark:text-white">Discover communities</span>
+            <span className="block text-xs text-zinc-500">Open communities, including partner campuses</span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-zinc-400" />
+        </button>
+      )}
       <AnimatePresence>
+        {discovering && <DiscoverCommunities key="discover" onClose={() => setDiscovering(false)} onJoined={() => void mutate()} />}
         {creating && <CreateCommunity key="create" onClose={() => setCreating(false)} onDone={() => { setCreating(false); void mutate(); }} />}
         {joining && <JoinCommunity key="join" onClose={() => setJoining(false)} onDone={() => { setJoining(false); void mutate(); }} />}
         {managing && <ManageCommunity key="manage" community={managing} onClose={() => { setManaging(null); void mutate(); }} />}
@@ -175,7 +188,44 @@ function JoinCommunity({ onClose, onDone }: { onClose: () => void; onDone: () =>
   );
 }
 
-interface Detail { id: string; name: string; description: string | null; color: string; inviteCode: string | null; myRole: 'OWNER' | 'MOD' | 'MEMBER'; members: { id: string; name: string; avatar: string | null; communityRole: string }[] }
+interface Open { id: string; name: string; description: string | null; color: string; members: number; campus: string | null }
+
+/** Communities open to everyone (moderators turned on "Anyone can find and join") that I'm not in yet. */
+function DiscoverCommunities({ onClose, onJoined }: { onClose: () => void; onJoined: () => void }) {
+  const { data, mutate, isLoading } = useSWR<Open[]>('/api/chat/communities/discover', authedJson, { revalidateOnFocus: false });
+  const [busy, setBusy] = useState<string | null>(null);
+  const join = async (c: Open) => {
+    setBusy(c.id);
+    try {
+      await chatJson('/api/chat/communities/join', { method: 'POST', body: JSON.stringify({ communityId: c.id }) });
+      toast.success(`You joined ${c.name}`);
+      await mutate((list) => list?.filter((x) => x.id !== c.id), { revalidate: false });
+      onJoined();
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
+  };
+  return (
+    <Sheet title="Discover communities" onClose={onClose}>
+      {isLoading ? <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>
+        : !data?.length ? <p className="text-sm text-zinc-500 py-4 text-center">No open communities right now. Moderators can open theirs in the community’s settings.</p>
+        : (
+          <ul className="space-y-1">
+            {data.map((c) => (
+              <li key={c.id} className="flex items-center gap-3 p-2 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black shrink-0" style={{ background: c.color }}>{c.name.slice(0, 1).toUpperCase()}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block font-semibold text-sm text-zinc-900 dark:text-white truncate">{c.name}</span>
+                  <span className="block text-xs text-zinc-500 truncate">{c.members} member{c.members === 1 ? '' : 's'}{c.campus ? ` · ${c.campus}` : ''}{c.description ? ` · ${c.description}` : ''}</span>
+                </span>
+                <button type="button" onClick={() => void join(c)} disabled={busy === c.id} className="btn-primary btn-sm shrink-0">{busy === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Join'}</button>
+              </li>
+            ))}
+          </ul>
+        )}
+    </Sheet>
+  );
+}
+
+interface Detail { id: string; name: string; description: string | null; color: string; inviteCode: string | null; discoverable: boolean; myRole: 'OWNER' | 'MOD' | 'MEMBER'; members: { id: string; name: string; avatar: string | null; communityRole: string }[] }
 
 function ManageCommunity({ community, onClose }: { community: Community; onClose: () => void }) {
   const { data, mutate } = useSWR<Detail>(`/api/chat/communities/${community.id}`, authedJson);
@@ -207,6 +257,24 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
               </div>
               <button type="button" onClick={async () => { await chatJson(`/api/chat/communities/${community.id}`, { method: 'PATCH', body: JSON.stringify({ newInvite: true }) }); await mutate(); toast.success('New link made; the old one stopped working'); }} className="text-xs font-semibold text-indigo-500">Make a new link</button>
             </section>
+          )}
+
+          {mod && (
+            <label className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] p-3 cursor-pointer">
+              <span className="flex items-start gap-2.5">
+                <Globe2 className="w-4 h-4 mt-0.5 text-indigo-500 shrink-0" />
+                <span>
+                  <span className="block text-sm font-semibold text-zinc-900 dark:text-white">Anyone can find and join</span>
+                  <span className="block text-xs text-zinc-500">Listed under Discover communities, also for partner campuses.</span>
+                </span>
+              </span>
+              <input type="checkbox" className="sr-only peer" checked={data.discoverable} onChange={async (e) => {
+                const on = e.target.checked;
+                try { await chatJson(`/api/chat/communities/${community.id}`, { method: 'PATCH', body: JSON.stringify({ discoverable: on }) }); await mutate(); toast.success(on ? 'Anyone can now find and join it' : 'Only people with the invite link can join now'); }
+                catch (err) { toast.error((err as Error).message); }
+              }} />
+              <span aria-hidden className="relative w-11 h-6 shrink-0 rounded-full bg-zinc-300 dark:bg-white/15 peer-checked:bg-indigo-500 transition-colors after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500/50" />
+            </label>
           )}
 
           {mod && (

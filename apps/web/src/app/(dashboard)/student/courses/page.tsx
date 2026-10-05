@@ -12,6 +12,7 @@ import { fetcher } from '@/lib/fetcher';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import { courseColor } from '@/lib/course-color';
+import { JointCourses } from '@/components/network/JointCourses';
 
 interface Enrollment {
   enrolledAt: string;
@@ -73,6 +74,7 @@ export default function CoursesPage() {
             ))}
           </div>
         )}
+        <JointCourses />
       </div>
     </>
   );

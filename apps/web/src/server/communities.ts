@@ -82,13 +82,31 @@ export async function listCommunities(user: SessionUser) {
   }));
 }
 
+/**
+ * Communities open to the whole network (moderators turned on "Anyone can find and join") that I'm
+ * not in yet, biggest first, with the campus of the person who started each.
+ */
+export async function discoverCommunities(user: SessionUser) {
+  const found = await prisma.community.findMany({
+    where: { discoverable: true, members: { none: { userId: user.id } } },
+    orderBy: { members: { _count: 'desc' } },
+    take: 50,
+    select: { id: true, name: true, description: true, color: true, createdById: true, _count: { select: { members: true } } },
+  });
+  const starters = [...new Set(found.map((c) => c.createdById).filter((x): x is string => !!x))];
+  const campusOf = new Map(
+    starters.length ? (await prisma.user.findMany({ where: { id: { in: starters } }, select: { id: true, campus: { select: { name: true } } } })).map((u) => [u.id, u.campus?.name ?? null]) : [],
+  );
+  return found.map((c) => ({ id: c.id, name: c.name, description: c.description, color: c.color, members: c._count.members, campus: c.createdById ? campusOf.get(c.createdById) ?? null : null }));
+}
+
 /** One community: members (with roles) and, for moderators, the invite code. */
 export async function getCommunity(user: SessionUser, id: string) {
   const role = await requireRole(id, user, 'MEMBER');
   const c = await prisma.community.findUnique({
     where: { id },
     select: {
-      id: true, name: true, description: true, color: true, inviteCode: true,
+      id: true, name: true, description: true, color: true, inviteCode: true, discoverable: true,
       members: { orderBy: { joinedAt: 'asc' }, take: 300, select: { role: true, user: { select: { id: true, name: true, avatar: true, role: true, lastSeenAt: true, presence: true, statusText: true, statusEmoji: true } } } },
     },
   });
@@ -137,10 +155,15 @@ export async function addMembers(user: SessionUser, id: string, body: Record<str
   return { added: fresh.length };
 }
 
+/** Joins with an invite link ({ code }), or a community open to the network ({ communityId }). */
 export async function joinCommunity(user: SessionUser, body: Record<string, unknown>) {
-  const c = await prisma.community.findUnique({ where: { inviteCode: String(body.code ?? '') }, select: { id: true, name: true } });
-  if (!c) throw new NotFoundException('This invite link isn’t valid any more.');
+  const open = typeof body.communityId === 'string';
+  const c = open
+    ? await prisma.community.findFirst({ where: { id: String(body.communityId), discoverable: true }, select: { id: true, name: true } })
+    : await prisma.community.findUnique({ where: { inviteCode: String(body.code ?? '') }, select: { id: true, name: true } });
+  if (!c) throw new NotFoundException(open ? 'This community isn’t open to join any more. Ask a member for an invite link.' : 'This invite link isn’t valid any more.');
   if (!(await myRole(c.id, user.id))) {
+    if ((await prisma.communityMember.count({ where: { communityId: c.id } })) >= MAX_MEMBERS) throw new BadRequestException('This community is full.');
     await prisma.communityMember.create({ data: { communityId: c.id, userId: user.id } });
     const channels = await prisma.conversation.findMany({ where: { communityId: c.id }, select: { id: true } });
     await addParticipants(channels.map((ch) => ch.id), [user.id]);
@@ -226,7 +249,8 @@ export async function updateCommunity(user: SessionUser, id: string, body: Recor
     return { ok: true };
   }
   await requireRole(id, user, 'MOD');
-  const data: { name?: string; description?: string | null; color?: string; inviteCode?: string } = {};
+  const data: { name?: string; description?: string | null; color?: string; inviteCode?: string; discoverable?: boolean } = {};
+  if (typeof body.discoverable === 'boolean') data.discoverable = body.discoverable;
   if (body.name !== undefined) data.name = cleanName(body.name) || 'Community';
   if (body.description !== undefined) data.description = cleanName(body.description, 200) || null;
   if (COLORS.includes(String(body.color))) data.color = String(body.color);

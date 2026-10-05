@@ -2,14 +2,18 @@ import { BadRequestException, ConflictException, NotFoundException, ForbiddenExc
 import prisma from '@/lib/db';
 import { Role, CourseStatus } from '@prisma/client';
 import { pick } from '../pick';
+import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-network';
 
 const COURSE_FIELDS = ['code', 'name', 'description', 'credits', 'department', 'color', 'emoji'] as const;
 
 export class CoursesService {
-  async findAll(query: { search?: string; department?: string }) {
+  /** Published courses; a student in a campus network sees their campus's and partner courses only. */
+  async findAll(query: { search?: string; department?: string }, user?: { id: string; role: string }) {
+    const campuses = user?.role === 'STUDENT' ? await studentCampuses(user.id) : null;
     return prisma.course.findMany({
       where: {
         status: 'PUBLISHED',
+        AND: [courseWhereFor(campuses)],
         ...(query.department && { department: query.department }),
         ...(query.search && {
           OR: [
@@ -160,6 +164,7 @@ export class CoursesService {
   async enroll(courseId: string, studentId: string) {
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: { status: true } });
     if (!course || course.status !== 'PUBLISHED') throw new NotFoundException('Course not found');
+    await assertCanJoinCourse(courseId, studentId);
     return prisma.enrollment.upsert({
       where: { studentId_courseId: { studentId, courseId } },
       create: { studentId, courseId },

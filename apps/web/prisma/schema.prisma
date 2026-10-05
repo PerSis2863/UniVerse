@@ -123,6 +123,11 @@ model User {
   chatMutedUntil     DateTime? // owner console: can't send chat messages until then
   signedOutAt        DateTime? // "sign out everywhere": sign-ins that started before this are refused
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
+  // Campus network (upgrade 9): the campus this person belongs to (set from their email domain) and
+  // whether people at partner campuses may find them in search.
+  campusId           String?
+  campus             Campus?   @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  networkVisible     Boolean   @default(false)
 
   // Profiles
   studentProfile   StudentProfile?
@@ -255,6 +260,7 @@ model User {
 
   @@index([role])
   @@index([status])
+  @@index([campusId])
   @@map("users")
 }
 
@@ -306,10 +312,16 @@ model StudentProfile {
   department String?
   year       Int      @default(1)
   gpa        Float    @default(0)
+  // On exchange at a partner campus (upgrade 9): they can also join its courses between these dates.
+  exchangeCampusId String?
+  exchangeCampus   Campus?   @relation("ExchangeCampus", fields: [exchangeCampusId], references: [id], onDelete: SetNull)
+  exchangeFrom     DateTime?
+  exchangeUntil    DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([userId])
+  @@index([exchangeCampusId])
   @@map("student_profiles")
 }
 
@@ -362,6 +374,7 @@ model Course {
   codeRooms             CodeRoom[]
 
   scheduledCalls ScheduledCall[]
+  campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
 
   @@index([teacherId])
   @@index([status])
@@ -2586,6 +2599,7 @@ model Community {
   description String?
   color       String            @default("#4f46e5")
   inviteCode  String            @unique
+  discoverable Boolean          @default(false) // listed under Discover, open to anyone in the network (upgrade 9)
   createdById String?
   createdAt   DateTime          @default(now())
   members     CommunityMember[]
@@ -2631,4 +2645,39 @@ model FavoritePerson {
 
   @@id([userId, favoriteId])
   @@map("favorite_people")
+}
+
+// Campus network (upgrade 9): universities in one UniVerse deployment. A campus is a group of people
+// (from their email domains); courses can be shared with partner campuses, students can go on
+// exchange, and communities can be opened to the whole network. src/server/campus-network.ts
+model Campus {
+  id               String           @id @default(cuid())
+  name             String
+  country          String?
+  city             String?
+  logoUrl          String?
+  emailDomains     String           @default("[]") // JSON array, e.g. ["uni.edu", "student.uni.edu"]
+  lat              Float?
+  lng              Float?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  users            User[]
+  courses          CourseCampus[]
+  exchangeStudents StudentProfile[] @relation("ExchangeCampus")
+
+  @@map("campuses")
+}
+
+/// A course shared with a partner campus: that campus's students can see and join it.
+model CourseCampus {
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  campusId  String
+  campus    Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  addedById String?
+  createdAt DateTime @default(now())
+
+  @@id([courseId, campusId])
+  @@index([campusId])
+  @@map("course_campuses")
 }
