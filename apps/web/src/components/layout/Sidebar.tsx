@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Code2, PenTool, Phone, ShieldCheck } from 'lucide-react';
+import { Code2, PenTool, ShieldCheck } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Bell, Settings, LogOut,
@@ -48,6 +48,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/assignments', label: 'Assignments', keywords: 'essay homework coursework hand in' },
     { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
     { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
+    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
     { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
@@ -55,27 +56,30 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
   ],
   TEACHER: [
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
+    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+  ],
+  ADMIN: [
+    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
   ],
 };
 
 export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
     { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
-    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare },
-    { href: '/calls', label: 'Calls', icon: Phone },
+    // Messages and calls are one entry: the Calls list is a tab inside Messages.
+    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare, also: ['/calls'] },
     {
       label: 'nav.schooling', icon: GraduationCap,
       subItems: [
         { href: '/student/courses', label: 'nav.courses' },
         { href: '/student/groups', label: 'nav.groups' },
-        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor'] },
+        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor'] },
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/assignments', label: 'Assignments' },
         { href: '/student/live', label: 'Live class' },
         { href: '/student/offline', label: 'Offline courses' },
         { href: '/code', label: 'Code together' },
-        { href: '/student/voice-tutor', label: 'Voice tutor' },
         { href: '/student/grades', label: 'My progress', also: ['/student/attendance', '/student/quizzes'] },
         { href: '/student/skills', label: 'nav.skills' },
         { href: '/student/knowledge-hub', label: 'nav.knowledge_hub' },
@@ -139,8 +143,7 @@ export const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
-    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare },
-    { href: '/calls', label: 'Calls', icon: Phone },
+    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
@@ -193,8 +196,7 @@ export const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { href: '/admin/announcements', label: 'nav.announcements', icon: Bell },
-    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare },
-    { href: '/calls', label: 'Calls', icon: Phone },
+    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls'] },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
     { href: '/boards', label: 'Whiteboards', icon: PenTool },
     { href: '/code', label: 'Code together', icon: Code2 },

@@ -233,6 +233,7 @@ model User {
   codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
 
   scheduledCalls ScheduledCall[]
+  voiceSessions VoiceSession[]
   @@index([role])
   @@index([status])
   @@map("users")
@@ -2273,4 +2274,21 @@ model ScheduledCall {
   @@index([conversationId])
   @@index([createdById])
   @@map("scheduled_calls")
+}
+
+// A voice tutor session (src/app/(dashboard)/student/voice-tutor): who, which course, how long,
+// and the conversation as text (never the audio), for the owner console. Kept 90 days.
+model VoiceSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String?
+  durationSec Int
+  turns       Int      @default(0)
+  transcript  String   @default("[]") // JSON: [{ who: 'you' | 'tutor', text }]
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("voice_sessions")
 }

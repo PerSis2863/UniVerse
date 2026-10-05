@@ -410,6 +410,24 @@ export default function ownerModule(router: Router) {
    * clicked, newest first. `kind` limits it to one of those, `q` searches names, emails, text,
    * pages, devices and places, `role` limits it to students, teachers, admins or mentors.
    */
+  // Voice tutor sessions, newest first (conversations as text; kept 90 days).
+  r.get('voice-sessions', async () => {
+    const rows = await prisma.voiceSession.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, courseId: true, durationSec: true, turns: true, transcript: true, createdAt: true, user: { select: { id: true, name: true, role: true } } },
+    });
+    const courseIds = [...new Set(rows.map((r) => r.courseId).filter((c): c is string => !!c))];
+    const courses = courseIds.length ? await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, code: true } }) : [];
+    const code = new Map(courses.map((c) => [c.id, c.code]));
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const month = await prisma.voiceSession.aggregate({ where: { createdAt: { gte: since } }, _count: true, _sum: { durationSec: true } });
+    return {
+      month: { sessions: month._count, minutes: Math.round((month._sum.durationSec ?? 0) / 60) },
+      sessions: rows.map((r) => ({ ...r, course: r.courseId ? code.get(r.courseId) ?? null : null, transcript: (() => { try { return JSON.parse(r.transcript); } catch { return []; } })() })),
+    };
+  });
+
   r.get('activity', async ({ query }) => {
     const before = query.before ? new Date(String(query.before)) : new Date(Date.now() + 1000);
     const userId = typeof query.userId === 'string' && query.userId ? query.userId : undefined;

@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Loader2, Mic, MicOff, PhoneOff, Volume2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, STUDENT_BOARD_TABS, STUDENT_TUTOR_MODES } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,9 @@ export default function VoiceTutorPage() {
   const [lines, setLines] = useState<Line[]>([]);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const live = useRef<{ stop: () => void; setMuted: (m: boolean) => void } | null>(null);
+  // The conversation so far, for saving when the session ends (state is stale inside callbacks).
+  const linesRef = useRef<Line[]>([]);
+  useEffect(() => { linesRef.current = lines; }, [lines]);
 
   useEffect(() => () => live.current?.stop(), []);
   useEffect(() => {
@@ -107,9 +111,13 @@ export default function VoiceTutorPage() {
         session.sendRealtimeInput({ audio: { data: toBase64(e.data), mimeType: 'audio/pcm;rate=16000' } });
       };
 
+      const startedAt = Date.now();
       const stop = () => {
         if (closed) return;
         closed = true;
+        // Keep a record of the session (the conversation as text, never the audio) for the owner console.
+        const durationSec = Math.round((Date.now() - startedAt) / 1000);
+        if (durationSec >= 3) void authedJson('/api/tutor/voice/sessions', { method: 'POST', keepalive: true, body: JSON.stringify({ courseId: courseId || null, durationSec, lines: linesRef.current }) }).catch(() => {});
         setPhase('ending');
         try { session.close(); } catch { /* closed */ }
         capture.port.onmessage = null;
@@ -138,7 +146,9 @@ export default function VoiceTutorPage() {
 
   return (
     <>
-      <Topbar title="Voice tutor" subtitle="Talk through a topic out loud with your AI tutor" />
+      <Topbar title="AI tutor" subtitle="Talk through a topic out loud with your AI tutor" />
+      <SectionTabs tabs={STUDENT_BOARD_TABS} />
+      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="AI tutor mode" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-5 stagger">
           <div className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-6 text-center space-y-4">
@@ -166,7 +176,7 @@ export default function VoiceTutorPage() {
                 <button type="button" className="btn-danger" onClick={() => live.current?.stop()}><PhoneOff className="w-4 h-4" /> End</button>
               </div>
             )}
-            <p className="text-[11px] text-zinc-500">Sessions last up to 10 minutes and count as one AI request. Audio goes to Google Gemini for the conversation and isn&apos;t stored by UniVerse.</p>
+            <p className="text-[11px] text-zinc-500">Sessions last up to 10 minutes and count as one AI request.</p>
           </div>
 
           {lines.length > 0 && (

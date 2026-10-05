@@ -6,23 +6,28 @@ import { FlaskConical, X } from 'lucide-react';
 import { enterSampleMode, exitSampleMode, useSampleMode } from '@/lib/sample-mode';
 import { haptic } from '@/lib/haptics';
 
-/** Clear cached data so every page re-reads from the new source (sample or real). */
-async function clearCache() {
-  await mutate(() => true, undefined, { revalidate: false });
+/**
+ * Reload every page's data from the new source (sample or real). Call after switching: a
+ * revalidating mutate also drops SWR's 5-second de-duplication, so a page opened moments before
+ * can't be handed its old answer again (it kept showing the real, empty page until a refresh).
+ * The page itself is re-opened by DashboardShell (keyed on sample mode).
+ */
+async function reloadData() {
+  await mutate(() => true, undefined, { revalidate: true });
 }
 
 export async function startSampleMode() {
-  await clearCache();
   enterSampleMode();
+  await reloadData();
   haptic('success');
   toast.success('Sample mode is on', { description: 'Explore every page with example data. Nothing you do is saved.' });
 }
 
 export async function stopSampleMode() {
-  await clearCache();
   const { resetSampleDb } = await import('@/lib/sample/router');
   resetSampleDb();
   exitSampleMode();
+  await reloadData();
   toast('Back to your real account');
 }
 
