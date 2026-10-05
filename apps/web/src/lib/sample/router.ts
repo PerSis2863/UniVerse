@@ -2,6 +2,8 @@
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data';
+import { sampleAsk, sampleMetric } from './analytics';
+import { isMetricId } from '@/lib/school-metrics';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -297,6 +299,12 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/impact\/certificates\/pending$/, ({ db: d }) => ok(d.pendingCertificates)],
   [/^\/safety$/, () => ok([])],
   [/^\/api\/assignments$/, () => ok([])],
+  [/^\/api\/admin\/school-analytics$/, ({ q }) => {
+    const many = q.get('metrics');
+    if (many) return ok({ results: many.split(',').filter(isMetricId).slice(0, 4).map((id) => sampleMetric(id)) });
+    const id = q.get('metric');
+    return isMetricId(id) ? ok(sampleMetric(id, { days: Number(q.get('days')) || null, order: q.get('order'), department: q.get('department') })) : fail('Unknown measure.');
+  }],
   [/^\/api\/admin\/insights$/, () => ok({ totals: { students: 0, teachers: 0, courses: 0, grade30: null, attendance30: null, flaggedStudents: 0 }, atRisk: [], departments: [], teachers: [] })],
   [/^\/api\/student\/guardians$/, () => ok({ enabled: false, contacts: [] })],
   [/^\/api\/code$/, () => ok({ courses: [], rooms: [] })],
@@ -474,6 +482,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PATCH', /^\/users\/([^/]+)(\/status)?$/, ({ db: d, m, body }) => { const u = d.users.find((x) => x.id === m[1]); if (u) Object.assign(u, body.status ? { status: body.status } : {}, body.role ? { role: body.role } : {}); return ok(u ?? { ok: true }); }],
   ['DELETE', /^\/api\/admin\/rooms$/, ({ db: d, q }) => { for (const r of d.adminRooms) r.reservations = r.reservations.filter((x: any) => x.id !== q.get('reservationId')); return ok({ ok: true }); }],
   ['DELETE', /^\/api\/admin\/timetable$/, ({ db: d, q }) => { d.slots.splice(d.slots.findIndex((x) => x.id === q.get('id')) >>> 0, 1); return ok({ ok: true }); }],
+  ['POST', /^\/api\/admin\/school-analytics$/, ({ body }) => ok(sampleAsk(body.question))],
   ['POST', /^\/api\/premium\/ai-report$/, () => ok({ report: [
     '## Executive summary (sample)',
     'Engagement grew steadily this term: sign-ups peaked in the enrolment month and impact points are up about 10% month over month.',
