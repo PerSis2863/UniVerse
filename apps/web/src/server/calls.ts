@@ -343,36 +343,133 @@ export async function endCall(callId: string, user: SessionUser, body: Record<st
   return { ok: true };
 }
 
-/** My calls in the last 30 days (chat calls), newest first, for the Calls list. */
-export async function recentCalls(user: SessionUser) {
-  const rows = await prisma.message.findMany({
-    where: { type: 'CALL', deletedAt: null, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) }, conversation: { participants: { some: { userId: user.id } } } },
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-    select: {
-      id: true, metadata: true, createdAt: true, senderId: true,
-      sender: { select: { name: true, avatar: true } },
-      conversation: { select: { id: true, isGroup: true, name: true, participants: { where: { userId: { not: user.id } }, take: 1, select: { user: { select: { name: true, avatar: true } } } } } },
-    },
-  });
-  return rows.map((r) => {
+export type CallKind = 'chat' | 'class' | 'group' | 'room' | 'link';
+const kindOfCall = (id: string): CallKind => (id.startsWith('c_') ? 'class' : id.startsWith('g_') ? 'group' : id.startsWith('r_') ? 'room' : id.startsWith('l_') ? 'link' : 'chat');
+
+/** One call in my history (Calls, Stage 4 · 2.13). */
+export interface CallHistoryRow {
+  /** Unique per meeting (class and group rooms keep one id for every meeting). */
+  key: string;
+  callId: string;
+  type: CallKind;
+  at: Date;
+  kind: 'audio' | 'video' | null;
+  title: string; avatar: string | null; isGroup: boolean;
+  /** Chat calls: the chat, and how the call went. */
+  conversationId: string | null; outgoing: boolean; answered: boolean; declined: boolean; live: boolean; missed: boolean;
+  /** How long I was in it (a chat call: how long it lasted). */
+  durationSec: number | null;
+  /** Who else joined (names), and how many more. */
+  people: string[]; more: number;
+  noteId: string | null; recordingId: string | null;
+  /** A class's study pack from that meeting. */
+  study: { courseId: string; sessionId: string } | null;
+}
+
+const MEETING_GAP_MS = 30 * 60_000;
+/** Splits a long list into pieces D1 accepts in one query (at most 100 values). */
+const chunks = <T,>(xs: T[], n = 90) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
+
+/**
+ * My calls in the last 30 days, newest first: every call I was in (chat calls, classes, study groups,
+ * voice rooms, call links; from the call log each app sends when it leaves) and the chat calls I
+ * missed, with how long I was in each, who else joined, and its meeting notes, recording or study
+ * pack. In a class or group room, stays less than 30 minutes apart are one meeting.
+ */
+export async function recentCalls(user: SessionUser): Promise<CallHistoryRow[]> {
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const parentOf = (id: string) => breakoutOf(id)?.parent ?? id;
+  const [messages, mine] = await Promise.all([
+    prisma.message.findMany({
+      where: { type: 'CALL', deletedAt: null, createdAt: { gte: since }, conversation: { participants: { some: { userId: user.id } } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true, metadata: true, createdAt: true, senderId: true,
+        sender: { select: { name: true, avatar: true } },
+        conversation: { select: { id: true, isGroup: true, name: true, participants: { where: { userId: { not: user.id } }, take: 1, select: { user: { select: { name: true, avatar: true } } } } } },
+      },
+    }),
+    prisma.callStat.findMany({ where: { userId: user.id, createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 300, select: { callId: true, seconds: true, createdAt: true } }),
+  ]);
+
+  // My meetings: my stays in each call, joined when less than 30 minutes apart.
+  const stays = new Map<string, { start: number; end: number; seconds: number }[]>();
+  for (const r of mine) {
+    const end = r.createdAt.getTime();
+    const id = parentOf(r.callId);
+    stays.set(id, [...(stays.get(id) ?? []), { start: end - r.seconds * 1000, end, seconds: r.seconds }]);
+  }
+  const meetings: { callId: string; start: number; end: number; seconds: number }[] = [];
+  for (const [callId, list] of stays) {
+    let last: (typeof meetings)[number] | null = null;
+    for (const st of list.sort((a, b) => a.start - b.start)) {
+      if (last && st.start - last.end < MEETING_GAP_MS) { last.end = Math.max(last.end, st.end); last.seconds += st.seconds; continue; }
+      last = { callId, ...st };
+      meetings.push(last);
+    }
+  }
+
+  // Who else was there (their call logs, breakout rooms included), and names, titles, notes, recordings.
+  const ids = [...stays.keys()];
+  const courseIds = ids.filter((i) => i.startsWith('c_')).map((i) => i.slice(2));
+  const groupIds = ids.filter((i) => i.startsWith('g_')).map((i) => i.slice(2));
+  const roomIds = ids.filter((i) => i.startsWith('r_')).map((i) => i.slice(2));
+  const [others, notes, recordings, sessions, courses, groups, rooms] = await Promise.all([
+    Promise.all(chunks(ids, 40).map((c) => prisma.callStat.findMany({
+      where: { createdAt: { gte: since }, userId: { not: user.id }, OR: c.flatMap((id) => [{ callId: id }, { callId: { startsWith: `${id}~b` } }]) },
+      select: { callId: true, userId: true, createdAt: true, seconds: true }, take: 2000,
+    }))).then((x) => x.flat()),
+    Promise.all(chunks(ids).map((c) => prisma.callNote.findMany({ where: { callId: { in: c }, createdAt: { gte: since } }, select: { id: true, callId: true, createdAt: true } }))).then((x) => x.flat()),
+    Promise.all(chunks(ids).map((c) => prisma.callRecording.findMany({ where: { callId: { in: c }, createdAt: { gte: since } }, select: { id: true, callId: true, createdAt: true } }))).then((x) => x.flat()),
+    Promise.all(chunks(courseIds).map((c) => prisma.classSession.findMany({ where: { courseId: { in: c }, startedAt: { gte: new Date(since.getTime() - 86_400_000) }, status: 'READY' }, select: { id: true, courseId: true, startedAt: true } }))).then((x) => x.flat()),
+    Promise.all(chunks(courseIds).map((c) => prisma.course.findMany({ where: { id: { in: c } }, select: { id: true, code: true, name: true } }))).then((x) => x.flat()),
+    Promise.all(chunks(groupIds).map((c) => prisma.group.findMany({ where: { id: { in: c } }, select: { id: true, name: true } }))).then((x) => x.flat()),
+    Promise.all(chunks(roomIds).map((c) => prisma.conversation.findMany({ where: { id: { in: c } }, select: { id: true, name: true, community: { select: { name: true } } } }))).then((x) => x.flat()),
+  ]);
+  const names = new Map((await Promise.all(chunks([...new Set(others.map((o) => o.userId))]).map((c) => prisma.user.findMany({ where: { id: { in: c } }, select: { id: true, name: true } })))).flat().map((u) => [u.id, u.name]));
+
+  const near = (t: number, m: { start: number; end: number }, before: number, after: number) => t >= m.start - before && t <= m.end + after;
+  const extras = (m: { callId: string; start: number; end: number }) => {
+    const who = [...new Set(others
+      .filter((o) => parentOf(o.callId) === m.callId && o.createdAt.getTime() >= m.start - 10 * 60_000 && o.createdAt.getTime() - o.seconds * 1000 <= m.end + 10 * 60_000)
+      .map((o) => names.get(o.userId)).filter((n): n is string => !!n))];
+    const note = notes.filter((n) => n.callId === m.callId && near(n.createdAt.getTime(), m, 3600_000, 3 * 3600_000)).at(-1);
+    const rec = recordings.filter((r) => r.callId === m.callId && near(r.createdAt.getTime(), m, 3600_000, 3 * 3600_000)).at(-1);
+    const pack = m.callId.startsWith('c_') ? sessions.find((x) => x.courseId === m.callId.slice(2) && near(x.startedAt.getTime(), m, 30 * 60_000, 30 * 60_000)) : undefined;
+    return { people: who.slice(0, 6), more: Math.max(0, who.length - 6), noteId: note?.id ?? null, recordingId: rec?.id ?? null, study: pack ? { courseId: pack.courseId, sessionId: pack.id } : null };
+  };
+  const blank = { conversationId: null, outgoing: false, answered: true, declined: false, live: false, missed: false, avatar: null };
+
+  const rows: CallHistoryRow[] = [];
+  // Chat calls, answered or missed (their own record says how they went).
+  for (const r of messages) {
     const meta = (r.metadata ?? {}) as CallMeta;
     const other = r.conversation.participants[0]?.user;
-    return {
-      id: r.id,
-      at: r.createdAt,
-      kind: meta.kind === 'video' ? 'video' : 'audio',
-      outgoing: r.senderId === user.id,
-      answered: !!meta.answered,
-      declined: !!meta.declinedBy,
-      durationSec: meta.durationSec ?? null,
-      live: !!meta.inApp && !meta.endedAt && Date.now() - r.createdAt.getTime() < CALL_HOURS * 3600_000,
-      conversationId: r.conversation.id,
+    const live = !!meta.inApp && !meta.endedAt && Date.now() - r.createdAt.getTime() < CALL_HOURS * 3600_000;
+    const outgoing = r.senderId === user.id;
+    const m = meetings.find((x) => x.callId === r.id);
+    rows.push({
+      key: r.id, callId: r.id, type: 'chat', at: r.createdAt, kind: meta.kind === 'video' ? 'video' : 'audio',
       title: r.conversation.isGroup ? r.conversation.name ?? 'Group' : other?.name ?? r.sender.name,
-      avatar: r.conversation.isGroup ? null : other?.avatar ?? null,
-      isGroup: r.conversation.isGroup,
-    };
-  });
+      avatar: r.conversation.isGroup ? null : other?.avatar ?? null, isGroup: r.conversation.isGroup,
+      conversationId: r.conversation.id, outgoing, answered: !!meta.answered, declined: !!meta.declinedBy, live,
+      missed: !outgoing && !meta.answered && !live,
+      durationSec: meta.durationSec ?? m?.seconds ?? null,
+      ...(m ? extras(m) : { people: [], more: 0, noteId: null, recordingId: null, study: null }),
+    });
+  }
+  // Every other call I was in.
+  for (const m of meetings) {
+    const type = kindOfCall(m.callId);
+    if (type === 'chat') continue;
+    const course = courses.find((c) => `c_${c.id}` === m.callId);
+    const group = groups.find((g) => `g_${g.id}` === m.callId);
+    const voice = rooms.find((x) => `r_${x.id}` === m.callId);
+    const title = course ? `${course.code} · ${course.name}` : group ? group.name : voice ? `${voice.name ?? 'Voice room'}${voice.community ? ` · ${voice.community.name}` : ''}` : type === 'link' ? 'Call link' : 'Call';
+    rows.push({ key: `${m.callId}@${m.start}`, callId: m.callId, type, at: new Date(m.start), kind: null, title, isGroup: true, durationSec: m.seconds, ...blank, ...extras(m) });
+  }
+  return rows.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 100);
 }
 
 // ── Call health log (owner console → Calls) ──────────────────────────────────────────────────

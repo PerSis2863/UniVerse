@@ -2062,6 +2062,8 @@ model CallStat {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([callId])
   @@map("call_stats")
 }
 
