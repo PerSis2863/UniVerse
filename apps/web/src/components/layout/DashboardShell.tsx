@@ -3,9 +3,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
-import {
-  LayoutDashboard, BookOpen, MessageSquare, Bell, Search, Globe2, Users, ShieldCheck, Menu,
-} from 'lucide-react';
+import { Bell, ChevronLeft, Search, Menu } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { openCommandPalette } from '@/lib/palette';
 import { DeferredShell } from './DeferredShell';
@@ -24,46 +22,15 @@ import { haptic } from '@/lib/haptics';
 import { authedJson } from '@/lib/authed-fetch';
 import useSWR from 'swr';
 import { PendingPage } from './PendingPage';
+import { isTabRoot, tabsForRole, type TabItem } from '@/lib/app-tabs';
+import { goBack } from '@/lib/app-nav';
+import { useSectionRoot } from '@/lib/chrome';
+import { useRouter } from 'next/navigation';
+import { SwipeBack } from './SwipeBack';
 import { PullToRefresh } from './PullToRefresh';
 
 interface DashboardShellProps {
   children: React.ReactNode;
-}
-
-type TabItem = { href: string; label: string; icon: typeof LayoutDashboard; match?: string[] };
-
-function tabsForRole(role: string): { base: string; items: TabItem[] } {
-  if (role === 'TEACHER') {
-    return {
-      base: '/teacher',
-      items: [
-        { href: '/teacher', label: 'Home', icon: LayoutDashboard },
-        { href: '/teacher/courses', label: 'Courses', icon: BookOpen },
-        { href: '/teacher/students', label: 'Students', icon: Users, match: ['/teacher/students', '/teacher/early-warning', '/teacher/analytics'] },
-        { href: '/teacher/inbox', label: 'Messages', icon: MessageSquare, match: ['/teacher/inbox', '/calls'] },
-      ],
-    };
-  }
-  if (role === 'ADMIN') {
-    return {
-      base: '/admin',
-      items: [
-        { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-        { href: '/admin/users', label: 'Users', icon: Users },
-        { href: '/admin/credentials', label: 'Verify', icon: ShieldCheck, match: ['/admin/credentials', '/admin/certifications'] },
-        { href: '/admin/inbox', label: 'Messages', icon: MessageSquare, match: ['/admin/inbox', '/calls'] },
-      ],
-    };
-  }
-  return {
-    base: '/student',
-    items: [
-      { href: '/student', label: 'Home', icon: LayoutDashboard, match: ['/student/calendar', '/student/information'] },
-      { href: '/student/impact/ngo-marketplace', label: 'Impact', icon: Globe2, match: ['/student/impact', '/student/credentials', '/student/passport'] },
-      { href: '/student/courses', label: 'Courses', icon: BookOpen },
-      { href: '/student/inbox', label: 'Messages', icon: MessageSquare, match: ['/student/inbox', '/calls'] },
-    ],
-  };
 }
 
 /**
@@ -127,6 +94,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const openingPath = useOptimisticPath(pathname);
   const pageTitle = usePageTitle();
   useScrollEdges(pathname);
+  const router = useRouter();
+  // Inner pages get a back button (and, in the installed iPhone app, the edge swipe): an installed
+  // web app has no browser back button, so without it you could get stuck on an inner page.
+  const sectionRoot = useSectionRoot();
+  const home = tabsForRole(user?.role ?? 'STUDENT').base;
+  const canGoBack = !!user && !isTabRoot(pathname, user.role) && sectionRoot !== pathname;
+  const back = () => goBack(router, home);
   // The unread count from the notifications list the page's Topbar already loaded (no extra request).
   const { data: notes } = useSWR<{ read: boolean }[]>(user ? '/api/notifications' : null, authedJson, { revalidateOnMount: false, revalidateOnFocus: false, revalidateIfStale: false });
   const unread = Array.isArray(notes) ? notes.filter((n) => !n.read).length : 0;
@@ -151,10 +125,17 @@ export function DashboardShell({ children }: DashboardShellProps) {
         {/* Mobile navigation bar (iOS): clear at the top, frosted once content scrolls under it; the
             brand gives way to the page's title when its large title has scrolled away. */}
         <header className="mobile-header nav-edge lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between">
-          <Link href={tabsForRole(user?.role ?? 'STUDENT').base} className="flex items-center gap-2 min-w-0 pressable" aria-label="Home">
-            <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
-            <span className="nav-brand-text font-bold text-[17px] tracking-tight text-zinc-900 dark:text-white">UniVerse</span>
-          </Link>
+          {canGoBack ? (
+            <button type="button" onClick={back} aria-label="Back" className="pressable -ml-2 h-11 pr-3 flex items-center gap-0.5 rounded-full text-tint-text text-[17px]">
+              <ChevronLeft className="w-7 h-7" strokeWidth={2.3} />
+              <span className="nav-brand-text">Back</span>
+            </button>
+          ) : (
+            <Link href={home} className="flex items-center gap-2 min-w-0 pressable" aria-label="Home">
+              <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
+              <span className="nav-brand-text font-bold text-[17px] tracking-tight text-zinc-900 dark:text-white">UniVerse</span>
+            </Link>
+          )}
           {pageTitle && (
             <span aria-hidden className="nav-inline-title absolute left-1/2 -translate-x-1/2 max-w-[52%] truncate text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ top: 'calc(var(--safe-top) + 0.875rem)' }}>{pageTitle}</span>
           )}
@@ -169,6 +150,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </div>
         </header>
 
+        <SwipeBack enabled={canGoBack} pathname={pathname} onBack={back} />
         <main className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip">
           <SampleModeBar />
           {/* Re-mount pages when switching between sample and real data so they reload from the right source */}

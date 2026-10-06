@@ -47,3 +47,19 @@ export function useScrollEdges(resetKey: string, collapseAt = 52) {
     };
   }, [resetKey, collapseAt]);
 }
+
+// A page that belongs to a tab bar section (it shows SectionTabs with one of the tab bar's pages,
+// e.g. Timetable next to Overview) is a top-level screen too: no back button there.
+let sectionRoot: string | null = null;
+const rootListeners = new Set<() => void>();
+const subscribeRoot = (l: () => void) => { rootListeners.add(l); return () => { rootListeners.delete(l); }; };
+
+export function setSectionRoot(path: string | null) {
+  if (path === sectionRoot) return;
+  sectionRoot = path;
+  rootListeners.forEach((l) => l());
+}
+
+export function useSectionRoot() {
+  return useSyncExternalStore(subscribeRoot, () => sectionRoot, () => null);
+}

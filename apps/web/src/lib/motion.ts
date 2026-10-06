@@ -3,15 +3,21 @@ import type { Transition, Variants } from 'framer-motion';
 // One motion language for the whole app, tuned like SwiftUI's springs: described by how long they
 // feel (visualDuration) and how much they overshoot (bounce). Controls get a hint of bounce,
 // surfaces settle without wobble.
+// With "Reduce Motion" on, springs keep moving (the highlights still glide) but without overshoot
+// and a little quicker, like iOS. Read once in the browser (on the server: the normal springs).
+const calm = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const s = (visualDuration: number, bounce: number): Transition =>
+  ({ type: 'spring', visualDuration: calm ? visualDuration * 0.8 : visualDuration, bounce: calm ? 0 : bounce });
+
 export const spring = {
   /** Default for layout, sheets and cards (SwiftUI .smooth). */
-  smooth: { type: 'spring', visualDuration: 0.38, bounce: 0 } as Transition,
+  smooth: s(0.38, 0),
   /** Small controls: toggles, chips, segmented thumbs, tab indicators (SwiftUI .snappy). */
-  snappy: { type: 'spring', visualDuration: 0.3, bounce: 0.15 } as Transition,
+  snappy: s(0.3, 0.15),
   /** Large surfaces that travel far (full-height sheets, drawers). */
-  gentle: { type: 'spring', visualDuration: 0.48, bounce: 0 } as Transition,
+  gentle: s(0.48, 0),
   /** Playful confirmations: a sent message, a completed task (SwiftUI .bouncy). */
-  bouncy: { type: 'spring', visualDuration: 0.42, bounce: 0.3 } as Transition,
+  bouncy: s(0.42, 0.3),
 };
 
 export const ease = {

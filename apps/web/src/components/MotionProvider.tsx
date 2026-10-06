@@ -15,7 +15,10 @@ const loadFeatures = () => import('@/lib/motion-features').then((mod) => mod.def
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   return (
     <LazyMotion features={loadFeatures}>
-      <MotionConfig reducedMotion="user" transition={spring.smooth}>
+      {/* Animations always run: with "Reduce Motion" on, the springs themselves calm down (no
+          overshoot, src/lib/motion.ts) instead of every movement being cut, which made phones
+          with the setting feel frozen. */}
+      <MotionConfig reducedMotion="never" transition={spring.smooth}>
         {children}
         <DialogHost />
         <SheetGestures />

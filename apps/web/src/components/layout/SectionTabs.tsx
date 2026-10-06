@@ -1,11 +1,13 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useLayoutEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { m as motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { useOptimisticPath } from '@/lib/nav-pending';
+import { isTabRoot } from '@/lib/app-tabs';
+import { setSectionRoot } from '@/lib/chrome';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
@@ -133,8 +135,17 @@ export const MONITORING_TABS: SectionTab[] = [
  * page has loaded), so switching feels instant.
  */
 export function SectionTabs({ tabs, small, label = 'Sections' }: { tabs: SectionTab[]; small?: boolean; label?: string }) {
-  const pathname = useOptimisticPath(usePathname());
+  const here = usePathname();
+  const pathname = useOptimisticPath(here);
   const group = tabs.map((t) => t.href).join('|');
+  // Tabs next to one of the tab bar's pages (Timetable next to Overview…) make this a top-level
+  // screen: the phone's top bar shows no back button here. Before paint, so it never flickers.
+  const role = useAuthStore((st) => st.user?.role);
+  useLayoutEffect(() => {
+    if (!role || !tabs.some((t) => isTabRoot(t.href, role))) return;
+    setSectionRoot(here);
+    return () => setSectionRoot(null);
+  }, [role, here, group]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <nav aria-label={label} data-steady className={small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4'}>
       <div className={cn('ios-segmented', !small && 'large')}>

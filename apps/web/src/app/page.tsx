@@ -322,6 +322,9 @@ export default function ShowcasePage() {
 
   return (
     <MotionConfig reducedMotion="user">
+      {/* Opened as the installed app (an older install whose start address is still "/"): go to
+          the app's start (sign in, or your dashboard) instead of the website's landing page. */}
+      <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
       <div className="dark min-h-screen overflow-x-clip font-sans scroll-smooth" style={{ backgroundColor: '#0a0d13', color: '#ffffff' }}>
         {/* scroll progress */}
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500" />
