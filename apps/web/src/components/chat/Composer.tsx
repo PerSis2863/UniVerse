@@ -17,7 +17,7 @@ export interface SendPayload {
   file?: File;
   /** Several photos at once: sent as one album. */
   album?: File[];
-  voice?: { blob: Blob; durationSec: number };
+  voice?: { blob: Blob; durationSec: number; waveform?: number[] };
   /** Photo, video or voice message that each person can open only once. */
   viewOnce?: boolean;
 }
@@ -293,11 +293,29 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      // Loudness while you speak, ten times a second: drawn as the message's waveform.
+      const levels: number[] = [];
+      let meterStop = () => {};
+      try {
+        const ctx = new AudioContext();
+        const an = ctx.createAnalyser();
+        an.fftSize = 512;
+        ctx.createMediaStreamSource(stream).connect(an);
+        const buf = new Uint8Array(an.fftSize);
+        const t = setInterval(() => {
+          an.getByteTimeDomainData(buf);
+          let sum = 0;
+          for (const x of buf) sum += (x - 128) * (x - 128);
+          levels.push(Math.sqrt(sum / buf.length));
+        }, 100);
+        meterStop = () => { clearInterval(t); void ctx.close().catch(() => {}); };
+      } catch { /* no waveform, the player draws its own */ }
       chunks.current = [];
       cancelled.current = false;
       const start = Date.now();
       rec.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
       rec.onstop = async () => {
+        meterStop();
         stream.getTracks().forEach((t) => t.stop());
         setRecording(null);
         setElapsed(0);
@@ -305,7 +323,13 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         const blob = new Blob(chunks.current, { type: rec.mimeType || 'audio/webm' });
         const durationSec = Math.max(1, Math.round((Date.now() - start) / 1000));
         setBusy(true);
-        try { await onSend({ voice: { blob, durationSec }, viewOnce: onceRef.current || undefined }); } finally { setBusy(false); setOnce(false); }
+        // 40 bars, scaled so the loudest is full height.
+        const n = 40, peak = Math.max(1, ...levels);
+        const waveform = levels.length >= 3 ? Array.from({ length: n }, (_, i) => {
+          const part = levels.slice(Math.floor((i * levels.length) / n), Math.max(Math.floor(((i + 1) * levels.length) / n), Math.floor((i * levels.length) / n) + 1));
+          return Math.round((Math.max(...part) / peak) * 31);
+        }) : undefined;
+        try { await onSend({ voice: { blob, durationSec, waveform }, viewOnce: onceRef.current || undefined }); } finally { setBusy(false); setOnce(false); }
       };
       rec.start();
       recorder.current = rec;

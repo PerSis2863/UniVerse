@@ -1,4 +1,5 @@
 'use client';
+import { MiniPlayer } from '@/components/chat/MiniPlayer';
 import { Fragment, useEffect, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
@@ -163,6 +164,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
       {user && <MobileTabBar role={user.role} onMore={() => setSidebarOpen((v) => !v)} moreOpen={sidebarOpen} />}
       <OfflineBar />
       <PullToRefresh />
+      <MiniPlayer />
       <InstallBanner />
       {user && <IncomingCall inboxPath={`${tabsForRole(user.role).base}/inbox`} />}
     </div>

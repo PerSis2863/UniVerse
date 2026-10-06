@@ -24,6 +24,7 @@ export interface ChatMessage {
     viewOnce?: boolean; opened?: boolean; openedCount?: number; // view-once photo / video / voice message
     transcript?: string; voicemail?: boolean; // voice message text (AI); a voicemail left after a missed call
     album?: { url: string; name: string; size: number | null; mime: string }[]; // IMAGE: several photos as one (Stage 4 · 1.7)
+    waveform?: number[]; // AUDIO: loudness bars (0–31) recorded with it
     link?: { url: string; title: string; description: string | null; site: string } | null; // link preview
     broadcast?: boolean;
     ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`

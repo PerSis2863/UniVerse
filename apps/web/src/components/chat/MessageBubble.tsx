@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
@@ -8,6 +8,7 @@ import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, Corn
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
+import { fallbackBars, useVoice, voice } from '@/lib/voice-player';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes, plainText } from './chat-client';
 import { RichText } from './RichText';
@@ -44,8 +45,54 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
   );
 }
 
-/** Voice-note player: play/pause, scrubbable progress and 1× / 1.5× / 2× speed. */
-export function VoicePlayer({ src, mine, durationSec }: { src: string; mine: boolean; durationSec?: number }) {
+/**
+ * Voice-note player (Stage 4 · 1.7): one player for the whole app (src/lib/voice-player.ts), so it
+ * keeps playing when you open another chat or page (MiniPlayer). Tap or drag along the waveform to
+ * move; 1× / 1.5× / 2×.
+ */
+export function VoicePlayer({ src, mine, durationSec, title = 'Voice message', waveform }: { src: string; mine: boolean; durationSec?: number; title?: string; waveform?: number[] }) {
+  const v = useVoice();
+  const current = v.src === src;
+  const playing = current && v.playing;
+  const dur = current && v.dur ? v.dur : durationSec ?? 0;
+  const pos = current ? v.pos : 0;
+  const bars = useMemo(() => (waveform?.length ? waveform.map((x) => 4 + Math.min(31, Math.max(0, x)) * 0.7) : fallbackBars(src)), [waveform, src]);
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  // While this message is on screen the mini player stays hidden.
+  useEffect(() => { if (!current) return; voice.shown(1); return () => voice.shown(-1); }, [current]);
+  const seekAt = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const t = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (dur || 0);
+    if (!current) voice.toggle(src, title, durationSec);
+    voice.seek(src, t);
+  };
+  const done = dur ? pos / dur : 0;
+  return (
+    <div className="flex items-center gap-2.5 px-3 pt-2.5 w-64 max-w-full">
+      <button onClick={() => voice.toggle(src, title, durationSec)} aria-label={playing ? 'Pause' : 'Play'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', mine ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white')}>
+        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div role="slider" aria-label="Seek" aria-valuemin={0} aria-valuemax={Math.round(dur)} aria-valuenow={Math.round(pos)} tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); voice.seek(src, Math.max(0, pos + (e.key === 'ArrowRight' ? 5 : -5))); } }}
+          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); seekAt(e); }}
+          onPointerMove={(e) => { if (e.buttons) seekAt(e); }}
+          className="h-7 flex items-center gap-[2px] cursor-pointer touch-none">
+          {bars.map((h, i) => (
+            <span key={i} className={cn('flex-1 rounded-full transition-colors', (i + 0.5) / bars.length <= done ? (mine ? 'bg-white' : 'bg-indigo-600') : (mine ? 'bg-white/40' : 'bg-zinc-300 dark:bg-white/20'))} style={{ height: `${Math.round(h)}px` }} />
+          ))}
+        </div>
+        <div className={cn('text-[10px] tabular-nums', mine ? 'text-white/70' : 'text-zinc-500')}>{fmt(playing || pos ? pos : dur)}</div>
+      </div>
+      <button onClick={() => voice.setRate(v.rate === 1 ? 1.5 : v.rate === 1.5 ? 2 : 1)} aria-label="Playback speed" className={cn('px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0', mine ? 'bg-white/20' : 'bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300')}>
+        {v.rate}×
+      </button>
+    </div>
+  );
+}
+
+/** A voice message played on its own (view once: never kept in the app-wide player). */
+export function LocalVoicePlayer({ src, mine, durationSec }: { src: string; mine: boolean; durationSec?: number }) {
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
@@ -207,7 +254,7 @@ export function MessageBubble(p: Props) {
     content = (
       <div>
         {m.metadata?.voicemail && <p className={cn('px-3 pt-2.5 text-[11px] font-semibold flex items-center gap-1', mine ? 'text-white/80' : 'text-indigo-500')}><PhoneMissed className="w-3 h-3" /> Voicemail</p>}
-        <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} />
+        <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} waveform={m.metadata?.waveform} title={mine ? 'Your voice message' : `${m.sender?.name ?? 'Voice message'}`} />
         <VoiceTranscript id={m.id} transcript={m.metadata?.transcript} mine={mine} pending={!!m.pending} />
       </div>
     );
@@ -559,7 +606,7 @@ function ViewOnce({ m, mine }: { m: ChatMessage; mine: boolean }) {
           <p className="text-white/70 text-xs mb-3 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> View once: it disappears when you close it</p>
           {m.type === 'IMAGE' && <img src={m.attachmentUrl} alt="" className="max-w-full max-h-[80vh] object-contain rounded-xl" onContextMenu={(e) => e.preventDefault()} draggable={false} />}
           {m.type === 'VIDEO' && <video src={m.attachmentUrl} autoPlay controls controlsList="nodownload" className="max-w-full max-h-[80vh] rounded-xl" />}
-          {m.type === 'AUDIO' && <div className="bg-white/10 rounded-2xl pb-2"><VoicePlayer src={m.attachmentUrl} mine durationSec={meta.durationSec} /></div>}
+          {m.type === 'AUDIO' && <div className="bg-white/10 rounded-2xl pb-2"><LocalVoicePlayer src={m.attachmentUrl} mine durationSec={meta.durationSec} /></div>}
           <button type="button" onClick={() => { setOpen(false); setUsed(true); }} className="mt-5 px-5 py-2 rounded-full bg-white/15 text-white text-sm font-semibold">Close</button>
         </div>
       )}

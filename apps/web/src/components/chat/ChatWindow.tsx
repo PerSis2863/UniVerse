@@ -327,7 +327,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         setUploadProgress(null);
         const msg = await chatJson<ChatMessage>(key, {
           method: 'POST',
-          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec, replyToId, viewOnce: viewOnce || undefined }),
+          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec, waveform: voice?.waveform, replyToId, viewOnce: viewOnce || undefined }),
         });
         appendSent(msg, tempId);
         if (text) await send({ text });

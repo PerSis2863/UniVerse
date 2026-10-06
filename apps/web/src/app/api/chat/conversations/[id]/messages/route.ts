@@ -252,6 +252,8 @@ export async function POST(req: Request, { params }: Ctx) {
       if (type === 'AUDIO' && Number.isFinite(b.durationSec)) meta.durationSec = Math.round(b.durationSec);
       // A voice message left after a missed call (shown as Voicemail, transcribed straight away).
       if (type === 'AUDIO' && b.voicemail === true) meta.voicemail = true;
+      // The loudness bars drawn on the voice message (recorded on the device; 64 at most, 0–31).
+      if (type === 'AUDIO' && Array.isArray(b.waveform)) meta.waveform = (b.waveform as unknown[]).slice(0, 64).map((x) => Math.max(0, Math.min(31, Math.round(Number(x) || 0))));
       // An album (Stage 4 · 1.7): several photos sent as one message, shown as a grid (2–10, all uploaded here).
       if (type === 'IMAGE' && Array.isArray(b.album)) {
         const album = (b.album as unknown[]).slice(0, 10).map((x) => x as { url?: unknown; name?: unknown; size?: unknown; mime?: unknown });
