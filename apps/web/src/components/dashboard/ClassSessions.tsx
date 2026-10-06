@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BookmarkPlus, CheckCircle2, ChevronDown, Clock, Layers, ListChecks, Loader2, NotebookPen, PlayCircle, Sparkles, Trash2 } from 'lucide-react';
+import { BookmarkPlus, CheckCircle2, ChevronDown, Clock, Languages, Layers, ListChecks, Loader2, NotebookPen, PlayCircle, Sparkles, Trash2 } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { languageName } from '@/lib/languages';
+import { useLanguageStore } from '@/store/language';
 
 // Course board → Class sessions (upgrade 1, AI class companion). Each class call the teacher took
 // class notes in becomes a study pack: summary, notes, key moments (with the recording when there
@@ -59,8 +61,23 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
   s: ClassSession; canManage: boolean; open: boolean; onToggle: () => void; recordingUrl: string | null; refresh: () => void;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<null | 'cards' | 'retry' | 'delete'>(null);
+  const [busy, setBusy] = useState<null | 'cards' | 'retry' | 'delete' | 'tr'>(null);
   const [flipped, setFlipped] = useState<number | null>(null);
+  // The pack in my language (Stage 4 · 4.1): made once per language, shared with the class.
+  const lang = useLanguageStore((st) => st.language);
+  const [tr, setTr] = useState<{ lang: string; pack: Pick<ClassSession, 'summary' | 'notes' | 'keyMoments' | 'flashcards'> } | null>(null);
+  const [trOn, setTrOn] = useState(false);
+  const view = trOn && tr?.lang === lang ? { ...s, ...tr.pack } : s;
+  const translate = async () => {
+    if (trOn) return setTrOn(false);
+    if (tr?.lang === lang) return setTrOn(true);
+    setBusy('tr');
+    try {
+      const r = await authedJson<{ same: boolean; pack: ClassSession | null }>(`/api/class-sessions/${s.id}/translation?to=${lang}`);
+      if (r.same || !r.pack) toast(`This study pack is already in ${languageName(lang)}.`);
+      else { setTr({ lang, pack: r.pack }); setTrOn(true); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
+  };
 
   const addCards = async () => {
     setBusy('cards');
@@ -125,26 +142,33 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
               ) : (
                 <>
                   <section>
-                    <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Summary</h4>
-                    <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">{s.summary}</p>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500">Summary</h4>
+                      <button type="button" onClick={() => void translate()} disabled={busy === 'tr'} aria-pressed={trOn}
+                        className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors', trOn ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/15')}>
+                        {busy === 'tr' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Languages className="w-3.5 h-3.5" />}
+                        {trOn ? 'Show original' : `Read in ${languageName(lang)}`}
+                      </button>
+                    </div>
+                    <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">{view.summary}</p>
                   </section>
 
-                  {s.notes.length > 0 && (
+                  {view.notes.length > 0 && (
                     <section>
                       <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Notes</h4>
                       <ul className="space-y-1.5">
-                        {s.notes.map((n, i) => (
+                        {view.notes.map((n, i) => (
                           <li key={i} className="text-sm text-zinc-700 dark:text-zinc-300 flex gap-2"><span className="mt-2 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />{n}</li>
                         ))}
                       </ul>
                     </section>
                   )}
 
-                  {s.keyMoments.length > 0 && (
+                  {view.keyMoments.length > 0 && (
                     <section>
                       <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Key moments</h4>
                       <ol className="space-y-1">
-                        {s.keyMoments.map((k, i) => {
+                        {view.keyMoments.map((k, i) => {
                           const inner = (<><span className="font-mono text-xs tabular-nums px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 shrink-0">{clock(k.t)}</span><span className="min-w-0">{k.text}</span></>);
                           return (
                             <li key={i}>
@@ -169,7 +193,7 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {s.flashcards.slice(0, 6).map((c, i) => (
+                        {view.flashcards.slice(0, 6).map((c, i) => (
                           <button key={i} type="button" onClick={() => setFlipped(flipped === i ? null : i)} className="text-left min-w-0 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 p-3 lift" style={{ perspective: 800 }}>
                             <AnimatePresence mode="wait" initial={false}>
                               <motion.p key={flipped === i ? 'back' : 'front'} initial={{ rotateX: -80, opacity: 0 }} animate={{ rotateX: 0, opacity: 1 }} exit={{ rotateX: 80, opacity: 0 }} transition={{ duration: 0.18 }}

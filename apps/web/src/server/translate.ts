@@ -141,3 +141,29 @@ export async function translateDraft(text: string, to: string, who: AiUser): Pro
   if (!r) return null;
   return { text: r.text || text, from: r.lang };
 }
+
+const CAPTION_SYSTEM = `You translate live captions from a university class (automatic speech recognition: expect missing
+words and small mistakes). Translate each line into the target language so a student can follow the class.
+Keep it short and natural, keep names, numbers and technical terms. Don't add notes. If a line is already
+in the target language, return it unchanged.`;
+const CAPTION_SCHEMA = {
+  type: 'OBJECT',
+  properties: { items: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, text: { type: 'STRING' } }, required: ['id', 'text'] } } },
+  required: ['items'],
+};
+
+/**
+ * Live captions in a call (Stage 4 · 4.1), when no reader of `to` can translate on their device:
+ * one AI request for a few sentences. It counts once for the call (as one staff member's daily
+ * allowance, so one call can't use up the site's AI) and once for the site. Not stored: captions
+ * are gone when the call ends.
+ */
+export async function translateCaptions(callId: string, lines: { id: string; text: string }[], to: string): Promise<Record<string, string>> {
+  if (!lines.length) return {};
+  await requireAi({ id: `cc:${callId}`, role: 'STAFF' });
+  const prompt = `Target language: ${name(to)} (${to}).\nLines (JSON):\n${JSON.stringify(lines.map((l) => ({ id: l.id, text: l.text.slice(0, 300) })))}`;
+  const out = await geminiJson<{ items: { id: string; text: string }[] }>(CAPTION_SYSTEM, prompt, CAPTION_SCHEMA, 2048, true);
+  const result: Record<string, string> = {};
+  for (const r of out?.items ?? []) if (lines.some((l) => l.id === r.id) && typeof r.text === 'string' && r.text.trim()) result[r.id] = r.text.trim().slice(0, 600);
+  return result;
+}

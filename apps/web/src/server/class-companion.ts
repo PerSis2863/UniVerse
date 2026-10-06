@@ -2,7 +2,8 @@ import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
-import { spendAi } from './ai-budget';
+import { cachedAi, saveAi, spendAi } from './ai-budget';
+import { isLanguage } from '@/lib/languages';
 import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
@@ -236,4 +237,61 @@ export async function sessionsForBoard(courseId: string, canManage: boolean) {
     const quiz = r.quizId && status && (canManage || status !== 'DRAFT') ? { id: r.quizId, status } : null;
     return { ...r, quizId: undefined, quiz, notes: parse<string>(r.notes), keyMoments: parse<{ t: number; text: string }>(r.keyMoments), flashcards: parse<{ front: string; back: string }>(r.flashcards) };
   });
+}
+
+// ─── The study pack in my language (Stage 4 · 4.1) ──────────────────────────────────────────────
+
+export interface PackText { summary: string; notes: string[]; keyMoments: { t: number; text: string }[]; flashcards: { front: string; back: string }[] }
+
+const TR_SYSTEM = [
+  'You translate a study pack made from a university class into the target language, for a student who reads that language best.',
+  'Translate every text field faithfully; keep technical terms (add the original term in brackets when it helps), names, numbers, formulas and code unchanged.',
+  'Keep the same number of items in the same order, and copy every t value unchanged.',
+  'from: the ISO 639-1 code of the language the pack is written in.',
+].join(' ');
+const TR_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    from: { type: 'STRING' },
+    summary: { type: 'STRING' },
+    notes: { type: 'ARRAY', items: { type: 'STRING' } },
+    keyMoments: { type: 'ARRAY', items: { type: 'OBJECT', properties: { t: { type: 'NUMBER' }, text: { type: 'STRING' } }, required: ['t', 'text'] } },
+    flashcards: { type: 'ARRAY', items: { type: 'OBJECT', properties: { front: { type: 'STRING' }, back: { type: 'STRING' } }, required: ['front', 'back'] } },
+  },
+  required: ['from', 'summary', 'notes', 'keyMoments', 'flashcards'],
+};
+
+/**
+ * GET /api/class-sessions/[id]/translation?to=fr: the study pack in another language, for anyone in
+ * the course. Made once per language (one AI request, counted for whoever asks first) and kept for
+ * everyone else who reads that language. `same`: the pack is already in that language.
+ */
+export async function translatePack(sessionId: string, user: SessionUser, to: string): Promise<{ same: boolean; pack: PackText | null }> {
+  if (!isLanguage(to)) throw new BadRequestException('Unknown language.');
+  const s = await prisma.classSession.findUnique({ where: { id: sessionId }, select: { id: true, courseId: true, status: true, summary: true, notes: true, keyMoments: true, flashcards: true } });
+  if (!s || s.status !== 'READY' || !(await courseAccess(s.courseId, user))) throw new NotFoundException('Study pack not found.');
+  const key = ['pack-tr', s.id, to, s.summary ?? ''];
+  const saved = await cachedAi<{ same: boolean; pack: PackText | null }>(key, 30);
+  if (saved) return saved;
+  if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) throw new HttpException('Translation isn’t available right now. Please try again later.', 503);
+  const spend = await spendAi(user);
+  if (!spend.ok) throw new HttpException(spend.message, 429);
+  const parse = <T,>(v: string): T[] => { try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch { return []; } };
+  const original: PackText = { summary: s.summary ?? '', notes: parse(s.notes), keyMoments: parse(s.keyMoments), flashcards: parse(s.flashcards) };
+  const raw = await geminiJson<Partial<PackText> & { from?: string }>(TR_SYSTEM, `Target language: ${to}\n\nStudy pack (JSON):\n${JSON.stringify(original)}`, TR_SCHEMA, 6000);
+  if (!raw?.summary) throw new HttpException('Couldn’t translate the study pack. Please try again.', 502);
+  const out = String(raw.from ?? '').toLowerCase().slice(0, 2) === to
+    ? { same: true, pack: null }
+    : {
+        same: false,
+        pack: {
+          summary: str(raw.summary, 3000),
+          notes: (raw.notes ?? []).map((n) => str(n, 600)).filter(Boolean).slice(0, original.notes.length),
+          // Times come from the original, so links into the recording stay right.
+          keyMoments: original.keyMoments.map((k, i) => ({ t: k.t, text: str(raw.keyMoments?.[i]?.text, 400) || k.text })),
+          flashcards: original.flashcards.map((c, i) => ({ front: str(raw.flashcards?.[i]?.front, 400) || c.front, back: str(raw.flashcards?.[i]?.back, 800) || c.back })),
+        },
+      };
+  await saveAi(key, out);
+  return out;
 }

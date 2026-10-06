@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2 } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -12,6 +12,10 @@ import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/
 import { SfuLink, kindOf, type Layer, type MediaKind, type SfuTrack } from '@/lib/sfu-client';
 import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDevice, cleanMic, listDevices, noiseMode, openMedia, setNoiseMode } from '@/lib/call-media';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
+import { canTranslateOnDevice, captionTranslator } from '@/lib/caption-translate';
+import { isLanguage, languageName } from '@/lib/languages';
+import { useLanguageStore } from '@/store/language';
+import { LanguagePicker } from '@/components/chat/LanguagePicker';
 import { PeoplePanel, type ControlAction, type Person } from './PeoplePanel';
 import { FloatingReactions, ReactionBar, type Floating, type Reaction } from './Reactions';
 import { CallChatPanel, useCallChat, type RoomLine } from './CallChat';
@@ -57,7 +61,11 @@ interface Remote {
  *  lobby: in the waiting room until the host lets you in (cloudflare/worker.ts CallRoom). */
 type Phase = 'starting' | 'prejoin' | 'lobby' | 'live' | 'ended' | 'error';
 type Info = Omit<Ticket, 'path' | 'iceServers'>;
-interface Caption { name: string; text: string; final: boolean; at: number }
+interface Caption { name: string; text: string; final: boolean; at: number; id?: string; lang?: string | null }
+/** The language I read captions in (Stage 4 · 4.1): a language code, or "spoken" for no translation. */
+const CC_LANG_KEY = 'universe:cc-lang';
+/** Recent caption translations only (they're shown for a few seconds). */
+const keepTrs = (t: Record<string, string>) => { const k = Object.keys(t); return k.length > 60 ? Object.fromEntries(k.slice(-40).map((x) => [x, t[x]])) : t; };
 interface NoteLine { t: number; who: string; text: string }
 /** Class notes sent to the server at most this big (fits a keepalive request if the tab closes). */
 const MAX_NOTES_CHARS = 55_000;
@@ -372,6 +380,19 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const sfuQualityRef = useRef<Quality>(null);
   const [cc, setCc] = useState(false);
   const [captions, setCaptions] = useState<Record<string, Caption>>({});
+  // Translated captions (Stage 4 · 4.1): I read everyone's captions in my language (the app's,
+  // unless I picked another or "as spoken"). `trs`: translations by caption id.
+  const appLanguage = useLanguageStore((s) => s.language);
+  const [ccChoice, setCcChoice] = useState<string | null | undefined>(() => {
+    try { const v = localStorage.getItem(CC_LANG_KEY); return v === 'spoken' ? null : isLanguage(v) ? v : undefined; } catch { return undefined; }
+  });
+  const ccLang = ccChoice === undefined ? appLanguage : ccChoice;
+  const [ccPick, setCcPick] = useState(false);
+  const [trs, setTrs] = useState<Record<string, string>>({});
+  /** What the call room knows I read in (null while my captions are off), and recent finished captions. */
+  const ccLangRef = useRef<string | null>(null);
+  const heard = useRef(new Map<string, { text: string; lang: string }>());
+  const translator = useRef<ReturnType<typeof captionTranslator> | null>(null);
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
   const [notes, setNotes] = useState(false);
@@ -468,7 +489,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const rawMic = useRef<MediaStreamTrack | null>(null);
 
   const send = (msg: unknown) => { if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg)); };
-  const announce = () => send({ type: 'state', ...stateRef.current });
+  const announce = () => {
+    send({ type: 'state', ...stateRef.current });
+    send({ type: 'cc-lang', lang: ccLangRef.current, device: canTranslateOnDevice() });
+  };
+  /** A translation arrived: shown, and the caption it belongs to stays up a little longer. */
+  const gotTranslation = (id: string, text: string) => {
+    setTrs((t) => keepTrs({ ...t, [id]: text }));
+    setCaptions((c) => { const e = Object.entries(c).find(([, x]) => x.id === id); return e ? { ...c, [e[0]]: { ...e[1], at: Date.now() } } : c; });
+  };
 
   /** Updates the people in the call (the ref is read by connection handlers; state renders). */
   const setR = useCallback((fn: (r: Record<string, Remote>) => Record<string, Remote>) => {
@@ -1017,7 +1046,30 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         } else if (msg.type === 'caption') {
           const who = remotesRef.current[msg.from];
           if (msg.final) noteLine(who?.peer.name ?? 'Someone', String(msg.text));
-          if (who && stateRef.current.cc) setCaptions((c) => ({ ...c, [msg.from]: { name: who.peer.name, text: String(msg.text), final: !!msg.final, at: Date.now() } }));
+          const lang = typeof msg.lang === 'string' ? msg.lang : null;
+          if (msg.final && typeof msg.id === 'string' && lang) {
+            heard.current.set(msg.id, { text: String(msg.text), lang });
+            if (heard.current.size > 120) heard.current.delete(heard.current.keys().next().value!);
+          }
+          if (who && stateRef.current.cc) setCaptions((c) => {
+            // Reading a translation: the last sentence stays up while they say the next one.
+            const prev = c[msg.from];
+            const translating = !!ccLangRef.current && !!lang && lang !== ccLangRef.current;
+            if (translating && !msg.final && prev?.final && Date.now() - prev.at < CAPTION_MS) return c;
+            return { ...c, [msg.from]: { name: who.peer.name, text: String(msg.text), final: !!msg.final, at: Date.now(), id: typeof msg.id === 'string' ? msg.id : undefined, lang } };
+          });
+        } else if (msg.type === 'cc-do') {
+          // The call room asks me to translate a sentence for everyone reading my language.
+          const h = typeof msg.id === 'string' ? heard.current.get(msg.id) : undefined;
+          if (h && typeof msg.lang === 'string') {
+            void translator.current?.translate(msg.id, h.text, h.lang, msg.lang).then((text) => {
+              if (!text) return;
+              send({ type: 'cc-tr', id: msg.id, lang: msg.lang, text });
+              gotTranslation(msg.id, text);
+            });
+          }
+        } else if (msg.type === 'cc-tr') {
+          if (typeof msg.id === 'string' && typeof msg.text === 'string') gotTranslation(msg.id, msg.text);
         } else if (msg.type === 'left') {
           pcs.current.get(msg.peerId)?.close();
           pcs.current.delete(msg.peerId);
@@ -1210,12 +1262,22 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   useCaptions(
     wantCaptions && !muted,
     (text, final) => {
-      send({ type: 'caption', text, final });
+      send({ type: 'caption', text, final, lang: navigator.language });
       if (final) noteLine(myName, text);
       if (stateRef.current.cc) setCaptions((c) => ({ ...c, me: { name: 'You', text, final, at: Date.now() } }));
     },
     (why) => toast.error(why),
   );
+  // The call room learns which language I read in; translating happens on this device or the server.
+  useEffect(() => {
+    ccLangRef.current = cc ? ccLang : null;
+    send({ type: 'cc-lang', lang: ccLangRef.current, device: canTranslateOnDevice() });
+  }, [cc, ccLang]);
+  useEffect(() => {
+    const t = captionTranslator(callId, (why) => toast(why, { icon: '🌐', duration: 9000 }));
+    translator.current = t;
+    return () => { t.close(); translator.current = null; };
+  }, [callId]);
   const hasCaptions = Object.keys(captions).length > 0;
   useEffect(() => {
     if (!hasCaptions) return;
@@ -1611,8 +1673,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   const canBg = backgroundsSupported();
-  const moreItems: { key: 'cc' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
+    ...(cc ? [{ key: 'cclang' as const, label: ccLang ? `Captions in ${languageName(ccLang)}` : 'Captions as spoken', icon: Languages }] : []),
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
     ...(canBg ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
@@ -1626,6 +1689,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     haptic('tap');
     setMoreOpen(false);
     if (key === 'cc') toggleCc();
+    else if (key === 'cclang') setCcPick(true);
     else if (key === 'devices') void openSettings();
     else if (key === 'bg') setBgOpen(true);
     else if (key === 'flip') void flipCamera();
@@ -1847,16 +1911,29 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </AnimatePresence>
       </div>
 
+      {ccPick && (
+        <div className="fixed inset-x-0 bottom-32 z-[320] flex justify-center pointer-events-none">
+          <div className="relative w-64 pointer-events-auto">
+            <LanguagePicker title="Read captions in" placement="above" align="left" value={ccLang} offLabel="As spoken (no translation)" suggested={[appLanguage]}
+              onPick={(l) => { setCcChoice(l); try { localStorage.setItem(CC_LANG_KEY, l ?? 'spoken'); } catch { /* private mode */ } setCcPick(false); }}
+              onClose={() => setCcPick(false)} />
+          </div>
+        </div>
+      )}
       {/* Live captions */}
       <div className="pointer-events-none px-4 flex justify-center" aria-live="polite">
         <div className="w-full max-w-3xl flex flex-col items-center gap-1.5">
           <AnimatePresence initial={false}>
-            {cc && lines.map(([id, c]) => (
-              <motion.p key={id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className="max-w-full rounded-2xl bg-black/65 backdrop-blur-md px-4 py-2 text-[15px] leading-snug text-center shadow-lg">
-                <span className="font-semibold text-indigo-300 mr-1.5">{c.name}</span>
-                <span className={cn(!c.final && 'text-zinc-200')}>{c.text}</span>
-              </motion.p>
-            ))}
+            {cc && lines.map(([id, c]) => {
+              const tr = c.final && c.id && ccLang && c.lang && c.lang !== ccLang ? trs[c.id] : undefined;
+              return (
+                <motion.p key={id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className="max-w-full rounded-2xl bg-black/65 backdrop-blur-md px-4 py-2 text-[15px] leading-snug text-center shadow-lg">
+                  <span className="font-semibold text-indigo-300 mr-1.5">{c.name}</span>
+                  <span className={cn(!c.final && 'text-zinc-200')}>{tr ?? c.text}</span>
+                  {tr && <Languages className="inline w-3.5 h-3.5 ml-1.5 -mt-0.5 text-fuchsia-300/80" aria-label={`Translated from ${languageName(c.lang!)}`} />}
+                </motion.p>
+              );
+            })}
           </AnimatePresence>
         </div>
       </div>

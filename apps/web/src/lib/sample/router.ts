@@ -364,6 +364,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map(({ reservations, ...r }) => r))],
   [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
   [/^\/api\/premium\/analytics$/, ({ db: d }) => ok(d.analytics)],
+  // A study pack in another language (Stage 4 · 4.1): the sample's packs are shown as they are.
+  [/^\/api\/class-sessions\/([^/]+)\/translation$/, () => ok({ same: true, pack: null })],
   [/^\/api\/billing\/subscription$/, () => ok({ organization: { id: 'sample-org', name: 'Sample University' }, plan: 'ENTERPRISE', subscribedPlan: 'ENTERPRISE', status: 'active', interval: 'year', currentPeriodEnd: at(200), cancelAtPeriodEnd: false, hasBillingAccount: false })],
   [/^\/api\/admin\/impact$/, ({ db: d }) => ok(d.adminImpact)],
   [/^\/documents$/, ({ db: d }) => ok(d.documents.map((doc) => ({ ...doc, issuedAt: doc.createdAt, user: { name: d.people.aarav.name } })))],

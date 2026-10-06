@@ -231,6 +231,36 @@ if (process.env.TIMER) {
   check(Ap.poll === null && Cp.poll === null, 'removed for everyone');
 }
 
+// ── Translated captions (Stage 4 · 4.1) ──
+{
+  const Tc = await joinRoom('g_cc', teacher, true), Fr1 = await joinRoom('g_cc', ana), Fr2 = await joinRoom('g_cc', ben), Hi = await joinRoom('g_cc', cai);
+  send(Fr1, { type: 'cc-lang', lang: 'fr', device: false });
+  send(Fr2, { type: 'cc-lang', lang: 'fr-FR', device: true });
+  send(Hi, { type: 'cc-lang', lang: 'hi', device: false });
+  await sleep(150);
+  send(Tc, { type: 'caption', text: 'Today we start with recursion', final: true, lang: 'hi-IN' });
+  await sleep(250);
+  const cap = Fr1.msgs.find((m) => m.type === 'caption');
+  check(cap?.lang === 'hi' && typeof cap.id === 'string' && cap.final === true, 'captions: a finished sentence carries its language and an id');
+  const asked = [Fr1, Fr2, Hi].map((p) => p.msgs.filter((m) => m.type === 'cc-do').length);
+  check(asked[0] === 0 && asked[1] === 1 && asked[2] === 0, 'captions: one reader per language translates, the one who can on the device; not readers of the spoken language');
+  send(Fr1, { type: 'cc-tr', id: cap.id, lang: 'fr', text: 'pirate' });
+  await sleep(150);
+  check(!Fr2.msgs.some((m) => m.type === 'cc-tr'), 'captions: a translation nobody asked for is dropped');
+  send(Fr2, { type: 'cc-tr', id: cap.id, lang: 'fr', text: 'Aujourd’hui nous commençons par la récursivité' });
+  await sleep(200);
+  check(Fr1.msgs.some((m) => m.type === 'cc-tr' && m.id === cap.id && m.text.startsWith('Aujourd')), 'captions: the translation reaches the other French reader');
+  check(!Hi.msgs.some((m) => m.type === 'cc-tr') && !Tc.msgs.some((m) => m.type === 'cc-tr'), 'captions: and nobody else');
+  send(Tc, { type: 'caption', text: 'then loops', final: false, lang: 'hi-IN' });
+  await sleep(150);
+  check(Fr2.msgs.filter((m) => m.type === 'cc-do').length === 1, 'captions: words in progress aren’t translated');
+  send(Fr2, { type: 'cc-lang', lang: null });
+  await sleep(100);
+  send(Tc, { type: 'caption', text: 'Any questions?', final: true, lang: 'hi-IN' });
+  await sleep(200);
+  check(Fr1.msgs.filter((m) => m.type === 'cc-do').length === 1, 'captions: when the device reader turns captions off, another reader takes over');
+}
+
 // An ordinary call (no breakouts) still works as before.
 const X = await joinRoom('l_somecalllink123', { id: 'x1', name: 'Xi' });
 check(X.welcome?.bo === null && X.welcome?.room === null, 'ordinary calls: no breakout state');

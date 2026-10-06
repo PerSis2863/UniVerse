@@ -659,13 +659,21 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
+interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean }
 interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number }
 
 const MAX_CALL_PEERS = 6; // small calls: everyone connects to everyone
 const MAX_SFU_PEERS = 150; // bigger calls through the SFU (the app sets the real cap per ticket)
 const MAX_SIGNAL_BYTES = 64 * 1024;
 const MAX_CAPTION = 300;
+/**
+ * Translated captions (Stage 4 · 4.1): each person reads captions in their own language. Every
+ * finished sentence gets an id; for each language someone reads in (other than the speaker's), the
+ * room asks ONE of those readers to translate it (preferring one whose browser translates on the
+ * device, for free) and shares the result with everyone reading that language.
+ */
+const langBase = (v: unknown) => (typeof v === 'string' && /^[a-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/i.test(v) ? v.split(/[-_]/)[0].toLowerCase() : null);
+const MAX_CAPTION_TR = 600;
 /** Reactions anyone can send (floating emoji), and how many per person in a few seconds. */
 const REACTIONS = new Set(['👍', '👏', '❤️', '😂', '😮', '🎉']);
 const REACTION_BURST = 8, REACTION_WINDOW_MS = 4000;
@@ -748,6 +756,9 @@ export class CallRoom extends DurableObject<Env> {
   /** Poll results go out at most every POLL_PUSH_MS while people vote (a class answering at once). */
   private pollSentAt = 0;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Finished captions so far, and who was asked to translate which (caption id + language). */
+  private captionSeq = 0;
+  private trAsked = new Map<string, string>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -805,6 +816,22 @@ export class CallRoom extends DurableObject<Env> {
 
   private send(ws: WebSocket, msg: unknown) {
     try { ws.send(JSON.stringify(msg)); } catch { /* closing */ }
+  }
+
+  /** A finished caption: one reader per other language translates it for the rest (see langBase). */
+  private askTranslators(speaker: WebSocket, id: string, lang: string) {
+    const byLang = new Map<string, { ws: WebSocket; peer: CallPeer }[]>();
+    for (const p of this.peers()) {
+      if (p.ws === speaker || !p.peer.ccLang || p.peer.ccLang === lang) continue;
+      byLang.set(p.peer.ccLang, [...(byLang.get(p.peer.ccLang) ?? []), p]);
+    }
+    for (const [to, readers] of byLang) {
+      const pick = readers.find((r) => r.peer.ccDevice) ?? readers[0];
+      this.trAsked.set(`${id}|${to}`, pick.peer.peerId);
+      this.send(pick.ws, { type: 'cc-do', id, lang: to });
+    }
+    // Only recent requests matter (a translation comes back in seconds).
+    if (this.trAsked.size > 400) for (const k of [...this.trAsked.keys()].slice(0, 200)) this.trAsked.delete(k);
   }
 
   private others(ws: WebSocket, msg: unknown) {
@@ -1168,7 +1195,7 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     // In the waiting room nothing goes to the call.
     if (!me || me.waiting) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -1183,7 +1210,28 @@ export class CallRoom extends DurableObject<Env> {
     }
     if (msg.type === 'caption' && typeof msg.text === 'string') {
       const text = msg.text.trim().slice(-MAX_CAPTION);
-      if (text) this.others(ws, { type: 'caption', from: me.peerId, text, final: msg.final === true });
+      if (!text) return;
+      const final = msg.final === true, lang = langBase(msg.lang);
+      const id = final ? `${me.peerId}.${++this.captionSeq}` : undefined;
+      this.others(ws, { type: 'caption', from: me.peerId, text, final, lang, id });
+      if (id && lang) this.askTranslators(ws, id, lang);
+      return;
+    }
+    if (msg.type === 'cc-lang') {
+      // The language I read captions in (null: captions off, or as spoken).
+      me.ccLang = langBase(msg.lang);
+      me.ccDevice = msg.device === true;
+      ws.serializeAttachment(me);
+      return;
+    }
+    if (msg.type === 'cc-tr' && typeof msg.id === 'string' && typeof msg.text === 'string') {
+      // A translation I was asked for: to everyone else reading that language.
+      const to = langBase(msg.lang);
+      const key = `${msg.id}|${to}`;
+      if (!to || this.trAsked.get(key) !== me.peerId) return;
+      this.trAsked.delete(key);
+      const out = JSON.stringify({ type: 'cc-tr', id: msg.id, lang: to, text: msg.text.trim().slice(0, MAX_CAPTION_TR) });
+      for (const { ws: other, peer } of this.peers()) if (other !== ws && peer.ccLang === to) try { other.send(out); } catch { /* closing */ }
       return;
     }
     if (msg.type === 'hand') {
