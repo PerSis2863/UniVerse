@@ -196,9 +196,11 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
   const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host, max }) });
   if (res?.status === 403) throw new HttpException('The host removed you from this call.', 403);
   if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
-  const { ticket } = (await res.json()) as { ticket: string };
+  const { ticket, audience } = (await res.json()) as { ticket: string; audience?: boolean };
   return {
     ...info, host, sfu, max, breakout,
+    // A webinar's audience (2.10): joins watching, without camera or microphone.
+    audience: sfu && audience === true,
     title: breakout ? `${breakout.name} · ${info.title}` : info.title,
     path: `/call-live?call=${encodeURIComponent(callId)}&ticket=${encodeURIComponent(ticket)}`, iceServers: sfu ? SFU_ICE : await iceServers(),
   };

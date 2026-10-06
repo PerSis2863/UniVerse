@@ -742,6 +742,16 @@ interface CallPoll {
 }
 const POLL_Q_CHARS = 200, POLL_OPTION_CHARS = 80, POLL_MAX_OPTIONS = 6, POLL_PUSH_MS = 700;
 
+/**
+ * Webinar mode (Stage 4 · 2.10): the hosts put a few people on stage and everyone else watches. The
+ * audience can't send audio or video (the room refuses their SFU pushes), only hears about who's on
+ * stage (not about hundreds of other viewers), raises a hand to ask to speak, and asks questions in
+ * Q&A, where everyone can upvote. Hosts and co-hosts are always on stage.
+ */
+interface Webinar { on: boolean; stage: string[] }
+interface QaItem { id: string; uid: string; name: string | null; text: string; at: number; votes: string[]; answered: boolean; hidden: boolean }
+const WEBINAR_MAX = 300, QA_MAX = 100, QA_CHARS = 300, QA_PUSH_MS = 700, AUDIENCE_PUSH_MS = 2000;
+
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -769,6 +779,11 @@ export class CallRoom extends DurableObject<Env> {
   private trAsked = new Map<string, string>();
   private pulseSentAt = 0;
   private pulseTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Q&A and audience counts go out throttled too (a webinar can have hundreds watching). */
+  private qaSentAt = 0;
+  private qaTimer: ReturnType<typeof setTimeout> | null = null;
+  private audienceSentAt = 0;
+  private audienceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -803,6 +818,7 @@ export class CallRoom extends DurableObject<Env> {
   /** Into the call: the newcomer calls everyone already here (so two never offer to each other at once). */
   private async join(ws: WebSocket, me: CallPeer, lobbyOn: boolean) {
     const current = this.peers().filter((p) => p.ws !== ws);
+    const w = await this.webinar();
     const mod = me.host === true || me.cohost === true;
     // Breakout rooms: the plan, kept here (the main call) or asked from the main call (a room).
     const child = childOf(await this.selfId());
@@ -812,7 +828,9 @@ export class CallRoom extends DurableObject<Env> {
       : { bo: await this.boLoad(), occ: await this.occupancy() };
     this.send(ws, {
       type: 'welcome', you: me.peerId, host: me.host === true, cohost: me.cohost === true,
-      peers: current.map(({ peer }) => publicPeer(peer)),
+      // In a webinar the audience only hears about who's on stage.
+      peers: current.filter(({ peer }) => this.canSee(me, peer, w)).map(({ peer }) => publicPeer(peer)),
+      webinar: this.webinarView(w), qa: w.on ? this.qaView((await this.ctx.storage.get<QaItem[]>('qa')) ?? [], me) : [],
       spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null,
       lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
       chat: [...(await this.ctx.storage.list<RoomChat>({ prefix: 'chat:', reverse: true, limit: CHAT_KEEP })).values()].reverse().map((l) => chatView(l, me.userId)),
@@ -820,14 +838,104 @@ export class CallRoom extends DurableObject<Env> {
       poll: this.pollView((await this.ctx.storage.get<CallPoll>('poll')) ?? null, me),
       pulse: mod ? this.pulseCounts() : null,
     });
-    for (const { ws: other } of current) this.send(other, { type: 'joined', peer: publicPeer(me) });
+    for (const { ws: other, peer } of current) if (this.canSee(peer, me, w)) this.send(other, { type: 'joined', peer: publicPeer(me) });
     this.pulseTell();
+    if (w.on) this.audienceTell();
     if (mod) this.tellWaiting();
     if (child) await this.reportRoom();
   }
 
   private send(ws: WebSocket, msg: unknown) {
     try { ws.send(JSON.stringify(msg)); } catch { /* closing */ }
+  }
+
+  // ── Webinar mode ───────────────────────────────────────────────────────────────────────────────
+
+  private async webinar(): Promise<Webinar> {
+    return (await this.ctx.storage.get<Webinar>('webinar')) ?? { on: false, stage: [] };
+  }
+
+  /** On stage: may send audio and video (everyone, when it isn't a webinar). */
+  private onStage(peer: CallPeer, w: Webinar) {
+    return !w.on || peer.host === true || peer.cohost === true || w.stage.includes(peer.userId);
+  }
+
+  /** Whether `viewer` hears about `peer` (joins, leaves, state, tracks): in a webinar the audience
+   *  only hears about the stage; hosts hear about everyone. */
+  private canSee(viewer: CallPeer, peer: CallPeer, w: Webinar) {
+    return !w.on || viewer.host === true || viewer.cohost === true || viewer.peerId === peer.peerId || this.onStage(peer, w);
+  }
+
+  /** Sends to everyone else who hears about `me`. */
+  private async toSeers(ws: WebSocket, me: CallPeer, msg: unknown) {
+    const w = await this.webinar();
+    if (!w.on) return this.others(ws, msg);
+    const text = JSON.stringify(msg);
+    for (const { ws: other, peer } of this.peers()) if (other !== ws && this.canSee(peer, me, w)) try { other.send(text); } catch { /* closing */ }
+  }
+
+  private webinarView(w: Webinar) {
+    const all = this.peers();
+    return { on: w.on, stage: all.filter(({ peer }) => w.on && this.onStage(peer, w)).map(({ peer }) => peer.peerId), audience: w.on ? all.filter(({ peer }) => !this.onStage(peer, w)).length : 0 };
+  }
+
+  /** Webinar on or off, or the stage changed: everyone gets the stage and the people they now hear about. */
+  private async webinarTell() {
+    const w = await this.webinar();
+    const view = this.webinarView(w);
+    const all = this.peers();
+    for (const { ws, peer } of all) this.send(ws, { type: 'webinar', ...view, peers: all.filter((p) => p.ws !== ws && this.canSee(peer, p.peer, w)).map((p) => publicPeer(p.peer)) });
+  }
+
+  /** How many are watching (throttled: people join a webinar in a rush). */
+  private audienceTell(now = false) {
+    if (!now && Date.now() - this.audienceSentAt < AUDIENCE_PUSH_MS) {
+      this.audienceTimer ??= setTimeout(() => { this.audienceTimer = null; this.audienceTell(true); }, AUDIENCE_PUSH_MS);
+      return;
+    }
+    this.audienceSentAt = Date.now();
+    void this.webinar().then((w) => {
+      if (!w.on) return;
+      const n = this.webinarView(w).audience;
+      for (const { ws } of this.peers()) this.send(ws, { type: 'audience', n });
+    });
+  }
+
+  /** Q&A as one person sees it: no account ids; how many upvoted, whether I did, whether I asked. */
+  private qaView(items: QaItem[], viewer: CallPeer) {
+    return items
+      .filter((q) => !q.hidden)
+      .map((q) => ({ id: q.id, by: q.name, text: q.text, at: q.at, votes: q.votes.length, mine: q.votes.includes(viewer.userId), own: q.uid === viewer.userId, answered: q.answered }))
+      .sort((a, b) => Number(a.answered) - Number(b.answered) || b.votes - a.votes || a.at - b.at);
+  }
+
+  private qaTell(now = false) {
+    if (!now && Date.now() - this.qaSentAt < QA_PUSH_MS) {
+      this.qaTimer ??= setTimeout(() => { this.qaTimer = null; this.qaTell(true); }, QA_PUSH_MS);
+      return;
+    }
+    this.qaSentAt = Date.now();
+    void this.ctx.storage.get<QaItem[]>('qa').then((items) => {
+      for (const { ws, peer } of this.peers()) this.send(ws, { type: 'qa', items: this.qaView(items ?? [], peer) });
+    });
+  }
+
+  /** Someone asks (once every few seconds at most) or upvotes a question. */
+  private async qaMessage(me: CallPeer, msg: { type?: string; text?: unknown; anon?: unknown; id?: unknown; up?: unknown }) {
+    if (!(await this.webinar()).on) return;
+    const items = (await this.ctx.storage.get<QaItem[]>('qa')) ?? [];
+    if (msg.type === 'qa-ask' && typeof msg.text === 'string') {
+      const text = msg.text.trim().slice(0, QA_CHARS);
+      const last = items.filter((q) => q.uid === me.userId).reduce((t, q) => Math.max(t, q.at), 0);
+      if (!text || Date.now() - last < 5000 || items.length >= QA_MAX) return;
+      items.push({ id: crypto.randomUUID().slice(0, 10), uid: me.userId, name: msg.anon === true ? null : me.name, text, at: Date.now(), votes: [], answered: false, hidden: false });
+    } else if (msg.type === 'qa-vote' && typeof msg.id === 'string') {
+      const q = items.find((x) => x.id === msg.id);
+      if (!q || q.answered) return;
+      q.votes = q.votes.filter((u) => u !== me.userId).concat(msg.up === true ? [me.userId] : []);
+    } else return;
+    await this.ctx.storage.put('qa', items);
+    this.qaTell();
   }
 
   /** How many students are lost or follow right now, of how many (hosts and co-hosts don't count). */
@@ -1164,7 +1272,10 @@ export class CallRoom extends DurableObject<Env> {
       if (who.userId && (await this.ctx.storage.get<string>('creator')) === who.userId) who.host = true;
       const ticket = crypto.randomUUID();
       await this.ctx.storage.put(`ticket:${ticket}`, { ...who, exp: now + TICKET_TTL_MS });
-      return Response.json({ ticket });
+      // A webinar: joins as audience (no camera or microphone asked for) unless a host or on stage.
+      const w = await this.webinar();
+      const audience = w.on && !who.host && !(await this.ctx.storage.get(`cohost:${who.userId}`)) && !w.stage.includes(who.userId);
+      return Response.json({ ticket, audience });
     }
     // From the app: who made this call link (they host it).
     if (url.pathname === '/creator' && request.method === 'POST') {
@@ -1198,7 +1309,9 @@ export class CallRoom extends DurableObject<Env> {
       await this.ctx.storage.delete(key); // single use
       if (who.exp < Date.now()) return new Response('Forbidden', { status: 403 });
       const current = this.peers();
-      if (current.length >= Math.min(MAX_SFU_PEERS, who.max ?? MAX_CALL_PEERS)) return new Response('This call is full', { status: 429 });
+      // A webinar fits more people (the audience only receives): three times the call's cap, up to 300.
+      const cap = (await this.webinar()).on ? Math.min(WEBINAR_MAX, (who.max ?? MAX_CALL_PEERS) * 3) : Math.min(MAX_SFU_PEERS, who.max ?? MAX_CALL_PEERS);
+      if (current.length >= cap) return new Response('This call is full', { status: 429 });
       const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true };
       // Co-hosts stay co-hosts when they reconnect.
       if (!me.host && (await this.ctx.storage.get(`cohost:${who.userId}`))) me.cohost = true;
@@ -1229,7 +1342,7 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     // In the waiting room nothing goes to the call.
     if (!me || me.waiting) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; anon?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -1240,12 +1353,12 @@ export class CallRoom extends DurableObject<Env> {
       // Whoever records or takes notes says so, and everyone sees the REC and Notes badges. The app
       // decides who may save a recording or notes (src/server/call-recordings.ts, meeting-notes.ts);
       // these flags only tell people.
-      this.others(ws, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true, lowData: msg.lowData === true });
+      await this.toSeers(ws, me, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true, lowData: msg.lowData === true });
       return;
     }
     if (msg.type === 'caption' && typeof msg.text === 'string') {
       const text = msg.text.trim().slice(-MAX_CAPTION);
-      if (!text) return;
+      if (!text || !this.onStage(me, await this.webinar())) return;
       const final = msg.final === true, lang = langBase(msg.lang);
       const id = final ? `${me.peerId}.${++this.captionSeq}` : undefined;
       this.others(ws, { type: 'caption', from: me.peerId, text, final, lang, id });
@@ -1280,7 +1393,7 @@ export class CallRoom extends DurableObject<Env> {
     }
     if (msg.type === 'hand') {
       // Raised hands queue by when they went up (kept on the socket, so newcomers see the queue).
-      this.setHand(me, ws, msg.up === true);
+      await this.setHand(me, ws, msg.up === true);
       return;
     }
     if (msg.type === 'react' && typeof msg.emoji === 'string' && REACTIONS.has(msg.emoji)) {
@@ -1303,6 +1416,10 @@ export class CallRoom extends DurableObject<Env> {
       const line: RoomChat = { id: `${now.toString(36)}-${crypto.randomUUID().slice(0, 6)}`, uid: me.userId, name: me.name, text, at: now, file };
       await this.ctx.storage.put(`chat:${String(now).padStart(15, '0')}:${line.id}`, line);
       for (const { ws: p, peer } of this.peers()) this.send(p, { type: 'chat', line: chatView(line, peer.userId) });
+      return;
+    }
+    if (msg.type === 'qa-ask' || msg.type === 'qa-vote') {
+      await this.qaMessage(me, msg as { type: string; text?: unknown; anon?: unknown; id?: unknown; up?: unknown });
       return;
     }
     if (msg.type === 'control' && typeof msg.action === 'string') {
@@ -1367,12 +1484,14 @@ export class CallRoom extends DurableObject<Env> {
   }
 
   /** Raises or lowers someone's hand, and tells everyone (the time orders the queue). */
-  private setHand(peer: CallPeer, ws: WebSocket, up: boolean) {
+  private async setHand(peer: CallPeer, ws: WebSocket, up: boolean) {
     if (!!peer.hand === up) return;
     peer.hand = up ? Date.now() : undefined;
     ws.serializeAttachment(peer);
+    // In a webinar an audience member's hand reaches the hosts (and them), not hundreds of viewers.
+    const w = await this.webinar();
     const text = JSON.stringify({ type: 'hand', peerId: peer.peerId, at: peer.hand ?? null });
-    for (const { ws: p } of this.peers()) try { p.send(text); } catch { /* closing */ }
+    for (const { ws: p, peer: viewer } of this.peers()) if (this.canSee(viewer, peer, w)) try { p.send(text); } catch { /* closing */ }
   }
 
   /**
@@ -1406,9 +1525,9 @@ export class CallRoom extends DurableObject<Env> {
       for (const m of this.mods()) this.send(m.ws, { type: 'lobby-setting', on, by });
       if (!on) await this.control(ws, me, 'admit-all', null, false);
     } else if (action === 'lower-hand' && them) {
-      this.setHand(them.peer, them.ws, false);
+      await this.setHand(them.peer, them.ws, false);
     } else if (action === 'lower-all') {
-      for (const p of all) this.setHand(p.peer, p.ws, false);
+      for (const p of all) await this.setHand(p.peer, p.ws, false);
     } else if ((action === 'mute' || action === 'ask-unmute' || action === 'stop-video') && them && them.ws !== ws) {
       this.send(them.ws, { type: 'control', action, by });
     } else if (action === 'mute-all') {
@@ -1427,6 +1546,35 @@ export class CallRoom extends DurableObject<Env> {
       if (on) await this.ctx.storage.put(`cohost:${them.peer.userId}`, true);
       else await this.ctx.storage.delete(`cohost:${them.peer.userId}`);
       for (const p of all) this.send(p.ws, { type: 'role', peerId: them.peer.peerId, cohost: on, by });
+    } else if (action === 'webinar') {
+      // Webinar mode on or off (bigger calls only: the audience watches through the SFU).
+      if (on && !(this.env.CALLS_APP_ID && this.env.CALLS_APP_SECRET)) { this.send(ws, { type: 'note', name: 'Webinar mode needs bigger calls (the SFU), which aren’t set up.' }); return; }
+      const before = await this.webinar();
+      if (before.on === on) return;
+      await this.ctx.storage.put('webinar', { on, stage: [] } satisfies Webinar);
+      if (!on) await this.ctx.storage.delete('qa');
+      // Everyone who isn't a host stops sending (they're the audience now), or may talk again.
+      for (const p of all) if (!p.peer.host && !p.peer.cohost) this.send(p.ws, { type: 'stage', on: !on, by, webinar: on });
+      await this.webinarTell();
+    } else if (action === 'stage' && them) {
+      // Bring someone on stage (they may talk and show video), or back to the audience.
+      const w = await this.webinar();
+      if (!w.on || them.peer.host || them.peer.cohost) return;
+      const stage = on ? [...new Set([...w.stage, them.peer.userId])] : w.stage.filter((u) => u !== them.peer.userId);
+      await this.ctx.storage.put('webinar', { on: true, stage } satisfies Webinar);
+      for (const p of all.filter(({ peer }) => peer.userId === them.peer.userId)) {
+        this.send(p.ws, { type: 'stage', on, by, webinar: true });
+        if (on) await this.setHand(p.peer, p.ws, false);
+      }
+      await this.webinarTell();
+    } else if (action === 'qa-answer' || action === 'qa-hide') {
+      const items = (await this.ctx.storage.get<QaItem[]>('qa')) ?? [];
+      const q = items.find((x) => x.id === target);
+      if (!q) return;
+      if (action === 'qa-answer') q.answered = on;
+      else q.hidden = true;
+      await this.ctx.storage.put('qa', items);
+      this.qaTell(true);
     } else if (action === 'remove') {
       // Not the host, and a co-host only by the host. Every device of theirs leaves, and they can't
       // come back into this call for a few hours.
@@ -1448,13 +1596,16 @@ export class CallRoom extends DurableObject<Env> {
   }
 
   /** One step of joining or changing what someone sends or receives through the SFU. */
-  private async sfuOp(ws: WebSocket, me: CallPeer, msg: { op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown }) {
+  private async sfuOp(ws: WebSocket, me: CallPeer, msg: { op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; fresh?: unknown }) {
     const sdp = typeof msg.sdp === 'string' ? msg.sdp : null;
     if (msg.op === 'session') {
-      if (!me.sfu) {
+      // fresh: going on or off a webinar's stage starts over (the others drop what I sent before).
+      if (!me.sfu || (msg as { fresh?: unknown }).fresh === true) {
+        const had = !!me.sfu?.tracks.length;
         const out = await this.sfu('/sessions/new', 'POST');
         me.sfu = { sessionId: String(out.sessionId), tracks: [] };
         ws.serializeAttachment(me);
+        if (had) await this.toSeers(ws, me, { type: 'tracks', from: me.peerId, sessionId: me.sfu.sessionId, tracks: [] });
       }
       return { sessionId: me.sfu.sessionId };
     }
@@ -1462,6 +1613,8 @@ export class CallRoom extends DurableObject<Env> {
     const session = `/sessions/${encodeURIComponent(me.sfu.sessionId)}`;
     const tracks = Array.isArray(msg.tracks) ? (msg.tracks as Record<string, unknown>[]).slice(0, 64) : [];
     if (msg.op === 'push' && sdp) {
+      const w = await this.webinar();
+      if (!this.onStage(me, w)) throw new Error('You’re watching this webinar. Raise your hand to ask to speak.');
       // Your own tracks only, named after you.
       const mine = tracks.filter((t) => typeof t.mid === 'string' && typeof t.trackName === 'string' && t.trackName.startsWith(`${me.peerId}-`) && (t.kind === 'audio' || t.kind === 'video'));
       const out = await this.sfu(`${session}/tracks/new`, 'POST', {
@@ -1471,12 +1624,13 @@ export class CallRoom extends DurableObject<Env> {
       const added = mine.map((t) => ({ trackName: String(t.trackName), kind: t.kind as SfuTrack['kind'] }));
       me.sfu.tracks = [...me.sfu.tracks.filter((t) => !added.some((a) => a.trackName === t.trackName)), ...added];
       ws.serializeAttachment(me);
-      this.others(ws, { type: 'tracks', from: me.peerId, sessionId: me.sfu.sessionId, tracks: me.sfu.tracks });
+      await this.toSeers(ws, me, { type: 'tracks', from: me.peerId, sessionId: me.sfu.sessionId, tracks: me.sfu.tracks });
       return out;
     }
     if (msg.op === 'pull') {
       // Only tracks of people in this call.
-      const offered = new Map(this.peers().filter(({ peer }) => peer.sfu && peer.peerId !== me.peerId).map(({ peer }) => [peer.sfu!.sessionId, peer.sfu!.tracks]));
+      const w = await this.webinar();
+      const offered = new Map(this.peers().filter(({ peer }) => peer.sfu && peer.peerId !== me.peerId && this.canSee(me, peer, w)).map(({ peer }) => [peer.sfu!.sessionId, peer.sfu!.tracks]));
       const want = tracks.filter((t) => typeof t.sessionId === 'string' && offered.get(t.sessionId)?.some((o) => o.trackName === t.trackName));
       if (!want.length) return { tracks: [] };
       // Cameras are sent in three sizes (simulcast); ask for the one this viewer wants. Should the SFU
@@ -1511,8 +1665,12 @@ export class CallRoom extends DurableObject<Env> {
       return;
     }
     const rest = this.peers().filter(({ ws: other }) => other !== ws);
-    for (const { ws: other } of rest) this.send(other, { type: 'left', peerId: me.peerId });
+    const w = await this.webinar();
+    for (const { ws: other, peer } of rest) if (this.canSee(peer, me, w)) this.send(other, { type: 'left', peerId: me.peerId });
     if (!me.host && !me.cohost) this.pulseTell(false, ws);
+    if (w.on) this.audienceTell();
+    // The last one out ends the webinar (the next call starts as an ordinary one).
+    if (!rest.length && w.on) await this.ctx.storage.delete(['webinar', 'qa']);
     await this.reportRoom(ws);
     // The last one out: the call's chat goes with the call.
     if (!rest.length) await this.clearChat();

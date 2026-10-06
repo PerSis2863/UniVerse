@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { Crown, DoorOpen, Hand, Mic, MicOff, MoreHorizontal, Pin, PinOff, Shield, ShieldOff, UserMinus, Video, VideoOff, X } from 'lucide-react';
+import { ArrowDownToLine, Crown, DoorOpen, Hand, Mic, MicOff, MoreHorizontal, Pin, PinOff, Presentation, Shield, ShieldOff, UserMinus, Video, VideoOff, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -18,9 +18,10 @@ export interface Person {
   muted: boolean; camera: boolean; sharing?: boolean;
   /** When their hand went up (null: down). */ hand?: number | null;
   /** How long they've spoken in this call (ms). */ talkMs?: number;
+  /** In a webinar: on stage (may talk), or watching (Stage 4 · 2.10). Undefined when it isn't one. */ stage?: boolean;
 }
 
-export type ControlAction = 'mute' | 'ask-unmute' | 'stop-video' | 'mute-all' | 'spotlight' | 'cohost' | 'remove' | 'lower-hand' | 'lower-all' | 'admit' | 'admit-all' | 'deny' | 'lobby';
+export type ControlAction = 'mute' | 'ask-unmute' | 'stop-video' | 'mute-all' | 'spotlight' | 'cohost' | 'remove' | 'lower-hand' | 'lower-all' | 'admit' | 'admit-all' | 'deny' | 'lobby' | 'stage' | 'webinar' | 'qa-answer' | 'qa-hide';
 
 const talkClock = (ms: number) => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
 
@@ -132,8 +133,10 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                       <span className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">{initials(p.name)}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate flex items-center gap-1.5">{p.hand ? <Hand className="w-3.5 h-3.5 text-amber-300 shrink-0" aria-label="Hand raised" /> : null}<span className="truncate">{p.name}{p.me ? ' (you)' : ''}</span></p>
-                        {(p.host || p.cohost || p.sharing || spotlight === p.id) && (
+                        {(p.host || p.cohost || p.sharing || spotlight === p.id || p.stage !== undefined) && (
                           <p className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+                            {p.stage === true && !p.host && !p.cohost && <span className="inline-flex items-center gap-1 text-fuchsia-300"><Presentation className="w-3 h-3" />On stage</span>}
+                            {p.stage === false && <span>Watching</span>}
                             {p.host && <span className="inline-flex items-center gap-1 text-amber-300"><Crown className="w-3 h-3" />Host</span>}
                             {p.cohost && <span className="inline-flex items-center gap-1 text-sky-300"><Shield className="w-3 h-3" />Co-host</span>}
                             {spotlight === p.id && <span className="inline-flex items-center gap-1 text-fuchsia-300"><Pin className="w-3 h-3" />Spotlight</span>}
@@ -167,6 +170,9 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                             {spotlight === p.id
                               ? <button type="button" onClick={() => act('spotlight', null)} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><PinOff className="w-3.5 h-3.5" />Remove spotlight</button>
                               : <button type="button" onClick={() => act('spotlight', p.id)} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><Pin className="w-3.5 h-3.5" />Spotlight for everyone</button>}
+                            {others && p.stage !== undefined && !p.host && !p.cohost && (p.stage
+                              ? <button type="button" onClick={() => act('stage', p.id, false)} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><ArrowDownToLine className="w-3.5 h-3.5" />Move to audience</button>
+                              : <button type="button" onClick={() => act('stage', p.id, true)} className={cn(chip, 'bg-gradient-to-r from-indigo-500 to-fuchsia-500')}><Presentation className="w-3.5 h-3.5" />Bring on stage</button>)}
                             {isHost && others && !p.host && (p.cohost
                               ? <button type="button" onClick={() => act('cohost', p.id, false)} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><ShieldOff className="w-3.5 h-3.5" />Remove co-host</button>
                               : <button type="button" onClick={() => act('cohost', p.id, true)} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><Shield className="w-3.5 h-3.5" />Make co-host</button>)}

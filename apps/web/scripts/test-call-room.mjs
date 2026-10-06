@@ -44,6 +44,8 @@ writeFileSync(join(dir, 'wrangler.jsonc'), JSON.stringify({
   name: 'call-room-test', main: 'test-entry.mjs', compatibility_date: '2025-09-01', compatibility_flags: ['nodejs_compat'],
   durable_objects: { bindings: [{ name: 'CALLS', class_name: 'CallRoom' }, { name: 'REALTIME', class_name: 'RealtimeHub' }, { name: 'BOARDS', class_name: 'BoardRoom' }, { name: 'CODE', class_name: 'CodeRoom' }] },
   migrations: [{ tag: 'v1', new_sqlite_classes: ['CallRoom', 'RealtimeHub', 'BoardRoom', 'CodeRoom'] }],
+  // Placeholders so webinar mode can be switched on (these tests never reach the SFU itself).
+  vars: { CALLS_APP_ID: 'test-app', CALLS_APP_SECRET: 'test-secret' },
 }, null, 2));
 
 const PORT = process.env.PORT ?? '8799';
@@ -283,6 +285,67 @@ if (process.env.TIMER) {
   await leave(Bq);
   await sleep(1100);
   check(last(Tq)?.lost === 0 && last(Tq)?.total === 3, 'pulse: someone lost leaves: they no longer count');
+}
+
+// ── Webinar mode (Stage 4 · 2.10) ──
+{
+  const H = await joinRoom('g_web', teacher, true), A = await joinRoom('g_web', ana), B = await joinRoom('g_web', ben);
+  const last = (p, type) => [...p.msgs].reverse().find((m) => m.type === type);
+  send(A, { type: 'control', action: 'webinar', on: true });
+  await sleep(200);
+  check(!last(B, 'webinar'), 'webinar: a viewer can’t turn it on');
+  send(H, { type: 'control', action: 'webinar', on: true });
+  await sleep(300);
+  check(last(A, 'stage')?.on === false && last(A, 'stage')?.webinar === true && !last(H, 'stage'), 'webinar: everyone but the hosts becomes audience');
+  check(last(A, 'webinar')?.on === true && JSON.stringify(last(A, 'webinar').peers.map((p) => p.name)) === '["Ms Teacher"]', 'webinar: the audience now only hears about the stage');
+  check(last(H, 'webinar')?.peers.length === 2 && last(H, 'webinar').audience === 2, 'webinar: hosts still see everyone, and the audience count');
+  const t = await room('g_web').fetch('https://call/ticket', { method: 'POST', body: JSON.stringify({ userId: cai.id, name: cai.name, host: false, max: 50 }) });
+  check((await t.json()).audience === true, 'webinar: a new ticket says “join as audience” (no camera or mic asked for)');
+  const C = await joinRoom('g_web', cai);
+  await sleep(150);
+  check(C.welcome?.webinar?.on === true && C.welcome.peers.length === 1, 'webinar: a newcomer in the audience gets only the stage');
+  check(!A.msgs.some((m) => m.type === 'joined' && m.peer.name === 'Cai') && H.msgs.some((m) => m.type === 'joined' && m.peer.name === 'Cai'), 'webinar: audience joins reach the hosts, not every viewer');
+  send(A, { type: 'hand', up: true });
+  await sleep(150);
+  check(H.msgs.some((m) => m.type === 'hand' && m.at) && !B.msgs.some((m) => m.type === 'hand' && m.at), 'webinar: a raised hand reaches the hosts, not the other viewers');
+  send(A, { type: 'caption', text: 'can you hear me', final: true, lang: 'en' });
+  await sleep(150);
+  check(!H.msgs.some((m) => m.type === 'caption' && m.text === 'can you hear me'), 'webinar: the audience can’t caption (they aren’t speaking)');
+  // Q&A
+  send(A, { type: 'qa-ask', text: 'Will this be on the exam?' });
+  send(B, { type: 'qa-ask', text: 'Can you share the slides?', anon: true });
+  await sleep(900);
+  const q = last(C, 'qa')?.items ?? [];
+  check(q.length === 2 && q.find((x) => x.text.startsWith('Can you share'))?.by === null && q.find((x) => x.text.startsWith('Will'))?.by === 'Ana', 'Q&A: everyone sees questions; anonymous ones without a name');
+  check(!JSON.stringify(q).includes('s1') && !JSON.stringify(q).includes('s2'), 'Q&A: no account ids in what people see');
+  const slides = q.find((x) => x.text.startsWith('Can you share')).id;
+  send(C, { type: 'qa-vote', id: slides, up: true });
+  send(A, { type: 'qa-vote', id: slides, up: true });
+  send(A, { type: 'qa-vote', id: slides, up: true });
+  await sleep(900);
+  const q2 = last(C, 'qa').items;
+  check(q2[0].id === slides && q2[0].votes === 2 && q2[0].mine === true, 'Q&A: upvotes (one each) put a question on top');
+  send(A, { type: 'qa-ask', text: 'Another one right away' });
+  await sleep(300);
+  check(!last(H, 'qa').items.some((x) => x.text === 'Another one right away'), 'Q&A: one question every few seconds per person');
+  send(H, { type: 'control', action: 'qa-answer', target: slides, on: true });
+  await sleep(300);
+  check(last(A, 'qa').items.at(-1).id === slides && last(A, 'qa').items.at(-1).answered === true, 'Q&A: answered questions move to the end');
+  // Stage
+  const aPeer = last(H, 'webinar').peers.find((p) => p.name === 'Ana').peerId;
+  send(H, { type: 'control', action: 'stage', target: aPeer, on: true });
+  await sleep(300);
+  check(last(A, 'stage')?.on === true && last(A, 'webinar').stage.includes(aPeer), 'stage: Ana is brought on stage (and told so)');
+  check(last(B, 'webinar').peers.some((p) => p.name === 'Ana'), 'stage: the audience now hears about Ana');
+  check(H.msgs.some((m) => m.type === 'hand' && m.peerId === aPeer && m.at === null), 'stage: her hand goes down');
+  send(H, { type: 'control', action: 'stage', target: aPeer, on: false });
+  await sleep(300);
+  check(last(A, 'stage')?.on === false && !last(B, 'webinar').peers.some((p) => p.name === 'Ana'), 'stage: back to the audience');
+  send(H, { type: 'control', action: 'webinar', on: false });
+  await sleep(300);
+  check(last(B, 'webinar')?.on === false && last(B, 'webinar').peers.length === 3 && last(B, 'stage')?.on === true, 'webinar off: everyone hears about everyone again and may talk');
+  const t2 = await room('g_web').fetch('https://call/ticket', { method: 'POST', body: JSON.stringify({ userId: cai.id, name: cai.name, host: false, max: 50 }) });
+  check((await t2.json()).audience === false, 'webinar off: tickets are ordinary again');
 }
 
 // An ordinary call (no breakouts) still works as before.

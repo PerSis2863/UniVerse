@@ -70,10 +70,16 @@ export class SfuLink {
     await this.rpc('renegotiate', { sdp: answer.sdp });
   }
 
+  /** Opens the session without sending anything: a webinar's audience only receives (Stage 4 · 2.10).
+   *  `fresh`: a new session (after going on or off stage), so the others drop what was sent before. */
+  watch(fresh = false): Promise<void> {
+    return this.run(async () => { await this.rpc('session', fresh ? { fresh: true } : {}); });
+  }
+
   /** Opens the session and sends my tracks (named after me so others can pull them). */
-  start(peerId: string, stream: MediaStream, video: boolean): Promise<void> {
+  start(peerId: string, stream: MediaStream, video: boolean, fresh = false): Promise<void> {
     return this.run(async () => {
-      await this.rpc('session');
+      await this.rpc('session', fresh ? { fresh: true } : {});
       const audio = stream.getAudioTracks()[0] ?? null;
       const cam = video ? stream.getVideoTracks()[0] ?? null : null;
       const tracks: { tx: RTCRtpTransceiver; kind: MediaKind }[] = [];
