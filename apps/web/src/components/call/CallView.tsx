@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
+import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -12,6 +12,7 @@ import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/
 import { SfuLink, kindOf, type Layer, type MediaKind, type SfuTrack } from '@/lib/sfu-client';
 import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDevice, cleanMic, listDevices, noiseMode, openMedia, setNoiseMode } from '@/lib/call-media';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
+import { PeoplePanel, type ControlAction, type Person } from './PeoplePanel';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +33,7 @@ interface Ticket {
   kind: 'audio' | 'video'; type: 'chat' | 'group' | 'class'; title: string; oneToOne: boolean; conversationId: string | null; host: boolean; sfu?: boolean; max?: number;
   path: string; iceServers: RTCIceServer[];
 }
-interface Peer { peerId: string; userId: string; name: string; sfu?: { sessionId: string; tracks: SfuTrack[] } }
+interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 type Quality = 'good' | 'fair' | 'poor' | null;
 interface Remote {
   peer: Peer; stream: MediaStream | null; /** Their shared screen (sent beside their camera). */ screen: MediaStream | null; muted: boolean; camera: boolean; sharing: boolean; cc: boolean; recording: boolean; notes: boolean;
@@ -334,6 +335,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
   const [notes, setNotes] = useState(false);
+  // Host controls (PeoplePanel): whether I run the call (the call room says: a link's creator is
+  // only known there), co-host given to me, and the person everyone sees large (spotlight).
+  const [peopleOpen, setPeopleOpen] = useState(false);
+  const [myPeerId, setMyPeerId] = useState<string | null>(null);
+  const [meHost, setMeHost] = useState(false);
+  const [meCohost, setMeCohost] = useState(false);
+  const [spotlight, setSpotlightState] = useState<string | null>(null);
+  const spotlightRef = useRef<string | null>(null);
+  // The latest mic and camera controls, for the host's requests (the socket handler is set up once).
+  const actions = useRef<{ toggleCamera: () => Promise<void>; setMicOff: (off: boolean) => void } | null>(null);
   const notesRef = useRef<{ start: number; lines: NoteLine[]; chars: number } | null>(null);
 
   const ws = useRef<WebSocket | null>(null);
@@ -449,12 +460,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const rs = Object.values(remotesRef.current).filter((r) => r.peer.sfu);
     const tracksOf = (r: Remote, kind: MediaKind) => r.peer.sfu!.tracks.filter((t) => kindOf(t) === kind).map((track) => ({ peerId: r.peer.peerId, sessionId: r.peer.sfu!.sessionId, track }));
     const slots = window.innerWidth < 640 ? 4 : 6;
-    const score = (r: Remote) => (pinned.current === r.peer.peerId ? 4 : 0) + (r.sharing ? 2 : 0);
+    const score = (r: Remote) => (spotlightRef.current === r.peer.peerId ? 8 : 0) + (pinned.current === r.peer.peerId ? 4 : 0) + (r.sharing ? 2 : 0);
     const seen = new Set(audioOnlyRef.current ? [] : rs.filter((r) => r.camera).sort((a, b) => score(b) - score(a)).slice(0, slots).map((r) => r.peer.peerId));
-    const size: Layer = rs.some((r) => r.sharing) ? 'c' : seen.size <= (slots === 4 ? 1 : 2) ? 'a' : 'b';
-    const layer: Layer = sfuQualityRef.current !== 'poor' ? size : size === 'a' ? 'b' : 'c';
+    // Beside a shared screen or a spotlight, cameras sit in a small strip; the spotlit one is large.
+    const sharingNow = rs.some((r) => r.sharing);
+    const size: Layer = sharingNow || spotlightRef.current ? 'c' : seen.size <= (slots === 4 ? 1 : 2) ? 'a' : 'b';
+    const down = (l: Layer): Layer => (sfuQualityRef.current !== 'poor' ? l : l === 'a' ? 'b' : 'c');
+    const layerOf = (r: Remote): Layer => down(!sharingNow && spotlightRef.current === r.peer.peerId ? 'a' : size);
     // Screens being shared are always received; cameras for the few people on screen.
-    const cams = rs.flatMap((r) => (seen.has(r.peer.peerId) ? tracksOf(r, 'video').map((x) => ({ ...x, layer })) : []));
+    const cams = rs.flatMap((r) => (seen.has(r.peer.peerId) ? tracksOf(r, 'video').map((x) => ({ ...x, layer: layerOf(r) })) : []));
     const pull = [...rs.flatMap((r) => [...tracksOf(r, 'audio'), ...(r.sharing ? tracksOf(r, 'screen') : [])]), ...cams];
     const drop = [
       ...rs.filter((r) => !seen.has(r.peer.peerId)).flatMap((r) => tracksOf(r, 'video')),
@@ -504,6 +518,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (!on) autoAudioOnlyAfter.current = Date.now() + 60_000;
     stateRef.current.lowData = on;
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'state', ...stateRef.current }));
+    if (sfuRef.current) syncSfu();
+  }, [syncSfu]);
+
+  /** Who everyone sees large (the host's spotlight), or nobody. */
+  const setSpotlight = useCallback((id: string | null) => {
+    spotlightRef.current = id;
+    setSpotlightState(id);
     if (sfuRef.current) syncSfu();
   }, [syncSfu]);
 
@@ -812,6 +833,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setPhase('live');
           for (const p of msg.peers as Peer[]) known.set(p.peerId, p);
           myId.current = msg.you;
+          setMyPeerId(msg.you);
+          setMeHost(msg.host === true);
+          setMeCohost(msg.cohost === true);
+          setSpotlight(typeof msg.spotlight === 'string' ? msg.spotlight : null);
           announce();
           if (t.sfu) {
             await joinSfu(msg.you, msg.peers, t);
@@ -860,13 +885,36 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setR((r) => Object.fromEntries(Object.entries(r).filter(([id]) => id !== msg.peerId)));
           setCaptions((c) => (c[msg.peerId] ? Object.fromEntries(Object.entries(c).filter(([id]) => id !== msg.peerId)) : c));
           if (sfuRef.current) syncSfu();
+        } else if (msg.type === 'control') {
+          // From the host: muted at once; unmuting is only asked for; camera off.
+          if (msg.action === 'mute' && !stateRef.current.muted) {
+            actions.current?.setMicOff(true);
+            toast(`${msg.by} muted ${msg.all ? 'everyone' : 'you'}`, { icon: '🔇' });
+          } else if (msg.action === 'ask-unmute' && stateRef.current.muted) {
+            toast(`${msg.by} asks you to unmute`, { icon: '🎙️', duration: 12_000, action: { label: 'Unmute', onClick: () => actions.current?.setMicOff(false) } });
+          } else if (msg.action === 'stop-video' && stateRef.current.camera) {
+            void actions.current?.toggleCamera();
+            toast(`${msg.by} turned your camera off`, { icon: '📷' });
+          }
+        } else if (msg.type === 'removed') {
+          finish(`${msg.by || 'The host'} removed you from the call`);
+        } else if (msg.type === 'role') {
+          if (msg.peerId === myId.current) {
+            setMeCohost(msg.cohost === true);
+            toast(msg.cohost ? `${msg.by} made you a co-host` : `${msg.by} took back co-host`, { icon: '🛡️' });
+          } else {
+            setR((r) => (r[msg.peerId] ? { ...r, [msg.peerId]: { ...r[msg.peerId], peer: { ...r[msg.peerId].peer, cohost: msg.cohost === true } } } : r));
+          }
+        } else if (msg.type === 'spotlight') {
+          setSpotlight(typeof msg.peerId === 'string' ? msg.peerId : null);
         } else if (msg.type === 'declined') {
           toast(`${msg.name || 'They'} declined the call`);
           if (t.oneToOne && pcs.current.size === 0) finish('Declined');
         }
       };
-      sock.onclose = () => {
+      sock.onclose = (ev) => {
         if (ws.current === sock) ws.current = null;
+        if (ev.code === 4001) finish('The host removed you from the call');
         for (const w of rpcWait.current.values()) w.reject(new Error('Disconnected'));
         rpcWait.current.clear();
         // Small calls already connected keep going browser to browser; reconnect so new people can
@@ -1056,17 +1104,22 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   }, [recording, stopRecording]);
 
   // ── Controls ──────────────────────────────────────────────────────────────────────────────
-  const toggleMute = () => {
-    haptic('tap');
-    const next = !muted;
-    localRef.current?.getAudioTracks().forEach((t) => { t.enabled = !next; });
-    if (rawMic.current) rawMic.current.enabled = !next;
+  /** Mutes or unmutes my microphone (the host's "mute" too; unmuting is only ever my choice). */
+  const setMicOff = (off: boolean) => {
+    localRef.current?.getAudioTracks().forEach((t) => { t.enabled = !off; });
+    if (rawMic.current) rawMic.current.enabled = !off;
     // Through the SFU a muted mic sends nothing at all.
-    void sfuRef.current?.replace('audio', next ? null : localRef.current?.getAudioTracks()[0] ?? null);
-    setMuted(next);
-    stateRef.current.muted = next;
+    void sfuRef.current?.replace('audio', off ? null : localRef.current?.getAudioTracks()[0] ?? null);
+    setMuted(off);
+    stateRef.current.muted = off;
     announce();
   };
+  const toggleMute = () => {
+    haptic('tap');
+    setMicOff(!stateRef.current.muted);
+  };
+  /** Host controls, sent through the call room (it checks I'm allowed). */
+  const control = (action: ControlAction, target?: string | null, on?: boolean) => send({ type: 'control', action, target: target ?? null, on: on === true });
 
   /** Sends this video (camera, screen or nothing) to everyone, without renegotiating. */
   const replaceVideo = async (track: MediaStreamTrack | null, isScreen = false) => {
@@ -1122,6 +1175,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     stateRef.current.camera = next;
     announce();
   };
+
+  useEffect(() => { actions.current = { toggleCamera, setMicOff }; });
 
   const flipCamera = async () => {
     const current = localRef.current?.getVideoTracks()[0];
@@ -1238,6 +1293,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const count = list.length + 1;
   const compact = count > 9;
   const someoneRecording = recording || list.some((r) => r.recording);
+  // The host's spotlight: that person large, everyone else in the strip (a shared screen comes first).
+  const lit: Remote | 'me' | null = presenter || !spotlight ? null : spotlight === myPeerId ? 'me' : list.find((r) => r.peer.peerId === spotlight) ?? null;
+  const canModerate = meHost || meCohost;
+  const people: Person[] = [
+    { id: myPeerId ?? 'me', name: myName, me: true, host: meHost, cohost: meCohost, muted, camera, sharing },
+    ...list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host, cohost: r.peer.cohost, muted: r.muted, camera: r.camera, sharing: r.sharing })),
+  ];
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
 
   return (
@@ -1290,7 +1352,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           {onMinimize && phase !== 'error' && phase !== 'ended' && <button type="button" onClick={onMinimize} aria-label="Minimise the call" title="Keep using UniVerse during the call" className="p-2.5 rounded-full hover:bg-white/10"><ChevronDown className="w-5 h-5" /></button>}
           {info && info.type !== 'chat' && <button type="button" onClick={copyInvite} aria-label="Copy call link" title="Copy call link" className="p-2.5 rounded-full hover:bg-white/10"><Link2 className="w-5 h-5" /></button>}
           <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Full screen'} className="p-2.5 rounded-full hover:bg-white/10 hidden sm:block">{fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}</button>
-          <span className="text-xs text-zinc-400 ml-1">{count} in call</span>
+          {phase === 'live' ? (
+            <button type="button" onClick={() => { haptic('tap'); setPeopleOpen((o) => !o); }} aria-expanded={peopleOpen} aria-label={`People in the call: ${count}`} title="People"
+              className={cn('ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', peopleOpen ? 'bg-white text-zinc-900' : 'text-zinc-200 bg-white/[0.06] hover:bg-white/15')}>
+              <Users className="w-4 h-4" />{count}<span className="hidden sm:inline font-normal">in call</span>
+            </button>
+          ) : <span className="text-xs text-zinc-400 ml-1">{count} in call</span>}
         </div>
       </motion.header>
 
@@ -1335,7 +1402,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           </div>
         </motion.main>
       ) : (
-        presenter ? (
+        presenter || lit ? (
           <main className="flex-1 min-h-0 flex flex-col gap-3 p-3 sm:p-4">
             <motion.div layout transition={spring.smooth} className="relative flex-1 min-h-0 rounded-3xl overflow-hidden bg-black ring-1 ring-white/10">
               {presenter === 'me' ? (
@@ -1345,14 +1412,20 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                   <p className="text-sm text-zinc-400 max-w-xs">Everyone sees it now. Your camera stays on for them too.</p>
                   <button type="button" onClick={() => void stopShare()} className="px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-500 text-sm font-semibold">Stop sharing</button>
                 </div>
-              ) : (
+              ) : presenter ? (
                 <ScreenStage stream={presenter.screen} name={presenter.peer.name} />
-              )}
+              ) : lit === 'me' ? (
+                <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
+              ) : lit ? (
+                <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
+                  paused={lit.paused || audioOnly} onShow={() => showVideo(lit.peer.peerId)} className="absolute inset-0 h-full w-full aspect-auto rounded-none"
+                  videoRef={lit.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
+              ) : null}
             </motion.div>
             <div className="shrink-0 h-24 sm:h-32 flex gap-2 overflow-x-auto justify-center">
               <AnimatePresence initial={false}>
-                <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact className="h-full shrink-0" />
-                {list.map((r) => (
+                {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact className="h-full shrink-0" />}
+                {list.filter((r) => r !== lit).map((r) => (
                   <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                     paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact className="h-full shrink-0"
                     videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
@@ -1451,6 +1524,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => finish()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
         </div>
       </motion.footer>
+      <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} />
       {/* Microphone, camera and noise suppression */}
       <AnimatePresence>
         {settingsOpen && (

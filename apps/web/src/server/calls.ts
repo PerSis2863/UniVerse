@@ -65,16 +65,19 @@ export interface CallInfo {
   oneToOne: boolean;
   startedBy: string | null;
   ended: boolean;
-  /** The class's teacher (or an admin): may record the call. */
+  /** Runs the call (host controls): the class's teacher (who alone may record), a study group's
+   *  creator and admins, a room's moderators, a group chat call's starter and the chat's admins,
+   *  a call link's creator (cloudflare/worker.ts CallRoom). */
   host: boolean;
 }
 
 export async function callAccess(callId: string, user: SessionUser, wantKind?: unknown): Promise<CallInfo> {
   const kind = wantKind === 'audio' ? 'audio' : 'video';
   if (callId.startsWith('g_')) {
-    const group = await prisma.group.findUnique({ where: { id: callId.slice(2) }, select: { name: true, members: { where: { userId: user.id }, select: { id: true } } } });
+    const group = await prisma.group.findUnique({ where: { id: callId.slice(2) }, select: { name: true, createdById: true, members: { where: { userId: user.id }, select: { role: true } } } });
     if (!group || (!group.members.length && user.role !== 'ADMIN')) throw new NotFoundException('This group call isn’t for one of your groups.');
-    return { kind, type: 'group', title: group.name, conversationId: null, oneToOne: false, startedBy: null, ended: false, host: false };
+    const host = group.createdById === user.id || ['ADMIN', 'MODERATOR'].includes(group.members[0]?.role ?? '');
+    return { kind, type: 'group', title: group.name, conversationId: null, oneToOne: false, startedBy: null, ended: false, host };
   }
   if (callId.startsWith('r_')) {
     const convo = await prisma.conversation.findUnique({
@@ -102,9 +105,9 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
   const msg = await prisma.message.findUnique({
     where: { id: callId },
     select: {
-      type: true, metadata: true, createdAt: true, deletedAt: true,
+      type: true, metadata: true, createdAt: true, deletedAt: true, senderId: true,
       sender: { select: { name: true } },
-      conversation: { select: { id: true, isGroup: true, name: true, participants: { select: { userId: true, user: { select: { name: true } } } } } },
+      conversation: { select: { id: true, isGroup: true, name: true, participants: { select: { userId: true, role: true, user: { select: { name: true } } } } } },
     },
   });
   if (!msg || msg.type !== 'CALL' || msg.deletedAt || !msg.conversation.participants.some((p) => p.userId === user.id)) throw new NotFoundException('This call doesn’t exist or isn’t in one of your chats.');
@@ -120,7 +123,8 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
     oneToOne: !msg.conversation.isGroup,
     startedBy: msg.sender.name,
     ended,
-    host: false,
+    // Group calls: whoever started it, and the chat's admins.
+    host: msg.conversation.isGroup && (msg.senderId === user.id || msg.conversation.participants.some((p) => p.userId === user.id && p.role === 'ADMIN')),
   };
 }
 
@@ -158,9 +162,18 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
   const sfu = sfuEnabled() && !info.oneToOne;
   const max = sfu ? planLimits().callPeers : 6;
   const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host: info.host, max }) });
+  if (res?.status === 403) throw new HttpException('The host removed you from this call.', 403);
   if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
   const { ticket } = (await res.json()) as { ticket: string };
   return { ...info, sfu, max, path: `/call-live?call=${encodeURIComponent(callId)}&ticket=${encodeURIComponent(ticket)}`, iceServers: sfu ? SFU_ICE : await iceServers() };
+}
+
+/** A new call link (like a FaceTime link): anyone signed in with it may join; its creator hosts. */
+export async function createCallLink(user: SessionUser) {
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  const id = `l_${btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+  await roomFetch(id, '/creator', { method: 'POST', body: JSON.stringify({ userId: user.id }) });
+  return { id, path: `/call/${id}` };
 }
 
 /** Who is in a room call right now (names), for "3 in the room" on voice channels. */

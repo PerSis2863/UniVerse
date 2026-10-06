@@ -656,14 +656,17 @@ export class CodeRoom extends DurableObject<Env> {
 
 /** A track someone sends to Cloudflare's SFU (bigger calls), which others pull by name. */
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
-/** Someone in a call (kept on the socket so it survives hibernation). */
-interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
+/** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
+ *  moderators or the link's creator; cohost: given host controls by the host during the call. */
+interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number }
 
 const MAX_CALL_PEERS = 6; // small calls: everyone connects to everyone
 const MAX_SFU_PEERS = 150; // bigger calls through the SFU (the app sets the real cap per ticket)
 const MAX_SIGNAL_BYTES = 64 * 1024;
 const MAX_CAPTION = 300;
+/** Someone the host removed can't come back into the same call for this long. */
+const REMOVED_MS = 4 * 3600_000;
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -713,11 +716,24 @@ export class CallRoom extends DurableObject<Env> {
     if (url.pathname === '/ticket' && request.method === 'POST') {
       const who = (await request.json()) as Omit<CallTicket, 'exp'>;
       const now = Date.now();
-      const stale = [...(await this.ctx.storage.list<{ exp: number }>({ prefix: 'ticket:' }))].filter(([, t]) => t.exp < now).map(([k]) => k);
+      const stale = [
+        ...[...(await this.ctx.storage.list<{ exp: number }>({ prefix: 'ticket:' }))].filter(([, t]) => t.exp < now),
+        ...[...(await this.ctx.storage.list<{ until: number }>({ prefix: 'removed:' }))].filter(([, t]) => t.until < now),
+      ].map(([k]) => k);
       if (stale.length) await this.ctx.storage.delete(stale.slice(0, 128));
+      // Removed by the host: not back into this call (for a few hours).
+      if (((await this.ctx.storage.get<{ until: number }>(`removed:${who.userId}`))?.until ?? 0) > now) return Response.json({ error: 'removed' }, { status: 403 });
+      // A call link's creator hosts it.
+      if (who.userId && (await this.ctx.storage.get<string>('creator')) === who.userId) who.host = true;
       const ticket = crypto.randomUUID();
       await this.ctx.storage.put(`ticket:${ticket}`, { ...who, exp: now + TICKET_TTL_MS });
       return Response.json({ ticket });
+    }
+    // From the app: who made this call link (they host it).
+    if (url.pathname === '/creator' && request.method === 'POST') {
+      const { userId } = (await request.json()) as { userId?: string };
+      if (userId && !(await this.ctx.storage.get('creator'))) await this.ctx.storage.put('creator', userId);
+      return Response.json({ ok: true });
     }
     // From the app: who is in the room (names only), for voice channel lists.
     if (url.pathname === '/peers') {
@@ -741,9 +757,11 @@ export class CallRoom extends DurableObject<Env> {
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
       const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true };
+      // Co-hosts stay co-hosts when they reconnect.
+      if (!me.host && (await this.ctx.storage.get(`cohost:${who.userId}`))) me.cohost = true;
       server.serializeAttachment(me);
       // The newcomer calls everyone already here (so two people never offer to each other at once).
-      this.send(server, { type: 'welcome', you: me.peerId, peers: current.map(({ peer }) => peer) });
+      this.send(server, { type: 'welcome', you: me.peerId, host: me.host, cohost: me.cohost === true, peers: current.map(({ peer }) => peer), spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null });
       for (const { ws } of current) this.send(ws, { type: 'joined', peer: me });
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -754,7 +772,7 @@ export class CallRoom extends DurableObject<Env> {
     if (typeof raw !== 'string' || raw.length > MAX_SIGNAL_BYTES) return;
     const me = ws.deserializeAttachment() as CallPeer | null;
     if (!me) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -772,11 +790,62 @@ export class CallRoom extends DurableObject<Env> {
       if (text) this.others(ws, { type: 'caption', from: me.peerId, text, final: msg.final === true });
       return;
     }
+    if (msg.type === 'control' && typeof msg.action === 'string') {
+      await this.control(ws, me, msg.action, typeof msg.target === 'string' ? msg.target : null, msg.on === true);
+      return;
+    }
     if (msg.type === 'sfu' && typeof msg.id === 'number') {
       try {
         this.send(ws, { type: 'sfu', id: msg.id, data: await this.sfuOp(ws, me, msg) });
       } catch (e) {
         this.send(ws, { type: 'sfu', id: msg.id, error: (e as Error).message });
+      }
+    }
+  }
+
+  /**
+   * Host controls (src/components/call/PeoplePanel.tsx): from the host or a co-host only. Muting asks
+   * the person's app to mute (it can't be undone remotely: unmuting is only ever asked for).
+   */
+  private async control(ws: WebSocket, me: CallPeer, action: string, target: string | null, on: boolean) {
+    if (!me.host && !me.cohost) return;
+    const all = this.peers();
+    const them = target ? all.find(({ peer }) => peer.peerId === target) : undefined;
+    const by = me.name;
+    if ((action === 'mute' || action === 'ask-unmute' || action === 'stop-video') && them && them.ws !== ws) {
+      this.send(them.ws, { type: 'control', action, by });
+    } else if (action === 'mute-all') {
+      for (const p of all) if (p.ws !== ws && !p.peer.host && !p.peer.cohost) this.send(p.ws, { type: 'control', action: 'mute', by, all: true });
+    } else if (action === 'spotlight') {
+      // Everyone sees this person large (target null: back to the grid).
+      const id = them?.peer.peerId ?? null;
+      if (id) await this.ctx.storage.put('spotlight', id);
+      else await this.ctx.storage.delete('spotlight');
+      for (const p of all) this.send(p.ws, { type: 'spotlight', peerId: id, by });
+    } else if (action === 'cohost') {
+      // Only the call's own host gives or takes host controls.
+      if (!me.host || !them || them.peer.host) return;
+      them.peer.cohost = on;
+      them.ws.serializeAttachment(them.peer);
+      if (on) await this.ctx.storage.put(`cohost:${them.peer.userId}`, true);
+      else await this.ctx.storage.delete(`cohost:${them.peer.userId}`);
+      for (const p of all) this.send(p.ws, { type: 'role', peerId: them.peer.peerId, cohost: on, by });
+    } else if (action === 'remove') {
+      // Not the host, and a co-host only by the host. Every device of theirs leaves, and they can't
+      // come back into this call for a few hours.
+      if (!them || them.ws === ws || them.peer.host || (them.peer.cohost && !me.host)) return;
+      await this.ctx.storage.put(`removed:${them.peer.userId}`, { until: Date.now() + REMOVED_MS });
+      const gone = all.filter(({ peer }) => peer.userId === them.peer.userId);
+      for (const g of gone) {
+        this.send(g.ws, { type: 'removed', by });
+        g.ws.serializeAttachment(null);
+        try { g.ws.close(4001, 'Removed from the call'); } catch { /* already closed */ }
+      }
+      for (const p of all) if (!gone.includes(p)) for (const g of gone) this.send(p.ws, { type: 'left', peerId: g.peer.peerId });
+      const lit = await this.ctx.storage.get<string>('spotlight');
+      if (gone.some((g) => g.peer.peerId === lit)) {
+        await this.ctx.storage.delete('spotlight');
+        for (const p of all) if (!gone.includes(p)) this.send(p.ws, { type: 'spotlight', peerId: null });
       }
     }
   }
@@ -838,6 +907,13 @@ export class CallRoom extends DurableObject<Env> {
   async webSocketClose(ws: WebSocket, code: number) {
     const me = ws.deserializeAttachment() as CallPeer | null;
     try { ws.close(code === 1005 || code === 1006 ? 1000 : code); } catch { /* already closed */ }
-    if (me) for (const { ws: other } of this.peers()) if (other !== ws) this.send(other, { type: 'left', peerId: me.peerId });
+    if (!me) return;
+    const rest = this.peers().filter(({ ws: other }) => other !== ws);
+    for (const { ws: other } of rest) this.send(other, { type: 'left', peerId: me.peerId });
+    // The spotlit person left: back to the grid.
+    if ((await this.ctx.storage.get<string>('spotlight')) === me.peerId) {
+      await this.ctx.storage.delete('spotlight');
+      for (const { ws: other } of rest) this.send(other, { type: 'spotlight', peerId: null });
+    }
   }
 }

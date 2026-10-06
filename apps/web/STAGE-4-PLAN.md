@@ -248,8 +248,16 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 | 5 | Call health log | **Done** | `CallStat` (migration `0049_call_stats.sql`), `POST /api/calls/:id/stat` → `recordCallStat`, owner console → Calls tab (`console/calls.tsx`, `GET /owner/calls` → `callHealth`). One row per person per call; kept 90 days; erased with the account |
 | 6 | Test matrix | **Done** (to be run on real devices) | "Call test checklist" at the end of this file |
 
-**Phase 0 is built** (TURN keys are the owner's). **Next up:** Phase 2.1–2.5 (host controls, raised
-hands, in-call chat, background blur, lobby), per "Suggested order" above.
+**Phase 0 is built** (TURN keys are set by the owner).
+
+### Phase 2 (in progress: 2.1–2.5 first)
+| # | Item | State | Where |
+|---|---|---|---|
+| 2.1 | People panel + host controls | **Done** | `src/components/call/PeoplePanel.tsx`; `CallRoom.control()` in `cloudflare/worker.ts` (mute, mute everyone, ask to unmute, stop video, spotlight, co-host, remove → `removed:<userId>` for 4 h). Hosts: `callAccess` in `src/server/calls.ts` (teacher, group creator/admins, room mods, group chat call starter/admins); link creators via `CallRoom` `/creator` (`createCallLink`). `welcome` carries `host`, `cohost`, `spotlight` |
+| 2.2 | Raise hand, reactions, speaking time | Next | |
+| 2.5 | Waiting room | To do | |
+| 2.3 | In-call chat | To do | |
+| 2.4 | Background blur/replace | To do | |
 
 ### Notes for whoever continues
 - The pre-join gate is in `open()` in `CallView.tsx`: media opens first, then `resumeJoin.current()`
