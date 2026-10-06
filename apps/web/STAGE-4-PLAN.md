@@ -246,7 +246,10 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 | 3 | SFU simulcast | **Done** (needs a real-device check) | `sfu-client.ts`: `CAMERA_LAYERS` a/b/c, `pull` with a layer, `prefer`; `worker.ts` `CallRoom.sfuOp` `pull` (falls back to a plain pull) and `layer` → `tracks/update`; `CallView.tsx` `syncSfu` picks the layer, `noteSfuQuality` steps down when poor |
 | 4 | Audio-only fallback | **Done** | `CallView.tsx`: `setLowData`, `poorSince` (poor 10 s while a camera is on), banner "Resume video" / "Turn my camera off"; P2P senders stop their camera to that person (`tuneSenders(pc, sendCamera)`, `lowData` in the room's `state` message), SFU stops pulling cameras; screens stay. Quality now uses packet loss since the last reading |
 | 5 | Call health log | **Done** | `CallStat` (migration `0049_call_stats.sql`), `POST /api/calls/:id/stat` → `recordCallStat`, owner console → Calls tab (`console/calls.tsx`, `GET /owner/calls` → `callHealth`). One row per person per call; kept 90 days; erased with the account |
-| 6 | Test matrix | Next | a checklist at the end of this file |
+| 6 | Test matrix | **Done** (to be run on real devices) | "Call test checklist" at the end of this file |
+
+**Phase 0 is built** (TURN keys are the owner's). **Next up:** Phase 2.1–2.5 (host controls, raised
+hands, in-call chat, background blur, lobby), per "Suggested order" above.
 
 ### Notes for whoever continues
 - The pre-join gate is in `open()` in `CallView.tsx`: media opens first, then `resumeJoin.current()`
@@ -256,3 +259,32 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
   `simulcast: { preferredRid, priorityOrdering: 'asciibetical', ridNotAvailable: 'asciibetical' }` on
   pull and `PUT /sessions/:id/tracks/update` to change layer. If the SFU rejects them, pulls fall back
   to the old single-size pull, so calls keep working; check the Worker logs for `SFU 4xx` after deploy.
+
+---
+
+## Call test checklist (Phase 0, item 6)
+
+Run after each deploy that touches calls. Two people (or two devices in **different rooms**, with
+headphones: two devices in one room echo whatever the software does). After each run, check the
+owner console → **Calls** tab: every join should be there, and failures should say why.
+
+**Devices:** Chrome on Mac/Windows · Safari on Mac · Firefox · Safari on iPhone (installed app and
+browser) · Chrome on Android.
+
+| # | What to do | Pass when |
+|---|---|---|
+| 1 | Chat call, voice, phone ↔ computer | Rings, connects in under 3 s, both hear each other; the phone keeps its own mic (no Continuity takeover) |
+| 2 | Turn the camera on mid-call, then off | Video appears/disappears smoothly on both sides, no black tile |
+| 3 | Share a screen while the camera is on | The other side sees the screen big and your camera in the strip; text is readable |
+| 4 | Switch microphone and camera in Devices & noise | Switches without dropping the call |
+| 5 | Noise: Strong vs Off with a fan or typing nearby | Strong removes it; Off lets it through |
+| 6 | Class or group call | Pre-join screen: preview, mic meter moves, "Test speaker" plays, who's already in shows; Join connects |
+| 7 | Wi-Fi ↔ 4G (turn Wi-Fi off mid-call on the phone) | Call recovers within ~10 s without leaving |
+| 8 | Strict network (school/office Wi-Fi, or a VPN that blocks UDP) | Connects; the Calls tab shows "TURN" for it (needs the TURN keys) |
+| 9 | Throttle one side (Chrome DevTools → Network → "3G") for 15 s | "Weak connection" banner, video pauses, audio continues; "Resume video" brings it back |
+| 10 | Lock the phone for 30 s and come back | Audio continued, or the call reconnects by itself |
+| 11 | 4 people, then 12 (bigger call, SFU) | Everyone hears everyone; grids look sharp; with a shared screen the camera strip still works |
+| 12 | Leave, and close the tab mid-call | The others see you leave; your join appears in the Calls tab |
+
+**Done when:** 1–12 pass on every device above, calls connect in under 3 s (Calls tab "Time to
+connect"), and survive a 10 s network drop.
