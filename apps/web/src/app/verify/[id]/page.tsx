@@ -9,6 +9,7 @@ import { API_URL } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
 import { QrCode } from '@/components/ui/QrCode';
 import { CopyLinkButton } from '@/components/passport/CredentialShare';
+import { LogoMark } from '@/components/ui/LogoMark';
 
 type VerifyResult = 'VALID' | 'REVOKED' | 'TAMPERED' | 'UNKNOWN_KEY' | 'NOT_FOUND';
 
@@ -116,7 +117,7 @@ export default function VerifyCredentialPage() {
     <main className="min-h-screen px-4 py-8 sm:py-14 overflow-x-hidden" style={{ backgroundColor: 'var(--background)' }}>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2 font-black text-zinc-900 dark:text-white"><span className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-xs flex items-center justify-center">U</span> UniVerse Impact</Link>
+          <Link href="/" className="flex items-center gap-2 font-black text-zinc-900 dark:text-white"><LogoMark className="w-7 h-7" /> UniVerse Impact</Link>
           <span className="text-[11px] text-zinc-500 hidden sm:inline">Credential verification</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black mt-6" style={{ color: 'var(--text-primary)' }}>Is this credential genuine?</h1>

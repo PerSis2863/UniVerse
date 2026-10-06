@@ -6,6 +6,7 @@ import { Download, FileX2, Printer } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { ReportView, type ReportData } from '@/components/reports/ReportView';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { LogoMark } from '@/components/ui/LogoMark';
 
 interface Resp { slug: string; url: string; issuedBy: string; issuedAt: string; data: ReportData; verification: { verified: boolean; signatureValid: boolean; matches: boolean } }
 
@@ -26,7 +27,7 @@ export default function PublicReportPage() {
     <main className="min-h-screen px-4 py-8 sm:py-12 print:p-0" style={{ backgroundColor: 'var(--background)' }}>
       <div className="max-w-4xl mx-auto">
         <div className="mb-5 flex flex-wrap items-center gap-3 justify-between print:hidden">
-          <Link href="/" className="flex items-center gap-2 font-black text-zinc-900 dark:text-white"><span className="w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs flex items-center justify-center">U</span> UniVerse</Link>
+          <Link href="/" className="flex items-center gap-2 font-black text-zinc-900 dark:text-white"><LogoMark className="w-7 h-7" /> UniVerse</Link>
           {r && (
             <div className="flex gap-2">
               <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Printer className="w-4 h-4" /> Print / PDF</button>

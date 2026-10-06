@@ -26,6 +26,8 @@ function iosTap() {
 export function haptic(kind: keyof typeof PATTERNS = 'tap') {
   try {
     if (typeof navigator === 'undefined') return;
+    // Turned off in Settings → Appearance.
+    try { if (localStorage.getItem('uv-haptics') === 'off') return; } catch { /* private mode */ }
     // Browsers refuse (and log an error) before the person has tapped the page at least once.
     const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
     if (activation && !activation.hasBeenActive) return;

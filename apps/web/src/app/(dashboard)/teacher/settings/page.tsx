@@ -1,2 +1,8 @@
-// Teachers use the same settings as students (profile, language, notifications, privacy, account).
-export { default } from '../../student/settings/page';
+'use client';
+
+import { SettingsApp } from '@/components/settings/SettingsApp';
+
+// Settings for teachers: the shared Settings app (src/components/settings/SettingsApp.tsx).
+export default function Settings() {
+  return <SettingsApp role="TEACHER" />;
+}

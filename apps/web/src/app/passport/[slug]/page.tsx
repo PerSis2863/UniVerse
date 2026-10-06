@@ -10,6 +10,7 @@ import { PassportView, type PassportData } from '@/components/passport/PassportV
 import { CopyLinkButton } from '@/components/passport/CredentialShare';
 import { QrCode } from '@/components/ui/QrCode';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { LogoMark } from '@/components/ui/LogoMark';
 
 type VerifyResult = { valid: true; badge: { name?: string; earner?: string; criteria?: string; issued?: string; verifyUrl?: string } } | { valid: false; reason: string };
 
@@ -31,7 +32,7 @@ export default function PublicPassportPage() {
     <main className="min-h-screen px-4 py-8 sm:py-12" style={{ backgroundColor: 'var(--background)' }}>
       <div className="max-w-3xl mx-auto">
         <div className="mb-5 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-black text-zinc-900 dark:text-white"><span className="w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs flex items-center justify-center">U</span> UniVerse</Link>
+          <Link href="/" className="flex items-center gap-2 font-black text-zinc-900 dark:text-white"><LogoMark className="w-7 h-7" /> UniVerse</Link>
           <span className="text-[11px] text-zinc-500 inline-flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5 text-emerald-500" /> Credentials verified by UniVerse Impact</span>
         </div>
         {missing ? (
