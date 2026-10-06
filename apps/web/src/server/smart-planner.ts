@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import prisma from '@/lib/db';
+import { plannerTasks } from './tasks';
 import { BadRequestException, NotFoundException } from './http';
 import { studentProgress } from './student-progress';
 
@@ -100,7 +101,7 @@ const MINUTES = { quiz: { total: 60, chunk: 30 }, deadline: { total: 120, chunk:
 async function inputs(userId: string, today: string, tz: string) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   const from = new Date(Date.parse(`${today}T00:00:00Z`) - DAY), to = new Date(Date.parse(`${days[6]}T23:59:59Z`) + DAY);
-  const [progress, slots, events, cardsDue] = await Promise.all([
+  const [progress, slots, events, cardsDue, boardTasks] = await Promise.all([
     studentProgress(userId, 8),
     prisma.timetableSlot.findMany({ where: { course: { enrollments: { some: { studentId: userId } } } }, select: { id: true, dayOfWeek: true, startTime: true, endTime: true } }),
     prisma.calendarEvent.findMany({
@@ -108,6 +109,8 @@ async function inputs(userId: string, today: string, tz: string) {
       select: { id: true, startAt: true, endAt: true }, take: 200,
     }),
     prisma.studyCard.count({ where: { userId, due: { lte: to } } }),
+    // Cards given to me on task boards, due this week (Stage 4 · 3.3).
+    plannerTasks(userId, from, to),
   ]);
   const busy = new Map<string, [number, number][]>();
   for (const d of days) {
@@ -125,11 +128,16 @@ async function inputs(userId: string, today: string, tz: string) {
     const m = MINUTES[d.kind];
     tasks.push({ key: d.id, kind: d.kind === 'quiz' ? 'QUIZ' : d.kind === 'exam' ? 'EXAM' : 'DEADLINE', title: d.title, courseCode: d.course?.code ?? null, minutes: m.total, chunk: m.chunk, lastDay: due.day, lastMin: due.min });
   }
+  for (const t of boardTasks) {
+    const due = local(t.dueAt!, tz);
+    if (due.day < today || due.day > days[6]) continue;
+    tasks.push({ key: `t-${t.id}`, kind: 'TASK', title: t.title, courseCode: null, minutes: 60, chunk: 30, lastDay: due.day, lastMin: due.min });
+  }
   const weak = progress.courses.filter((c) => c.grade !== null && c.grade < 70).sort((a, b) => (a.grade ?? 0) - (b.grade ?? 0)).slice(0, 2);
   const review = weak.length ? weak : progress.courses.filter((c) => c.grade !== null).sort((a, b) => (a.grade ?? 0) - (b.grade ?? 0)).slice(0, 1);
   for (const c of review) tasks.push({ key: `r-${c.id}`, kind: 'REVIEW', title: `Review ${c.name}`, courseCode: c.code, minutes: weak.length ? 60 : 30, chunk: 30, lastDay: null });
   if (cardsDue) tasks.push({ key: 'cards', kind: 'FLASHCARDS', title: `Flashcards (${cardsDue} due)`, courseCode: null, minutes: 60, chunk: 15, lastDay: null });
-  const sig = createHash('sha256').update(JSON.stringify([today, progress.deadlines.map((d) => `${d.id}@${d.due}`), slots.map((s) => `${s.id}${s.dayOfWeek}${s.startTime}${s.endTime}`), events.map((e) => `${e.id}${+e.startAt}${+e.endAt}`), review.map((c) => c.id), Math.min(cardsDue, 1)])).digest('base64url').slice(0, 22);
+  const sig = createHash('sha256').update(JSON.stringify([today, progress.deadlines.map((d) => `${d.id}@${d.due}`), boardTasks.map((t) => `${t.id}@${+t.dueAt!}`), slots.map((s) => `${s.id}${s.dayOfWeek}${s.startTime}${s.endTime}`), events.map((e) => `${e.id}${+e.startAt}${+e.endAt}`), review.map((c) => c.id), Math.min(cardsDue, 1)])).digest('base64url').slice(0, 22);
   return { days, busy, tasks, sig, deadlineIds: progress.deadlines.map((d) => d.id) };
 }
 

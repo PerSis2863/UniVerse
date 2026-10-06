@@ -255,6 +255,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
+  [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
+  [/^\/api\/tasks\/([^/]+)$/, () => fail('Task boards aren’t in the sample yet.', 404)],
+  [/^\/api\/tasks\/items\/([^/]+)\/comments$/, () => ok([])],
   [/^\/api\/chat\/starred$/, ({ db: d }) => ok(d.conversations.flatMap((c) => visible(d, c).filter((m: any) => d.starred.has(m.id)).map((m: any) => ({ ...decorateMsg(d, m), chat: { id: c.id, title: c.title } }))))],
   [/^\/api\/chat\/conversations\/([^/]+)\/messages$/, ({ db: d, m, q }) => {
     const c = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);

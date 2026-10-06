@@ -2762,3 +2762,82 @@ model CourseCampus {
   @@index([campusId])
   @@map("course_campuses")
 }
+
+/// Task boards (Stage 4 · 3.3): Kanban lists of cards, for a person and whoever they add, or for a
+/// whole course (src/server/tasks.ts).
+model TaskBoard {
+  id        String            @id @default(cuid())
+  title     String
+  ownerId   String
+  courseId  String? // everyone in the course can see and edit it
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  members   TaskBoardMember[]
+  lists     TaskList[]
+  tasks     Task[]
+
+  @@index([ownerId])
+  @@index([courseId])
+  @@map("task_boards")
+}
+
+model TaskBoardMember {
+  id      String    @id @default(cuid())
+  boardId String
+  board   TaskBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId  String
+  role    String    @default("EDITOR") // EDITOR or VIEWER
+  addedAt DateTime  @default(now())
+
+  @@unique([boardId, userId])
+  @@index([userId])
+  @@map("task_board_members")
+}
+
+model TaskList {
+  id        String    @id @default(cuid())
+  boardId   String
+  board     TaskBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title     String
+  position  Float     @default(0)
+  createdAt DateTime  @default(now())
+  tasks     Task[]
+
+  @@index([boardId])
+  @@map("task_lists")
+}
+
+model Task {
+  id          String        @id @default(cuid())
+  boardId     String
+  board       TaskBoard     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  listId      String
+  list        TaskList      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?
+  assigneeId  String?
+  dueAt       DateTime?
+  position    Float         @default(0)
+  checklist   String? // JSON [{ text, done }]
+  doneAt      DateTime?
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  comments    TaskComment[]
+
+  @@index([boardId])
+  @@index([assigneeId, doneAt])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@map("task_comments")
+}

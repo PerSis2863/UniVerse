@@ -79,7 +79,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes'] },
-        { href: '/boards', label: 'Collaborate', also: ['/code'] },
+        { href: '/boards', label: 'Collaborate', also: ['/code', '/tasks'] },
         { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub'] },
       ]
     },
@@ -128,7 +128,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
         { href: '/teacher/assignments', label: 'Assignments' },
         { href: '/teacher/live', label: 'Live class' },
-        { href: '/boards', label: 'Collaborate', also: ['/code'] },
+        { href: '/boards', label: 'Collaborate', also: ['/code', '/tasks'] },
         { href: '/teacher/calendar', label: 'nav.timetable' },
       ]
     },
@@ -194,7 +194,7 @@ export const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/admin/announcements'] },
-    { href: '/boards', label: 'Collaborate', icon: PenTool, also: ['/code'] },
+    { href: '/boards', label: 'Collaborate', icon: PenTool, also: ['/code', '/tasks'] },
     { href: '/admin/billing', label: 'Billing & plans', icon: Crown },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
   ],

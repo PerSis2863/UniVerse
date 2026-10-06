@@ -68,6 +68,7 @@ export const PROGRESS_TABS: SectionTab[] = [
 export const COLLAB_TABS: SectionTab[] = [
   { href: '/boards', label: 'Whiteboards' },
   { href: '/code', label: 'Code together' },
+  { href: '/tasks', label: 'Tasks' },
 ];
 
 export const STUDENT_COURSE_TABS: SectionTab[] = [
