@@ -348,6 +348,38 @@ if (process.env.TIMER) {
   check((await t2.json()).audience === false, 'webinar off: tickets are ordinary again');
 }
 
+// ── Guest links (Stage 4 · 2.11) ──
+{
+  const id = 'l_guesttest12345';
+  const post = (path, body) => room(id).fetch(`https://call${path}`, { method: 'POST', body: JSON.stringify(body) });
+  await post('/creator', { userId: teacher.id });
+  const H = await joinRoom(id, teacher, false);
+  check(H.welcome?.host === true, 'guests: the link’s creator hosts it');
+  send(H, { type: 'chat', text: 'before the guest came' });
+  await sleep(150);
+  const { token } = await (await post('/guest-link', { by: teacher.id, hours: 1 })).json();
+  check(typeof token === 'string' && (await post('/guest-ticket', { token, check: true })).status === 200, 'guests: a guest link works');
+  check((await post('/guest-ticket', { token, name: 'X', ip: '9.9.9.9', max: 50 })).status === 400, 'guests: a name is needed');
+  const { ticket } = await (await post('/guest-ticket', { token, name: '  Gita   Rao ', ip: '9.9.9.9', max: 50 })).json();
+  const g = { msgs: [] };
+  g.ws = new WebSocket(`${BASE.replace('http', 'ws')}/__do/${encodeURIComponent(id)}/call-live?call=${encodeURIComponent(id)}&ticket=${ticket}`);
+  g.ws.addEventListener('message', (e) => g.msgs.push(JSON.parse(e.data)));
+  await sleep(400);
+  check(g.msgs.some((m) => m.type === 'lobby') && !g.msgs.some((m) => m.type === 'welcome'), 'guests: always wait in the waiting room (even with it off)');
+  const knock = H.msgs.find((m) => m.type === 'knock');
+  check(knock?.peer?.name === 'Gita Rao (guest)' && knock.peer.guest === true, 'guests: the host sees “(guest)” knocking');
+  send(H, { type: 'control', action: 'admit', target: knock.peer.peerId });
+  await sleep(300);
+  const welcome = g.msgs.find((m) => m.type === 'welcome');
+  check(!!welcome && Array.isArray(welcome.chat) && welcome.chat.length === 0, 'guests: let in, without the chat from before they came');
+  const codes = [];
+  for (let i = 0; i < 11; i++) codes.push((await post('/guest-ticket', { token, name: `Guest ${i}`, ip: '5.5.5.5', max: 50 })).status);
+  check(codes.slice(0, 10).every((c) => c === 200) && codes[10] === 429, 'guests: 10 tickets per network address every 10 minutes, then no more');
+  await post('/guest-link', { revoke: token });
+  check((await post('/guest-ticket', { token, check: true })).status === 410, 'guests: a link taken back stops working');
+  g.ws.close();
+}
+
 // An ordinary call (no breakouts) still works as before.
 const X = await joinRoom('l_somecalllink123', { id: 'x1', name: 'Xi' });
 check(X.welcome?.bo === null && X.welcome?.room === null, 'ordinary calls: no breakout state');

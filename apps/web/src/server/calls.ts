@@ -3,7 +3,8 @@ import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
-import { BadRequestException, HttpException, NotFoundException } from './http';
+import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
+import { featureOff } from './moderation';
 import { planLimits } from '@/lib/plan-limits';
 import { publishChat } from './realtime';
 
@@ -238,6 +239,60 @@ export async function callQuestions(callId: string, user: SessionUser) {
         }),
       }))
       .filter((quiz) => quiz.questions.length > 0),
+  };
+}
+
+// ── Guest links (Stage 4 · 2.11) ────────────────────────────────────────────────────────────────
+// A call link's creator invites people without an account: /guest/<call>?g=<token>. Guests give a
+// name, always wait until a host lets them in, never see the call's earlier chat, and the link
+// expires. The call room keeps the links and limits tickets per network address and per link.
+
+const LINK_ID = /^l_[A-Za-z0-9_-]{10,40}$/;
+const GUEST_TOKEN = /^[a-f0-9]{20}$/;
+
+/** A guest link (its creator only): valid 1 hour, 1 day or 1 week. */
+export async function createGuestLink(callId: string, user: SessionUser, hours: unknown) {
+  if (!LINK_ID.test(callId)) throw new BadRequestException('Guests can join call links only.');
+  if ((await callPeople(callId)).creator !== user.id) throw new ForbiddenException('Only whoever made this call link can invite guests.');
+  const h = [1, 24, 168].includes(Number(hours)) ? Number(hours) : 24;
+  const res = await roomFetch(callId, '/guest-link', { method: 'POST', body: JSON.stringify({ by: user.id, hours: h }) });
+  if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
+  const { token, exp } = (await res.json()) as { token: string; exp: number };
+  return { path: `/guest/${callId}?g=${token}`, token, expiresAt: new Date(exp).toISOString(), hours: h };
+}
+
+/** Takes a guest link back (its creator only). */
+export async function revokeGuestLink(callId: string, user: SessionUser, token: string) {
+  if (!LINK_ID.test(callId) || !GUEST_TOKEN.test(token)) throw new BadRequestException('That isn’t a guest link.');
+  if ((await callPeople(callId)).creator !== user.id) throw new ForbiddenException('Only whoever made this call link can do that.');
+  await roomFetch(callId, '/guest-link', { method: 'POST', body: JSON.stringify({ revoke: token }) });
+  return { ok: true };
+}
+
+/** No account needed: whether a guest link still works (for the join page). */
+export async function guestLinkState(callId: string, token: string) {
+  if (!LINK_ID.test(callId) || !GUEST_TOKEN.test(token)) return { ok: false as const };
+  const res = await roomFetch(callId, '/guest-ticket', { method: 'POST', body: JSON.stringify({ token, check: true }) });
+  const out = (await res?.json().catch(() => null)) as { exp?: number } | null;
+  return res?.ok && out?.exp ? { ok: true as const, expiresAt: new Date(out.exp).toISOString() } : { ok: false as const };
+}
+
+/** No account needed: a guest's ticket (into the waiting room). `ip`: for the call room's limits. */
+export async function guestTicket(callId: string, token: unknown, name: unknown, ip: string | null) {
+  if (!LINK_ID.test(callId) || typeof token !== 'string' || !GUEST_TOKEN.test(token)) throw new NotFoundException('This guest link isn’t valid.');
+  if (await featureOff('calls')) throw new HttpException('Voice and video calls: turned off on UniVerse for now. Please try again later.', 503);
+  const sfu = sfuEnabled();
+  const max = sfu ? planLimits().callPeers : 6;
+  const res = await roomFetch(callId, '/guest-ticket', { method: 'POST', body: JSON.stringify({ token, name: String(name ?? ''), ip: ip ?? 'unknown', max }) });
+  if (res?.status === 410) throw new HttpException('This guest link has expired. Ask for a new one.', 410);
+  if (res?.status === 429) throw new HttpException('Too many people tried to join with this link just now. Wait a few minutes and try again.', 429);
+  if (res?.status === 400) throw new BadRequestException('Type your name (at least 2 letters) so the host knows who you are.');
+  if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
+  const { ticket } = (await res.json()) as { ticket: string };
+  return {
+    kind: 'video' as const, type: 'group' as const, title: 'Call', oneToOne: false, conversationId: null, chatId: null, startedBy: null, ended: false,
+    host: false, sfu, max, breakout: null, guest: true,
+    path: `/call-live?call=${encodeURIComponent(callId)}&ticket=${encodeURIComponent(ticket)}`, iceServers: sfu ? SFU_ICE : await iceServers(),
   };
 }
 

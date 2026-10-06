@@ -659,8 +659,16 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null }
-interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number }
+interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null }
+interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean }
+/**
+ * Guest links (Stage 4 · 2.11): a call link's creator invites people without an account. A guest
+ * gives a name only, always waits in the waiting room until a host lets them in (every time), and
+ * never sees the call's earlier chat. Links expire; tickets are limited per network address and per
+ * link, so a leaked link can't flood the waiting room.
+ */
+interface GuestLink { exp: number; by: string }
+const GUEST_PER_IP = 10, GUEST_PER_LINK = 40, GUEST_WINDOW_MS = 10 * 60_000, GUEST_MAX_HOURS = 7 * 24;
 
 const MAX_CALL_PEERS = 6; // small calls: everyone connects to everyone
 const MAX_SFU_PEERS = 150; // bigger calls through the SFU (the app sets the real cap per ticket)
@@ -833,7 +841,8 @@ export class CallRoom extends DurableObject<Env> {
       webinar: this.webinarView(w), qa: w.on ? this.qaView((await this.ctx.storage.get<QaItem[]>('qa')) ?? [], me) : [],
       spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null,
       lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
-      chat: [...(await this.ctx.storage.list<RoomChat>({ prefix: 'chat:', reverse: true, limit: CHAT_KEEP })).values()].reverse().map((l) => chatView(l, me.userId)),
+      // Guests don't see what was said before they came in (2.11).
+      chat: me.guest ? [] : [...(await this.ctx.storage.list<RoomChat>({ prefix: 'chat:', reverse: true, limit: CHAT_KEEP })).values()].reverse().map((l) => chatView(l, me.userId)),
       bo: this.boView(plan.bo, plan.occ, me), room: child?.n ?? null,
       poll: this.pollView((await this.ctx.storage.get<CallPoll>('poll')) ?? null, me),
       pulse: mod ? this.pulseCounts() : null,
@@ -1262,6 +1271,9 @@ export class CallRoom extends DurableObject<Env> {
         ...[...(await this.ctx.storage.list<{ exp: number }>({ prefix: 'ticket:' }))].filter(([, t]) => t.exp < now),
         ...[...(await this.ctx.storage.list<{ until: number }>({ prefix: 'removed:' }))].filter(([, t]) => t.until < now),
         ...[...(await this.ctx.storage.list<{ until: number }>({ prefix: 'admitted:' }))].filter(([, t]) => t.until < now),
+        ...[...(await this.ctx.storage.list<{ until: number }>({ prefix: 'gip:' }))].filter(([, t]) => t.until < now),
+        ...[...(await this.ctx.storage.list<{ until: number }>({ prefix: 'grate:' }))].filter(([, t]) => t.until < now),
+        ...[...(await this.ctx.storage.list<GuestLink>({ prefix: 'guestlink:' }))].filter(([, t]) => t.exp < now),
       ].map(([k]) => k);
       if (stale.length) await this.ctx.storage.delete(stale.slice(0, 128));
       // An empty room starts a new call: the last call's chat goes.
@@ -1276,6 +1288,36 @@ export class CallRoom extends DurableObject<Env> {
       const w = await this.webinar();
       const audience = w.on && !who.host && !(await this.ctx.storage.get(`cohost:${who.userId}`)) && !w.stage.includes(who.userId);
       return Response.json({ ticket, audience });
+    }
+    // From the app (the link's creator, checked there): a guest link, or taking one back.
+    if (url.pathname === '/guest-link' && request.method === 'POST') {
+      const b = (await request.json()) as { by?: string; hours?: number; revoke?: string };
+      if (typeof b.revoke === 'string') { await this.ctx.storage.delete(`guestlink:${b.revoke}`); return Response.json({ ok: true }); }
+      const token = crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+      const exp = Date.now() + Math.max(1, Math.min(GUEST_MAX_HOURS, Math.round(Number(b.hours) || 24))) * 3600_000;
+      await this.ctx.storage.put(`guestlink:${token}`, { exp, by: String(b.by ?? '') } satisfies GuestLink);
+      return Response.json({ token, exp });
+    }
+    // From the app (a public page): is this guest link still good? And a ticket for a guest.
+    if (url.pathname === '/guest-ticket' && request.method === 'POST') {
+      const b = (await request.json()) as { token?: string; name?: string; ip?: string; max?: number; check?: boolean };
+      const now = Date.now();
+      const link = typeof b.token === 'string' ? await this.ctx.storage.get<GuestLink>(`guestlink:${b.token}`) : undefined;
+      if (!link || link.exp < now) return Response.json({ error: 'expired' }, { status: 410 });
+      if (b.check) return Response.json({ ok: true, exp: link.exp });
+      const name = String(b.name ?? '').replace(/[\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      if (name.length < 2) return Response.json({ error: 'name' }, { status: 400 });
+      // A few tickets per network address and per link every 10 minutes.
+      for (const [key, limit] of [[`gip:${String(b.ip ?? 'unknown').slice(0, 64)}`, GUEST_PER_IP], [`grate:${b.token}`, GUEST_PER_LINK]] as const) {
+        const r = (await this.ctx.storage.get<{ n: number; until: number }>(key)) ?? { n: 0, until: now + GUEST_WINDOW_MS };
+        const cur = r.until < now ? { n: 0, until: now + GUEST_WINDOW_MS } : r;
+        if (cur.n >= limit) return Response.json({ error: 'busy' }, { status: 429 });
+        await this.ctx.storage.put(key, { n: cur.n + 1, until: cur.until });
+      }
+      const ticket = crypto.randomUUID();
+      const who: CallTicket = { userId: `guest:${crypto.randomUUID().slice(0, 12)}`, name: `${name} (guest)`, exp: now + TICKET_TTL_MS, host: false, max: Number(b.max) || MAX_CALL_PEERS, guest: true };
+      await this.ctx.storage.put(`ticket:${ticket}`, who);
+      return Response.json({ ticket });
     }
     // From the app: who made this call link (they host it).
     if (url.pathname === '/creator' && request.method === 'POST') {
@@ -1312,22 +1354,24 @@ export class CallRoom extends DurableObject<Env> {
       // A webinar fits more people (the audience only receives): three times the call's cap, up to 300.
       const cap = (await this.webinar()).on ? Math.min(WEBINAR_MAX, (who.max ?? MAX_CALL_PEERS) * 3) : Math.min(MAX_SFU_PEERS, who.max ?? MAX_CALL_PEERS);
       if (current.length >= cap) return new Response('This call is full', { status: 429 });
-      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true };
+      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true, ...(who.guest ? { guest: true } : {}) };
       // Co-hosts stay co-hosts when they reconnect.
       if (!me.host && (await this.ctx.storage.get(`cohost:${who.userId}`))) me.cohost = true;
       // Waiting room: on for call links (with a creator to let people in; older links have none)
       // unless their host turned it off; a host can turn it on for any call. Hosts, co-hosts and
       // anyone let in during the last few hours go straight in.
       const lobbyOn = (await this.ctx.storage.get<boolean>('lobby')) ?? ((url.searchParams.get('call') ?? '').startsWith('l_') && !!(await this.ctx.storage.get('creator')));
-      const admitted = me.host || me.cohost || ((await this.ctx.storage.get<{ until: number }>(`admitted:${who.userId}`))?.until ?? 0) > Date.now();
-      if (lobbyOn && !admitted && this.waitingRoom().length >= MAX_WAITING) return new Response('The waiting room is full', { status: 429 });
+      const admitted = !me.guest && (me.host || me.cohost || ((await this.ctx.storage.get<{ until: number }>(`admitted:${who.userId}`))?.until ?? 0) > Date.now());
+      // Guests always wait for a host (2.11), whatever the waiting room setting.
+      const waits = (lobbyOn || me.guest === true) && !admitted;
+      if (waits && this.waitingRoom().length >= MAX_WAITING) return new Response('The waiting room is full', { status: 429 });
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
-      if (lobbyOn && !admitted) {
+      if (waits) {
         me.waiting = true;
         server.serializeAttachment(me);
         this.send(server, { type: 'lobby', hostHere: this.mods().length > 0 });
-        for (const { ws } of this.mods()) this.send(ws, { type: 'knock', peer: { peerId: me.peerId, name: me.name } });
+        for (const { ws } of this.mods()) this.send(ws, { type: 'knock', peer: { peerId: me.peerId, name: me.name, guest: me.guest === true } });
         return new Response(null, { status: 101, webSocket: client });
       }
       server.serializeAttachment(me);
@@ -1514,7 +1558,8 @@ export class CallRoom extends DurableObject<Env> {
         } else {
           w.peer.waiting = false;
           w.ws.serializeAttachment(w.peer);
-          await this.ctx.storage.put(`admitted:${w.peer.userId}`, { until: Date.now() + REMOVED_MS });
+          // Guests are let in each time (their id is new every time anyway).
+          if (!w.peer.guest) await this.ctx.storage.put(`admitted:${w.peer.userId}`, { until: Date.now() + REMOVED_MS });
           await this.join(w.ws, w.peer, true);
         }
         for (const m of this.mods()) this.send(m.ws, { type: 'lobby-left', peerId: w.peer.peerId, admitted: action !== 'deny', name: w.peer.name, by });

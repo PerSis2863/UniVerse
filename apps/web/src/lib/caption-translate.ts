@@ -34,8 +34,9 @@ function onDevice(from: string, to: string): Promise<DeviceTranslator | null> {
 const BATCH_MS = 3000;
 const BATCH_LINES = 12;
 
-/** One per call. `translate` resolves with the translation, or null if there's none. */
-export function captionTranslator(callId: string, onStopped: (why: string) => void) {
+/** One per call. `translate` resolves with the translation, or null if there's none. `server: false`
+ *  (guests, who have no account): only on the device. */
+export function captionTranslator(callId: string, onStopped: (why: string) => void, opts: { server?: boolean } = {}) {
   const queue = new Map<string, { id: string; text: string; done: (t: string | null) => void }[]>();
   let timer: ReturnType<typeof setTimeout> | null = null;
   let off = false;
@@ -68,7 +69,7 @@ export function captionTranslator(callId: string, onStopped: (why: string) => vo
       if (device) {
         try { return (await device.translate(text)).trim() || null; } catch { /* the server, below */ }
       }
-      if (stopped || off) return null;
+      if (stopped || off || opts.server === false) return null;
       return new Promise((done) => {
         queue.set(to, [...(queue.get(to) ?? []), { id, text, done }]);
         timer ??= setTimeout(() => void flush(), BATCH_MS);

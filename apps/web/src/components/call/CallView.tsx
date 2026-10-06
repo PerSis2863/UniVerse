@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -358,14 +358,17 @@ function gridFor(count: number) {
   return 'grid-cols-3 sm:grid-cols-4 lg:grid-cols-6';
 }
 
-export function CallView({ callId, myName, wantKind, onLeave, held = false, heldIndex = 0, minimized = false, onMinimize, onExpand, onResume }: {
+export function CallView({ callId, myName, wantKind, onLeave, held = false, heldIndex = 0, minimized = false, onMinimize, onExpand, onResume, guest }: {
   callId: string; myName: string; wantKind?: 'audio' | 'video'; onLeave: (conversationId: string | null) => void;
+  /** Joining a call link as a guest, without an account (Stage 4 · 2.11; src/app/guest/[id]). */
+  guest?: { token: string };
   /** Another call is active: this one is on hold (your mic off, their audio silent). */
   held?: boolean; heldIndex?: number;
   /** Shrunk to a floating bar while you use the app (CallHost). */
   minimized?: boolean; onMinimize?: () => void; onExpand?: () => void; onResume?: () => void;
 }) {
   const [voicemail, setVoicemail] = useState<null | 'offer' | 'recording' | 'sending'>(null);
+  const isGuest = !!guest;
   const vmRec = useRef<{ rec: MediaRecorder; stream: MediaStream; chunks: Blob[]; start: number } | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [notice, setNotice] = useState<string | null>(null);
@@ -562,6 +565,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setAudienceMe(false);
     await restartSfuRef.current?.();
     announce();
+  };
+  /** A guest link for this call link (2.11): copied, valid a day; guests wait for me to let them in. */
+  const inviteGuests = async () => {
+    try {
+      const r = await authedJson<{ path: string }>(`/api/calls/${callId}/guests`, { method: 'POST', body: JSON.stringify({ hours: 24 }) });
+      const url = `${location.origin}${r.path}`;
+      await navigator.clipboard.writeText(url).catch(() => {});
+      toast.success('Guest link copied', { description: 'Anyone with it can ask to join for the next 24 hours, without an account. You let each guest in from the waiting room.', duration: 9000 });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
   /** A student taps "I'm lost" or "Got it" (again to take it back); it clears itself after two minutes. */
   const tapPulse = (v: 'lost' | 'got') => {
@@ -1030,7 +1044,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       if (cancelled || ended.current) return;
       let t: Ticket;
       try {
-        t = await authedJson<Ticket>(`/api/calls/${room}/ticket`, { method: 'POST', body: JSON.stringify({ kind: wantKind }) });
+        t = guest
+          ? await fetch('/api/guest/ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callId: room, token: guest.token, name: myName }) })
+            .then(async (r) => { const b = await r.json().catch(() => ({})); if (!r.ok) throw new Error(b.error || 'Couldn’t join the call.'); return b as Ticket; })
+          : await authedJson<Ticket>(`/api/calls/${room}/ticket`, { method: 'POST', body: JSON.stringify({ kind: wantKind }) });
       } catch (e) {
         if (room !== callId) {
           toast.error((e as Error).message || 'Couldn’t join that room.');
@@ -1437,10 +1454,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   }, [cc, ccLang]);
   useEffect(() => () => { if (pulseClear.current) clearTimeout(pulseClear.current); }, []);
   useEffect(() => {
-    const t = captionTranslator(callId, (why) => toast(why, { icon: '🌐', duration: 9000 }));
+    const t = captionTranslator(callId, (why) => toast(why, { icon: '🌐', duration: 9000 }), { server: !isGuest });
     translator.current = t;
     return () => { t.close(); translator.current = null; };
-  }, [callId]);
+  }, [callId, isGuest]);
   const hasCaptions = Object.keys(captions).length > 0;
   useEffect(() => {
     if (!hasCaptions) return;
@@ -1854,7 +1871,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   const canBg = backgroundsSupported();
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+    ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
     ...(cc ? [{ key: 'cclang' as const, label: ccLang ? `Captions in ${languageName(ccLang)}` : 'Captions as spoken', icon: Languages }] : []),
@@ -1873,6 +1891,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setMoreOpen(false);
     if (key === 'cc') toggleCc();
     else if (key === 'cclang') setCcPick(true);
+    else if (key === 'guests') void inviteGuests();
     else if (key === 'qa') openPanel(qaOpen ? null : 'qa');
     else if (key === 'webinar') {
       control('webinar', null, !webinar);
