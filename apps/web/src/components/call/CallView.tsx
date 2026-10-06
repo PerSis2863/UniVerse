@@ -39,6 +39,8 @@ interface Remote {
   state: RTCPeerConnectionState | 'new'; quality: Quality;
   /** SFU calls: their video isn't being received right now (to save data); tap to see it. */
   paused: boolean;
+  /** Their connection is weak: they asked not to be sent video (audio-only fallback). */
+  lowData: boolean;
 }
 /** prejoin: meetings (class, group, link calls) show a check-yourself screen before joining. */
 type Phase = 'starting' | 'prejoin' | 'live' | 'ended' | 'error';
@@ -58,7 +60,7 @@ const videoLines = (pc: RTCPeerConnection) => pc.getTransceivers().filter((t) =>
  * screen share that keeps its resolution (text stays readable) and drops frames instead when the
  * connection is slow.
  */
-async function tuneSenders(pc: RTCPeerConnection) {
+async function tuneSenders(pc: RTCPeerConnection, sendCamera = true) {
   const set = async (sender: RTCRtpSender | undefined, enc: RTCRtpEncodingParameters, pref?: RTCDegradationPreference) => {
     if (!sender) return;
     const p = sender.getParameters();
@@ -70,7 +72,8 @@ async function tuneSenders(pc: RTCPeerConnection) {
   const audio = pc.getTransceivers().find((t) => t.receiver.track.kind === 'audio');
   const [cam, screen] = videoLines(pc);
   await set(audio?.sender, { maxBitrate: 64_000 });
-  await set(cam?.sender, { maxBitrate: 1_500_000, maxFramerate: 30 }, 'balanced');
+  // Someone on a weak connection asked for audio only: stop my camera to them (their screen stays).
+  await set(cam?.sender, { maxBitrate: 1_500_000, maxFramerate: 30, active: sendCamera }, 'balanced');
   await set(screen?.sender, { maxBitrate: 2_500_000, maxFramerate: 30 }, 'maintain-resolution');
 }
 /** 720p. Bigger calls send it in three sizes (simulcast, src/lib/sfu-client.ts), so each viewer
@@ -80,7 +83,7 @@ const CAPTION_MS = 5000;
 const MAX_REC_MS = 2 * 3600_000;
 const MAX_REC_BYTES = 950 * 1024 * 1024;
 
-const fresh = (peer: Peer): Remote => ({ peer, stream: null, screen: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false });
+const fresh = (peer: Peer): Remote => ({ peer, stream: null, screen: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false, lowData: false });
 
 // One audio context and one timer measure everyone's voice (a call of 30 doesn't run 30 of
 // each), and a tile re-renders only when its person starts or stops talking.
@@ -341,7 +344,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const joinConfirmed = useRef(false);
   const resumeJoin = useRef<(() => void) | null>(null);
   const [inRoom, setInRoom] = useState<string[] | null>(null);
-  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false });
+  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false, lowData: false });
+  // Audio-only fallback: a poor connection for 10 s pauses incoming video (people's screens stay).
+  const [audioOnly, setAudioOnly] = useState(false);
+  const audioOnlyRef = useRef(false);
+  const poorSince = useRef<number | null>(null);
+  const autoAudioOnlyAfter = useRef(0);
   const ended = useRef(false);
   const everJoined = useRef(false);
   const talkStart = useRef<number | null>(null);
@@ -414,7 +422,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     pc.onconnectionstatechange = () => {
       patch(peer.peerId, { state: pc.connectionState });
       if (lost) { clearTimeout(lost); lost = null; }
-      if (pc.connectionState === 'connected') { markTalking(); void tuneSenders(pc); }
+      if (pc.connectionState === 'connected') { markTalking(); void tuneSenders(pc, !remotesRef.current[peer.peerId]?.lowData); }
       const mine = (myId.current ?? '') < peer.peerId;
       if (pc.connectionState === 'failed' && mine) void restart();
       if (pc.connectionState === 'disconnected' && mine) lost = setTimeout(() => { if (pc.connectionState === 'disconnected') void restart(); }, 3000);
@@ -433,7 +441,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const tracksOf = (r: Remote, kind: MediaKind) => r.peer.sfu!.tracks.filter((t) => kindOf(t) === kind).map((track) => ({ peerId: r.peer.peerId, sessionId: r.peer.sfu!.sessionId, track }));
     const slots = window.innerWidth < 640 ? 4 : 6;
     const score = (r: Remote) => (pinned.current === r.peer.peerId ? 4 : 0) + (r.sharing ? 2 : 0);
-    const seen = new Set(rs.filter((r) => r.camera).sort((a, b) => score(b) - score(a)).slice(0, slots).map((r) => r.peer.peerId));
+    const seen = new Set(audioOnlyRef.current ? [] : rs.filter((r) => r.camera).sort((a, b) => score(b) - score(a)).slice(0, slots).map((r) => r.peer.peerId));
     const size: Layer = rs.some((r) => r.sharing) ? 'c' : seen.size <= (slots === 4 ? 1 : 2) ? 'a' : 'b';
     const layer: Layer = sfuQualityRef.current !== 'poor' ? size : size === 'a' ? 'b' : 'c';
     // Screens being shared are always received; cameras for the few people on screen.
@@ -474,6 +482,19 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     sfuQualityRef.current = q;
     setSfuQuality(q);
     if (was !== (q === 'poor')) syncSfu();
+  }, [syncSfu]);
+
+  /** Audio only (a weak connection): the others stop sending me their cameras, or start again. */
+  const setLowData = useCallback((on: boolean) => {
+    if (audioOnlyRef.current === on) return;
+    audioOnlyRef.current = on;
+    setAudioOnly(on);
+    poorSince.current = null;
+    // Chose video again: don't switch it off by itself for a minute.
+    if (!on) autoAudioOnlyAfter.current = Date.now() + 60_000;
+    stateRef.current.lowData = on;
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'state', ...stateRef.current }));
+    if (sfuRef.current) syncSfu();
   }, [syncSfu]);
 
   const onSfuTrack = useCallback((peerId: string, kind: MediaKind, track: MediaStreamTrack) => {
@@ -789,7 +810,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           const before = remotesRef.current[msg.from];
           if (msg.recording && before && !before.recording) toast(`${before.peer.name} started recording this class`, { icon: '⏺' });
           if (msg.notes && before && !before.notes) toast(`${before.peer.name} turned on class notes: what’s said in the class becomes a study pack (summary, notes and flashcards). Only text is kept, never audio.`, { icon: '📝', duration: 8000 });
-          patch(msg.from, { muted: msg.muted, camera: msg.camera, sharing: msg.sharing, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true });
+          patch(msg.from, { muted: msg.muted, camera: msg.camera, sharing: msg.sharing, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true, lowData: msg.lowData === true });
+          const pc = pcs.current.get(msg.from);
+          if (pc && before && before.lowData !== (msg.lowData === true)) void tuneSenders(pc, msg.lowData !== true);
           if (sfuRef.current && before && (before.camera !== msg.camera || before.sharing !== msg.sharing)) syncSfu();
         } else if (msg.type === 'caption') {
           const who = remotesRef.current[msg.from];
@@ -850,6 +873,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   useEffect(() => {
     if (phase !== 'live') return;
     const t = setInterval(() => setSeconds(talkStart.current ? Math.round((Date.now() - talkStart.current) / 1000) : 0), 1000);
+    // Packets lost since the last reading (not since the start, so a bad minute early on doesn't
+    // stick, and a connection going bad now shows at once).
+    const last = new WeakMap<RTCPeerConnection, { lost: number; got: number }>();
     const measure = async (pc: RTCPeerConnection): Promise<Quality> => {
       const stats = await pc.getStats().catch(() => null);
       let rtt: number | null = null, lost = 0, got = 0;
@@ -857,23 +883,33 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         if (s.type === 'candidate-pair' && s.state === 'succeeded' && typeof s.currentRoundTripTime === 'number') rtt = s.currentRoundTripTime;
         if (s.type === 'inbound-rtp') { lost += s.packetsLost ?? 0; got += s.packetsReceived ?? 0; }
       });
-      const loss = got ? lost / (lost + got) : 0;
+      const before = last.get(pc) ?? { lost: 0, got: 0 };
+      last.set(pc, { lost, got });
+      const dLost = Math.max(0, lost - before.lost), dGot = Math.max(0, got - before.got);
+      const loss = dGot ? dLost / (dLost + dGot) : 0;
       return rtt === null ? null : rtt > 0.4 || loss > 0.08 ? 'poor' : rtt > 0.2 || loss > 0.03 ? 'fair' : 'good';
     };
     const q = setInterval(async () => {
       const link = sfuRef.current;
+      const readings: Quality[] = [];
       if (link) {
-        if (link.pc.connectionState === 'connected') noteSfuQuality(await measure(link.pc));
-        return;
+        if (link.pc.connectionState === 'connected') { const quality = await measure(link.pc); readings.push(quality); noteSfuQuality(quality); }
+      } else {
+        for (const [id, pc] of pcs.current) {
+          if (pc.connectionState !== 'connected') continue;
+          const quality = await measure(pc);
+          readings.push(quality);
+          if (remotesRef.current[id]?.quality !== quality) patch(id, { quality });
+        }
       }
-      for (const [id, pc] of pcs.current) {
-        if (pc.connectionState !== 'connected') continue;
-        const quality = await measure(pc);
-        if (remotesRef.current[id]?.quality !== quality) patch(id, { quality });
-      }
+      // Audio-only fallback: poor for 10 s while someone's camera is on.
+      if (!readings.includes('poor')) { poorSince.current = null; return; }
+      poorSince.current ??= Date.now();
+      const cameras = Object.values(remotesRef.current).some((r) => r.camera);
+      if (cameras && !audioOnlyRef.current && Date.now() - poorSince.current >= 10_000 && Date.now() > autoAudioOnlyAfter.current) setLowData(true);
     }, 4000);
     return () => { clearInterval(t); clearInterval(q); };
-  }, [phase, patch, noteSfuQuality]);
+  }, [phase, patch, noteSfuQuality, setLowData]);
 
   useEffect(() => {
     const onFs = () => setFullscreen(!!document.fullscreenElement);
@@ -940,7 +976,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const kindNow = infoRef.current?.kind ?? 'audio';
     return [
       { name: myName, stream: local, video: videoOf('me'), showVideo: kindNow === 'video' && (camera || sharing), sharing },
-      ...list.map((r) => ({ name: r.peer.name, stream: r.stream, video: videoOf(r.peer.peerId), showVideo: kindNow === 'video' && (r.camera || r.sharing) && !r.paused, sharing: r.sharing })),
+      ...list.map((r) => ({ name: r.peer.name, stream: r.stream, video: videoOf(r.peer.peerId), showVideo: kindNow === 'video' && (r.camera || r.sharing) && !r.paused && !audioOnlyRef.current, sharing: r.sharing })),
     ];
   }; });
 
@@ -1136,7 +1172,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const copyInvite = async () => {
     try { await navigator.clipboard.writeText(window.location.href); toast.success('Call link copied'); } catch { toast.error('Couldn’t copy the link.'); }
   };
-  const showVideo = (peerId: string) => { pinned.current = peerId; syncSfu(); };
+  const showVideo = (peerId: string) => {
+    if (audioOnlyRef.current) { setLowData(false); return; }
+    pinned.current = peerId;
+    syncSfu();
+  };
 
   // A voice call becomes a video call as soon as anyone turns their camera on or shares a screen.
   const kind: 'audio' | 'video' = camera || sharing || list.some((r) => r.camera || r.sharing) ? 'video' : 'audio';
@@ -1269,7 +1309,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact className="h-full shrink-0" />
                 {list.map((r) => (
                   <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
-                    paused={r.paused} onShow={() => showVideo(r.peer.peerId)} compact className="h-full shrink-0"
+                    paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact className="h-full shrink-0"
                     videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
                 ))}
               </AnimatePresence>
@@ -1281,7 +1321,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} />
             {list.map((r) => (
               <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
-                paused={r.paused} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12}
+                paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12}
                 videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
             ))}
           </AnimatePresence>
@@ -1293,6 +1333,29 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </main>
         )
       )}
+
+      {/* Audio-only fallback */}
+      <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+4.5rem)] z-20 px-3 flex justify-center pointer-events-none">
+        <AnimatePresence>
+          {audioOnly && phase === 'live' && (() => {
+            const now = info?.sfu ? sfuQuality : list.some((r) => r.quality === 'poor') ? 'poor' : list.some((r) => r.quality === 'fair') ? 'fair' : list.some((r) => r.quality === 'good') ? 'good' : null;
+            return (
+              <motion.div key="audio-only" role="status" initial={{ opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -14, scale: 0.96 }} transition={spring.smooth}
+                className="pointer-events-auto w-full max-w-lg rounded-2xl bg-[#1b1a2e]/90 border border-amber-400/30 backdrop-blur-xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Signal className={cn('w-4 h-4 shrink-0', now === 'good' ? 'text-emerald-300' : 'text-amber-300')} />
+                <p className="text-sm flex-1 min-w-[12rem]">
+                  <span className="font-semibold">{now === 'good' ? 'Your connection looks better.' : 'Weak connection.'}</span>{' '}
+                  <span className="text-zinc-300">Video is paused so you can keep talking; shared screens stay on.</span>
+                </p>
+                <div className="flex gap-2">
+                  {camera && <button type="button" onClick={() => void toggleCamera()} className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors">Turn my camera off</button>}
+                  <button type="button" onClick={() => { haptic('tap'); setLowData(false); }} className="px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-xs font-semibold">Resume video</button>
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
+      </div>
 
       {/* Live captions */}
       <div className="pointer-events-none px-4 flex justify-center" aria-live="polite">

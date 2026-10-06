@@ -244,8 +244,8 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 | 1 | TURN relay | **Owner task**: create the key, set `TURN_KEY_ID` + `TURN_KEY_API_TOKEN` | `src/server/calls.ts` |
 | 2 | Pre-join screen | **Done** | `CallView.tsx`: phase `'prejoin'`, `MicMeter`, `playTestSound`, `networkGuess`; class/group/room calls only, chat calls skip it |
 | 3 | SFU simulcast | **Done** (needs a real-device check) | `sfu-client.ts`: `CAMERA_LAYERS` a/b/c, `pull` with a layer, `prefer`; `worker.ts` `CallRoom.sfuOp` `pull` (falls back to a plain pull) and `layer` → `tracks/update`; `CallView.tsx` `syncSfu` picks the layer, `noteSfuQuality` steps down when poor |
-| 4 | Audio-only fallback | Next | `CallView.tsx` (quality reading already exists) |
-| 5 | Call health log | To do | new `CallStat` model, migration `0049`, owner console chart |
+| 4 | Audio-only fallback | **Done** | `CallView.tsx`: `setLowData`, `poorSince` (poor 10 s while a camera is on), banner "Resume video" / "Turn my camera off"; P2P senders stop their camera to that person (`tuneSenders(pc, sendCamera)`, `lowData` in the room's `state` message), SFU stops pulling cameras; screens stay. Quality now uses packet loss since the last reading |
+| 5 | Call health log | Next | new `CallStat` model, migration `0049`, owner console chart |
 | 6 | Test matrix | To do | a checklist at the end of this file |
 
 ### Notes for whoever continues
