@@ -30,7 +30,12 @@ interface Pack {
   quiz: { question: string; options: string[]; answer: string }[];
   /** For the teacher only: what to re-explain, from the classroom pulse (Stage 4 · 4.4). */
   reexplain: { t: number; topic: string; why: string }[];
+  /** Smart replay (Stage 4 · 4.6): chapters, a two-minute recap, practice questions linked to the class moment. */
+  chapters: { t: number; title: string }[];
+  recap: string;
+  practice: Practice[];
 }
+export interface Practice { question: string; options: string[]; answer: number; explain: string; t: number }
 /** Classroom pulse counts over the class (never names): seconds from the start, lost, following, students. */
 export interface PulsePoint { t: number; lost: number; got: number; total: number }
 const MAX_PULSE = 2000;
@@ -44,6 +49,9 @@ const SYSTEM = [
   'flashcards: 6 to 12 cards, a question or term on the front and a short answer on the back.',
   'quiz: exactly 5 multiple-choice questions, each with 4 options, and answer = the exact text of the correct option. Test understanding, not trivia.',
   'If the transcript is too short or empty of teaching content, return short honest content (e.g. a one-sentence summary) and fewer items.',
+  'chapters: 4 to 10 chapters splitting the whole class into its parts, in order, each with t = the seconds value of the line where it starts (the first one at the first line) and a short title.',
+  'recap: a recap a student can read in about two minutes (220 to 320 words): what was taught, in order, with the key points and examples, in plain sentences.',
+  'practice: exactly 5 practice questions for students (different from the quiz), each with 4 options, answer = the index (0 to 3) of the correct option, explain = one or two sentences on why it is right, and t = the seconds value where that point was explained in the class.',
   'reexplain (for the teacher only): when a "Class pulse" is given (how many students tapped "I\'m lost" or "Got it" over time), 0 to 4 topics worth re-explaining next class, where many students were lost: t = the seconds where the confusion started, topic = what to go over again, why = one short sentence on what seemed unclear, from what was being said at that moment. Leave it empty when there is no pulse or no clear confusion.',
 ].join(' ');
 
@@ -56,8 +64,11 @@ const SCHEMA = {
     flashcards: { type: 'ARRAY', items: { type: 'OBJECT', properties: { front: { type: 'STRING' }, back: { type: 'STRING' } }, required: ['front', 'back'] } },
     quiz: { type: 'ARRAY', items: { type: 'OBJECT', properties: { question: { type: 'STRING' }, options: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'STRING' } }, required: ['question', 'options', 'answer'] } },
     reexplain: { type: 'ARRAY', items: { type: 'OBJECT', properties: { t: { type: 'NUMBER' }, topic: { type: 'STRING' }, why: { type: 'STRING' } }, required: ['t', 'topic', 'why'] } },
+    chapters: { type: 'ARRAY', items: { type: 'OBJECT', properties: { t: { type: 'NUMBER' }, title: { type: 'STRING' } }, required: ['t', 'title'] } },
+    recap: { type: 'STRING' },
+    practice: { type: 'ARRAY', items: { type: 'OBJECT', properties: { question: { type: 'STRING' }, options: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'NUMBER' }, explain: { type: 'STRING' }, t: { type: 'NUMBER' } }, required: ['question', 'options', 'answer', 'explain', 't'] } },
   },
-  required: ['summary', 'notes', 'keyMoments', 'flashcards', 'quiz', 'reexplain'],
+  required: ['summary', 'notes', 'keyMoments', 'flashcards', 'quiz', 'reexplain', 'chapters', 'recap', 'practice'],
 };
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
@@ -125,6 +136,17 @@ function cleanPack(raw: Partial<Pack> | null, durationSec: number): Pack | null 
         return { question: str(q?.question, 500), options, answer: options.find((o) => o.toLowerCase() === answer.toLowerCase()) ?? '' };
       })
       .filter((q) => q.question && q.options.length === 4 && q.answer).slice(0, 5),
+    chapters: (Array.isArray(raw.chapters) ? raw.chapters : [])
+      .map((c) => ({ t: Math.max(0, Math.min(durationSec || 6 * 3600, Math.round(Number(c?.t) || 0))), title: str(c?.title, 120) }))
+      .filter((c) => c.title).sort((a, b) => a.t - b.t).filter((c, i, all) => i === 0 || c.t > all[i - 1].t).slice(0, 12),
+    recap: typeof raw.recap === 'string' ? raw.recap.trim().slice(0, 4000) : '',
+    practice: (Array.isArray(raw.practice) ? raw.practice : [])
+      .map((q) => {
+        const options = (Array.isArray(q?.options) ? q.options : []).map((o) => str(o, 200)).filter(Boolean);
+        const answer = Math.round(Number(q?.answer));
+        return { question: str(q?.question, 500), options, answer, explain: str(q?.explain, 600), t: Math.max(0, Math.min(durationSec || 6 * 3600, Math.round(Number(q?.t) || 0))) };
+      })
+      .filter((q) => q.question && q.options.length === 4 && new Set(q.options).size === 4 && q.answer >= 0 && q.answer <= 3).slice(0, 5),
     reexplain: (Array.isArray(raw.reexplain) ? raw.reexplain : [])
       .map((r) => ({ t: Math.max(0, Math.min(durationSec || 6 * 3600, Math.round(Number(r?.t) || 0))), topic: str(r?.topic, 200), why: str(r?.why, 400) }))
       .filter((r) => r.topic).sort((a, b) => a.t - b.t).slice(0, 4),
@@ -146,7 +168,7 @@ async function makePack(lines: TranscriptLine[], courseName: string, durationSec
   const lost = pulseText(pulse);
   const prompt = `Course: ${courseName}\nClass length: ${clock(durationSec)}\n\nTranscript (seconds · speaker · words):\n${lines.map((l) => `${l.t} · ${l.who} · ${l.text}`).join('\n')}`
     + (lost ? `\n\nClass pulse (seconds · students who tapped "I'm lost" / "Got it"; counts only):\n${lost}` : '');
-  const raw = await geminiJson<Partial<Pack>>(SYSTEM, prompt, SCHEMA, 4000);
+  const raw = await geminiJson<Partial<Pack>>(SYSTEM, prompt, SCHEMA, 8000);
   return cleanPack(raw, durationSec);
 }
 
@@ -189,6 +211,7 @@ async function tellClass(course: { id: string; code: string }, sessionId: string
 const packData = (pack: Pack) => ({
   status: 'READY', summary: pack.summary, notes: JSON.stringify(pack.notes), keyMoments: JSON.stringify(pack.keyMoments), flashcards: JSON.stringify(pack.flashcards),
   reexplain: JSON.stringify(pack.reexplain),
+  chapters: JSON.stringify(pack.chapters), recap: pack.recap || null, practice: JSON.stringify(pack.practice),
 });
 
 /** POST /api/calls/c_<course>/companion { transcript: [{ t, who, text }], durationSec, pulse?: [{ t, lost, got, total }] }. */
@@ -261,7 +284,7 @@ export async function sessionsForBoard(courseId: string, canManage: boolean) {
   const rows = await prisma.classSession.findMany({
     where: { courseId, ...(canManage ? {} : { status: 'READY' }) },
     orderBy: { startedAt: 'desc' }, take: 20,
-    select: { id: true, startedAt: true, durationSec: true, status: true, summary: true, notes: true, keyMoments: true, flashcards: true, quizId: true, recordingMaterialId: true, pulse: true, reexplain: true },
+    select: { id: true, startedAt: true, durationSec: true, status: true, summary: true, notes: true, keyMoments: true, flashcards: true, quizId: true, recordingMaterialId: true, pulse: true, reexplain: true, chapters: true, recap: true, practice: true, transcript: true },
   });
   const parse = <T,>(v: string): T[] => { try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch { return []; } };
   const quizIds = rows.map((r) => r.quizId).filter((x): x is string => !!x);
@@ -272,7 +295,10 @@ export async function sessionsForBoard(courseId: string, canManage: boolean) {
     // Students only learn about the quiz once the teacher has published it.
     const quiz = r.quizId && status && (canManage || status !== 'DRAFT') ? { id: r.quizId, status } : null;
     return {
-      ...r, quizId: undefined, quiz, notes: parse<string>(r.notes), keyMoments: parse<{ t: number; text: string }>(r.keyMoments), flashcards: parse<{ front: string; back: string }>(r.flashcards),
+      ...r, quizId: undefined, quiz, transcript: undefined, notes: parse<string>(r.notes),
+      chapters: parse<Pack['chapters'][number]>(r.chapters), practice: parse<Practice>(r.practice),
+      // The teacher can make the replay for a class from before smart replay, while its transcript is kept.
+      canMakeReplay: canManage && r.status === 'READY' && !r.recap && !!r.transcript, keyMoments: parse<{ t: number; text: string }>(r.keyMoments), flashcards: parse<{ front: string; back: string }>(r.flashcards),
       // The classroom pulse and what to re-explain are for the teacher only.
       pulse: canManage ? parse<PulsePoint>(r.pulse) : [], reexplain: canManage ? parse<Pack['reexplain'][number]>(r.reexplain) : [],
     };
@@ -281,7 +307,10 @@ export async function sessionsForBoard(courseId: string, canManage: boolean) {
 
 // ─── The study pack in my language (Stage 4 · 4.1) ──────────────────────────────────────────────
 
-export interface PackText { summary: string; notes: string[]; keyMoments: { t: number; text: string }[]; flashcards: { front: string; back: string }[] }
+export interface PackText {
+  summary: string; notes: string[]; keyMoments: { t: number; text: string }[]; flashcards: { front: string; back: string }[];
+  chapters: { t: number; title: string }[]; recap: string; practice: Practice[];
+}
 
 const TR_SYSTEM = [
   'You translate a study pack made from a university class into the target language, for a student who reads that language best.',
@@ -297,8 +326,11 @@ const TR_SCHEMA = {
     notes: { type: 'ARRAY', items: { type: 'STRING' } },
     keyMoments: { type: 'ARRAY', items: { type: 'OBJECT', properties: { t: { type: 'NUMBER' }, text: { type: 'STRING' } }, required: ['t', 'text'] } },
     flashcards: { type: 'ARRAY', items: { type: 'OBJECT', properties: { front: { type: 'STRING' }, back: { type: 'STRING' } }, required: ['front', 'back'] } },
+    chapters: { type: 'ARRAY', items: { type: 'OBJECT', properties: { t: { type: 'NUMBER' }, title: { type: 'STRING' } }, required: ['t', 'title'] } },
+    recap: { type: 'STRING' },
+    practice: { type: 'ARRAY', items: { type: 'OBJECT', properties: { question: { type: 'STRING' }, options: { type: 'ARRAY', items: { type: 'STRING' } }, explain: { type: 'STRING' } }, required: ['question', 'options', 'explain'] } },
   },
-  required: ['from', 'summary', 'notes', 'keyMoments', 'flashcards'],
+  required: ['from', 'summary', 'notes', 'keyMoments', 'flashcards', 'chapters', 'recap', 'practice'],
 };
 
 /**
@@ -308,17 +340,19 @@ const TR_SCHEMA = {
  */
 export async function translatePack(sessionId: string, user: SessionUser, to: string): Promise<{ same: boolean; pack: PackText | null }> {
   if (!isLanguage(to)) throw new BadRequestException('Unknown language.');
-  const s = await prisma.classSession.findUnique({ where: { id: sessionId }, select: { id: true, courseId: true, status: true, summary: true, notes: true, keyMoments: true, flashcards: true } });
+  const s = await prisma.classSession.findUnique({ where: { id: sessionId }, select: { id: true, courseId: true, status: true, summary: true, notes: true, keyMoments: true, flashcards: true, chapters: true, recap: true, practice: true } });
   if (!s || s.status !== 'READY' || !(await courseAccess(s.courseId, user))) throw new NotFoundException('Study pack not found.');
-  const key = ['pack-tr', s.id, to, s.summary ?? ''];
+  // Made again once the class gets its replay (a recap to translate too).
+  const key = ['pack-tr', s.id, to, s.summary ?? '', s.recap ? 'replay' : ''];
   const saved = await cachedAi<{ same: boolean; pack: PackText | null }>(key, 30);
   if (saved) return saved;
   if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) throw new HttpException('Translation isn’t available right now. Please try again later.', 503);
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const parse = <T,>(v: string): T[] => { try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch { return []; } };
-  const original: PackText = { summary: s.summary ?? '', notes: parse(s.notes), keyMoments: parse(s.keyMoments), flashcards: parse(s.flashcards) };
-  const raw = await geminiJson<Partial<PackText> & { from?: string }>(TR_SYSTEM, `Target language: ${to}\n\nStudy pack (JSON):\n${JSON.stringify(original)}`, TR_SCHEMA, 6000);
+  const original: PackText = { summary: s.summary ?? '', notes: parse(s.notes), keyMoments: parse(s.keyMoments), flashcards: parse(s.flashcards), chapters: parse(s.chapters), recap: s.recap ?? '', practice: parse(s.practice) };
+  const forAi = { ...original, practice: original.practice.map(({ question, options, explain }) => ({ question, options, explain })) };
+  const raw = await geminiJson<Partial<PackText> & { from?: string }>(TR_SYSTEM, `Target language: ${to}\n\nStudy pack (JSON):\n${JSON.stringify(forAi)}`, TR_SCHEMA, 8000);
   if (!raw?.summary) throw new HttpException('Couldn’t translate the study pack. Please try again.', 502);
   const out = String(raw.from ?? '').toLowerCase().slice(0, 2) === to
     ? { same: true, pack: null }
@@ -330,8 +364,60 @@ export async function translatePack(sessionId: string, user: SessionUser, to: st
           // Times come from the original, so links into the recording stay right.
           keyMoments: original.keyMoments.map((k, i) => ({ t: k.t, text: str(raw.keyMoments?.[i]?.text, 400) || k.text })),
           flashcards: original.flashcards.map((c, i) => ({ front: str(raw.flashcards?.[i]?.front, 400) || c.front, back: str(raw.flashcards?.[i]?.back, 800) || c.back })),
+          chapters: original.chapters.map((c, i) => ({ t: c.t, title: str(raw.chapters?.[i]?.title, 160) || c.title })),
+          recap: typeof raw.recap === 'string' && raw.recap.trim() ? raw.recap.trim().slice(0, 5000) : original.recap,
+          // The right answer and the class moment stay those of the original.
+          practice: original.practice.map((q, i) => {
+            const t = raw.practice?.[i];
+            const options = Array.isArray(t?.options) && t.options.length === 4 ? t.options.map((o, k) => str(o, 240) || q.options[k]) : q.options;
+            return { ...q, question: str(t?.question, 600) || q.question, options, explain: str(t?.explain, 700) || q.explain };
+          }),
         },
       };
   await saveAi(key, out);
   return out;
+}
+
+// ─── Smart replay (Stage 4 · 4.6) ───────────────────────────────────────────────────────────────
+
+/** POST /api/class-sessions/[id]/replay: the teacher makes the replay for a class from before it existed. */
+export async function makeReplay(sessionId: string, user: SessionUser) {
+  const s = await prisma.classSession.findUnique({ where: { id: sessionId } });
+  if (!s) throw new NotFoundException('Class session not found.');
+  const course = await teacherCourse(s.courseId, user);
+  if (s.recap) return { ok: true };
+  const lines = cleanTranscript(s.transcript ? JSON.parse(s.transcript) : []);
+  if (!lines.length) throw new BadRequestException('This class’s transcript is no longer kept, so its replay can’t be made.');
+  const pack = await makePack(lines, `${course.code} ${course.name}`, s.durationSec, user, cleanPulse(JSON.parse(s.pulse || '[]')));
+  if (!pack) throw new HttpException('AI isn’t available right now. Please try again later.', 503);
+  await prisma.classSession.update({ where: { id: s.id }, data: { chapters: JSON.stringify(pack.chapters), recap: pack.recap || null, practice: JSON.stringify(pack.practice) } });
+  return { ok: true };
+}
+
+const fold = (v: string) => v.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/**
+ * GET /api/class-sessions/[id]/replay?q=: "find where it was explained". Searches what the teacher
+ * said (students' own words in the class aren't shown), the chapters and the key moments; every
+ * word of the search has to appear within a line and the one after it. No AI.
+ */
+export async function searchReplay(sessionId: string, user: SessionUser, q: string) {
+  const s = await prisma.classSession.findUnique({ where: { id: sessionId }, select: { id: true, courseId: true, status: true, createdById: true, transcript: true, chapters: true, keyMoments: true } });
+  if (!s || s.status !== 'READY' || !(await courseAccess(s.courseId, user))) throw new NotFoundException('Class session not found.');
+  const words = fold(q).split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 1).slice(0, 8);
+  if (!words.length) return { results: [] };
+  const has = (text: string) => { const f = fold(text); return words.every((w) => f.includes(w)); };
+  const parse = <T,>(v: string | null): T[] => { try { const x = JSON.parse(v ?? '[]'); return Array.isArray(x) ? x : []; } catch { return []; } };
+  const teacher = (await prisma.user.findUnique({ where: { id: s.createdById }, select: { name: true } }))?.name;
+  const said = cleanTranscript(parse(s.transcript)).filter((l) => l.who === teacher);
+  const results: { t: number; text: string; kind: 'said' | 'chapter' | 'moment' }[] = [
+    ...parse<{ t: number; title: string }>(s.chapters).filter((c) => has(c.title)).map((c) => ({ t: c.t, text: c.title, kind: 'chapter' as const })),
+    ...parse<{ t: number; text: string }>(s.keyMoments).filter((k) => has(k.text)).map((k) => ({ t: k.t, text: k.text, kind: 'moment' as const })),
+  ];
+  for (let i = 0; i < said.length && results.length < 30; i++) {
+    const text = said[i + 1] && said[i + 1].t - said[i].t < 60 ? `${said[i].text} ${said[i + 1].text}` : said[i].text;
+    // A match that spans two lines is shown once, at the first.
+    if (has(text) && !results.some((r) => r.kind === 'said' && Math.abs(r.t - said[i].t) < 20)) results.push({ t: said[i].t, text: text.slice(0, 240), kind: 'said' });
+  }
+  return { results: results.sort((a, b) => a.t - b.t).slice(0, 20) };
 }

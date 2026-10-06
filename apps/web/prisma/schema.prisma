@@ -2622,6 +2622,9 @@ model ClassSession {
   transcript          String? // JSON [{ t, who, text }]; removed after 90 days
   pulse               String   @default("[]") // JSON [{ t, lost, got, total }]: classroom pulse counts over the class (Stage 4 · 4.4)
   reexplain           String   @default("[]") // JSON [{ t, topic, why }]: AI suggestions for the teacher, from the pulse
+  chapters            String   @default("[]") // JSON [{ t, title }]: smart replay (Stage 4 · 4.6)
+  recap               String? // a recap to read in about two minutes
+  practice            String   @default("[]") // JSON [{ question, options, answer (index), explain, t }]: practice questions for students
   createdAt           DateTime @default(now())
 
   @@index([courseId, createdAt])

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { languageName } from '@/lib/languages';
 import { useLanguageStore } from '@/store/language';
 import { PulseTimeline, type PulsePoint, type Reexplain } from './PulseTimeline';
+import { PracticeQuestions, ReplayPanel, type Chapter, type Practice } from './SmartReplay';
 
 // Course board → Class sessions (upgrade 1, AI class companion). Each class call the teacher took
 // class notes in becomes a study pack: summary, notes, key moments (with the recording when there
@@ -24,6 +25,8 @@ export interface ClassSession {
   quiz: { id: string; status: string } | null; recordingMaterialId: string | null;
   /** Teacher only: the classroom pulse over the class, and what to re-explain (Stage 4 · 4.4). */
   pulse?: PulsePoint[]; reexplain?: Reexplain[];
+  /** Smart replay (Stage 4 · 4.6); `canMakeReplay`: the teacher can make it for an older class. */
+  chapters?: Chapter[]; recap?: string | null; practice?: Practice[]; canMakeReplay?: boolean;
 }
 
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
@@ -68,9 +71,16 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
   const [flipped, setFlipped] = useState<number | null>(null);
   // The pack in my language (Stage 4 · 4.1): made once per language, shared with the class.
   const lang = useLanguageStore((st) => st.language);
-  const [tr, setTr] = useState<{ lang: string; pack: Pick<ClassSession, 'summary' | 'notes' | 'keyMoments' | 'flashcards'> } | null>(null);
+  const [tr, setTr] = useState<{ lang: string; pack: Pick<ClassSession, 'summary' | 'notes' | 'keyMoments' | 'flashcards' | 'chapters' | 'recap' | 'practice'> } | null>(null);
   const [trOn, setTrOn] = useState(false);
   const view = trOn && tr?.lang === lang ? { ...s, ...tr.pack } : s;
+  // The replay's player: chapters, search results, key moments and practice questions jump in it.
+  const video = useRef<HTMLVideoElement>(null);
+  const seek = (t: number) => {
+    const v = video.current;
+    if (v) { v.currentTime = t; void v.play().catch(() => {}); v.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    else if (recordingUrl) window.open(`${recordingUrl}#t=${t}`, '_blank', 'noopener');
+  };
   const translate = async () => {
     if (trOn) return setTrOn(false);
     if (tr?.lang === lang) return setTrOn(true);
@@ -156,6 +166,8 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                     <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">{view.summary}</p>
                   </section>
 
+                  <ReplayPanel sessionId={s.id} chapters={view.chapters ?? []} recap={view.recap ?? null} recordingUrl={recordingUrl} canMakeReplay={!!s.canMakeReplay} video={video} seek={seek} onMade={refresh} />
+
                   {view.notes.length > 0 && (
                     <section>
                       <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Notes</h4>
@@ -176,7 +188,7 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                           return (
                             <li key={i}>
                               {recordingUrl ? (
-                                <a href={`${recordingUrl}#t=${k.t}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300 rounded-lg p-1.5 -mx-1.5 hover:bg-indigo-500/[0.06]" title="Watch from here">{inner}</a>
+                                <button type="button" onClick={() => seek(k.t)} className="w-full text-left flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300 rounded-lg p-1.5 -mx-1.5 hover:bg-indigo-500/[0.06]" title="Watch from here">{inner}</button>
                               ) : <div className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300 p-1.5 -mx-1.5">{inner}</div>}
                             </li>
                           );
@@ -212,6 +224,8 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                       {view.flashcards.length > 6 && <p className="mt-1.5 text-xs text-zinc-500">+{s.flashcards.length - 6} more in the pack</p>}
                     </section>
                   )}
+
+                  <PracticeQuestions practice={view.practice ?? []} canWatch={!!recordingUrl} seek={seek} />
 
                   {s.quiz && (
                     <section className="flex flex-wrap items-center gap-2 rounded-xl bg-indigo-500/[0.06] border border-indigo-500/15 p-3">
