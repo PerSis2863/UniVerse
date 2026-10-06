@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, CircleDot, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
@@ -11,6 +11,9 @@ import { languageName } from '@/lib/languages';
 import { haptic } from '@/lib/haptics';
 import { keepDraft, localDraft, pickDraft, saveDraft } from '@/lib/chat-drafts';
 import { ScheduleSheet } from './ScheduledMessages';
+import dynamic from 'next/dynamic';
+
+const VideoNoteRecorder = dynamic(() => import('./VideoNote').then((m) => m.VideoNoteRecorder));
 
 export interface SendPayload {
   text?: string;
@@ -18,6 +21,8 @@ export interface SendPayload {
   /** Several photos at once: sent as one album. */
   album?: File[];
   voice?: { blob: Blob; durationSec: number; waveform?: number[] };
+  /** A round video note (with how long it is). */
+  videoNote?: { file: File; durationSec: number };
   /** Photo, video or voice message that each person can open only once. */
   viewOnce?: boolean;
 }
@@ -339,6 +344,8 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     }
   };
 
+  const [videoNote, setVideoNote] = useState(false);
+
   const stopRecording = (cancel: boolean) => {
     cancelled.current = cancel;
     recorder.current?.stop();
@@ -448,6 +455,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                   <button onClick={() => mediaRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span> Photos & videos
                   </button>
+                  {typeof MediaRecorder !== 'undefined' && (
+                    <button onClick={() => { setAttach(false); setVideoNote(true); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-fuchsia-500/15 text-fuchsia-500 flex items-center justify-center"><CircleDot className="w-4 h-4" /></span> Video note
+                    </button>
+                  )}
                   <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-500 flex items-center justify-center"><Camera className="w-4 h-4" /></span> Camera
                   </button>
@@ -580,6 +592,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           onClose={() => { setScheduling(null); held.current = false; }} />
       )}
       {!!slowModeSec && <p className="mt-1.5 text-[11px] text-zinc-500 text-center">Slow mode: one message every {slowModeSec < 60 ? `${slowModeSec} s` : `${Math.round(slowModeSec / 60)} min`}</p>}
+      {videoNote && <VideoNoteRecorder onClose={() => setVideoNote(false)} onSend={async (file, durationSec) => { setBusy(true); try { await onSend({ videoNote: { file, durationSec } }); } finally { setBusy(false); } }} />}
       <input ref={mediaRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; void pickMedia(fs); }} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
       <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />

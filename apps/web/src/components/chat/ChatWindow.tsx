@@ -295,7 +295,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     onChanged();
   };
 
-  const send = async ({ text, file, voice, viewOnce, album }: SendPayload) => {
+  const send = async ({ text, file: picked, voice, viewOnce, album, videoNote }: SendPayload) => {
+    const file = picked ?? videoNote?.file;
     haptic('tap');
     const tempId = `temp-${Date.now()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
@@ -327,7 +328,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         setUploadProgress(null);
         const msg = await chatJson<ChatMessage>(key, {
           method: 'POST',
-          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec, waveform: voice?.waveform, replyToId, viewOnce: viewOnce || undefined }),
+          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec ?? videoNote?.durationSec, waveform: voice?.waveform, videoNote: videoNote ? true : undefined, replyToId, viewOnce: viewOnce || undefined }),
         });
         appendSent(msg, tempId);
         if (text) await send({ text });

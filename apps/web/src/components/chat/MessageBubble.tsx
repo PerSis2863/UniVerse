@@ -9,6 +9,7 @@ import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
 import { fallbackBars, useVoice, voice } from '@/lib/voice-player';
+import { VideoNoteBubble } from './VideoNote';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes, plainText } from './chat-client';
 import { RichText } from './RichText';
@@ -248,6 +249,8 @@ export function MessageBubble(p: Props) {
     content = (
       <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />
     );
+  } else if (m.type === 'VIDEO' && m.attachmentUrl && m.metadata?.videoNote) {
+    content = <VideoNoteBubble url={m.attachmentUrl} />;
   } else if (m.type === 'VIDEO' && m.attachmentUrl) {
     content = <ChatVideo url={m.attachmentUrl} />;
   } else if (m.type === 'AUDIO' && m.attachmentUrl) {
