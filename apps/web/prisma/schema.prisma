@@ -586,6 +586,19 @@ model Conversation {
   @@map("conversations")
 }
 
+/// An earlier version of an edited message (Stage 4 · 1.3): its text and when it was written.
+model MessageEdit {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  body      String
+  writtenAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
+  @@map("message_edits")
+}
+
 model ConversationParticipant {
   id             String       @id @default(cuid())
   conversationId String
@@ -637,6 +650,7 @@ model Message {
   userStates     MessageUserState[]
   pollVotes      PollVote[]
   translations   MessageTranslation[]
+  edits          MessageEdit[]
 
   pinnedAt   DateTime? // pinned to the top of the chat
   pinnedById String?

@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck } from 'lucide-react';
+import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
@@ -122,6 +124,7 @@ export function MessageBubble(p: Props) {
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
   const [fullPicker, setFullPicker] = useState(false);
+  const [history, setHistory] = useState(false);
   const [touch, setTouch] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const x = useMotionValue(0);
@@ -130,7 +133,10 @@ export function MessageBubble(p: Props) {
 
   const time = new Date(m.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const deleted = m.type === 'DELETED';
-  const canEdit = mine && m.type === 'TEXT' && !deleted && Date.now() - new Date(m.createdAt).getTime() < 86_400_000;
+  const age = Date.now() - new Date(m.createdAt).getTime();
+  const canEdit = mine && m.type === 'TEXT' && !deleted && age < 86_400_000;
+  // Delete for everyone: your own for 48 hours; admins and moderators any time.
+  const canDeleteForAll = canModerate || (mine && age < 48 * 3_600_000);
   const reactionEntries = Object.entries(m.reactions ?? {}).filter(([, users]) => users.length > 0);
   const interactive = !deleted && !m.pending;
 
@@ -162,7 +168,9 @@ export function MessageBubble(p: Props) {
     <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine ? 'text-white/70' : 'text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
-      {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : 'edited ·')} {time}
+      {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : (
+        <button type="button" onClick={(e) => { e.stopPropagation(); setHistory(true); }} className="underline-offset-2 hover:underline" title="See the earlier versions">edited ·</button>
+      ))} {time}
       {mine && !deleted && (m.pending ? <Check className="w-3 h-3" /> : readState === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" /> : <CheckCheck className="w-3.5 h-3.5" />)}
     </span>
   );
@@ -414,7 +422,7 @@ export function MessageBubble(p: Props) {
                   {canEdit && <MenuItem icon={Pencil} label="Edit" onClick={() => { p.onEdit(); close(); }} />}
                   {mine && <MenuItem icon={Info} label="Info" onClick={() => { p.onInfo(); close(); }} />}
                   <MenuItem icon={EyeOff} label="Delete for me" onClick={() => { p.onDeleteForMe(); close(); }} />
-                  {(mine || canModerate) && <MenuItem icon={Trash2} label="Delete for everyone" danger onClick={() => { p.onDelete(); close(); }} />}
+                  {canDeleteForAll && <MenuItem icon={Trash2} label="Delete for everyone" danger onClick={() => { p.onDelete(); close(); }} />}
                   {touch && <MenuItem icon={Ban} label="Cancel" onClick={close} />}
                 </div>
               )}
@@ -441,7 +449,36 @@ export function MessageBubble(p: Props) {
           </div>
         )}
       </motion.div>
+      {history && <EditHistory id={m.id} onClose={() => setHistory(false)} emoji={p.customEmoji} />}
     </div>
+  );
+}
+
+/** An edited message's earlier versions (Stage 4 · 1.3), newest first. */
+function EditHistory({ id, onClose, emoji }: { id: string; onClose: () => void; emoji?: Record<string, string> }) {
+  const { data } = useSWR<{ versions: { body: string; at: string; current: boolean }[] }>(`/api/chat/messages/${id}/edits`, (url: string) => authedJson(url));
+  const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <motion.div role="dialog" aria-label="Edit history" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+        className="w-full sm:max-w-md max-h-[70vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#121830] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-4 space-y-3 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <p className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Pencil className="w-4 h-4 text-indigo-500" />Edit history</p>
+          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
+        </div>
+        {!data ? <div className="space-y-2">{[0, 1].map((i) => <div key={i} className="h-14 rounded-2xl skeleton" />)}</div>
+          : data.versions.length === 0 ? <p className="text-sm text-zinc-500">No earlier versions to show.</p>
+          : data.versions.map((v, i) => (
+            <div key={i} className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{v.current ? 'Now' : i === data.versions.length - 1 ? 'First sent' : 'Earlier'} · <span className="normal-case font-normal">{when(v.at)}</span></p>
+              <div className={cn('rounded-2xl px-3.5 py-2.5 text-[15px] text-zinc-900 dark:text-white', v.current ? 'bg-indigo-500/10 ring-1 ring-indigo-400/30' : 'bg-zinc-100 dark:bg-white/[0.06]')}>
+                <RichText text={v.body} mine={false} emoji={emoji} />
+              </div>
+            </div>
+          ))}
+      </motion.div>
+    </div>,
+    document.body,
   );
 }
 
