@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
+import { TabPill } from '@/components/ui/Glide';
 
 const STAGE_COLORS: Record<string, string> = {
   'Idea': 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
@@ -126,8 +127,8 @@ export default function StartupIncubatorPage() {
             <div className="flex gap-2 overflow-x-auto">
               {stages.map(s => (
                 <button key={s} onClick={() => setSelectedStage(s)}
-                  className={cn("px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all",
-                    selectedStage === s ? "bg-indigo-600 text-white border-indigo-600 shadow-lg" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-indigo-500/50")}>
+                  className={cn("relative isolate px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all",
+                    selectedStage === s ? "text-white border-transparent" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-indigo-500/50")}>{selectedStage === s && <TabPill id="student-impact-startups-page-0" />}
                   {s}
                 </button>
               ))}

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-type Variant = 'grid' | 'list' | 'dashboard' | 'table';
+type Variant = 'grid' | 'list' | 'dashboard' | 'table' | 'chat';
 
 const Block = ({ className }: { className?: string }) => <div className={cn('skeleton rounded-2xl', className)} />;
 
@@ -32,6 +32,13 @@ export function ContentSkeleton({ variant = 'list', className }: { variant?: Var
               <div className="flex-1 space-y-2"><Block className="h-3.5 w-2/5 rounded-md" /><Block className="h-3 w-3/5 rounded-md" /></div>
               <Block className="h-6 w-14 rounded-full" />
             </div>
+          ))}
+        </div>
+      )}
+      {variant === 'chat' && (
+        <div className="space-y-3 p-4">
+          {['w-2/5', 'w-1/2 ml-auto', 'w-1/3', 'w-3/5 ml-auto', 'w-1/4', 'w-2/5 ml-auto'].map((w, i) => (
+            <Block key={i} className={cn('h-10 rounded-[20px]', w, i % 2 ? 'rounded-br-md' : 'rounded-bl-md')} />
           ))}
         </div>
       )}

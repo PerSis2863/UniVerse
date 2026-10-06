@@ -10,6 +10,7 @@ import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
+import { TabPill, TabPanel } from '@/components/ui/Glide';
 
 interface AdminCourse {
   id: string; code: string; name: string; description: string | null; credits: number; department: string | null;
@@ -183,7 +184,7 @@ export default function AdminCoursesPage() {
             <div role="tablist" className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06] w-fit">
               {([['courses', `Courses (${courses.length})`], ['teachers', `Teachers (${teachers.length})`]] as const).map(([id, label]) => (
                 <button key={id} role="tab" aria-selected={view === id} onClick={() => setView(id)}
-                  className={cn('px-3 py-1.5 rounded-lg text-sm font-semibold', view === id ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500')}>{label}</button>
+                  className={cn('relative isolate px-3 py-1.5 rounded-lg text-sm font-semibold', view === id ? 'text-white' : 'text-zinc-500')}>{view === id && <TabPill id="dashboard-admin-courses-page-0" />}{label}</button>
               ))}
             </div>
             <div className="relative flex-1 min-w-0">
@@ -210,6 +211,7 @@ export default function AdminCoursesPage() {
             )}
           </div>
 
+          <TabPanel k={view}>
           {view === 'courses' ? (
             isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{[0, 1, 2].map((i) => <div key={i} className="h-72 rounded-xl skeleton" />)}</div>
@@ -289,6 +291,7 @@ export default function AdminCoursesPage() {
           ) : (
             <TeacherList teachers={shownTeachers} total={teachers.length} coursesByTeacher={coursesByTeacher} onRoster={setRosterFor} />
           )}
+          </TabPanel>
 
         </div>
       </div>

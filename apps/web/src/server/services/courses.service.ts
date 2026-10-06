@@ -93,6 +93,9 @@ export class CoursesService {
 
       return {
         id: e.student.id,
+        // One row per enrollment: a student in two of the teacher's courses has two rows.
+        enrollmentId: e.id,
+        courseId: e.course.id,
         name: e.student.name,
         email: e.student.email,
         course: e.course.name,

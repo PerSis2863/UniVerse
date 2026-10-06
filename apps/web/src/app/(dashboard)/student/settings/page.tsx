@@ -21,6 +21,7 @@ import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermi
 import { RecentSignIns } from '@/components/security/RecentSignIns';
 import { GuardianShareCard } from '@/components/settings/GuardianShareCard';
 import { GuardianContactsCard } from '@/components/settings/GuardianContactsCard';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 interface Me { name?: string; email?: string; emailNotifications?: boolean }
 const SECTION_IDS = ['profile', 'language', 'notifications', 'privacy', 'family', 'consents', 'ai'];
@@ -86,9 +87,7 @@ export default function StudentSettings() {
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-            </div>
+            <ContentSkeleton variant="list" />
           ) : (
             <div className="flex flex-col md:flex-row gap-6">
               

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Circle, Download, Eraser, PenTool, Redo, Share2, Square, Trash2, Type, Undo } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 type Pt = { x: number; y: number };
 type Shape =
@@ -248,7 +249,7 @@ export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboa
       <div className="border-b border-zinc-200 dark:border-white/10 px-3 py-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
         {TOOLS.map((t) => (
           <button key={t.id} title={`${t.label} (${t.key.toUpperCase()})`} aria-label={t.label} onClick={() => setTool(t.id)}
-            className={cn(iconBtn, tool === t.id ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}>
+            className={cn('relative isolate', iconBtn, tool === t.id ? 'text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}>{tool === t.id && <TabPill id="oard-collaborationwhiteboard-0" variant="soft" />}
             <t.icon className="w-4 h-4" />
           </button>
         ))}

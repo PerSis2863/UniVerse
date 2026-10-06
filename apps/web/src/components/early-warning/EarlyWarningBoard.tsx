@@ -10,6 +10,8 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
+import { TabPanel, TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 interface Flag {
   id: string; score: number; level: 'AT_RISK' | 'WATCH' | 'OK'; status: 'OPEN' | 'CONTACTED' | 'RESOLVED' | 'DISMISSED';
@@ -102,7 +104,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06]">
           {VIEWS.map((v) => (
-            <button key={v.id} role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)} className={cn('px-3 py-1.5 rounded-lg text-sm font-semibold', view === v.id ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500')}>{v.label}</button>
+            <button key={v.id} role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)} className={cn('relative isolate px-3 py-1.5 rounded-lg text-sm font-semibold', view === v.id ? 'text-white' : 'text-zinc-500')}>{view === v.id && <TabPill id="ly-warning-earlywarningboard-0" />}{v.label}</button>
           ))}
         </div>
         <select aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)} className="text-sm rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-3 py-2 text-zinc-700 dark:text-zinc-200 max-w-[16rem]">
@@ -122,44 +124,46 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
       </div>
       {debouncedQ && data && <p className="text-xs text-zinc-500">{data.flags.length} student{data.flags.length === 1 ? '' : 's'} match “{debouncedQ}”{data.flags.length >= 200 ? ' (first 200 shown)' : ''}</p>}
 
-      {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
-        : isLoading ? <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
-        : !data?.flags.length ? (
-          <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-10 text-center">
-            <ShieldCheck className="w-10 h-10 mx-auto text-emerald-500" />
-            <p className="mt-3 font-bold text-zinc-900 dark:text-white">{debouncedQ ? `No students match “${debouncedQ}”` : view === 'open' ? 'No one needs attention right now' : 'Nothing here yet'}</p>
-            <p className="mt-1 text-sm text-zinc-500">{debouncedQ ? 'Try another name, email or course code.' : view === 'open' ? 'The list updates every morning. Use “Check now” after entering new grades or attendance.' : 'Students you mark as resolved or dismissed appear here.'}</p>
-          </div>
-        ) : (
-          <ul className="space-y-2.5">
-            {data.flags.map((f) => {
-              const expanded = open === f.id;
-              const initials = f.student.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-              return (
-                <li key={f.id} className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03]">
-                  <button onClick={() => setOpen(expanded ? null : f.id)} aria-expanded={expanded} className="w-full flex items-center gap-3 p-4 text-left">
-                    {f.student.avatar ? <img loading="lazy" decoding="async" src={f.student.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" /> : <span className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-sm font-bold flex items-center justify-center shrink-0">{initials}</span>}
-                    <span className="flex-1 min-w-0">
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-semibold text-zinc-900 dark:text-white">{f.student.name}</span>
-                        <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border', LEVEL[f.level].cls)}>{LEVEL[f.level].label}</span>
-                        {f.status !== 'OPEN' && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300">{STATUS_LABEL[f.status]}</span>}
+      <TabPanel k={view}>
+        {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
+          : isLoading ? <div className="p-10"><ContentSkeleton variant="table" /></div>
+          : !data?.flags.length ? (
+            <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-10 text-center">
+              <ShieldCheck className="w-10 h-10 mx-auto text-emerald-500" />
+              <p className="mt-3 font-bold text-zinc-900 dark:text-white">{debouncedQ ? `No students match “${debouncedQ}”` : view === 'open' ? 'No one needs attention right now' : 'Nothing here yet'}</p>
+              <p className="mt-1 text-sm text-zinc-500">{debouncedQ ? 'Try another name, email or course code.' : view === 'open' ? 'The list updates every morning. Use “Check now” after entering new grades or attendance.' : 'Students you mark as resolved or dismissed appear here.'}</p>
+            </div>
+          ) : (
+            <ul className="space-y-2.5">
+              {data.flags.map((f) => {
+                const expanded = open === f.id;
+                const initials = f.student.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+                return (
+                  <li key={f.id} className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03]">
+                    <button onClick={() => setOpen(expanded ? null : f.id)} aria-expanded={expanded} className="w-full flex items-center gap-3 p-4 text-left">
+                      {f.student.avatar ? <img loading="lazy" decoding="async" src={f.student.avatar} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" /> : <span className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-sm font-bold flex items-center justify-center shrink-0">{initials}</span>}
+                      <span className="flex-1 min-w-0">
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="font-semibold text-zinc-900 dark:text-white">{f.student.name}</span>
+                          <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border', LEVEL[f.level].cls)}>{LEVEL[f.level].label}</span>
+                          {f.status !== 'OPEN' && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300">{STATUS_LABEL[f.status]}</span>}
+                        </span>
+                        {f.student.email && <span className="block text-xs text-zinc-500 truncate">{f.student.email}{f.student.year ? ` · Year ${f.student.year}` : ''}{f.student.department ? ` · ${f.student.department}` : ''}</span>}
+                        <span className="block text-xs text-zinc-500 truncate">{f.course.code} · {f.course.name}{f.course.teacher ? ` · ${f.course.teacher.name}` : ''} · {f.reasons[0]?.text ?? 'No current concerns'}</span>
                       </span>
-                      {f.student.email && <span className="block text-xs text-zinc-500 truncate">{f.student.email}{f.student.year ? ` · Year ${f.student.year}` : ''}{f.student.department ? ` · ${f.student.department}` : ''}</span>}
-                      <span className="block text-xs text-zinc-500 truncate">{f.course.code} · {f.course.name}{f.course.teacher ? ` · ${f.course.teacher.name}` : ''} · {f.reasons[0]?.text ?? 'No current concerns'}</span>
-                    </span>
-                    <span className="hidden sm:flex flex-col items-end shrink-0">
-                      <span className="text-lg font-black text-zinc-900 dark:text-white">{f.score}</span>
-                      <span className="text-[10px] text-zinc-500">concern score</span>
-                    </span>
-                    <ChevronDown className={cn('w-4 h-4 text-zinc-400 shrink-0 transition-transform', expanded && 'rotate-180')} />
-                  </button>
-                  {expanded && <FlagDetail f={f} inboxBase={inboxBase} onMessage={() => message(f)} onUpdate={(b, done) => update(f, b, done)} onChanged={() => void mutate()} />}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                      <span className="hidden sm:flex flex-col items-end shrink-0">
+                        <span className="text-lg font-black text-zinc-900 dark:text-white">{f.score}</span>
+                        <span className="text-[10px] text-zinc-500">concern score</span>
+                      </span>
+                      <ChevronDown className={cn('w-4 h-4 text-zinc-400 shrink-0 transition-transform', expanded && 'rotate-180')} />
+                    </button>
+                    {expanded && <FlagDetail f={f} inboxBase={inboxBase} onMessage={() => message(f)} onUpdate={(b, done) => update(f, b, done)} onChanged={() => void mutate()} />}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+      </TabPanel>
     </div>
   );
 }

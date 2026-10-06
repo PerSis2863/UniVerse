@@ -16,8 +16,11 @@ type Ref<T> = { current: T };
 function animate(running: Ref<Animation[]>, targets: Element[], frames: Keyframe[], options: KeyframeAnimationOptions) {
   for (const a of running.current) a.cancel();
   running.current = [];
-  if (reducedMotion()) return [];
-  running.current = targets.filter((t) => typeof (t as HTMLElement).animate === 'function').map((t) => t.animate(frames, options));
+  // "Reduce Motion": the page fades instead of sliding (like iOS), rather than changing with no motion.
+  const calm = reducedMotion();
+  const keyframes = calm ? frames.map(({ transform: _transform, ...rest }) => rest) : frames;
+  const timing = calm ? { ...options, duration: Math.min(Number(options.duration) || 200, 200) } : options;
+  running.current = targets.filter((t) => typeof (t as HTMLElement).animate === 'function').map((t) => t.animate(keyframes, timing));
   return running.current;
 }
 

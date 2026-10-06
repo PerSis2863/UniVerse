@@ -981,14 +981,17 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 @keyframes fade-up { from { opacity: 0; transform: translate3d(0, 6px, 0); } }
 .fade-up { animation: fade-up 260ms var(--ease-out-soft); }
 
-/* Respect "Reduce Motion" (iOS Settings → Accessibility → Motion) */
+/* "Reduce Motion" (iPhone: Settings → Accessibility → Motion; Android: Remove animations), the way
+   iOS does it: movement turns into a quick fade instead of everything switching off. Slides, rises,
+   zooms, lifts and decorative loops stop; fades, colour changes, button presses and the small
+   gliding highlights stay. (Everything used to be cut to 1 ms, so on phones with the setting on,
+   which many have for battery, the app felt frozen next to the website.) */
+@keyframes rm-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
-    scroll-behavior: auto !important;
-  }
+  html { scroll-behavior: auto; }
+  .stagger > *, .fade-up, .page-enter, .page-push, .page-pop, .shell-in, .sheet-in, .alert-in, .hero-in { animation-name: rm-fade !important; animation-duration: 200ms !important; }
+  .lift:hover, .lift:active, .card-hover:hover, .kpi-card:hover { transform: none !important; }
+  .animate-bounce, .animate-float, .mkt-float, .animate-heartbeat { animation: none !important; }
 }
 
 /* Marketing: gentle floating chips on the landing page */
@@ -997,7 +1000,17 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
   50% { transform: translateY(-8px); }
 }
 .mkt-float { animation: mkt-float 5s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .mkt-float { animation: none; } }
+/* The landing page's slow background glows and the call-to-action's ring: CSS animations run off the
+   main thread, so they never compete with scrolling (they used to be endless framer loops). */
+@keyframes mkt-drift-a { 50% { transform: translate3d(40px, -30px, 0); } }
+@keyframes mkt-drift-b { 50% { transform: translate3d(-40px, 30px, 0); } }
+@keyframes mkt-spin { to { rotate: 360deg; } }
+.mkt-drift-a { animation: mkt-drift-a 18s ease-in-out infinite; will-change: transform; }
+.mkt-drift-b { animation: mkt-drift-b 22s ease-in-out infinite; will-change: transform; }
+.mkt-spin { animation: mkt-spin 40s linear infinite; }
+/* Its in-page links (Product, FAQ…) glide down instead of jumping. */
+@media (prefers-reduced-motion: no-preference) { html:has(.mkt-smooth) { scroll-behavior: smooth; } }
+@media (prefers-reduced-motion: reduce) { .mkt-float, .mkt-drift-a, .mkt-drift-b, .mkt-spin { animation: none; } }
 
 /* ─── Background: UniVerse's two tones ─── */
 /* Indigo light from the top left, fuchsia from the bottom right, and a faint grid, behind every
@@ -1268,6 +1281,13 @@ html[data-collapsed] .nav-brand-text { opacity: 0; }
    Run on the live page with the Web Animations API (src/lib/page-transition.ts, PendingPage), so
    nothing freezes while the next page loads. The page area is its own compositor layer only while
    it moves (the animation promotes it), so the bars, sidebar and tab bar stay still. */
-@media (prefers-reduced-motion: reduce) {
-  .page-enter, .page-push, .page-pop, .shell-in { animation: none; }
+
+
+/* ─── Installed app: behave like an app, not a web page ─────────────────────────────────────── */
+/* A long press on a button, tab, link or picture doesn't open the browser's preview/copy menu, and
+   buttons, tabs and bars aren't text you can accidentally select. */
+button, [role="tab"], [role="button"], [role="switch"], nav, .ios-tabbar, .mobile-header { -webkit-user-select: none; user-select: none; }
+@media (display-mode: standalone) {
+  a, button, [role="button"], [role="tab"], nav, img { -webkit-touch-callout: none; }
+  img { -webkit-user-drag: none; }
 }

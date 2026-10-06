@@ -10,6 +10,8 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, SearchBox, card, errorMessage, fetcher, formatValue, matches, refreshConsole, summarize, toastWithUndo } from './shared';
 import { ComposeDialog, LiveChat } from './chats';
+import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 interface Section { model: string; field: string; title: string; count: number; records: Rec[] }
 interface Dossier { user: Rec & { owner?: boolean }; sections: Section[]; empty: string[] }
@@ -26,7 +28,7 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
   const [shownAt] = useState(() => Date.now());
   const [q, setQ] = useState('');
 
-  if (isLoading) return <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>;
+  if (isLoading) return <div className="p-12"><ContentSkeleton variant="dashboard" /></div>;
   if (error || !data) return <p className="p-12 text-center text-sm text-rose-500">Could not load this person.</p>;
   const u = data.user;
 
@@ -256,7 +258,7 @@ function Conversations({ personId, personName, onClose }: { personId: string; pe
           <ul className={cn('overflow-y-auto border-r border-zinc-100 dark:border-white/[0.06]', open && 'hidden md:block')}>
             {isLoading ? <li className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></li> : !convos?.length ? <li className="p-6 text-sm text-zinc-500">No conversations.</li> : convos.map((c) => (
               <li key={c.id}>
-                <button onClick={() => setOpen(c.id)} className={cn('w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', open === c.id && 'bg-indigo-500/[0.07]')}>
+                <button onClick={() => setOpen(c.id)} className={cn('relative isolate w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', open === c.id && '')}>{open === c.id && <TabPill id="app-dashboard-console-person-0" variant="soft" />}
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.isGroup ? c.name ?? 'Group' : c.participants.map((p) => p.user.name).filter((n) => n !== personName).join(', ') || 'Chat'}</p>
                   <p className="text-xs text-zinc-500">{c._count.messages} messages · {formatDistanceToNow(new Date(c.updatedAt), { addSuffix: true })}</p>
                 </button>

@@ -9,6 +9,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { PRESENCE_LABEL, type Presence } from '@/lib/presence';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 // Your availability and custom status (Messages): Online, Busy, In class, Studying, Sleeping or
 // Invisible, plus a short message with an emoji, for a while or until you change it. Busy, In class
@@ -62,7 +63,7 @@ export function PresencePicker() {
             className="absolute right-0 top-10 z-40 w-72 p-3 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl space-y-3" role="dialog" aria-label="Set your status">
             <ul className="space-y-0.5" role="radiogroup" aria-label="Availability">{ORDER.map((p) => (
               <li key={p}>
-                <button type="button" role="radio" aria-checked={draft.presence === p} onClick={() => setDraft({ ...draft, presence: p })} className={cn('w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-sm transition-colors', draft.presence === p ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>
+                <button type="button" role="radio" aria-checked={draft.presence === p} onClick={() => setDraft({ ...draft, presence: p })} className={cn('relative isolate w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-sm transition-colors', draft.presence === p ? 'text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>{draft.presence === p && <TabPill id="mponents-chat-presencepicker-0" variant="soft" />}
                   <span className={cn('w-2.5 h-2.5 rounded-full', DOT[p])} />
                   <span className="flex-1">{PRESENCE_LABEL[p]}</span>
                   {HINT[p] && <span className="text-[10px] text-zinc-500">{HINT[p]}</span>}
@@ -71,7 +72,7 @@ export function PresencePicker() {
             ))}</ul>
             <div className="space-y-2">
               <div className="flex gap-1">{EMOJIS.map((e) => (
-                <button key={e} type="button" onClick={() => setDraft({ ...draft, emoji: draft.emoji === e ? '' : e })} aria-pressed={draft.emoji === e} className={cn('w-8 h-8 rounded-lg text-base', draft.emoji === e ? 'bg-indigo-500/15 ring-1 ring-indigo-400' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{e}</button>
+                <button key={e} type="button" onClick={() => setDraft({ ...draft, emoji: draft.emoji === e ? '' : e })} aria-pressed={draft.emoji === e} className={cn('relative isolate w-8 h-8 rounded-lg text-base', draft.emoji === e ? '' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{draft.emoji === e && <TabPill id="mponents-chat-presencepicker-1" variant="soft" />}{e}</button>
               ))}</div>
               <input value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} maxLength={80} placeholder="What are you up to? (optional)" className="w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
               <select value={draft.minutes} onChange={(e) => setDraft({ ...draft, minutes: Number(e.target.value) })} aria-label="For how long" className="w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white">

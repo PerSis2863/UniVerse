@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/auth';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { LostFoundItem } from '@/components/campus/lost-found';
+import { TabPill } from '@/components/ui/Glide';
 
 // Lost & found (upgrade 7): post something you lost or found (with a photo if you like). Posts show
 // for 30 days. "Message them" opens a one-to-one chat with the person who posted it.
@@ -145,7 +146,7 @@ function ReportForm({ onClose, onDone }: { onClose: () => void; onDone: (kind: '
       <div className={`${card} p-4 space-y-3`}>
         <div className="flex items-center justify-between">
           <div className="inline-flex gap-1">
-            {(['FOUND', 'LOST'] as const).map((k) => <button key={k} type="button" onClick={() => setKind(k)} className={cn('px-3 py-1.5 rounded-lg text-sm font-medium', kind === k ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-300')}>{k === 'FOUND' ? 'I found something' : 'I lost something'}</button>)}
+            {(['FOUND', 'LOST'] as const).map((k) => <button key={k} type="button" onClick={() => setKind(k)} className={cn('relative isolate px-3 py-1.5 rounded-lg text-sm font-medium', kind === k ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-300')}>{kind === k && <TabPill id="student-life-lost-found-page-0" />}{k === 'FOUND' ? 'I found something' : 'I lost something'}</button>)}
           </div>
           <button type="button" onClick={onClose} aria-label="Cancel" className="p-1 text-zinc-500"><X className="w-4 h-4" /></button>
         </div>

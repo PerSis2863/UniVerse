@@ -14,6 +14,7 @@ import { ConsoleSkeleton } from './shared';
 import { EmailScheduleCard } from './email-schedule';
 import { AiModelsCard } from './ai-models';
 import { useActivePoll } from '@/lib/realtime-client';
+import { TabPill, TabPanel } from '@/components/ui/Glide';
 
 // The owner console's Server tab: switch UniVerse between live, read-only and maintenance, show a
 // notice on every page, and see the Cloudflare plan usage and the app's health at a glance. The
@@ -117,13 +118,14 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
         <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Server sections">
           {SECTIONS.map((x) => (
             <button key={x.id} role="tab" aria-selected={section === x.id} onClick={() => pick(x.id)}
-              className={cn('shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors', section === x.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-white/[0.06] hover:border-indigo-400/50')}>
+              className={cn('relative isolate shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors', section === x.id ? 'text-white' : 'bg-white dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-white/[0.06] hover:border-indigo-400/50')}>{section === x.id && <TabPill id="app-dashboard-console-server-0" />}
               <x.icon className="w-4 h-4" />{x.label}
             </button>
           ))}
         </div>
       </div>
 
+      <TabPanel k={section}>
       {section === 'status' && (
         <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
           {/* Two columns of about equal height: the site and your emails | what everyone sees. */}
@@ -179,6 +181,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
           </div>
         </div>
       )}
+      </TabPanel>
     </div>
   );
 }

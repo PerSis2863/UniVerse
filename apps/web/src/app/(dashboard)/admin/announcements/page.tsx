@@ -5,6 +5,7 @@ import { MessagesTabs } from '@/components/layout/SectionTabs';
 import { api } from '@/lib/api';
 import { Megaphone, Edit, Trash2, Plus, Calendar, User, X, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 export default function AdminAnnouncements() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -77,9 +78,7 @@ export default function AdminAnnouncements() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-          </div>
+          <ContentSkeleton variant="list" />
         ) : announcements.length === 0 ? (
           <div className="card text-center py-12">
             <Megaphone className="w-12 h-12 text-zinc-600 mx-auto mb-4" />

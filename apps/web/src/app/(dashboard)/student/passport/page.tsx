@@ -14,6 +14,7 @@ import { PassportView, type PassportData } from '@/components/passport/PassportV
 import { cn } from '@/lib/utils';
 import { QrCode } from '@/components/ui/QrCode';
 import { Switch } from '@/components/ui/Switch';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 interface Passport {
   isPublic: boolean; headline: string | null; url: string; views: number;
@@ -48,7 +49,7 @@ export default function SkillsPassportPage() {
   };
 
   if (error) return <><Topbar title="Credentials & passport" /><SectionTabs tabs={CREDENTIAL_TABS} /><p className="p-6 text-sm text-rose-500">{(error as Error).message}</p></>;
-  if (!data) return <><Topbar title="Credentials & passport" /><SectionTabs tabs={CREDENTIAL_TABS} /><div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div></>;
+  if (!data) return <><Topbar title="Credentials & passport" /><SectionTabs tabs={CREDENTIAL_TABS} /><div className="p-10"><ContentSkeleton variant="dashboard" /></div></>;
 
   const preview: PassportData | null = data.preview && {
     ...data.preview,

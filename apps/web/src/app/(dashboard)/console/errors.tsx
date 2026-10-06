@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { SearchBox, card, fetcher, matches } from './shared';
 import { useActivePoll } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 // Errors tab: problems collected automatically from browsers and the server (src/server/errors.ts),
 // grouped, with an AI diagnosis. Mark them resolved once fixed; if one happens again it comes back.
@@ -241,7 +242,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
       )}
 
       {isLoading ? (
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+        <ContentSkeleton variant="list" />
       ) : data?.items.length && !items.length ? (
         <p className="text-sm text-zinc-500">No errors match.</p>
       ) : !data?.items.length ? (

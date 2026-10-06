@@ -15,6 +15,7 @@ const TwitterIcon = ({ className }: { className?: string }) => (
 );
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import { TabPill, TabPanel } from '@/components/ui/Glide';
 
 interface LevelInfo {
   current: { level: number; title: string; color: string; emoji: string; minXP: number };
@@ -127,14 +128,16 @@ export default function LeaderboardPage() {
   const [showLevels, setShowLevels] = useState(false);
 
   const timeframes = ['This Week', 'This Month', 'This Semester', 'All Time'];
+  const PERIOD: Record<string, string> = { 'This Week': 'week', 'This Month': 'month', 'This Semester': 'semester', 'All Time': 'all' };
 
-  useEffect(() => { fetchAll(); }, []);
+  // The time buttons choose whose points count: earned this week, month, semester, or ever.
+  useEffect(() => { fetchAll(); }, [timeframe]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchAll = async () => {
     setLoading(true);
     try {
       const [lbRes, levelRes] = await Promise.allSettled([
-        api.get('/impact/leaderboard'),
+        api.get(`/impact/leaderboard?period=${PERIOD[timeframe] ?? 'all'}`),
         api.get('/impact/my-level'),
       ]);
 
@@ -312,8 +315,8 @@ export default function LeaderboardPage() {
             <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
               {timeframes.map(t => (
                 <button key={t} onClick={() => setTimeframe(t)}
-                  className={cn('px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all',
-                    timeframe === t ? 'bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50')}>
+                  className={cn('relative isolate px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all',
+                    timeframe === t ? 'text-white' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50')}>{timeframe === t && <TabPill id="dent-impact-leaderboard-page-0" />}
                   {t}
                 </button>
               ))}
@@ -335,7 +338,7 @@ export default function LeaderboardPage() {
               <div className="col-span-1 text-center">Trend</div>
             </div>
 
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+            <TabPanel k={timeframe} className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
               {rest.map((user, i) => (
                 <motion.div key={user.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                   className={cn('grid grid-cols-4 sm:grid-cols-12 gap-4 p-4 items-center transition-colors hover:bg-zinc-50 dark:hover:bg-white/[0.02]',
@@ -377,7 +380,7 @@ export default function LeaderboardPage() {
                   </div>
                 </motion.div>
               ))}
-            </div>
+            </TabPanel>
           </div>
         </div>
       </div>

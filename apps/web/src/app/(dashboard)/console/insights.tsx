@@ -230,7 +230,7 @@ export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void })
         <p className="text-sm text-zinc-500">Real use of UniVerse, from page views, button presses, sign-ins and messages.</p>
         <div className="flex gap-1">
           {[7, 30, 90].map((d) => (
-            <button key={d} onClick={() => setDays(d)} className={cn('px-3 py-1.5 rounded-full text-xs font-semibold', days === d ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{d} days</button>
+            <button key={d} onClick={() => setDays(d)} className={cn('relative isolate px-3 py-1.5 rounded-full text-xs font-semibold', days === d ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{days === d && <TabPill id="p-dashboard-console-insights-0" />}{d} days</button>
           ))}
           <button onClick={() => downloadCsv(`universe-analytics-${days}d`, ['Day', 'Active people', 'New accounts', 'Messages'], data.perDay.map((d) => [d.day, d.active, d.joined, d.messages]))}
             className="btn-secondary inline-flex items-center gap-1.5 ml-1"><Download className="w-4 h-4" /> CSV</button>

@@ -8,6 +8,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 interface Platform { id: string; name: string; issuer: string; clientId: string; deploymentIds: string[]; authLoginUrl: string; jwksUrl: string; trustEmails: boolean; isActive: boolean; courses: number; users: number; createdAt: string }
 interface Resp { platforms: Platform[]; tool: { loginUrl: string; launchUrl: string; redirectUris: string[]; jwksUrl: string; domain: string }; ready: boolean; canvasConfig: object }
@@ -83,7 +84,7 @@ export default function LtiPage() {
         <section className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5 space-y-3">
           <p className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Plug className="w-5 h-5 text-indigo-500" /> 2. Register your LMS here</p>
           <div className="flex flex-wrap gap-2">
-            {Object.entries(PRESETS).map(([k, p]) => <button key={k} onClick={() => applyPreset(k as keyof typeof PRESETS)} className={cn('px-3 py-1.5 rounded-xl text-sm font-semibold', preset === k ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>{p.label}</button>)}
+            {Object.entries(PRESETS).map(([k, p]) => <button key={k} onClick={() => applyPreset(k as keyof typeof PRESETS)} className={cn('relative isolate px-3 py-1.5 rounded-xl text-sm font-semibold', preset === k ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>{preset === k && <TabPill id="-admin-integrations-lti-page-0" />}{p.label}</button>)}
           </div>
           <p className="text-xs text-zinc-500">{PRESETS[preset].hint}</p>
           {preset === 'moodle' && <label className="block"><span className="text-xs font-semibold text-zinc-500">Your Moodle address</span><input value={site} onChange={(e) => { setSite(e.target.value); applyPreset('moodle', e.target.value); }} placeholder="https://moodle.your-university.fr" className={input} /></label>}

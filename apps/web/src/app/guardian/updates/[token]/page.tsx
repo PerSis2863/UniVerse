@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { CheckCircle2, Loader2, Mail, XCircle } from 'lucide-react';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 // The page a parent or guardian opens from their emails (src/server/guardians.ts): confirm the
 // updates, choose which ones, or stop them. No account needed; the link is their key.
@@ -45,7 +46,7 @@ export default function GuardianUpdatesPage() {
         ) : stopped ? (
           <p className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" /> Done. You won&apos;t get any more emails about this student.</p>
         ) : !state ? (
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+          <ContentSkeleton variant="list" />
         ) : (
           <>
             <div className="flex items-start gap-3">

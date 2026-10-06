@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Check, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TEMPLATES, type TemplateId } from './templates';
+import { TabPill } from '@/components/ui/Glide';
 
 /** Name a new whiteboard and pick a starting layout. */
 export function NewBoardDialog({ onCreate, onClose }: { onCreate: (title: string, template: TemplateId) => Promise<void>; onClose: () => void }) {
@@ -36,7 +37,7 @@ export function NewBoardDialog({ onCreate, onClose }: { onCreate: (title: string
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {TEMPLATES.map((t) => (
               <button type="button" key={t.id} onClick={() => setTemplate(t.id)} aria-pressed={template === t.id}
-                className={cn('relative text-left rounded-2xl border p-3 transition-colors', template === t.id ? 'border-indigo-500 bg-indigo-500/5' : 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40')}>
+                className={cn('relative isolate relative text-left rounded-2xl border p-3 transition-colors', template === t.id ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40')}>{template === t.id && <TabPill id="onents-boards-newboarddialog-0" variant="soft" />}
                 {template === t.id && <Check className="absolute top-2 right-2 w-4 h-4 text-indigo-500" />}
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white pr-4">{t.name}</p>
                 <p className="mt-0.5 text-[11px] leading-snug text-zinc-500">{t.description}</p>

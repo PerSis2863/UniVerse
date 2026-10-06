@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from './MessageBubble';
 import { chatJson } from './chat-client';
+import { TabPill } from '@/components/ui/Glide';
 
 type Person = { id: string; name: string; avatar: string | null; role: string; online: boolean };
 const ROLE_LABEL: Record<string, string> = { STUDENT: 'Student', TEACHER: 'Teacher', ADMIN: 'Admin', INDUSTRY_MENTOR: 'Mentor' };
@@ -89,7 +90,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
         </div>
         <div className="px-5 flex gap-2 mb-3">
           {modes.map((m) => (
-            <button key={m} onClick={() => setMode(m)} className={cn('flex-1 py-2 rounded-xl text-sm font-semibold transition-colors', mode === m ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300')}>
+            <button key={m} onClick={() => setMode(m)} className={cn('relative isolate flex-1 py-2 rounded-xl text-sm font-semibold transition-colors', mode === m ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300')}>{mode === m && <TabPill id="omponents-chat-newchatdialog-0" />}
               {m === 'chat' ? 'Direct' : m === 'group' ? 'Group' : 'Broadcast'}
             </button>
           ))}

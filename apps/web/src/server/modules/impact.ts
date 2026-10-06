@@ -33,7 +33,7 @@ export default function impactModule(router: Router) {
   const r = router.controller('impact');
 
   // Core
-  r.get('leaderboard', () => impact.getLeaderboard());
+  r.get('leaderboard', ({ query }) => impact.getLeaderboard(typeof query.period === 'string' ? query.period : undefined));
   r.get('dashboard/stats', ({ user }) => impact.getDashboardStats(user.id));
   r.get('my-points', ({ user }) => impact.getMyPoints(user.id));
   r.get('my-level', ({ user }) => impact.getMyLevel(user.id));

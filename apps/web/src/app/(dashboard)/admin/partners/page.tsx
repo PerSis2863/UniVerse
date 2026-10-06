@@ -11,6 +11,7 @@ import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
 import { SearchBox, matchesQuery, fmtDate, shownSummary } from '@/components/impact/AdminPeople';
+import { TabPill } from '@/components/ui/Glide';
 
 type Partner = { id: string; name: string; type: string; country?: string | null; websiteUrl?: string | null };
 type Partnership = {
@@ -103,7 +104,7 @@ export default function SponsorPortalPage() {
               <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter by status">
                 {([['all', `All (${all.length})`], ['active', `Active (${activeCount})`], ['ended', `Ended (${all.length - activeCount})`]] as const).map(([k, label]) => (
                   <button key={k} role="tab" aria-selected={show === k} onClick={() => setShow(k)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${show === k ? 'bg-indigo-600 text-white border-indigo-600' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]'}`}>
+                    className={`relative isolate px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${show === k ? 'text-white border-transparent' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]'}`}>{show === k && <TabPill id="ashboard-admin-partners-page-0" />}
                     {label}
                   </button>
                 ))}

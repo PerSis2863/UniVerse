@@ -49,9 +49,20 @@ export class ImpactService {
   private chain = chainAnchorService;
 
   // ── Leaderboard ──────────────────────────────────────────────────────────
-  async getLeaderboard() {
+  /**
+   * Top 50 by impact points: all time, or points earned this week (7 days), this month (30 days) or
+   * this semester (since 1 February or 1 September, whichever came last).
+   */
+  async getLeaderboard(period?: string) {
+    const now = new Date();
+    const since =
+      period === 'week' ? new Date(now.getTime() - 7 * 86_400_000)
+      : period === 'month' ? new Date(now.getTime() - 30 * 86_400_000)
+      : period === 'semester' ? (now.getMonth() >= 8 ? new Date(now.getFullYear(), 8, 1) : now.getMonth() >= 1 ? new Date(now.getFullYear(), 1, 1) : new Date(now.getFullYear() - 1, 8, 1))
+      : null;
     const points = await prisma.impactPoint.groupBy({
       by: ['userId'],
+      ...(since ? { where: { awardedAt: { gte: since } } } : {}),
       _sum: { points: true },
       orderBy: { _sum: { points: 'desc' } },
       take: 50,

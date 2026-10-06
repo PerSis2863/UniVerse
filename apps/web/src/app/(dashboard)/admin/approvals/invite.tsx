@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Building2, Check, Copy, Globe, GraduationCap, Loader2, Mail, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 // Approvals → Invite people: paste a class list of email addresses. Invited people are approved
 // automatically when they sign up with that (verified) address: students are verified, staff and
@@ -71,8 +72,8 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
         <div className="mt-5 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Invite as">
           {ROLES.map((r) => (
             <button key={r.id} type="button" role="radio" aria-checked={role === r.id} onClick={() => setRole(r.id)}
-              className={cn('flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition-colors',
-                role === r.id ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400')}>
+              className={cn('relative isolate flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-semibold transition-colors',
+                role === r.id ? 'border-indigo-500 text-indigo-600 dark:text-indigo-300' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400')}>{role === r.id && <TabPill id="board-admin-approvals-invite-0" variant="soft" />}
               <r.icon className="w-4 h-4" /> {r.label}
             </button>
           ))}

@@ -14,6 +14,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { InviteDialog } from './invite';
 import { InvitationsPanel } from './invitations';
 import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 // Admin → Approvals: review applications to become a teacher or NGO representative.
 // Approving grants the role; declining and "ask for more info" send the applicant your message.
@@ -172,7 +173,7 @@ export default function ApprovalsPage() {
                             {picked.has(a.id) ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4" />}
                           </button>
                         )}
-                        <button onClick={() => select(a.id)} className={cn('flex-1 min-w-0 text-left p-4 flex gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', selected === a.id && 'bg-indigo-500/[0.06]')}>
+                        <button onClick={() => select(a.id)} className={cn('relative isolate flex-1 min-w-0 text-left p-4 flex gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', selected === a.id && '')}>{selected === a.id && <TabPill id="shboard-admin-approvals-page-0" variant="soft" />}
                           <div className="w-9 h-9 shrink-0 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center text-sm font-bold text-zinc-600 dark:text-zinc-300">{a.user.name.charAt(0).toUpperCase()}</div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{a.user.name}</p>
@@ -216,7 +217,7 @@ function ApplicationDetail({ id, onBack, onDecided }: { id: string; onBack: () =
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
 
-  if (isLoading) return <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>;
+  if (isLoading) return <div className="p-12"><ContentSkeleton variant="list" /></div>;
   if (error || !a) return <p className="p-12 text-center text-sm text-rose-500">Could not load this application.</p>;
 
   const open = a.status === 'PENDING' || a.status === 'NEEDS_INFO';

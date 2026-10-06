@@ -14,6 +14,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { api as nestApi } from '@/lib/fetcher';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import { TabPill } from '@/components/ui/Glide';
 
 // GPA per term (Jan–Jun = Spring, Jul–Dec = Fall), from real grades on a 4.0 scale.
 function gpaByTerm(grades: { score: number; maxScore: number; gradedAt?: string; createdAt?: string }[]) {
@@ -534,10 +535,10 @@ export default function GradesPage() {
                   { id: 'full', label: 'Full record', desc: 'Every graded item with its score and letter grade' },
                   { id: 'summary', label: 'Course summary', desc: 'One line per course with its average' },
                 ].map(opt => (
-                  <label key={opt.id} className={cn(
+                  <label key={opt.id} className={cn('relative isolate', 
                     "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
-                    transcriptType === opt.id ? "border-indigo-500 bg-indigo-500/5" : "border-zinc-200 dark:border-zinc-700 hover:border-indigo-500/50"
-                  )}>
+                    transcriptType === opt.id ? "border-indigo-500" : "border-zinc-200 dark:border-zinc-700 hover:border-indigo-500/50"
+                  )}>{transcriptType === opt.id && <TabPill id="ashboard-student-grades-page-0" variant="soft" />}
                     <input type="radio" name="ttype" checked={transcriptType === opt.id} onChange={() => setTranscriptType(opt.id)} className="mt-0.5 accent-indigo-500" />
                     <div>
                       <div className="text-sm font-medium text-zinc-900 dark:text-white">{opt.label}</div>

@@ -10,6 +10,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { AWAY, SUGGESTIONS, WINDOWS, formatValue, metricMeta, rangeText, type MetricHelp, type MetricId, type MetricResult, type Order } from '@/lib/school-metrics';
+import { TabPill, TabPanel } from '@/components/ui/Glide';
 
 // School insights → "Ask about your school" and the trend cards. Suggested questions, trend cards
 // and the settings under an answer open measures directly (no AI); a typed question costs one
@@ -151,7 +152,7 @@ function Result({ a, view, setView, busy, change }: { a: MetricResult; view: 'ch
           <div className="inline-flex rounded-lg bg-zinc-100 dark:bg-white/[0.06] p-0.5" role="group" aria-label="Show as">
             {(['chart', 'table'] as const).map((v) => (
               <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v}
-                className={cn('h-7 px-2.5 rounded-md text-xs font-semibold inline-flex items-center gap-1 transition-colors', view === v ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200')}>
+                className={cn('relative isolate h-7 px-2.5 rounded-md text-xs font-semibold inline-flex items-center gap-1 transition-colors', view === v ? 'text-white' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200')}>{view === v && <TabPill id="nts-insights-schoolanalytics-0" />}
                 {v === 'chart' ? <BarChart3 className="w-3.5 h-3.5" aria-hidden /> : <Table2 className="w-3.5 h-3.5" aria-hidden />}{v === 'chart' ? 'Chart' : 'Table'}
               </button>
             ))}
@@ -183,7 +184,7 @@ function Result({ a, view, setView, busy, change }: { a: MetricResult; view: 'ch
 
       <p className="text-sm text-zinc-700 dark:text-zinc-200">{a.headline}</p>
       {a.note && <p className="text-xs text-amber-700 dark:text-amber-400">{a.note}</p>}
-      {a.rows.length > 0 && (view === 'chart' ? <MetricChart result={a} /> : <DataTable a={a} />)}
+      {a.rows.length > 0 && <TabPanel k={view}>{view === 'chart' ? <MetricChart result={a} /> : <DataTable a={a} />}</TabPanel>}
       {view === 'chart' && a.kind === 'bar' && a.rows.length > 15 && <p className="text-xs text-zinc-500">The chart shows the first 15. The table has all {a.rows.length}.</p>}
     </div>
   );

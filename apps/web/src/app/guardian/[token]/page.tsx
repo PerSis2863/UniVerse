@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
-import { Award, BookOpen, CalendarCheck, Clock, Eye, GraduationCap, Link2Off, Loader2, Target, Trophy } from 'lucide-react';
+import { Award, BookOpen, CalendarCheck, Clock, Eye, GraduationCap, Link2Off, Target, Trophy } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { DeadlineList, type DeadlineItem } from '@/components/progress/DeadlineList';
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 // What a parent or guardian sees from a student's shared link: read-only, no sign-in.
 
@@ -95,7 +96,7 @@ export default function GuardianPage() {
             {problem === 'offline' && <button onClick={() => location.reload()} className="btn-primary min-h-11 mt-5">Try again</button>}
           </div>
         ) : !data ? (
-          <div className="p-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" aria-label="Loading" /></div>
+          <div className="p-16"><ContentSkeleton variant="list" /></div>
         ) : (
           <div className="space-y-5">
             <section className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-7">

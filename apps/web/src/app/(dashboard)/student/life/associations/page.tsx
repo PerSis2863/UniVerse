@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { RequestAssociationModal } from './RequestAssociationModal';
+import { TabPill } from '@/components/ui/Glide';
 
 export default function AssociationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,12 +100,12 @@ export default function AssociationsPage() {
               <button 
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`relative isolate px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                   activeCategory === cat 
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 border border-indigo-500/50' 
+                    ? 'border text-white border-transparent' 
                     : 'bg-white/[0.03] text-zinc-400 border border-white/[0.06] hover:bg-white/[0.06] hover:text-white'
                 }`}
-              >
+              >{activeCategory === cat && <TabPill id="udent-life-associations-page-0" />}
                 {cat}
               </button>
             ))}

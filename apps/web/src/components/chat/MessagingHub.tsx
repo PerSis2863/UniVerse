@@ -12,6 +12,8 @@ import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from './MessageBubble';
 import { type ConversationSummary, chatJson, previewText, timeLabel } from './chat-client';
 import { useLiveInterval } from '@/lib/realtime-client';
+import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 type Filter = 'all' | 'unread' | 'groups';
 
@@ -20,7 +22,7 @@ type Filter = 'all' | 'unread' | 'groups';
 // right after, so opening a chat doesn't wait either.
 const loadChatWindow = () => import('./ChatWindow');
 const ChatWindow = dynamic(() => loadChatWindow().then((m) => m.ChatWindow), {
-  loading: () => <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-500" /></div>,
+  loading: () => <div className="flex-1 min-w-0"><ContentSkeleton variant="chat" /></div>,
 });
 const NewChatDialog = dynamic(() => import('./NewChatDialog').then((m) => m.NewChatDialog));
 const StarredPanel = dynamic(() => import('./ChatDialogs').then((m) => m.StarredPanel));
@@ -159,7 +161,7 @@ export function MessagingHub() {
           </div>
           <div className="flex gap-2">
             {(['all', 'unread', 'groups'] as Filter[]).map((f) => (
-              <button key={f} onClick={() => setFilter(f)} className={cn('px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors', filter === f ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10')}>
+              <button key={f} onClick={() => setFilter(f)} className={cn('relative isolate px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors', filter === f ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10')}>{filter === f && <TabPill id="components-chat-messaginghub-0" />}
                 {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Groups'}
               </button>
             ))}
@@ -198,8 +200,8 @@ export function MessagingHub() {
                 onPointerDown={(e) => { if (e.pointerType === 'touch') press.current = setTimeout(() => { haptic('tap'); setMenuFor(c.id); }, 480); }}
                 onPointerUp={() => press.current && clearTimeout(press.current)}
                 onPointerLeave={() => press.current && clearTimeout(press.current)}
-                className={cn('w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-colors', active ? 'bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/10' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}
-              >
+                className={cn('relative isolate w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-colors', active ? '' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}
+              >{active && <TabPill id="components-chat-messaginghub-1" variant="soft" />}
                 <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={48} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">

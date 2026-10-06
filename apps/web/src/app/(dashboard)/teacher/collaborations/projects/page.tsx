@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { TabPill } from '@/components/ui/Glide';
 
 const STATUSES = ['All', 'Active', 'Recruiting', 'Completed'];
 
@@ -148,10 +149,10 @@ export default function NGOMentorshipPage() {
                       <button
                         key={s}
                         onClick={() => { setStatusFilter(s); setShowFilterDropdown(false); }}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                          statusFilter === s ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                        className={`relative isolate w-full text-left px-4 py-2 text-sm transition-colors ${
+                          statusFilter === s ? 'text-indigo-400' : 'text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                         }`}
-                      >
+                      >{statusFilter === s && <TabPill id="collaborations-projects-page-0" variant="soft" />}
                         {s}
                       </button>
                     ))}

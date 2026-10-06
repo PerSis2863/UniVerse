@@ -9,6 +9,7 @@ import Link from '@/components/ui/Link';
 import { PassportView, type PassportData } from '@/components/passport/PassportView';
 import { CopyLinkButton } from '@/components/passport/CredentialShare';
 import { QrCode } from '@/components/ui/QrCode';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 type VerifyResult = { valid: true; badge: { name?: string; earner?: string; criteria?: string; issued?: string; verifyUrl?: string } } | { valid: false; reason: string };
 
@@ -40,7 +41,7 @@ export default function PublicPassportPage() {
             <p className="mt-1 text-sm text-zinc-500">The link may be wrong, or its owner made it private.</p>
           </div>
         ) : !p ? (
-          <div className="p-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
+          <div className="p-16"><ContentSkeleton variant="list" /></div>
         ) : (
           <>
             <PassportView p={p} />

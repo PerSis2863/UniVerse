@@ -12,6 +12,7 @@ import { ContactSalesDialog } from '@/components/billing/ContactSalesDialog';
 import { useSubscription } from '@/hooks/useSubscription';
 import { authedJson } from '@/lib/authed-fetch';
 import { PLANS, isPaidPlan, type BillingInterval, type PlanId } from '@/lib/plans';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 const STATUS_LABEL: Record<string, { label: string; tone: string }> = {
   active: { label: 'Active', tone: 'bg-emerald-500/10 text-emerald-500' },
@@ -175,7 +176,7 @@ export default function BillingPage() {
   return (
     <>
       <Topbar title="Billing & Plans" subtitle="Manage your organization's subscription" />
-      <Suspense fallback={<div className="flex-1 p-8"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>}>
+      <Suspense fallback={<div className="flex-1 p-8 min-w-0"><ContentSkeleton variant="dashboard" /></div>}>
         <BillingContent />
       </Suspense>
     </>

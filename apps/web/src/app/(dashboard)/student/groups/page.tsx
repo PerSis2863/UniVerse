@@ -14,6 +14,7 @@ import { GroupChat } from '@/components/groups/GroupChat';
 import { GroupDetailBody } from '@/components/groups/GroupDetailBody';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
 import { useLiveInterval } from '@/lib/realtime-client';
+import { TabPill } from '@/components/ui/Glide';
 
 type GroupItem = {
   id: string | number;
@@ -181,7 +182,7 @@ export default function GroupsPage() {
               </div>
               <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] p-1 rounded-xl overflow-x-auto scrollbar-none">
                 {TABS.map(t => (
-                  <button key={t} role="tab" aria-selected={filter === t} onClick={() => setFilter(t)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}>
+                  <button key={t} role="tab" aria-selected={filter === t} onClick={() => setFilter(t)} className={`relative isolate px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === t ? 'text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}>{filter === t && <TabPill id="ashboard-student-groups-page-0" />}
                     {t}
                   </button>
                 ))}
@@ -438,7 +439,7 @@ export default function GroupsPage() {
                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Type</label>
                   <div className="grid grid-cols-2 gap-2">
                     {['Study', 'Project', 'Impact', 'Research'].map(t => (
-                      <button key={t} onClick={() => setNewGroupType(t)} className={`py-2.5 rounded-xl text-sm font-medium border transition-colors ${newGroupType === t ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-indigo-500/50'}`}>
+                      <button key={t} onClick={() => setNewGroupType(t)} className={`relative isolate py-2.5 rounded-xl text-sm font-medium border transition-colors ${newGroupType === t ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-indigo-500/50'}`}>{newGroupType === t && <TabPill id="ashboard-student-groups-page-1" variant="soft" />}
                         {t}
                       </button>
                     ))}

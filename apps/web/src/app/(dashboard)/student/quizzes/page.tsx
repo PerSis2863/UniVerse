@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { QuizReview } from '@/components/dashboard/CourseBoard';
 import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
 import { getPack } from '@/lib/offline-packs';
+import { TabPill } from '@/components/ui/Glide';
 
 export default function QuizzesPage() {
   const { data: quizzes = [], error, isLoading } = useSWR('/quizzes/student/my-quizzes', fetcher);
@@ -292,12 +293,12 @@ export default function QuizzesPage() {
                       <button
                         key={i}
                         onClick={() => setSelected(i)}
-                        className={`w-full text-left p-4 rounded-xl border transition-all text-sm font-medium ${
+                        className={`relative isolate w-full text-left p-4 rounded-xl border transition-all text-sm font-medium ${
                           selected === i
-                            ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                             : 'border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-indigo-500/40 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                         }`}
-                      >
+                      >{selected === i && <TabPill id="shboard-student-quizzes-page-0" variant="soft" />}
                         <span className="font-bold mr-2">{['A', 'B', 'C', 'D', 'E', 'F'][i] || '*'}.</span> {opt}
                       </button>
                     ))}
