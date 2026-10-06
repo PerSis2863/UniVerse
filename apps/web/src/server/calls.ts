@@ -212,6 +212,33 @@ export async function createCallLink(user: SessionUser) {
   return { id, path: `/call/${id}` };
 }
 
+/**
+ * Questions from the class's own quizzes, to ask live in its class call as a quick quiz (2.7): the
+ * teacher (the call's host) only, since they include the right answers.
+ */
+export async function callQuestions(callId: string, user: SessionUser) {
+  const info = await callAccess(callId, user);
+  const id = breakoutOf(callId)?.parent ?? callId;
+  if (!id.startsWith('c_') || !info.host) return { quizzes: [] };
+  const quizzes = await prisma.quiz.findMany({
+    where: { courseId: id.slice(2) }, orderBy: { createdAt: 'desc' }, take: 10,
+    select: { id: true, title: true, questions: { orderBy: { order: 'asc' }, take: 30, select: { id: true, question: true, options: true, correctAnswer: true } } },
+  });
+  return {
+    quizzes: quizzes
+      .map((quiz) => ({
+        id: quiz.id,
+        title: quiz.title,
+        questions: quiz.questions.flatMap((x) => {
+          const options = (Array.isArray(x.options) ? (x.options as unknown[]) : []).map((o) => String(o)).slice(0, 6);
+          const correct = options.indexOf(x.correctAnswer);
+          return options.length >= 2 && correct >= 0 ? [{ id: x.id, q: x.question.slice(0, 200), options: options.map((o) => o.slice(0, 80)), correct }] : [];
+        }),
+      }))
+      .filter((quiz) => quiz.questions.length > 0),
+  };
+}
+
 /** Who is in a room call right now (names), for "3 in the room" on voice channels. */
 export async function roomPeers(callId: string, user: SessionUser) {
   await callAccess(callId, user);

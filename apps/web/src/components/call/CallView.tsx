@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2 } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2 } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -17,6 +17,7 @@ import { FloatingReactions, ReactionBar, type Floating, type Reaction } from './
 import { CallChatPanel, useCallChat, type RoomLine } from './CallChat';
 import { BackgroundSheet } from './BackgroundSheet';
 import { BreakoutBar, BreakoutPanel, RoomPicker, roomId, type BreakoutView } from './BreakoutPanel';
+import { PollCard, PollComposer, type PollView } from './CallPoll';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -408,6 +409,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [pickOpen, setPickOpen] = useState(false);
   const noteSeen = useRef(0);
   const goRoomRef = useRef<(target: string) => void>(() => {});
+  // A live poll or quick quiz in this room (CallPoll), and the host's composer.
+  const [poll, setPoll] = useState<PollView | null>(null);
+  const pollId = useRef<string | null>(null);
+  const [pollCompose, setPollCompose] = useState(false);
   // Whether I can moderate, for the socket handler (set up once): hand-raise toasts are for hosts.
   const modRef = useRef(false);
   // Background blur or a picture (src/lib/call-background.ts): the camera as it comes (raw), and the
@@ -752,6 +757,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setSpotlight(null);
     setLobby([]);
     setPickOpen(false);
+    setPoll(null);
+    pollId.current = null;
     setPhase('starting');
     setRoom(target);
   }, [setR, setSpotlight]);
@@ -963,6 +970,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setLobbyOn(msg.lobbyOn === true);
           if (Array.isArray(msg.chat)) setRoomChat(msg.chat);
           setBo(msg.bo ?? null);
+          pollId.current = msg.poll?.id ?? null;
+          setPoll(msg.poll ?? null);
           setPhase('live');
           for (const p of msg.peers as Peer[]) known.set(p.peerId, p);
           myId.current = msg.you;
@@ -1068,6 +1077,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setSpotlight(typeof msg.peerId === 'string' ? msg.peerId : null);
         } else if (msg.type === 'breakout') {
           setBo(msg.bo ?? null);
+        } else if (msg.type === 'poll') {
+          // A new poll (not mine): a gentle nudge to answer.
+          if (msg.poll && msg.poll.id !== pollId.current && !modRef.current) toast(`${msg.poll.by} asks: ${msg.poll.q}`, { icon: '📊', duration: 6000 });
+          pollId.current = msg.poll?.id ?? null;
+          setPoll(msg.poll ?? null);
         } else if (msg.type === 'bo-help') {
           // Someone in a breakout room asks the hosts to come (hosts only).
           const n = Number(msg.n);
@@ -1597,13 +1611,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   const canBg = backgroundsSupported();
-  const moreItems: { key: 'cc' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'rooms' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
     ...(canBg ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : 'Record class', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
     ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : 'Class notes', icon: NotebookPen, on: notes }] : []),
+    ...(canModerate && info && !info.oneToOne ? [{ key: 'poll' as const, label: 'Poll or quiz', icon: BarChart3, on: !!poll?.open }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'rooms' as const, label: 'Breakout rooms', icon: DoorOpen, on: !!bo }] : []),
     ...(canPip ? [{ key: 'pip' as const, label: 'Picture in picture', icon: PictureInPicture2 }] : []),
   ];
@@ -1617,6 +1632,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'rec') { if (recording) void stopRecording(); else startRecording(); }
     else if (key === 'notes') toggleNotes();
     else if (key === 'rooms') openPanel('rooms');
+    else if (key === 'poll') setPollCompose(true);
     else void pip();
   };
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
@@ -1914,6 +1930,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       <BreakoutPanel open={boOpen && phase === 'live' && canModerate} onClose={() => setBoOpen(false)} bo={bo} room={roomN}
         people={list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host || r.peer.cohost }))}
         onSend={(m) => send({ type: 'control', ...m })} onJoin={(n) => goRoom(n === null ? callId : roomId(callId, n))} />
+      <AnimatePresence>
+        {phase === 'live' && poll && (
+          <PollCard key={poll.id} poll={poll} mod={canModerate} onVote={(n) => send({ type: 'vote', id: poll.id, n })} onSend={(m) => send({ type: 'control', ...m })} />
+        )}
+      </AnimatePresence>
+      <PollComposer open={pollCompose && phase === 'live' && canModerate} onClose={() => setPollCompose(false)} onStart={(m) => send({ type: 'control', ...m })} questionsFor={info?.type === 'class' ? room : null} />
       <RoomPicker open={pickOpen && phase === 'live'} onClose={() => setPickOpen(false)} bo={bo} onPick={(n) => send({ type: 'bo-pick', n })} />
       <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} onLowerMyHand={toggleHand} lobby={lobby} lobbyOn={lobbyOn} />
       {/* Microphone, camera and noise suppression */}

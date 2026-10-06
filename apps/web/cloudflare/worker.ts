@@ -712,6 +712,19 @@ const childOf = (id: string | null) => {
   return m && n >= 1 && n <= MAX_ROOMS ? { parent: m[1], n } : null;
 };
 
+/**
+ * A live poll or quick quiz in a call (Stage 4 · 2.7), one at a time, kept while the call lasts.
+ * Votes are per person (changing your answer while it's open replaces it). Names are only kept for
+ * the hosts' view when the poll isn't anonymous.
+ */
+interface CallPoll {
+  id: string; q: string; options: string[]; quiz: boolean; correct: number | null; anon: boolean;
+  by: string; at: number; open: boolean;
+  votes: Record<string, number>;
+  names: Record<string, string>;
+}
+const POLL_Q_CHARS = 200, POLL_OPTION_CHARS = 80, POLL_MAX_OPTIONS = 6, POLL_PUSH_MS = 700;
+
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -731,6 +744,9 @@ export class CallRoom extends DurableObject<Env> {
   /** This room's call id, and when each person last asked the hosts for help (breakout rooms). */
   private self: string | null = null;
   private helped = new Map<string, number>();
+  /** Poll results go out at most every POLL_PUSH_MS while people vote (a class answering at once). */
+  private pollSentAt = 0;
+  private pollTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -779,6 +795,7 @@ export class CallRoom extends DurableObject<Env> {
       lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
       chat: [...(await this.ctx.storage.list<RoomChat>({ prefix: 'chat:', reverse: true, limit: CHAT_KEEP })).values()].reverse().map((l) => chatView(l, me.userId)),
       bo: this.boView(plan.bo, plan.occ, me), room: child?.n ?? null,
+      poll: this.pollView((await this.ctx.storage.get<CallPoll>('poll')) ?? null, me),
     });
     for (const { ws: other } of current) this.send(other, { type: 'joined', peer: me });
     if (mod) this.tellWaiting();
@@ -805,6 +822,59 @@ export class CallRoom extends DurableObject<Env> {
     const out = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok || out.errorCode) throw new Error(String(out.errorDescription ?? `SFU ${res.status}`));
     return out;
+  }
+
+  // ── Live polls and quick quizzes ───────────────────────────────────────────────────────────────
+
+  /**
+   * A poll as one person sees it. Results: hosts always; everyone else once they've answered a poll,
+   * or when it ends. A quiz shows nobody else's answers, nor the right one, until the host ends it.
+   */
+  private pollView(p: CallPoll | null, peer: CallPeer) {
+    if (!p) return null;
+    const mod = peer.host === true || peer.cohost === true;
+    const mine = p.votes[peer.userId] ?? null;
+    const counts = p.options.map((_, i) => Object.values(p.votes).filter((v) => v === i).length);
+    const show = mod || !p.open || (!p.quiz && mine !== null);
+    return {
+      id: p.id, q: p.q, options: p.options, quiz: p.quiz, anon: p.anon, by: p.by, open: p.open,
+      mine, total: Object.keys(p.votes).length, counts: show ? counts : null,
+      correct: p.quiz && (mod || !p.open) ? p.correct : null,
+      ...(mod && !p.anon ? { voters: p.options.map((_, i) => Object.entries(p.votes).filter(([, v]) => v === i).map(([u]) => p.names[u] ?? 'Someone')) } : {}),
+    };
+  }
+
+  /** Everyone sees the poll as it is now (at most every POLL_PUSH_MS unless `now`). */
+  private async pollTell(now = false) {
+    if (!now && Date.now() - this.pollSentAt < POLL_PUSH_MS) {
+      this.pollTimer ??= setTimeout(() => { this.pollTimer = null; void this.pollTell(true); }, POLL_PUSH_MS);
+      return;
+    }
+    this.pollSentAt = Date.now();
+    const p = (await this.ctx.storage.get<CallPoll>('poll')) ?? null;
+    for (const { ws, peer } of this.peers()) this.send(ws, { type: 'poll', poll: this.pollView(p, peer) });
+  }
+
+  /** The host starts a poll or quiz (replacing the last one), ends it, or takes it away. */
+  private async pollControl(me: CallPeer, msg: Record<string, unknown>) {
+    if (msg.action === 'poll-start') {
+      const q = typeof msg.q === 'string' ? msg.q.trim().slice(0, POLL_Q_CHARS) : '';
+      const options = (Array.isArray(msg.options) ? msg.options : []).map((o) => String(o ?? '').trim().slice(0, POLL_OPTION_CHARS)).filter(Boolean).slice(0, POLL_MAX_OPTIONS);
+      if (!q || options.length < 2) return;
+      const quiz = msg.quiz === true;
+      const correct = quiz && Number.isInteger(msg.correct) && (msg.correct as number) >= 0 && (msg.correct as number) < options.length ? (msg.correct as number) : null;
+      if (quiz && correct === null) return;
+      const poll: CallPoll = { id: crypto.randomUUID().slice(0, 8), q, options, quiz, correct, anon: msg.anon !== false, by: me.name, at: Date.now(), open: true, votes: {}, names: {} };
+      await this.ctx.storage.put('poll', poll);
+    } else if (msg.action === 'poll-end') {
+      const poll = await this.ctx.storage.get<CallPoll>('poll');
+      if (!poll?.open) return;
+      poll.open = false;
+      await this.ctx.storage.put('poll', poll);
+    } else if (msg.action === 'poll-clear') {
+      await this.ctx.storage.delete('poll');
+    } else return;
+    await this.pollTell(true);
   }
 
   // ── Breakout rooms ─────────────────────────────────────────────────────────────────────────────
@@ -1150,7 +1220,23 @@ export class CallRoom extends DurableObject<Env> {
         else await this.boControl({ userId: me.userId, name: me.name }, msg as Record<string, unknown>);
         return;
       }
+      if (msg.action.startsWith('poll-')) {
+        if (me.host || me.cohost) await this.pollControl(me, msg as Record<string, unknown>);
+        return;
+      }
       await this.control(ws, me, msg.action, typeof msg.target === 'string' ? msg.target : null, msg.on === true);
+      return;
+    }
+    if (msg.type === 'vote') {
+      // An answer to the open poll (a new answer replaces the last one while it's open).
+      const poll = await this.ctx.storage.get<CallPoll>('poll');
+      const choice = Number(msg.n);
+      if (!poll?.open || poll.id !== msg.id || !Number.isInteger(choice) || choice < 0 || choice >= poll.options.length) return;
+      poll.votes[me.userId] = choice;
+      poll.names[me.userId] = me.name;
+      await this.ctx.storage.put('poll', poll);
+      this.send(ws, { type: 'poll', poll: this.pollView(poll, me) });
+      await this.pollTell();
       return;
     }
     if (msg.type === 'bo-pick') {
@@ -1177,8 +1263,9 @@ export class CallRoom extends DurableObject<Env> {
     }
   }
 
-  /** Forgets the call's own chat (the call is over). */
+  /** Forgets the call's own chat and its poll (the call is over). */
   private async clearChat() {
+    await this.ctx.storage.delete('poll');
     for (;;) {
       const keys = [...(await this.ctx.storage.list({ prefix: 'chat:', limit: 128 })).keys()];
       if (!keys.length) return;
