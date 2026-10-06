@@ -5,6 +5,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { publish } from './realtime';
 import { notify } from './email';
+import { groupAccess, groupPeople } from './spaces';
 
 // Documents (Stage 4 · 3.2). The text is written together live: a Yjs document kept by the same
 // Durable Object as code rooms (cloudflare/worker.ts CodeRoom), in a room named "doc:<id>", so
@@ -26,17 +27,19 @@ async function roomFetch(docId: string, path: string, init?: RequestInit): Promi
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 async function access(docId: string, user: SessionUser) {
-  const doc = await prisma.doc.findUnique({ where: { id: docId }, select: { id: true, title: true, ownerId: true, courseId: true, members: { select: { userId: true, role: true } } } });
+  const doc = await prisma.doc.findUnique({ where: { id: docId }, select: { id: true, title: true, ownerId: true, courseId: true, groupId: true, members: { select: { userId: true, role: true } } } });
   if (!doc) throw new NotFoundException('Document not found.');
   const mine = doc.members.find((m) => m.userId === user.id);
   const course = doc.courseId ? await courseAccess(doc.courseId, user) : null;
+  const group = doc.groupId ? await groupAccess(doc.groupId, user) : null;
   const isOwner = doc.ownerId === user.id;
-  if (!isOwner && !mine && !course && user.role !== 'ADMIN') throw new NotFoundException('Document not found.');
-  return { doc, canEdit: isOwner || mine?.role === 'EDITOR' || !!course, canManage: isOwner || !!course?.canManage };
+  if (!isOwner && !mine && !course && !group && user.role !== 'ADMIN') throw new NotFoundException('Document not found.');
+  return { doc, canEdit: isOwner || mine?.role === 'EDITOR' || !!course || !!group, canManage: isOwner || !!course?.canManage || !!group?.canManage };
 }
 
-async function audience(doc: { ownerId: string; courseId: string | null; members: { userId: string }[] }) {
+async function audience(doc: { ownerId: string; courseId: string | null; groupId?: string | null; members: { userId: string }[] }) {
   const ids = new Set([doc.ownerId, ...doc.members.map((m) => m.userId)]);
+  if (doc.groupId) for (const u of await groupPeople(doc.groupId)) ids.add(u);
   if (doc.courseId) {
     const c = await prisma.course.findUnique({ where: { id: doc.courseId }, select: { teacherId: true, enrollments: { select: { studentId: true }, take: 300 } } });
     if (c?.teacherId) ids.add(c.teacherId);
@@ -49,21 +52,24 @@ export async function listDocs(user: SessionUser) {
   const courses = user.role === 'STUDENT'
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 })).map((e) => e.course)
     : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : { teacherId: user.id }, select: { id: true, code: true, name: true }, take: 100 });
+  const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
   const docs = await prisma.doc.findMany({
-    where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }, ...(courses.length ? [{ courseId: { in: courses.map((c) => c.id) } }] : [])] },
+    where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }, ...(courses.length ? [{ courseId: { in: courses.map((c) => c.id) } }] : []), ...(groups.length ? [{ groupId: { in: groups.map((g) => g.id) } }] : [])] },
     orderBy: { updatedAt: 'desc' }, take: 200,
-    select: { id: true, title: true, preview: true, courseId: true, ownerId: true, updatedAt: true },
+    select: { id: true, title: true, preview: true, courseId: true, groupId: true, ownerId: true, updatedAt: true },
   });
-  const code = new Map(courses.map((c) => [c.id, c.code]));
-  return { courses, docs: docs.map((d) => ({ id: d.id, title: d.title, preview: d.preview, course: d.courseId ? code.get(d.courseId) ?? null : null, mine: d.ownerId === user.id, updatedAt: d.updatedAt })) };
+  const code = new Map([...courses.map((c) => [c.id, c.code] as const), ...groups.map((g) => [g.id, g.name] as const)]);
+  return { courses, groups, docs: docs.map((d) => ({ id: d.id, title: d.title, preview: d.preview, course: d.courseId ? code.get(d.courseId) ?? null : d.groupId ? code.get(d.groupId) ?? null : null, mine: d.ownerId === user.id, updatedAt: d.updatedAt })) };
 }
 
 export async function createDoc(user: SessionUser, body: Record<string, unknown>) {
   const title = clean(body.title, 120) || 'Untitled';
   const courseId = typeof body.courseId === 'string' && body.courseId ? body.courseId : null;
+  const groupId = !courseId && typeof body.groupId === 'string' && body.groupId ? body.groupId : null;
   if (courseId && !(await courseAccess(courseId, user))) throw new NotFoundException('Course not found.');
+  if (groupId && !(await groupAccess(groupId, user))) throw new NotFoundException('Group not found.');
   if ((await prisma.doc.count({ where: { ownerId: user.id } })) >= MAX_DOCS) throw new BadRequestException(`You can have up to ${MAX_DOCS} documents. Delete some first.`);
-  const doc = await prisma.doc.create({ data: { title, ownerId: user.id, courseId } });
+  const doc = await prisma.doc.create({ data: { title, ownerId: user.id, courseId, groupId } });
   return { id: doc.id };
 }
 

@@ -257,6 +257,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
   [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
+  [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
   [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/([^/]+)$/, () => fail('Task boards aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/items\/([^/]+)\/comments$/, () => ok([])],

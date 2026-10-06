@@ -66,6 +66,7 @@ export const PROGRESS_TABS: SectionTab[] = [
 
 /** Whiteboards and shared code editors: one "Collaborate" entry in every portal. */
 export const COLLAB_TABS: SectionTab[] = [
+  { href: '/spaces', label: 'Spaces' },
   { href: '/boards', label: 'Whiteboards' },
   { href: '/docs', label: 'Docs' },
   { href: '/code', label: 'Code together' },

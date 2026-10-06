@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 
 interface Overview {
   courses: { id: string; code: string; name: string }[];
+  groups?: { id: string; name: string }[];
   boards: { id: string; title: string; course: string | null; mine: boolean; tasks: number; updatedAt: string }[];
   mine: { id: string; title: string; dueAt: string | null; boardId: string; board: string; list: string }[];
 }
@@ -37,7 +38,7 @@ export default function TasksPage() {
   const router = useRouter();
   const { data, isLoading } = useSWR<Overview>('/api/tasks', authedJson);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ title: '', courseId: '' });
+  const [form, setForm] = useState({ title: '', courseId: '' }); // courseId holds c:<id> or g:<id>
   const [busy, setBusy] = useState(false);
   const [now] = useState(() => Date.now());
 
@@ -45,7 +46,7 @@ export default function TasksPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      const b = await authedJson<{ id: string }>('/api/tasks', { method: 'POST', body: JSON.stringify(form) });
+      const b = await authedJson<{ id: string }>('/api/tasks', { method: 'POST', body: JSON.stringify({ title: form.title, courseId: form.courseId.startsWith('c:') ? form.courseId.slice(2) : undefined, groupId: form.courseId.startsWith('g:') ? form.courseId.slice(2) : undefined }) });
       router.push(`/tasks/${b.id}`);
     } catch (err) {
       toast.error((err as Error).message);
@@ -71,7 +72,8 @@ export default function TasksPage() {
               <label className="text-sm space-y-1"><span className="text-zinc-600 dark:text-zinc-400">For</span>
                 <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className={field}>
                   <option value="">Me and people I add</option>
-                  {data?.courses.map((c) => <option key={c.id} value={c.id}>Everyone in {c.code} · {c.name}</option>)}
+                  {data?.courses.map((c) => <option key={c.id} value={`c:${c.id}`}>Everyone in {c.code} · {c.name}</option>)}
+                  {data?.groups?.map((g) => <option key={g.id} value={`g:${g.id}`}>Everyone in {g.name}</option>)}
                 </select>
               </label>
               <button type="submit" className="btn-primary" disabled={busy}>{busy && <Loader2 className="w-4 h-4 animate-spin" />} Create</button>

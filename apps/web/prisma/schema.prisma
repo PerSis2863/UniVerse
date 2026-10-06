@@ -2770,6 +2770,7 @@ model TaskBoard {
   title     String
   ownerId   String
   courseId  String? // everyone in the course can see and edit it
+  groupId   String? // or everyone in the study group (Stage 4 · 3.1)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   members   TaskBoardMember[]
@@ -2778,6 +2779,7 @@ model TaskBoard {
 
   @@index([ownerId])
   @@index([courseId])
+  @@index([groupId])
   @@map("task_boards")
 }
 
@@ -2849,6 +2851,7 @@ model Doc {
   title     String
   ownerId   String
   courseId  String? // everyone in the course can open and edit it
+  groupId   String? // or everyone in the study group (Stage 4 · 3.1)
   preview   String? // the start of the text, for lists and search
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -2858,6 +2861,7 @@ model Doc {
 
   @@index([ownerId])
   @@index([courseId])
+  @@index([groupId])
   @@map("docs")
 }
 

@@ -4,6 +4,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
 import { notify } from './email';
+import { groupAccess, groupPeople } from './spaces';
 
 // Task boards (Stage 4 · 3.3): Kanban lists of cards with an assignee, a due date, a checklist,
 // notes and comments. A board is yours and whoever you add (editors or viewers), or a course's:
@@ -19,22 +20,24 @@ const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().sli
 
 /** What I may do on a board. */
 async function access(boardId: string, user: SessionUser) {
-  const board = await prisma.taskBoard.findUnique({ where: { id: boardId }, select: { id: true, title: true, ownerId: true, courseId: true, members: { select: { userId: true, role: true } } } });
+  const board = await prisma.taskBoard.findUnique({ where: { id: boardId }, select: { id: true, title: true, ownerId: true, courseId: true, groupId: true, members: { select: { userId: true, role: true } } } });
   if (!board) throw new NotFoundException('Board not found.');
   const mine = board.members.find((m) => m.userId === user.id);
   let course: Awaited<ReturnType<typeof courseAccess>> = null;
   if (board.courseId) course = await courseAccess(board.courseId, user);
+  const group = board.groupId ? await groupAccess(board.groupId, user) : null;
   const isOwner = board.ownerId === user.id;
-  const canSee = isOwner || !!mine || !!course || user.role === 'ADMIN';
+  const canSee = isOwner || !!mine || !!course || !!group || user.role === 'ADMIN';
   if (!canSee) throw new NotFoundException('Board not found.');
-  const canEdit = isOwner || mine?.role === 'EDITOR' || !!course;
-  const canManage = isOwner || !!course?.canManage;
+  const canEdit = isOwner || mine?.role === 'EDITOR' || !!course || !!group;
+  const canManage = isOwner || !!course?.canManage || !!group?.canManage;
   return { board, canEdit, canManage };
 }
 
 /** The people who see a board: owner, members and (course boards) the course, up to 300. */
-async function audience(board: { ownerId: string; courseId: string | null; members: { userId: string }[] }) {
+async function audience(board: { ownerId: string; courseId: string | null; groupId?: string | null; members: { userId: string }[] }) {
   const ids = new Set([board.ownerId, ...board.members.map((m) => m.userId)]);
+  if (board.groupId) for (const u of await groupPeople(board.groupId)) ids.add(u);
   if (board.courseId) {
     const c = await prisma.course.findUnique({ where: { id: board.courseId }, select: { teacherId: true, enrollments: { select: { studentId: true }, take: 300 } } });
     if (c?.teacherId) ids.add(c.teacherId);
@@ -43,8 +46,8 @@ async function audience(board: { ownerId: string; courseId: string | null; membe
   return [...ids].slice(0, 300);
 }
 
-async function changed(boardId: string, board?: { ownerId: string; courseId: string | null; members: { userId: string }[] }) {
-  const b = board ?? (await prisma.taskBoard.findUnique({ where: { id: boardId }, select: { ownerId: true, courseId: true, members: { select: { userId: true } } } }));
+async function changed(boardId: string, board?: { ownerId: string; courseId: string | null; groupId?: string | null; members: { userId: string }[] }) {
+  const b = board ?? (await prisma.taskBoard.findUnique({ where: { id: boardId }, select: { ownerId: true, courseId: true, groupId: true, members: { select: { userId: true } } } }));
   if (!b) return;
   await prisma.taskBoard.update({ where: { id: boardId }, data: { updatedAt: new Date() } }).catch(() => {});
   publish(await audience(b), { type: 'refresh', keys: [`/api/tasks/${boardId}`, '/api/tasks'] });
@@ -57,21 +60,22 @@ export async function overview(user: SessionUser) {
   const courses = user.role === 'STUDENT'
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 })).map((e) => e.course)
     : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : { teacherId: user.id }, select: { id: true, code: true, name: true }, take: 100 });
+  const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
   const [boards, mine] = await Promise.all([
     prisma.taskBoard.findMany({
-      where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }, ...(courses.length ? [{ courseId: { in: courses.map((c) => c.id) } }] : [])] },
+      where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }, ...(courses.length ? [{ courseId: { in: courses.map((c) => c.id) } }] : []), ...(groups.length ? [{ groupId: { in: groups.map((g) => g.id) } }] : [])] },
       orderBy: { updatedAt: 'desc' }, take: 100,
-      select: { id: true, title: true, courseId: true, ownerId: true, updatedAt: true, _count: { select: { tasks: true } } },
+      select: { id: true, title: true, courseId: true, groupId: true, ownerId: true, updatedAt: true, _count: { select: { tasks: true } } },
     }),
     prisma.task.findMany({
       where: { assigneeId: user.id, doneAt: null }, orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }], take: 200,
       select: { id: true, title: true, dueAt: true, boardId: true, board: { select: { title: true } }, list: { select: { title: true } } },
     }),
   ]);
-  const code = new Map(courses.map((c) => [c.id, c.code]));
+  const code = new Map([...courses.map((c) => [c.id, c.code] as const), ...groups.map((g) => [g.id, g.name] as const)]);
   return {
-    courses,
-    boards: boards.map((b) => ({ id: b.id, title: b.title, course: b.courseId ? code.get(b.courseId) ?? null : null, mine: b.ownerId === user.id, tasks: b._count.tasks, updatedAt: b.updatedAt })),
+    courses, groups,
+    boards: boards.map((b) => ({ id: b.id, title: b.title, course: b.courseId ? code.get(b.courseId) ?? null : b.groupId ? code.get(b.groupId) ?? null : null, mine: b.ownerId === user.id, tasks: b._count.tasks, updatedAt: b.updatedAt })),
     mine: mine.map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt, boardId: t.boardId, board: t.board.title, list: t.list.title })),
   };
 }
@@ -80,9 +84,11 @@ export async function createBoard(user: SessionUser, body: Record<string, unknow
   const title = clean(body.title, 80);
   if (!title) throw new BadRequestException('Give the board a name.');
   const courseId = typeof body.courseId === 'string' && body.courseId ? body.courseId : null;
+  const groupId = !courseId && typeof body.groupId === 'string' && body.groupId ? body.groupId : null;
   if (courseId && !(await courseAccess(courseId, user))) throw new NotFoundException('Course not found.');
+  if (groupId && !(await groupAccess(groupId, user))) throw new NotFoundException('Group not found.');
   if ((await prisma.taskBoard.count({ where: { ownerId: user.id } })) >= MAX_BOARDS) throw new BadRequestException(`You can have up to ${MAX_BOARDS} boards. Delete one first.`);
-  const board = await prisma.taskBoard.create({ data: { title, ownerId: user.id, courseId } });
+  const board = await prisma.taskBoard.create({ data: { title, ownerId: user.id, courseId, groupId } });
   await prisma.taskList.createMany({ data: ['To do', 'Doing', 'Done'].map((t, i) => ({ boardId: board.id, title: t, position: i + 1 })) });
   return { id: board.id };
 }
