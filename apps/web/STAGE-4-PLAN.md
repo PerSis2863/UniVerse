@@ -243,8 +243,8 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 |---|---|---|---|
 | 1 | TURN relay | **Owner task**: create the key, set `TURN_KEY_ID` + `TURN_KEY_API_TOKEN` | `src/server/calls.ts` |
 | 2 | Pre-join screen | **Done** | `CallView.tsx`: phase `'prejoin'`, `MicMeter`, `playTestSound`, `networkGuess`; class/group/room calls only, chat calls skip it |
-| 3 | SFU simulcast | Next | `src/lib/sfu-client.ts`, `CallRoom.sfuOp` |
-| 4 | Audio-only fallback | To do | `CallView.tsx` (quality reading already exists) |
+| 3 | SFU simulcast | **Done** (needs a real-device check) | `sfu-client.ts`: `CAMERA_LAYERS` a/b/c, `pull` with a layer, `prefer`; `worker.ts` `CallRoom.sfuOp` `pull` (falls back to a plain pull) and `layer` → `tracks/update`; `CallView.tsx` `syncSfu` picks the layer, `noteSfuQuality` steps down when poor |
+| 4 | Audio-only fallback | Next | `CallView.tsx` (quality reading already exists) |
 | 5 | Call health log | To do | new `CallStat` model, migration `0049`, owner console chart |
 | 6 | Test matrix | To do | a checklist at the end of this file |
 
@@ -252,3 +252,7 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 - The pre-join gate is in `open()` in `CallView.tsx`: media opens first, then `resumeJoin.current()`
   sets `joinConfirmed` and calls `open()` again for a fresh ticket.
 - The pre-join network hint uses `navigator.connection` (Chrome/Android); Safari shows nothing.
+- Simulcast was written without access to Cloudflare's docs (blocked here). The request shapes are
+  `simulcast: { preferredRid, priorityOrdering: 'asciibetical', ridNotAvailable: 'asciibetical' }` on
+  pull and `PUT /sessions/:id/tracks/update` to change layer. If the SFU rejects them, pulls fall back
+  to the old single-size pull, so calls keep working; check the Worker logs for `SFU 4xx` after deploy.

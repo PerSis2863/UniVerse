@@ -665,6 +665,8 @@ const MAX_SFU_PEERS = 150; // bigger calls through the SFU (the app sets the rea
 const MAX_SIGNAL_BYTES = 64 * 1024;
 const MAX_CAPTION = 300;
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
+/** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
+const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
 
 /**
  * One per call (src/server/calls.ts). Passes WebRTC connection details (offers, answers, network
@@ -811,7 +813,18 @@ export class CallRoom extends DurableObject<Env> {
       const offered = new Map(this.peers().filter(({ peer }) => peer.sfu && peer.peerId !== me.peerId).map(({ peer }) => [peer.sfu!.sessionId, peer.sfu!.tracks]));
       const want = tracks.filter((t) => typeof t.sessionId === 'string' && offered.get(t.sessionId)?.some((o) => o.trackName === t.trackName));
       if (!want.length) return { tracks: [] };
-      return this.sfu(`${session}/tracks/new`, 'POST', { tracks: want.map((t) => ({ location: 'remote', sessionId: t.sessionId, trackName: t.trackName })) });
+      // Cameras are sent in three sizes (simulcast); ask for the one this viewer wants. Should the SFU
+      // refuse that (a camera sent by an older app in one size), pull them plainly.
+      const plain = want.map((t) => ({ location: 'remote', sessionId: t.sessionId, trackName: t.trackName }));
+      const layered = want.map((t, i) => (isLayer(t.rid) ? { ...plain[i], simulcast: { preferredRid: t.rid, priorityOrdering: 'asciibetical', ridNotAvailable: 'asciibetical' } } : plain[i]));
+      if (!layered.some((t) => 'simulcast' in t)) return this.sfu(`${session}/tracks/new`, 'POST', { tracks: plain });
+      return this.sfu(`${session}/tracks/new`, 'POST', { tracks: layered }).catch(() => this.sfu(`${session}/tracks/new`, 'POST', { tracks: plain }));
+    }
+    if (msg.op === 'layer') {
+      // A different camera size for tracks already received.
+      const change = tracks.filter((t) => typeof t.sessionId === 'string' && typeof t.trackName === 'string' && typeof t.mid === 'string' && isLayer(t.rid));
+      if (!change.length) return {};
+      return this.sfu(`${session}/tracks/update`, 'PUT', { tracks: change.map((t) => ({ location: 'remote', sessionId: t.sessionId, trackName: t.trackName, mid: t.mid, simulcast: { preferredRid: t.rid } })) });
     }
     if (msg.op === 'renegotiate' && sdp) return this.sfu(`${session}/renegotiate`, 'PUT', { sessionDescription: { type: 'answer', sdp } });
     if (msg.op === 'close' && Array.isArray(msg.mids)) {

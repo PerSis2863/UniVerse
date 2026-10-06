@@ -9,7 +9,7 @@ import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
-import { SfuLink, kindOf, type MediaKind, type SfuTrack } from '@/lib/sfu-client';
+import { SfuLink, kindOf, type Layer, type MediaKind, type SfuTrack } from '@/lib/sfu-client';
 import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDevice, cleanMic, listDevices, noiseMode, openMedia, setNoiseMode } from '@/lib/call-media';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { spring } from '@/lib/motion';
@@ -73,9 +73,9 @@ async function tuneSenders(pc: RTCPeerConnection) {
   await set(cam?.sender, { maxBitrate: 1_500_000, maxFramerate: 30 }, 'balanced');
   await set(screen?.sender, { maxBitrate: 2_500_000, maxFramerate: 30 }, 'maintain-resolution');
 }
-/** Bigger calls send smaller video: it goes to many people. */
-const cameraConstraints = (sfu: boolean, facingMode: string = 'user'): MediaTrackConstraints =>
-  sfu ? { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 }, facingMode } : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode };
+/** 720p. Bigger calls send it in three sizes (simulcast, src/lib/sfu-client.ts), so each viewer
+ *  receives only what its tile needs. */
+const cameraConstraints = (facingMode: string = 'user'): MediaTrackConstraints => ({ width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }, facingMode });
 const CAPTION_MS = 5000;
 const MAX_REC_MS = 2 * 3600_000;
 const MAX_REC_BYTES = 950 * 1024 * 1024;
@@ -318,6 +318,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [fullscreen, setFullscreen] = useState(false);
   const [talked, setTalked] = useState(false); // someone has connected at least once
   const [sfuQuality, setSfuQuality] = useState<Quality>(null);
+  const sfuQualityRef = useRef<Quality>(null);
   const [cc, setCc] = useState(false);
   const [captions, setCaptions] = useState<Record<string, Caption>>({});
   const [recording, setRecording] = useState(false);
@@ -422,7 +423,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   }, [setR, patch]);
 
   // ── Bigger calls: what to receive from the SFU ─────────────────────────────────────────────
-  /** Everyone's audio; video for a few people (pinned, then screen shares, then cameras). */
+  /** Everyone's audio; video for a few people (pinned, then screen shares, then cameras), each
+   *  camera in the size its tile shows (smaller in a crowd or beside a shared screen, and one step
+   *  down while my connection is poor). */
   const syncSfu = useCallback(() => {
     const link = sfuRef.current;
     if (!link) return;
@@ -431,8 +434,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const slots = window.innerWidth < 640 ? 4 : 6;
     const score = (r: Remote) => (pinned.current === r.peer.peerId ? 4 : 0) + (r.sharing ? 2 : 0);
     const seen = new Set(rs.filter((r) => r.camera).sort((a, b) => score(b) - score(a)).slice(0, slots).map((r) => r.peer.peerId));
+    const size: Layer = rs.some((r) => r.sharing) ? 'c' : seen.size <= (slots === 4 ? 1 : 2) ? 'a' : 'b';
+    const layer: Layer = sfuQualityRef.current !== 'poor' ? size : size === 'a' ? 'b' : 'c';
     // Screens being shared are always received; cameras for the few people on screen.
-    const pull = rs.flatMap((r) => [...tracksOf(r, 'audio'), ...(seen.has(r.peer.peerId) ? tracksOf(r, 'video') : []), ...(r.sharing ? tracksOf(r, 'screen') : [])]);
+    const cams = rs.flatMap((r) => (seen.has(r.peer.peerId) ? tracksOf(r, 'video').map((x) => ({ ...x, layer })) : []));
+    const pull = [...rs.flatMap((r) => [...tracksOf(r, 'audio'), ...(r.sharing ? tracksOf(r, 'screen') : [])]), ...cams];
     const drop = [
       ...rs.filter((r) => !seen.has(r.peer.peerId)).flatMap((r) => tracksOf(r, 'video')),
       ...rs.filter((r) => !r.sharing).flatMap((r) => tracksOf(r, 'screen')),
@@ -459,7 +465,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       return changed ? next : r;
     });
     if (pull.some((p) => !link.isPulled(p.track.trackName))) void link.pull(pull).catch((e) => console.warn('SFU pull failed', e));
+    void link.prefer(cams).catch(() => { /* keeps the size it has */ });
   }, [setR]);
+
+  /** My connection to the SFU; going into or out of "poor" changes the camera sizes I receive. */
+  const noteSfuQuality = useCallback((q: Quality) => {
+    const was = sfuQualityRef.current === 'poor';
+    sfuQualityRef.current = q;
+    setSfuQuality(q);
+    if (was !== (q === 'poor')) syncSfu();
+  }, [syncSfu]);
 
   const onSfuTrack = useCallback((peerId: string, kind: MediaKind, track: MediaStreamTrack) => {
     markTalking();
@@ -676,7 +691,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       let lastQ = 0;
       link.pc.onconnectionstatechange = () => {
         if (link.pc.connectionState === 'failed') link.pc.restartIce();
-        if (Date.now() - lastQ > 1000) { lastQ = Date.now(); setSfuQuality(link.pc.connectionState === 'connected' ? 'good' : link.pc.connectionState === 'failed' ? 'poor' : null); }
+        if (Date.now() - lastQ > 1000) { lastQ = Date.now(); noteSfuQuality(link.pc.connectionState === 'connected' ? 'good' : link.pc.connectionState === 'failed' ? 'poor' : null); }
       };
       try {
         await link.start(you, localRef.current!, true);
@@ -708,7 +723,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       if (!localRef.current) {
         try {
           // Voice calls start with the camera off (it can be turned on during the call).
-          const video = t.kind === 'video' ? cameraConstraints(!!t.sfu) : false;
+          const video = t.kind === 'video' ? cameraConstraints() : false;
           const opened = await openMedia(video, noiseMode());
           if (cancelled) { opened.getTracks().forEach((x) => x.stop()); return; }
           // What's sent: the microphone through noise suppression, and the camera.
@@ -848,7 +863,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const q = setInterval(async () => {
       const link = sfuRef.current;
       if (link) {
-        if (link.pc.connectionState === 'connected') setSfuQuality(await measure(link.pc));
+        if (link.pc.connectionState === 'connected') noteSfuQuality(await measure(link.pc));
         return;
       }
       for (const [id, pc] of pcs.current) {
@@ -858,7 +873,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       }
     }, 4000);
     return () => { clearInterval(t); clearInterval(q); };
-  }, [phase, patch]);
+  }, [phase, patch, noteSfuQuality]);
 
   useEffect(() => {
     const onFs = () => setFullscreen(!!document.fullscreenElement);
@@ -1009,7 +1024,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       setCameraBusy(true);
       try {
         const chosen = chosenDevice('cam');
-        const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(!!infoRef.current?.sfu), ...(chosen ? { deviceId: { ideal: chosen } } : {}) } })).getVideoTracks()[0];
+        const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(), ...(chosen ? { deviceId: { ideal: chosen } } : {}) } })).getVideoTracks()[0];
         setCameraTrack(track);
         await replaceVideo(track);
       } catch {
@@ -1032,7 +1047,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (!current) return;
     const facing = current.getSettings().facingMode === 'environment' ? 'user' : 'environment';
     try {
-      const track = (await navigator.mediaDevices.getUserMedia({ video: cameraConstraints(!!infoRef.current?.sfu, facing) })).getVideoTracks()[0];
+      const track = (await navigator.mediaDevices.getUserMedia({ video: cameraConstraints(facing) })).getVideoTracks()[0];
       await replaceVideo(track);
       setCameraTrack(track);
     } catch { /* only one camera */ }
@@ -1078,7 +1093,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     chooseDevice('cam', id);
     if (!camera) return;
     try {
-      const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(!!infoRef.current?.sfu), deviceId: { exact: id } } })).getVideoTracks()[0];
+      const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(), deviceId: { exact: id } } })).getVideoTracks()[0];
       await replaceVideo(track);
       setCameraTrack(track);
     } catch { toast.error('Couldn’t switch the camera.'); }

@@ -10,14 +10,25 @@ export interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 type Rpc = (op: string, body?: Record<string, unknown>) => Promise<Record<string, unknown>>;
 interface Desc { type: RTCSdpType; sdp: string }
 
-/** Encoding caps for the SFU: everyone's video goes to many people, so keep it lean. */
-const CAMERA_BITRATE = 700_000;
+/**
+ * Simulcast: the camera is sent once in three sizes, and each viewer receives the one that suits
+ * its tile and connection (a: 720p, b: 360p, c: 180p). The encoder drops the top layers by itself
+ * when the sender's upload is weak, and the SFU then falls back to the next one down.
+ */
+export type Layer = 'a' | 'b' | 'c';
+const CAMERA_LAYERS: RTCRtpEncodingParameters[] = [
+  { rid: 'a', maxBitrate: 1_000_000, maxFramerate: 30 },
+  { rid: 'b', scaleResolutionDownBy: 2, maxBitrate: 320_000, maxFramerate: 30 },
+  { rid: 'c', scaleResolutionDownBy: 4, maxBitrate: 110_000, maxFramerate: 15 },
+];
 const SCREEN_BITRATE = 2_500_000;
 
 /** What a track is: a microphone, a camera, or a shared screen (sent beside the camera). */
 export type MediaKind = 'audio' | 'video' | 'screen';
 /** Screens are published as "<peer>-screen" (a video track of their own). */
 export const kindOf = (t: SfuTrack): MediaKind => (t.kind === 'video' && t.trackName.endsWith('-screen') ? 'screen' : t.kind);
+
+export interface PullItem { peerId: string; sessionId: string; track: SfuTrack; layer?: Layer }
 
 export class SfuLink {
   readonly pc: RTCPeerConnection;
@@ -26,6 +37,8 @@ export class SfuLink {
   private byMid = new Map<string, { peerId: string; kind: MediaKind }>();
   /** trackName → mid, for tracks pulled now. */
   private pulled = new Map<string, string>();
+  /** trackName → the camera layer asked for. */
+  private layers = new Map<string, Layer>();
   private senders: Partial<Record<MediaKind, RTCRtpSender>> = {};
   private closed = false;
 
@@ -65,7 +78,7 @@ export class SfuLink {
       const cam = video ? stream.getVideoTracks()[0] ?? null : null;
       const tracks: { tx: RTCRtpTransceiver; kind: MediaKind }[] = [];
       tracks.push({ tx: this.pc.addTransceiver(audio ?? 'audio', { direction: 'sendonly', streams: [stream], sendEncodings: [{ maxBitrate: 64_000 }] }), kind: 'audio' });
-      if (video) tracks.push({ tx: this.pc.addTransceiver(cam ?? 'video', { direction: 'sendonly', streams: [stream], sendEncodings: [{ maxBitrate: CAMERA_BITRATE, maxFramerate: 30 }] }), kind: 'video' });
+      if (video) tracks.push({ tx: this.pc.addTransceiver(cam ?? 'video', { direction: 'sendonly', streams: [stream], sendEncodings: CAMERA_LAYERS.map((e) => ({ ...e })) }), kind: 'video' });
       // A screen share has its own track, so people keep seeing the presenter's camera too.
       tracks.push({ tx: this.pc.addTransceiver('video', { direction: 'sendonly', sendEncodings: [{ maxBitrate: SCREEN_BITRATE, maxFramerate: 30 }] }), kind: 'screen' });
       for (const t of tracks) this.senders[t.kind] = t.tx.sender;
@@ -88,18 +101,32 @@ export class SfuLink {
 
   isPulled(trackName: string) { return this.pulled.has(trackName); }
 
-  /** Starts receiving these people's tracks. */
-  pull(items: { peerId: string; sessionId: string; track: SfuTrack }[]): Promise<void> {
+  /** Starts receiving these people's tracks (cameras in the layer given). */
+  pull(items: PullItem[]): Promise<void> {
     return this.run(async () => {
       const want = items.filter((i) => !this.pulled.has(i.track.trackName));
       if (!want.length || this.closed) return;
-      const out = await this.rpc('pull', { tracks: want.map((i) => ({ sessionId: i.sessionId, trackName: i.track.trackName })) });
+      const layer = (i: PullItem) => (kindOf(i.track) === 'video' ? i.layer ?? 'b' : undefined);
+      const out = await this.rpc('pull', { tracks: want.map((i) => ({ sessionId: i.sessionId, trackName: i.track.trackName, rid: layer(i) })) });
       for (const t of (out.tracks as { mid?: string; trackName?: string; errorCode?: string }[] | undefined) ?? []) {
         const item = want.find((i) => i.track.trackName === t.trackName);
         if (!item || !t.mid || t.errorCode) continue;
         this.byMid.set(t.mid, { peerId: item.peerId, kind: kindOf(item.track) });
         this.pulled.set(item.track.trackName, t.mid);
+        const l = layer(item);
+        if (l) this.layers.set(item.track.trackName, l);
       }
+      await this.settle(out);
+    });
+  }
+
+  /** Changes which camera layer I receive (a tile grew or shrank, or my connection changed). */
+  prefer(items: PullItem[]): Promise<void> {
+    return this.run(async () => {
+      const change = items.filter((i) => i.layer && kindOf(i.track) === 'video' && this.pulled.has(i.track.trackName) && this.layers.get(i.track.trackName) !== i.layer);
+      if (!change.length || this.closed) return;
+      for (const i of change) this.layers.set(i.track.trackName, i.layer!);
+      const out = await this.rpc('layer', { tracks: change.map((i) => ({ sessionId: i.sessionId, trackName: i.track.trackName, mid: this.pulled.get(i.track.trackName), rid: i.layer })) });
       await this.settle(out);
     });
   }
@@ -108,7 +135,7 @@ export class SfuLink {
   drop(trackNames: string[]): Promise<void> {
     return this.run(async () => {
       const mids = trackNames.map((n) => this.pulled.get(n)).filter((m): m is string => !!m);
-      for (const n of trackNames) this.pulled.delete(n);
+      for (const n of trackNames) { this.pulled.delete(n); this.layers.delete(n); }
       if (!mids.length || this.closed) return;
       const out = await this.rpc('close', { mids });
       for (const m of mids) this.byMid.delete(m);
