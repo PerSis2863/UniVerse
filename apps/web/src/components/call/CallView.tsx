@@ -16,6 +16,7 @@ import { PeoplePanel, type ControlAction, type Person } from './PeoplePanel';
 import { FloatingReactions, ReactionBar, type Floating, type Reaction } from './Reactions';
 import { CallChatPanel, useCallChat, type RoomLine } from './CallChat';
 import { BackgroundSheet } from './BackgroundSheet';
+import { BreakoutBar, BreakoutPanel, RoomPicker, roomId, type BreakoutView } from './BreakoutPanel';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ import { cn } from '@/lib/utils';
 interface Ticket {
   kind: 'audio' | 'video'; type: 'chat' | 'group' | 'class'; title: string; oneToOne: boolean; conversationId: string | null; host: boolean; sfu?: boolean; max?: number;
   /** The chat the call's chat panel uses, or null: the call room's own chat (CallChat). */ chatId?: string | null;
+  /** In a breakout room: which (BreakoutPanel). */ breakout?: { parent: string; n: number; name: string } | null;
   path: string; iceServers: RTCIceServer[];
 }
 interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; sfu?: { sessionId: string; tracks: SfuTrack[] } }
@@ -396,6 +398,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [hostHere, setHostHere] = useState(false);
   const [lobby, setLobby] = useState<{ id: string; name: string }[]>([]);
   const [lobbyOn, setLobbyOn] = useState(false);
+  // Breakout rooms (BreakoutPanel): the room I'm in (the call itself, or one of its rooms: my camera,
+  // microphone and screen carry on when I move), the plan, the host's panel and the room picker.
+  const [room, setRoom] = useState(callId);
+  const roomRef = useRef(callId);
+  const moving = useRef(false);
+  const [bo, setBo] = useState<BreakoutView | null>(null);
+  const [boOpen, setBoOpen] = useState(false);
+  const [pickOpen, setPickOpen] = useState(false);
+  const noteSeen = useRef(0);
+  const goRoomRef = useRef<(target: string) => void>(() => {});
   // Whether I can moderate, for the socket handler (set up once): hand-raise toasts are for hosts.
   const modRef = useRef(false);
   // Background blur or a picture (src/lib/call-background.ts): the camera as it comes (raw), and the
@@ -713,7 +725,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     micClean.current?.stop();
     screenRef.current?.stop();
     const i = infoRef.current;
-    if (alone && i?.type === 'chat') {
+    if (alone && i?.type === 'chat' && roomRef.current === callId) {
       const durationSec = talkStart.current ? Math.round((Date.now() - talkStart.current) / 1000) : 0;
       void authedJson(`/api/calls/${callId}/end`, { method: 'POST', body: JSON.stringify({ durationSec, answered: everJoined.current }), keepalive: true }).catch(() => {});
     }
@@ -722,6 +734,28 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (why === 'No answer' && i?.oneToOne && i.conversationId) { setVoicemail('offer'); return; }
     setTimeout(() => onLeave(i?.conversationId ?? null), why ? 1400 : 250);
   }, [callId, onLeave, stopRecording, submitNotes, report]);
+
+  /**
+   * Moves me to another room of this call (a breakout room, or back to the call itself): a new
+   * connection to that room, with the same camera, microphone and screen.
+   */
+  const goRoom = useCallback((target: string) => {
+    if (target === roomRef.current || ended.current) return;
+    moving.current = true;
+    roomRef.current = target;
+    pinned.current = null;
+    inbound.current.clear();
+    setR(() => ({}));
+    setCaptions({});
+    setRoomChat([]);
+    setMyHand(null);
+    setSpotlight(null);
+    setLobby([]);
+    setPickOpen(false);
+    setPhase('starting');
+    setRoom(target);
+  }, [setR, setSpotlight]);
+  useEffect(() => { goRoomRef.current = goRoom; }, [goRoom]);
 
   // A call that couldn't connect while on hold (out of sight) closes itself instead of lingering.
   useEffect(() => {
@@ -789,6 +823,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     let cancelled = false;
     let retry = 0;
     const conns = pcs.current;
+    const waits = rpcWait.current;
     const known = new Map<string, Peer>();
 
     // Signals from one person are handled strictly in order, and ICE candidates that arrive before
@@ -856,8 +891,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       if (cancelled || ended.current) return;
       let t: Ticket;
       try {
-        t = await authedJson<Ticket>(`/api/calls/${callId}/ticket`, { method: 'POST', body: JSON.stringify({ kind: wantKind }) });
+        t = await authedJson<Ticket>(`/api/calls/${room}/ticket`, { method: 'POST', body: JSON.stringify({ kind: wantKind }) });
       } catch (e) {
+        if (room !== callId) {
+          toast.error((e as Error).message || 'Couldn’t join that room.');
+          goRoomRef.current(callId);
+          return;
+        }
         setError((e as Error).message || 'Couldn’t join the call.');
         setPhase('error');
         stat.current.failure = 'ticket';
@@ -922,6 +962,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setLobby(Array.isArray(msg.lobby) ? msg.lobby.map((w: { peerId: string; name: string }) => ({ id: w.peerId, name: w.name })) : []);
           setLobbyOn(msg.lobbyOn === true);
           if (Array.isArray(msg.chat)) setRoomChat(msg.chat);
+          setBo(msg.bo ?? null);
           setPhase('live');
           for (const p of msg.peers as Peer[]) known.set(p.peerId, p);
           myId.current = msg.you;
@@ -1025,17 +1066,26 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           if (who && typeof msg.emoji === 'string') addFloat(msg.emoji, who.peer.name);
         } else if (msg.type === 'spotlight') {
           setSpotlight(typeof msg.peerId === 'string' ? msg.peerId : null);
+        } else if (msg.type === 'breakout') {
+          setBo(msg.bo ?? null);
+        } else if (msg.type === 'bo-help') {
+          // Someone in a breakout room asks the hosts to come (hosts only).
+          const n = Number(msg.n);
+          toast(`${msg.by} in ${msg.room} asks for help`, { icon: '🛟', duration: 20_000, action: { label: 'Join', onClick: () => goRoomRef.current(roomId(callId, n)) } });
         } else if (msg.type === 'declined') {
           toast(`${msg.name || 'They'} declined the call`);
           if (t.oneToOne && pcs.current.size === 0) finish('Declined');
         }
       };
       sock.onclose = (ev) => {
-        if (ws.current === sock) ws.current = null;
+        const current = ws.current === sock;
+        if (current) ws.current = null;
         if (ev.code === 4001) finish('The host removed you from the call');
         if (ev.code === 4003) finish('The host didn’t let you in');
-        for (const w of rpcWait.current.values()) w.reject(new Error('Disconnected'));
-        rpcWait.current.clear();
+        if (current) {
+          for (const w of rpcWait.current.values()) w.reject(new Error('Disconnected'));
+          rpcWait.current.clear();
+        }
         // Small calls already connected keep going browser to browser; reconnect so new people can
         // join. Bigger calls rejoin the SFU on reconnect (a new session).
         if (!cancelled && !ended.current && retry < 6) setTimeout(open, Math.min(15_000, 1000 * 2 ** retry++));
@@ -1048,13 +1098,21 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
 
     return () => {
       window.removeEventListener('pagehide', report);
-      report();
+      // Into another room of this call: same call, so no report, and my media carries on.
+      const switching = moving.current;
+      moving.current = false;
+      if (!switching) report();
       cancelled = true;
-      ws.current?.close(1000);
+      const sock = ws.current;
+      ws.current = null;
+      sock?.close(1000);
+      for (const w of waits.values()) w.reject(new Error('Disconnected'));
+      waits.clear();
       for (const pc of conns.values()) pc.close();
       conns.clear();
       sfuRef.current?.close();
       sfuRef.current = null;
+      if (switching) return;
       localRef.current?.getTracks().forEach((t) => t.stop());
       effectRef.current?.stop();
       rawCam.current?.stop();
@@ -1062,7 +1120,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       micClean.current?.stop();
       screenRef.current?.stop();
     };
-  }, [callId, connectTo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [room, connectTo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const list = Object.values(remotes);
   const waiting = phase === 'live' && list.length === 0;
@@ -1485,17 +1543,50 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const chat = useCallChat({ chatId: phase === 'live' ? info?.chatId ?? null : null, room: roomChat, sendRoom: (m) => send({ type: 'chat', ...m }) });
   const unread = chatOpen ? 0 : chat.lines.filter((l) => !l.mine && !l.note && l.at > chatSeenAt).length;
   /** One side panel at a time: people or chat. */
-  const openPanel = (which: 'people' | 'chat' | null) => {
+  const openPanel = (which: 'people' | 'chat' | 'rooms' | null) => {
     haptic('tap');
     setReactOpen(false);
     setMoreOpen(false);
+    setBoOpen(which === 'rooms');
     setPeopleOpen(which === 'people');
-    if (which === 'chat' || chatOpen) setChatSeenAt(Date.now());
+    // Everything in the chat so far counts as seen.
+    if (which === 'chat' || chatOpen) setChatSeenAt(Math.max(chatSeenAt, ...chat.lines.map((l) => l.at)));
     setChatOpen(which === 'chat');
   };
   // The host's spotlight: that person large, everyone else in the strip (a shared screen comes first).
   const lit: Remote | 'me' | null = presenter || !spotlight ? null : spotlight === myPeerId ? 'me' : list.find((r) => r.peer.peerId === spotlight) ?? null;
   const canModerate = meHost || meCohost;
+  const roomN = room === callId ? null : Number(room.slice(room.lastIndexOf('~b') + 2)) || null;
+  // Breakout rooms: everyone but the hosts goes to their room when the rooms open (or when the host
+  // moves them), and back to the call when the rooms close; hosts go where they like (BreakoutPanel).
+  useEffect(() => {
+    if (phase !== 'live') return;
+    const now = Date.now();
+    const over = !bo || (bo.closing !== null && now >= bo.closing);
+    const target = over ? callId : canModerate ? room : bo.mine ? roomId(callId, bo.mine) : callId;
+    if (target !== room) {
+      if (target === callId) {
+        toast('Back in the main call', { id: 'bo-move', icon: '🚪' });
+        goRoom(callId);
+        return;
+      }
+      toast(`Moving you to ${bo?.rooms.find((r) => r.n === bo.mine)?.name ?? 'your room'}…`, { id: 'bo-move', icon: '🚪' });
+      const t = setTimeout(() => goRoom(target), 1200);
+      return () => clearTimeout(t);
+    }
+    if (bo?.closing && room !== callId) {
+      const t = setTimeout(() => { toast('Back in the main call', { id: 'bo-move', icon: '🚪' }); goRoom(callId); }, Math.max(0, bo.closing - now));
+      return () => clearTimeout(t);
+    }
+  }, [bo, room, callId, canModerate, phase, goRoom]);
+  // A host's message to every room, once each (not one sent before I came).
+  useEffect(() => {
+    const note = bo?.note;
+    if (!note || note.at <= noteSeen.current) return;
+    const old = noteSeen.current === 0 && Date.now() - note.at > 60_000;
+    noteSeen.current = note.at;
+    if (!old) toast(`${note.by}: ${note.text}`, { icon: '📣', duration: 12_000 });
+  }, [bo]);
   const people: Person[] = [
     { id: myPeerId ?? 'me', name: myName, me: true, host: meHost, cohost: meCohost, muted, camera, sharing, hand: myHand, talkMs: talk.me ?? 0 },
     ...list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host, cohost: r.peer.cohost, muted: r.muted, camera: r.camera, sharing: r.sharing, hand: r.hand, talkMs: talk[r.peer.peerId] ?? 0 })),
@@ -1506,13 +1597,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   const canBg = backgroundsSupported();
-  const moreItems: { key: 'cc' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'rooms' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
     ...(canBg ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : 'Record class', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
     ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : 'Class notes', icon: NotebookPen, on: notes }] : []),
+    ...(canModerate && info && !info.oneToOne ? [{ key: 'rooms' as const, label: 'Breakout rooms', icon: DoorOpen, on: !!bo }] : []),
     ...(canPip ? [{ key: 'pip' as const, label: 'Picture in picture', icon: PictureInPicture2 }] : []),
   ];
   const runMore = (key: (typeof moreItems)[number]['key']) => {
@@ -1524,6 +1616,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'flip') void flipCamera();
     else if (key === 'rec') { if (recording) void stopRecording(); else startRecording(); }
     else if (key === 'notes') toggleNotes();
+    else if (key === 'rooms') openPanel('rooms');
     else void pip();
   };
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
@@ -1710,8 +1803,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         )
       )}
 
-      {/* Audio-only fallback */}
-      <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+4.5rem)] z-20 px-3 flex justify-center pointer-events-none">
+      {/* Breakout rooms, and the audio-only fallback */}
+      <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+4.5rem)] z-20 px-3 flex flex-col items-center gap-2 pointer-events-none">
+        {phase === 'live' && (
+          <BreakoutBar bo={bo} room={roomN} mod={canModerate}
+            onHelp={() => { haptic('tap'); send({ type: 'bo-help' }); toast.success('The host knows you’d like help.'); }}
+            onMain={() => goRoom(callId)} onPick={() => { haptic('tap'); setPickOpen(true); }} onManage={() => openPanel('rooms')} />
+        )}
         <AnimatePresence>
           {audioOnly && phase === 'live' && (() => {
             const now = info?.sfu ? sfuQuality : list.some((r) => r.quality === 'poor') ? 'poor' : list.some((r) => r.quality === 'fair') ? 'fair' : list.some((r) => r.quality === 'good') ? 'good' : null;
@@ -1813,6 +1911,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         )}
       </AnimatePresence>
       <CallChatPanel open={chatOpen && phase === 'live'} onClose={() => openPanel(null)} lines={chat.lines} onSend={chat.send} linked={chat.linked} title={info?.title ?? 'the chat'} />
+      <BreakoutPanel open={boOpen && phase === 'live' && canModerate} onClose={() => setBoOpen(false)} bo={bo} room={roomN}
+        people={list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host || r.peer.cohost }))}
+        onSend={(m) => send({ type: 'control', ...m })} onJoin={(n) => goRoom(n === null ? callId : roomId(callId, n))} />
+      <RoomPicker open={pickOpen && phase === 'live'} onClose={() => setPickOpen(false)} bo={bo} onPick={(n) => send({ type: 'bo-pick', n })} />
       <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} onLowerMyHand={toggleHand} lobby={lobby} lobbyOn={lobbyOn} />
       {/* Microphone, camera and noise suppression */}
       <AnimatePresence>

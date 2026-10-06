@@ -18,6 +18,8 @@ import { publishChat } from './realtime';
 //   r_<chat id>    a drop-in voice room in a group or a community voice channel: members join and
 //                  leave any time, nobody is rung (Discord-style). Moderators are its hosts.
 //   l_<random>     a call link (like a FaceTime link): anyone signed in with the link may join.
+//   <call>~b<n>    breakout room n of a call (2.6): the call's host splits it into smaller rooms for
+//                  a while; the call's room keeps who goes where (cloudflare/worker.ts CallRoom).
 // STUN finds a direct route on most networks; strict ones (some campus and office Wi-Fi) need a
 // TURN relay, used when TURN_KEY_ID and TURN_KEY_API_TOKEN (Cloudflare Realtime TURN) are set.
 // Bigger calls: with CALLS_APP_ID and CALLS_APP_SECRET (Cloudflare Realtime SFU, 1,000 GB a month
@@ -55,6 +57,13 @@ async function roomFetch(callId: string, path: string, init?: RequestInit): Prom
 
 export interface CallMeta { kind?: string; inApp?: boolean; url?: string; endedAt?: string; durationSec?: number; answered?: boolean; declinedBy?: string }
 
+/** A breakout room's id → its call and room number (1–20). */
+export function breakoutOf(callId: string) {
+  const m = /^(.+)~b(\d{1,2})$/.exec(callId);
+  const n = m ? Number(m[2]) : 0;
+  return m && n >= 1 && n <= 20 ? { parent: m[1], n } : null;
+}
+
 export interface CallInfo {
   kind: 'audio' | 'video';
   type: 'chat' | 'group' | 'class';
@@ -76,6 +85,14 @@ export interface CallInfo {
 
 export async function callAccess(callId: string, user: SessionUser, wantKind?: unknown): Promise<CallInfo> {
   const kind = wantKind === 'audio' ? 'audio' : 'video';
+  // A breakout room: whoever may join the call (whether this room is theirs is the call room's call,
+  // asked in callTicket). Each room chats in its own room, not in the call's chat.
+  const room = breakoutOf(callId);
+  if (room) {
+    const info = await callAccess(room.parent, user, wantKind);
+    if (info.oneToOne) throw new NotFoundException('Breakout rooms are for group calls.');
+    return { ...info, chatId: null };
+  }
   if (callId.startsWith('g_')) {
     const group = await prisma.group.findUnique({ where: { id: callId.slice(2) }, select: { name: true, createdById: true, members: { where: { userId: user.id }, select: { role: true } } } });
     if (!group || (!group.members.length && user.role !== 'ADMIN')) throw new NotFoundException('This group call isn’t for one of your groups.');
@@ -165,11 +182,26 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
   if (info.ended) throw new HttpException('This call has ended. Start a new one from the chat.', 410);
   const sfu = sfuEnabled() && !info.oneToOne;
   const max = sfu ? planLimits().callPeers : 6;
-  const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host: info.host, max }) });
+  // A breakout room: the call's room says whether it's this person's room (and the room's name);
+  // the call's hosts and co-hosts may visit any room.
+  const room = breakoutOf(callId);
+  let host = info.host, breakout: { parent: string; n: number; name: string } | null = null;
+  if (room) {
+    const pass = await roomFetch(room.parent, '/breakout-pass', { method: 'POST', body: JSON.stringify({ userId: user.id, host: info.host, n: room.n }) });
+    const out = ((await pass?.json().catch(() => null)) ?? {}) as { ok?: boolean; host?: boolean; name?: string; error?: string };
+    if (!pass?.ok || !out.ok) throw new HttpException(out.error === 'removed' ? 'The host removed you from this call.' : out.error || 'This breakout room isn’t available.', pass?.status === 404 ? 410 : 403);
+    host = out.host === true;
+    breakout = { parent: room.parent, n: room.n, name: out.name ?? `Room ${room.n}` };
+  }
+  const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host, max }) });
   if (res?.status === 403) throw new HttpException('The host removed you from this call.', 403);
   if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
   const { ticket } = (await res.json()) as { ticket: string };
-  return { ...info, sfu, max, path: `/call-live?call=${encodeURIComponent(callId)}&ticket=${encodeURIComponent(ticket)}`, iceServers: sfu ? SFU_ICE : await iceServers() };
+  return {
+    ...info, host, sfu, max, breakout,
+    title: breakout ? `${breakout.name} · ${info.title}` : info.title,
+    path: `/call-live?call=${encodeURIComponent(callId)}&ticket=${encodeURIComponent(ticket)}`, iceServers: sfu ? SFU_ICE : await iceServers(),
+  };
 }
 
 /** A new call link (like a FaceTime link): anyone signed in with it may join; its creator hosts. */
@@ -189,7 +221,7 @@ export async function roomPeers(callId: string, user: SessionUser) {
 }
 
 async function chatCall(callId: string, user: SessionUser) {
-  if (/^[gcrl]_/.test(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
+  if (/^[gcrl]_/.test(callId) || breakoutOf(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
   await callAccess(callId, user);
   const msg = await prisma.message.findUnique({ where: { id: callId }, select: { metadata: true, conversationId: true } });
   return { meta: (msg?.metadata ?? {}) as CallMeta, conversationId: msg!.conversationId };

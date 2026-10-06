@@ -683,6 +683,35 @@ const safeFile = (f: unknown): RoomChat['file'] => {
   if (!x || typeof x.url !== 'string' || x.url.length > 600 || !(/^\/api\/files\/[A-Za-z0-9_-]{16,}/.test(x.url) || /^https:\/\/[^/]+\//.test(x.url))) return null;
   return { url: x.url, name: String(x.name ?? 'file').slice(0, 120), size: Math.max(0, Number(x.size) || 0), mime: String(x.mime ?? '').slice(0, 100) };
 };
+/**
+ * Breakout rooms (Stage 4 · 2.6): the host splits the call into smaller rooms for a while. Each room
+ * is a call room of its own, `<call>~b<n>`; the main call's room keeps the plan (who goes where, the
+ * timer) and tells the rooms about changes. People move between rooms in the app, keeping their
+ * camera and microphone. `k` is a short key per person, so hosts can move people without anyone's
+ * account id reaching the app.
+ */
+interface Breakout {
+  id: string;
+  rooms: { n: number; name: string }[];
+  people: { k: string; userId: string; name: string; n: number }[];
+  /** When the rooms close by themselves (the timer), and when everyone goes back (30 s after closing starts). */
+  endsAt: number | null;
+  closing: number | null;
+  /** People pick their own room. */
+  choose: boolean;
+  /** The host's latest message to every room. */
+  note: { text: string; by: string; at: number } | null;
+}
+/** Who is in each room now (the rooms report it): names, and whether a host is there. */
+type Occupancy = Record<number, { names: string[]; hosts: boolean }>;
+const MAX_ROOMS = 20, BO_CLOSE_MS = 30_000, MAX_BO_MINUTES = 120, BO_NOTE_CHARS = 300;
+/** A breakout room's id → the main call and the room's number. */
+const childOf = (id: string | null) => {
+  const m = id ? /^(.+)~b(\d{1,2})$/.exec(id) : null;
+  const n = m ? Number(m[2]) : 0;
+  return m && n >= 1 && n <= MAX_ROOMS ? { parent: m[1], n } : null;
+};
+
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -699,6 +728,9 @@ export class CallRoom extends DurableObject<Env> {
   /** Recent reactions and chat messages per person (burst limits; forgotten when the room sleeps). */
   private reacted = new Map<string, number[]>();
   private chatted = new Map<string, number[]>();
+  /** This room's call id, and when each person last asked the hosts for help (breakout rooms). */
+  private self: string | null = null;
+  private helped = new Map<string, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -734,15 +766,23 @@ export class CallRoom extends DurableObject<Env> {
   private async join(ws: WebSocket, me: CallPeer, lobbyOn: boolean) {
     const current = this.peers().filter((p) => p.ws !== ws);
     const mod = me.host === true || me.cohost === true;
+    // Breakout rooms: the plan, kept here (the main call) or asked from the main call (a room).
+    const child = childOf(await this.selfId());
+    const res = child ? await this.parentFetch('/breakout-state', {}) : null;
+    const plan = child
+      ? ((await res?.json().catch(() => null)) as { bo: Breakout | null; occ: Occupancy } | null) ?? { bo: null, occ: {} }
+      : { bo: await this.boLoad(), occ: await this.occupancy() };
     this.send(ws, {
       type: 'welcome', you: me.peerId, host: me.host === true, cohost: me.cohost === true,
       peers: current.map(({ peer }) => peer),
       spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null,
       lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
       chat: [...(await this.ctx.storage.list<RoomChat>({ prefix: 'chat:', reverse: true, limit: CHAT_KEEP })).values()].reverse().map((l) => chatView(l, me.userId)),
+      bo: this.boView(plan.bo, plan.occ, me), room: child?.n ?? null,
     });
     for (const { ws: other } of current) this.send(other, { type: 'joined', peer: me });
     if (mod) this.tellWaiting();
+    if (child) await this.reportRoom();
   }
 
   private send(ws: WebSocket, msg: unknown) {
@@ -767,8 +807,219 @@ export class CallRoom extends DurableObject<Env> {
     return out;
   }
 
+  // ── Breakout rooms ─────────────────────────────────────────────────────────────────────────────
+
+  /** This room's call id (from the join address; kept, since the room forgets between calls). */
+  private async selfId(): Promise<string | null> {
+    this.self ??= (await this.ctx.storage.get<string>('self')) ?? null;
+    return this.self;
+  }
+
+  private async boLoad() {
+    return (await this.ctx.storage.get<Breakout>('bo')) ?? null;
+  }
+
+  private async occupancy(): Promise<Occupancy> {
+    const out: Occupancy = {};
+    for (const [k, v] of await this.ctx.storage.list<Occupancy[number]>({ prefix: 'bocc:' })) out[Number(k.slice(5))] = v;
+    return out;
+  }
+
+  /** The plan as one person sees it: their own room; hosts also see who goes where and who's in each room. */
+  private boView(bo: Breakout | null, occ: Occupancy, peer: CallPeer) {
+    if (!bo) return null;
+    const mod = peer.host === true || peer.cohost === true;
+    const mine = bo.people.find((p) => p.userId === peer.userId)?.n ?? 0;
+    return {
+      id: bo.id, endsAt: bo.endsAt, closing: bo.closing, choose: bo.choose, note: bo.note, mine: mine || null,
+      rooms: bo.rooms.map((r) => ({ n: r.n, name: r.name, count: occ[r.n]?.names.length ?? 0, ...(mod ? { here: occ[r.n]?.names ?? [] } : {}) })),
+      ...(mod ? { people: bo.people.map(({ k, name, n }) => ({ k, name, n })) } : {}),
+    };
+  }
+
+  /** Tells everyone connected here about the plan (each sees their own view). */
+  private boTell(bo: Breakout | null, occ: Occupancy, onlyMods = false) {
+    for (const { ws, peer } of this.peers()) if (!onlyMods || peer.host || peer.cohost) this.send(ws, { type: 'breakout', bo: this.boView(bo, occ, peer) });
+  }
+
+  /** The main call: sends something to its rooms that have people in them (or only those a host is in). */
+  private async relay(rooms: number[], body: unknown, onlyWithHosts = false) {
+    const self = await this.selfId(), ns = this.env.CALLS;
+    if (!self || !ns) return;
+    const occ = await this.occupancy();
+    const to = rooms.filter((n) => (occ[n]?.names.length ?? 0) > 0 && (!onlyWithHosts || occ[n]?.hosts));
+    await Promise.all(to.map((n) => ns.get(ns.idFromName(`${self}~b${n}`)).fetch('https://call/relay', { method: 'POST', body: JSON.stringify(body) }).catch(() => null)));
+  }
+
+  /** The main call: everyone here and in the rooms hears about a change to the plan. */
+  private async boShare(bo: Breakout) {
+    const occ = await this.occupancy();
+    this.boTell(bo, occ);
+    await this.relay(bo.rooms.map((r) => r.n), { kind: 'state', bo, occ });
+  }
+
+  /** A breakout room: asks the main call's room. */
+  private async parentFetch(path: string, body: unknown): Promise<Response | null> {
+    const child = childOf(await this.selfId()), ns = this.env.CALLS;
+    if (!child || !ns) return null;
+    try { return await ns.get(ns.idFromName(child.parent)).fetch(`https://call${path}`, { method: 'POST', body: JSON.stringify(body) }); } catch { return null; }
+  }
+
+  /** A breakout room: tells the main call who's here now (hosts see it live). */
+  private async reportRoom(except?: WebSocket) {
+    const child = childOf(await this.selfId());
+    if (!child) return;
+    const here = this.peers().filter(({ ws }) => ws !== except);
+    await this.parentFetch('/breakout-occupancy', { n: child.n, names: here.map(({ peer }) => peer.name).slice(0, 60), hosts: here.some(({ peer }) => peer.host || peer.cohost) });
+  }
+
+  /** The rooms close: everyone goes back to the main call. */
+  private async boEnd(bo: Breakout) {
+    await this.ctx.storage.delete(['bo', ...(await this.ctx.storage.list({ prefix: 'bocc:' })).keys()]);
+    await this.ctx.storage.deleteAlarm();
+    this.boTell(null, {});
+    const self = await this.selfId(), ns = this.env.CALLS;
+    if (self && ns) await Promise.all(bo.rooms.map((r) => ns.get(ns.idFromName(`${self}~b${r.n}`)).fetch('https://call/relay', { method: 'POST', body: JSON.stringify({ kind: 'state', bo: null, occ: {} }) }).catch(() => null)));
+  }
+
+  /** The timer runs out (the rooms start closing), and 30 s later everyone goes back. */
+  async alarm() {
+    const bo = await this.boLoad();
+    if (!bo) return;
+    const now = Date.now();
+    if (bo.closing && now >= bo.closing - 250) return this.boEnd(bo);
+    if (bo.endsAt && !bo.closing && now >= bo.endsAt - 250) {
+      bo.closing = now + BO_CLOSE_MS;
+      await this.ctx.storage.put('bo', bo);
+      await this.ctx.storage.setAlarm(bo.closing);
+      return this.boShare(bo);
+    }
+    const next = bo.closing ?? bo.endsAt;
+    if (next) await this.ctx.storage.setAlarm(next);
+  }
+
+  /**
+   * The host's breakout controls, in the main call's room (from a host here, or forwarded by a room a
+   * host is visiting): open the rooms, move someone, message every room, set the timer, close.
+   */
+  private async boControl(actor: { userId: string; name: string }, msg: Record<string, unknown>) {
+    const now = Date.now();
+    let bo = await this.boLoad();
+    const action = msg.action;
+    if (action === 'bo-open') {
+      if (bo) return;
+      const count = Math.max(1, Math.min(MAX_ROOMS, Math.round(Number(msg.rooms) || 0)));
+      const names = Array.isArray(msg.names) ? (msg.names as unknown[]) : [];
+      const rooms = Array.from({ length: count }, (_, i) => {
+        const given = names[i];
+        return { n: i + 1, name: (typeof given === 'string' && given.trim() ? given.trim() : `Room ${i + 1}`).slice(0, 40) };
+      });
+      const assign = (msg.assign && typeof msg.assign === 'object' ? msg.assign : {}) as Record<string, unknown>;
+      const people: Breakout['people'] = [];
+      for (const { peer } of this.peers()) {
+        const n = Math.round(Number(assign[peer.peerId]) || 0);
+        if (n < 1 || n > count || people.some((p) => p.userId === peer.userId)) continue;
+        people.push({ k: crypto.randomUUID().slice(0, 8), userId: peer.userId, name: peer.name, n });
+      }
+      const minutes = Math.max(0, Math.min(MAX_BO_MINUTES, Math.round(Number(msg.minutes) || 0)));
+      bo = { id: crypto.randomUUID().slice(0, 8), rooms, people, endsAt: minutes ? now + minutes * 60_000 : null, closing: null, choose: msg.choose === true, note: null };
+      await this.ctx.storage.put('bo', bo);
+      if (bo.endsAt) await this.ctx.storage.setAlarm(bo.endsAt);
+      return this.boShare(bo);
+    }
+    if (!bo) return;
+    if (action === 'bo-assign') {
+      // Move one person (by their key, or someone in the main call by their peer id); room 0 = the main call.
+      const n = Math.round(Number(msg.n) || 0);
+      if (n < 0 || n > bo.rooms.length) return;
+      let person = typeof msg.k === 'string' ? bo.people.find((p) => p.k === msg.k) : undefined;
+      if (!person && typeof msg.target === 'string') {
+        const peer = this.peers().find(({ peer: p }) => p.peerId === msg.target)?.peer;
+        if (!peer) return;
+        person = bo.people.find((p) => p.userId === peer.userId);
+        if (!person) { person = { k: crypto.randomUUID().slice(0, 8), userId: peer.userId, name: peer.name, n: 0 }; bo.people.push(person); }
+      }
+      if (!person) return;
+      person.n = n;
+    } else if (action === 'bo-note' && typeof msg.text === 'string' && msg.text.trim()) {
+      bo.note = { text: msg.text.trim().slice(0, BO_NOTE_CHARS), by: actor.name, at: now };
+    } else if (action === 'bo-time') {
+      const minutes = Math.max(0, Math.min(MAX_BO_MINUTES, Math.round(Number(msg.minutes) || 0)));
+      bo.endsAt = minutes ? now + minutes * 60_000 : null;
+      if (!bo.closing) {
+        if (bo.endsAt) await this.ctx.storage.setAlarm(bo.endsAt);
+        else await this.ctx.storage.deleteAlarm();
+      }
+    } else if (action === 'bo-close') {
+      if (bo.closing) return;
+      bo.closing = now + BO_CLOSE_MS;
+      await this.ctx.storage.setAlarm(bo.closing);
+    } else if (action === 'bo-end') {
+      return this.boEnd(bo);
+    } else return;
+    await this.ctx.storage.put('bo', bo);
+    await this.boShare(bo);
+  }
+
+  /** Someone picks their own room, when the host lets people choose (0: the main call). */
+  private async boPick(peer: { userId: string; name: string }, n: unknown) {
+    const bo = await this.boLoad();
+    const room = Math.round(Number(n) || 0);
+    if (!bo?.choose || bo.closing || room < 0 || room > bo.rooms.length) return;
+    const person = bo.people.find((p) => p.userId === peer.userId);
+    if (person) person.n = room;
+    else bo.people.push({ k: crypto.randomUUID().slice(0, 8), userId: peer.userId, name: peer.name, n: room });
+    await this.ctx.storage.put('bo', bo);
+    await this.boShare(bo);
+  }
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    // ── Breakout rooms: from the app (/breakout-pass) or between call rooms, never from browsers ──
+    if (url.pathname.startsWith('/breakout-') || url.pathname === '/relay') {
+      if (request.method !== 'POST') return new Response('Not found', { status: 404 });
+      const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+      const bo = await this.boLoad();
+      if (url.pathname === '/breakout-pass') {
+        // May this person join room n? Their own room, any room when people choose, any room for hosts.
+        const userId = typeof body.userId === 'string' ? body.userId : '';
+        const room = bo?.rooms.find((r) => r.n === body.n);
+        if (!bo || !room || !userId) return Response.json({ error: 'These breakout rooms have closed.' }, { status: 404 });
+        if (((await this.ctx.storage.get<{ until: number }>(`removed:${userId}`))?.until ?? 0) > Date.now()) return Response.json({ error: 'removed' }, { status: 403 });
+        const mod = body.host === true || (await this.ctx.storage.get<string>('creator')) === userId || !!(await this.ctx.storage.get(`cohost:${userId}`));
+        if (!mod && !bo.choose && bo.people.find((p) => p.userId === userId)?.n !== room.n) return Response.json({ error: 'This breakout room is for other people.' }, { status: 403 });
+        return Response.json({ ok: true, host: mod, name: room.name });
+      }
+      if (url.pathname === '/breakout-state') return Response.json({ bo, occ: await this.occupancy() });
+      if (url.pathname === '/breakout-host') {
+        // A host's control from a room they're visiting.
+        const actor = body.actor as { userId?: unknown; name?: unknown } | undefined;
+        if (typeof actor?.userId === 'string' && body.msg && typeof body.msg === 'object') await this.boControl({ userId: actor.userId, name: String(actor.name ?? 'The host').slice(0, 80) }, body.msg as Record<string, unknown>);
+      } else if (url.pathname === '/breakout-pick') {
+        if (typeof body.userId === 'string') await this.boPick({ userId: body.userId, name: String(body.name ?? 'Someone').slice(0, 80) }, body.n);
+      } else if (url.pathname === '/breakout-occupancy') {
+        const n = typeof body.n === 'number' ? body.n : 0;
+        if (bo && bo.rooms.some((r) => r.n === n)) {
+          await this.ctx.storage.put(`bocc:${n}`, { names: Array.isArray(body.names) ? body.names.slice(0, 60).map((x) => String(x).slice(0, 80)) : [], hosts: body.hosts === true });
+          // Hosts see who's in each room, live: here, and in any room a host is visiting.
+          const occ = await this.occupancy();
+          this.boTell(bo, occ, true);
+          await this.relay(bo.rooms.map((r) => r.n), { kind: 'state', bo, occ }, true);
+        }
+      } else if (url.pathname === '/breakout-help') {
+        const room = bo?.rooms.find((r) => r.n === body.n);
+        if (bo && room) {
+          const help = { type: 'bo-help', n: room.n, room: room.name, by: String(body.name ?? 'Someone').slice(0, 80) };
+          for (const { ws } of this.mods()) this.send(ws, help);
+          await this.relay(bo.rooms.map((r) => r.n).filter((x) => x !== room.n), { kind: 'help', help }, true);
+        }
+      } else if (url.pathname === '/relay') {
+        // A breakout room, from the main call: the plan changed, or someone in another room asks for help.
+        if (body.kind === 'state') this.boTell((body.bo as Breakout | null) ?? null, (body.occ as Occupancy) ?? {});
+        else if (body.kind === 'help') for (const { ws } of this.mods()) this.send(ws, body.help);
+      }
+      return Response.json({ ok: true });
+    }
     if (url.pathname === '/ticket' && request.method === 'POST') {
       const who = (await request.json()) as Omit<CallTicket, 'exp'>;
       const now = Date.now();
@@ -806,6 +1057,9 @@ export class CallRoom extends DurableObject<Env> {
       return Response.json({ ok: true });
     }
     if (url.pathname === '/call-live') {
+      // This room's call id (breakout rooms need it to find the main call, and the main call its rooms).
+      const callParam = url.searchParams.get('call');
+      if (callParam && !(await this.selfId())) { this.self = callParam; await this.ctx.storage.put('self', callParam); }
       const key = `ticket:${url.searchParams.get('ticket')}`;
       const who = await this.ctx.storage.get<CallTicket>(key);
       if (!who) return new Response('Forbidden', { status: 403 });
@@ -843,7 +1097,7 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     // In the waiting room nothing goes to the call.
     if (!me || me.waiting) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -889,7 +1143,29 @@ export class CallRoom extends DurableObject<Env> {
       return;
     }
     if (msg.type === 'control' && typeof msg.action === 'string') {
+      if (msg.action.startsWith('bo-')) {
+        // Breakout rooms: run by the main call's room (forwarded when the host is visiting a room).
+        if (!me.host && !me.cohost) return;
+        if (childOf(await this.selfId())) await this.parentFetch('/breakout-host', { actor: { userId: me.userId, name: me.name }, msg });
+        else await this.boControl({ userId: me.userId, name: me.name }, msg as Record<string, unknown>);
+        return;
+      }
       await this.control(ws, me, msg.action, typeof msg.target === 'string' ? msg.target : null, msg.on === true);
+      return;
+    }
+    if (msg.type === 'bo-pick') {
+      // Picking my own breakout room, when the host lets people choose.
+      if (childOf(await this.selfId())) await this.parentFetch('/breakout-pick', { userId: me.userId, name: me.name, n: msg.n });
+      else await this.boPick(me, msg.n);
+      return;
+    }
+    if (msg.type === 'bo-help') {
+      // From a breakout room: ask the hosts to come (once every 30 s per person).
+      const child = childOf(await this.selfId());
+      const now = Date.now();
+      if (!child || now - (this.helped.get(me.userId) ?? 0) < 30_000) return;
+      this.helped.set(me.userId, now);
+      await this.parentFetch('/breakout-help', { n: child.n, name: me.name });
       return;
     }
     if (msg.type === 'sfu' && typeof msg.id === 'number') {
@@ -1056,6 +1332,7 @@ export class CallRoom extends DurableObject<Env> {
     }
     const rest = this.peers().filter(({ ws: other }) => other !== ws);
     for (const { ws: other } of rest) this.send(other, { type: 'left', peerId: me.peerId });
+    await this.reportRoom(ws);
     // The last one out: the call's chat goes with the call.
     if (!rest.length) await this.clearChat();
     // The last host left: the waiting room hears nobody can let them in for now.
