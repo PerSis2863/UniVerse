@@ -4,7 +4,7 @@ import { use, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, Code2, FileText, KanbanSquare, Loader2, Plus, Video } from 'lucide-react';
+import { ArrowLeft, Code2, Coffee, FileText, KanbanSquare, Loader2, Plus, Video } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
@@ -65,6 +65,7 @@ export default function SpacePage({ params }: { params: Promise<{ kind: string; 
             <span className="flex-1" />
             <div className="flex -space-x-2">{data.people.slice(0, 6).map((p) => <span key={p.id} className="ring-2 ring-white dark:ring-zinc-900 rounded-full"><Avatar name={p.name} src={p.avatar} size={28} /></span>)}</div>
             <span className="text-xs text-zinc-500">{data.people.length}{data.people.length >= 60 ? '+' : ''} people</span>
+            <button type="button" onClick={() => router.push(`/hall/h${data.callId}`)} className="btn-secondary" title="A map you walk around with your classmates: voices get louder as you get closer"><Coffee className="w-4 h-4" />Study Hall</button>
             <button type="button" onClick={() => router.push(`/call/${data.callId}`)} className="btn-primary"><Video className="w-4 h-4" />{data.kind === 'course' ? 'Class call' : 'Group call'}</button>
           </div>
           <div className="grid md:grid-cols-2 gap-4">

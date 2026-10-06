@@ -659,7 +659,7 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null }
+interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null] }
 interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean }
 /**
  * Guest links (Stage 4 · 2.11): a call link's creator invites people without an account. A guest
@@ -760,6 +760,14 @@ interface Webinar { on: boolean; stage: string[] }
 interface QaItem { id: string; uid: string; name: string | null; text: string; at: number; votes: string[]; answered: boolean; hidden: boolean }
 const WEBINAR_MAX = 300, QA_MAX = 100, QA_CHARS = 300, QA_PUSH_MS = 700, AUDIENCE_PUSH_MS = 2000;
 
+/**
+ * Study Hall (Stage 4 · 4.2): a space's 2D campus, run by the same room as calls (ids hc_<course>,
+ * hg_<group>). Everyone has a place on the map ([x, y, table]); moves go out to the others in small
+ * batches. A focus timer (Pomodoro) runs for the whole hall, and each table has a whiteboard.
+ */
+interface HallTimer { startedAt: number; focus: number; brk: number; by: string }
+const HALL_W = 1200, HALL_H = 800, HALL_TABLES = 12, POS_PUSH_MS = 120;
+
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -792,6 +800,9 @@ export class CallRoom extends DurableObject<Env> {
   private qaTimer: ReturnType<typeof setTimeout> | null = null;
   private audienceSentAt = 0;
   private audienceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Study Hall moves waiting to go out (one small batch every POS_PUSH_MS). */
+  private moves = new Map<string, [number, number, number | null]>();
+  private moveTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -839,6 +850,7 @@ export class CallRoom extends DurableObject<Env> {
       // In a webinar the audience only hears about who's on stage.
       peers: current.filter(({ peer }) => this.canSee(me, peer, w)).map(({ peer }) => publicPeer(peer)),
       webinar: this.webinarView(w), qa: w.on ? this.qaView((await this.ctx.storage.get<QaItem[]>('qa')) ?? [], me) : [],
+      hallTimer: (await this.ctx.storage.get<HallTimer>('hall-timer')) ?? null,
       spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null,
       lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
       // Guests don't see what was said before they came in (2.11).
@@ -1289,6 +1301,19 @@ export class CallRoom extends DurableObject<Env> {
       const audience = w.on && !who.host && !(await this.ctx.storage.get(`cohost:${who.userId}`)) && !w.stage.includes(who.userId);
       return Response.json({ ticket, audience });
     }
+    // From the app (Study Hall, access checked there): the whiteboard of table n; the first one kept.
+    if (url.pathname === '/hall-board') {
+      const n = Number(url.searchParams.get('n'));
+      if (!Number.isInteger(n) || n < 1 || n > HALL_TABLES) return Response.json({ error: 'table' }, { status: 400 });
+      const key = `hall-board:${n}`;
+      if (request.method === 'POST') {
+        const { boardId } = (await request.json()) as { boardId?: string };
+        const had = await this.ctx.storage.get<string>(key);
+        if (!had && typeof boardId === 'string') await this.ctx.storage.put(key, boardId);
+        return Response.json({ boardId: had ?? boardId ?? null });
+      }
+      return Response.json({ boardId: (await this.ctx.storage.get<string>(key)) ?? null });
+    }
     // From the app (the link's creator, checked there): a guest link, or taking one back.
     if (url.pathname === '/guest-link' && request.method === 'POST') {
       const b = (await request.json()) as { by?: string; hours?: number; revoke?: string };
@@ -1386,7 +1411,7 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     // In the waiting room nothing goes to the call.
     if (!me || me.waiting) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; anon?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; anon?: unknown; x?: unknown; y?: unknown; t?: unknown; focus?: unknown; brk?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -1416,6 +1441,35 @@ export class CallRoom extends DurableObject<Env> {
       me.pulse = v;
       ws.serializeAttachment(me);
       this.pulseTell();
+      return;
+    }
+    if (msg.type === 'pos') {
+      // Study Hall: where I am (and at which table), sent on to the others in a batch.
+      const m = msg as { x?: unknown; y?: unknown; t?: unknown };
+      const x = Math.round(Math.max(0, Math.min(HALL_W, Number(m.x) || 0)));
+      const y = Math.round(Math.max(0, Math.min(HALL_H, Number(m.y) || 0)));
+      const t = Number.isInteger(m.t) && (m.t as number) >= 1 && (m.t as number) <= HALL_TABLES ? (m.t as number) : null;
+      me.pos = [x, y, t];
+      ws.serializeAttachment(me);
+      this.moves.set(me.peerId, me.pos);
+      this.moveTimer ??= setTimeout(() => {
+        this.moveTimer = null;
+        const list = [...this.moves].map(([id, p]) => [id, ...p]);
+        this.moves.clear();
+        const text = JSON.stringify({ type: 'pos', list });
+        for (const { ws: other } of this.peers()) try { other.send(text); } catch { /* closing */ }
+      }, POS_PUSH_MS);
+      return;
+    }
+    if (msg.type === 'hall-timer') {
+      // Study Hall: anyone starts or stops the hall's focus timer (minutes of focus, then of break).
+      const m = msg as { on?: unknown; focus?: unknown; brk?: unknown };
+      let timer: HallTimer | null = null;
+      if (m.on === true) {
+        timer = { startedAt: Date.now(), focus: Math.max(5, Math.min(90, Math.round(Number(m.focus) || 25))), brk: Math.max(1, Math.min(30, Math.round(Number(m.brk) || 5))), by: me.name };
+        await this.ctx.storage.put('hall-timer', timer);
+      } else await this.ctx.storage.delete('hall-timer');
+      for (const { ws: p } of this.peers()) this.send(p, { type: 'hall-timer', timer, by: me.name });
       return;
     }
     if (msg.type === 'cc-lang') {

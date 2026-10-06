@@ -21,6 +21,8 @@ import { publishChat } from './realtime';
 //   l_<random>     a call link (like a FaceTime link): anyone signed in with the link may join.
 //   <call>~b<n>    breakout room n of a call (2.6): the call's host splits it into smaller rooms for
 //                  a while; the call's room keeps who goes where (cloudflare/worker.ts CallRoom).
+//   hc_<course id> / hg_<group id>   a class's or study group's Study Hall (4.2): a 2D campus where
+//                  voice gets louder as you walk closer (src/components/hall/HallView.tsx).
 // STUN finds a direct route on most networks; strict ones (some campus and office Wi-Fi) need a
 // TURN relay, used when TURN_KEY_ID and TURN_KEY_API_TOKEN (Cloudflare Realtime TURN) are set.
 // Bigger calls: with CALLS_APP_ID and CALLS_APP_SECRET (Cloudflare Realtime SFU, 1,000 GB a month
@@ -93,6 +95,11 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
     const info = await callAccess(room.parent, user, wantKind);
     if (info.oneToOne) throw new NotFoundException('Breakout rooms are for group calls.');
     return { ...info, chatId: null };
+  }
+  if (/^h[cg]_/.test(callId)) {
+    // A Study Hall: whoever may join the class's or group's call; voice only; chat in the hall itself.
+    const space = await callAccess(`${callId[1]}_${callId.slice(3)}`, user, 'audio');
+    return { ...space, kind: 'audio', title: `Study Hall · ${space.title}`, chatId: null };
   }
   if (callId.startsWith('g_')) {
     const group = await prisma.group.findUnique({ where: { id: callId.slice(2) }, select: { name: true, createdById: true, members: { where: { userId: user.id }, select: { role: true } } } });
@@ -242,6 +249,26 @@ export async function callQuestions(callId: string, user: SessionUser) {
   };
 }
 
+/**
+ * A Study Hall table's whiteboard (4.2): made the first time someone opens it, by them, with "anyone
+ * with the link can edit" (everyone in the hall gets the link). The hall's room remembers it.
+ */
+export async function hallTableBoard(hallId: string, user: SessionUser, n: unknown) {
+  if (!/^h[cg]_/.test(hallId)) throw new BadRequestException('That isn’t a Study Hall.');
+  const table = Number(n);
+  if (!Number.isInteger(table) || table < 1 || table > 12) throw new BadRequestException('That table doesn’t exist.');
+  const info = await callAccess(hallId, user);
+  const known = await roomFetch(hallId, `/hall-board?n=${table}`);
+  const had = ((await known?.json().catch(() => null)) as { boardId?: string | null } | null)?.boardId;
+  if (had && (await prisma.board.findUnique({ where: { id: had }, select: { id: true } }))) return { boardId: had };
+  const board = await prisma.board.create({ data: { title: `Table ${table} · ${info.title}`.slice(0, 120), ownerId: user.id, linkAccess: 'EDIT' }, select: { id: true } });
+  const res = await roomFetch(hallId, `/hall-board?n=${table}`, { method: 'POST', body: JSON.stringify({ boardId: board.id }) });
+  const kept = ((await res?.json().catch(() => null)) as { boardId?: string } | null)?.boardId ?? board.id;
+  // Someone else made it a moment before: theirs is kept.
+  if (kept !== board.id) await prisma.board.delete({ where: { id: board.id } }).catch(() => {});
+  return { boardId: kept };
+}
+
 // ── Guest links (Stage 4 · 2.11) ────────────────────────────────────────────────────────────────
 // A call link's creator invites people without an account: /guest/<call>?g=<token>. Guests give a
 // name, always wait until a host lets them in, never see the call's earlier chat, and the link
@@ -312,7 +339,7 @@ export async function roomPeers(callId: string, user: SessionUser) {
 }
 
 async function chatCall(callId: string, user: SessionUser) {
-  if (/^[gcrl]_/.test(callId) || breakoutOf(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
+  if (/^(h[cg]|[gcrl])_/.test(callId) || breakoutOf(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
   await callAccess(callId, user);
   const msg = await prisma.message.findUnique({ where: { id: callId }, select: { metadata: true, conversationId: true } });
   return { meta: (msg?.metadata ?? {}) as CallMeta, conversationId: msg!.conversationId };
@@ -343,8 +370,8 @@ export async function endCall(callId: string, user: SessionUser, body: Record<st
   return { ok: true };
 }
 
-export type CallKind = 'chat' | 'class' | 'group' | 'room' | 'link';
-const kindOfCall = (id: string): CallKind => (id.startsWith('c_') ? 'class' : id.startsWith('g_') ? 'group' : id.startsWith('r_') ? 'room' : id.startsWith('l_') ? 'link' : 'chat');
+export type CallKind = 'chat' | 'class' | 'group' | 'room' | 'link' | 'hall';
+const kindOfCall = (id: string): CallKind => (/^h[cg]_/.test(id) ? 'hall' : id.startsWith('c_') ? 'class' : id.startsWith('g_') ? 'group' : id.startsWith('r_') ? 'room' : id.startsWith('l_') ? 'link' : 'chat');
 
 /** One call in my history (Calls, Stage 4 · 2.13). */
 export interface CallHistoryRow {
@@ -412,8 +439,9 @@ export async function recentCalls(user: SessionUser): Promise<CallHistoryRow[]> 
 
   // Who else was there (their call logs, breakout rooms included), and names, titles, notes, recordings.
   const ids = [...stays.keys()];
-  const courseIds = ids.filter((i) => i.startsWith('c_')).map((i) => i.slice(2));
-  const groupIds = ids.filter((i) => i.startsWith('g_')).map((i) => i.slice(2));
+  // A Study Hall belongs to its class or group (hc_<course>, hg_<group>).
+  const courseIds = [...new Set(ids.filter((i) => /^h?c_/.test(i)).map((i) => i.slice(i.indexOf('_') + 1)))];
+  const groupIds = [...new Set(ids.filter((i) => /^h?g_/.test(i)).map((i) => i.slice(i.indexOf('_') + 1)))];
   const roomIds = ids.filter((i) => i.startsWith('r_')).map((i) => i.slice(2));
   const [others, notes, recordings, sessions, courses, groups, rooms] = await Promise.all([
     Promise.all(chunks(ids, 40).map((c) => prisma.callStat.findMany({
@@ -463,10 +491,12 @@ export async function recentCalls(user: SessionUser): Promise<CallHistoryRow[]> 
   for (const m of meetings) {
     const type = kindOfCall(m.callId);
     if (type === 'chat') continue;
-    const course = courses.find((c) => `c_${c.id}` === m.callId);
-    const group = groups.find((g) => `g_${g.id}` === m.callId);
+    const space = m.callId.replace(/^h/, '');
+    const course = courses.find((c) => `c_${c.id}` === space);
+    const group = groups.find((g) => `g_${g.id}` === space);
     const voice = rooms.find((x) => `r_${x.id}` === m.callId);
-    const title = course ? `${course.code} · ${course.name}` : group ? group.name : voice ? `${voice.name ?? 'Voice room'}${voice.community ? ` · ${voice.community.name}` : ''}` : type === 'link' ? 'Call link' : 'Call';
+    const base = course ? `${course.code} · ${course.name}` : group ? group.name : voice ? `${voice.name ?? 'Voice room'}${voice.community ? ` · ${voice.community.name}` : ''}` : type === 'link' ? 'Call link' : 'Call';
+    const title = type === 'hall' ? `Study Hall · ${base}` : base;
     rows.push({ key: `${m.callId}@${m.start}`, callId: m.callId, type, at: new Date(m.start), kind: null, title, isGroup: true, durationSec: m.seconds, ...blank, ...extras(m) });
   }
   return rows.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 100);

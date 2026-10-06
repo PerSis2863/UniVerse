@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Clapperboard, GraduationCap, Headphones, Link2, Loader2, NotebookPen, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Users, Video } from 'lucide-react';
+import { Clapperboard, Coffee, GraduationCap, Headphones, Link2, Loader2, NotebookPen, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Users, Video } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { ScheduledCalls } from '@/components/call/ScheduledCalls';
 import { Favorites } from '@/components/call/Favorites';
@@ -22,14 +22,14 @@ import { CallRecordingSheet } from '@/components/call/CallRecordingSheet';
 
 /** One call (src/server/calls.ts recentCalls, Stage 4 · 2.13). */
 interface CallRow {
-  key: string; callId: string; type: 'chat' | 'class' | 'group' | 'room' | 'link'; at: string; kind: 'audio' | 'video' | null;
+  key: string; callId: string; type: 'chat' | 'class' | 'group' | 'room' | 'link' | 'hall'; at: string; kind: 'audio' | 'video' | null;
   title: string; avatar: string | null; isGroup: boolean;
   conversationId: string | null; outgoing: boolean; answered: boolean; declined: boolean; live: boolean; missed: boolean;
   durationSec: number | null; people: string[]; more: number;
   noteId: string | null; recordingId: string | null; study: { courseId: string; sessionId: string } | null;
 }
-const TYPE_LABEL: Record<CallRow['type'], string> = { chat: '', class: 'Class', group: 'Study group', room: 'Voice room', link: 'Call link' };
-const TYPE_ICON = { class: GraduationCap, group: Users, room: Headphones, link: Link2 } as const;
+const TYPE_LABEL: Record<CallRow['type'], string> = { chat: '', class: 'Class', group: 'Study group', room: 'Voice room', link: 'Call link', hall: 'Study Hall' };
+const TYPE_ICON = { class: GraduationCap, group: Users, room: Headphones, link: Link2, hall: Coffee } as const;
 const withWho = (names: string[], more: number) => (names.length ? `With ${names.join(', ')}${more ? ` and ${more} more` : ''}` : '');
 
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
@@ -137,7 +137,7 @@ export default function CallsPage() {
                         ))}
                       </div>
                     ) : (
-                      <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => router.push(`/call/${c.callId}`)} className="shrink-0 px-3.5 py-2 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-500/15">Join again</motion.button>
+                      <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => router.push(c.type === 'hall' ? `/hall/${c.callId}` : `/call/${c.callId}`)} className="shrink-0 px-3.5 py-2 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-500/15">Join again</motion.button>
                     )}
                   </motion.li>
                 );

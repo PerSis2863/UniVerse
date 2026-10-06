@@ -380,6 +380,34 @@ if (process.env.TIMER) {
   g.ws.close();
 }
 
+// ── Study Hall (Stage 4 · 4.2) ──
+{
+  const id = 'hc_course1';
+  const A = await joinRoom(id, ana), B = await joinRoom(id, ben);
+  send(A, { type: 'pos', x: 300, y: 200, t: null });
+  send(A, { type: 'pos', x: 320, y: 210, t: 3 });
+  send(B, { type: 'pos', x: 5000, y: -40, t: 99 });
+  await sleep(300);
+  const batch = B.msgs.filter((m) => m.type === 'pos').flatMap((m) => m.list);
+  check(batch.some((p) => p[0] === A.peerId && p[1] === 320 && p[2] === 210 && p[3] === 3), 'hall: a move reaches the others, with the table');
+  check(A.msgs.filter((m) => m.type === 'pos').length === 1, 'hall: moves go out in batches, not one message each');
+  check(batch.some((p) => p[0] === B.peerId && p[1] === 1200 && p[2] === 0 && p[3] === null), 'hall: places stay on the map; a table that doesn’t exist is none');
+  const C = await joinRoom(id, cai);
+  check(C.welcome?.peers?.find((p) => p.name === 'Ana')?.pos?.join(',') === '320,210,3', 'hall: a newcomer sees where everyone is');
+  send(A, { type: 'hall-timer', on: true, focus: 25, brk: 5 });
+  await sleep(200);
+  const tm = [...C.msgs].reverse().find((m) => m.type === 'hall-timer');
+  check(tm?.timer?.focus === 25 && tm.timer.brk === 5 && tm.by === 'Ana', 'hall: the focus timer starts for everyone');
+  const D = await joinRoom(id, { id: 's9', name: 'Dee' });
+  check(D.welcome?.hallTimer?.focus === 25, 'hall: a newcomer joins the running timer');
+  send(B, { type: 'hall-timer', on: false });
+  await sleep(200);
+  check([...A.msgs].reverse().find((m) => m.type === 'hall-timer')?.timer === null, 'hall: anyone can stop it');
+  const b1 = await (await room(id).fetch('https://call/hall-board?n=2', { method: 'POST', body: JSON.stringify({ boardId: 'board-a' }) })).json();
+  const b2 = await (await room(id).fetch('https://call/hall-board?n=2', { method: 'POST', body: JSON.stringify({ boardId: 'board-b' }) })).json();
+  check(b1.boardId === 'board-a' && b2.boardId === 'board-a', 'hall: a table keeps its first whiteboard');
+}
+
 // An ordinary call (no breakouts) still works as before.
 const X = await joinRoom('l_somecalllink123', { id: 'x1', name: 'Xi' });
 check(X.welcome?.bo === null && X.welcome?.room === null, 'ordinary calls: no breakout state');
