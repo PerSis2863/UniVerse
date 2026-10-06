@@ -1,32 +1,24 @@
 'use client';
-import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
-import { Calendar as CalendarIcon, Clock, Users, ChevronLeft, ChevronRight, Download, X, Plus, Loader2 } from 'lucide-react';
+import { Clock, Download, X, Plus, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
-import { format, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { downloadIcs } from '@/components/dashboard/CourseBoard';
-import { courseColor } from '@/lib/course-color';
 import { CalendarFeedCard } from '@/components/dashboard/CalendarFeedCard';
-import { TabPill } from '@/components/ui/Glide';
+import { TimeGrid, timeRange, type GridEntry } from '@/components/calendar/TimeGrid';
+import { toEntries, type Slot, type CalEvent } from '@/components/calendar/entries';
+import type { ClassData } from '@/components/dashboard/ClassDetailModal';
 
-// Shapes of /timetable/my and /calendar/my, as this page uses them.
-interface Slot { id: string; courseId?: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; course?: { id?: string; name?: string; code?: string; color?: string | null } | null; room?: { name?: string } | null }
-interface CalEvent { id: string; courseId?: string | null; title: string; description?: string | null; startAt: string; endAt: string; type?: string; color?: string | null }
 // True once the page runs in the browser (false while rendering on the server), without an effect.
 const noSubscribe = () => () => {};
 
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function TeacherCalendarPage() {
-  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
-  const [view, setView] = useState('Semester');
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showOfficeModal, setShowOfficeModal] = useState(false);
   const [officeDay, setOfficeDay] = useState('Wednesday');
   const [officeTime, setOfficeTime] = useState('14:00');
@@ -120,118 +112,11 @@ export default function TeacherCalendarPage() {
     }
   };
 
-  const getDurationMins = (start: string, end: string) => {
-    const [h1, m1] = start.split(':').map(Number);
-    const [h2, m2] = end.split(':').map(Number);
-    return (h2 * 60 + m2) - (h1 * 60 + m1);
-  };
-
-  const mappedTimetable = useMemo(() => {
-    return timetableSlots.map(slot => ({
-      day: DAYS[slot.dayOfWeek] || 'Monday',
-      time: slot.startTime,
-      duration: getDurationMins(slot.startTime, slot.endTime).toString(),
-      course: {
-        id: slot.course?.id ?? slot.courseId,
-        name: slot.course?.name || 'Unknown Course',
-        code: slot.course?.code || 'UNK101',
-        color: courseColor(slot.course?.color, slot.course?.code)
-      }
-    }));
-  }, [timetableSlots]);
-
-  const mappedEvents = useMemo(() => {
-    return calendarEvents.map(evt => {
-      const startObj = new Date(evt.startAt);
-      const endObj = new Date(evt.endAt);
-      const durationMins = (endObj.getTime() - startObj.getTime()) / 60000;
-      
-      const hh = startObj.getHours().toString().padStart(2, '0');
-      const mm = startObj.getMinutes().toString().padStart(2, '0');
-
-      return {
-        dateString: startObj.toDateString(),
-        time: `${hh}:${mm}`,
-        duration: durationMins.toString(),
-        course: {
-          id: evt.courseId as string | undefined,
-          name: evt.title,
-          code: evt.type,
-          color: evt.color || '#f97316'
-        },
-        isSpecial: true
-      };
-    });
-  }, [calendarEvents]);
-
-  // Base date is Monday of current week
-  const baseDate = useMemo(() => {
-    const d = new Date();
-    const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1); 
-    return new Date(d.setDate(diff));
-  }, []);
-
-  const generatedDates = useMemo(() => {
-    let daysToGenerate = 70; // Semester (10 weeks)
-    if (view === 'Day') daysToGenerate = 1;
-    if (view === 'Week') daysToGenerate = 5;
-    if (view === 'Month') daysToGenerate = 20;
-
-    const dates = [];
-    const startDate = new Date(baseDate.getTime() + currentWeekOffset * 7 * 24 * 60 * 60 * 1000);
-    
-    const currentDate = new Date(startDate);
-    if (view !== 'Day') {
-      while (currentDate.getDay() !== 1) {
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    } else {
-      if (currentDate.getDay() === 0) currentDate.setDate(currentDate.getDate() + 1);
-      if (currentDate.getDay() === 6) currentDate.setDate(currentDate.getDate() + 2);
-    }
-
-    let count = 0;
-    while (count < daysToGenerate) {
-      const day = currentDate.getDay();
-      if (day >= 1 && day <= 5) { // Mon-Fri
-        dates.push(new Date(currentDate));
-        count++;
-      }
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    return dates;
-  }, [currentWeekOffset, view, baseDate]);
-
-  const getScheduleForDate = (date: Date) => {
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    const dateStr = date.toDateString();
-    
-    const regularClasses = mappedTimetable.filter(s => s.day === dayName);
-    const specificEvents = mappedEvents.filter(e => e.dateString === dateStr);
-    
-    return [...regularClasses, ...specificEvents];
-  };
-
-  const parseTimeToMinutes = (timeStr: string) => {
-    const [h, m] = timeStr.split(':').map(Number);
-    return h * 60 + (m || 0);
-  };
-
-  const currentRangeString = () => {
-    if (generatedDates.length === 0) return '';
-    const start = generatedDates[0];
-    const end = generatedDates[generatedDates.length - 1];
-    
-    const formatOptsShort: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-    const formatOptsFull: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-    
-    if (view === 'Day') {
-      return start.toLocaleDateString('en-US', formatOptsFull);
-    }
-    if (start.getFullYear() === end.getFullYear()) {
-      return `${start.toLocaleDateString('en-US', formatOptsShort)} - ${end.toLocaleDateString('en-US', formatOptsFull)}`;
-    }
-    return `${start.toLocaleDateString('en-US', formatOptsFull)} - ${end.toLocaleDateString('en-US', formatOptsFull)}`;
+  const entries = useMemo(() => toEntries(timetableSlots, calendarEvents), [timetableSlots, calendarEvents]);
+  // A class opens its course on Blackboard; an event without a course shows its details.
+  const openEntry = (e: GridEntry<ClassData>) => {
+    if (e.data.courseId) return router.push(`/teacher/blackboard?course=${e.data.courseId}`);
+    toast(e.title, { description: `${timeRange(e.start, e.end)}${e.location ? ` · ${e.location}` : ''}` });
   };
 
   return (
@@ -246,159 +131,19 @@ export default function TeacherCalendarPage() {
         }
       />
       
-      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
+      <div className="flex-1 p-4 sm:p-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          
-          {/* Header Controls */}
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center gap-4 justify-between w-full xl:w-auto">
-              <button onClick={() => { setCurrentWeekOffset(0); setView('Day'); }} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium transition-colors hidden sm:block">
-                Today
+          <TimeGrid
+            label="Your teaching timetable"
+            entries={entries}
+            loading={loading}
+            onOpen={openEntry}
+            toolbarEnd={
+              <button type="button" onClick={() => setShowOfficeModal(true)} className="btn-secondary w-full sm:w-auto sm:ml-auto">
+                <Plus className="w-4 h-4" /> Office hours
               </button>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-                <button onClick={() => setCurrentWeekOffset(prev => prev - (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
-                  <ChevronLeft className="w-6 h-6 sm:w-5 sm:h-5" />
-                </button>
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="flex items-center gap-2 px-2 sm:px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-900 dark:text-white font-medium transition-colors min-w-[180px] sm:min-w-[220px] justify-center text-sm sm:text-base"
-                  >
-                    <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
-                    {currentRangeString()}
-                  </button>
-                  {showDatePicker && (
-                    <div className="absolute top-full mt-2 left-0 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-xl z-50">
-                      <input 
-                        type="date" 
-                        className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white [color-scheme:dark]"
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const selectedDate = new Date(e.target.value);
-                            const diffTime = selectedDate.getTime() - baseDate.getTime();
-                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                            setCurrentWeekOffset(Math.floor(diffDays / 7));
-                            setShowDatePicker(false);
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => setCurrentWeekOffset(prev => prev + (view === 'Month' ? 4 : (view === 'Semester' ? 8 : 1)))} className="p-3 sm:p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors">
-                  <ChevronRight className="w-6 h-6 sm:w-5 sm:h-5" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-              <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg w-full xl:w-auto justify-between xl:justify-start overflow-x-auto scrollbar-none">
-                <button onClick={() => setView('Day')} className={`relative isolate px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Day' ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>{view === 'Day' && <TabPill id="hboard-teacher-calendar-page-0" />}Day</button>
-                <button onClick={() => setView('Week')} className={`relative isolate px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Week' ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>{view === 'Week' && <TabPill id="hboard-teacher-calendar-page-0" />}Week</button>
-                <button onClick={() => setView('Month')} className={`relative isolate px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Month' ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>{view === 'Month' && <TabPill id="hboard-teacher-calendar-page-0" />}Month</button>
-                <button onClick={() => setView('Semester')} className={`relative isolate px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Semester' ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>{view === 'Semester' && <TabPill id="hboard-teacher-calendar-page-0" />}Semester</button>
-              </div>
-              <div className="hidden xl:block w-px h-8 bg-zinc-200 dark:bg-zinc-700"></div>
-              <button className="w-full xl:w-auto px-4 py-3 sm:py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-lg text-sm font-medium transition-colors" onClick={() => setShowOfficeModal(true)}>
-                <Plus className="w-4 h-4 inline mr-1" /> Office Hours
-              </button>
-            </div>
-          </div>
-
-          {/* Continuous Scroll View */}
-          <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-lg flex [--hour-height:130px] sm:[--hour-height:96px]">
-            {/* Sticky Time Column */}
-            <div className="w-16 sm:w-20 flex-shrink-0 sticky left-0 z-20 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800/50 shadow-[2px_0_10px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
-              <div className="h-16 border-b border-zinc-200 dark:border-zinc-800/50 bg-zinc-50 dark:bg-zinc-900/80"></div>
-              <div className="relative" style={{ height: `calc(${HOURS.length} * var(--hour-height))` }}>
-                {HOURS.map((hour, i) => (
-                  <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/50 flex justify-end pr-1 sm:pr-2 pt-2" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}>
-                    <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-500">
-                      {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Scrollable Days */}
-            <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 pb-2">
-              <div className="flex [--col-width:280px] sm:[--col-width:240px]" style={{ width: `calc(${generatedDates.length} * var(--col-width))` }}>
-                {loading ? (
-                  <div className="w-full h-64 flex items-center justify-center">
-                    <ContentSkeleton variant="list" />
-                  </div>
-                ) : generatedDates.map((date, index) => {
-                  const scheduleForDate = getScheduleForDate(date);
-                  const isToday = isSameDay(date, new Date());
-                  
-                  return (
-                    <div key={index} className="flex-1 w-[var(--col-width)] border-r border-zinc-200 dark:border-zinc-800/50 last:border-r-0">
-                      {/* Day Header */}
-                      <div className={`h-16 border-b border-zinc-200 dark:border-zinc-800/50 flex flex-col items-center justify-center sticky top-0 z-10 ${isToday ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'bg-white dark:bg-zinc-900/80'}`}>
-                        <span className={`text-xs font-semibold uppercase tracking-wider ${isToday ? 'text-indigo-500 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-500'}`}>
-                          {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                        </span>
-                        <span className={`text-xl font-bold ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-800 dark:text-zinc-300'}`}>
-                          {format(date, 'd')}
-                        </span>
-                      </div>
-
-                      {/* Day Content */}
-                      <div className="relative bg-zinc-50/30 dark:bg-zinc-950/20" style={{ height: `calc(${HOURS.length} * var(--hour-height))` }}>
-                        {/* Grid Lines */}
-                        {HOURS.map((hour, i) => (
-                          <div key={hour} className="absolute left-0 right-0 border-t border-zinc-200 dark:border-zinc-800/20 transition-colors" style={{ top: `calc(${i} * var(--hour-height))`, height: 'var(--hour-height)' }}></div>
-                        ))}
-                        
-                        {/* Schedule Blocks */}
-                        {scheduleForDate.map((cls, i) => {
-                          const startMinutes = parseTimeToMinutes(cls.time);
-                          const gridStartMinutes = 8 * 60;
-                          const topOffsetHours = (startMinutes - gridStartMinutes) / 60;
-                          const durationMinutes = parseInt(cls.duration) || 90;
-                          const durationHours = durationMinutes / 60;
-
-                          return (
-                            <div 
-                              key={i}
-                              className="absolute left-1 right-1 rounded-lg p-3 sm:p-4 overflow-hidden shadow-sm transition-transform hover:scale-[1.02] hover:z-10 cursor-pointer"
-                              style={{
-                                top: `calc(${topOffsetHours} * var(--hour-height) + 2px)`,
-                                height: `calc(${durationHours} * var(--hour-height) - 4px)`,
-                                backgroundColor: `${courseColor(cls.course.color, cls.course.code)}20`,
-                                borderLeft: `4px solid ${courseColor(cls.course.color, cls.course.code)}`,
-                                borderTop: `1px solid ${courseColor(cls.course.color, cls.course.code)}40`,
-                                borderRight: `1px solid ${courseColor(cls.course.color, cls.course.code)}40`,
-                                borderBottom: `1px solid ${courseColor(cls.course.color, cls.course.code)}40`,
-                              }}
-                              onClick={() => cls.course.id && router.push(`/teacher/blackboard?course=${cls.course.id}`)}
-                              title={`Open ${cls.course.name} on Blackboard`}
-                            >
-                              <div className="text-xs font-bold mb-1" style={{ color: courseColor(cls.course.color, cls.course.code) }}>
-                                {cls.course.code}
-                              </div>
-                              <div className="text-sm font-medium text-zinc-900 dark:text-white mb-2 leading-tight">
-                                {cls.course.name}
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300 mb-1">
-                                <Clock className="w-3 h-3" />
-                                {cls.time}
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
-                                <Users className="w-3 h-3" />
-                                -- Students
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+            }
+          />
 
           <CalendarFeedCard who="teacher" />
         </div>

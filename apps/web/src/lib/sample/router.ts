@@ -281,7 +281,12 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
   [/^\/impact\/ngo-projects$/, ({ db: d }) => ok(d.ngoProjects)],
   [/^\/impact\/my-level$/, ({ db: d }) => ok({ ...levelInfo(d.xp), userName: d.me.name, levels: LEVELS })],
-  [/^\/impact\/leaderboard$/, ({ db: d }) => ok(d.leaderboard)],
+  // Points earned in the chosen period (week, month, semester); each person's share differs, so the order changes like it would.
+  [/^\/impact\/leaderboard$/, ({ db: d, q }) => {
+    const share = ({ week: [0.05, 0.11, 0.09, 0.14, 0.12, 0.3], month: [0.18, 0.26, 0.22, 0.31, 0.28, 0.6], semester: [0.62, 0.7, 0.58, 0.74, 0.66, 0.9] } as Record<string, number[]>)[q.get('period') ?? ''];
+    if (!share) return ok(d.leaderboard);
+    return ok(d.leaderboard.map((u, i) => ({ ...u, totalPoints: Math.round(u.totalPoints * share[i % share.length]) })).sort((a, b) => b.totalPoints - a.totalPoints));
+  }],
   [/^\/impact\/dashboard\/stats$/, ({ db: d }) => ok({
     userName: d.me.name, totalPoints: d.xp, verifiedHours: Math.floor(d.xp / 10), completedNGOs: 2, grants: 0, activities: d.impactActivities, levelInfo: levelInfo(d.xp),
     sdgBadges: [{ num: 4, name: 'SDG 4 Objective', hours: 50, partner: 'City Learning Trust', status: 'Completed', color: 'from-rose-500 to-red-600' }, { num: 11, name: 'SDG 11 Objective', hours: 80, partner: 'Green Roots NGO', status: 'Completed', color: 'from-amber-500 to-orange-600' }],

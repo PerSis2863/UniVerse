@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { TabPanel, TabPill } from '@/components/ui/Glide';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -218,23 +219,15 @@ function Solutions() {
           {(Object.keys(SOLUTIONS) as (keyof typeof SOLUTIONS)[]).map((k) => {
             const Icon = SOLUTIONS[k].icon;
             return (
-              <button key={k} onClick={() => setTab(k)} className={`relative px-4 sm:px-5 py-2.5 rounded-full text-sm font-bold inline-flex items-center gap-2 transition-colors ${tab === k ? 'text-white' : 'text-zinc-400 hover:text-white'}`}>
-                {tab === k && <motion.span layoutId="solution-pill" className="absolute inset-0 -z-0 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
-                <Icon className="relative w-4 h-4" /><span className="relative">{SOLUTIONS[k].label}</span>
+              <button key={k} type="button" aria-pressed={tab === k} onClick={() => setTab(k)} className={`relative isolate px-4 sm:px-5 py-2.5 rounded-full text-sm font-bold inline-flex items-center gap-2 transition-colors ${tab === k ? 'text-white' : 'text-zinc-400 hover:text-white'}`}>
+                {tab === k && <TabPill id="solution-pill" />}
+                <Icon className="w-4 h-4" /><span>{SOLUTIONS[k].label}</span>
               </button>
             );
           })}
         </div>
       </Reveal>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={tab}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -12 }}
-          transition={{ duration: 0.4, ease: EASE }}
-          className="grid md:grid-cols-2 gap-10 items-center rounded-[2rem] border border-white/[0.07] bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-8 md:p-12"
-        >
+      <TabPanel k={tab} className="grid md:grid-cols-2 gap-10 items-center rounded-[2rem] border border-white/[0.07] bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-8 md:p-12">
           <h3 className="text-2xl md:text-3xl font-black leading-tight">{s.headline}</h3>
           <ul className="space-y-4">
             {s.points.map((p, i) => (
@@ -244,8 +237,7 @@ function Solutions() {
               </motion.li>
             ))}
           </ul>
-        </motion.div>
-      </AnimatePresence>
+      </TabPanel>
     </div>
   );
 }
@@ -287,7 +279,7 @@ export default function ShowcasePage() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0.3]);
 
   useEffect(() => {
-    if (user) router.push(`/${user.role.toLowerCase() || 'student'}`);
+    if (user) router.replace(user.owner ? '/console' : `/${user.role.toLowerCase() || 'student'}`);
   }, [user, router]);
 
   useEffect(() => {
@@ -325,14 +317,14 @@ export default function ShowcasePage() {
       {/* Opened as the installed app (an older install whose start address is still "/"): go to
           the app's start (sign in, or your dashboard) instead of the website's landing page. */}
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
-      <div className="dark min-h-screen overflow-x-clip font-sans scroll-smooth" style={{ backgroundColor: '#0a0d13', color: '#ffffff' }}>
+      <div className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0a0d13', color: '#ffffff' }}>
         {/* scroll progress */}
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500" />
 
         {/* ambient background */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
-          <motion.div animate={{ x: [0, 40, 0], y: [0, -30, 0] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[-20%] left-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full will-change-transform" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.26), transparent)' }} />
-          <motion.div animate={{ x: [0, -40, 0], y: [0, 30, 0] }} transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }} className="absolute bottom-[-25%] right-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full will-change-transform" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.17), transparent)' }} />
+          <div className="mkt-drift-a absolute top-[-20%] left-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.26), transparent)' }} />
+          <div className="mkt-drift-b absolute bottom-[-25%] right-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.17), transparent)' }} />
           <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '64px 64px', maskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)' }} />
         </div>
 
@@ -378,7 +370,7 @@ export default function ShowcasePage() {
                   <span className="relative">Get started free</span>
                   <ArrowRight className="relative w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
-                <a href="#product" className="inline-flex items-center gap-2 h-14 px-8 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold text-sm transition-colors">
+                <a href="#product" className="inline-flex items-center gap-2 h-14 px-8 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.97] text-white font-bold text-sm transition-colors">
                   Explore features
                 </a>
                 <button onClick={handleInstallClick} className="inline-flex items-center gap-2 h-14 px-6 rounded-full text-zinc-300 hover:text-white font-semibold text-sm transition-colors">
@@ -495,7 +487,7 @@ export default function ShowcasePage() {
           <section className="px-6 pb-24">
             <Reveal className="max-w-6xl mx-auto">
               <div className="relative overflow-hidden rounded-[2.5rem] border border-white/[0.08] px-8 py-20 md:py-24 text-center" style={{ background: 'linear-gradient(135deg, #10123a 0%, #1d1049 50%, #0f0c29 100%)' }}>
-                <motion.div aria-hidden animate={{ rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }} className="absolute -top-1/2 left-1/2 -translate-x-1/2 w-[900px] h-[900px] rounded-full opacity-40" style={{ background: 'conic-gradient(from 0deg, transparent, rgba(99,102,241,0.35), transparent 30%, rgba(217,70,239,0.3), transparent 60%)' }} />
+                <div aria-hidden className="mkt-spin absolute -top-1/2 left-1/2 -translate-x-1/2 w-[900px] h-[900px] rounded-full opacity-40" style={{ background: 'conic-gradient(from 0deg, transparent, rgba(99,102,241,0.35), transparent 30%, rgba(217,70,239,0.3), transparent 60%)' }} />
                 <div className="absolute inset-0 bg-[#0a0d13]/40" />
                 <div className="relative">
                   <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/10 text-indigo-200 text-xs font-bold mb-7">
@@ -509,7 +501,7 @@ export default function ShowcasePage() {
                     <Link href="/register" className="group inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-zinc-900 font-bold text-sm hover:scale-[1.03] active:scale-[0.98] transition-transform">
                       Create free account <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </Link>
-                    <a href="mailto:myuniverseimpact@gmail.com?subject=UniVerse%20demo%20request" className="inline-flex items-center gap-2 h-14 px-8 rounded-full border border-white/15 text-white font-bold text-sm hover:bg-white/[0.06] transition-colors">
+                    <a href="mailto:myuniverseimpact@gmail.com?subject=UniVerse%20demo%20request" className="inline-flex items-center gap-2 h-14 px-8 rounded-full border border-white/15 text-white font-bold text-sm hover:bg-white/[0.06] active:scale-[0.97] transition-colors">
                       Book a demo
                     </a>
                   </div>

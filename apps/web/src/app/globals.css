@@ -1000,7 +1000,17 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
   50% { transform: translateY(-8px); }
 }
 .mkt-float { animation: mkt-float 5s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .mkt-float { animation: none; } }
+/* The landing page's slow background glows and the call-to-action's ring: CSS animations run off the
+   main thread, so they never compete with scrolling (they used to be endless framer loops). */
+@keyframes mkt-drift-a { 50% { transform: translate3d(40px, -30px, 0); } }
+@keyframes mkt-drift-b { 50% { transform: translate3d(-40px, 30px, 0); } }
+@keyframes mkt-spin { to { rotate: 360deg; } }
+.mkt-drift-a { animation: mkt-drift-a 18s ease-in-out infinite; will-change: transform; }
+.mkt-drift-b { animation: mkt-drift-b 22s ease-in-out infinite; will-change: transform; }
+.mkt-spin { animation: mkt-spin 40s linear infinite; }
+/* Its in-page links (Product, FAQ…) glide down instead of jumping. */
+@media (prefers-reduced-motion: no-preference) { html:has(.mkt-smooth) { scroll-behavior: smooth; } }
+@media (prefers-reduced-motion: reduce) { .mkt-float, .mkt-drift-a, .mkt-drift-b, .mkt-spin { animation: none; } }
 
 /* ─── Background: UniVerse's two tones ─── */
 /* Indigo light from the top left, fuchsia from the bottom right, and a faint grid, behind every

@@ -31,6 +31,9 @@ export default function TeacherStudents() {
     return matchesSearch && matchesCourse;
   });
 
+  // A student in two of your courses has a row for each (with that course's grade and attendance).
+  const rowKey = (s: { id: string; course?: string; enrollmentId?: string }) => s.enrollmentId ?? `${s.id}:${s.course}`;
+
   const handleAction = (type: 'profile' | 'message' | 'warning', student: any) => {
     setActionMenuOpen(null);
     setActiveModal({ type, student });
@@ -111,7 +114,7 @@ export default function TeacherStudents() {
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
                 {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
+                  <tr key={rowKey(student)} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-zinc-900 dark:text-white font-medium shadow-lg">
@@ -155,10 +158,10 @@ export default function TeacherStudents() {
                       </div>
                     </td>
                     <td className="p-4 text-right relative">
-                      <button onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === student.id ? null : student.id); }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 border border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50">
+                      <button onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === rowKey(student) ? null : rowKey(student)); }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 border border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50">
                         <MoreVertical className="w-4 h-4" />
                       </button>
-                      {actionMenuOpen === student.id && (
+                      {actionMenuOpen === rowKey(student) && (
                         <div className="absolute right-8 top-10 w-48 bg-white dark:bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1 text-left" onClick={e => e.stopPropagation()}>
                           <button onClick={() => handleAction('profile', student)} className="px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">View Profile</button>
                           <button onClick={() => handleAction('message', student)} className="px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Message Student</button>
