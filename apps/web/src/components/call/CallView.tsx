@@ -742,7 +742,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       return;
     }
     const body = JSON.stringify({ transcript: n.lines, durationSec: Math.round((Date.now() - n.start) / 1000), pulse: n.pulse });
-    const t = toast.loading('Making the study pack…');
+    const t = toast.loading(callId.startsWith('c_') ? 'Making the study pack…' : 'Making the meeting notes…');
     try {
       // keepalive: still delivered if the tab is closing (requests that size are allowed it).
       const res = await authedJson<{ message: string }>(`/api/calls/${callId}/companion`, { method: 'POST', body, keepalive: body.length < 60_000 });
@@ -1071,7 +1071,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         } else if (msg.type === 'state') {
           const before = remotesRef.current[msg.from];
           if (msg.recording && before && !before.recording) toast(`${before.peer.name} started recording this class`, { icon: '⏺' });
-          if (msg.notes && before && !before.notes) toast(`${before.peer.name} turned on class notes: what’s said in the class becomes a study pack (summary, notes and flashcards). Only text is kept, never audio.`, { icon: '📝', duration: 8000 });
+          if (msg.notes && before && !before.notes) toast(callId.startsWith('c_')
+            ? `${before.peer.name} turned on class notes: what’s said in the class becomes a study pack (summary, notes and flashcards). Only text is kept, never audio.`
+            : `${before.peer.name} turned on meeting notes: what’s said becomes notes (summary, decisions and action items) for everyone in the call. Only text is kept, never audio.`, { icon: '📝', duration: 8000 });
           patch(msg.from, { muted: msg.muted, camera: msg.camera, sharing: msg.sharing, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true, lowData: msg.lowData === true });
           const pc = pcs.current.get(msg.from);
           if (pc && before && before.lowData !== (msg.lowData === true)) void tuneSenders(pc, msg.lowData !== true);
@@ -1341,9 +1343,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setNotes(true);
     stateRef.current.notes = true;
     announce();
-    toast.success(captionsSupported()
-      ? 'Class notes are on. Everyone sees the Notes badge. When you stop (or leave), the class gets a study pack: summary, notes, key moments, flashcards and a draft quiz for you to check.'
-      : 'Class notes are on, but this browser can’t caption your own voice: your students’ words are still collected. Chrome, Edge or Safari capture everyone.', { duration: 9000 });
+    const cls = callId.startsWith('c_');
+    toast.success(!captionsSupported()
+      ? `${cls ? 'Class' : 'Meeting'} notes are on, but this browser can’t caption your own voice: everyone else’s words are still collected. Chrome, Edge or Safari capture everyone.`
+      : cls
+        ? 'Class notes are on. Everyone sees the Notes badge. When you stop (or leave), the class gets a study pack: summary, notes, key moments, flashcards and a draft quiz for you to check.'
+        : 'Meeting notes are on. Everyone sees the Notes badge. When you stop (or leave), the notes (summary, decisions and action items) are shared where the call happened.', { duration: 9000 });
   };
 
   useEffect(() => {
@@ -1642,7 +1647,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canShare = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
   const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled && kind === 'video' && list.length > 0;
   const canRec = !!info?.host && info.type === 'class' && canRecord();
-  const canNotes = !!info?.host && info.type === 'class';
+  // Notes: the class's teacher (a study pack); whoever runs any other call, or either person in a
+  // one-to-one call (meeting notes, Stage 4 · 2.8), from the main call (not a breakout room).
+  const canNotes = !!info && (info.type === 'class' ? !!info.host : (meHost || meCohost || info.oneToOne) && room === callId);
   const btn = 'w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-colors';
   const status = phase === 'prejoin' ? 'Ready to join?' : phase === 'lobby' ? 'In the waiting room' : phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
   const firstRemoteId = list[0]?.peer.peerId;
@@ -1718,7 +1725,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ...(canBg ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : 'Record class', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
-    ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : 'Class notes', icon: NotebookPen, on: notes }] : []),
+    ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : info?.type === 'class' ? 'Class notes' : 'Meeting notes', icon: NotebookPen, on: notes }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'poll' as const, label: 'Poll or quiz', icon: BarChart3, on: !!poll?.open }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'rooms' as const, label: 'Breakout rooms', icon: DoorOpen, on: !!bo }] : []),
     ...(canPip ? [{ key: 'pip' as const, label: 'Picture in picture', icon: PictureInPicture2 }] : []),
@@ -1774,7 +1781,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 </motion.span>
               )}
               {someoneNotes && (
-                <motion.span key="notes" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={spring.snappy} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-wide bg-amber-500/90 text-amber-950 rounded-full px-2 py-0.5" title="Class notes are on: what’s said becomes a study pack (text only)">
+                <motion.span key="notes" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={spring.snappy} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-wide bg-amber-500/90 text-amber-950 rounded-full px-2 py-0.5" title="Notes are on: what’s said becomes notes or a study pack (text only)">
                   <NotebookPen className="w-3 h-3" />Notes
                 </motion.span>
               )}

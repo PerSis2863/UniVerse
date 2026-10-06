@@ -255,6 +255,7 @@ model User {
   // status. Busy, in class and sleeping are Focus modes: calls don't ring and pushes wait, except
   // from favourites.
   scheduledMessages    ScheduledMessage[] @relation("ScheduledMessages")
+  callNotes            CallNote[]         @relation("CallNotes")
   presence             String            @default("auto")
   statusText           String?
   statusEmoji          String?
@@ -2605,6 +2606,36 @@ model VoiceSession {
 /// "Class notes" in a class call; everyone's captions are collected by the teacher's browser and
 /// sent here once, when notes stop. One AI request makes the pack. The transcript (text only,
 /// never audio) is deleted after 90 days by the daily job; the pack itself stays with the course.
+/// Meeting notes for a call that isn't a class (Stage 4 · 2.8; src/server/meeting-notes.ts): made from
+/// the live captions when someone turns notes on, posted where the call happened.
+model CallNote {
+  id             String   @id @default(cuid())
+  callId         String
+  kind           String // chat | room | group | link
+  conversationId String? // chat calls and voice rooms: the chat the notes were posted to
+  groupId        String? // study group calls
+  messageId      String? // the chat message with the notes
+  createdById    String
+  createdBy      User     @relation("CallNotes", fields: [createdById], references: [id], onDelete: Cascade)
+  title          String
+  startedAt      DateTime
+  durationSec    Int      @default(0)
+  status         String   @default("READY") // READY | PENDING (AI wasn't available; can be made later)
+  summary        String?
+  decisions      String   @default("[]") // JSON string[]
+  actions        String   @default("[]") // JSON [{ text, who, due }]
+  chapters       String   @default("[]") // JSON [{ t, title }]
+  transcript     String? // JSON [{ t, who, text }]; removed after 90 days
+  people         String   @default("[]") // JSON user ids of who was in the call (call links have no members to go by)
+  createdAt      DateTime @default(now())
+
+  @@index([callId])
+  @@index([conversationId])
+  @@index([groupId])
+  @@index([createdById, createdAt])
+  @@map("call_notes")
+}
+
 model ClassSession {
   id                  String   @id @default(cuid())
   courseId            String

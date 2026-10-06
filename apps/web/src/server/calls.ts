@@ -239,6 +239,13 @@ export async function callQuestions(callId: string, user: SessionUser) {
   };
 }
 
+/** Who is in the call now (account ids), and who made it if it's a call link: for meeting notes and recordings. */
+export async function callPeople(callId: string): Promise<{ ids: string[]; creator: string | null }> {
+  const res = await roomFetch(callId, '/people');
+  const out = (await res?.json().catch(() => null)) as { ids?: string[]; creator?: string | null } | null;
+  return { ids: Array.isArray(out?.ids) ? out.ids : [], creator: out?.creator ?? null };
+}
+
 /** Who is in a room call right now (names), for "3 in the room" on voice channels. */
 export async function roomPeers(callId: string, user: SessionUser) {
   await callAccess(callId, user);

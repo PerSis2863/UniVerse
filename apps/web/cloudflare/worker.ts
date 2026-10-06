@@ -1172,6 +1172,11 @@ export class CallRoom extends DurableObject<Env> {
       if (userId && !(await this.ctx.storage.get('creator'))) await this.ctx.storage.put('creator', userId);
       return Response.json({ ok: true });
     }
+    // From the app: who is in the call (account ids) and who made the call link, for meeting notes
+    // (who may see them) and recordings. Never reachable from browsers.
+    if (url.pathname === '/people') {
+      return Response.json({ ids: [...new Set(this.peers().map(({ peer }) => peer.userId))].slice(0, 500), creator: (await this.ctx.storage.get<string>('creator')) ?? null });
+    }
     // From the app: who is in the room (names only), for voice channel lists.
     if (url.pathname === '/peers') {
       const peers = this.peers().map(({ peer }) => peer.name);
@@ -1232,9 +1237,10 @@ export class CallRoom extends DurableObject<Env> {
       return;
     }
     if (msg.type === 'state') {
-      // Only the class's teacher (or an admin) can record or take class notes; everyone sees the
-      // REC and Notes badges.
-      this.others(ws, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording: me.host === true && msg.recording === true, notes: me.host === true && msg.notes === true, lowData: msg.lowData === true });
+      // Whoever records or takes notes says so, and everyone sees the REC and Notes badges. The app
+      // decides who may save a recording or notes (src/server/call-recordings.ts, meeting-notes.ts);
+      // these flags only tell people.
+      this.others(ws, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true, lowData: msg.lowData === true });
       return;
     }
     if (msg.type === 'caption' && typeof msg.text === 'string') {

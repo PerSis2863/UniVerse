@@ -61,6 +61,8 @@ async function enforceRetention() {
   await purgeLostFound(now).catch(() => 0);
   // Class notes transcripts (upgrade 1) after 90 days; the study pack itself stays with the course.
   await prisma.classSession.updateMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) }, transcript: { not: null } }, data: { transcript: null } });
+  // Meeting notes transcripts (Stage 4 · 2.8) after 90 days too; the notes themselves stay.
+  await prisma.callNote.updateMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) }, transcript: { not: null } }, data: { transcript: null } });
   // Voice tutor conversations (kept as text for the owner console) after 90 days.
   await prisma.voiceSession.deleteMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) } } });
   // Disappearing chat messages that have expired (chats hide them already; this removes them).

@@ -13,6 +13,7 @@ import { VideoNoteBubble } from './VideoNote';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes, plainText } from './chat-client';
 import { RichText } from './RichText';
+import { MeetingNotesCard } from '@/components/call/MeetingNotes';
 import { EmojiGlyph, EmojiPicker } from './EmojiPicker';
 import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
@@ -376,6 +377,8 @@ export function MessageBubble(p: Props) {
         )}
       </div>
     );
+  } else if (m.type === 'TEXT' && m.metadata?.meetingNotes) {
+    content = <MeetingNotesCard notes={m.metadata.meetingNotes} mine={mine} />;
   } else {
     const t = p.translation;
     const translated = t?.status === 'done' && !t.same && !!t.text;

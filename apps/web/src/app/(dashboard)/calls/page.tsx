@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import useSWR from 'swr';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/auth';
 import { fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
+import { MeetingNotesSheet } from '@/components/call/MeetingNotes';
 
 interface CallRow {
   id: string; at: string; kind: 'audio' | 'video'; outgoing: boolean; answered: boolean; declined: boolean; durationSec: number | null;
@@ -25,6 +26,14 @@ interface CallRow {
 
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
+
+/** A call's meeting notes opened from a notification (?note=<id>, Stage 4 · 2.8). */
+function NoteFromLink() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const id = params.get('note');
+  return id ? <MeetingNotesSheet id={id} onClose={() => router.replace('/calls')} /> : null;
+}
 
 /** Calls from the last 30 days, like a phone's call log: join live ones, call anyone back. */
 export default function CallsPage() {
@@ -52,6 +61,7 @@ export default function CallsPage() {
   return (
     <>
       <Topbar title="Messages" subtitle="Scheduled calls, and your calls from the last 30 days" />
+      <Suspense fallback={null}><NoteFromLink /></Suspense>
       <MessagesTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-5">

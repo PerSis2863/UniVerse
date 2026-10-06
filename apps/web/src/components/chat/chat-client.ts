@@ -29,6 +29,7 @@ export interface ChatMessage {
     link?: { url: string; title: string; description: string | null; site: string } | null; // link preview
     broadcast?: boolean;
     ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`
+    meetingNotes?: { id: string; title: string; summary: string | null; decisions: string[]; actions: { text: string; who: string; due: string }[]; durationSec?: number }; // a call's meeting notes (Stage 4 · 2.8)
   } | null;
   createdAt: string;
   editedAt: string | null;
