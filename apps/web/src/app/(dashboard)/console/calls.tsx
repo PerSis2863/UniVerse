@@ -47,7 +47,7 @@ export function CallsPanel({ onPerson }: { onPerson: (id: string) => void }) {
           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-semibold text-zinc-900 dark:text-white">The TURN relay is off</p>
-            <p className="text-zinc-600 dark:text-zinc-400">Calls on strict school, office and mobile networks often can’t connect without it. Create a TURN key in Cloudflare → Realtime → TURN (free up to 1,000 GB a month), then set <code className="text-xs">TURN_KEY_ID</code> and <code className="text-xs">TURN_KEY_API_TOKEN</code> in Server.</p>
+            <p className="text-zinc-600 dark:text-zinc-400">Calls on strict school, office and mobile networks often can’t connect without it. Create a TURN key in Cloudflare → Realtime → TURN (free up to 1,000 GB a month), then add <code className="text-xs">TURN_KEY_ID</code> and <code className="text-xs">TURN_KEY_API_TOKEN</code> as secrets in Cloudflare → Workers &amp; Pages → universe-web → Settings → Variables and Secrets. The Server tab shows when the site sees them.</p>
           </div>
         </div>
       )}

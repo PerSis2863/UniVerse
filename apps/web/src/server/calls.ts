@@ -138,7 +138,9 @@ async function iceServers(): Promise<RTCIceServer[]> {
     if (!res.ok) throw new Error(`TURN ${res.status}`);
     const body = (await res.json()) as { iceServers?: RTCIceServer[] | RTCIceServer };
     const turn = Array.isArray(body.iceServers) ? body.iceServers : body.iceServers ? [body.iceServers] : [];
-    return [...stun, ...turn];
+    // Browsers block port 53 (DNS), so those addresses only time out and slow connecting down.
+    const usable = (u: string) => !/:53(\?|$)/.test(u);
+    return [...stun, ...turn.map((s) => ({ ...s, urls: (Array.isArray(s.urls) ? s.urls : [s.urls]).filter(usable) })).filter((s) => s.urls.length)];
   } catch (e) {
     console.error('TURN credentials failed:', e);
     return stun;
