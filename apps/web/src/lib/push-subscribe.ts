@@ -2,6 +2,7 @@
 
 import { api } from './api';
 import { captureError } from './error-monitor';
+import { getAuthToken } from './auth-token';
 
 // Signing this device up for push notifications (src/server/services/push.service.ts), shared by
 // the prompt, Settings and the background check. A wrong build value (on 5 Oct 2026 the key was an
@@ -54,6 +55,9 @@ export async function subscribePush(registration: ServiceWorkerRegistration): Pr
     let sent: string | null = null;
     try { sent = localStorage.getItem(SENT_KEY); } catch { /* storage blocked */ }
     if (sent !== sub.endpoint) {
+      // Not signed in (yet, or any more): the server can't link the device to anyone. It's tried
+      // again on the next visit; not a fault to report.
+      if (!(await getAuthToken())) return 'failed';
       await api.post('/notifications/subscribe', { subscription: sub.toJSON() });
       try { localStorage.setItem(SENT_KEY, sub.endpoint); } catch { /* storage blocked */ }
     }
@@ -62,6 +66,8 @@ export async function subscribePush(registration: ServiceWorkerRegistration): Pr
     const name = (e as Error)?.name;
     // Brave's shields and some privacy settings refuse push even with permission: not our bug.
     if (name === 'NotAllowedError' || name === 'AbortError') return 'blocked';
+    // Signed out while it was signing up (or the session ended): also tried again next visit.
+    if ((e as { status?: number })?.status === 401) return 'failed';
     report((e as Error)?.message || String(e));
     return 'failed';
   }

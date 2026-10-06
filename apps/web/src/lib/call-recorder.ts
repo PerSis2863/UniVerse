@@ -121,7 +121,7 @@ export class CallRecorder {
       this.rec.onstop = () => {
         if (this.timer) clearInterval(this.timer);
         for (const node of this.wired.values()) node.disconnect();
-        void this.ctx.close();
+        if (this.ctx.state !== 'closed') void this.ctx.close().catch(() => {});
         resolve({ blob: new Blob(this.chunks, { type: this.type.split(';')[0] }), durationSec });
       };
       if (this.rec.state === 'inactive') this.rec.onstop(new Event('stop'));

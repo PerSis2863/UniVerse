@@ -32,10 +32,14 @@ function pattern(tones: { freq: number[]; on: number; off: number }, volume: num
     timer = setTimeout(cycle, tones.on + tones.off);
   };
   void ctx.resume().then(cycle).catch(() => {});
+  // Safe to call more than once (the call answered, then the screen closing): closing a closed
+  // AudioContext rejects, which showed up as an error in the owner console.
   return () => {
+    if (stopped) return;
     stopped = true;
     if (timer) clearTimeout(timer);
-    try { oscs.forEach((o) => o.stop()); void ctx?.close(); } catch { /* closed */ }
+    try { oscs.forEach((o) => o.stop()); } catch { /* already stopped */ }
+    void ctx?.close().catch(() => {});
   };
 }
 
