@@ -28,7 +28,12 @@ interface Pack {
   keyMoments: { t: number; text: string }[];
   flashcards: { front: string; back: string }[];
   quiz: { question: string; options: string[]; answer: string }[];
+  /** For the teacher only: what to re-explain, from the classroom pulse (Stage 4 · 4.4). */
+  reexplain: { t: number; topic: string; why: string }[];
 }
+/** Classroom pulse counts over the class (never names): seconds from the start, lost, following, students. */
+export interface PulsePoint { t: number; lost: number; got: number; total: number }
+const MAX_PULSE = 2000;
 
 const SYSTEM = [
   'You turn the transcript of a university class into a study pack for the students who attended (or missed) it.',
@@ -39,6 +44,7 @@ const SYSTEM = [
   'flashcards: 6 to 12 cards, a question or term on the front and a short answer on the back.',
   'quiz: exactly 5 multiple-choice questions, each with 4 options, and answer = the exact text of the correct option. Test understanding, not trivia.',
   'If the transcript is too short or empty of teaching content, return short honest content (e.g. a one-sentence summary) and fewer items.',
+  'reexplain (for the teacher only): when a "Class pulse" is given (how many students tapped "I\'m lost" or "Got it" over time), 0 to 4 topics worth re-explaining next class, where many students were lost: t = the seconds where the confusion started, topic = what to go over again, why = one short sentence on what seemed unclear, from what was being said at that moment. Leave it empty when there is no pulse or no clear confusion.',
 ].join(' ');
 
 const SCHEMA = {
@@ -49,8 +55,9 @@ const SCHEMA = {
     keyMoments: { type: 'ARRAY', items: { type: 'OBJECT', properties: { t: { type: 'NUMBER' }, text: { type: 'STRING' } }, required: ['t', 'text'] } },
     flashcards: { type: 'ARRAY', items: { type: 'OBJECT', properties: { front: { type: 'STRING' }, back: { type: 'STRING' } }, required: ['front', 'back'] } },
     quiz: { type: 'ARRAY', items: { type: 'OBJECT', properties: { question: { type: 'STRING' }, options: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'STRING' } }, required: ['question', 'options', 'answer'] } },
+    reexplain: { type: 'ARRAY', items: { type: 'OBJECT', properties: { t: { type: 'NUMBER' }, topic: { type: 'STRING' }, why: { type: 'STRING' } }, required: ['t', 'topic', 'why'] } },
   },
-  required: ['summary', 'notes', 'keyMoments', 'flashcards', 'quiz'],
+  required: ['summary', 'notes', 'keyMoments', 'flashcards', 'quiz', 'reexplain'],
 };
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
@@ -71,6 +78,28 @@ export function cleanTranscript(raw: unknown): TranscriptLine[] {
     out.push({ t, who, text });
   }
   return out;
+}
+
+/** The pulse the teacher's browser sends with the transcript (counts only), within size limits. */
+export function cleanPulse(raw: unknown): PulsePoint[] {
+  if (!Array.isArray(raw)) return [];
+  const n = (v: unknown, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
+  return raw.slice(0, MAX_PULSE).map((x) => {
+    const p = x as Partial<PulsePoint>;
+    const total = n(p?.total, 5000);
+    return { t: n(p?.t, 6 * 3600), lost: Math.min(n(p?.lost, 5000), total), got: Math.min(n(p?.got, 5000), total), total };
+  }).filter((p) => p.total > 0).sort((a, b) => a.t - b.t);
+}
+
+/** The pulse for the AI: the most students lost in each half minute where anyone was. */
+function pulseText(pulse: PulsePoint[]) {
+  const buckets = new Map<number, PulsePoint>();
+  for (const p of pulse) {
+    const k = Math.floor(p.t / 30) * 30;
+    const b = buckets.get(k);
+    if (!b || p.lost > b.lost) buckets.set(k, { ...p, t: k });
+  }
+  return [...buckets.values()].filter((b) => b.lost > 0).slice(0, 60).map((b) => `${b.t} · ${b.lost} of ${b.total} lost, ${b.got} got it`).join('\n');
 }
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -96,6 +125,9 @@ function cleanPack(raw: Partial<Pack> | null, durationSec: number): Pack | null 
         return { question: str(q?.question, 500), options, answer: options.find((o) => o.toLowerCase() === answer.toLowerCase()) ?? '' };
       })
       .filter((q) => q.question && q.options.length === 4 && q.answer).slice(0, 5),
+    reexplain: (Array.isArray(raw.reexplain) ? raw.reexplain : [])
+      .map((r) => ({ t: Math.max(0, Math.min(durationSec || 6 * 3600, Math.round(Number(r?.t) || 0))), topic: str(r?.topic, 200), why: str(r?.why, 400) }))
+      .filter((r) => r.topic).sort((a, b) => a.t - b.t).slice(0, 4),
   };
 }
 
@@ -107,11 +139,13 @@ async function teacherCourse(courseId: string, user: SessionUser) {
 }
 
 /** One AI request. Returns null when AI isn't available (the session is kept as PENDING to retry). */
-async function makePack(lines: TranscriptLine[], courseName: string, durationSec: number, user: SessionUser): Promise<Pack | null> {
+async function makePack(lines: TranscriptLine[], courseName: string, durationSec: number, user: SessionUser, pulse: PulsePoint[] = []): Promise<Pack | null> {
   if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) return null;
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
-  const prompt = `Course: ${courseName}\nClass length: ${clock(durationSec)}\n\nTranscript (seconds · speaker · words):\n${lines.map((l) => `${l.t} · ${l.who} · ${l.text}`).join('\n')}`;
+  const lost = pulseText(pulse);
+  const prompt = `Course: ${courseName}\nClass length: ${clock(durationSec)}\n\nTranscript (seconds · speaker · words):\n${lines.map((l) => `${l.t} · ${l.who} · ${l.text}`).join('\n')}`
+    + (lost ? `\n\nClass pulse (seconds · students who tapped "I'm lost" / "Got it"; counts only):\n${lost}` : '');
   const raw = await geminiJson<Partial<Pack>>(SYSTEM, prompt, SCHEMA, 4000);
   return cleanPack(raw, durationSec);
 }
@@ -154,9 +188,10 @@ async function tellClass(course: { id: string; code: string }, sessionId: string
 
 const packData = (pack: Pack) => ({
   status: 'READY', summary: pack.summary, notes: JSON.stringify(pack.notes), keyMoments: JSON.stringify(pack.keyMoments), flashcards: JSON.stringify(pack.flashcards),
+  reexplain: JSON.stringify(pack.reexplain),
 });
 
-/** POST /api/calls/c_<course>/companion { transcript: [{ t, who, text }], durationSec }. */
+/** POST /api/calls/c_<course>/companion { transcript: [{ t, who, text }], durationSec, pulse?: [{ t, lost, got, total }] }. */
 export async function createClassSession(callId: string, user: SessionUser, body: Record<string, unknown>) {
   if (!callId.startsWith('c_')) throw new BadRequestException('Class notes are for class calls.');
   const course = await teacherCourse(callId.slice(2), user);
@@ -165,11 +200,12 @@ export async function createClassSession(callId: string, user: SessionUser, body
   const durationSec = Math.max(lines[lines.length - 1].t, Math.min(6 * 3600, Math.round(Number(body.durationSec) || 0)));
   const startedAt = new Date(Date.now() - durationSec * 1000);
 
-  const pack = await makePack(lines, `${course.code} ${course.name}`, durationSec, user);
+  const pulse = cleanPulse(body.pulse);
+  const pack = await makePack(lines, `${course.code} ${course.name}`, durationSec, user, pulse);
   const quizId = pack ? await draftQuiz(course.id, pack, startedAt) : null;
   const session = await prisma.classSession.create({
     data: {
-      courseId: course.id, createdById: user.id, startedAt, durationSec, transcript: JSON.stringify(lines), quizId,
+      courseId: course.id, createdById: user.id, startedAt, durationSec, transcript: JSON.stringify(lines), quizId, pulse: JSON.stringify(pulse),
       recordingMaterialId: await recordingNear(course.id, startedAt),
       ...(pack ? packData(pack) : { status: 'PENDING' }),
     },
@@ -187,7 +223,7 @@ export async function retryClassSession(sessionId: string, user: SessionUser) {
   if (s.status === 'READY') return { id: s.id, status: s.status };
   const lines = cleanTranscript(s.transcript ? JSON.parse(s.transcript) : []);
   if (!lines.length) throw new BadRequestException('This session’s transcript is no longer kept.');
-  const pack = await makePack(lines, `${course.code} ${course.name}`, s.durationSec, user);
+  const pack = await makePack(lines, `${course.code} ${course.name}`, s.durationSec, user, cleanPulse(JSON.parse(s.pulse || '[]')));
   if (!pack) throw new HttpException('AI isn’t available right now. Please try again later.', 503);
   const quizId = s.quizId ?? (await draftQuiz(course.id, pack, s.startedAt));
   await prisma.classSession.update({ where: { id: s.id }, data: { ...packData(pack), quizId } });
@@ -225,7 +261,7 @@ export async function sessionsForBoard(courseId: string, canManage: boolean) {
   const rows = await prisma.classSession.findMany({
     where: { courseId, ...(canManage ? {} : { status: 'READY' }) },
     orderBy: { startedAt: 'desc' }, take: 20,
-    select: { id: true, startedAt: true, durationSec: true, status: true, summary: true, notes: true, keyMoments: true, flashcards: true, quizId: true, recordingMaterialId: true },
+    select: { id: true, startedAt: true, durationSec: true, status: true, summary: true, notes: true, keyMoments: true, flashcards: true, quizId: true, recordingMaterialId: true, pulse: true, reexplain: true },
   });
   const parse = <T,>(v: string): T[] => { try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch { return []; } };
   const quizIds = rows.map((r) => r.quizId).filter((x): x is string => !!x);
@@ -235,7 +271,11 @@ export async function sessionsForBoard(courseId: string, canManage: boolean) {
     const status = r.quizId ? quizStatus.get(r.quizId) ?? null : null;
     // Students only learn about the quiz once the teacher has published it.
     const quiz = r.quizId && status && (canManage || status !== 'DRAFT') ? { id: r.quizId, status } : null;
-    return { ...r, quizId: undefined, quiz, notes: parse<string>(r.notes), keyMoments: parse<{ t: number; text: string }>(r.keyMoments), flashcards: parse<{ front: string; back: string }>(r.flashcards) };
+    return {
+      ...r, quizId: undefined, quiz, notes: parse<string>(r.notes), keyMoments: parse<{ t: number; text: string }>(r.keyMoments), flashcards: parse<{ front: string; back: string }>(r.flashcards),
+      // The classroom pulse and what to re-explain are for the teacher only.
+      pulse: canManage ? parse<PulsePoint>(r.pulse) : [], reexplain: canManage ? parse<Pack['reexplain'][number]>(r.reexplain) : [],
+    };
   });
 }
 

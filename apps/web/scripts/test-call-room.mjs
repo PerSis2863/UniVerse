@@ -261,6 +261,30 @@ if (process.env.TIMER) {
   check(Fr1.msgs.filter((m) => m.type === 'cc-do').length === 1, 'captions: when the device reader turns captions off, another reader takes over');
 }
 
+// ── Classroom pulse (Stage 4 · 4.4) ──
+{
+  const Tq = await joinRoom('c_pulse', teacher, true), Aq = await joinRoom('c_pulse', ana), Bq = await joinRoom('c_pulse', ben), Cq = await joinRoom('c_pulse', cai);
+  const last = (p) => [...p.msgs].reverse().find((m) => m.type === 'pulse');
+  check(Tq.welcome?.pulse?.total === 0 && Aq.welcome?.pulse === null, 'pulse: the host gets counts on joining, students don’t');
+  send(Aq, { type: 'pulse', v: 'lost' });
+  send(Bq, { type: 'pulse', v: 'lost' });
+  send(Cq, { type: 'pulse', v: 'got' });
+  await sleep(1100);
+  const p1 = last(Tq);
+  check(p1?.lost === 2 && p1.got === 1 && p1.total === 3, 'pulse: the host sees 2 lost, 1 following, of 3');
+  check(!Aq.msgs.some((m) => m.type === 'pulse') && !Cq.msgs.some((m) => m.type === 'pulse'), 'pulse: students never see the counts');
+  check(!JSON.stringify(Tq.msgs).includes('"pulse":"lost"'), 'pulse: nobody’s tap travels with their name');
+  send(Tq, { type: 'pulse', v: 'lost' });
+  send(Aq, { type: 'pulse', v: 'got' });
+  await sleep(1100);
+  check(last(Tq)?.lost === 1 && last(Tq)?.got === 2, 'pulse: changing your mind updates the counts; hosts can’t tap');
+  const Dq = await joinRoom('c_pulse', { id: 's4', name: 'Dev' });
+  check(!JSON.stringify(Dq.welcome?.peers ?? []).includes('pulse'), 'pulse: a newcomer’s list of people carries nobody’s pulse');
+  await leave(Bq);
+  await sleep(1100);
+  check(last(Tq)?.lost === 0 && last(Tq)?.total === 3, 'pulse: someone lost leaves: they no longer count');
+}
+
 // An ordinary call (no breakouts) still works as before.
 const X = await joinRoom('l_somecalllink123', { id: 'x1', name: 'Xi' });
 check(X.welcome?.bo === null && X.welcome?.room === null, 'ordinary calls: no breakout state');

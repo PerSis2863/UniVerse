@@ -659,7 +659,7 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean }
+interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null }
 interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number }
 
 const MAX_CALL_PEERS = 6; // small calls: everyone connects to everyone
@@ -674,6 +674,14 @@ const MAX_CAPTION = 300;
  */
 const langBase = (v: unknown) => (typeof v === 'string' && /^[a-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/i.test(v) ? v.split(/[-_]/)[0].toLowerCase() : null);
 const MAX_CAPTION_TR = 600;
+/**
+ * Classroom pulse (Stage 4 · 4.4): students tap "I'm lost" or "Got it" (their app clears it after
+ * two minutes). Only counts reach the hosts, at most every PULSE_PUSH_MS; nobody's tap is ever sent
+ * with their name (see publicPeer).
+ */
+const PULSE_PUSH_MS = 800;
+/** A person as the others in the call see them: without their pulse. */
+const publicPeer = (p: CallPeer): Omit<CallPeer, 'pulse'> => { const { pulse, ...rest } = p; void pulse; return rest; };
 /** Reactions anyone can send (floating emoji), and how many per person in a few seconds. */
 const REACTIONS = new Set(['👍', '👏', '❤️', '😂', '😮', '🎉']);
 const REACTION_BURST = 8, REACTION_WINDOW_MS = 4000;
@@ -759,6 +767,8 @@ export class CallRoom extends DurableObject<Env> {
   /** Finished captions so far, and who was asked to translate which (caption id + language). */
   private captionSeq = 0;
   private trAsked = new Map<string, string>();
+  private pulseSentAt = 0;
+  private pulseTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -802,20 +812,39 @@ export class CallRoom extends DurableObject<Env> {
       : { bo: await this.boLoad(), occ: await this.occupancy() };
     this.send(ws, {
       type: 'welcome', you: me.peerId, host: me.host === true, cohost: me.cohost === true,
-      peers: current.map(({ peer }) => peer),
+      peers: current.map(({ peer }) => publicPeer(peer)),
       spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null,
       lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
       chat: [...(await this.ctx.storage.list<RoomChat>({ prefix: 'chat:', reverse: true, limit: CHAT_KEEP })).values()].reverse().map((l) => chatView(l, me.userId)),
       bo: this.boView(plan.bo, plan.occ, me), room: child?.n ?? null,
       poll: this.pollView((await this.ctx.storage.get<CallPoll>('poll')) ?? null, me),
+      pulse: mod ? this.pulseCounts() : null,
     });
-    for (const { ws: other } of current) this.send(other, { type: 'joined', peer: me });
+    for (const { ws: other } of current) this.send(other, { type: 'joined', peer: publicPeer(me) });
+    this.pulseTell();
     if (mod) this.tellWaiting();
     if (child) await this.reportRoom();
   }
 
   private send(ws: WebSocket, msg: unknown) {
     try { ws.send(JSON.stringify(msg)); } catch { /* closing */ }
+  }
+
+  /** How many students are lost or follow right now, of how many (hosts and co-hosts don't count). */
+  private pulseCounts(except?: WebSocket) {
+    const students = this.peers().filter(({ ws, peer }) => ws !== except && !peer.host && !peer.cohost);
+    return { lost: students.filter(({ peer }) => peer.pulse === 'lost').length, got: students.filter(({ peer }) => peer.pulse === 'got').length, total: students.length };
+  }
+
+  /** Sends the counts to the hosts (throttled: a class tapping at once is one update). */
+  private pulseTell(now = false, except?: WebSocket) {
+    if (!now && Date.now() - this.pulseSentAt < PULSE_PUSH_MS) {
+      this.pulseTimer ??= setTimeout(() => { this.pulseTimer = null; this.pulseTell(true); }, PULSE_PUSH_MS);
+      return;
+    }
+    this.pulseSentAt = Date.now();
+    const counts = this.pulseCounts(except);
+    for (const { ws } of this.mods(except)) this.send(ws, { type: 'pulse', ...counts });
   }
 
   /** A finished caption: one reader per other language translates it for the rest (see langBase). */
@@ -1195,7 +1224,7 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     // In the waiting room nothing goes to the call.
     if (!me || me.waiting) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -1215,6 +1244,15 @@ export class CallRoom extends DurableObject<Env> {
       const id = final ? `${me.peerId}.${++this.captionSeq}` : undefined;
       this.others(ws, { type: 'caption', from: me.peerId, text, final, lang, id });
       if (id && lang) this.askTranslators(ws, id, lang);
+      return;
+    }
+    if (msg.type === 'pulse') {
+      if (me.host || me.cohost) return;
+      const v = msg.v === 'lost' || msg.v === 'got' ? msg.v : null;
+      if ((me.pulse ?? null) === v) return;
+      me.pulse = v;
+      ws.serializeAttachment(me);
+      this.pulseTell();
       return;
     }
     if (msg.type === 'cc-lang') {
@@ -1468,6 +1506,7 @@ export class CallRoom extends DurableObject<Env> {
     }
     const rest = this.peers().filter(({ ws: other }) => other !== ws);
     for (const { ws: other } of rest) this.send(other, { type: 'left', peerId: me.peerId });
+    if (!me.host && !me.cohost) this.pulseTell(false, ws);
     await this.reportRoom(ws);
     // The last one out: the call's chat goes with the call.
     if (!rest.length) await this.clearChat();

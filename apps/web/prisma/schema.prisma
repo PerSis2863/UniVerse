@@ -2620,6 +2620,8 @@ model ClassSession {
   quizId              String?
   recordingMaterialId String?
   transcript          String? // JSON [{ t, who, text }]; removed after 90 days
+  pulse               String   @default("[]") // JSON [{ t, lost, got, total }]: classroom pulse counts over the class (Stage 4 · 4.4)
+  reexplain           String   @default("[]") // JSON [{ t, topic, why }]: AI suggestions for the teacher, from the pulse
   createdAt           DateTime @default(now())
 
   @@index([courseId, createdAt])

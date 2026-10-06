@@ -12,6 +12,7 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { languageName } from '@/lib/languages';
 import { useLanguageStore } from '@/store/language';
+import { PulseTimeline, type PulsePoint, type Reexplain } from './PulseTimeline';
 
 // Course board → Class sessions (upgrade 1, AI class companion). Each class call the teacher took
 // class notes in becomes a study pack: summary, notes, key moments (with the recording when there
@@ -21,6 +22,8 @@ export interface ClassSession {
   id: string; startedAt: string; durationSec: number; status: 'READY' | 'PENDING'; summary: string | null;
   notes: string[]; keyMoments: { t: number; text: string }[]; flashcards: { front: string; back: string }[];
   quiz: { id: string; status: string } | null; recordingMaterialId: string | null;
+  /** Teacher only: the classroom pulse over the class, and what to re-explain (Stage 4 · 4.4). */
+  pulse?: PulsePoint[]; reexplain?: Reexplain[];
 }
 
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
@@ -182,7 +185,9 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                     </section>
                   )}
 
-                  {s.flashcards.length > 0 && (
+                  {canManage && <PulseTimeline pulse={s.pulse ?? []} reexplain={s.reexplain ?? []} durationSec={s.durationSec} recordingUrl={recordingUrl} />}
+
+                  {view.flashcards.length > 0 && (
                     <section>
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 inline-flex items-center gap-1.5"><Layers className="w-3.5 h-3.5" /> Flashcards <span className="font-normal normal-case">(tap to flip)</span></h4>
@@ -204,7 +209,7 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                           </button>
                         ))}
                       </div>
-                      {s.flashcards.length > 6 && <p className="mt-1.5 text-xs text-zinc-500">+{s.flashcards.length - 6} more in the pack</p>}
+                      {view.flashcards.length > 6 && <p className="mt-1.5 text-xs text-zinc-500">+{s.flashcards.length - 6} more in the pack</p>}
                     </section>
                   )}
 

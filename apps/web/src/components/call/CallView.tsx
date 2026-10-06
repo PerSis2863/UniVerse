@@ -22,6 +22,7 @@ import { CallChatPanel, useCallChat, type RoomLine } from './CallChat';
 import { BackgroundSheet } from './BackgroundSheet';
 import { BreakoutBar, BreakoutPanel, RoomPicker, roomId, type BreakoutView } from './BreakoutPanel';
 import { PollCard, PollComposer, type PollView } from './CallPoll';
+import { PULSE_MS, PulseButtons, PulseMeter, type PulseCounts, type PulseValue } from './ClassPulse';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -448,7 +449,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const camSeq = useRef(0);
   // The latest mic and camera controls, for the host's requests (the socket handler is set up once).
   const actions = useRef<{ toggleCamera: () => Promise<void>; setMicOff: (off: boolean) => void; applyCamera: (raw: MediaStreamTrack | null) => Promise<boolean> } | null>(null);
-  const notesRef = useRef<{ start: number; lines: NoteLine[]; chars: number } | null>(null);
+  const notesRef = useRef<{ start: number; lines: NoteLine[]; chars: number; pulse: (PulseCounts & { t: number })[] } | null>(null);
+  // Classroom pulse (Stage 4 · 4.4): my tap (students), the counts (hosts), and when I last nudged.
+  const [myPulse, setMyPulse] = useState<PulseValue>(null);
+  const myPulseRef = useRef<PulseValue>(null);
+  const pulseClear = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pulse, setPulse] = useState<PulseCounts | null>(null);
+  const pulseNow = useRef<PulseCounts | null>(null);
+  const pulseNudged = useRef(0);
 
   const ws = useRef<WebSocket | null>(null);
   const pcs = useRef(new Map<string, RTCPeerConnection>());
@@ -492,6 +500,30 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const announce = () => {
     send({ type: 'state', ...stateRef.current });
     send({ type: 'cc-lang', lang: ccLangRef.current, device: canTranslateOnDevice() });
+    if (myPulseRef.current) send({ type: 'pulse', v: myPulseRef.current });
+  };
+  /** Pulse counts for the host: shown live, kept with class notes, and a nudge when many are lost. */
+  const gotPulse = (c: PulseCounts) => {
+    const before = pulseNow.current;
+    pulseNow.current = c;
+    setPulse(c);
+    const n = notesRef.current;
+    if (n && n.pulse.length < 2000) n.pulse.push({ t: Math.round((Date.now() - n.start) / 1000), ...c });
+    const many = (x: PulseCounts | null) => !!x && x.lost >= Math.max(2, Math.ceil(x.total * 0.3));
+    if (many(c) && !many(before) && Date.now() - pulseNudged.current > 3 * 60_000) {
+      pulseNudged.current = Date.now();
+      toast(`${c.lost} of ${c.total} students are lost right now`, { icon: '🤔', description: 'Maybe go over the last point again, or ask what’s unclear.', duration: 8000 });
+    }
+  };
+  /** A student taps "I'm lost" or "Got it" (again to take it back); it clears itself after two minutes. */
+  const tapPulse = (v: 'lost' | 'got') => {
+    haptic('tap');
+    const next = myPulseRef.current === v ? null : v;
+    myPulseRef.current = next;
+    setMyPulse(next);
+    send({ type: 'pulse', v: next });
+    if (pulseClear.current) clearTimeout(pulseClear.current);
+    pulseClear.current = next ? setTimeout(() => { myPulseRef.current = null; setMyPulse(null); send({ type: 'pulse', v: null }); }, PULSE_MS) : null;
   };
   /** A translation arrived: shown, and the caption it belongs to stays up a little longer. */
   const gotTranslation = (id: string, text: string) => {
@@ -709,7 +741,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       toast.error('No transcript: captions need Chrome, Edge or Safari, and someone has to speak while class notes are on.', { duration: 10_000 });
       return;
     }
-    const body = JSON.stringify({ transcript: n.lines, durationSec: Math.round((Date.now() - n.start) / 1000) });
+    const body = JSON.stringify({ transcript: n.lines, durationSec: Math.round((Date.now() - n.start) / 1000), pulse: n.pulse });
     const t = toast.loading('Making the study pack…');
     try {
       // keepalive: still delivered if the tab is closing (requests that size are allowed it).
@@ -1001,6 +1033,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setBo(msg.bo ?? null);
           pollId.current = msg.poll?.id ?? null;
           setPoll(msg.poll ?? null);
+          if (msg.pulse) gotPulse(msg.pulse);
           setPhase('live');
           for (const p of msg.peers as Peer[]) known.set(p.peerId, p);
           myId.current = msg.you;
@@ -1068,6 +1101,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               gotTranslation(msg.id, text);
             });
           }
+        } else if (msg.type === 'pulse') {
+          gotPulse({ lost: Number(msg.lost) || 0, got: Number(msg.got) || 0, total: Number(msg.total) || 0 });
         } else if (msg.type === 'cc-tr') {
           if (typeof msg.id === 'string' && typeof msg.text === 'string') gotTranslation(msg.id, msg.text);
         } else if (msg.type === 'left') {
@@ -1273,6 +1308,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ccLangRef.current = cc ? ccLang : null;
     send({ type: 'cc-lang', lang: ccLangRef.current, device: canTranslateOnDevice() });
   }, [cc, ccLang]);
+  useEffect(() => () => { if (pulseClear.current) clearTimeout(pulseClear.current); }, []);
   useEffect(() => {
     const t = captionTranslator(callId, (why) => toast(why, { icon: '🌐', duration: 9000 }));
     translator.current = t;
@@ -1301,7 +1337,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const toggleNotes = () => {
     haptic('tap');
     if (notesRef.current) { void submitNotes(); return; }
-    notesRef.current = { start: nowMs(), lines: [], chars: 0 };
+    notesRef.current = { start: nowMs(), lines: [], chars: 0, pulse: pulseNow.current ? [{ t: 0, ...pulseNow.current }] : [] };
     setNotes(true);
     stateRef.current.notes = true;
     announce();
@@ -1632,6 +1668,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // The host's spotlight: that person large, everyone else in the strip (a shared screen comes first).
   const lit: Remote | 'me' | null = presenter || !spotlight ? null : spotlight === myPeerId ? 'me' : list.find((r) => r.peer.peerId === spotlight) ?? null;
   const canModerate = meHost || meCohost;
+  /** Class calls (and their breakout rooms) have the classroom pulse. */
+  const isClassCall = callId.startsWith('c_');
   const roomN = room === callId ? null : Number(room.slice(room.lastIndexOf('~b') + 2)) || null;
   // Breakout rooms: everyone but the hosts goes to their room when the rooms open (or when the host
   // moves them), and back to the call when the rooms close; hosts go where they like (BreakoutPanel).
@@ -1891,6 +1929,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             onMain={() => goRoom(callId)} onPick={() => { haptic('tap'); setPickOpen(true); }} onManage={() => openPanel('rooms')} />
         )}
         <AnimatePresence>
+          {phase === 'live' && isClassCall && canModerate && pulse && pulse.lost + pulse.got > 0 && <PulseMeter key="pulse" counts={pulse} />}
+        </AnimatePresence>
+        <AnimatePresence>
           {audioOnly && phase === 'live' && (() => {
             const now = info?.sfu ? sfuQuality : list.some((r) => r.quality === 'poor') ? 'poor' : list.some((r) => r.quality === 'fair') ? 'fair' : list.some((r) => r.quality === 'good') ? 'good' : null;
             return (
@@ -1935,6 +1976,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               );
             })}
           </AnimatePresence>
+          {phase === 'live' && isClassCall && !canModerate && <PulseButtons value={myPulse} onPick={tapPulse} />}
         </div>
       </div>
 
