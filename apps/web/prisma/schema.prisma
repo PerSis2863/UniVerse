@@ -252,6 +252,7 @@ model User {
   // Messages: availability (auto | busy | in_class | studying | sleeping | invisible) and a custom
   // status. Busy, in class and sleeping are Focus modes: calls don't ring and pushes wait, except
   // from favourites.
+  scheduledMessages    ScheduledMessage[] @relation("ScheduledMessages")
   presence             String            @default("auto")
   statusText           String?
   statusEmoji          String?
@@ -581,9 +582,28 @@ model Conversation {
   messages     Message[]
 
   scheduledCalls ScheduledCall[]
+  scheduledMessages ScheduledMessage[]
 
   @@index([communityId])
   @@map("conversations")
+}
+
+/// A message set to send later (Stage 4 · 1.4): sent by the 15-minute cron at its quarter hour,
+/// then deleted (src/server/scheduled-messages.ts).
+model ScheduledMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("ScheduledMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  body           String
+  replyToId      String?
+  sendAt         DateTime
+  createdAt      DateTime     @default(now())
+
+  @@index([sendAt])
+  @@index([conversationId, senderId])
+  @@map("scheduled_messages")
 }
 
 /// An earlier version of an edited message (Stage 4 · 1.3): its text and when it was written.
@@ -615,6 +635,8 @@ model ConversationParticipant {
   archivedAt     DateTime?
   markedUnread   Boolean      @default(false)
   translateTo    String? // auto-translate incoming messages into this language (ISO 639-1); null = off
+  draft          String? // what this person was writing here, on any device (Stage 4 · 1.4)
+  draftAt        DateTime?
 
   @@unique([conversationId, userId])
   @@index([conversationId])

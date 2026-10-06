@@ -14,7 +14,8 @@ import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
-import { type ChatMessage, type ThreadResponse, chatJson, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
+import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
+import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
 import { useLanguageStore } from '@/store/language';
 import { cachedChat, cacheChat, enqueue, isOfflineError, listOutbox, newClientId, onOutbox, type OutboxItem } from '@/lib/outbox';
@@ -85,6 +86,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [dragOver, setDragOver] = useState(false);
   const [wallpaper, setWallpaperId] = useState('dots');
   const [translateOpen, setTranslateOpen] = useState(false);
+  const [editScheduled, setEditScheduled] = useState<{ item: ScheduledItem; at: number } | null>(null);
   const appLanguage = useLanguageStore((s) => s.language);
   useEffect(() => {
     const sync = () => setWallpaperId(getWallpaper());
@@ -332,6 +334,33 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       toast.error(e.message || 'Message not sent.');
       throw e;
     }
+  };
+
+  // Scheduled messages (Stage 4 · 1.4): sent by the server at their time, even with UniVerse closed.
+  const schedule = async (body: string, sendAt: string) => {
+    await chatJson(`/api/chat/conversations/${conversationId}/scheduled`, { method: 'POST', body: JSON.stringify({ body, sendAt, replyToId: replyTo?.id }) });
+    setReplyTo(null);
+    void mutate();
+    toast.success(`Scheduled for ${scheduleLabel(sendAt)}`);
+  };
+  const sendScheduledNow = async (s: ScheduledItem) => {
+    try {
+      const msg = await chatJson<ChatMessage>(`/api/chat/scheduled/${s.id}`, { method: 'POST' });
+      mutate((prev) => (prev ? { ...prev, scheduled: prev.scheduled?.filter((x) => x.id !== s.id), messages: [...prev.messages.filter((x) => x.id !== msg.id), msg] } : prev), { revalidate: false });
+      onChanged();
+    } catch (e) {
+      toast.error((e as Error).message);
+      void mutate();
+    }
+  };
+  const deleteScheduled = async (s: ScheduledItem) => {
+    if (!(await confirmDialog({ title: 'Delete scheduled message?', message: 'It won’t be sent.', destructive: true }))) return;
+    try {
+      await chatJson(`/api/chat/scheduled/${s.id}`, { method: 'DELETE' });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+    void mutate();
   };
 
   const saveEdit = async (text: string) => {
@@ -675,7 +704,22 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           )}
         </AnimatePresence>
 
+        {!convo.isOfficial && (
+          <ScheduledBar items={data?.scheduled ?? []} onSendNow={sendScheduledNow} onDelete={deleteScheduled} onEdit={(item) => setEditScheduled({ item, at: Date.now() })} />
+        )}
+        {editScheduled && (
+          <ScheduleSheet now={editScheduled.at} title="Edit scheduled message" initialText={editScheduled.item.body} initialAt={editScheduled.item.sendAt}
+            onSave={async (body, sendAt) => {
+              await chatJson(`/api/chat/scheduled/${editScheduled.item.id}`, { method: 'PATCH', body: JSON.stringify({ body, sendAt }) });
+              void mutate();
+              toast.success(`Will send ${scheduleLabel(sendAt).replace(/^Today/, 'today').replace(/^Tomorrow/, 'tomorrow')}`);
+            }}
+            onClose={() => setEditScheduled(null)} />
+        )}
         <Composer
+          draftKey={conversationId}
+          serverDraft={{ text: convo.draft, at: convo.draftAt }}
+          onSchedule={convo.isOfficial ? undefined : schedule}
           disabled={convo.isOfficial}
           replyTo={replyTo}
           editing={editing}

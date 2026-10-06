@@ -10,7 +10,8 @@ import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from './MessageBubble';
-import { type ConversationSummary, chatJson, previewText, timeLabel } from './chat-client';
+import { type ConversationSummary, chatJson, plainText, previewText, timeLabel } from './chat-client';
+import { pickDraft, useLocalDrafts } from '@/lib/chat-drafts';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -34,6 +35,7 @@ interface FoundMessage { id: string; conversationId: string; title: string; avat
 
 export function MessagingHub() {
   const refreshInterval = useLiveInterval(15_000, 0);
+  const drafts = useLocalDrafts();
   const { data, error, isLoading, mutate } = useSWR<{ conversations: ConversationSummary[]; me: string }>('/api/chat/conversations', authedJson, {
     refreshInterval,
     revalidateOnFocus: true,
@@ -192,6 +194,8 @@ export function MessagingHub() {
           {conversations.map((c, i) => {
             const active = c.id === activeId;
             const typing = c.typing.length > 0;
+            // What I was writing there (this device's or my account's, whichever is newer).
+            const draft = active ? '' : pickDraft(drafts[c.id] ?? null, { text: c.draft, at: c.draftAt }).trim();
             return (
               <motion.div key={c.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.02 }} className="group relative">
               <button
@@ -211,8 +215,10 @@ export function MessagingHub() {
                     {c.lastMessage && <span className={cn('text-[11px] shrink-0', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-0.5">
-                    <p className={cn('text-sm truncate', typing ? 'text-emerald-500 font-medium' : c.unread ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-500')}>
-                      {typing ? `${c.isGroup ? c.typing[0] + ' is ' : ''}typing…` : `${c.lastMessage?.mine ? 'You: ' : ''}${previewText(c.lastMessage)}`}
+                    <p className={cn('text-sm truncate', typing ? 'text-emerald-500 font-medium' : c.unread && !draft ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-500')}>
+                      {typing ? `${c.isGroup ? c.typing[0] + ' is ' : ''}typing…` : draft
+                        ? <><span className="font-medium text-fuchsia-600 dark:text-fuchsia-400">Draft: </span>{plainText(draft)}</>
+                        : `${c.lastMessage?.mine ? 'You: ' : ''}${previewText(c.lastMessage)}`}
                     </p>
                     <span className="flex items-center gap-1 shrink-0 text-zinc-400">
                       {c.muted && <BellOff className="w-3.5 h-3.5" />}

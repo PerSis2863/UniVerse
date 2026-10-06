@@ -3,19 +3,14 @@ import { clientIdOf } from '@/server/offline';
 import { presenceOf } from '@/lib/presence';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
-import { later, notify, notifyMany } from '@/server/email';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
-import { deliver, publishChat } from '@/server/realtime';
-import { pushService } from '@/server/services/push.service';
+import { afterSend } from '@/server/chat-notify';
 import { linkScheduledCall } from '@/server/scheduled-calls';
-import { firstUrl, linkPreview } from '@/server/link-preview';
 import { channelSendCheck } from '@/server/communities';
-import { quietFor } from '@/server/focus';
-import { planLimits } from '@/lib/plan-limits';
-import type { Prisma } from '@prisma/client';
-import { pretranslate, storedTranslations } from '@/server/translate';
+import { storedTranslations } from '@/server/translate';
+import { listScheduled } from '@/server/scheduled-messages';
 import { recordServerError } from '@/server/errors';
-import { alertOwner, chatMuted, featureOff, watchWordsIn } from '@/server/moderation';
+import { chatMuted, featureOff } from '@/server/moderation';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
@@ -74,7 +69,7 @@ async function getThread(req: Request, { params }: Ctx) {
   // Expired disappearing messages are hidden here (visibleTo) and deleted by the daily job, not on
   // every load: each load has to fit in the Worker's small CPU budget.
 
-  const [rows, convo, system, prefs] = await Promise.all([
+  const [rows, convo, system, prefs, scheduled] = await Promise.all([
     prisma.message.findMany({
       where: { conversationId: id, threadId: null, ...visibleTo(user.id), ...(beforeDate && !isNaN(+beforeDate) ? { createdAt: { lt: beforeDate } } : {}) },
       orderBy: { createdAt: 'desc' },
@@ -91,7 +86,9 @@ async function getThread(req: Request, { params }: Ctx) {
       },
     }),
     getSystemUser(),
-    prisma.conversationParticipant.findUnique({ where: { id: me.id }, select: { pinnedAt: true, mutedUntil: true, archivedAt: true, translateTo: true } }),
+    prisma.conversationParticipant.findUnique({ where: { id: me.id }, select: { pinnedAt: true, mutedUntil: true, archivedAt: true, translateTo: true, draft: true, draftAt: true } }),
+    // My messages scheduled to send later here (Stage 4 · 1.4).
+    listScheduled(id, user.id),
   ]);
   if (!convo) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
 
@@ -149,6 +146,9 @@ async function getThread(req: Request, { params }: Ctx) {
         muted: !!prefs?.mutedUntil && prefs.mutedUntil > now,
         archived: !!prefs?.archivedAt,
         translateTo: prefs?.translateTo ?? null,
+        // What I was writing here, on any device, and when (the newer of this and the device's own wins).
+        draft: prefs?.draft ?? null,
+        draftAt: prefs?.draftAt ?? null,
         channel: convo.communityId
           ? { kind: convo.channelKind ?? 'TEXT', communityId: convo.communityId, communityName: convo.community?.name ?? '', color: convo.community?.color ?? null, slowModeSec: convo.slowModeSec, role: communityRole, emoji: communityEmoji }
           : null,
@@ -166,6 +166,7 @@ async function getThread(req: Request, { params }: Ctx) {
       },
       typing: others.filter((p) => p.typingUntil && p.typingUntil > now).map((p) => p.user.name.split(' ')[0]),
       pinned: pinnedRows,
+      scheduled,
       translations,
       messages: withThreads,
       hasMore,
@@ -280,169 +281,7 @@ export async function POST(req: Request, { params }: Ctx) {
   const [out] = await decorate([serializeMessage(message)], user.id);
   // Started from a scheduled call: everyone else's Join now opens this call.
   if (data.type === 'CALL' && typeof b.scheduledId === 'string') await linkScheduledCall(b.scheduledId, id, message.id);
-  // A link gets a preview card (title and description, read once by the server).
-  const link = data.type === 'TEXT' ? firstUrl(String(data.body ?? '')) : null;
-  if (link) {
-    later(async () => {
-      const preview = await linkPreview(link);
-      if (!preview) return;
-      await prisma.message.update({ where: { id: message.id }, data: { metadata: { ...((message.metadata as object | null) ?? {}), link: { ...preview } } as unknown as Prisma.InputJsonValue } });
-      publishChat(id);
-    });
-  }
-  later(async () => {
-    // Members with auto-translate get the message already translated (a few seconds at most).
-    if (data.type === 'TEXT' && String(data.body ?? '').trim()) await pretranslate(id, message.id, String(data.body), user.id).catch(() => {});
-    // Community channels can be large: live updates go to members active lately (capped), and
-    // nobody is notified per message (only @mentions, below). Chats and groups notify as usual.
-    if (convo?.communityId) await publishGroupChannel(id);
-    else await notifyAway(id, user, system.id, String(data.type ?? 'TEXT'), String(data.body ?? ''), message.id);
-  });
-  if (data.type === 'TEXT' && String(data.body ?? '').includes('@')) later(() => notifyMentions(id, user, String(data.body)));
-  // Watch words (owner console → Live chats) alert the owner.
-  if ((data.type === 'TEXT' || data.type === 'POLL') && data.body) {
-    later(async () => {
-      const found = await watchWordsIn(String(data.body));
-      if (found.length) await alertOwner(found, user, id, String(data.body));
-    });
-  }
+  // Link preview, translations, notifications, @mentions and watch words (src/server/chat-notify.ts).
+  afterSend({ id: message.id, conversationId: id, type: String(data.type ?? 'TEXT'), body: String(data.body ?? ''), metadata: message.metadata }, user, { communityId: convo?.communityId ?? null, systemUserId: system.id });
   return NextResponse.json(out, { status: 201 });
-}
-
-const AWAY_MS = 5 * 60_000;
-const EMAIL_GAP_MS = 60 * 60_000;
-const PREVIEW: Record<string, string> = { IMAGE: '📷 Photo', FILE: '📎 File', AUDIO: '🎤 Voice message', VIDEO: '🎬 Video', CALL: '📞 Call', POLL: '📊 Poll', LOCATION: '📍 Location', CONTACT: '👤 Contact' };
-
-// Pushes the message to everyone's open tabs. Members who don't have UniVerse open get a
-// notification (and an email if they have them on), at most once an hour per chat, so a busy chat
-// doesn't flood their inbox.
-async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string, messageId: string) {
-  const everyone = await prisma.conversationParticipant.findMany({ where: { conversationId }, select: { userId: true } });
-  const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId, ...(type === 'CALL' ? { call: true } : {}) });
-  const now = new Date();
-  const [convo, allMembers] = await Promise.all([
-    prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true } }),
-    prisma.conversationParticipant.findMany({
-      where: {
-        conversationId,
-        userId: { notIn: [from.id, systemUserId] },
-        OR: [{ mutedUntil: null }, { mutedUntil: { lt: now } }],
-        user: { status: 'ACTIVE', OR: [{ lastSeenAt: null }, { lastSeenAt: { lt: new Date(now.getTime() - AWAY_MS) } }] },
-      },
-      select: { userId: true, user: { select: { role: true } } },
-    }),
-  ]);
-  // With live updates, "away" means no open tab; without them, no activity for a few minutes.
-  const members = online ? allMembers.filter((m) => !online.has(m.userId)) : allMembers;
-  if (!convo) return;
-  if (type === 'CALL') {
-    // A call rings phones and computers with UniVerse closed (a push notification with Answer and
-    // Decline), for everyone who has no tab open, muted or not: a call is worth an interruption.
-    const candidates = everyone.map((m) => m.userId).filter((u) => u !== from.id && u !== systemUserId && !online?.has(u));
-    // Focus (Busy, In class, Sleeping): no ringing push, unless the caller is a favourite.
-    const quiet = await quietFor(candidates, from.id);
-    const ring = candidates.filter((u) => !quiet.has(u));
-    if (ring.length) {
-      await pushService.sendToMany(ring, {
-        title: convo.isGroup ? `${from.name} · ${convo.name ?? 'Group call'}` : from.name,
-        body: `Incoming ${body === 'Video call' ? 'video' : 'voice'} call`,
-        url: `/call/${messageId}`,
-        tag: messageId,
-        call: true,
-      }).catch(() => 0);
-    }
-  }
-  if (members.length === 0) return;
-  const recent = await prisma.notification.findMany({
-    where: { userId: { in: members.map((m) => m.userId) }, type: 'chat', link: { endsWith: `?c=${conversationId}` }, createdAt: { gt: new Date(now.getTime() - EMAIL_GAP_MS) } },
-    select: { userId: true },
-  });
-  const skip = new Set(recent.map((r) => r.userId));
-  const text = (type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
-  const title = convo.isGroup ? `New messages in ${convo.name ?? 'a group chat'}` : `New message from ${from.name}`;
-  const fresh = members.filter((m) => !skip.has(m.userId));
-  const inbox = (role: string) => `/${role === 'ADMIN' ? 'admin' : role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`;
-  if (type !== 'CALL' && fresh.length) {
-    // Same once-an-hour rule as the in-app notification; the tag folds a chat's pushes into one.
-    const byRole = new Map<string, string[]>();
-    for (const m of fresh) byRole.set(m.user.role, [...(byRole.get(m.user.role) ?? []), m.userId]);
-    await Promise.all([...byRole].map(([role, ids]) => pushService.sendToMany(ids, {
-      title,
-      body: convo.isGroup ? `${from.name}: ${text}` : text,
-      url: inbox(role),
-      tag: `chat-${conversationId}`,
-    }).catch(() => 0)));
-  }
-  await Promise.all(
-    fresh
-      .map((m) =>
-        notify(m.userId, {
-          type: 'chat',
-          title,
-          body: convo.isGroup ? `${from.name}: ${text}` : text,
-          link: inbox(m.user.role),
-        }),
-      ),
-  );
-}
-
-/**
- * "@Name" in a message pings that member (in the app and live), even if they muted the chat. In
- * groups, "@here" pings the members online now and "@channel" (or "@everyone") everyone: for the
- * group's admins, anyone in a group of up to 50, and a community's moderators. In-app only.
- */
-async function notifyMentions(conversationId: string, from: { id: string; name: string }, body: string) {
-  const text = body.toLowerCase();
-  const [convo, members] = await Promise.all([
-    prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true, communityId: true } }),
-    prisma.conversationParticipant.findMany({ where: { conversationId }, take: 2000, select: { userId: true, role: true, user: { select: { name: true, role: true, lastSeenAt: true, presence: true } } } }),
-  ]);
-  if (!convo?.isGroup) return; // in a 1:1 chat the other person already gets every message
-  const others = members.filter((m) => m.userId !== from.id);
-  const toEveryone = /(^|[^\w@])@(channel|everyone)\b/.test(text);
-  const toHere = /(^|[^\w@])@here\b/.test(text);
-  let wide: typeof others = [];
-  if (toEveryone || toHere) {
-    let allowed = members.length <= 50 || members.some((m) => m.userId === from.id && m.role === 'ADMIN');
-    if (!allowed && convo.communityId) {
-      const cm = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: convo.communityId, userId: from.id } }, select: { role: true } });
-      allowed = cm?.role === 'OWNER' || cm?.role === 'MOD';
-    }
-    if (allowed) wide = toEveryone ? others : others.filter((m) => isOnline(m.user.lastSeenAt, m.user.presence));
-  }
-  const inbox = (role: string) => `/${role === 'ADMIN' ? 'admin' : role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`;
-  const where = convo.name ?? 'a group';
-  // @here / @channel: one batch per portal (their inbox links differ).
-  for (const role of ['ADMIN', 'TEACHER', 'STUDENT']) {
-    const ids = wide.filter((m) => (m.user.role === 'ADMIN' || m.user.role === 'TEACHER' ? m.user.role : 'STUDENT') === role).map((m) => m.userId).slice(0, 500);
-    if (ids.length) await notifyMany(ids, { type: 'mention', title: `${from.name} mentioned ${toEveryone ? 'everyone' : 'everyone online'} in ${where}`, body: body.slice(0, 200), link: inbox(role), email: false });
-  }
-  const pinged = new Set(wide.map((m) => m.userId));
-  const named = others.filter(({ userId, user }) => {
-    if (pinged.has(userId)) return false;
-    const full = user.name.toLowerCase();
-    const first = full.split(' ')[0];
-    return text.includes(`@${full}`) || new RegExp(`@${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`).test(text);
-  });
-  await Promise.all(
-    named.map((m) =>
-      notify(m.userId, {
-        type: 'mention',
-        title: `${from.name} mentioned you in ${where}`,
-        body: body.slice(0, 200),
-        link: inbox(m.user.role),
-        email: false,
-      }),
-    ),
-  );
-}
-
-/** A new message in a community channel: refresh the open tabs of members active in the last 15 minutes. */
-async function publishGroupChannel(conversationId: string) {
-  const active = await prisma.conversationParticipant.findMany({
-    where: { conversationId, user: { lastSeenAt: { gt: new Date(Date.now() - 15 * 60_000) } } },
-    select: { userId: true },
-    take: planLimits().livePushes,
-  });
-  await deliver(active.map((a) => a.userId), { type: 'chat', conversationId });
 }

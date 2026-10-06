@@ -61,8 +61,14 @@ export interface ConversationSummary {
   pinned?: boolean;
   muted?: boolean;
   archived?: boolean;
+  /** What I was writing in this chat (on any device), and when. */
+  draft?: string | null;
+  draftAt?: string | null;
   activityAt: string;
 }
+
+/** One of my messages scheduled to send later (Stage 4 · 1.4). */
+export interface ScheduledItem { id: string; body: string; sendAt: string; replyToId: string | null }
 
 export interface UserStatus { presence: 'auto' | 'busy' | 'in_class' | 'studying' | 'sleeping'; statusText: string | null; statusEmoji: string | null; hidden?: boolean; focus?: boolean }
 export interface ChannelInfo { kind: 'TEXT' | 'ANNOUNCE' | 'VOICE'; communityId: string; communityName: string; color: string | null; slowModeSec: number; role: 'OWNER' | 'MOD' | 'MEMBER' | null; /** The community's own emoji (:name:). */ emoji?: { name: string; url: string }[] }
@@ -95,7 +101,12 @@ export interface ThreadResponse {
     translateTo?: string | null;
     /** A channel in a community (Discord-style); null for chats and groups. */
     channel?: ChannelInfo | null;
+    /** What I was writing here (on any device), and when. */
+    draft?: string | null;
+    draftAt?: string | null;
   };
+  /** My messages scheduled to send later in this chat, soonest first. */
+  scheduled?: ScheduledItem[];
   /** Stored translations (into `translateTo`) of messages on this page. */
   translations?: Record<string, { text: string; from: string; same: boolean }>;
   typing: string[];
@@ -210,6 +221,16 @@ export function previewText(m: { type: string; body: string; attachmentName?: st
     case 'CONTACT': return `👤 ${m.body}`;
     default: return plainText(m.body).split('\n').find((l) => l.trim()) ?? '';
   }
+}
+
+/** When a scheduled message goes out: "Today, 18:00", "Tomorrow, 08:00", "Mon 12 Oct, 09:00". */
+export function scheduleLabel(iso: string) {
+  const d = new Date(iso);
+  const days = Math.round((new Date(d.toDateString()).getTime() - new Date(new Date().toDateString()).getTime()) / 86_400_000);
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  if (days === 0) return `Today, ${time}`;
+  if (days === 1) return `Tomorrow, ${time}`;
+  return `${d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}, ${time}`;
 }
 
 export function timeLabel(iso: string) {

@@ -292,13 +292,14 @@ export async function updateCommunity(user: SessionUser, id: string, body: Recor
  * The rules a channel adds when sending a message (src/app/api/chat/conversations/[id]/messages):
  * announcements are for moderators, and slow mode spaces out one person's messages.
  */
-export async function channelSendCheck(conversationId: string, userId: string): Promise<string | null> {
+export async function channelSendCheck(conversationId: string, userId: string, opts: { slowMode?: boolean } = {}): Promise<string | null> {
   const ch = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { communityId: true, channelKind: true, slowModeSec: true } });
   if (!ch?.communityId) return null;
   const role = await myRole(ch.communityId, userId);
   if (ch.channelKind === 'VOICE') return 'This is a voice room: join the call to talk.';
   if (ch.channelKind === 'ANNOUNCE' && role === 'MEMBER') return 'Only moderators can post in announcements.';
-  if (ch.slowModeSec > 0 && role === 'MEMBER') {
+  // Scheduled messages are spaced out when they're scheduled instead (src/server/scheduled-messages.ts).
+  if (opts.slowMode !== false && ch.slowModeSec > 0 && role === 'MEMBER') {
     const last = await prisma.message.findFirst({ where: { conversationId, senderId: userId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
     const wait = last ? Math.ceil((last.createdAt.getTime() + ch.slowModeSec * 1000 - Date.now()) / 1000) : 0;
     if (wait > 0) return `Slow mode is on: you can send another message in ${wait} s.`;

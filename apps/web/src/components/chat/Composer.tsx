@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Bold, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
 import { EmojiPicker, type CustomEmoji } from './EmojiPicker';
 import { languageName } from '@/lib/languages';
+import { haptic } from '@/lib/haptics';
+import { keepDraft, localDraft, pickDraft, saveDraft } from '@/lib/chat-drafts';
+import { ScheduleSheet } from './ScheduledMessages';
 
 export interface SendPayload {
   text?: string;
@@ -70,15 +73,37 @@ interface Props {
   canMentionAll?: boolean;
   /** A community channel's own emoji, in the picker. */
   customEmoji?: CustomEmoji[];
+  /** Drafts (Stage 4 · 1.4): this chat's id, and the draft saved on my account (the newer one wins). */
+  draftKey?: string;
+  serverDraft?: { text?: string | null; at?: string | null };
+  /** Schedules a message (hold or right-click Send, or Attach → Schedule message). */
+  onSchedule?: (body: string, sendAt: string) => Promise<void>;
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll, customEmoji }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll, customEmoji, draftKey, serverDraft, onSchedule }: Props) {
   const [formatting, setFormatting] = useState(false);
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [text, setText] = useState('');
+  // The draft shown when the chat opened (or taken since): this device's or my account's, whichever is newer.
+  const [shown, setShown] = useState(() => {
+    const local = draftKey ? localDraft(draftKey) : null;
+    return { text: draftKey ? pickDraft(local, serverDraft ?? {}) : '', at: Math.max(local?.at ?? 0, serverDraft?.at ? Date.parse(serverDraft.at) : 0) };
+  });
+  const [text, setText] = useState(shown.text);
+  const [wrote, setWrote] = useState(false);
+  // A newer draft from another device came in (this chat was shown from memory first): show it,
+  // unless something was written here since.
+  const accountAt = serverDraft?.at ? Date.parse(serverDraft.at) : 0;
+  if (draftKey && !editing && !wrote && accountAt > shown.at && text === shown.text) {
+    const next = { text: serverDraft?.text ?? '', at: accountAt };
+    setShown(next);
+    setText(next.text);
+  }
+  const [scheduling, setScheduling] = useState<{ at: number } | null>(null);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const held = useRef(false);
   const [busy, setBusy] = useState(false);
   // View once for the next photo, video or voice message (a ref too: the recorder's callback reads it).
   const [once, setOnceState] = useState(false);
@@ -105,6 +130,38 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     }
   }, [editing]);
   useEffect(() => { if (replyTo) areaRef.current?.focus(); }, [replyTo]);
+
+  // Drafts: every change is kept on this device; my account gets it 2 s after typing stops.
+  const draftBox = useRef({ saved: serverDraft?.text ?? '', pending: null as string | null });
+  const accountText = serverDraft?.text ?? '';
+  useEffect(() => {
+    if (!draftKey || editing) return;
+    keepDraft(draftKey, text);
+    const box = draftBox.current;
+    if (text === box.saved || text === accountText) { box.saved = text; box.pending = null; return; }
+    box.pending = text;
+    const t = setTimeout(() => { box.pending = null; box.saved = text; setWrote(true); void saveDraft(draftKey, text); }, 2000);
+    return () => clearTimeout(t);
+  }, [text, draftKey, editing, accountText]);
+  // Leaving the chat, or the app going to the background: what's waiting is saved straight away.
+  useEffect(() => {
+    if (!draftKey) return;
+    const box = draftBox.current;
+    const flush = () => {
+      if (box.pending === null) return;
+      const t = box.pending;
+      box.pending = null;
+      box.saved = t;
+      void saveDraft(draftKey, t, { keepalive: true });
+    };
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onHide);
+    return () => { document.removeEventListener('visibilitychange', onHide); flush(); };
+  }, [draftKey]);
+  /** What I was writing before editing a message. */
+  const beforeEdit = () => (draftKey ? localDraft(draftKey)?.text ?? '' : '');
+  const canSchedule = !!onSchedule && !editing;
+  const openSchedule = () => { held.current = true; clearTimeout(holdTimer.current); setAttach(false); setEmoji(false); setScheduling({ at: Date.now() }); };
 
   // Replaces the draft with its translation; "Undo" puts the original back.
   const translateDraft = async (to: string) => {
@@ -178,8 +235,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     if (!value || busy) return;
     setBusy(true);
     try {
-      if (editing) await onSaveEdit(value);
-      else {
+      if (editing) {
+        await onSaveEdit(value);
+        setText(beforeEdit());
+        return;
+      } else {
         // "/command arg": handled by the chat (AI, reminders, calls…) instead of being sent.
         const cmd = /^\/(\w+)\s*([\s\S]*)$/.exec(value);
         if (cmd && onCommand && SLASH_COMMANDS.some((c) => c.name === cmd[1].toLowerCase())) {
@@ -267,7 +327,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             <p className="font-semibold text-indigo-600 dark:text-indigo-300">{editing ? 'Editing message' : `Replying to ${replyTo!.sender.name}`}</p>
             {!editing && <p className="text-zinc-600 dark:text-zinc-400 truncate">{replyTo!.body || 'Attachment'}</p>}
           </div>
-          <button onClick={() => { if (editing) { onCancelEdit(); setText(''); } else onCancelReply(); }} aria-label="Cancel" className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
+          <button onClick={() => { if (editing) { onCancelEdit(); setText(beforeEdit()); } else onCancelReply(); }} aria-label="Cancel" className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -358,6 +418,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                     <span className="flex-1 text-left">View once</span>
                     <span className={cn('text-[10px] font-bold uppercase', once ? 'text-indigo-500' : 'text-zinc-400')}>{once ? 'On' : 'Off'}</span>
                   </button>
+                  {onSchedule && (
+                    <button onClick={openSchedule} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-violet-500/15 text-violet-500 flex items-center justify-center"><CalendarClock className="w-4 h-4" /></span> Schedule message
+                    </button>
+                  )}
                   <button onClick={() => { setAttach(false); onExtra('poll'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center"><BarChart3 className="w-4 h-4" /></span> Poll
                   </button>
@@ -437,7 +502,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               }
               // Enter sends, except inside a code block (a new line there).
               if (e.key === 'Enter' && !e.shiftKey && !inCodeBlock(text.slice(0, e.currentTarget.selectionStart ?? text.length))) { e.preventDefault(); submit(); }
-              if (e.key === 'Escape' && editing) { onCancelEdit(); setText(''); }
+              if (e.key === 'Escape' && editing) { onCancelEdit(); setText(beforeEdit()); }
             }}
             placeholder={editing ? 'Edit your message' : onCommand ? 'Type a message, or / for commands' : 'Type a message'}
             className="flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
@@ -445,7 +510,12 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           </div>
 
           {text.trim() || editing ? (
-            <button onClick={submit} disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 disabled:opacity-50 active:scale-95 transition-transform">
+            <button onClick={() => { if (held.current) { held.current = false; return; } void submit(); }}
+              onPointerDown={() => { held.current = false; if (canSchedule) holdTimer.current = setTimeout(() => { haptic('tap'); openSchedule(); }, 450); }}
+              onPointerUp={() => clearTimeout(holdTimer.current)} onPointerLeave={() => clearTimeout(holdTimer.current)} onPointerCancel={() => clearTimeout(holdTimer.current)}
+              onContextMenu={(e) => { if (canSchedule) { e.preventDefault(); openSchedule(); } }}
+              title={canSchedule ? 'Send · hold or right-click to schedule' : undefined}
+              disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 disabled:opacity-50 active:scale-95 transition-transform">
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           ) : (
@@ -463,6 +533,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         </div>
       )}
 
+      {scheduling && onSchedule && (
+        <ScheduleSheet now={scheduling.at} title="Schedule message" initialText={text}
+          onSave={async (body, sendAt) => { await onSchedule(body, sendAt); setText(''); setSuggestions(null); }}
+          onClose={() => { setScheduling(null); held.current = false; }} />
+      )}
       {!!slowModeSec && <p className="mt-1.5 text-[11px] text-zinc-500 text-center">Slow mode: one message every {slowModeSec < 60 ? `${slowModeSec} s` : `${Math.round(slowModeSec / 60)} min`}</p>}
       <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
