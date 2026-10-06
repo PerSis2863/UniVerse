@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus } from 'lucide-react';
@@ -24,6 +25,7 @@ import { BreakoutBar, BreakoutPanel, RoomPicker, roomId, type BreakoutView } fro
 import { PollCard, PollComposer, type PollView } from './CallPoll';
 import { PULSE_MS, PulseButtons, PulseMeter, type PulseCounts, type PulseValue } from './ClassPulse';
 import { WebinarQA, type QaItem } from './WebinarQA';
+import { PipCall, type PipTile } from './PipCall';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -65,6 +67,28 @@ interface Remote {
 type Phase = 'starting' | 'prejoin' | 'lobby' | 'live' | 'ended' | 'error';
 type Info = Omit<Ticket, 'path' | 'iceServers'>;
 interface Caption { name: string; text: string; final: boolean; at: number; id?: string; lang?: string | null }
+/** Chrome's Document Picture-in-Picture (2.12): a small always-on-top window that can hold the whole call. */
+interface DocumentPip { requestWindow(o: { width: number; height: number }): Promise<Window> }
+const documentPip = (): DocumentPip | null => (typeof window !== 'undefined' && 'documentPictureInPicture' in window ? (window as unknown as { documentPictureInPicture: DocumentPip }).documentPictureInPicture : null);
+/** The floating window gets the page's styles (Tailwind), so the call looks the same there. */
+function copyStyles(to: Window) {
+  for (const sheet of [...document.styleSheets]) {
+    try {
+      const style = to.document.createElement('style');
+      style.textContent = [...sheet.cssRules].map((r) => r.cssText).join('\n');
+      to.document.head.appendChild(style);
+    } catch {
+      // A stylesheet from another address (fonts): linked instead.
+      if (!sheet.href) continue;
+      const link = to.document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = sheet.href;
+      to.document.head.appendChild(link);
+    }
+  }
+  to.document.documentElement.className = document.documentElement.className;
+}
+
 /** The language I read captions in (Stage 4 · 4.1): a language code, or "spoken" for no translation. */
 const CC_LANG_KEY = 'universe:cc-lang';
 /** Recent caption translations only (they're shown for a few seconds). */
@@ -369,6 +393,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
 }) {
   const [voicemail, setVoicemail] = useState<null | 'offer' | 'recording' | 'sending'>(null);
   const isGuest = !!guest;
+  /** The call in Chrome's floating window (2.12), while it's open. */
+  const [pipWin, setPipWin] = useState<Window | null>(null);
   const vmRec = useRef<{ rec: MediaRecorder; stream: MediaStream; chunks: Blob[]; start: number } | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [notice, setNotice] = useState<string | null>(null);
@@ -1757,6 +1783,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     announce();
   };
   useEffect(() => { stopShareRef.current = stopShare; });
+  // The floating window closes with the call.
+  useEffect(() => { if (phase === 'ended' || phase === 'error') pipWin?.close(); }, [phase, pipWin]);
+  useEffect(() => () => pipWin?.close(), [pipWin]);
   const toggleShare = async () => {
     if (sharing) return stopShare();
     try {
@@ -1773,6 +1802,19 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
 
   const pip = async () => {
+    // Chrome: the whole call with its controls in a floating window; elsewhere, the video only.
+    const dpip = documentPip();
+    if (dpip) {
+      if (pipWin) { pipWin.close(); return; }
+      try {
+        const w = await dpip.requestWindow({ width: 340, height: 400 });
+        copyStyles(w);
+        w.document.title = info?.title ?? 'Call';
+        w.addEventListener('pagehide', () => setPipWin(null));
+        setPipWin(w);
+      } catch { toast.error('The floating window isn’t available here.'); }
+      return;
+    }
     const v = firstRemoteVideo.current;
     try {
       if (document.pictureInPictureElement) await document.exitPictureInPicture();
@@ -1796,7 +1838,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const kind: 'audio' | 'video' = camera || sharing || list.some((r) => r.camera || r.sharing) ? 'video' : 'audio';
   const clock = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
   const canShare = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
-  const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled && kind === 'video' && list.length > 0;
+  const canPip = documentPip() ? phase === 'live' : typeof document !== 'undefined' && document.pictureInPictureEnabled && kind === 'video' && list.length > 0;
   // Notes: the class's teacher (a study pack); whoever runs any other call, or either person in a
   // one-to-one call (meeting notes, Stage 4 · 2.8), from the main call (not a breakout room).
   const canNotes = !!info && (info.type === 'class' ? !!info.host : (meHost || meCohost || info.oneToOne) && room === callId);
@@ -1884,7 +1926,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ...(canModerate && info && !info.oneToOne ? [{ key: 'poll' as const, label: 'Poll or quiz', icon: BarChart3, on: !!poll?.open }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'rooms' as const, label: 'Breakout rooms', icon: DoorOpen, on: !!bo }] : []),
     ...(canModerate && info?.sfu && !info.oneToOne && room === callId ? [{ key: 'webinar' as const, label: webinar ? 'End webinar mode' : 'Webinar mode', icon: Presentation, on: !!webinar }] : []),
-    ...(canPip ? [{ key: 'pip' as const, label: 'Picture in picture', icon: PictureInPicture2 }] : []),
+    ...(canPip ? [{ key: 'pip' as const, label: documentPip() ? (pipWin ? 'Close floating window' : 'Pop out the call') : 'Picture in picture', icon: PictureInPicture2, on: !!pipWin }] : []),
   ];
   const runMore = (key: (typeof moreItems)[number]['key']) => {
     haptic('tap');
@@ -2248,6 +2290,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       </AnimatePresence>
       <PollComposer open={pollCompose && phase === 'live' && canModerate} onClose={() => setPollCompose(false)} onStart={(m) => send({ type: 'control', ...m })} questionsFor={info?.type === 'class' ? room : null} />
       <RoomPicker open={pickOpen && phase === 'live'} onClose={() => setPickOpen(false)} bo={bo} onPick={(n) => send({ type: 'bo-pick', n })} />
+      {pipWin && createPortal(
+        <PipCall title={info?.title ?? 'Call'} clock={clock(seconds)} muted={muted} camera={camera} hand={!!myHand} watching={audienceMe}
+          tiles={[
+            ...list.filter((r) => r.sharing && r.screen).slice(0, 1).map((r): PipTile => ({ id: `${r.peer.peerId}-screen`, name: r.peer.name, stream: r.screen, video: true, muted: r.muted, screen: true })),
+            ...[...list].sort((a, b) => Number(b.camera) - Number(a.camera)).slice(0, 3).map((r): PipTile => ({ id: r.peer.peerId, name: r.peer.name, stream: r.stream, video: r.camera && !r.paused && !!r.stream?.getVideoTracks().length, muted: r.muted })),
+            ...(audienceMe ? [] : [{ id: 'me', name: myName, stream: local, video: camera, muted, me: true } satisfies PipTile]),
+          ]}
+          onMute={toggleMute} onCamera={() => void toggleCamera()} onHand={toggleHand}
+          onBack={() => { pipWin.close(); window.focus(); }} onLeave={() => { pipWin.close(); finish(); }} />,
+        pipWin.document.body,
+      )}
       <WebinarQA open={qaOpen && phase === 'live' && !!webinar} onClose={() => setQaOpen(false)} items={qa} canModerate={canModerate}
         onAsk={(text, anon) => send({ type: 'qa-ask', text, anon })} onVote={(id, up) => send({ type: 'qa-vote', id, up })}
         onAnswer={(id, on) => control('qa-answer', id, on)} onHide={(id) => control('qa-hide', id)} />
