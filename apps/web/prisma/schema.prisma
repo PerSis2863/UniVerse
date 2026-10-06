@@ -2841,3 +2841,62 @@ model TaskComment {
   @@index([taskId])
   @@map("task_comments")
 }
+
+/// Documents (Stage 4 · 3.2): written together live (Tiptap + Yjs through the CodeRoom Durable
+/// Object, room "doc:<id>"); versions and comments here (src/server/docs.ts).
+model Doc {
+  id        String       @id @default(cuid())
+  title     String
+  ownerId   String
+  courseId  String? // everyone in the course can open and edit it
+  preview   String? // the start of the text, for lists and search
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  members   DocMember[]
+  versions  DocVersion[]
+  comments  DocComment[]
+
+  @@index([ownerId])
+  @@index([courseId])
+  @@map("docs")
+}
+
+model DocMember {
+  id      String   @id @default(cuid())
+  docId   String
+  doc     Doc      @relation(fields: [docId], references: [id], onDelete: Cascade)
+  userId  String
+  role    String   @default("EDITOR") // EDITOR or VIEWER
+  addedAt DateTime @default(now())
+
+  @@unique([docId, userId])
+  @@index([userId])
+  @@map("doc_members")
+}
+
+model DocVersion {
+  id        String   @id @default(cuid())
+  docId     String
+  doc       Doc      @relation(fields: [docId], references: [id], onDelete: Cascade)
+  html      String
+  authorId  String
+  name      String? // a version someone named ("Before feedback")
+  createdAt DateTime @default(now())
+
+  @@index([docId, createdAt])
+  @@map("doc_versions")
+}
+
+model DocComment {
+  id         String    @id @default(cuid())
+  docId      String
+  doc        Doc       @relation(fields: [docId], references: [id], onDelete: Cascade)
+  userId     String
+  quote      String? // the text it's about
+  body       String
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([docId])
+  @@map("doc_comments")
+}

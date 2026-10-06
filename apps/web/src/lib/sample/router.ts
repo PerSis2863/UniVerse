@@ -256,6 +256,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
   [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
+  [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
+  [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/([^/]+)$/, () => fail('Task boards aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/items\/([^/]+)\/comments$/, () => ok([])],
   [/^\/api\/chat\/starred$/, ({ db: d }) => ok(d.conversations.flatMap((c) => visible(d, c).filter((m: any) => d.starred.has(m.id)).map((m: any) => ({ ...decorateMsg(d, m), chat: { id: c.id, title: c.title } }))))],
