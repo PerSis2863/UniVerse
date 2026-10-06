@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/copy-excalidraw-assets.mjs && next dev --webpack",
-    "build": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate && node scripts/gen-owner-schema.mjs && node scripts/copy-excalidraw-assets.mjs && next build --webpack",
+    "dev": "node scripts/copy-excalidraw-assets.mjs && node scripts/copy-mediapipe-assets.mjs && next dev --webpack",
+    "build": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate && node scripts/gen-owner-schema.mjs && node scripts/copy-excalidraw-assets.mjs && node scripts/copy-mediapipe-assets.mjs && next build --webpack",
     "postinstall": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate",
     "start": "next start",
     "lint": "eslint",
@@ -29,6 +29,7 @@
     "@ducanh2912/next-pwa": "^10.2.9",
     "@excalidraw/excalidraw": "0.18.1",
     "@google/genai": "^2.23.0",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@opennextjs/cloudflare": "^1.20.6",
     "@prisma/adapter-d1": "6.19.3",
     "@prisma/client": "^6.19.3",

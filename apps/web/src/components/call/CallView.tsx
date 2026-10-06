@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare } from 'lucide-react';
+import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2 } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -15,6 +15,8 @@ import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { PeoplePanel, type ControlAction, type Person } from './PeoplePanel';
 import { FloatingReactions, ReactionBar, type Floating, type Reaction } from './Reactions';
 import { CallChatPanel, useCallChat, type RoomLine } from './CallChat';
+import { BackgroundSheet } from './BackgroundSheet';
+import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
@@ -396,8 +398,18 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [lobbyOn, setLobbyOn] = useState(false);
   // Whether I can moderate, for the socket handler (set up once): hand-raise toasts are for hosts.
   const modRef = useRef(false);
+  // Background blur or a picture (src/lib/call-background.ts): the camera as it comes (raw), and the
+  // effect that makes what's sent. camSeq: a newer camera change wins over one still getting ready.
+  const [bgChoice, setBgChoice] = useState<Background>(savedBackground);
+  const bgRef = useRef<Background>(savedBackground());
+  const [bgOpen, setBgOpen] = useState(false);
+  const [bgBusy, setBgBusy] = useState(false);
+  const [bgCustom, setBgCustom] = useState<string | null>(customImage);
+  const effectRef = useRef<BackgroundEffect | null>(null);
+  const rawCam = useRef<MediaStreamTrack | null>(null);
+  const camSeq = useRef(0);
   // The latest mic and camera controls, for the host's requests (the socket handler is set up once).
-  const actions = useRef<{ toggleCamera: () => Promise<void>; setMicOff: (off: boolean) => void } | null>(null);
+  const actions = useRef<{ toggleCamera: () => Promise<void>; setMicOff: (off: boolean) => void; applyCamera: (raw: MediaStreamTrack | null) => Promise<boolean> } | null>(null);
   const notesRef = useRef<{ start: number; lines: NoteLine[]; chars: number } | null>(null);
 
   const ws = useRef<WebSocket | null>(null);
@@ -695,6 +707,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     sfuRef.current?.close();
     sfuRef.current = null;
     localRef.current?.getTracks().forEach((t) => t.stop());
+    effectRef.current?.stop();
+    rawCam.current?.stop();
     rawMic.current?.stop();
     micClean.current?.stop();
     screenRef.current?.stop();
@@ -863,11 +877,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           // What's sent: the microphone through noise suppression, and the camera.
           rawMic.current = opened.getAudioTracks()[0] ?? null;
           micClean.current = rawMic.current ? await cleanMic(rawMic.current, noiseMode()) : null;
-          localRef.current = new MediaStream([...(micClean.current ? [micClean.current.track] : []), ...opened.getVideoTracks()]);
-          const cam = t.kind === 'video' && opened.getVideoTracks().length > 0;
+          const camTrack = opened.getVideoTracks()[0] ?? null;
+          // A background chosen before: the camera waits for it, so your room is never shown first.
+          const holdForBg = !!camTrack && savedBackground().kind !== 'none' && backgroundsSupported();
+          rawCam.current = camTrack;
+          localRef.current = new MediaStream([...(micClean.current ? [micClean.current.track] : []), ...(camTrack && !holdForBg ? [camTrack] : [])]);
+          const cam = t.kind === 'video' && !!camTrack;
           stateRef.current.camera = cam;
           setCamera(cam);
           setLocal(localRef.current);
+          if (holdForBg) void actions.current?.applyCamera(camTrack);
         } catch (e) {
           const name = (e as Error).name;
           setError(name === 'NotAllowedError' ? `Allow the ${t.kind === 'video' ? 'camera and microphone' : 'microphone'} to join the call.` : 'No microphone or camera was found.');
@@ -1037,6 +1056,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       sfuRef.current?.close();
       sfuRef.current = null;
       localRef.current?.getTracks().forEach((t) => t.stop());
+      effectRef.current?.stop();
+      rawCam.current?.stop();
       rawMic.current?.stop();
       micClean.current?.stop();
       screenRef.current?.stop();
@@ -1255,13 +1276,65 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     }
   };
 
-  /** Swaps in a new camera track (or none) on my preview and for everyone. */
-  const setCameraTrack = (track: MediaStreamTrack | null) => {
+  /**
+   * Puts a camera (or none) on my preview and sends it to everyone, through the background effect
+   * when one is chosen. If the background can't be done here, the camera stays off rather than
+   * showing your room instead.
+   */
+  const applyCamera = async (raw: MediaStreamTrack | null): Promise<boolean> => {
+    const seq = ++camSeq.current;
+    const oldRaw = rawCam.current, oldFx = effectRef.current;
+    rawCam.current = raw;
+    effectRef.current = null;
+    let out = raw, ok = true;
+    if (raw && bgRef.current.kind !== 'none') {
+      setBgBusy(true);
+      try {
+        const fx = await applyBackground(raw, bgRef.current);
+        if (seq !== camSeq.current) { fx.stop(); return false; }
+        effectRef.current = fx;
+        out = fx.track;
+      } catch (e) {
+        console.warn('Background unavailable', e);
+        toast.error('Couldn’t apply your background, so your camera is off. Choose “None” in Background to use the camera without one.');
+        raw.stop();
+        rawCam.current = null;
+        out = null;
+        ok = false;
+      } finally {
+        if (seq === camSeq.current) setBgBusy(false);
+      }
+    }
+    if (seq !== camSeq.current) return false;
+    await replaceVideo(out);
     const stream = localRef.current;
-    if (!stream) return;
-    for (const old of stream.getVideoTracks()) { stream.removeTrack(old); old.stop(); }
-    if (track) stream.addTrack(track);
-    setLocal(new MediaStream(stream.getTracks()));
+    if (stream) {
+      for (const old of stream.getVideoTracks()) { stream.removeTrack(old); if (old !== raw) old.stop(); }
+      if (out) stream.addTrack(out);
+      setLocal(new MediaStream(stream.getTracks()));
+    }
+    if (oldFx && oldFx !== effectRef.current) oldFx.stop();
+    if (oldRaw && oldRaw !== raw) oldRaw.stop();
+    if (!ok && stateRef.current.camera) { setCamera(false); stateRef.current.camera = false; announce(); }
+    return ok;
+  };
+
+  /** A background for the camera (remembered for next time); applied at once if the camera is on. */
+  const pickBackground = async (b: Background) => {
+    haptic('tap');
+    saveBackground(b);
+    setBgChoice(b);
+    bgRef.current = b;
+    const raw = rawCam.current;
+    if (!raw || raw.readyState === 'ended' || !stateRef.current.camera) return;
+    if (effectRef.current && b.kind !== 'none') { effectRef.current.set(b); return; }
+    await applyCamera(raw);
+  };
+  const uploadBackground = async (file: File) => {
+    try {
+      setBgCustom(await saveCustomImage(file));
+      await pickBackground({ kind: 'image', id: 'custom' });
+    } catch { toast.error('Couldn’t use that picture.'); }
   };
 
   // Turning the camera on works in any call, so a voice call becomes a video call; off releases
@@ -1273,36 +1346,35 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const next = !camera;
     if (next) {
       setCameraBusy(true);
+      let track: MediaStreamTrack;
       try {
         const chosen = chosenDevice('cam');
-        const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(), ...(chosen ? { deviceId: { ideal: chosen } } : {}) } })).getVideoTracks()[0];
-        setCameraTrack(track);
-        await replaceVideo(track);
+        track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(), ...(chosen ? { deviceId: { ideal: chosen } } : {}) } })).getVideoTracks()[0];
       } catch {
         toast.error('Allow the camera to turn on video.');
         setCameraBusy(false);
         return;
       }
+      const ok = await applyCamera(track);
       setCameraBusy(false);
+      if (!ok) return;
     } else {
-      await replaceVideo(null);
-      setCameraTrack(null);
+      await applyCamera(null);
     }
     setCamera(next);
     stateRef.current.camera = next;
     announce();
   };
 
-  useEffect(() => { actions.current = { toggleCamera, setMicOff }; });
+  useEffect(() => { actions.current = { toggleCamera, setMicOff, applyCamera }; });
 
   const flipCamera = async () => {
-    const current = localRef.current?.getVideoTracks()[0];
+    const current = rawCam.current;
     if (!current) return;
     const facing = current.getSettings().facingMode === 'environment' ? 'user' : 'environment';
     try {
       const track = (await navigator.mediaDevices.getUserMedia({ video: cameraConstraints(facing) })).getVideoTracks()[0];
-      await replaceVideo(track);
-      setCameraTrack(track);
+      await applyCamera(track);
     } catch { /* only one camera */ }
   };
 
@@ -1347,8 +1419,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (!camera) return;
     try {
       const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(), deviceId: { exact: id } } })).getVideoTracks()[0];
-      await replaceVideo(track);
-      setCameraTrack(track);
+      await applyCamera(track);
     } catch { toast.error('Couldn’t switch the camera.'); }
   };
 
@@ -1434,9 +1505,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const handPos = (id: string) => { const i = queue.findIndex((q) => q.id === id); return i < 0 ? undefined : i + 1; };
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
-  const moreItems: { key: 'cc' | 'devices' | 'flip' | 'rec' | 'notes' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const canBg = backgroundsSupported();
+  const moreItems: { key: 'cc' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
+    ...(canBg ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : 'Record class', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
     ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : 'Class notes', icon: NotebookPen, on: notes }] : []),
@@ -1447,6 +1520,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setMoreOpen(false);
     if (key === 'cc') toggleCc();
     else if (key === 'devices') void openSettings();
+    else if (key === 'bg') setBgOpen(true);
     else if (key === 'flip') void flipCamera();
     else if (key === 'rec') { if (recording) void stopRecording(); else startRecording(); }
     else if (key === 'notes') toggleNotes();
@@ -1541,7 +1615,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={playTestSound} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><Volume2 className="w-4 h-4" /> Test speaker</button>
                 <button type="button" onClick={() => void openSettings()} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><SlidersHorizontal className="w-4 h-4" /> Devices & noise</button>
+                {canBg && <button type="button" onClick={() => setBgOpen(true)} className={cn('px-3.5 py-2 rounded-full text-sm font-medium inline-flex items-center gap-1.5', bgChoice.kind !== 'none' ? 'bg-gradient-to-r from-indigo-500/50 to-fuchsia-500/50' : 'bg-white/10 hover:bg-white/20')}><Wand2 className="w-4 h-4" /> Background</button>}
               </div>
+              {bgBusy && <p className="text-xs text-fuchsia-200 inline-flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Applying your background…</p>}
               {(() => {
                 const net = typeof navigator !== 'undefined' ? networkGuess() : null;
                 return net && (
@@ -1576,7 +1652,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 </AnimatePresence>
               </div>
               <p className="text-xs text-zinc-500">Nobody sees or hears you until you’re let in.</p>
-              <button type="button" onClick={() => void openSettings()} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><SlidersHorizontal className="w-4 h-4" /> Devices & noise</button>
+              <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                <button type="button" onClick={() => void openSettings()} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><SlidersHorizontal className="w-4 h-4" /> Devices & noise</button>
+                {canBg && <button type="button" onClick={() => setBgOpen(true)} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><Wand2 className="w-4 h-4" /> Background</button>}
+              </div>
             </div>
           </div>
         </motion.main>
@@ -1711,6 +1790,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </div>
       </motion.footer>
       <FloatingReactions items={floats} />
+      <BackgroundSheet open={bgOpen && (phase === 'live' || phase === 'prejoin' || phase === 'lobby')} onClose={() => setBgOpen(false)} value={bgChoice} onPick={(b) => void pickBackground(b)} busy={bgBusy} custom={bgCustom} onUpload={(f) => void uploadBackground(f)} />
       <ReactionBar open={reactOpen && phase === 'live'} onClose={() => setReactOpen(false)} onReact={react} hand={!!myHand} onHand={toggleHand} />
       <AnimatePresence>
         {moreOpen && phase === 'live' && (
