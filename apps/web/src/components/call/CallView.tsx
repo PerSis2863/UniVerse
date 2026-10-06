@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal } from 'lucide-react';
+import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -46,8 +46,9 @@ interface Remote {
   /** When their hand went up (the queue's order), or null. */
   hand: number | null;
 }
-/** prejoin: meetings (class, group, link calls) show a check-yourself screen before joining. */
-type Phase = 'starting' | 'prejoin' | 'live' | 'ended' | 'error';
+/** prejoin: meetings (class, group, link calls) show a check-yourself screen before joining.
+ *  lobby: in the waiting room until the host lets you in (cloudflare/worker.ts CallRoom). */
+type Phase = 'starting' | 'prejoin' | 'lobby' | 'live' | 'ended' | 'error';
 type Info = Omit<Ticket, 'path' | 'iceServers'>;
 interface Caption { name: string; text: string; final: boolean; at: number }
 interface NoteLine { t: number; who: string; text: string }
@@ -382,6 +383,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const reactLog = useRef<number[]>([]);
   const [reactOpen, setReactOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Waiting room: whether a host is here to let me in; for hosts, who's waiting and whether it's on.
+  const [hostHere, setHostHere] = useState(false);
+  const [lobby, setLobby] = useState<{ id: string; name: string }[]>([]);
+  const [lobbyOn, setLobbyOn] = useState(false);
   // Whether I can moderate, for the socket handler (set up once): hand-raise toasts are for hosts.
   const modRef = useRef(false);
   // The latest mic and camera controls, for the host's requests (the socket handler is set up once).
@@ -879,8 +884,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       stat.current.joinAt ||= Date.now();
       sock.onmessage = async (ev) => {
         const msg = JSON.parse(ev.data as string);
-        if (msg.type === 'welcome') {
+        if (msg.type === 'lobby') {
+          // In the waiting room: nothing is shared until the host lets me in.
           retry = 0;
+          stat.current.joinAt = 0;
+          setHostHere(msg.hostHere === true);
+          setPhase('lobby');
+        } else if (msg.type === 'welcome') {
+          retry = 0;
+          stat.current.joinAt ||= Date.now();
+          setLobby(Array.isArray(msg.lobby) ? msg.lobby.map((w: { peerId: string; name: string }) => ({ id: w.peerId, name: w.name })) : []);
+          setLobbyOn(msg.lobbyOn === true);
           setPhase('live');
           for (const p of msg.peers as Peer[]) known.set(p.peerId, p);
           myId.current = msg.you;
@@ -958,6 +972,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           } else {
             setR((r) => (r[msg.peerId] ? { ...r, [msg.peerId]: { ...r[msg.peerId], peer: { ...r[msg.peerId].peer, cohost: msg.cohost === true } } } : r));
           }
+        } else if (msg.type === 'knock') {
+          // Someone in the waiting room (only hosts and co-hosts hear this).
+          const w = { id: String(msg.peer?.peerId), name: String(msg.peer?.name ?? 'Someone') };
+          setLobby((l) => (l.some((x) => x.id === w.id) ? l : [...l, w]));
+          toast(`${w.name} is waiting to join`, { icon: '🚪', duration: 15_000, action: { label: 'Let in', onClick: () => send({ type: 'control', action: 'admit', target: w.id }) } });
+        } else if (msg.type === 'lobby-left') {
+          setLobby((l) => l.filter((x) => x.id !== msg.peerId));
+        } else if (msg.type === 'lobby-setting') {
+          setLobbyOn(msg.on === true);
+        } else if (msg.type === 'denied') {
+          finish('The host didn’t let you in');
         } else if (msg.type === 'hand') {
           const at = typeof msg.at === 'number' ? msg.at : null;
           if (msg.peerId === myId.current) setMyHand(at);
@@ -979,6 +1004,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       sock.onclose = (ev) => {
         if (ws.current === sock) ws.current = null;
         if (ev.code === 4001) finish('The host removed you from the call');
+        if (ev.code === 4003) finish('The host didn’t let you in');
         for (const w of rpcWait.current.values()) w.reject(new Error('Disconnected'));
         rpcWait.current.clear();
         // Small calls already connected keep going browser to browser; reconnect so new people can
@@ -1367,7 +1393,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canRec = !!info?.host && info.type === 'class' && canRecord();
   const canNotes = !!info?.host && info.type === 'class';
   const btn = 'w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-colors';
-  const status = phase === 'prejoin' ? 'Ready to join?' : phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
+  const status = phase === 'prejoin' ? 'Ready to join?' : phase === 'lobby' ? 'In the waiting room' : phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
   const firstRemoteId = list[0]?.peer.peerId;
   // Presenting: someone's shared screen fills the stage (theirs first), cameras go to a strip below.
   const presenter: Remote | 'me' | null = list.find((r) => r.sharing && r.screen) ?? (sharing ? 'me' : null);
@@ -1461,6 +1487,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             <button type="button" onClick={() => { haptic('tap'); setPeopleOpen((o) => !o); }} aria-expanded={peopleOpen} aria-label={`People in the call: ${count}`} title="People"
               className={cn('ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', peopleOpen ? 'bg-white text-zinc-900' : 'text-zinc-200 bg-white/[0.06] hover:bg-white/15')}>
               <Users className="w-4 h-4" />{count}<span className="hidden sm:inline font-normal">in call</span>
+              <AnimatePresence>
+                {canModerate && lobby.length > 0 && (
+                  <motion.span key="knock" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="ml-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
+                )}
+              </AnimatePresence>
             </button>
           ) : <span className="text-xs text-zinc-400 ml-1">{count} in call</span>}
         </div>
@@ -1503,6 +1534,28 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 className="w-full py-3.5 rounded-2xl font-bold text-base bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/30">
                 Join now
               </motion.button>
+            </div>
+          </div>
+        </motion.main>
+      ) : phase === 'lobby' ? (
+        <motion.main key="lobby" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
+          <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
+            <Tile id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me />
+            <div className="space-y-4 text-center md:text-left">
+              <div className="relative w-14 h-14 mx-auto md:mx-0">
+                <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 animate-ping opacity-25" />
+                <span className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-fuchsia-500/30"><DoorOpen className="w-7 h-7" /></span>
+              </div>
+              <div>
+                <p className="text-2xl font-bold">You’re in the waiting room</p>
+                <AnimatePresence mode="wait">
+                  <motion.p key={hostHere ? 'here' : 'away'} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }} className="text-sm text-zinc-400 mt-1">
+                    {hostHere ? 'The host knows you’re here and will let you in soon.' : 'The host isn’t here yet. You’ll join as soon as they let you in.'}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+              <p className="text-xs text-zinc-500">Nobody sees or hears you until you’re let in.</p>
+              <button type="button" onClick={() => void openSettings()} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><SlidersHorizontal className="w-4 h-4" /> Devices & noise</button>
             </div>
           </div>
         </motion.main>
@@ -1649,7 +1702,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           </>
         )}
       </AnimatePresence>
-      <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} onLowerMyHand={toggleHand} />
+      <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} onLowerMyHand={toggleHand} lobby={lobby} lobbyOn={lobbyOn} />
       {/* Microphone, camera and noise suppression */}
       <AnimatePresence>
         {settingsOpen && (

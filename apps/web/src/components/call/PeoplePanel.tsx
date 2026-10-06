@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { Crown, Hand, Mic, MicOff, MoreHorizontal, Pin, PinOff, Shield, ShieldOff, UserMinus, Video, VideoOff, X } from 'lucide-react';
+import { Crown, DoorOpen, Hand, Mic, MicOff, MoreHorizontal, Pin, PinOff, Shield, ShieldOff, UserMinus, Video, VideoOff, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -20,7 +20,7 @@ export interface Person {
   /** How long they've spoken in this call (ms). */ talkMs?: number;
 }
 
-export type ControlAction = 'mute' | 'ask-unmute' | 'stop-video' | 'mute-all' | 'spotlight' | 'cohost' | 'remove' | 'lower-hand' | 'lower-all';
+export type ControlAction = 'mute' | 'ask-unmute' | 'stop-video' | 'mute-all' | 'spotlight' | 'cohost' | 'remove' | 'lower-hand' | 'lower-all' | 'admit' | 'admit-all' | 'deny' | 'lobby';
 
 const talkClock = (ms: number) => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
 
@@ -28,8 +28,10 @@ const initials = (name: string) => name.split(/\s+/).map((n) => n[0]).join('').s
 
 const chip = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors';
 
-export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotlight, onControl, onLowerMyHand }: {
+export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotlight, onControl, onLowerMyHand, lobby, lobbyOn }: {
   open: boolean; onClose: () => void; people: Person[]; onLowerMyHand: () => void;
+  /** Waiting to be let in (the host and co-hosts see this), and whether the waiting room is on. */
+  lobby: { id: string; name: string }[]; lobbyOn: boolean;
   /** The host or a co-host. */ canModerate: boolean;
   /** The call's own host (only they make co-hosts). */ isHost: boolean;
   spotlight: string | null;
@@ -58,6 +60,28 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
               <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
             </div>
             <AnimatePresence initial={false}>
+              {canModerate && lobby.length > 0 && (
+                <motion.section key="lobby" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
+                  <div className="mx-3 mb-3 rounded-2xl bg-indigo-500/15 border border-indigo-300/20 p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-indigo-200 inline-flex items-center gap-1.5"><DoorOpen className="w-3.5 h-3.5" />Waiting to join · {lobby.length}</p>
+                      {lobby.length > 1 && <button type="button" onClick={() => act('admit-all')} className="text-xs font-semibold text-indigo-200 hover:underline">Let everyone in</button>}
+                    </div>
+                    <ul className="space-y-1.5">
+                      <AnimatePresence initial={false}>
+                        {lobby.map((w) => (
+                          <motion.li key={w.id} layout="position" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={spring.smooth} className="flex items-center gap-2 text-sm">
+                            <span className="w-7 h-7 shrink-0 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-bold">{initials(w.name)}</span>
+                            <span className="flex-1 truncate">{w.name}</span>
+                            <button type="button" onClick={() => act('deny', w.id)} className="text-xs text-zinc-300 hover:text-white px-2 py-1 rounded-full hover:bg-white/10">Deny</button>
+                            <button type="button" onClick={() => act('admit', w.id)} className="text-xs font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500">Let in</button>
+                          </motion.li>
+                        ))}
+                      </AnimatePresence>
+                    </ul>
+                  </div>
+                </motion.section>
+              )}
               {hands.length > 0 && (
                 <motion.section key="hands" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
                   <div className="mx-3 mb-3 rounded-2xl bg-amber-400/10 border border-amber-300/20 p-3">
@@ -80,6 +104,12 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
             </AnimatePresence>
             {(canModerate || lit) && (
               <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                {canModerate && (
+                  <button type="button" onClick={() => act('lobby', null, !lobbyOn)} aria-pressed={lobbyOn} title="People wait until you let them in"
+                    className={cn(chip, lobbyOn ? 'bg-indigo-500/30 text-indigo-100 hover:bg-indigo-500/40' : 'bg-white/10 hover:bg-white/20')}>
+                    <DoorOpen className="w-3.5 h-3.5" />Waiting room {lobbyOn ? 'on' : 'off'}
+                  </button>
+                )}
                 {canModerate && people.some((p) => !p.me && !p.muted && !p.host && !p.cohost) && (
                   <button type="button" onClick={() => act('mute-all')} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><MicOff className="w-3.5 h-3.5" />Mute everyone</button>
                 )}

@@ -658,7 +658,7 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; sfu?: { sessionId: string; tracks: SfuTrack[] } }
+interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number }
 
 const MAX_CALL_PEERS = 6; // small calls: everyone connects to everyone
@@ -668,8 +668,10 @@ const MAX_CAPTION = 300;
 /** Reactions anyone can send (floating emoji), and how many per person in a few seconds. */
 const REACTIONS = new Set(['👍', '👏', '❤️', '😂', '😮', '🎉']);
 const REACTION_BURST = 8, REACTION_WINDOW_MS = 4000;
-/** Someone the host removed can't come back into the same call for this long. */
+/** Someone the host removed can't come back into the same call for this long; someone let in from
+ *  the waiting room comes straight back in for as long. */
 const REMOVED_MS = 4 * 3600_000;
+const MAX_WAITING = 50;
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -691,8 +693,43 @@ export class CallRoom extends DurableObject<Env> {
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
   }
 
-  private peers() {
+  private sockets() {
     return this.ctx.getWebSockets().map((ws) => ({ ws, peer: ws.deserializeAttachment() as CallPeer | null })).filter((p): p is { ws: WebSocket; peer: CallPeer } => !!p.peer);
+  }
+
+  /** Everyone in the call (not the waiting room). */
+  private peers() {
+    return this.sockets().filter(({ peer }) => !peer.waiting);
+  }
+
+  /** People in the waiting room, until the host lets them in. */
+  private waitingRoom() {
+    return this.sockets().filter(({ peer }) => peer.waiting);
+  }
+
+  /** Whoever can let people in: the host and co-hosts. */
+  private mods(except?: WebSocket) {
+    return this.peers().filter(({ ws, peer }) => ws !== except && (peer.host || peer.cohost));
+  }
+
+  /** Tells the waiting room whether a host is here to let them in. */
+  private tellWaiting(except?: WebSocket) {
+    const hostHere = this.mods(except).length > 0;
+    for (const { ws } of this.waitingRoom()) this.send(ws, { type: 'lobby', hostHere });
+  }
+
+  /** Into the call: the newcomer calls everyone already here (so two never offer to each other at once). */
+  private async join(ws: WebSocket, me: CallPeer, lobbyOn: boolean) {
+    const current = this.peers().filter((p) => p.ws !== ws);
+    const mod = me.host === true || me.cohost === true;
+    this.send(ws, {
+      type: 'welcome', you: me.peerId, host: me.host === true, cohost: me.cohost === true,
+      peers: current.map(({ peer }) => peer),
+      spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null,
+      lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
+    });
+    for (const { ws: other } of current) this.send(other, { type: 'joined', peer: me });
+    if (mod) this.tellWaiting();
   }
 
   private send(ws: WebSocket, msg: unknown) {
@@ -725,6 +762,7 @@ export class CallRoom extends DurableObject<Env> {
       const stale = [
         ...[...(await this.ctx.storage.list<{ exp: number }>({ prefix: 'ticket:' }))].filter(([, t]) => t.exp < now),
         ...[...(await this.ctx.storage.list<{ until: number }>({ prefix: 'removed:' }))].filter(([, t]) => t.until < now),
+        ...[...(await this.ctx.storage.list<{ until: number }>({ prefix: 'admitted:' }))].filter(([, t]) => t.until < now),
       ].map(([k]) => k);
       if (stale.length) await this.ctx.storage.delete(stale.slice(0, 128));
       // Removed by the host: not back into this call (for a few hours).
@@ -760,15 +798,26 @@ export class CallRoom extends DurableObject<Env> {
       if (who.exp < Date.now()) return new Response('Forbidden', { status: 403 });
       const current = this.peers();
       if (current.length >= Math.min(MAX_SFU_PEERS, who.max ?? MAX_CALL_PEERS)) return new Response('This call is full', { status: 429 });
-      const { 0: client, 1: server } = new WebSocketPair();
-      this.ctx.acceptWebSocket(server);
       const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true };
       // Co-hosts stay co-hosts when they reconnect.
       if (!me.host && (await this.ctx.storage.get(`cohost:${who.userId}`))) me.cohost = true;
+      // Waiting room: on for call links (with a creator to let people in; older links have none)
+      // unless their host turned it off; a host can turn it on for any call. Hosts, co-hosts and
+      // anyone let in during the last few hours go straight in.
+      const lobbyOn = (await this.ctx.storage.get<boolean>('lobby')) ?? ((url.searchParams.get('call') ?? '').startsWith('l_') && !!(await this.ctx.storage.get('creator')));
+      const admitted = me.host || me.cohost || ((await this.ctx.storage.get<{ until: number }>(`admitted:${who.userId}`))?.until ?? 0) > Date.now();
+      if (lobbyOn && !admitted && this.waitingRoom().length >= MAX_WAITING) return new Response('The waiting room is full', { status: 429 });
+      const { 0: client, 1: server } = new WebSocketPair();
+      this.ctx.acceptWebSocket(server);
+      if (lobbyOn && !admitted) {
+        me.waiting = true;
+        server.serializeAttachment(me);
+        this.send(server, { type: 'lobby', hostHere: this.mods().length > 0 });
+        for (const { ws } of this.mods()) this.send(ws, { type: 'knock', peer: { peerId: me.peerId, name: me.name } });
+        return new Response(null, { status: 101, webSocket: client });
+      }
       server.serializeAttachment(me);
-      // The newcomer calls everyone already here (so two people never offer to each other at once).
-      this.send(server, { type: 'welcome', you: me.peerId, host: me.host, cohost: me.cohost === true, peers: current.map(({ peer }) => peer), spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null });
-      for (const { ws } of current) this.send(ws, { type: 'joined', peer: me });
+      await this.join(server, me, lobbyOn);
       return new Response(null, { status: 101, webSocket: client });
     }
     return new Response('Not found', { status: 404 });
@@ -777,7 +826,8 @@ export class CallRoom extends DurableObject<Env> {
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
     if (typeof raw !== 'string' || raw.length > MAX_SIGNAL_BYTES) return;
     const me = ws.deserializeAttachment() as CallPeer | null;
-    if (!me) return;
+    // In the waiting room nothing goes to the call.
+    if (!me || me.waiting) return;
     let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
@@ -840,7 +890,28 @@ export class CallRoom extends DurableObject<Env> {
     const all = this.peers();
     const them = target ? all.find(({ peer }) => peer.peerId === target) : undefined;
     const by = me.name;
-    if (action === 'lower-hand' && them) {
+    if (action === 'admit' || action === 'admit-all' || action === 'deny') {
+      // The waiting room: let one or everyone in, or turn someone away.
+      const knocking = this.waitingRoom().filter(({ peer }) => action === 'admit-all' || peer.peerId === target);
+      for (const w of knocking) {
+        if (action === 'deny') {
+          this.send(w.ws, { type: 'denied', by });
+          w.ws.serializeAttachment(null);
+          try { w.ws.close(4003, 'Not let in'); } catch { /* already closed */ }
+        } else {
+          w.peer.waiting = false;
+          w.ws.serializeAttachment(w.peer);
+          await this.ctx.storage.put(`admitted:${w.peer.userId}`, { until: Date.now() + REMOVED_MS });
+          await this.join(w.ws, w.peer, true);
+        }
+        for (const m of this.mods()) this.send(m.ws, { type: 'lobby-left', peerId: w.peer.peerId, admitted: action !== 'deny', name: w.peer.name, by });
+      }
+    } else if (action === 'lobby') {
+      // Waiting room on or off; off lets everyone waiting in.
+      await this.ctx.storage.put('lobby', on);
+      for (const m of this.mods()) this.send(m.ws, { type: 'lobby-setting', on, by });
+      if (!on) await this.control(ws, me, 'admit-all', null, false);
+    } else if (action === 'lower-hand' && them) {
       this.setHand(them.peer, them.ws, false);
     } else if (action === 'lower-all') {
       for (const p of all) this.setHand(p.peer, p.ws, false);
@@ -940,8 +1011,15 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     try { ws.close(code === 1005 || code === 1006 ? 1000 : code); } catch { /* already closed */ }
     if (!me) return;
+    if (me.waiting) {
+      // Gave up waiting.
+      for (const { ws: m } of this.mods(ws)) this.send(m, { type: 'lobby-left', peerId: me.peerId });
+      return;
+    }
     const rest = this.peers().filter(({ ws: other }) => other !== ws);
     for (const { ws: other } of rest) this.send(other, { type: 'left', peerId: me.peerId });
+    // The last host left: the waiting room hears nobody can let them in for now.
+    if (me.host || me.cohost) this.tellWaiting(ws);
     // The spotlit person left: back to the grid.
     if ((await this.ctx.storage.get<string>('spotlight')) === me.peerId) {
       await this.ctx.storage.delete('spotlight');
