@@ -227,3 +227,28 @@ touches calls, merged when the owner says.
   and search on the server. Possible later as an opt-in "private chat" for 1:1, clearly labelled.
 - **Our own media servers:** stay on Cloudflare Realtime; no servers to run.
 - **Native app store apps:** the installed web app first; wrap later if needed.
+
+---
+
+## Progress (keep this up to date, so either agent can take over)
+
+**Branch:** `claude/great-hamilton-8g8xdm`. One commit per feature; typecheck + eslint on the changed
+files only; push at each checkpoint; merge only when the owner says "merge". Next migration: `0049`.
+
+**Not merged yet on the branch:** call fixes round 2 (echo, quality, camera while sharing, layout),
+the read-only cache log fix (`open-next.config.ts`), this plan, and everything under "Done" below.
+
+### Phase 0
+| # | Item | State | Where |
+|---|---|---|---|
+| 1 | TURN relay | **Owner task**: create the key, set `TURN_KEY_ID` + `TURN_KEY_API_TOKEN` | `src/server/calls.ts` |
+| 2 | Pre-join screen | **Done** | `CallView.tsx`: phase `'prejoin'`, `MicMeter`, `playTestSound`, `networkGuess`; class/group/room calls only, chat calls skip it |
+| 3 | SFU simulcast | Next | `src/lib/sfu-client.ts`, `CallRoom.sfuOp` |
+| 4 | Audio-only fallback | To do | `CallView.tsx` (quality reading already exists) |
+| 5 | Call health log | To do | new `CallStat` model, migration `0049`, owner console chart |
+| 6 | Test matrix | To do | a checklist at the end of this file |
+
+### Notes for whoever continues
+- The pre-join gate is in `open()` in `CallView.tsx`: media opens first, then `resumeJoin.current()`
+  sets `joinConfirmed` and calls `open()` again for a fresh ticket.
+- The pre-join network hint uses `navigator.connection` (Chrome/Android); Safari shows nothing.

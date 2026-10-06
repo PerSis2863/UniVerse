@@ -1222,7 +1222,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 const net = typeof navigator !== 'undefined' ? networkGuess() : null;
                 return net && (
                   <p className={cn('text-xs inline-flex items-center gap-1.5', net.weak ? 'text-amber-300' : 'text-emerald-300')}>
-                    <Signal className="w-3.5 h-3.5" />{net.label}{net.weak && camera ? ' · try joining with your camera off' : ''}
+                    <Signal className="w-3.5 h-3.5" />{net.label}
+                    {net.weak && camera && <button type="button" onClick={() => void toggleCamera().then(() => resumeJoin.current?.())} className="underline underline-offset-2 font-semibold">Join with camera off</button>}
                   </p>
                 );
               })()}
