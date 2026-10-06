@@ -262,6 +262,9 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 | 2.7 | Live polls and quick quizzes | **Done** (tested in the Workers runtime: who sees what, live counts, changing answers, quizzes hiding answers, late joiners, validation) | `src/components/call/CallPoll.tsx`: `PollComposer` (poll or quick quiz, 2–6 options, the right answer for quizzes, anonymous switch, "Ask a question from this class's quizzes" for class calls via `GET /api/calls/:id/questions` → `callQuestions` in `src/server/calls.ts`, teacher only) and `PollCard` (answer, live bars, folds into a pill). `CallRoom`: one poll at a time in `poll` (cleared with the call's chat), `pollControl` (`poll-start`, `poll-end`, `poll-clear`, hosts and co-hosts), `vote` (a new answer replaces the last while open), `pollView` (results for hosts always; others after answering a poll, or when it ends; a quiz hides answers and the right one until it ends; names only for hosts and only when not anonymous), results pushed at most every 700 ms. Each breakout room has its own poll |
 
 ### Notes for whoever continues
+- **Call room tests:** `node scripts/test-call-room.mjs` runs the real `CallRoom` (breakout rooms and live polls,
+  44 checks) in the Workers runtime with fake participants, no deploy needed; `TIMER=1` adds the breakout timer
+  (about 2 minutes). Run it after changing `CallRoom`.
 - The pre-join gate is in `open()` in `CallView.tsx`: media opens first, then `resumeJoin.current()`
   sets `joinConfirmed` and calls `open()` again for a fresh ticket.
 - The pre-join network hint uses `navigator.connection` (Chrome/Android); Safari shows nothing.
