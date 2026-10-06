@@ -79,6 +79,13 @@ async function tuneSenders(pc: RTCPeerConnection, sendCamera = true) {
 /** 720p. Bigger calls send it in three sizes (simulcast, src/lib/sfu-client.ts), so each viewer
  *  receives only what its tile needs. */
 const cameraConstraints = (facingMode: string = 'user'): MediaTrackConstraints => ({ width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }, facingMode });
+/** "Chrome on Mac", for the call health log (no version, nothing that identifies the person). */
+function deviceName() {
+  const ua = navigator.userAgent;
+  const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux|CrOS/.test(ua) ? 'Linux' : 'other';
+  return `${browser} on ${os}`;
+}
 const CAPTION_MS = 5000;
 const MAX_REC_MS = 2 * 3600_000;
 const MAX_REC_BYTES = 950 * 1024 * 1024;
@@ -349,6 +356,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [audioOnly, setAudioOnly] = useState(false);
   const audioOnlyRef = useRef(false);
   const poorSince = useRef<number | null>(null);
+  // Call health log: how this call went, sent once when it ends (connection numbers only).
+  const stat = useRef({ joinAt: 0, peers: 0, worstRtt: 0, worstLoss: 0, relay: false, audioOnly: false, failure: null as string | null, sent: false });
   const autoAudioOnlyAfter = useRef(0);
   const ended = useRef(false);
   const everJoined = useRef(false);
@@ -489,6 +498,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (audioOnlyRef.current === on) return;
     audioOnlyRef.current = on;
     setAudioOnly(on);
+    if (on) stat.current.audioOnly = true;
     poorSince.current = null;
     // Chose video again: don't switch it off by itself for a minute.
     if (!on) autoAudioOnlyAfter.current = Date.now() + 60_000;
@@ -572,9 +582,26 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   }, [callId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Leaves the call. The last one out of a chat call records how it went (shown on the call in the chat). */
+  const report = useCallback(() => {
+    const st = stat.current, i = infoRef.current;
+    if (st.sent || !i || (!st.joinAt && !st.failure)) return;
+    st.sent = true;
+    const seconds = talkStart.current ? Math.round((Date.now() - talkStart.current) / 1000) : 0;
+    const failure = st.failure ?? (st.peers > 0 && !talkStart.current ? 'connect' : null);
+    void authedJson(`/api/calls/${callId}/stat`, {
+      method: 'POST', keepalive: true,
+      body: JSON.stringify({
+        mode: i.sfu ? 'sfu' : 'p2p', peers: st.peers, seconds, failure, device: deviceName(),
+        setupMs: talkStart.current && st.joinAt ? talkStart.current - st.joinAt : null,
+        worstRttMs: st.worstRtt || null, worstLoss: st.worstLoss || null, relay: st.relay, audioOnly: st.audioOnly,
+      }),
+    }).catch(() => {});
+  }, [callId]);
+
   const finish = useCallback((why?: string) => {
     if (ended.current) return;
     ended.current = true;
+    report();
     if (why) setNotice(why);
     const alone = sfuRef.current
       ? Object.values(remotesRef.current).length === 0
@@ -599,7 +626,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     // Nobody answered a one-to-one call: offer to leave a voice message (like voicemail).
     if (why === 'No answer' && i?.oneToOne && i.conversationId) { setVoicemail('offer'); return; }
     setTimeout(() => onLeave(i?.conversationId ?? null), why ? 1400 : 250);
-  }, [callId, onLeave, stopRecording, submitNotes]);
+  }, [callId, onLeave, stopRecording, submitNotes, report]);
 
   // A call that couldn't connect while on hold (out of sight) closes itself instead of lingering.
   useEffect(() => {
@@ -735,6 +762,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       } catch (e) {
         setError((e as Error).message || 'Couldn’t join the call.');
         setPhase('error');
+        stat.current.failure = 'ticket';
+        report();
         return;
       }
       ice.current = t.iceServers;
@@ -759,6 +788,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           const name = (e as Error).name;
           setError(name === 'NotAllowedError' ? `Allow the ${t.kind === 'video' ? 'camera and microphone' : 'microphone'} to join the call.` : 'No microphone or camera was found.');
           setPhase('error');
+          stat.current.failure = 'media';
+          report();
           return;
         }
       }
@@ -773,6 +804,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
       const sock = new WebSocket(url);
       ws.current = sock;
+      stat.current.joinAt ||= Date.now();
       sock.onmessage = async (ev) => {
         const msg = JSON.parse(ev.data as string);
         if (msg.type === 'welcome') {
@@ -840,11 +872,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         // Small calls already connected keep going browser to browser; reconnect so new people can
         // join. Bigger calls rejoin the SFU on reconnect (a new session).
         if (!cancelled && !ended.current && retry < 6) setTimeout(open, Math.min(15_000, 1000 * 2 ** retry++));
+        else if (!cancelled && !ended.current) stat.current.failure = 'dropped';
       };
     };
     void open();
+    // Closing the tab mid-call still reports how it went.
+    window.addEventListener('pagehide', report);
 
     return () => {
+      window.removeEventListener('pagehide', report);
+      report();
       cancelled = true;
       ws.current?.close(1000);
       for (const pc of conns.values()) pc.close();
@@ -887,6 +924,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       last.set(pc, { lost, got });
       const dLost = Math.max(0, lost - before.lost), dGot = Math.max(0, got - before.got);
       const loss = dGot ? dLost / (dLost + dGot) : 0;
+      // For the call health log: the worst moments, and whether the TURN relay carried the call.
+      const st = stat.current;
+      if (rtt !== null) st.worstRtt = Math.max(st.worstRtt, Math.round(rtt * 1000));
+      st.worstLoss = Math.max(st.worstLoss, loss);
+      st.peers = Math.max(st.peers, Object.keys(remotesRef.current).length);
+      stats?.forEach((x) => {
+        if (x.type === 'candidate-pair' && x.state === 'succeeded' && x.nominated && stats.get(x.localCandidateId)?.candidateType === 'relay') st.relay = true;
+      });
       return rtt === null ? null : rtt > 0.4 || loss > 0.08 ? 'poor' : rtt > 0.2 || loss > 0.03 ? 'fair' : 'good';
     };
     const q = setInterval(async () => {

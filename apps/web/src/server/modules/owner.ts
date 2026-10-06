@@ -17,6 +17,7 @@ import { aiModels, LIVE_MODELS, saveModels, TEXT_MODELS } from '../ai-models';
 import { repairSetup, startRepair } from '../repair-agents';
 import { cloudflareAccount } from '../cloudflare-account';
 import { healthCheck } from '../owner-health';
+import { callHealth } from '../calls';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
@@ -139,6 +140,9 @@ export default function ownerModule(router: Router) {
     if (!done) throw new NotFoundException('This request was already handled.');
     return done;
   });
+
+  // ── Call health (src/server/calls.ts) ──
+  r.get('calls', () => callHealth());
 
   // ── Overview & live activity ──
 

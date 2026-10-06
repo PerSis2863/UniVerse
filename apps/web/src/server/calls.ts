@@ -232,3 +232,80 @@ export async function recentCalls(user: SessionUser) {
     };
   });
 }
+
+// ── Call health log (owner console → Calls) ──────────────────────────────────────────────────
+
+const FAILURES = new Set(['media', 'ticket', 'connect', 'dropped']);
+const int = (v: unknown, max: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.round(v))) : null);
+
+/** How one person's call went: connection numbers only. One report per person per call. */
+export async function recordCallStat(callId: string, user: SessionUser, body: unknown) {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const info = await callAccess(callId, user).catch(() => null);
+  if (!info) return { ok: false };
+  const recent = await prisma.callStat.findFirst({ where: { callId, userId: user.id, createdAt: { gt: new Date(Date.now() - 30_000) } }, select: { id: true } });
+  if (recent) return { ok: true };
+  // Keep 90 days (checked now and then, not on every report).
+  if (Math.random() < 0.02) await prisma.callStat.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 86_400_000) } } }).catch(() => {});
+  const loss = typeof b.worstLoss === 'number' && Number.isFinite(b.worstLoss) ? Math.max(0, Math.min(1, b.worstLoss)) : null;
+  await prisma.callStat.create({
+    data: {
+      callId, userId: user.id,
+      type: callId.startsWith('r_') ? 'room' : info.type,
+      mode: b.mode === 'sfu' ? 'sfu' : 'p2p',
+      peers: int(b.peers, 500) ?? 0,
+      seconds: int(b.seconds, 12 * 3600) ?? 0,
+      setupMs: int(b.setupMs, 600_000),
+      worstRttMs: int(b.worstRttMs, 60_000),
+      worstLoss: loss,
+      relay: b.relay === true,
+      audioOnly: b.audioOnly === true,
+      failure: typeof b.failure === 'string' && FAILURES.has(b.failure) ? b.failure : null,
+      device: typeof b.device === 'string' ? b.device.slice(0, 40) : null,
+    },
+  });
+  return { ok: true };
+}
+
+/** The owner console's Calls tab: the last 14 days of call reports, summed up. */
+export async function callHealth() {
+  const rows = await prisma.callStat.findMany({
+    where: { createdAt: { gt: new Date(Date.now() - 14 * 86_400_000) } }, orderBy: { createdAt: 'desc' }, take: 5000,
+    select: { id: true, callId: true, userId: true, type: true, mode: true, peers: true, seconds: true, setupMs: true, worstRttMs: true, worstLoss: true, relay: true, audioOnly: true, failure: true, device: true, createdAt: true },
+  });
+  const pct = (n: number) => (rows.length ? Math.round((n / rows.length) * 100) : 0);
+  const setups = rows.map((r) => r.setupMs).filter((x): x is number => x !== null).sort((a, b) => a - b);
+  const at = (q: number) => (setups.length ? setups[Math.min(setups.length - 1, Math.floor(q * setups.length))] : null);
+  const poor = (r: (typeof rows)[number]) => (r.worstLoss ?? 0) > 0.08 || (r.worstRttMs ?? 0) > 400;
+  const days = Array.from({ length: 14 }, (_, i) => new Date(Date.now() - (13 - i) * 86_400_000).toISOString().slice(0, 10));
+  const count = <K extends string>(key: (r: (typeof rows)[number]) => K | null) => {
+    const m = new Map<K, { n: number; failed: number }>();
+    for (const r of rows) { const k = key(r); if (!k) continue; const v = m.get(k) ?? { n: 0, failed: 0 }; v.n++; if (r.failure) v.failed++; m.set(k, v); }
+    return [...m.entries()].map(([k, v]) => ({ key: k, ...v })).sort((a, b) => b.n - a.n);
+  };
+  const problems = rows.filter((r) => r.failure || poor(r) || r.audioOnly).slice(0, 60);
+  const ids = [...new Set(problems.map((r) => r.userId))].slice(0, 90);
+  const people = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, role: true } }) : [];
+  const byId = new Map(people.map((u) => [u.id, u]));
+  const talked = rows.filter((r) => r.seconds > 0);
+  return {
+    turn: !!(process.env.TURN_KEY_ID && process.env.TURN_KEY_API_TOKEN),
+    joins: rows.length,
+    failed: rows.filter((r) => r.failure).length,
+    successRate: rows.length ? 100 - pct(rows.filter((r) => r.failure).length) : null,
+    setupMedianMs: at(0.5), setupP90Ms: at(0.9),
+    poorShare: pct(rows.filter(poor).length),
+    relayShare: pct(rows.filter((r) => r.relay).length),
+    sfuShare: pct(rows.filter((r) => r.mode === 'sfu').length),
+    audioOnly: rows.filter((r) => r.audioOnly).length,
+    avgMinutes: talked.length ? Math.round(talked.reduce((n, r) => n + r.seconds, 0) / talked.length / 6) / 10 : null,
+    perDay: days.map((d) => {
+      const day = rows.filter((r) => r.createdAt.toISOString().slice(0, 10) === d);
+      return { day: d, ok: day.filter((r) => !r.failure).length, failed: day.filter((r) => r.failure).length };
+    }),
+    failures: count((r) => r.failure),
+    devices: count((r) => r.device).slice(0, 8),
+    types: count((r) => r.type),
+    problems: problems.map((r) => ({ ...r, createdAt: r.createdAt.toISOString(), user: byId.get(r.userId) ?? null })),
+  };
+}

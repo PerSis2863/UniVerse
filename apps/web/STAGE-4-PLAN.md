@@ -233,7 +233,7 @@ touches calls, merged when the owner says.
 ## Progress (keep this up to date, so either agent can take over)
 
 **Branch:** `claude/great-hamilton-8g8xdm`. One commit per feature; typecheck + eslint on the changed
-files only; push at each checkpoint; merge only when the owner says "merge". Next migration: `0049`.
+files only; push at each checkpoint; merge only when the owner says "merge". Next migration: `0050`.
 
 **Not merged yet on the branch:** call fixes round 2 (echo, quality, camera while sharing, layout),
 the read-only cache log fix (`open-next.config.ts`), this plan, and everything under "Done" below.
@@ -245,8 +245,8 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 | 2 | Pre-join screen | **Done** | `CallView.tsx`: phase `'prejoin'`, `MicMeter`, `playTestSound`, `networkGuess`; class/group/room calls only, chat calls skip it |
 | 3 | SFU simulcast | **Done** (needs a real-device check) | `sfu-client.ts`: `CAMERA_LAYERS` a/b/c, `pull` with a layer, `prefer`; `worker.ts` `CallRoom.sfuOp` `pull` (falls back to a plain pull) and `layer` → `tracks/update`; `CallView.tsx` `syncSfu` picks the layer, `noteSfuQuality` steps down when poor |
 | 4 | Audio-only fallback | **Done** | `CallView.tsx`: `setLowData`, `poorSince` (poor 10 s while a camera is on), banner "Resume video" / "Turn my camera off"; P2P senders stop their camera to that person (`tuneSenders(pc, sendCamera)`, `lowData` in the room's `state` message), SFU stops pulling cameras; screens stay. Quality now uses packet loss since the last reading |
-| 5 | Call health log | Next | new `CallStat` model, migration `0049`, owner console chart |
-| 6 | Test matrix | To do | a checklist at the end of this file |
+| 5 | Call health log | **Done** | `CallStat` (migration `0049_call_stats.sql`), `POST /api/calls/:id/stat` → `recordCallStat`, owner console → Calls tab (`console/calls.tsx`, `GET /owner/calls` → `callHealth`). One row per person per call; kept 90 days; erased with the account |
+| 6 | Test matrix | Next | a checklist at the end of this file |
 
 ### Notes for whoever continues
 - The pre-join gate is in `open()` in `CallView.tsx`: media opens first, then `resumeJoin.current()`

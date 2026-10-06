@@ -2002,6 +2002,29 @@ model ErrorReport {
   @@map("error_reports")
 }
 
+/// How one person's call went (src/components/call/CallView.tsx → POST /api/calls/:id/stat), for the
+/// owner console's Calls tab: connection numbers only, never what was said or shown.
+model CallStat {
+  id         String   @id @default(cuid())
+  callId     String
+  userId     String
+  type       String // chat, group, class, room
+  mode       String // p2p, sfu
+  peers      Int      @default(0) // most other people at once
+  seconds    Int      @default(0) // time connected to someone
+  setupMs    Int? // from "Join" to the first connection
+  worstRttMs Int?
+  worstLoss  Float? // 0..1, packets lost in the worst reading
+  relay      Boolean  @default(false) // went through the TURN relay
+  audioOnly  Boolean  @default(false) // the audio-only fallback switched on
+  failure    String? // media, ticket, connect, dropped
+  device     String? // "Chrome on Mac"
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("call_stats")
+}
+
 /// Machine translations of chat messages, one per message and language, shared by everyone in the
 /// conversation (so a group of 30 costs one translation, not 30). Deleted when the message is edited.
 model MessageTranslation {
