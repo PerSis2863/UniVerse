@@ -672,6 +672,17 @@ const REACTION_BURST = 8, REACTION_WINDOW_MS = 4000;
  *  the waiting room comes straight back in for as long. */
 const REMOVED_MS = 4 * 3600_000;
 const MAX_WAITING = 50;
+/** The call's own chat (calls without a chat of their own): kept while the call lasts. */
+const CHAT_KEEP = 100, CHAT_MAX_CHARS = 2000, CHAT_BURST = 6, CHAT_WINDOW_MS = 5000;
+interface RoomChat { id: string; uid: string; name: string; text: string; at: number; file?: { url: string; name: string; size: number; mime: string } | null }
+/** A chat message as one person sees it: whether it's theirs, without anyone's account id. */
+const chatView = (l: RoomChat, viewer: string) => ({ id: l.id, name: l.name, text: l.text, at: l.at, file: l.file ?? null, mine: l.uid === viewer });
+/** An uploaded file's address: this app's own files, or the files bucket (https). */
+const safeFile = (f: unknown): RoomChat['file'] => {
+  const x = f as { url?: unknown; name?: unknown; size?: unknown; mime?: unknown } | null;
+  if (!x || typeof x.url !== 'string' || x.url.length > 600 || !(/^\/api\/files\/[A-Za-z0-9_-]{16,}/.test(x.url) || /^https:\/\/[^/]+\//.test(x.url))) return null;
+  return { url: x.url, name: String(x.name ?? 'file').slice(0, 120), size: Math.max(0, Number(x.size) || 0), mime: String(x.mime ?? '').slice(0, 100) };
+};
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -685,8 +696,9 @@ const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid ===
  * and a browser can only touch its own SFU session. Nothing is stored except one-time join tickets.
  */
 export class CallRoom extends DurableObject<Env> {
-  /** Recent reactions per person (a burst limit; forgotten when the room sleeps, which is fine). */
+  /** Recent reactions and chat messages per person (burst limits; forgotten when the room sleeps). */
   private reacted = new Map<string, number[]>();
+  private chatted = new Map<string, number[]>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -727,6 +739,7 @@ export class CallRoom extends DurableObject<Env> {
       peers: current.map(({ peer }) => peer),
       spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null,
       lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
+      chat: [...(await this.ctx.storage.list<RoomChat>({ prefix: 'chat:', reverse: true, limit: CHAT_KEEP })).values()].reverse().map((l) => chatView(l, me.userId)),
     });
     for (const { ws: other } of current) this.send(other, { type: 'joined', peer: me });
     if (mod) this.tellWaiting();
@@ -765,6 +778,8 @@ export class CallRoom extends DurableObject<Env> {
         ...[...(await this.ctx.storage.list<{ until: number }>({ prefix: 'admitted:' }))].filter(([, t]) => t.until < now),
       ].map(([k]) => k);
       if (stale.length) await this.ctx.storage.delete(stale.slice(0, 128));
+      // An empty room starts a new call: the last call's chat goes.
+      if (!this.sockets().length) await this.clearChat();
       // Removed by the host: not back into this call (for a few hours).
       if (((await this.ctx.storage.get<{ until: number }>(`removed:${who.userId}`))?.until ?? 0) > now) return Response.json({ error: 'removed' }, { status: 403 });
       // A call link's creator hosts it.
@@ -828,7 +843,7 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     // In the waiting room nothing goes to the call.
     if (!me || me.waiting) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -859,6 +874,20 @@ export class CallRoom extends DurableObject<Env> {
       this.others(ws, { type: 'react', from: me.peerId, emoji: msg.emoji });
       return;
     }
+    if (msg.type === 'chat') {
+      // The call's own chat: text (links stay links) and uploaded files, to everyone in the call.
+      const text = typeof msg.text === 'string' ? msg.text.trim().slice(0, CHAT_MAX_CHARS) : '';
+      const file = safeFile(msg.file);
+      if (!text && !file) return;
+      const now = Date.now();
+      const recent = (this.chatted.get(me.peerId) ?? []).filter((t) => now - t < CHAT_WINDOW_MS);
+      if (recent.length >= CHAT_BURST) return;
+      this.chatted.set(me.peerId, [...recent, now]);
+      const line: RoomChat = { id: `${now.toString(36)}-${crypto.randomUUID().slice(0, 6)}`, uid: me.userId, name: me.name, text, at: now, file };
+      await this.ctx.storage.put(`chat:${String(now).padStart(15, '0')}:${line.id}`, line);
+      for (const { ws: p, peer } of this.peers()) this.send(p, { type: 'chat', line: chatView(line, peer.userId) });
+      return;
+    }
     if (msg.type === 'control' && typeof msg.action === 'string') {
       await this.control(ws, me, msg.action, typeof msg.target === 'string' ? msg.target : null, msg.on === true);
       return;
@@ -869,6 +898,15 @@ export class CallRoom extends DurableObject<Env> {
       } catch (e) {
         this.send(ws, { type: 'sfu', id: msg.id, error: (e as Error).message });
       }
+    }
+  }
+
+  /** Forgets the call's own chat (the call is over). */
+  private async clearChat() {
+    for (;;) {
+      const keys = [...(await this.ctx.storage.list({ prefix: 'chat:', limit: 128 })).keys()];
+      if (!keys.length) return;
+      await this.ctx.storage.delete(keys);
     }
   }
 
@@ -1018,6 +1056,8 @@ export class CallRoom extends DurableObject<Env> {
     }
     const rest = this.peers().filter(({ ws: other }) => other !== ws);
     for (const { ws: other } of rest) this.send(other, { type: 'left', peerId: me.peerId });
+    // The last one out: the call's chat goes with the call.
+    if (!rest.length) await this.clearChat();
     // The last host left: the waiting room hears nobody can let them in for now.
     if (me.host || me.cohost) this.tellWaiting(ws);
     // The spotlit person left: back to the grid.

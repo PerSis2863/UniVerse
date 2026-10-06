@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen } from 'lucide-react';
+import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -14,6 +14,7 @@ import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDe
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { PeoplePanel, type ControlAction, type Person } from './PeoplePanel';
 import { FloatingReactions, ReactionBar, type Floating, type Reaction } from './Reactions';
+import { CallChatPanel, useCallChat, type RoomLine } from './CallChat';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +33,7 @@ import { cn } from '@/lib/utils';
 
 interface Ticket {
   kind: 'audio' | 'video'; type: 'chat' | 'group' | 'class'; title: string; oneToOne: boolean; conversationId: string | null; host: boolean; sfu?: boolean; max?: number;
+  /** The chat the call's chat panel uses, or null: the call room's own chat (CallChat). */ chatId?: string | null;
   path: string; iceServers: RTCIceServer[];
 }
 interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; sfu?: { sessionId: string; tracks: SfuTrack[] } }
@@ -383,6 +385,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const reactLog = useRef<number[]>([]);
   const [reactOpen, setReactOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Chat in the call: the call room's own messages (calls without a chat), the panel, and when I
+  // last looked (for the unread count on the Chat button).
+  const [roomChat, setRoomChat] = useState<RoomLine[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatSeenAt, setChatSeenAt] = useState(() => Date.now());
   // Waiting room: whether a host is here to let me in; for hosts, who's waiting and whether it's on.
   const [hostHere, setHostHere] = useState(false);
   const [lobby, setLobby] = useState<{ id: string; name: string }[]>([]);
@@ -844,7 +851,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         return;
       }
       ice.current = t.iceServers;
-      infoRef.current = { kind: t.kind, type: t.type, title: t.title, oneToOne: t.oneToOne, conversationId: t.conversationId, host: t.host, sfu: t.sfu, max: t.max };
+      infoRef.current = { kind: t.kind, type: t.type, title: t.title, oneToOne: t.oneToOne, conversationId: t.conversationId, chatId: t.chatId ?? null, host: t.host, sfu: t.sfu, max: t.max };
       setInfo(infoRef.current);
       const preview = t.type !== 'chat' && !joinConfirmed.current;
       if (!localRef.current) {
@@ -895,6 +902,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           stat.current.joinAt ||= Date.now();
           setLobby(Array.isArray(msg.lobby) ? msg.lobby.map((w: { peerId: string; name: string }) => ({ id: w.peerId, name: w.name })) : []);
           setLobbyOn(msg.lobbyOn === true);
+          if (Array.isArray(msg.chat)) setRoomChat(msg.chat);
           setPhase('live');
           for (const p of msg.peers as Peer[]) known.set(p.peerId, p);
           myId.current = msg.you;
@@ -972,6 +980,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           } else {
             setR((r) => (r[msg.peerId] ? { ...r, [msg.peerId]: { ...r[msg.peerId], peer: { ...r[msg.peerId].peer, cohost: msg.cohost === true } } } : r));
           }
+        } else if (msg.type === 'chat' && msg.line) {
+          setRoomChat((c) => (c.some((x) => x.id === msg.line.id) ? c : [...c.slice(-199), msg.line]));
         } else if (msg.type === 'knock') {
           // Someone in the waiting room (only hosts and co-hosts hear this).
           const w = { id: String(msg.peer?.peerId), name: String(msg.peer?.name ?? 'Someone') };
@@ -1401,6 +1411,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const compact = count > 9;
   const someoneRecording = recording || list.some((r) => r.recording);
   const talk = useTalkTimes(peopleOpen && phase === 'live');
+  const chat = useCallChat({ chatId: phase === 'live' ? info?.chatId ?? null : null, room: roomChat, sendRoom: (m) => send({ type: 'chat', ...m }) });
+  const unread = chatOpen ? 0 : chat.lines.filter((l) => !l.mine && !l.note && l.at > chatSeenAt).length;
+  /** One side panel at a time: people or chat. */
+  const openPanel = (which: 'people' | 'chat' | null) => {
+    haptic('tap');
+    setReactOpen(false);
+    setMoreOpen(false);
+    setPeopleOpen(which === 'people');
+    if (which === 'chat' || chatOpen) setChatSeenAt(Date.now());
+    setChatOpen(which === 'chat');
+  };
   // The host's spotlight: that person large, everyone else in the strip (a shared screen comes first).
   const lit: Remote | 'me' | null = presenter || !spotlight ? null : spotlight === myPeerId ? 'me' : list.find((r) => r.peer.peerId === spotlight) ?? null;
   const canModerate = meHost || meCohost;
@@ -1484,7 +1505,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           {info && info.type !== 'chat' && <button type="button" onClick={copyInvite} aria-label="Copy call link" title="Copy call link" className="p-2.5 rounded-full hover:bg-white/10"><Link2 className="w-5 h-5" /></button>}
           <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Full screen'} className="p-2.5 rounded-full hover:bg-white/10 hidden sm:block">{fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}</button>
           {phase === 'live' ? (
-            <button type="button" onClick={() => { haptic('tap'); setPeopleOpen((o) => !o); }} aria-expanded={peopleOpen} aria-label={`People in the call: ${count}`} title="People"
+            <button type="button" onClick={() => openPanel(peopleOpen ? null : 'people')} aria-expanded={peopleOpen} aria-label={`People in the call: ${count}`} title="People"
               className={cn('ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', peopleOpen ? 'bg-white text-zinc-900' : 'text-zinc-200 bg-white/[0.06] hover:bg-white/15')}>
               <Users className="w-4 h-4" />{count}<span className="hidden sm:inline font-normal">in call</span>
               <AnimatePresence>
@@ -1668,6 +1689,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                     <Smile />
                     {myHand && <span className="sm:hidden absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-amber-400 text-[11px] flex items-center justify-center" aria-hidden>✋</span>}
                   </motion.button>
+                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => openPanel(chatOpen ? null : 'chat')} aria-expanded={chatOpen} aria-label={unread ? `Chat, ${unread} new` : 'Chat'} title="Chat"
+                    className={cn(btn, 'shrink-0 relative', chatOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
+                    <MessageSquare />
+                    <AnimatePresence>
+                      {unread > 0 && (
+                        <motion.span key={unread} initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="absolute top-0.5 right-0.5 min-w-5 h-5 px-1 rounded-full bg-fuchsia-500 text-white text-[11px] font-bold flex items-center justify-center" aria-hidden>{unread > 9 ? '9+' : unread}</motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
                   <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setReactOpen(false); setMoreOpen((o) => !o); }} aria-expanded={moreOpen} aria-label="More options" title="More"
                     className={cn(btn, 'shrink-0 relative', moreOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <MoreHorizontal />
@@ -1702,6 +1732,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           </>
         )}
       </AnimatePresence>
+      <CallChatPanel open={chatOpen && phase === 'live'} onClose={() => openPanel(null)} lines={chat.lines} onSend={chat.send} linked={chat.linked} title={info?.title ?? 'the chat'} />
       <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} onLowerMyHand={toggleHand} lobby={lobby} lobbyOn={lobbyOn} />
       {/* Microphone, camera and noise suppression */}
       <AnimatePresence>

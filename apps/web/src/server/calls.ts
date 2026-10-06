@@ -61,6 +61,9 @@ export interface CallInfo {
   title: string;
   /** For chat calls: the chat, so the call screen can go back to it. */
   conversationId: string | null;
+  /** The chat the call's chat panel uses (chat calls, voice rooms); other calls chat in the call
+   *  room itself, for as long as the call lasts (cloudflare/worker.ts CallRoom). */
+  chatId?: string | null;
   /** One-to-one chat calls ring the other person and stop after 45 s without an answer. */
   oneToOne: boolean;
   startedBy: string | null;
@@ -91,7 +94,7 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
       host = m?.role === 'OWNER' || m?.role === 'MOD';
     }
     const title = convo.communityId ? `${convo.name ?? 'Voice room'} · ${convo.community?.name ?? ''}` : `${convo.name ?? 'Group'} · voice room`;
-    return { kind: wantKind === 'video' ? 'video' : 'audio', type: 'group', title, conversationId: null, oneToOne: false, startedBy: null, ended: false, host };
+    return { kind: wantKind === 'video' ? 'video' : 'audio', type: 'group', title, conversationId: null, chatId: callId.slice(2), oneToOne: false, startedBy: null, ended: false, host };
   }
   if (callId.startsWith('l_')) {
     if (!/^l_[A-Za-z0-9_-]{10,40}$/.test(callId)) throw new NotFoundException('This call link isn’t valid.');
@@ -120,6 +123,7 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
     type: 'chat',
     title: msg.conversation.isGroup ? msg.conversation.name ?? 'Group call' : others[0]?.user.name ?? 'Call',
     conversationId: msg.conversation.id,
+    chatId: msg.conversation.id,
     oneToOne: !msg.conversation.isGroup,
     startedBy: msg.sender.name,
     ended,
