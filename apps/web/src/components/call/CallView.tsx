@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, Check, ChevronDown, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
+import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -40,7 +40,8 @@ interface Remote {
   /** SFU calls: their video isn't being received right now (to save data); tap to see it. */
   paused: boolean;
 }
-type Phase = 'starting' | 'live' | 'ended' | 'error';
+/** prejoin: meetings (class, group, link calls) show a check-yourself screen before joining. */
+type Phase = 'starting' | 'prejoin' | 'live' | 'ended' | 'error';
 type Info = Omit<Ticket, 'path' | 'iceServers'>;
 interface Caption { name: string; text: string; final: boolean; at: number }
 interface NoteLine { t: number; who: string; text: string }
@@ -226,6 +227,66 @@ function ScreenStage({ stream, name }: { stream: MediaStream | null; name: strin
   );
 }
 
+/** A live microphone level bar (no re-renders: the bar is moved directly). */
+function MicMeter({ stream, muted }: { stream: MediaStream | null; muted: boolean }) {
+  const bar = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const track = stream?.getAudioTracks()[0];
+    if (!track || muted) { if (bar.current) bar.current.style.transform = 'scaleX(0)'; return; }
+    let ctx: AudioContext;
+    try { ctx = new AudioContext(); } catch { return; }
+    const src = ctx.createMediaStreamSource(new MediaStream([track]));
+    const an = ctx.createAnalyser();
+    an.fftSize = 512;
+    src.connect(an);
+    const buf = new Float32Array(an.fftSize);
+    let raf = 0;
+    const tick = () => {
+      an.getFloatTimeDomainData(buf);
+      let peak = 0;
+      for (const v of buf) peak = Math.max(peak, Math.abs(v));
+      if (bar.current) bar.current.style.transform = `scaleX(${Math.min(1, peak * 2.2)})`;
+      raf = requestAnimationFrame(tick);
+    };
+    void ctx.resume().catch(() => {});
+    tick();
+    return () => { cancelAnimationFrame(raf); src.disconnect(); void ctx.close().catch(() => {}); };
+  }, [stream, muted]);
+  return (
+    <span className="block h-1.5 w-full rounded-full bg-white/10 overflow-hidden" aria-hidden>
+      <span ref={bar} className="block h-full w-full origin-left rounded-full bg-gradient-to-r from-emerald-400 via-indigo-400 to-fuchsia-500 transition-transform duration-75" style={{ transform: 'scaleX(0)' }} />
+    </span>
+  );
+}
+
+/** A short two-note chime, to check you can hear the call. */
+function playTestSound() {
+  try {
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    [660, 880].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, now + i * 0.18);
+      g.gain.exponentialRampToValueAtTime(0.25, now + i * 0.18 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.32);
+      o.connect(g).connect(ctx.destination);
+      o.start(now + i * 0.18);
+      o.stop(now + i * 0.18 + 0.35);
+    });
+    setTimeout(() => void ctx.close().catch(() => {}), 900);
+  } catch { /* no audio */ }
+}
+
+/** How good this device's connection looks, where the browser says (Chrome, Android). */
+function networkGuess(): { label: string; weak: boolean } | null {
+  const c = (navigator as Navigator & { connection?: { effectiveType?: string; rtt?: number; downlink?: number; saveData?: boolean } }).connection;
+  if (!c?.effectiveType) return null;
+  const weak = c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || (c.rtt ?? 0) > 400 || (c.downlink ?? 10) < 0.7 || !!c.saveData;
+  const fair = c.effectiveType === '3g' || (c.rtt ?? 0) > 200 || (c.downlink ?? 10) < 2;
+  return { label: weak ? 'Weak connection: video may stutter' : fair ? 'Fair connection' : 'Good connection', weak };
+}
+
 function gridFor(count: number) {
   if (count <= 1) return 'grid-cols-1 max-w-3xl w-full mx-auto';
   if (count === 2) return 'grid-cols-1 sm:grid-cols-2 max-w-6xl w-full mx-auto';
@@ -275,6 +336,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const screenRef = useRef<MediaStreamTrack | null>(null);
   const ice = useRef<RTCIceServer[]>([]);
   const myId = useRef<string | null>(null);
+  // Meetings wait on the pre-join screen until "Join now".
+  const joinConfirmed = useRef(false);
+  const resumeJoin = useRef<(() => void) | null>(null);
+  const [inRoom, setInRoom] = useState<string[] | null>(null);
   const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false });
   const ended = useRef(false);
   const everJoined = useRef(false);
@@ -639,6 +704,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       ice.current = t.iceServers;
       infoRef.current = { kind: t.kind, type: t.type, title: t.title, oneToOne: t.oneToOne, conversationId: t.conversationId, host: t.host, sfu: t.sfu, max: t.max };
       setInfo(infoRef.current);
+      const preview = t.type !== 'chat' && !joinConfirmed.current;
       if (!localRef.current) {
         try {
           // Voice calls start with the camera off (it can be turned on during the call).
@@ -659,6 +725,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setPhase('error');
           return;
         }
+      }
+      if (preview) {
+        // Meetings: check yourself first. Joining fetches a fresh ticket (they expire quickly).
+        setPhase('prejoin');
+        resumeJoin.current = () => { joinConfirmed.current = true; setPhase('starting'); void open(); };
+        void authedJson<{ names?: string[] }>(`/api/calls/${callId}/peers`).then((r) => setInRoom(r.names ?? [])).catch(() => setInRoom([]));
+        return;
       }
       const url = new URL(t.path, window.location.href);
       url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1058,7 +1131,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canRec = !!info?.host && info.type === 'class' && canRecord();
   const canNotes = !!info?.host && info.type === 'class';
   const btn = 'w-14 h-14 rounded-full flex items-center justify-center transition-colors';
-  const status = phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
+  const status = phase === 'prejoin' ? 'Ready to join?' : phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
   const firstRemoteId = list[0]?.peer.peerId;
   // Presenting: someone's shared screen fills the stage (theirs first), cameras go to a strip below.
   const presenter: Remote | 'me' | null = list.find((r) => r.sharing && r.screen) ?? (sharing ? 'me' : null);
@@ -1126,6 +1199,40 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           <p className="text-zinc-300 max-w-sm">{error}</p>
           <button type="button" onClick={() => onLeave(info?.conversationId ?? null)} className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">Back</button>
         </motion.div>
+      ) : phase === 'prejoin' ? (
+        <motion.main initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
+          <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
+            <Tile id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me />
+            <div className="space-y-4">
+              <div>
+                <p className="text-2xl font-bold">{info?.title ?? 'Call'}</p>
+                <p className="text-sm text-zinc-400 mt-1">
+                  {inRoom === null ? 'Checking who’s here…' : inRoom.length === 0 ? 'Nobody else is here yet.' : `${inRoom.slice(0, 3).join(', ')}${inRoom.length > 3 ? ` and ${inRoom.length - 3} more` : ''} ${inRoom.length === 1 ? 'is' : 'are'} in the call.`}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-zinc-400"><span className="inline-flex items-center gap-1.5">{muted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}{muted ? 'Microphone off' : 'Say something to test your microphone'}</span></div>
+                <MicMeter stream={local} muted={muted} />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={playTestSound} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><Volume2 className="w-4 h-4" /> Test speaker</button>
+                <button type="button" onClick={() => void openSettings()} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><SlidersHorizontal className="w-4 h-4" /> Devices & noise</button>
+              </div>
+              {(() => {
+                const net = typeof navigator !== 'undefined' ? networkGuess() : null;
+                return net && (
+                  <p className={cn('text-xs inline-flex items-center gap-1.5', net.weak ? 'text-amber-300' : 'text-emerald-300')}>
+                    <Signal className="w-3.5 h-3.5" />{net.label}{net.weak && camera ? ' · try joining with your camera off' : ''}
+                  </p>
+                );
+              })()}
+              <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={() => { haptic('tap'); resumeJoin.current?.(); }}
+                className="w-full py-3.5 rounded-2xl font-bold text-base bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/30">
+                Join now
+              </motion.button>
+            </div>
+          </div>
+        </motion.main>
       ) : (
         presenter ? (
           <main className="flex-1 min-h-0 flex flex-col gap-3 p-3 sm:p-4">
@@ -1201,20 +1308,20 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                     whileTap={{ scale: 0.9 }} type="button" onClick={flipCamera} aria-label="Switch camera" className={cn(btn, 'shrink-0 bg-white/10 hover:bg-white/20 sm:hidden')}><RefreshCcw /></motion.button>
                 )}
               </AnimatePresence>
-              <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleCc} aria-pressed={cc} aria-label={cc ? 'Turn captions off' : 'Turn captions on'} title="Live captions" className={cn(btn, 'shrink-0', cc ? 'bg-indigo-500' : 'bg-white/10 hover:bg-white/20')}>{cc ? <Captions /> : <CaptionsOff />}</motion.button>
-              {canShare && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn(btn, 'shrink-0', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
+              {phase !== 'prejoin' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleCc} aria-pressed={cc} aria-label={cc ? 'Turn captions off' : 'Turn captions on'} title="Live captions" className={cn(btn, 'shrink-0', cc ? 'bg-indigo-500' : 'bg-white/10 hover:bg-white/20')}>{cc ? <Captions /> : <CaptionsOff />}</motion.button>}
+              {canShare && phase !== 'prejoin' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn(btn, 'shrink-0', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
               <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void openSettings()} aria-expanded={settingsOpen} aria-label="Microphone, camera and noise suppression" title="Microphone, camera and noise suppression" className={cn(btn, 'shrink-0', settingsOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}><SlidersHorizontal /></motion.button>
-              {canRec && (
+              {canRec && phase !== 'prejoin' && (
                 <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => (recording ? void stopRecording() : startRecording())} aria-pressed={recording} aria-label={recording ? 'Stop recording' : 'Record the class'} title={recording ? 'Stop and save to class materials' : 'Record the class'} className={cn(btn, 'shrink-0', recording ? 'bg-rose-600 hover:bg-rose-500' : 'bg-white/10 hover:bg-white/20')}>
                   {recording ? <Square className="w-5 h-5 fill-current" /> : <Circle className="w-5 h-5 fill-rose-500 text-rose-500" />}
                 </motion.button>
               )}
-              {canNotes && (
+              {canNotes && phase !== 'prejoin' && (
                 <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleNotes} aria-pressed={notes} aria-label={notes ? 'Stop class notes and make the study pack' : 'Take class notes'} title={notes ? 'Stop and make the study pack' : 'Class notes: turn this class into a study pack'} className={cn(btn, 'shrink-0', notes ? 'bg-amber-500 text-amber-950 hover:bg-amber-400' : 'bg-white/10 hover:bg-white/20')}>
                   <NotebookPen className="w-5 h-5" />
                 </motion.button>
               )}
-              {canPip && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={pip} aria-label="Picture in picture" className={cn(btn, 'shrink-0', 'bg-white/10 hover:bg-white/20')}><PictureInPicture2 /></motion.button>}
+              {canPip && phase !== 'prejoin' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={pip} aria-label="Picture in picture" className={cn(btn, 'shrink-0', 'bg-white/10 hover:bg-white/20')}><PictureInPicture2 /></motion.button>}
             </>
           )}
           <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => finish()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
