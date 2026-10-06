@@ -547,9 +547,19 @@ const MAX_CODE_SOCKETS = 60;
  * simultaneous edits merge; passes cursor positions between people; ignores edits from people
  * who may only watch. Saved to storage at most about once a second (an alarm), not per keystroke.
  */
+/**
+ * Fair group work (Stage 4 · 4.3): each room counts who edited it (edits and their size) and adds
+ * the counts to D1's contributions table at most once a minute, and when the last person leaves.
+ * The counts wait in the room's storage meanwhile, so a room going to sleep loses none.
+ */
+const TALLY_MS = 60_000;
+
 export class CodeRoom extends DurableObject<Env> {
   private doc: Y.Doc | null = null;
   private dirty = false;
+  /** Edits not yet in storage: userId → [edits, bytes]. */
+  private tally = new Map<string, [number, number]>();
+  private flushedAt = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -603,6 +613,9 @@ export class CodeRoom extends DurableObject<Env> {
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
       server.serializeAttachment({ userId: who.userId, name: who.name, canEdit: who.canEdit } satisfies CodePeer);
+      // Which document or code room this is (doc:<id>, or the code room's id), for the contribution counts.
+      const room = url.searchParams.get('room');
+      if (room && !(await this.ctx.storage.get('room'))) await this.ctx.storage.put('room', room.slice(0, 80));
       const doc = await this.load();
       this.send(server, CODE_DOC, Y.encodeStateAsUpdate(doc));
       for (const ws of this.ctx.getWebSockets()) if (ws !== server) this.send(ws, CODE_ANNOUNCE);
@@ -634,6 +647,8 @@ export class CodeRoom extends DurableObject<Env> {
       return;
     }
     this.relay(ws, raw);
+    const t = this.tally.get(peer.userId) ?? [0, 0];
+    this.tally.set(peer.userId, [t[0] + 1, t[1] + raw.byteLength]);
     if (!this.dirty) {
       this.dirty = true;
       await this.ctx.storage.setAlarm(Date.now() + 1000);
@@ -641,15 +656,50 @@ export class CodeRoom extends DurableObject<Env> {
   }
 
   async alarm() {
-    if (!this.dirty || !this.doc) return;
-    this.dirty = false;
-    await this.ctx.storage.put('doc', Y.encodeStateAsUpdate(this.doc));
+    if (this.dirty && this.doc) {
+      this.dirty = false;
+      await this.ctx.storage.put('doc', Y.encodeStateAsUpdate(this.doc));
+    }
+    await this.keepTally(false);
+  }
+
+  /** Moves the in-memory edit counts into storage, and into D1 once a minute (or now, when leaving). */
+  private async keepTally(now: boolean) {
+    if (this.tally.size) {
+      const kept = (await this.ctx.storage.get<Record<string, [number, number]>>('tally')) ?? {};
+      for (const [uid, [n, b]] of this.tally) kept[uid] = [(kept[uid]?.[0] ?? 0) + n, (kept[uid]?.[1] ?? 0) + b];
+      this.tally.clear();
+      await this.ctx.storage.put('tally', kept);
+    }
+    if (!now && Date.now() - this.flushedAt < TALLY_MS) {
+      if (await this.ctx.storage.get('tally')) await this.ctx.storage.setAlarm(this.flushedAt + TALLY_MS);
+      return;
+    }
+    const kept = await this.ctx.storage.get<Record<string, [number, number]>>('tally');
+    const room = await this.ctx.storage.get<string>('room');
+    this.flushedAt = Date.now();
+    if (!kept || !room || !this.env.DB) return;
+    const [tool, ref] = room.startsWith('doc:') ? ['doc', room.slice(4)] : ['code', room];
+    const day = new Date().toISOString().slice(0, 10);
+    const at = dbDate(Date.now());
+    try {
+      await this.env.DB.batch(Object.entries(kept).map(([uid, [n, b]]) => this.env.DB!.prepare(
+        `INSERT INTO "contributions" ("id", "userId", "tool", "refId", "day", "edits", "bytes", "updatedAt") VALUES (lower(hex(randomblob(12))), ?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT ("userId", "tool", "refId", "day") DO UPDATE SET "edits" = "edits" + ?5, "bytes" = "bytes" + ?6, "updatedAt" = ?7`,
+      ).bind(uid, tool, ref, day, n, b, at)));
+      await this.ctx.storage.delete('tally');
+    } catch (e) {
+      console.error('contribution counts not saved (kept for next time):', e);
+    }
   }
 
   async webSocketClose(ws: WebSocket, code: number) {
     try { ws.close(code === 1005 || code === 1006 ? 1000 : code); } catch { /* already closed */ }
-    // Last one out: save now rather than waiting for the alarm.
-    if (this.ctx.getWebSockets().length <= 1) await this.alarm();
+    // Last one out: save now rather than waiting for the alarm, counts included.
+    if (this.ctx.getWebSockets().length <= 1) {
+      if (this.dirty && this.doc) { this.dirty = false; await this.ctx.storage.put('doc', Y.encodeStateAsUpdate(this.doc)); }
+      await this.keepTally(true);
+    }
   }
 }
 

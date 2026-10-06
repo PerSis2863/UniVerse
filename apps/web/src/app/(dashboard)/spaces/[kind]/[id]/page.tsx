@@ -9,6 +9,7 @@ import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from '@/components/chat/MessageBubble';
+import { Contributions } from '@/components/spaces/Contributions';
 
 // One space (Stage 4 · 3.1): a class or a study group, with its call, documents, task boards,
 // code rooms (classes) and people. New documents and boards made here belong to the space.
@@ -73,6 +74,7 @@ export default function SpacePage({ params }: { params: Promise<{ kind: string; 
             {section(`Tasks${data.openTasks ? ` · ${data.openTasks} open` : ''}`, KanbanSquare, data.boards.map((b) => ({ href: `/tasks/${b.id}`, title: b.title, meta: `${b.tasks} card${b.tasks === 1 ? '' : 's'}` })), () => void make('board'), busy === 'board', 'No task boards yet.')}
             {data.kind === 'course' && section('Code rooms', Code2, data.code.map((c) => ({ href: `/code/${c.id}`, title: c.title, meta: when(c.updatedAt) })), () => router.push('/code'), false, 'No code rooms yet.')}
           </div>
+          <Contributions kind={data.kind} id={data.id} />
         </div>
       </div>
     </>
