@@ -38,7 +38,7 @@ export function pageEntranceShown() {
   nextMotion = 'fade';
 }
 
-export const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+export const reducedMotion = () => typeof window !== 'undefined' && (document.documentElement.classList.contains('reduce-motion') || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
 /** Fast start, soft landing: the page is readable almost at once, then settles. */
 export const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';

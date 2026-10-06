@@ -49,6 +49,12 @@ function writeCache(q: string, a: string) {
 export function AIStudyAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  // Settings → Help & about opens the assistant.
+  useEffect(() => {
+    const open = () => { setIsDismissed(false); setIsOpen(true); };
+    window.addEventListener('universe:open-assistant', open);
+    return () => window.removeEventListener('universe:open-assistant', open);
+  }, []);
   const [isHovered, setIsHovered] = useState(false);
   const { isChatbotEnabled } = useAiStore();
   const role = useAuthStore((st) => st.user?.role) as Role | undefined;

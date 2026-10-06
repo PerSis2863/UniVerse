@@ -10,6 +10,7 @@ import { Suspense } from 'react';
 import { NavProgress } from '@/components/layout/NavProgress';
 import { recoveryScript } from '@/lib/recovery-script';
 import { bootstrapPrefetchScript } from '@/lib/bootstrap';
+import { DISPLAY_PREFS_SCRIPT } from '@/lib/display-prefs';
 
 // Fonts: the device's own system font (San Francisco on Apple devices), set in globals.css, so no
 // web font is downloaded and text matches the rest of the phone.
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
+        <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
         <style dangerouslySetInnerHTML={{ __html: 'html{background:#f5f6fb}html.dark{background:#0a0d16;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}

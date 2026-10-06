@@ -9,6 +9,7 @@ import { DeadlineList, type DeadlineItem } from '@/components/progress/DeadlineL
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { LogoMark } from '@/components/ui/LogoMark';
 
 // What a parent or guardian sees from a student's shared link: read-only, no sign-in.
 
@@ -75,7 +76,7 @@ export default function GuardianPage() {
       <div className="max-w-3xl mx-auto">
         <div className="mb-5 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2 font-black text-zinc-900 dark:text-white min-h-11">
-            <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-xs flex items-center justify-center">U</span> UniVerse
+            <LogoMark className="w-7 h-7" /> UniVerse
           </Link>
           <span className="text-[11px] text-zinc-500 inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> Read-only view</span>
         </div>

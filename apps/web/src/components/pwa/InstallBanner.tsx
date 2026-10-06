@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Download, Share, X, Smartphone } from 'lucide-react';
+import { LogoMark } from '@/components/ui/LogoMark';
 
 export function InstallBanner() {
   const { canInstall, isInstalled, isIOS, install } = usePWAInstall();
@@ -70,7 +71,7 @@ export function InstallBanner() {
         <div className="flex items-start gap-3 pr-6">
           {/* Icon */}
           <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <span className="text-white font-black text-xl">U</span>
+            <LogoMark className="w-8 h-8" />
           </div>
 
           <div className="flex-1 min-w-0">

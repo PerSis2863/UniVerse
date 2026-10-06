@@ -5,6 +5,7 @@ import { m as motion, AnimatePresence } from 'framer-motion';
 import { Bell, BellOff, CheckCircle, X } from 'lucide-react';
 import { subscribePush } from '@/lib/push-subscribe';
 import { useAuthStore } from '@/store/auth';
+import { LogoMark } from '@/components/ui/LogoMark';
 
 // Detect iOS (Safari on iPhone/iPad) — no push support there
 function isIOS() {
@@ -114,7 +115,7 @@ export function PushNotificationManager() {
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
                 <div className="w-5 h-5 bg-indigo-500 rounded-md flex items-center justify-center">
-                  <span className="text-[10px] font-black text-white">U</span>
+                  <LogoMark className="w-3.5 h-3.5" />
                 </div>
                 <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 tracking-wide">UniVerse</span>
               </div>

@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, ChevronDown, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
+import { Captions, CaptionsOff, Check, ChevronDown, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Video, VideoOff } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
 import { SfuLink, type SfuTrack } from '@/lib/sfu-client';
+import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDevice, cleanMic, listDevices, noiseMode, openMedia, setNoiseMode } from '@/lib/call-media';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -47,11 +48,14 @@ interface NoteLine { t: number; who: string; text: string }
 const MAX_NOTES_CHARS = 55_000;
 
 const NO_ANSWER_MS = 45_000;
+/** Bigger calls send smaller video: it goes to many people. */
+const cameraConstraints = (sfu: boolean, facingMode: string = 'user'): MediaTrackConstraints =>
+  sfu ? { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 }, facingMode } : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode };
 const CAPTION_MS = 5000;
 const MAX_REC_MS = 2 * 3600_000;
 const MAX_REC_BYTES = 950 * 1024 * 1024;
 
-const fresh = (peer: Peer): Remote => ({ peer, stream: null, muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false });
+const fresh = (peer: Peer): Remote => ({ peer, stream: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false });
 
 // One audio context and one timer measure everyone's voice (a call of 30 doesn't run 30 of
 // each), and a tile re-renders only when its person starts or stops talking.
@@ -103,14 +107,42 @@ const QUALITY: Record<Exclude<Quality, null>, { label: string; className: string
   poor: { label: 'Weak connection', className: 'text-rose-400' },
 };
 
-function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent }: {
+/** Whether a video track is actually delivering frames (a muted track shows black). */
+function useLiveVideo(stream: MediaStream | null) {
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const tracks = stream?.getVideoTracks() ?? [];
+    const on = () => bump((n) => n + 1);
+    for (const t of tracks) { t.addEventListener('mute', on); t.addEventListener('unmute', on); t.addEventListener('ended', on); }
+    const add = () => on();
+    stream?.addEventListener('addtrack', add);
+    stream?.addEventListener('removetrack', add);
+    return () => {
+      for (const t of tracks) { t.removeEventListener('mute', on); t.removeEventListener('unmute', on); t.removeEventListener('ended', on); }
+      stream?.removeEventListener('addtrack', add);
+      stream?.removeEventListener('removetrack', add);
+    };
+  }, [stream]);
+  return !!stream?.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled && !t.muted);
+}
+
+function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent, screen, spotlight }: {
   id: string; name: string; stream: MediaStream | null; mirrored?: boolean; muted?: boolean; camera: boolean; me?: boolean; quality?: Quality; state?: string; silent?: boolean;
   paused?: boolean; compact?: boolean; animateLayout?: boolean; onShow?: () => void; videoRef?: (v: HTMLVideoElement | null) => void;
+  /** Showing a shared screen: fit it whole instead of cropping. */ screen?: boolean;
+  /** Takes the whole first row (someone is sharing their screen). */ spotlight?: boolean;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const speaking = useSpeaking(muted ? null : stream);
-  useEffect(() => { if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream; }, [stream]);
-  const hasVideo = camera && !paused && !!stream?.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled);
+  const live = useLiveVideo(stream);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    if (v.srcObject !== stream) v.srcObject = stream;
+    // Phones sometimes don't start a new source by themselves: a black tile with sound.
+    if (stream) void v.play().catch(() => {});
+  }, [stream, live]);
+  const hasVideo = camera && !paused && live;
   return (
     <motion.div
       layout={animateLayout}
@@ -119,17 +151,21 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
       exit={{ opacity: 0, scale: 0.9 }}
       transition={spring.smooth}
       data-tile={id}
-      className={cn('relative overflow-hidden bg-zinc-900/80 aspect-video flex items-center justify-center ring-2 transition-shadow duration-200', compact ? 'rounded-2xl' : 'rounded-3xl', speaking ? 'ring-emerald-400/90 shadow-[0_0_40px_-8px_rgba(52,211,153,0.6)]' : 'ring-transparent')}
+      className={cn('relative overflow-hidden bg-zinc-900/80 aspect-video flex items-center justify-center ring-2 transition-shadow duration-200', compact ? 'rounded-2xl' : 'rounded-3xl', spotlight && 'col-span-full', speaking ? 'ring-emerald-400/90 shadow-[0_0_40px_-8px_rgba(52,211,153,0.6)]' : 'ring-transparent')}
     >
       {/* Remote audio plays through this element too, so it stays even with the camera off. */}
-      <video ref={(v) => { ref.current = v; videoRef?.(v); }} data-peer={id} autoPlay playsInline muted={me || silent} className={cn('w-full h-full object-cover transition-opacity duration-300', !hasVideo && 'opacity-0 absolute', mirrored && '-scale-x-100')} />
-      {!hasVideo && (
-        <motion.div animate={{ scale: speaking ? 1.08 : 1 }} transition={spring.snappy} className={cn('rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-bold shadow-xl shadow-fuchsia-500/20', compact ? 'w-12 h-12 text-lg' : 'w-24 h-24 text-3xl')}>
-          {initials(name)}
-        </motion.div>
-      )}
+      <video ref={(v) => { ref.current = v; videoRef?.(v); }} data-peer={id} autoPlay playsInline muted={me || silent}
+        className={cn('absolute inset-0 w-full h-full transition-[opacity,transform] duration-500 ease-out', screen ? 'object-contain bg-black' : 'object-cover', hasVideo ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.03]', mirrored && !screen && '-scale-x-100')} />
+      <AnimatePresence>
+        {!hasVideo && (
+          <motion.div key="avatar" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: speaking ? 1.08 : 1 }} exit={{ opacity: 0, scale: 0.85 }} transition={spring.smooth}
+            className={cn('relative rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-bold shadow-xl shadow-fuchsia-500/20', compact ? 'w-12 h-12 text-lg' : 'w-24 h-24 text-3xl')}>
+            {initials(name)}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <span className={cn('absolute bottom-2 left-2 font-medium text-white bg-black/45 backdrop-blur-md rounded-full flex items-center gap-1.5 max-w-[85%]', compact ? 'text-[11px] px-2 py-0.5' : 'text-xs px-3 py-1')}>
-        {muted && <MicOff className="w-3 h-3 shrink-0" />}<span className="truncate">{me ? `${name} (you)` : name}</span>
+        {muted && <MicOff className="w-3 h-3 shrink-0" />}{screen && <MonitorUp className="w-3 h-3 shrink-0" />}<span className="truncate">{me ? `${name} (you)` : name}{screen ? ' · screen' : ''}</span>
       </span>
       {paused && onShow && (
         <button type="button" onClick={onShow} className="absolute top-2 left-2 text-[11px] text-white bg-black/55 hover:bg-black/70 backdrop-blur-md rounded-full px-2.5 py-1 transition-colors">Show video</button>
@@ -193,6 +229,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const localRef = useRef<MediaStream | null>(null);
   const screenRef = useRef<MediaStreamTrack | null>(null);
   const ice = useRef<RTCIceServer[]>([]);
+  const myId = useRef<string | null>(null);
   const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false });
   const ended = useRef(false);
   const everJoined = useRef(false);
@@ -202,6 +239,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const rootRef = useRef<HTMLDivElement>(null);
   const recRef = useRef<CallRecorder | null>(null);
   const recSourcesRef = useRef<() => RecSource[]>(() => []);
+  // Each person's incoming audio and video, kept together (a camera turned on later arrives as a
+  // separate track and must not replace their voice).
+  const inbound = useRef(new Map<string, MediaStream>());
+  // The cleaned microphone (noise suppression) and how to stop it.
+  const micClean = useRef<CleanMic | null>(null);
+  const rawMic = useRef<MediaStreamTrack | null>(null);
 
   const send = (msg: unknown) => { if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg)); };
   const announce = () => send({ type: 'state', ...stateRef.current });
@@ -220,22 +263,47 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
 
   // ── Small calls: one connection per person ──────────────────────────────────────────────────
-  const connectTo = useCallback((peer: Peer) => {
+  const connectTo = useCallback((peer: Peer, offerer = false) => {
     pcs.current.get(peer.peerId)?.close();
+    inbound.current.delete(peer.peerId);
     const pc = new RTCPeerConnection({ iceServers: ice.current });
     pcs.current.set(peer.peerId, pc);
     setR((r) => ({ ...r, [peer.peerId]: r[peer.peerId] ?? fresh(peer) }));
-    for (const track of localRef.current?.getTracks() ?? []) pc.addTrack(track, localRef.current!);
-    if (screenRef.current) void pc.getTransceivers().find((t) => t.receiver.track.kind === 'video')?.sender.replaceTrack(screenRef.current);
+    const local = localRef.current;
+    for (const track of local?.getTracks() ?? []) pc.addTrack(track, local!);
+    // Always a video line, even in a voice call: turning the camera on or sharing the screen later
+    // is then just a track swap, with no renegotiation (smooth, and nothing to get stuck).
+    if (offerer && !local?.getVideoTracks().length) pc.addTransceiver('video', { direction: 'sendrecv', streams: local ? [local] : [] });
+    const screen = screenRef.current;
+    if (screen) void pc.getTransceivers().find((t) => t.receiver.track.kind === 'video')?.sender.replaceTrack(screen);
     pc.onicecandidate = (e) => { if (e.candidate) send({ type: 'signal', to: peer.peerId, data: { candidate: e.candidate } }); };
-    pc.ontrack = (e) => patch(peer.peerId, { stream: e.streams[0] ?? new MediaStream([e.track]) });
+    pc.ontrack = (e) => {
+      const merged = inbound.current.get(peer.peerId) ?? new MediaStream();
+      for (const t of merged.getTracks()) if (t.kind === e.track.kind && t.id !== e.track.id) merged.removeTrack(t);
+      if (!merged.getTrackById(e.track.id)) merged.addTrack(e.track);
+      inbound.current.set(peer.peerId, merged);
+      patch(peer.peerId, { stream: new MediaStream(merged.getTracks()) });
+    };
+    // A dropped connection recovers by restarting ICE. Only one side offers the restart (the one
+    // with the smaller id), so the two never offer at once.
+    let lost: ReturnType<typeof setTimeout> | null = null;
+    const restart = async () => {
+      if (pc.signalingState !== 'stable' || pcs.current.get(peer.peerId) !== pc) return;
+      try {
+        await pc.setLocalDescription(await pc.createOffer({ iceRestart: true }));
+        send({ type: 'signal', to: peer.peerId, data: { sdp: pc.localDescription } });
+      } catch (e) { console.warn('ICE restart failed', e); }
+    };
     pc.onconnectionstatechange = () => {
       patch(peer.peerId, { state: pc.connectionState });
+      if (lost) { clearTimeout(lost); lost = null; }
       if (pc.connectionState === 'connected') markTalking();
-      if (pc.connectionState === 'failed') pc.restartIce();
+      const mine = (myId.current ?? '') < peer.peerId;
+      if (pc.connectionState === 'failed' && mine) void restart();
+      if (pc.connectionState === 'disconnected' && mine) lost = setTimeout(() => { if (pc.connectionState === 'disconnected') void restart(); }, 3000);
     };
     return pc;
-  }, [setR, patch]);  
+  }, [setR, patch]);
 
   // ── Bigger calls: what to receive from the SFU ─────────────────────────────────────────────
   /** Everyone's audio; video for a few people (pinned, then screen shares, then cameras). */
@@ -358,6 +426,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     sfuRef.current?.close();
     sfuRef.current = null;
     localRef.current?.getTracks().forEach((t) => t.stop());
+    rawMic.current?.stop();
+    micClean.current?.stop();
     screenRef.current?.stop();
     const i = infoRef.current;
     if (alone && i?.type === 'chat') {
@@ -435,19 +505,41 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const conns = pcs.current;
     const known = new Map<string, Peer>();
 
-    const onSignal = async (from: string, data: { sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit }) => {
+    // Signals from one person are handled strictly in order, and ICE candidates that arrive before
+    // the offer/answer they belong to wait for it (dropping them left calls stuck on "Connecting").
+    const queues = new Map<string, Promise<void>>();
+    const early = new Map<string, RTCIceCandidateInit[]>();
+    const handle = async (from: string, data: { sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit; fresh?: boolean }) => {
       let pc = pcs.current.get(from);
-      if (!pc && data.sdp?.type === 'offer') pc = connectTo(known.get(from) ?? { peerId: from, userId: '', name: 'Someone' });
+      if (data.sdp?.type === 'offer' && (data.fresh || !pc)) {
+        pc = connectTo(known.get(from) ?? { peerId: from, userId: '', name: 'Someone' });
+      }
       if (!pc) return;
       if (data.sdp) {
+        if (data.sdp.type === 'answer' && pc.signalingState !== 'have-local-offer') return; // stale answer
+        if (data.sdp.type === 'offer' && pc.signalingState === 'have-local-offer') {
+          // Both offered at once (rare): the smaller id wins, the other rolls back and answers.
+          if ((myId.current ?? '') < from) return;
+          await pc.setLocalDescription({ type: 'rollback' });
+        }
         await pc.setRemoteDescription(data.sdp);
+        for (const c of early.get(from) ?? []) await pc.addIceCandidate(c).catch(() => {});
+        early.delete(from);
         if (data.sdp.type === 'offer') {
+          // Answer every line send-and-receive, so this side can turn its camera on or share later.
+          for (const t of pc.getTransceivers()) if (t.direction === 'recvonly' && !t.currentDirection) t.direction = 'sendrecv';
           await pc.setLocalDescription(await pc.createAnswer());
           send({ type: 'signal', to: from, data: { sdp: pc.localDescription } });
         }
       } else if (data.candidate) {
-        await pc.addIceCandidate(data.candidate).catch(() => {});
+        if (pc.remoteDescription) await pc.addIceCandidate(data.candidate).catch(() => {});
+        else early.set(from, [...(early.get(from) ?? []), data.candidate]);
       }
+    };
+    const onSignal = (from: string, data: Parameters<typeof handle>[1]) => {
+      const next = (queues.get(from) ?? Promise.resolve()).then(() => handle(from, data)).catch((e) => console.warn('call signal failed', e));
+      queues.set(from, next);
+      return next;
     };
 
     /** Joins through the SFU: send my tracks once, then receive others'. */
@@ -462,7 +554,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         if (Date.now() - lastQ > 1000) { lastQ = Date.now(); setSfuQuality(link.pc.connectionState === 'connected' ? 'good' : link.pc.connectionState === 'failed' ? 'poor' : null); }
       };
       try {
-        await link.start(you, localRef.current!, t.kind === 'video');
+        await link.start(you, localRef.current!, true);
         if (stateRef.current.muted) await link.replace('audio', null);
         if (screenRef.current) await link.replace('video', screenRef.current, true);
         else if (!stateRef.current.camera) await link.replace('video', null);
@@ -489,9 +581,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       setInfo(infoRef.current);
       if (!localRef.current) {
         try {
-          // Bigger calls send smaller video: it goes to many people.
-          const video = t.kind === 'video' ? (t.sfu ? { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 }, facingMode: 'user' } : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }) : false;
-          localRef.current = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video });
+          // Voice calls start with the camera off (it can be turned on during the call).
+          const video = t.kind === 'video' ? cameraConstraints(!!t.sfu) : false;
+          const opened = await openMedia(video, noiseMode());
+          if (cancelled) { opened.getTracks().forEach((x) => x.stop()); return; }
+          // What's sent: the microphone through noise suppression, and the camera.
+          rawMic.current = opened.getAudioTracks()[0] ?? null;
+          micClean.current = rawMic.current ? await cleanMic(rawMic.current, noiseMode()) : null;
+          localRef.current = new MediaStream([...(micClean.current ? [micClean.current.track] : []), ...opened.getVideoTracks()]);
+          const cam = t.kind === 'video' && opened.getVideoTracks().length > 0;
+          stateRef.current.camera = cam;
+          setCamera(cam);
           setLocal(localRef.current);
         } catch (e) {
           const name = (e as Error).name;
@@ -510,14 +610,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           retry = 0;
           setPhase('live');
           for (const p of msg.peers as Peer[]) known.set(p.peerId, p);
+          myId.current = msg.you;
           announce();
           if (t.sfu) {
             await joinSfu(msg.you, msg.peers, t);
           } else {
             for (const p of msg.peers as Peer[]) {
-              const pc = connectTo(p);
+              // Back after the signalling link dropped: calls that are still connected keep going.
+              if (pcs.current.get(p.peerId)?.connectionState === 'connected') continue;
+              const pc = connectTo(p, true);
               await pc.setLocalDescription(await pc.createOffer());
-              send({ type: 'signal', to: p.peerId, data: { sdp: pc.localDescription } });
+              send({ type: 'signal', to: p.peerId, data: { sdp: pc.localDescription, fresh: true } });
             }
           }
         } else if (msg.type === 'joined') {
@@ -533,7 +636,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setR((r) => (r[msg.from] ? { ...r, [msg.from]: { ...r[msg.from], peer: { ...r[msg.from].peer, sfu: { sessionId: msg.sessionId, tracks: msg.tracks } } } } : r));
           syncSfu();
         } else if (msg.type === 'signal') {
-          await onSignal(msg.from, msg.data).catch((e) => console.warn('call signal failed', e));
+          await onSignal(msg.from, msg.data);
         } else if (msg.type === 'state') {
           const before = remotesRef.current[msg.from];
           if (msg.recording && before && !before.recording) toast(`${before.peer.name} started recording this class`, { icon: '⏺' });
@@ -547,6 +650,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         } else if (msg.type === 'left') {
           pcs.current.get(msg.peerId)?.close();
           pcs.current.delete(msg.peerId);
+          inbound.current.delete(msg.peerId);
           const gone = remotesRef.current[msg.peerId];
           if (gone?.peer.sfu && sfuRef.current) void sfuRef.current.drop(gone.peer.sfu.tracks.map((x) => x.trackName)).catch(() => {});
           if (pinned.current === msg.peerId) pinned.current = null;
@@ -577,6 +681,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       sfuRef.current?.close();
       sfuRef.current = null;
       localRef.current?.getTracks().forEach((t) => t.stop());
+      rawMic.current?.stop();
+      micClean.current?.stop();
       screenRef.current?.stop();
     };
   }, [callId, connectTo]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -725,6 +831,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     haptic('tap');
     const next = !muted;
     localRef.current?.getAudioTracks().forEach((t) => { t.enabled = !next; });
+    if (rawMic.current) rawMic.current.enabled = !next;
     // Through the SFU a muted mic sends nothing at all.
     void sfuRef.current?.replace('audio', next ? null : localRef.current?.getAudioTracks()[0] ?? null);
     setMuted(next);
@@ -732,41 +839,124 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     announce();
   };
 
-  const toggleCamera = () => {
+  /** Sends this video (camera, screen or nothing) to everyone, without renegotiating. */
+  const replaceVideo = async (track: MediaStreamTrack | null, isScreen = false) => {
+    if (sfuRef.current) return sfuRef.current.replace('video', track, isScreen);
+    for (const pc of pcs.current.values()) {
+      const sender = pc.getTransceivers().find((t) => t.receiver.track.kind === 'video' && t.currentDirection !== 'stopped')?.sender;
+      await sender?.replaceTrack(track).catch(() => {});
+    }
+  };
+
+  /** Sends this microphone track to everyone (after a device or noise-suppression change). */
+  const replaceAudio = async (track: MediaStreamTrack) => {
+    if (sfuRef.current) return sfuRef.current.replace('audio', stateRef.current.muted ? null : track);
+    for (const pc of pcs.current.values()) {
+      const sender = pc.getTransceivers().find((t) => t.receiver.track.kind === 'audio' && t.currentDirection !== 'stopped')?.sender;
+      await sender?.replaceTrack(track).catch(() => {});
+    }
+  };
+
+  /** Swaps in a new camera track (or none) on my preview and for everyone. */
+  const setCameraTrack = (track: MediaStreamTrack | null) => {
+    const stream = localRef.current;
+    if (!stream) return;
+    for (const old of stream.getVideoTracks()) { stream.removeTrack(old); old.stop(); }
+    if (track) stream.addTrack(track);
+    setLocal(new MediaStream(stream.getTracks()));
+  };
+
+  // Turning the camera on works in any call, so a voice call becomes a video call; off releases
+  // the camera (its light goes out) and everyone sees your picture again.
+  const [cameraBusy, setCameraBusy] = useState(false);
+  const toggleCamera = async () => {
     haptic('tap');
+    if (cameraBusy) return;
     const next = !camera;
-    localRef.current?.getVideoTracks().forEach((t) => { t.enabled = next; });
-    if (!screenRef.current) void sfuRef.current?.replace('video', next ? localRef.current?.getVideoTracks()[0] ?? null : null);
+    if (next) {
+      setCameraBusy(true);
+      try {
+        const chosen = chosenDevice('cam');
+        const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(!!infoRef.current?.sfu), ...(chosen ? { deviceId: { ideal: chosen } } : {}) } })).getVideoTracks()[0];
+        setCameraTrack(track);
+        if (!screenRef.current) await replaceVideo(track);
+      } catch {
+        toast.error('Allow the camera to turn on video.');
+        setCameraBusy(false);
+        return;
+      }
+      setCameraBusy(false);
+    } else {
+      if (!screenRef.current) await replaceVideo(null);
+      setCameraTrack(null);
+    }
     setCamera(next);
     stateRef.current.camera = next;
     announce();
   };
 
-  const replaceVideo = async (track: MediaStreamTrack | null, isScreen = false) => {
-    if (sfuRef.current) return sfuRef.current.replace('video', track, isScreen);
-    for (const pc of pcs.current.values()) {
-      const sender = pc.getTransceivers().find((t) => t.receiver.track.kind === 'video')?.sender;
-      await sender?.replaceTrack(track).catch(() => {});
-    }
-  };
-
   const flipCamera = async () => {
     const current = localRef.current?.getVideoTracks()[0];
-    const facing = current?.getSettings().facingMode === 'environment' ? 'user' : 'environment';
+    if (!current) return;
+    const facing = current.getSettings().facingMode === 'environment' ? 'user' : 'environment';
     try {
-      const track = (await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } })).getVideoTracks()[0];
+      const track = (await navigator.mediaDevices.getUserMedia({ video: cameraConstraints(!!infoRef.current?.sfu, facing) })).getVideoTracks()[0];
       if (!screenRef.current) await replaceVideo(track);
-      if (current) { localRef.current!.removeTrack(current); current.stop(); }
-      localRef.current!.addTrack(track);
-      setLocal(new MediaStream(localRef.current!.getTracks()));
+      setCameraTrack(track);
     } catch { /* only one camera */ }
+  };
+
+  // ── Microphone, camera and noise suppression settings ─────────────────────────────────────
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [noise, setNoise] = useState<NoiseMode>(() => noiseMode());
+  const [devices, setDevices] = useState<{ mics: { id: string; label: string }[]; cams: { id: string; label: string }[] }>({ mics: [], cams: [] });
+  const [micId, setMicId] = useState<string | null>(null);
+  const openSettings = async () => {
+    setSettingsOpen((o) => !o);
+    setDevices(await listDevices());
+    setMicId(rawMic.current?.getSettings().deviceId ?? null);
+  };
+  /** Re-opens the microphone (another device, or another noise setting) without leaving the call. */
+  const reopenMic = async (deviceId: string | null, mode: NoiseMode) => {
+    try {
+      const raw = (await navigator.mediaDevices.getUserMedia({ audio: audioConstraints(mode, deviceId) })).getAudioTracks()[0];
+      const clean = await cleanMic(raw, mode);
+      raw.enabled = clean.track.enabled = !stateRef.current.muted;
+      const stream = localRef.current;
+      if (stream) { for (const old of stream.getAudioTracks()) stream.removeTrack(old); stream.addTrack(clean.track); }
+      await replaceAudio(clean.track);
+      const oldClean = micClean.current, oldRaw = rawMic.current;
+      micClean.current = clean;
+      rawMic.current = raw;
+      oldClean?.stop();
+      oldRaw?.stop();
+      if (stream) setLocal(new MediaStream(stream.getTracks()));
+      setMicId(raw.getSettings().deviceId ?? deviceId);
+    } catch {
+      toast.error('Couldn’t switch the microphone.');
+    }
+  };
+  const pickNoise = (mode: NoiseMode) => {
+    setNoise(mode);
+    setNoiseMode(mode);
+    void reopenMic(micId, mode);
+  };
+  const pickMic = (id: string) => { chooseDevice('mic', id); void reopenMic(id, noise); };
+  const pickCam = async (id: string) => {
+    chooseDevice('cam', id);
+    if (!camera) return;
+    try {
+      const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(!!infoRef.current?.sfu), deviceId: { exact: id } } })).getVideoTracks()[0];
+      if (!screenRef.current) await replaceVideo(track);
+      setCameraTrack(track);
+    } catch { toast.error('Couldn’t switch the camera.'); }
   };
 
   const stopShare = async () => {
     screenRef.current?.stop();
     screenRef.current = null;
     setScreen(null);
-    await replaceVideo(stateRef.current.camera ? localRef.current?.getVideoTracks()[0] ?? null : sfuRef.current ? null : localRef.current?.getVideoTracks()[0] ?? null);
+    await replaceVideo(stateRef.current.camera ? localRef.current?.getVideoTracks()[0] ?? null : null);
     setSharing(false);
     stateRef.current.sharing = false;
     announce();
@@ -774,7 +964,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const toggleShare = async () => {
     if (sharing) return stopShare();
     try {
-      const track = (await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15 } } })).getVideoTracks()[0];
+      const track = (await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 } } })).getVideoTracks()[0];
       track.contentHint = 'detail';
       screenRef.current = track;
       setScreen(new MediaStream([track]));
@@ -802,9 +992,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
   const showVideo = (peerId: string) => { pinned.current = peerId; syncSfu(); };
 
-  const kind = info?.kind ?? wantKind ?? 'audio';
+  // A voice call becomes a video call as soon as anyone turns their camera on or shares a screen.
+  const kind: 'audio' | 'video' = camera || sharing || list.some((r) => r.camera || r.sharing) ? 'video' : 'audio';
   const clock = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
-  const canShare = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia && kind === 'video';
+  const canShare = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
   const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled && kind === 'video' && list.length > 0;
   const canRec = !!info?.host && info.type === 'class' && canRecord();
   const canNotes = !!info?.host && info.type === 'class';
@@ -878,9 +1069,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       ) : (
         <main className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
           <AnimatePresence initial={false}>
-            <Tile key="me" id="me" name={myName} stream={sharing && screen ? screen : local} mirrored={!sharing} muted={muted} camera={kind === 'video' && (camera || sharing)} me compact={compact} animateLayout={count <= 12} />
-            {list.map((r) => (
-              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={kind === 'video' && (r.camera || r.sharing)} quality={r.quality} state={r.state}
+            <Tile key="me" id="me" name={myName} stream={sharing && screen ? screen : local} mirrored={!sharing} muted={muted} camera={camera || sharing} screen={sharing} spotlight={sharing && !list.some((r) => r.sharing)} me compact={compact} animateLayout={count <= 12} />
+            {[...list].sort((a, b) => Number(b.sharing) - Number(a.sharing)).map((r, i) => (
+              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera || r.sharing} screen={r.sharing} spotlight={r.sharing && i === 0} quality={r.quality} state={r.state}
                 paused={r.paused} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12}
                 videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
             ))}
@@ -912,10 +1103,20 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           {phase !== 'error' && phase !== 'ended' && (
             <>
               <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleMute} aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} className={cn(btn, 'shrink-0', muted ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>{muted ? <MicOff /> : <Mic />}</motion.button>
-              {kind === 'video' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleCamera} aria-pressed={!camera} aria-label={camera ? 'Turn camera off' : 'Turn camera on'} className={cn(btn, 'shrink-0', !camera ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>{camera ? <Video /> : <VideoOff />}</motion.button>}
-              {kind === 'video' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={flipCamera} aria-label="Switch camera" className={cn(btn, 'shrink-0 bg-white/10 hover:bg-white/20 sm:hidden')}><RefreshCcw /></motion.button>}
+              <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void toggleCamera()} aria-pressed={camera} disabled={cameraBusy}
+                aria-label={camera ? 'Turn camera off' : 'Turn camera on'} title={camera ? 'Turn camera off' : kind === 'audio' ? 'Switch to video' : 'Turn camera on'}
+                className={cn(btn, 'shrink-0', camera ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}>
+                {cameraBusy ? <Loader2 className="animate-spin" /> : camera ? <Video /> : <VideoOff />}
+              </motion.button>
+              <AnimatePresence initial={false}>
+                {camera && (
+                  <motion.button key="flip" initial={{ opacity: 0, scale: 0.6, width: 0 }} animate={{ opacity: 1, scale: 1, width: 56 }} exit={{ opacity: 0, scale: 0.6, width: 0 }} transition={spring.snappy}
+                    whileTap={{ scale: 0.9 }} type="button" onClick={flipCamera} aria-label="Switch camera" className={cn(btn, 'shrink-0 bg-white/10 hover:bg-white/20 sm:hidden')}><RefreshCcw /></motion.button>
+                )}
+              </AnimatePresence>
               <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleCc} aria-pressed={cc} aria-label={cc ? 'Turn captions off' : 'Turn captions on'} title="Live captions" className={cn(btn, 'shrink-0', cc ? 'bg-indigo-500' : 'bg-white/10 hover:bg-white/20')}>{cc ? <Captions /> : <CaptionsOff />}</motion.button>
-              {canShare && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} className={cn(btn, 'shrink-0 hidden sm:flex', sharing ? 'bg-indigo-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
+              {canShare && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn(btn, 'shrink-0', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
+              <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void openSettings()} aria-expanded={settingsOpen} aria-label="Microphone, camera and noise suppression" title="Microphone, camera and noise suppression" className={cn(btn, 'shrink-0', settingsOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}><SlidersHorizontal /></motion.button>
               {canRec && (
                 <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => (recording ? void stopRecording() : startRecording())} aria-pressed={recording} aria-label={recording ? 'Stop recording' : 'Record the class'} title={recording ? 'Stop and save to class materials' : 'Record the class'} className={cn(btn, 'shrink-0', recording ? 'bg-rose-600 hover:bg-rose-500' : 'bg-white/10 hover:bg-white/20')}>
                   {recording ? <Square className="w-5 h-5 fill-current" /> : <Circle className="w-5 h-5 fill-rose-500 text-rose-500" />}
@@ -932,6 +1133,52 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => finish()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
         </div>
       </motion.footer>
+      {/* Microphone, camera and noise suppression */}
+      <AnimatePresence>
+        {settingsOpen && (
+          <motion.div key="settings" initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.98 }} transition={spring.smooth}
+            role="dialog" aria-label="Call settings"
+            className="absolute inset-x-3 sm:inset-x-auto sm:right-6 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:w-96 max-h-[60vh] overflow-y-auto rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold">Sound and video</p>
+              <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
+            </div>
+            <section className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-fuchsia-300" /> Noise suppression</p>
+              <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-white/[0.06]">
+                {([['strong', 'Strong'], ['standard', 'Standard'], ['off', 'Off']] as const).map(([m, label]) => (
+                  <button key={m} type="button" onClick={() => pickNoise(m)} aria-pressed={noise === m} className={cn('relative isolate py-2 rounded-xl text-sm font-semibold transition-colors', noise === m ? 'text-white' : 'text-zinc-400 hover:text-white')}>
+                    {noise === m && <motion.span layoutId="noise-pill" transition={spring.snappy} className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500" />}
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-400">{noise === 'strong' ? 'AI removes background noise (fans, typing, traffic, voices far away) on this device, and silences the gaps between your words.' : noise === 'standard' ? 'Your browser’s own noise reduction.' : 'Your microphone as it is (for music).'}</p>
+            </section>
+            {devices.mics.length > 0 && (
+              <section className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Microphone</p>
+                {devices.mics.map((d) => (
+                  <button key={d.id} type="button" onClick={() => pickMic(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left hover:bg-white/[0.06]">
+                    <span className="flex-1 truncate">{d.label}</span>{micId === d.id && <Check className="w-4 h-4 text-emerald-400" />}
+                  </button>
+                ))}
+              </section>
+            )}
+            {devices.cams.length > 0 && (
+              <section className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Camera</p>
+                {devices.cams.map((d) => (
+                  <button key={d.id} type="button" onClick={() => void pickCam(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left hover:bg-white/[0.06]">
+                    <span className="flex-1 truncate">{d.label}</span>{(local?.getVideoTracks()[0]?.getSettings().deviceId ?? chosenDevice('cam')) === d.id && <Check className="w-4 h-4 text-emerald-400" />}
+                  </button>
+                ))}
+              </section>
+            )}
+            <p className="text-[11px] text-zinc-500">An iPhone or iPad near this computer is only used if you pick it here, so the phone stays free for its own calls.</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Voicemail: nobody answered, leave a voice message instead. */}
       <AnimatePresence>
         {voicemail && (

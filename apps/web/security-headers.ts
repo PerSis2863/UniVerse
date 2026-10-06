@@ -21,7 +21,7 @@ const FILES_ORIGIN = (() => {
 //   - 'unsafe-eval' only in `next dev` (its hot reload evaluates code); never in production.
 const csp = `
     default-src 'self';
-    script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"} https://static.cloudflareinsights.com https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;
+    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"} https://static.cloudflareinsights.com https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;
     script-src-attr 'none';
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: ${FILES_ORIGIN} https://images.unsplash.com https://ui-avatars.com https://lh3.googleusercontent.com https://*.googleusercontent.com;
