@@ -256,6 +256,7 @@ model User {
   // from favourites.
   scheduledMessages    ScheduledMessage[] @relation("ScheduledMessages")
   callNotes            CallNote[]         @relation("CallNotes")
+  callRecordings       CallRecording[]    @relation("CallRecordings")
   presence             String            @default("auto")
   statusText           String?
   statusEmoji          String?
@@ -2606,6 +2607,32 @@ model VoiceSession {
 /// "Class notes" in a class call; everyone's captions are collected by the teacher's browser and
 /// sent here once, when notes stop. One AI request makes the pack. The transcript (text only,
 /// never audio) is deleted after 90 days by the daily job; the pack itself stays with the course.
+/// A recording of a call that isn't a class (Stage 4 · 2.9; src/server/call-recordings.ts), saved where
+/// the call happened; kept 90 days. Class recordings are course materials.
+model CallRecording {
+  id             String   @id @default(cuid())
+  callId         String
+  kind           String // chat | room | group | link
+  conversationId String? // the chat it was posted to
+  groupId        String?
+  messageId      String?
+  noteId         String? // the call's meeting notes, for chapters and the transcript
+  createdById    String
+  createdBy      User     @relation("CallRecordings", fields: [createdById], references: [id], onDelete: Cascade)
+  url            String
+  mime           String
+  size           Int      @default(0)
+  durationSec    Int      @default(0)
+  people         String   @default("[]") // JSON account ids of who was in the call
+  createdAt      DateTime @default(now())
+
+  @@index([callId])
+  @@index([conversationId])
+  @@index([groupId])
+  @@index([createdById, createdAt])
+  @@map("call_recordings")
+}
+
 /// Meeting notes for a call that isn't a class (Stage 4 · 2.8; src/server/meeting-notes.ts): made from
 /// the live captions when someone turns notes on, posted where the call happened.
 model CallNote {

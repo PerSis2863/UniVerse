@@ -18,6 +18,7 @@ import { fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
 import { MeetingNotesSheet } from '@/components/call/MeetingNotes';
+import { CallRecordingSheet } from '@/components/call/CallRecordingSheet';
 
 interface CallRow {
   id: string; at: string; kind: 'audio' | 'video'; outgoing: boolean; answered: boolean; declined: boolean; durationSec: number | null;
@@ -27,12 +28,13 @@ interface CallRow {
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 
-/** A call's meeting notes opened from a notification (?note=<id>, Stage 4 · 2.8). */
+/** A call's meeting notes or recording opened from a chat or a notification (?note=, ?recording=; Stage 4 · 2.8, 2.9). */
 function NoteFromLink() {
   const params = useSearchParams();
   const router = useRouter();
-  const id = params.get('note');
-  return id ? <MeetingNotesSheet id={id} onClose={() => router.replace('/calls')} /> : null;
+  const note = params.get('note'), recording = params.get('recording');
+  if (recording) return <CallRecordingSheet id={recording} onClose={() => router.replace('/calls')} />;
+  return note ? <MeetingNotesSheet id={note} onClose={() => router.replace('/calls')} /> : null;
 }
 
 /** Calls from the last 30 days, like a phone's call log: join live ones, call anyone back. */

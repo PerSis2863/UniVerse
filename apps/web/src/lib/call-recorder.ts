@@ -130,7 +130,8 @@ export class CallRecorder {
   }
 }
 
-/** Uploads a finished recording to the class's materials, reporting progress (0–1). */
+/** Uploads a finished recording and saves it where the call happened (class materials, the chat, the
+ *  group, or Calls), reporting progress (0–1). */
 export async function uploadRecording(callId: string, blob: Blob, durationSec: number, authed: <T>(url: string, init?: RequestInit) => Promise<T>, onProgress: (p: number) => void) {
   const contentType = blob.type || 'video/webm';
   const { uploadUrl, url } = await authed<{ uploadUrl: string; url: string }>(`/api/calls/${callId}/recording`, { method: 'POST', body: JSON.stringify({ step: 'upload', contentType, size: blob.size }) });
@@ -143,5 +144,5 @@ export async function uploadRecording(callId: string, blob: Blob, durationSec: n
     xhr.onerror = () => reject(new Error('Upload failed. Check the connection.'));
     xhr.send(blob);
   });
-  return authed<{ id: string; title: string }>(`/api/calls/${callId}/recording`, { method: 'POST', body: JSON.stringify({ step: 'save', url, size: blob.size, durationSec }) });
+  return authed<{ id: string; title: string; message: string }>(`/api/calls/${callId}/recording`, { method: 'POST', body: JSON.stringify({ step: 'save', url, size: blob.size, durationSec, contentType }) });
 }

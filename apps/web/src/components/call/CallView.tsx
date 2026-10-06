@@ -708,13 +708,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const t = toast.loading('Saving the recording… 0%');
     try {
       const saved = await uploadRecording(callId, blob, durationSec, authedJson, (p) => toast.loading(`Saving the recording… ${Math.round(p * 100)}%`, { id: t }));
-      toast.success(`“${saved.title}” is in the class materials`, { id: t });
+      toast.success(saved.message || `“${saved.title}” is saved`, { id: t });
     } catch (e) {
       toast.error((e as Error).message || 'Couldn’t save the recording.', { id: t, duration: 10_000 });
       // Don't lose the class: offer the file instead.
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `class-recording-${new Date().toISOString().slice(0, 16).replace(':', '-')}.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
+      a.download = `call-recording-${new Date().toISOString().slice(0, 16).replace(':', '-')}.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`;
       a.click();
     }
   }, [callId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1070,7 +1070,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           await onSignal(msg.from, msg.data);
         } else if (msg.type === 'state') {
           const before = remotesRef.current[msg.from];
-          if (msg.recording && before && !before.recording) toast(`${before.peer.name} started recording this class`, { icon: '⏺' });
+          if (msg.recording && before && !before.recording) toast(`${before.peer.name} started recording this ${callId.startsWith('c_') ? 'class' : 'call'}`, { icon: '⏺' });
           if (msg.notes && before && !before.notes) toast(callId.startsWith('c_')
             ? `${before.peer.name} turned on class notes: what’s said in the class becomes a study pack (summary, notes and flashcards). Only text is kept, never audio.`
             : `${before.peer.name} turned on meeting notes: what’s said becomes notes (summary, decisions and action items) for everyone in the call. Only text is kept, never audio.`, { icon: '📝', duration: 8000 });
@@ -1369,7 +1369,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ];
   }; });
 
-  const startRecording = () => {
+  const startRecording = async () => {
+    // Before recording an hour: may I, and can it be saved (file storage, the owner's switch)?
+    let goes = 'the chat';
+    try {
+      goes = (await authedJson<{ goes: string }>(`/api/calls/${callId}/recording`, { method: 'POST', body: JSON.stringify({ step: 'check' }) })).goes;
+    } catch (e) {
+      toast.error((e as Error).message);
+      return;
+    }
     try {
       recRef.current = new CallRecorder(() => recSourcesRef.current(), (infoRef.current?.kind ?? 'audio') === 'video');
     } catch (e) {
@@ -1380,7 +1388,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setRecSeconds(0);
     stateRef.current.recording = true;
     announce();
-    toast.success('Recording. Everyone in the call can see it. It’s saved to the class materials when you stop.');
+    toast.success(`Recording. Everyone in the call sees the REC badge. It’s saved to ${goes} when you stop.`);
   };
 
   useEffect(() => {
@@ -1646,10 +1654,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const clock = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
   const canShare = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
   const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled && kind === 'video' && list.length > 0;
-  const canRec = !!info?.host && info.type === 'class' && canRecord();
   // Notes: the class's teacher (a study pack); whoever runs any other call, or either person in a
   // one-to-one call (meeting notes, Stage 4 · 2.8), from the main call (not a breakout room).
   const canNotes = !!info && (info.type === 'class' ? !!info.host : (meHost || meCohost || info.oneToOne) && room === callId);
+  // Recording (Stage 4 · 2.9): the same people as notes (the class's teacher; whoever runs any other call).
+  const canRec = canNotes && canRecord();
   const btn = 'w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-colors';
   const status = phase === 'prejoin' ? 'Ready to join?' : phase === 'lobby' ? 'In the waiting room' : phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
   const firstRemoteId = list[0]?.peer.peerId;
@@ -1724,7 +1733,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
     ...(canBg ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
-    ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : 'Record class', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
+    ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
     ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : info?.type === 'class' ? 'Class notes' : 'Meeting notes', icon: NotebookPen, on: notes }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'poll' as const, label: 'Poll or quiz', icon: BarChart3, on: !!poll?.open }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'rooms' as const, label: 'Breakout rooms', icon: DoorOpen, on: !!bo }] : []),
@@ -1738,7 +1747,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'devices') void openSettings();
     else if (key === 'bg') setBgOpen(true);
     else if (key === 'flip') void flipCamera();
-    else if (key === 'rec') { if (recording) void stopRecording(); else startRecording(); }
+    else if (key === 'rec') { if (recording) void stopRecording(); else void startRecording(); }
     else if (key === 'notes') toggleNotes();
     else if (key === 'rooms') openPanel('rooms');
     else if (key === 'poll') setPollCompose(true);

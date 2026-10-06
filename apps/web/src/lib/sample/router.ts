@@ -366,6 +366,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/premium\/analytics$/, ({ db: d }) => ok(d.analytics)],
   // A study pack in another language (Stage 4 · 4.1): the sample's packs are shown as they are.
   [/^\/api\/class-sessions\/([^/]+)\/translation$/, () => ok({ same: true, pack: null })],
+  // Call recordings (Stage 4 · 2.9): the sample has none.
+  [/^\/api\/call-recordings\/([^/]+)$/, () => fail('This recording isn’t available in the sample.', 404)],
   // Meeting notes (Stage 4 · 2.8): the sample has none.
   [/^\/api\/meeting-notes\/([^/]+)$/, () => fail('These notes aren’t available in the sample.', 404)],
   // Smart replay search (Stage 4 · 4.6): the sample's classes have no transcript.

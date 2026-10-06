@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X } from 'lucide-react';
+import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
@@ -253,13 +253,14 @@ export function MessageBubble(p: Props) {
   } else if (m.type === 'VIDEO' && m.attachmentUrl && m.metadata?.videoNote) {
     content = <VideoNoteBubble url={m.attachmentUrl} />;
   } else if (m.type === 'VIDEO' && m.attachmentUrl) {
-    content = <ChatVideo url={m.attachmentUrl} />;
+    content = m.metadata?.recording ? <div><ChatVideo url={m.attachmentUrl} /><RecordingLink id={m.metadata.recording.id} mine={mine} /></div> : <ChatVideo url={m.attachmentUrl} />;
   } else if (m.type === 'AUDIO' && m.attachmentUrl) {
     content = (
       <div>
         {m.metadata?.voicemail && <p className={cn('px-3 pt-2.5 text-[11px] font-semibold flex items-center gap-1', mine ? 'text-white/80' : 'text-indigo-500')}><PhoneMissed className="w-3 h-3" /> Voicemail</p>}
         <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} waveform={m.metadata?.waveform} title={mine ? 'Your voice message' : `${m.sender?.name ?? 'Voice message'}`} />
         <VoiceTranscript id={m.id} transcript={m.metadata?.transcript} mine={mine} pending={!!m.pending} />
+        {m.metadata?.recording && <RecordingLink id={m.metadata.recording.id} mine={mine} />}
       </div>
     );
   } else if (m.type === 'FILE' && m.attachmentUrl) {
@@ -547,6 +548,15 @@ function EditHistory({ id, onClose, emoji }: { id: string; onClose: () => void; 
       </motion.div>
     </div>,
     document.body,
+  );
+}
+
+/** Under a call's recording in the chat (Stage 4 · 2.9): chapters and the transcript, in Calls. */
+function RecordingLink({ id, mine }: { id: string; mine: boolean }) {
+  return (
+    <a href={`/calls?recording=${id}`} className={cn('flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold', mine ? 'text-white/85 hover:text-white' : 'text-indigo-600 dark:text-indigo-300 hover:underline')}>
+      <Clapperboard className="w-3.5 h-3.5" /> Call recording · chapters and transcript
+    </a>
   );
 }
 

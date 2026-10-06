@@ -92,8 +92,8 @@ function notesText(n: { title: string; summary: string | null; decisions: string
   return parts.filter(Boolean).join('\n\n').slice(0, MAX_BODY);
 }
 
-/** Whether this person may see these notes. */
-async function canSee(note: { createdById: string; conversationId: string | null; groupId: string | null; callId: string; people: string }, user: SessionUser) {
+/** Whether this person may see a call's notes or recording: its chat or group, or they were in the call. */
+export async function canSeeCall(note: { createdById: string; conversationId: string | null; groupId: string | null; callId: string; people: string }, user: SessionUser) {
   if (note.createdById === user.id) return true;
   if (note.conversationId && (await membership(note.conversationId, user.id))) return true;
   if (note.groupId && (await groupAccess(note.groupId, user))) return true;
@@ -159,6 +159,8 @@ export async function createMeetingNotes(callId: string, user: SessionUser, body
     },
     select: { id: true, status: true, kind: true },
   });
+  // A recording of the same call (2.9) gets its chapters and transcript from these notes.
+  await prisma.callRecording.updateMany({ where: { callId, noteId: null, createdAt: { gte: new Date(Date.now() - 3 * 3600_000) } }, data: { noteId: note.id } });
   if (notes) await deliver(note.id, user);
   const where = note.kind === 'group' ? 'posted in the group' : note.kind === 'link' ? 'sent to everyone who was in the call' : 'posted in the chat';
   return { ...note, message: notes ? `Meeting notes ${where}.` : 'The notes are saved. AI isn’t available right now: open Calls and tap Make notes later.' };
@@ -167,7 +169,7 @@ export async function createMeetingNotes(callId: string, user: SessionUser, body
 /** GET /api/meeting-notes/[id]: the notes (never the transcript), for the people they're for. */
 export async function getMeetingNote(id: string, user: SessionUser) {
   const note = await prisma.callNote.findUnique({ where: { id } });
-  if (!note || !(await canSee(note, user))) throw new NotFoundException('These notes aren’t available.');
+  if (!note || !(await canSeeCall(note, user))) throw new NotFoundException('These notes aren’t available.');
   return {
     id: note.id, callId: note.callId, kind: note.kind, conversationId: note.conversationId, title: note.title, startedAt: note.startedAt, durationSec: note.durationSec,
     status: note.status, summary: note.summary, decisions: parse<string>(note.decisions), actions: parse<ActionItem>(note.actions), chapters: parse<{ t: number; title: string }>(note.chapters),
@@ -195,7 +197,7 @@ export async function retryMeetingNotes(id: string, user: SessionUser) {
  */
 export async function addActionTask(id: string, user: SessionUser, index: unknown) {
   const note = await prisma.callNote.findUnique({ where: { id } });
-  if (!note || !(await canSee(note, user))) throw new NotFoundException('These notes aren’t available.');
+  if (!note || !(await canSeeCall(note, user))) throw new NotFoundException('These notes aren’t available.');
   const action = parse<ActionItem>(note.actions)[Number(index)];
   if (!action) throw new NotFoundException('That action item isn’t in these notes.');
   let board = await prisma.taskBoard.findFirst({ where: { ownerId: user.id, title: 'From meetings', courseId: null, groupId: null }, select: { id: true } });
