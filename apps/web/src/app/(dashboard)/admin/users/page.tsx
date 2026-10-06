@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 type Role = 'STUDENT' | 'TEACHER' | 'ADMIN';
 type Status = 'PENDING' | 'ACTIVE' | 'SUSPENDED';
@@ -241,8 +242,8 @@ export default function AdminUsers() {
                   <button
                     key={r}
                     onClick={() => { setRoleFilter(r); setShowFilterDropdown(false); }}
-                    className={cn('w-full flex justify-between text-left px-4 py-2 text-sm transition-colors', roleFilter === r ? 'text-indigo-500 bg-indigo-500/10' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800')}
-                  >
+                    className={cn('relative isolate w-full flex justify-between text-left px-4 py-2 text-sm transition-colors', roleFilter === r ? 'text-indigo-500' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800')}
+                  >{roleFilter === r && <TabPill id="p-dashboard-admin-users-page-0" variant="soft" />}
                     <span>{r === 'All' ? 'All roles' : `${ROLE_LABEL[r]}s`}</span>
                     <span className="text-zinc-400">{roleCounts[r] ?? 0}</span>
                   </button>

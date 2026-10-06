@@ -12,6 +12,7 @@ import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import type { BehindReason, CourseAnalytics } from '@/server/course-analytics';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 interface Response { courses: { id: string; code: string; name: string }[]; analytics: CourseAnalytics | null }
 
@@ -46,7 +47,7 @@ export function CourseAnalyticsBoard({ base }: { base: string }) {
   };
 
   if (error) return <p className="p-6 text-sm text-rose-500">{(error as Error).message}</p>;
-  if (!data) return <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>;
+  if (!data) return <div className="p-10"><ContentSkeleton variant="dashboard" /></div>;
   if (!data.courses.length) {
     return (
       <div className="p-4 md:p-8 max-w-3xl mx-auto">

@@ -12,6 +12,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { safeHref } from '@/lib/safe-href';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { TabPill, TabPanel } from '@/components/ui/Glide';
 
 // Campus events (upgrade 7): RSVP (a seat, or the waiting list when it's full) and check in at the
 // door by scanning the organiser's QR code, which opens this page with ?checkin=<code>.
@@ -73,14 +74,15 @@ export default function EventsPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-white/[0.05]" role="tablist">
               {(['all', 'mine'] as const).map((f) => (
-                <button key={f} type="button" role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={cn('relative px-3 py-1.5 text-sm font-medium rounded-lg', filter === f ? 'text-zinc-900 dark:text-white' : 'text-zinc-500')}>
-                  {filter === f && <motion.span layoutId="events-filter" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-white dark:bg-white/10 shadow-sm" />}
+                <button key={f} type="button" role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={cn('relative isolate px-3 py-1.5 text-sm font-medium rounded-lg transition-colors', filter === f ? 'text-white' : 'text-zinc-500')}>
+                  {filter === f && <TabPill id="events-filter" />}
                   <span className="relative">{f === 'all' ? 'Upcoming' : 'My tickets'}</span>
                 </button>
               ))}
             </div>
             <p className="text-xs text-zinc-500 hidden sm:flex items-center gap-1"><QrCode className="w-3.5 h-3.5" /> At the door, scan the code on the organiser’s screen with your phone camera.</p>
           </div>
+          <TabPanel k={filter}>
           {isLoading ? (
             <div className="grid gap-3">{[0, 1, 2].map((i) => <div key={i} className="h-28 rounded-2xl skeleton" />)}</div>
           ) : error ? (
@@ -135,6 +137,7 @@ export default function EventsPage() {
               })}
             </ul>
           )}
+          </TabPanel>
         </div>
       </div>
     </>

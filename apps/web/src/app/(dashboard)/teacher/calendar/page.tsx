@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { downloadIcs } from '@/components/dashboard/CourseBoard';
 import { courseColor } from '@/lib/course-color';
 import { CalendarFeedCard } from '@/components/dashboard/CalendarFeedCard';
+import { TabPill } from '@/components/ui/Glide';
 
 // Shapes of /timetable/my and /calendar/my, as this page uses them.
 interface Slot { id: string; courseId?: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; course?: { id?: string; name?: string; code?: string; color?: string | null } | null; room?: { name?: string } | null }
@@ -292,10 +293,10 @@ export default function TeacherCalendarPage() {
             
             <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
               <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg w-full xl:w-auto justify-between xl:justify-start overflow-x-auto scrollbar-none">
-                <button onClick={() => setView('Day')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Day' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>Day</button>
-                <button onClick={() => setView('Week')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Week' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>Week</button>
-                <button onClick={() => setView('Month')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Month' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>Month</button>
-                <button onClick={() => setView('Semester')} className={`px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Semester' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>Semester</button>
+                <button onClick={() => setView('Day')} className={`relative isolate px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Day' ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>{view === 'Day' && <TabPill id="hboard-teacher-calendar-page-0" />}Day</button>
+                <button onClick={() => setView('Week')} className={`relative isolate px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Week' ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>{view === 'Week' && <TabPill id="hboard-teacher-calendar-page-0" />}Week</button>
+                <button onClick={() => setView('Month')} className={`relative isolate px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Month' ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>{view === 'Month' && <TabPill id="hboard-teacher-calendar-page-0" />}Month</button>
+                <button onClick={() => setView('Semester')} className={`relative isolate px-3 py-2 sm:py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${view === 'Semester' ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}>{view === 'Semester' && <TabPill id="hboard-teacher-calendar-page-0" />}Semester</button>
               </div>
               <div className="hidden xl:block w-px h-8 bg-zinc-200 dark:bg-zinc-700"></div>
               <button className="w-full xl:w-auto px-4 py-3 sm:py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-lg text-sm font-medium transition-colors" onClick={() => setShowOfficeModal(true)}>

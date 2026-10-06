@@ -22,6 +22,7 @@ import { LANGUAGES, languageName } from '@/lib/languages';
 import { LanguagePicker } from './LanguagePicker';
 import { useChatTranslations } from './useChatTranslations';
 import dynamic from 'next/dynamic';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 const ThreadPanel = dynamic(() => import('./ThreadPanel').then((m) => m.ThreadPanel));
 
@@ -466,7 +467,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       </div>
     );
   }
-  if (isLoading || !convo) return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>;
+  if (isLoading || !convo) return <div className="flex-1 min-w-0"><ContentSkeleton variant="chat" /></div>;
 
   return (
     <div className="flex-1 flex min-w-0 min-h-0">

@@ -9,6 +9,7 @@ import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { CampusItem } from './CampusItems';
+import { TabPill } from '@/components/ui/Glide';
 
 // Dining menu (upgrade 7): campus admins post each day's meals (Student Life management → Menus).
 // One menu per meal: its day, the dining hall, one dish per line.
@@ -39,8 +40,8 @@ export function DiningMenu() {
     <div className="space-y-3">
       <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Day">
         {days.map((k) => (
-          <button key={k} type="button" role="tab" aria-selected={k === day} onClick={() => setPicked(k)} className={cn('relative px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap', k === day ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-white/[0.05]')}>
-            {k === day && <motion.span layoutId="menu-day" transition={spring.snappy} className="absolute inset-0 rounded-lg bg-indigo-500" />}
+          <button key={k} type="button" role="tab" aria-selected={k === day} onClick={() => setPicked(k)} className={cn('relative isolate px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', k === day ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-white/[0.05]')}>
+            {k === day && <TabPill id="menu-day" />}
             <span className="relative">{label(k)}</span>
           </button>
         ))}

@@ -21,6 +21,7 @@ import { DatabasePanel } from './database';
 import { HealthPanel } from './health';
 import { AnalyticsPanel, AttentionCard, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
 import { useActivePoll } from '@/lib/realtime-client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
@@ -315,7 +316,7 @@ function Feed({ onPerson }: { onPerson: (id: string) => void }) {
       </div>
       <div className="flex flex-wrap items-center gap-1">
         {([['', 'Everything'], ['signin', 'Sign-ins'], ['action', 'Actions'], ['message', 'Messages'], ['ui', 'Clicks & pages']] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setFilter(k)} className={cn('px-3 py-1.5 rounded-full text-xs font-semibold', filter === k ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{l}</button>
+          <button key={k} onClick={() => setFilter(k)} className={cn('relative isolate px-3 py-1.5 rounded-full text-xs font-semibold', filter === k ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{filter === k && <TabPill id="app-dashboard-console-page-0" />}{l}</button>
         ))}
         {isValidating && !isLoading && <Loader2 className="ml-2 w-3.5 h-3.5 animate-spin text-zinc-400" />}
       </div>
@@ -537,10 +538,10 @@ function Changes({ initialQuery }: { initialQuery?: string }) {
       <SearchBox value={q} onChange={setQ} placeholder="Search changes (what, which table, record id)" />
       <div className="flex flex-wrap gap-1">
         {CHANGE_AREAS.map(([id, label]) => (
-          <button key={id} onClick={() => setArea(id)} className={cn('px-3 py-1.5 rounded-full text-xs font-semibold', area === id ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{label}</button>
+          <button key={id} onClick={() => setArea(id)} className={cn('relative isolate px-3 py-1.5 rounded-full text-xs font-semibold', area === id ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{area === id && <TabPill id="app-dashboard-console-page-1" />}{label}</button>
         ))}
       </div>
-      {isLoading ? <Loader2 className="w-6 h-6 animate-spin text-zinc-400" /> : !items.length ? (
+      {isLoading ? <ContentSkeleton variant="list" /> : !items.length ? (
         <p className="text-sm text-zinc-500">{dq ? 'No changes match.' : 'No changes yet. Everything you edit or delete in the console appears here, with an Undo button.'}</p>
       ) : (
     <ul className={cn(card, 'divide-y divide-zinc-100 dark:divide-white/[0.05]')}>

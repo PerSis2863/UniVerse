@@ -10,6 +10,8 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 interface Flag {
   id: string; score: number; level: 'AT_RISK' | 'WATCH' | 'OK'; status: 'OPEN' | 'CONTACTED' | 'RESOLVED' | 'DISMISSED';
@@ -102,7 +104,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06]">
           {VIEWS.map((v) => (
-            <button key={v.id} role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)} className={cn('px-3 py-1.5 rounded-lg text-sm font-semibold', view === v.id ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500')}>{v.label}</button>
+            <button key={v.id} role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)} className={cn('relative isolate px-3 py-1.5 rounded-lg text-sm font-semibold', view === v.id ? 'text-white' : 'text-zinc-500')}>{view === v.id && <TabPill id="ly-warning-earlywarningboard-0" />}{v.label}</button>
           ))}
         </div>
         <select aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)} className="text-sm rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-3 py-2 text-zinc-700 dark:text-zinc-200 max-w-[16rem]">
@@ -123,7 +125,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
       {debouncedQ && data && <p className="text-xs text-zinc-500">{data.flags.length} student{data.flags.length === 1 ? '' : 's'} match “{debouncedQ}”{data.flags.length >= 200 ? ' (first 200 shown)' : ''}</p>}
 
       {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
-        : isLoading ? <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
+        : isLoading ? <div className="p-10"><ContentSkeleton variant="table" /></div>
         : !data?.flags.length ? (
           <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-10 text-center">
             <ShieldCheck className="w-10 h-10 mx-auto text-emerald-500" />

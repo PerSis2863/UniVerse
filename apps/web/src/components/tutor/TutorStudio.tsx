@@ -8,6 +8,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 interface CourseItem { id: string; code: string; name: string; emoji: string | null; materials: number; readySources: number }
 interface CoursesResp { courses: CourseItem[]; cards: { due: number; total: number }; canManage: boolean }
@@ -32,7 +33,7 @@ export function TutorStudio() {
   const [tab, setTab] = useState<Tab>('ask');
   const course = data?.courses.find((c) => c.id === courseId);
 
-  if (!data) return <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>;
+  if (!data) return <div className="p-10"><ContentSkeleton variant="list" /></div>;
 
   if (!course) {
     return (
@@ -284,7 +285,7 @@ function CardsPanel({ courseId, onNeedSources }: { courseId: string; onNeedSourc
         <button onClick={generate} aria-busy={busy || undefined} disabled={busy} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Make flashcards</button>
       </div>
       <p className="text-xs text-zinc-500">{data ? `${data.due} to review now · ${data.total} in this course’s deck${done ? ` · ${done} reviewed this session` : ''}` : ' '}</p>
-      {!data ? <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>
+      {!data ? <div className="p-10"><ContentSkeleton variant="list" /></div>
         : !card ? (
           <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-10 text-center">
             <Layers className="w-10 h-10 mx-auto text-emerald-500" />
@@ -349,7 +350,7 @@ function SourcesPanel({ courseId, onChanged }: { courseId: string; onChanged: ()
     catch (e) { toast.error((e as Error).message); }
   };
 
-  if (!data) return <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>;
+  if (!data) return <div className="p-10"><ContentSkeleton variant="list" /></div>;
   return (
     <div className="space-y-4">
       <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 sm:p-5">

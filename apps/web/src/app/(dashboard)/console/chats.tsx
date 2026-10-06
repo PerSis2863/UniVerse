@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, errorMessage, fetcher, field, refreshConsole, toastWithUndo, useDebounced } from './shared';
 import { useActivePoll } from '@/lib/realtime-client';
+import { TabPill } from '@/components/ui/Glide';
 
 // The owner console's Chats and Announce tabs. Chats shows every conversation on UniVerse as it
 // happens; the owner can step in as UniVerse (edit or remove a message, post a team notice, take
@@ -88,7 +89,7 @@ export function ChatsPanel({ onPerson, initialChat }: { onPerson: (id: string) =
                   const live = c.participants.some((p) => online(p.user.lastSeenAt));
                   return (
                     <li key={c.id}>
-                      <button onClick={() => setOpen({ id: c.id })} className={cn('w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', open?.id === c.id && 'bg-indigo-500/[0.07]')}>
+                      <button onClick={() => setOpen({ id: c.id })} className={cn('relative isolate w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', open?.id === c.id && '')}>{open?.id === c.id && <TabPill id="app-dashboard-console-chats-1" variant="soft" />}
                         <div className="flex items-center gap-2">
                           {c.isGroup ? <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" /> : <MessageSquare className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
                           <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate flex-1">{chatTitle(c)}</p>
@@ -403,7 +404,7 @@ export function AnnouncePanel() {
         <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Who gets it">
           {AUDIENCES.map((a) => (
             <button key={a.id || 'all'} type="button" role="radio" aria-checked={v.role === a.id} onClick={() => setV({ ...v, role: a.id })}
-              className={cn('px-3 py-1.5 rounded-full text-sm font-semibold border', v.role === a.id ? 'border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300' : 'border-zinc-200 dark:border-white/10 text-zinc-500')}>
+              className={cn('relative isolate px-3 py-1.5 rounded-full text-sm font-semibold border', v.role === a.id ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300' : 'border-zinc-200 dark:border-white/10 text-zinc-500')}>{v.role === a.id && <TabPill id="app-dashboard-console-chats-0" variant="soft" />}
               {a.label} <span className="font-normal opacity-70">{a.id ? data?.counts[a.id] ?? 0 : total}</span>
             </button>
           ))}

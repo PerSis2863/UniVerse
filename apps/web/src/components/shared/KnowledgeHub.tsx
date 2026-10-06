@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { TabPill } from '@/components/ui/Glide';
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
 
@@ -227,12 +228,12 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                 <button
                   key={category}
                   onClick={() => setActiveCategory(category)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`relative isolate w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     activeCategory === category 
-                      ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
+                      ? 'text-indigo-400 border border-indigo-500/20' 
                       : 'text-zinc-400 hover:bg-zinc-900 hover:text-white border border-transparent'
                   }`}
-                >
+                >{activeCategory === category && <TabPill id="mponents-shared-knowledgehub-0" variant="soft" />}
                   <Folder className={`w-4 h-4 ${activeCategory === category ? 'text-indigo-400' : 'text-zinc-500'}`} />
                   {category}
                 </button>

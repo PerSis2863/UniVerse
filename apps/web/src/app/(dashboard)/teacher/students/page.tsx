@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import { TabPill } from '@/components/ui/Glide';
 
 export default function TeacherStudents() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,8 +77,8 @@ export default function TeacherStudents() {
                     <button
                       key={course}
                       onClick={() => { setCourseFilter(course); setShowFilterDropdown(false); }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${courseFilter === course ? 'bg-indigo-500/10 text-indigo-400' : 'text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
-                    >
+                      className={`relative isolate w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${courseFilter === course ? 'text-indigo-400' : 'text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                    >{courseFilter === course && <TabPill id="hboard-teacher-students-page-0" variant="soft" />}
                       {course}
                     </button>
                   ))}

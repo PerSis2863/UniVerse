@@ -8,6 +8,7 @@ import { Activity, ChevronDown, Download, Loader2, Mail, Search, UserRound, X } 
 import { Topbar } from '@/components/layout/Topbar';
 import { api, API_URL } from '@/lib/api';
 import { authFetch } from '@/lib/auth-token';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 interface AuditEntry {
   id: string;
@@ -194,9 +195,7 @@ export default function AdminAuditLog() {
 
         <div className="rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 overflow-hidden">
           {isLoading ? (
-            <div className="p-12 flex justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
-            </div>
+            <div className="p-12"><ContentSkeleton variant="table" /></div>
           ) : error ? (
             <p className="p-12 text-center text-sm text-rose-500">Could not load the activity log.</p>
           ) : entries.length === 0 ? (

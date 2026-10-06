@@ -28,6 +28,7 @@ import { SaveOfflineButton } from '@/components/offline/SaveOfflineButton';
 import { ClassSessions, type ClassSession } from '@/components/dashboard/ClassSessions';
 import { Combobox } from '@/components/ui/Combobox';
 import { SUBJECTS } from '@/lib/options/academic';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -595,7 +596,7 @@ export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () =>
         </div>
         <div className="p-6 space-y-4">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
-          {!data && !error && <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>}
+          {!data && !error && <div className="py-8"><ContentSkeleton variant="list" /></div>}
           {data && !data.revealed && <p className="text-xs p-3 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300">Correct answers are shown once the quiz closes or passes its due date.</p>}
           {data?.questions.map((q, i) => (
             <div key={q.id} className="p-4 rounded-2xl border border-zinc-200/70 dark:border-white/[0.07]">

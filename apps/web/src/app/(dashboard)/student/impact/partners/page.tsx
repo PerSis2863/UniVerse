@@ -7,6 +7,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { Building2, HandHeart, Globe2, Handshake, MapPin, ExternalLink, Search } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import { safeHref } from '@/lib/safe-href';
+import { TabPill } from '@/components/ui/Glide';
 
 interface Partner {
   id: string;
@@ -89,12 +90,12 @@ export default function GlobalPartnersPage() {
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  className={`relative isolate px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                     filterType === type
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                      ? 'text-white'
                       : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                   }`}
-                >
+                >{filterType === type && <TabPill id="student-impact-partners-page-0" />}
                   {type === 'ALL' ? 'All' : `${TYPE_LABEL[type]}s`}
                 </button>
               ))}

@@ -9,6 +9,7 @@ import { discard, enqueue, getDraft, listOutbox, newClientId, onOutbox, retry, s
 import type { PackAssignment, PackQuiz } from '@/lib/offline-packs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 // Offline-first classroom (upgrade 4): take a saved quiz or write a saved assignment with no
 // connection. Both go to the device's outbox (src/lib/outbox.ts) and are sent when it's back.
@@ -131,7 +132,7 @@ export function OfflineQuiz({ quiz }: { quiz: PackQuiz }) {
             <p className="text-sm font-medium text-zinc-900 dark:text-white">{n + 1}. {q.question}</p>
             <div className="grid gap-1.5">
               {q.options.map((o) => (
-                <label key={o} className={cn('flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer', answers[q.id] === o ? 'border-indigo-500 bg-indigo-500/10 text-zinc-900 dark:text-white' : 'border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300')}>
+                <label key={o} className={cn('relative isolate flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer', answers[q.id] === o ? 'border-indigo-500 text-zinc-900 dark:text-white' : 'border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300')}>{answers[q.id] === o && <TabPill id={`offline-${q.id}`} variant="soft" />}
                   <input type="radio" name={q.id} checked={answers[q.id] === o} onChange={() => setAnswers((a) => ({ ...a, [q.id]: o }))} className="accent-indigo-500" /> {o}
                 </label>
               ))}

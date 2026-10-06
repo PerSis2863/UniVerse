@@ -16,6 +16,7 @@ import { useLiveInterval } from '@/lib/realtime-client';
 import { useAuthStore } from '@/store/auth';
 import { fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { TabPill, TabPanel } from '@/components/ui/Glide';
 
 interface CallRow {
   id: string; at: string; kind: 'audio' | 'video'; outgoing: boolean; answered: boolean; declined: boolean; durationSec: number | null;
@@ -58,13 +59,14 @@ export default function CallsPage() {
           <ScheduledCalls role={role} />
           <div className="flex gap-2" role="tablist">
             {(['all', 'missed'] as const).map((f) => (
-              <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={cn('relative px-4 py-2 rounded-xl text-sm font-semibold transition-colors', filter === f ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]')}>
-                {filter === f && <motion.span layoutId="calls-filter" className="absolute inset-0 rounded-xl bg-indigo-600" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
+              <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={cn('relative isolate px-4 py-2 rounded-xl text-sm font-semibold transition-colors', filter === f ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]')}>
+                {filter === f && <TabPill id="calls-filter" />}
                 <span className="relative">{f === 'all' ? 'All' : 'Missed'}</span>
               </button>
             ))}
           </div>
 
+          <TabPanel k={filter}>
           {error ? (
             <p className="text-sm text-rose-500">{(error as Error).message}</p>
           ) : isLoading ? (
@@ -106,6 +108,7 @@ export default function CallsPage() {
               })}
             </motion.ul>
           )}
+          </TabPanel>
         </div>
       </div>
     </>

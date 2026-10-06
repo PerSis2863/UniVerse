@@ -14,6 +14,7 @@ import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { reportSession } from '@/lib/sign-in-history';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 import { TERMS_VERSION } from '@/lib/terms-version';
+import { TabPill } from '@/components/ui/Glide';
 
 const ROLES = [
   {
@@ -233,7 +234,7 @@ export default function RegisterPage() {
                     ['INDEPENDENT', 'I’m independent', 'Freelancer, professional or lifelong learner, not enrolled anywhere. No documents needed: start straight away.'],
                   ] as const).map(([id, title, text]) => (
                     <button key={id} type="button" onClick={() => setIndividual(id)} aria-pressed={individual === id}
-                      className={`text-left p-3.5 rounded-xl border-2 transition-all ${individual === id ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>
+                      className={`relative isolate text-left p-3.5 rounded-xl border-2 transition-all ${individual === id ? 'border-indigo-500' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>{individual === id && <TabPill id="app-auth-register-page-0" variant="soft" />}
                       <span className="flex items-center gap-2 font-semibold text-sm text-white">{individual === id && <Check className="w-4 h-4 text-indigo-400" />}{title}</span>
                       <span className="block text-xs text-zinc-400 mt-1 leading-relaxed">{text}</span>
                     </button>

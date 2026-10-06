@@ -11,6 +11,7 @@ import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { CalendarFeedCard } from '@/components/dashboard/CalendarFeedCard';
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 // Shapes of /timetable/my and /calendar/my, as this page uses them.
 interface Slot { id: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; course?: { id?: string; name?: string; code?: string; color?: string | null } | null; room?: { name?: string } | null }
@@ -217,11 +218,11 @@ export default function CalendarPage() {
                   role="tab"
                   aria-selected={view === v}
                   onClick={() => { setView(v); setCurrentWeekOffset(0); }}
-                  className={cn(
+                  className={cn('relative isolate', 
                     'flex-1 xl:flex-none px-4 py-2 rounded-xl text-sm font-semibold transition-colors',
-                    view === v ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white',
+                    view === v ? 'text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white',
                   )}
-                >
+                >{view === v && <TabPill id="hboard-student-calendar-page-0" />}
                   {v}
                 </button>
               ))}

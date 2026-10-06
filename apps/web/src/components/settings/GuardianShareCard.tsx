@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Check, Copy, EyeOff, Link2, Loader2, Share2, Users } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 // Student settings → Parent or guardian: makes a read-only link to /guardian/<token>. The link
 // carries its own expiry and isn't stored, so it can't be switched off early; the text says so.
@@ -82,11 +83,11 @@ export function GuardianShareCard() {
               role="radio"
               aria-checked={days === c.days}
               onClick={() => setDays(c.days)}
-              className={cn(
+              className={cn('relative isolate', 
                 'min-h-11 rounded-xl text-sm font-semibold transition-colors',
-                days === c.days ? 'bg-white dark:bg-white/10 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white',
+                days === c.days ? 'text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white',
               )}
-            >
+            >{days === c.days && <TabPill id="s-settings-guardiansharecard-0" />}
               {c.label}
             </button>
           ))}

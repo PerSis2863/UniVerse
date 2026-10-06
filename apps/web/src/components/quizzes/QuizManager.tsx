@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { CheckCircle2, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Plus, Trash2, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number };
 type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; student: { name: string } };
@@ -60,7 +62,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
           <button onClick={onClose} aria-label="Close" className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300"><X className="w-5 h-5" /></button>
         </div>
 
-        {isLoading && <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>}
+        {isLoading && <div className="p-10"><ContentSkeleton variant="list" /></div>}
         {error && <p className="p-6 text-sm text-rose-500">{(error as Error).message}</p>}
 
         {quiz && (
@@ -71,7 +73,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
               <div className="flex flex-wrap gap-2">
                 {(['DRAFT', 'PUBLISHED', 'CLOSED'] as const).map((st) => (
                   <button key={st} disabled={busy || quiz.status === st} onClick={() => patch({ status: st }, st === 'PUBLISHED' ? 'Quiz published — students can take it now' : st === 'CLOSED' ? 'Quiz closed' : 'Moved back to draft')}
-                    className={cn('px-4 py-2 rounded-xl text-sm font-semibold transition-colors', quiz.status === st ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10')}>
+                    className={cn('relative isolate px-4 py-2 rounded-xl text-sm font-semibold transition-colors', quiz.status === st ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10')}>{quiz.status === st && <TabPill id="mponents-quizzes-quizmanager-0" />}
                     {st === 'DRAFT' ? 'Draft' : st === 'PUBLISHED' ? 'Published' : 'Closed'}
                   </button>
                 ))}

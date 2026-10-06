@@ -14,6 +14,7 @@ import { Avatar } from './MessageBubble';
 import { chatJson } from './chat-client';
 import { Switch } from '@/components/ui/Switch';
 import { useActivePoll } from '@/lib/realtime-client';
+import { TabPill } from '@/components/ui/Glide';
 
 // Communities (Discord server / WhatsApp community), src/server/communities.ts: a list of
 // communities, each opening to its channels. Text channels open in the chat on the right; voice
@@ -120,7 +121,7 @@ function ChannelRow({ ch, active, onOpen }: { ch: Channel; active: boolean; onOp
   }
   return (
     <li>
-      <button type="button" onClick={onOpen} className={cn('w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-colors', active ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>
+      <button type="button" onClick={onOpen} className={cn('relative isolate w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-colors', active ? 'text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>{active && <TabPill id="onents-chat-communitiespanel-0" variant="soft" />}
         {ch.kind === 'ANNOUNCE' ? <Megaphone className="w-4 h-4 text-amber-500 shrink-0" /> : <Hash className="w-4 h-4 text-zinc-400 shrink-0" />}
         <span className={cn('flex-1 text-sm truncate', ch.unread ? 'font-semibold text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-300')}>{ch.name}</span>
         {ch.unread > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">{ch.unread > 99 ? '99+' : ch.unread}</span>}

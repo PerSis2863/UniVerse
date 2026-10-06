@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/auth';
 import { getTransactions } from '@/app/actions/transaction';
 import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 const TABS = [
   { id: 'documents', label: 'School Documents', icon: FileText },
@@ -314,9 +315,7 @@ export default function AdminAdministrativeClient() {
           <AdminSearch value={q} onChange={setQ} placeholder={placeholder} shown={shown} total={total} />
 
           {loading ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-            </div>
+            <ContentSkeleton variant="table" />
           ) : activeTab === 'documents' ? (
             <div className={card}>
               {docs.length === 0 ? empty('No documents have been uploaded yet.') : shownDocs.length === 0 ? empty('No documents match your search.') : (

@@ -11,6 +11,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
+import { TabPill } from '@/components/ui/Glide';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Score { id: string; score: number; comment: string }
@@ -142,8 +143,8 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
                     type="button"
                     onClick={() => setSelected(s.id)}
                     aria-current={current?.id === s.id || undefined}
-                    className={cn('w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2 transition-colors', current?.id === s.id ? 'bg-indigo-500/10' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.04]')}
-                  >
+                    className={cn('relative isolate w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2 transition-colors', current?.id === s.id ? '' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.04]')}
+                  >{current?.id === s.id && <TabPill id="-teacher-assignments-id-page-0" variant="soft" />}
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{s.student.name}</span>
                       <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{data.dueDate && new Date(s.offlineAt ?? s.submittedAt) > new Date(data.dueDate) ? ' · late' : ''}{s.offlineAt ? ' · offline' : ''}</span>

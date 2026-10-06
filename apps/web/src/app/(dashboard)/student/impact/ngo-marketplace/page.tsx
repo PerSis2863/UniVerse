@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
+import { TabPill } from '@/components/ui/Glide';
 
 export default function NGOMarketplacePage() {
   const [search, setSearch] = useState('');
@@ -100,8 +101,8 @@ export default function NGOMarketplacePage() {
             <div className="flex gap-2 overflow-x-auto">
               {types.map(t => (
                 <button key={t} onClick={() => setSelectedType(t)}
-                  className={cn("px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all",
-                    selectedType === t ? "bg-emerald-600 text-white border-emerald-600 shadow-lg" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-emerald-500/50")}>
+                  className={cn("relative isolate px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all",
+                    selectedType === t ? "text-white border-transparent" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-emerald-500/50")}>{selectedType === t && <TabPill id="-impact-ngo-marketplace-page-0" />}
                   {t}
                 </button>
               ))}

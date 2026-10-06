@@ -22,6 +22,8 @@ import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { awaitingApproval, type ApplicationStatus, type Role, type UserStatus } from '@/types';
+import { TabPill } from '@/components/ui/Glide';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 // Applying to become staff / mentor or an organisation (or, from sign-up, a verified student), and following the application.
 // People who picked "teacher" when signing up land here until an admin decides; students can
@@ -173,7 +175,7 @@ export default function ApplicationPage() {
 
   let body: React.ReactNode;
   if (isLoading) {
-    body = <div className="py-24 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>;
+    body = <div className="py-24"><ContentSkeleton variant="list" /></div>;
   } else if (error) {
     body = <p className="py-24 text-center text-sm text-rose-500">Could not load your application. Please refresh.</p>;
   } else if (!app || (!open && data?.canApply && starting)) {
@@ -547,7 +549,7 @@ function ApplicationForm({
               const on = f.requestedRole === r;
               return (
                 <button type="button" key={r} onClick={() => setF((p) => ({ ...p, requestedRole: r }))} aria-pressed={on}
-                  className={cn('flex items-center gap-3 p-3 rounded-xl border text-left text-sm transition-colors', on ? 'border-indigo-500 bg-gradient-to-r from-indigo-500/10 to-fuchsia-500/10' : 'border-zinc-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.02]')}>
+                  className={cn('relative isolate flex items-center gap-3 p-3 rounded-xl border text-left text-sm transition-colors', on ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.02]')}>{on && <TabPill id="p-dashboard-application-page-0" variant="soft" />}
                   <Icon className={cn('w-5 h-5', on ? 'text-indigo-500' : 'text-zinc-400')} />
                   <span className="font-semibold text-zinc-900 dark:text-white">{ROLE_INFO[r].label}</span>
                 </button>

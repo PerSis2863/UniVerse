@@ -109,7 +109,7 @@ export default function AdminKnowledgeHubPage() {
               <span className="w-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
               {categories.map((c) => (
                 <button key={c} onClick={() => setCategory(c)} aria-pressed={category === c}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${category === c ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>
+                  className={`relative isolate px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${category === c ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]'}`}>{category === c && <TabPill id="ard-admin-knowledge-hub-page-0" variant="soft" />}
                   {c}
                 </button>
               ))}
