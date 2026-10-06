@@ -9,7 +9,7 @@ import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
-import { SfuLink, type SfuTrack } from '@/lib/sfu-client';
+import { SfuLink, kindOf, type MediaKind, type SfuTrack } from '@/lib/sfu-client';
 import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDevice, cleanMic, listDevices, noiseMode, openMedia, setNoiseMode } from '@/lib/call-media';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { spring } from '@/lib/motion';
@@ -35,7 +35,7 @@ interface Ticket {
 interface Peer { peerId: string; userId: string; name: string; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 type Quality = 'good' | 'fair' | 'poor' | null;
 interface Remote {
-  peer: Peer; stream: MediaStream | null; muted: boolean; camera: boolean; sharing: boolean; cc: boolean; recording: boolean; notes: boolean;
+  peer: Peer; stream: MediaStream | null; /** Their shared screen (sent beside their camera). */ screen: MediaStream | null; muted: boolean; camera: boolean; sharing: boolean; cc: boolean; recording: boolean; notes: boolean;
   state: RTCPeerConnectionState | 'new'; quality: Quality;
   /** SFU calls: their video isn't being received right now (to save data); tap to see it. */
   paused: boolean;
@@ -48,6 +48,30 @@ interface NoteLine { t: number; who: string; text: string }
 const MAX_NOTES_CHARS = 55_000;
 
 const NO_ANSWER_MS = 45_000;
+
+/** The video lines of a connection, in order: [0] camera, [1] shared screen. */
+const videoLines = (pc: RTCPeerConnection) => pc.getTransceivers().filter((t) => t.receiver.track.kind === 'video');
+
+/**
+ * Quality for one-to-one and small calls: clear voice (Opus up to 64 kbps), a sharp camera, and a
+ * screen share that keeps its resolution (text stays readable) and drops frames instead when the
+ * connection is slow.
+ */
+async function tuneSenders(pc: RTCPeerConnection) {
+  const set = async (sender: RTCRtpSender | undefined, enc: RTCRtpEncodingParameters, pref?: RTCDegradationPreference) => {
+    if (!sender) return;
+    const p = sender.getParameters();
+    if (!p.encodings?.length) p.encodings = [{}];
+    Object.assign(p.encodings[0], enc);
+    if (pref) (p as RTCRtpSendParameters & { degradationPreference?: RTCDegradationPreference }).degradationPreference = pref;
+    await sender.setParameters(p).catch(() => {});
+  };
+  const audio = pc.getTransceivers().find((t) => t.receiver.track.kind === 'audio');
+  const [cam, screen] = videoLines(pc);
+  await set(audio?.sender, { maxBitrate: 64_000 });
+  await set(cam?.sender, { maxBitrate: 1_500_000, maxFramerate: 30 }, 'balanced');
+  await set(screen?.sender, { maxBitrate: 2_500_000, maxFramerate: 30 }, 'maintain-resolution');
+}
 /** Bigger calls send smaller video: it goes to many people. */
 const cameraConstraints = (sfu: boolean, facingMode: string = 'user'): MediaTrackConstraints =>
   sfu ? { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 }, facingMode } : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode };
@@ -55,7 +79,7 @@ const CAPTION_MS = 5000;
 const MAX_REC_MS = 2 * 3600_000;
 const MAX_REC_BYTES = 950 * 1024 * 1024;
 
-const fresh = (peer: Peer): Remote => ({ peer, stream: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false });
+const fresh = (peer: Peer): Remote => ({ peer, stream: null, screen: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false });
 
 // One audio context and one timer measure everyone's voice (a call of 30 doesn't run 30 of
 // each), and a tile re-renders only when its person starts or stops talking.
@@ -126,11 +150,12 @@ function useLiveVideo(stream: MediaStream | null) {
   return !!stream?.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled && !t.muted);
 }
 
-function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent, screen, spotlight }: {
+function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent, screen, spotlight, className }: {
   id: string; name: string; stream: MediaStream | null; mirrored?: boolean; muted?: boolean; camera: boolean; me?: boolean; quality?: Quality; state?: string; silent?: boolean;
   paused?: boolean; compact?: boolean; animateLayout?: boolean; onShow?: () => void; videoRef?: (v: HTMLVideoElement | null) => void;
   /** Showing a shared screen: fit it whole instead of cropping. */ screen?: boolean;
   /** Takes the whole first row (someone is sharing their screen). */ spotlight?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const speaking = useSpeaking(muted ? null : stream);
@@ -151,7 +176,7 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
       exit={{ opacity: 0, scale: 0.9 }}
       transition={spring.smooth}
       data-tile={id}
-      className={cn('relative overflow-hidden bg-zinc-900/80 aspect-video flex items-center justify-center ring-2 transition-shadow duration-200', compact ? 'rounded-2xl' : 'rounded-3xl', spotlight && 'col-span-full', speaking ? 'ring-emerald-400/90 shadow-[0_0_40px_-8px_rgba(52,211,153,0.6)]' : 'ring-transparent')}
+      className={cn('relative overflow-hidden bg-zinc-900/80 aspect-video flex items-center justify-center ring-2 transition-shadow duration-200', compact ? 'rounded-2xl' : 'rounded-3xl', spotlight && 'col-span-full', className, speaking ? 'ring-emerald-400/90 shadow-[0_0_40px_-8px_rgba(52,211,153,0.6)]' : 'ring-transparent')}
     >
       {/* Remote audio plays through this element too, so it stays even with the camera off. */}
       <video ref={(v) => { ref.current = v; videoRef?.(v); }} data-peer={id} autoPlay playsInline muted={me || silent}
@@ -180,6 +205,27 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
   );
 }
 
+/** Someone's shared screen, large and whole (never cropped). Double-click for full screen. */
+function ScreenStage({ stream, name }: { stream: MediaStream | null; name: string }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  const live = useLiveVideo(stream);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    if (v.srcObject !== stream) v.srcObject = stream;
+    if (stream) void v.play().catch(() => {});
+  }, [stream, live]);
+  return (
+    <>
+      {/* Muted: their voice plays from their camera tile (playing it twice would echo). */}
+      <video ref={ref} autoPlay playsInline muted onDoubleClick={(e) => { void (e.currentTarget.requestFullscreen?.() ?? Promise.resolve()).catch(() => {}); }}
+        className={cn('absolute inset-0 w-full h-full object-contain transition-opacity duration-500', live ? 'opacity-100' : 'opacity-0')} />
+      {!live && <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400"><Loader2 className="w-5 h-5 animate-spin mr-2" />Loading {name}’s screen…</div>}
+      <span className="absolute top-3 left-3 text-xs font-medium text-white bg-black/55 backdrop-blur-md rounded-full px-3 py-1 inline-flex items-center gap-1.5"><MonitorUp className="w-3.5 h-3.5" />{name} is presenting</span>
+    </>
+  );
+}
+
 function gridFor(count: number) {
   if (count <= 1) return 'grid-cols-1 max-w-3xl w-full mx-auto';
   if (count === 2) return 'grid-cols-1 sm:grid-cols-2 max-w-6xl w-full mx-auto';
@@ -203,7 +249,6 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<Info | null>(null);
   const [local, setLocal] = useState<MediaStream | null>(null);
-  const [screen, setScreen] = useState<MediaStream | null>(null);
   const [muted, setMuted] = useState(false);
   const [camera, setCamera] = useState(true);
   const [sharing, setSharing] = useState(false);
@@ -274,10 +319,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     // Always a video line, even in a voice call: turning the camera on or sharing the screen later
     // is then just a track swap, with no renegotiation (smooth, and nothing to get stuck).
     if (offerer && !local?.getVideoTracks().length) pc.addTransceiver('video', { direction: 'sendrecv', streams: local ? [local] : [] });
+    // A second video line for screen sharing, so the camera keeps going while someone presents.
+    if (offerer) pc.addTransceiver('video', { direction: 'sendrecv' });
     const screen = screenRef.current;
-    if (screen) void pc.getTransceivers().find((t) => t.receiver.track.kind === 'video')?.sender.replaceTrack(screen);
+    if (screen) void videoLines(pc)[1]?.sender.replaceTrack(screen);
     pc.onicecandidate = (e) => { if (e.candidate) send({ type: 'signal', to: peer.peerId, data: { candidate: e.candidate } }); };
     pc.ontrack = (e) => {
+      if (e.track.kind === 'video' && videoLines(pc).indexOf(e.transceiver) === 1) {
+        patch(peer.peerId, { screen: new MediaStream([e.track]) });
+        return;
+      }
       const merged = inbound.current.get(peer.peerId) ?? new MediaStream();
       for (const t of merged.getTracks()) if (t.kind === e.track.kind && t.id !== e.track.id) merged.removeTrack(t);
       if (!merged.getTrackById(e.track.id)) merged.addTrack(e.track);
@@ -297,7 +348,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     pc.onconnectionstatechange = () => {
       patch(peer.peerId, { state: pc.connectionState });
       if (lost) { clearTimeout(lost); lost = null; }
-      if (pc.connectionState === 'connected') markTalking();
+      if (pc.connectionState === 'connected') { markTalking(); void tuneSenders(pc); }
       const mine = (myId.current ?? '') < peer.peerId;
       if (pc.connectionState === 'failed' && mine) void restart();
       if (pc.connectionState === 'disconnected' && mine) lost = setTimeout(() => { if (pc.connectionState === 'disconnected') void restart(); }, 3000);
@@ -311,17 +362,25 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const link = sfuRef.current;
     if (!link) return;
     const rs = Object.values(remotesRef.current).filter((r) => r.peer.sfu);
-    const tracksOf = (r: Remote, kind: 'audio' | 'video') => r.peer.sfu!.tracks.filter((t) => t.kind === kind).map((track) => ({ peerId: r.peer.peerId, sessionId: r.peer.sfu!.sessionId, track }));
+    const tracksOf = (r: Remote, kind: MediaKind) => r.peer.sfu!.tracks.filter((t) => kindOf(t) === kind).map((track) => ({ peerId: r.peer.peerId, sessionId: r.peer.sfu!.sessionId, track }));
     const slots = window.innerWidth < 640 ? 4 : 6;
     const score = (r: Remote) => (pinned.current === r.peer.peerId ? 4 : 0) + (r.sharing ? 2 : 0);
-    const seen = new Set(rs.filter((r) => r.camera || r.sharing).sort((a, b) => score(b) - score(a)).slice(0, slots).map((r) => r.peer.peerId));
-    const pull = rs.flatMap((r) => [...tracksOf(r, 'audio'), ...(seen.has(r.peer.peerId) ? tracksOf(r, 'video') : [])]);
-    const drop = rs.filter((r) => !seen.has(r.peer.peerId)).flatMap((r) => tracksOf(r, 'video')).filter((t) => link.isPulled(t.track.trackName));
+    const seen = new Set(rs.filter((r) => r.camera).sort((a, b) => score(b) - score(a)).slice(0, slots).map((r) => r.peer.peerId));
+    // Screens being shared are always received; cameras for the few people on screen.
+    const pull = rs.flatMap((r) => [...tracksOf(r, 'audio'), ...(seen.has(r.peer.peerId) ? tracksOf(r, 'video') : []), ...(r.sharing ? tracksOf(r, 'screen') : [])]);
+    const drop = [
+      ...rs.filter((r) => !seen.has(r.peer.peerId)).flatMap((r) => tracksOf(r, 'video')),
+      ...rs.filter((r) => !r.sharing).flatMap((r) => tracksOf(r, 'screen')),
+    ].filter((t) => link.isPulled(t.track.trackName));
     if (drop.length) {
       void link.drop(drop.map((t) => t.track.trackName)).catch((e) => console.warn('SFU drop failed', e));
       setR((r) => {
         const next = { ...r };
-        for (const id of new Set(drop.map((t) => t.peerId))) if (next[id]) next[id] = { ...next[id], stream: new MediaStream(next[id].stream?.getAudioTracks() ?? []) };
+        for (const t of drop) {
+          const x = next[t.peerId];
+          if (!x) continue;
+          next[t.peerId] = kindOf(t.track) === 'screen' ? { ...x, screen: null } : { ...x, stream: new MediaStream(x.stream?.getAudioTracks() ?? []) };
+        }
         return next;
       });
     }
@@ -329,7 +388,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       let changed = false;
       const next = { ...r };
       for (const x of rs) {
-        const paused = (x.camera || x.sharing) && !seen.has(x.peer.peerId);
+        const paused = x.camera && !seen.has(x.peer.peerId);
         if (next[x.peer.peerId] && next[x.peer.peerId].paused !== paused) { next[x.peer.peerId] = { ...next[x.peer.peerId], paused }; changed = true; }
       }
       return changed ? next : r;
@@ -337,11 +396,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (pull.some((p) => !link.isPulled(p.track.trackName))) void link.pull(pull).catch((e) => console.warn('SFU pull failed', e));
   }, [setR]);
 
-  const onSfuTrack = useCallback((peerId: string, kind: 'audio' | 'video', track: MediaStreamTrack) => {
+  const onSfuTrack = useCallback((peerId: string, kind: MediaKind, track: MediaStreamTrack) => {
     markTalking();
     setR((r) => {
       const x = r[peerId];
       if (!x) return r;
+      if (kind === 'screen') return { ...r, [peerId]: { ...x, screen: new MediaStream([track]) } };
       const keep = x.stream?.getTracks().filter((t) => t.kind !== kind) ?? [];
       return { ...r, [peerId]: { ...x, stream: new MediaStream([...keep, track]), state: 'connected' } };
     });
@@ -556,8 +616,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       try {
         await link.start(you, localRef.current!, true);
         if (stateRef.current.muted) await link.replace('audio', null);
-        if (screenRef.current) await link.replace('video', screenRef.current, true);
-        else if (!stateRef.current.camera) await link.replace('video', null);
+        if (screenRef.current) await link.replace('screen', screenRef.current);
+        if (!stateRef.current.camera) await link.replace('video', null);
         syncSfu();
       } catch (e) {
         console.warn('SFU join failed', e);
@@ -841,10 +901,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
 
   /** Sends this video (camera, screen or nothing) to everyone, without renegotiating. */
   const replaceVideo = async (track: MediaStreamTrack | null, isScreen = false) => {
-    if (sfuRef.current) return sfuRef.current.replace('video', track, isScreen);
+    if (sfuRef.current) return sfuRef.current.replace(isScreen ? 'screen' : 'video', track);
     for (const pc of pcs.current.values()) {
-      const sender = pc.getTransceivers().find((t) => t.receiver.track.kind === 'video' && t.currentDirection !== 'stopped')?.sender;
-      await sender?.replaceTrack(track).catch(() => {});
+      await videoLines(pc)[isScreen ? 1 : 0]?.sender.replaceTrack(track).catch(() => {});
     }
   };
 
@@ -879,7 +938,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         const chosen = chosenDevice('cam');
         const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(!!infoRef.current?.sfu), ...(chosen ? { deviceId: { ideal: chosen } } : {}) } })).getVideoTracks()[0];
         setCameraTrack(track);
-        if (!screenRef.current) await replaceVideo(track);
+        await replaceVideo(track);
       } catch {
         toast.error('Allow the camera to turn on video.');
         setCameraBusy(false);
@@ -887,7 +946,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       }
       setCameraBusy(false);
     } else {
-      if (!screenRef.current) await replaceVideo(null);
+      await replaceVideo(null);
       setCameraTrack(null);
     }
     setCamera(next);
@@ -901,7 +960,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const facing = current.getSettings().facingMode === 'environment' ? 'user' : 'environment';
     try {
       const track = (await navigator.mediaDevices.getUserMedia({ video: cameraConstraints(!!infoRef.current?.sfu, facing) })).getVideoTracks()[0];
-      if (!screenRef.current) await replaceVideo(track);
+      await replaceVideo(track);
       setCameraTrack(track);
     } catch { /* only one camera */ }
   };
@@ -947,7 +1006,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (!camera) return;
     try {
       const track = (await navigator.mediaDevices.getUserMedia({ video: { ...cameraConstraints(!!infoRef.current?.sfu), deviceId: { exact: id } } })).getVideoTracks()[0];
-      if (!screenRef.current) await replaceVideo(track);
+      await replaceVideo(track);
       setCameraTrack(track);
     } catch { toast.error('Couldn’t switch the camera.'); }
   };
@@ -955,8 +1014,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const stopShare = async () => {
     screenRef.current?.stop();
     screenRef.current = null;
-    setScreen(null);
-    await replaceVideo(stateRef.current.camera ? localRef.current?.getVideoTracks()[0] ?? null : null);
+    await replaceVideo(null, true);
     setSharing(false);
     stateRef.current.sharing = false;
     announce();
@@ -964,10 +1022,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const toggleShare = async () => {
     if (sharing) return stopShare();
     try {
-      const track = (await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 30 } } })).getVideoTracks()[0];
+      // Full HD at up to 30 frames: sharp text, smooth scrolling and video.
+      const track = (await navigator.mediaDevices.getDisplayMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } } })).getVideoTracks()[0];
       track.contentHint = 'detail';
       screenRef.current = track;
-      setScreen(new MediaStream([track]));
       await replaceVideo(track, true);
       track.onended = () => { void stopShare(); };
       setSharing(true);
@@ -1002,6 +1060,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const btn = 'w-14 h-14 rounded-full flex items-center justify-center transition-colors';
   const status = phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
   const firstRemoteId = list[0]?.peer.peerId;
+  // Presenting: someone's shared screen fills the stage (theirs first), cameras go to a strip below.
+  const presenter: Remote | 'me' | null = list.find((r) => r.sharing && r.screen) ?? (sharing ? 'me' : null);
   const count = list.length + 1;
   const compact = count > 9;
   const someoneRecording = recording || list.some((r) => r.recording);
@@ -1067,11 +1127,37 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           <button type="button" onClick={() => onLeave(info?.conversationId ?? null)} className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">Back</button>
         </motion.div>
       ) : (
+        presenter ? (
+          <main className="flex-1 min-h-0 flex flex-col gap-3 p-3 sm:p-4">
+            <motion.div layout transition={spring.smooth} className="relative flex-1 min-h-0 rounded-3xl overflow-hidden bg-black ring-1 ring-white/10">
+              {presenter === 'me' ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-6 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.25),transparent_70%)]">
+                  <span className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-fuchsia-500/30"><MonitorUp className="w-8 h-8" /></span>
+                  <p className="font-semibold text-lg">You’re sharing your screen</p>
+                  <p className="text-sm text-zinc-400 max-w-xs">Everyone sees it now. Your camera stays on for them too.</p>
+                  <button type="button" onClick={() => void stopShare()} className="px-5 py-2.5 rounded-full bg-rose-600 hover:bg-rose-500 text-sm font-semibold">Stop sharing</button>
+                </div>
+              ) : (
+                <ScreenStage stream={presenter.screen} name={presenter.peer.name} />
+              )}
+            </motion.div>
+            <div className="shrink-0 h-24 sm:h-32 flex gap-2 overflow-x-auto justify-center">
+              <AnimatePresence initial={false}>
+                <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact className="h-full shrink-0" />
+                {list.map((r) => (
+                  <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
+                    paused={r.paused} onShow={() => showVideo(r.peer.peerId)} compact className="h-full shrink-0"
+                    videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
+                ))}
+              </AnimatePresence>
+            </div>
+          </main>
+        ) : (
         <main className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
           <AnimatePresence initial={false}>
-            <Tile key="me" id="me" name={myName} stream={sharing && screen ? screen : local} mirrored={!sharing} muted={muted} camera={camera || sharing} screen={sharing} spotlight={sharing && !list.some((r) => r.sharing)} me compact={compact} animateLayout={count <= 12} />
-            {[...list].sort((a, b) => Number(b.sharing) - Number(a.sharing)).map((r, i) => (
-              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera || r.sharing} screen={r.sharing} spotlight={r.sharing && i === 0} quality={r.quality} state={r.state}
+            <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} />
+            {list.map((r) => (
+              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                 paused={r.paused} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12}
                 videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
             ))}
@@ -1082,6 +1168,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             </motion.div>
           )}
         </main>
+        )
       )}
 
       {/* Live captions */}
