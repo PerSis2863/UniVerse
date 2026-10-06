@@ -60,6 +60,8 @@ export interface ConversationSummary {
   markedUnread?: boolean;
   pinned?: boolean;
   muted?: boolean;
+  /** Muted until then (far in the future: always). */
+  mutedUntil?: string | null;
   archived?: boolean;
   /** What I was writing in this chat (on any device), and when. */
   draft?: string | null;

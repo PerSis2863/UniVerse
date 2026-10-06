@@ -98,6 +98,8 @@ enum TicketPriority {
 model User {
   id          String     @id @default(cuid())
   name        String
+  /// My chat folders (Stage 4 · 1.6), JSON: [{ id, name, emoji, chatIds }] (src/app/api/chat/folders).
+  chatFolders String?
   email       String     @unique
   firebaseUid String?    @unique
   role        Role       @default(STUDENT)

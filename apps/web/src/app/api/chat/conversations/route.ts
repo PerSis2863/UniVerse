@@ -73,6 +73,7 @@ export async function GET(req: Request) {
         pinned: !!mine?.pinnedAt,
         pinnedAt: mine?.pinnedAt ?? null,
         muted: !!mine?.mutedUntil && mine.mutedUntil.getTime() > now,
+        mutedUntil: mine?.mutedUntil && mine.mutedUntil.getTime() > now ? mine.mutedUntil.toISOString() : null,
         archived: !!mine?.archivedAt,
         // Only my own draft is sent (Stage 4 · 1.4).
         draft: mine?.draft ?? null,

@@ -254,6 +254,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
+  [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
   [/^\/api\/chat\/starred$/, ({ db: d }) => ok(d.conversations.flatMap((c) => visible(d, c).filter((m: any) => d.starred.has(m.id)).map((m: any) => ({ ...decorateMsg(d, m), chat: { id: c.id, title: c.title } }))))],
   [/^\/api\/chat\/conversations\/([^/]+)\/messages$/, ({ db: d, m, q }) => {
     const c = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);
@@ -428,6 +429,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     c.messages.push(message);
     return ok(decorateMsg(d, message), 201);
   }],
+  ['PUT', /^\/api\/chat\/folders$/, ({ body }) => ok({ folders: Array.isArray(body?.folders) ? body.folders.slice(0, 10) : [] })],
   ['PATCH', /^\/api\/chat\/conversations\/([^/]+)\/prefs$/, ({ db: d, m, body }) => {
     const c: any = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);
     if (typeof body.pinned === 'boolean') c.prefs.pinned = body.pinned;
