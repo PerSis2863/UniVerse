@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
@@ -466,12 +466,21 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     }
   };
 
-  const readState = (m: ChatMessage): 'sent' | 'read' | null => {
+  // Ticks, worked out from what's already known (nothing stored per message): read = everyone's
+  // last read is after it; delivered = someone has read it, is online, or opened UniVerse since it
+  // was sent (people who hide their last seen only count once they read it); else sent.
+  const readersOf = (m: ChatMessage) => { const t = new Date(m.createdAt).getTime(); return others.filter((o) => o.lastReadAt && new Date(o.lastReadAt).getTime() >= t); };
+  const readState = (m: ChatMessage): 'sent' | 'delivered' | 'read' | null => {
     if (m.senderId !== me || !convo) return null;
     const t = new Date(m.createdAt).getTime();
-    const readers = others.filter((o) => o.lastReadAt && new Date(o.lastReadAt).getTime() >= t);
-    return others.length > 0 && readers.length === others.length ? 'read' : 'sent';
+    const readers = readersOf(m);
+    if (others.length > 0 && readers.length === others.length) return 'read';
+    const reached = readers.length > 0 || others.some((o) => o.online || (o.lastSeenAt && new Date(o.lastSeenAt).getTime() >= t));
+    return reached ? 'delivered' : 'sent';
   };
+  // Groups: "Seen by N" under my latest message (tap for who and when).
+  const lastMine = convo?.isGroup ? [...messages].reverse().find((m) => m.senderId === me && !m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED') : undefined;
+  const seenBy = lastMine ? readersOf(lastMine).length : 0;
 
   const subtitleBase = typingNames.length
     ? `${convo?.isGroup ? typingNames.join(', ') + ' ' : ''}typing…`
@@ -687,6 +696,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                         ? { translation: tr.get(m.id), showOriginal: tr.showingOriginal(m.id), onTranslate: () => tr.translate(m.id), onToggleOriginal: () => tr.toggleOriginal(m.id) }
                         : {})}
                     />
+                    {lastMine?.id === m.id && seenBy > 0 && (
+                      <motion.button type="button" onClick={() => setInfoMsg(m)} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                        className="ml-auto mr-2 mt-0.5 flex items-center gap-1 text-[11px] text-zinc-500 hover:text-sky-500">
+                        <CheckCheck className="w-3.5 h-3.5 text-sky-500" />{seenBy === others.length ? 'Seen by everyone' : `Seen by ${seenBy}`}
+                      </motion.button>
+                    )}
                   </div>
                 );
               })}

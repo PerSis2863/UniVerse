@@ -85,7 +85,7 @@ interface Props {
   mine: boolean;
   me: string;
   showSender: boolean;
-  readState: 'sent' | 'read' | null;
+  readState: 'sent' | 'delivered' | 'read' | null;
   canModerate: boolean;
   highlight?: boolean;
   onReply: () => void;
@@ -171,7 +171,7 @@ export function MessageBubble(p: Props) {
       {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : (
         <button type="button" onClick={(e) => { e.stopPropagation(); setHistory(true); }} className="underline-offset-2 hover:underline" title="See the earlier versions">edited ·</button>
       ))} {time}
-      {mine && !deleted && (m.pending ? <Check className="w-3 h-3" /> : readState === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" /> : <CheckCheck className="w-3.5 h-3.5" />)}
+      {mine && !deleted && (m.pending ? <Check className="w-3 h-3 opacity-60" aria-label="Sending" /> : readState === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" aria-label="Read" /> : readState === 'delivered' ? <CheckCheck className="w-3.5 h-3.5" aria-label="Delivered" /> : <Check className="w-3.5 h-3.5" aria-label="Sent" />)}
     </span>
   );
 
