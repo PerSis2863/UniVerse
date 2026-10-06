@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Camera, FileText, Flame, ImageIcon, Sparkles, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, Bold, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
@@ -19,6 +19,20 @@ export interface SendPayload {
 }
 
 export type ComposerExtra = 'poll' | 'location' | 'contact';
+
+type Format = 'bold' | 'italic' | 'strike' | 'code' | 'block' | 'quote' | 'ul' | 'ol';
+const FORMATS: { kind: Format; label: string; icon: typeof Bold; keys?: string }[] = [
+  { kind: 'bold', label: 'Bold', icon: Bold, keys: '⌘B' },
+  { kind: 'italic', label: 'Italic', icon: Italic, keys: '⌘I' },
+  { kind: 'strike', label: 'Strikethrough', icon: Strikethrough, keys: '⌘⇧X' },
+  { kind: 'code', label: 'Code', icon: Code, keys: '⌘E' },
+  { kind: 'block', label: 'Code block', icon: FileCode2 },
+  { kind: 'quote', label: 'Quote', icon: Quote },
+  { kind: 'ul', label: 'Bulleted list', icon: List },
+  { kind: 'ol', label: 'Numbered list', icon: ListOrdered },
+];
+/** Whether the caret is inside an open ``` code block (Enter then starts a new line). */
+const inCodeBlock = (before: string) => (before.match(/^\s*```/gm)?.length ?? 0) % 2 === 1;
 
 /** "/" commands in the message box (Discord-style). */
 export const SLASH_COMMANDS: { name: string; hint: string; example?: string }[] = [
@@ -53,9 +67,12 @@ interface Props {
   onSuggest?: () => Promise<string[]>;
   /** Slow mode: a hint under the box. */
   slowModeSec?: number;
+  /** Groups: whether this person may use @here and @channel (admins, or small groups). */
+  canMentionAll?: boolean;
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll }: Props) {
+  const [formatting, setFormatting] = useState(false);
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -104,6 +121,41 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     } finally {
       setTranslating(false);
     }
+  };
+
+  /** Formats the selection (or starts formatting at the caret): marks around it, or line prefixes. */
+  const format = (kind: Format) => {
+    const el = areaRef.current;
+    if (!el) return;
+    const s0 = el.selectionStart ?? text.length, e0 = el.selectionEnd ?? s0;
+    const sel = text.slice(s0, e0);
+    let next = text, a = s0, b = e0;
+    const marks: Partial<Record<Format, string>> = { bold: '*', italic: '_', strike: '~', code: '`' };
+    if (marks[kind]) {
+      const mk = marks[kind]!;
+      next = text.slice(0, s0) + mk + sel + mk + text.slice(e0);
+      a = s0 + mk.length;
+      b = a + sel.length;
+    } else if (kind === 'block') {
+      const lead = s0 > 0 && text[s0 - 1] !== '\n' ? '\n' : '';
+      const tail = text.slice(e0).startsWith('\n') || e0 === text.length ? '' : '\n';
+      next = `${text.slice(0, s0)}${lead}\`\`\`\n${sel}\n\`\`\`${tail}${text.slice(e0)}`;
+      a = s0 + lead.length + 4;
+      b = a + sel.length;
+    } else {
+      // Quotes and lists: every line the selection touches gets the prefix.
+      const start = text.lastIndexOf('\n', s0 - 1) + 1;
+      const endNl = text.indexOf('\n', e0);
+      const end = endNl === -1 ? text.length : endNl;
+      const lines = text.slice(start, end).split('\n').map((l, i) => `${kind === 'quote' ? '> ' : kind === 'ul' ? '- ' : `${i + 1}. `}${l}`);
+      const block = lines.join('\n');
+      next = text.slice(0, start) + block + text.slice(end);
+      a = sel ? start : start + lines[0].length;
+      b = start + block.length;
+      if (!sel) a = b;
+    }
+    setText(next);
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a, b); });
   };
 
   // Auto-grow the textarea.
@@ -227,6 +279,17 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         </div>
       )}
 
+      {formatting && !recording && (
+        <div className="mb-2 flex items-center gap-1 overflow-x-auto scrollbar-none" role="toolbar" aria-label="Formatting">
+          {FORMATS.map((f) => (
+            <button key={f.kind} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => format(f.kind)} aria-label={f.label} title={f.keys ? `${f.label} (${f.keys})` : f.label}
+              className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.08] hover:text-indigo-500">
+              <f.icon className="w-4 h-4" />
+            </button>
+          ))}
+        </div>
+      )}
+
       {recording ? (
         <div className="flex items-center gap-3">
           <button onClick={() => stopRecording(true)} aria-label="Discard recording" className="p-2.5 rounded-full text-rose-500 hover:bg-rose-500/10"><Trash2 className="w-5 h-5" /></button>
@@ -256,6 +319,9 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               </div>
             )}
           </div>
+          <button type="button" onClick={() => { setFormatting((v) => !v); setEmoji(false); setAttach(false); }} aria-pressed={formatting} aria-label="Formatting" title="Formatting: bold, code, lists…" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', formatting ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
+            <Type className="w-5 h-5" />
+          </button>
           {text.trim().length > 1 && (
             <div className="relative">
               <button onClick={() => { setTranslateOpen((v) => !v); setEmoji(false); setAttach(false); }} disabled={translating} aria-label="Translate before sending" title="Translate before sending" aria-expanded={translateOpen} className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60', translateOpen ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
@@ -320,7 +386,9 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             </div>
           )}
           {mentionQuery !== null && (() => {
-            const list = mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6);
+            // @here (online members) and @channel (everyone) for groups, for those allowed.
+            const everyone = canMentionAll ? [{ id: '@here', name: 'here', hint: 'Online members' }, { id: '@channel', name: 'channel', hint: 'Everyone in this chat' }].filter((x) => x.name.startsWith(mentionQuery)) : [];
+            const list = [...everyone, ...mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6)] as { id: string; name: string; hint?: string }[];
             if (!list.length) return null;
             return (
               <div className="absolute bottom-full mb-2 left-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
@@ -329,12 +397,12 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                     e.preventDefault();
                     const el = areaRef.current!;
                     const pos = el.selectionStart ?? text.length;
-                    const before = text.slice(0, pos).replace(/@[\w.-]*$/, `@${u.name.split(' ')[0]} `);
+                    const before = text.slice(0, pos).replace(/@[\w.-]*$/, `@${u.hint ? u.name : u.name.split(' ')[0]} `);
                     setText(before + text.slice(pos));
                     setMentionQuery(null);
                     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(before.length, before.length); });
                   }} className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
-                    @{u.name}
+                    @{u.name}{u.hint && <span className="ml-2 text-xs text-zinc-500">{u.hint}</span>}
                   </button>
                 ))}
               </div>
@@ -357,7 +425,13 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               if (f && !editing) { e.preventDefault(); pickFile(f); }
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+              if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+                const k = e.key.toLowerCase();
+                const kind: Format | null = k === 'b' ? 'bold' : k === 'i' ? 'italic' : k === 'e' ? 'code' : k === 'x' && e.shiftKey ? 'strike' : null;
+                if (kind) { e.preventDefault(); format(kind); return; }
+              }
+              // Enter sends, except inside a code block (a new line there).
+              if (e.key === 'Enter' && !e.shiftKey && !inCodeBlock(text.slice(0, e.currentTarget.selectionStart ?? text.length))) { e.preventDefault(); submit(); }
               if (e.key === 'Escape' && editing) { onCancelEdit(); setText(''); }
             }}
             placeholder={editing ? 'Edit your message' : onCommand ? 'Type a message, or / for commands' : 'Type a message'}

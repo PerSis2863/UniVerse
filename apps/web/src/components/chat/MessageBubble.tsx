@@ -7,46 +7,10 @@ import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
-import { type ChatMessage, REACTIONS, formatBytes } from './chat-client';
+import { type ChatMessage, REACTIONS, formatBytes, plainText } from './chat-client';
+import { RichText } from './RichText';
 import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
-
-const URL_SPLIT = /(https?:\/\/[^\s]+)/g;
-const MENTION_SPLIT = /(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)/g;
-
-// WhatsApp-style formatting: *bold*, _italic_, ~strikethrough~ and `code`.
-const FORMAT_SPLIT = /(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~|`[^`\n]+`)/g;
-function Formatted({ text, mine }: { text: string; mine: boolean }) {
-  return (
-    <>
-      {text.split(FORMAT_SPLIT).map((t, k) => {
-        if (t.length > 2 && t.startsWith('*') && t.endsWith('*')) return <strong key={k}>{t.slice(1, -1)}</strong>;
-        if (t.length > 2 && t.startsWith('_') && t.endsWith('_')) return <em key={k}>{t.slice(1, -1)}</em>;
-        if (t.length > 2 && t.startsWith('~') && t.endsWith('~')) return <s key={k}>{t.slice(1, -1)}</s>;
-        if (t.length > 2 && t.startsWith('`') && t.endsWith('`')) return <code key={k} className={cn('px-1 py-0.5 rounded font-mono text-[0.85em]', mine ? 'bg-white/15' : 'bg-zinc-200/70 dark:bg-white/10')}>{t.slice(1, -1)}</code>;
-        return <span key={k}>{t}</span>;
-      })}
-    </>
-  );
-}
-
-function RichText({ text, mine }: { text: string; mine: boolean }) {
-  return (
-    <span className="whitespace-pre-wrap break-words">
-      {text.split(URL_SPLIT).map((part, i) =>
-        /^https?:\/\/\S+$/.test(part) ? (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={cn('underline underline-offset-2 break-all', mine ? 'text-white' : 'text-indigo-500 dark:text-indigo-300')}>
-            {part}
-          </a>
-        ) : (
-          part.split(MENTION_SPLIT).map((p, j) =>
-            /^@[A-Za-z]/.test(p) ? <span key={`${i}-${j}`} className={cn('font-semibold', mine ? 'text-sky-200' : 'text-indigo-500 dark:text-indigo-300')}>{p}</span> : <Formatted key={`${i}-${j}`} text={p} mine={mine} />,
-          )
-        ),
-      )}
-    </span>
-  );
-}
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
 const AVATAR_GRADIENTS = [
@@ -399,7 +363,7 @@ export function MessageBubble(p: Props) {
             {m.replyTo && !deleted && (
               <div className={cn('mx-2 mt-2 px-3 py-1.5 rounded-lg border-l-4 text-xs', mine ? 'bg-white/10 border-white/60' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400')}>
                 <p className="font-semibold">{m.replyTo.sender.id === me ? 'You' : m.replyTo.sender.name}</p>
-                <p className="opacity-80 line-clamp-2">{m.replyTo.body || (m.replyTo.type === 'TEXT' ? 'Message deleted' : 'Attachment')}</p>
+                <p className="opacity-80 line-clamp-2">{plainText(m.replyTo.body) || (m.replyTo.type === 'TEXT' ? 'Message deleted' : 'Attachment')}</p>
               </div>
             )}
             {content}

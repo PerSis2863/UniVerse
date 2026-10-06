@@ -184,6 +184,18 @@ export function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
 }
 
+/** A message's text without its formatting marks (code fences, quotes, list marks, *bold*…), for previews. */
+export function plainText(body: string): string {
+  return body
+    .replace(/^\s*```[\w+#.-]*\s*$/gm, '')
+    .replace(/```/g, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^\s*[-*•]\s+/gm, '• ')
+    .replace(/(\*\*|__|~~)(.+?)\1/g, '$2')
+    .replace(/(^|[^\w])([*_~`])([^*_~`\n]+?)\2(?!\w)/g, '$1$3')
+    .trim();
+}
+
 export function previewText(m: { type: string; body: string; attachmentName?: string | null; deletedAt?: string | null } | null) {
   if (!m) return 'No messages yet';
   if (m.deletedAt || m.type === 'DELETED') return '🚫 Message deleted';
@@ -196,7 +208,7 @@ export function previewText(m: { type: string; body: string; attachmentName?: st
     case 'POLL': return `📊 ${m.body}`;
     case 'LOCATION': return '📍 Location';
     case 'CONTACT': return `👤 ${m.body}`;
-    default: return m.body.split('\n')[0];
+    default: return plainText(m.body).split('\n').find((l) => l.trim()) ?? '';
   }
 }
 

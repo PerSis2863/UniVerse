@@ -3,7 +3,7 @@ import { clientIdOf } from '@/server/offline';
 import { presenceOf } from '@/lib/presence';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
-import { later, notify } from '@/server/email';
+import { later, notify, notifyMany } from '@/server/email';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
 import { deliver, publishChat } from '@/server/realtime';
 import { pushService } from '@/server/services/push.service';
@@ -384,28 +384,50 @@ async function notifyAway(conversationId: string, from: { id: string; name: stri
 }
 
 /**
- * "@Name" in a message pings that member (in the app and live), even if they muted the chat.
- * Matches a member's full name or first name after "@".
+ * "@Name" in a message pings that member (in the app and live), even if they muted the chat. In
+ * groups, "@here" pings the members online now and "@channel" (or "@everyone") everyone: for the
+ * group's admins, anyone in a group of up to 50, and a community's moderators. In-app only.
  */
 async function notifyMentions(conversationId: string, from: { id: string; name: string }, body: string) {
   const text = body.toLowerCase();
   const [convo, members] = await Promise.all([
-    prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true } }),
-    prisma.conversationParticipant.findMany({ where: { conversationId, userId: { not: from.id } }, select: { userId: true, user: { select: { name: true, role: true } } } }),
+    prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true, communityId: true } }),
+    prisma.conversationParticipant.findMany({ where: { conversationId }, take: 2000, select: { userId: true, role: true, user: { select: { name: true, role: true, lastSeenAt: true, presence: true } } } }),
   ]);
   if (!convo?.isGroup) return; // in a 1:1 chat the other person already gets every message
-  const mentioned = members.filter(({ user }) => {
+  const others = members.filter((m) => m.userId !== from.id);
+  const toEveryone = /(^|[^\w@])@(channel|everyone)\b/.test(text);
+  const toHere = /(^|[^\w@])@here\b/.test(text);
+  let wide: typeof others = [];
+  if (toEveryone || toHere) {
+    let allowed = members.length <= 50 || members.some((m) => m.userId === from.id && m.role === 'ADMIN');
+    if (!allowed && convo.communityId) {
+      const cm = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: convo.communityId, userId: from.id } }, select: { role: true } });
+      allowed = cm?.role === 'OWNER' || cm?.role === 'MOD';
+    }
+    if (allowed) wide = toEveryone ? others : others.filter((m) => isOnline(m.user.lastSeenAt, m.user.presence));
+  }
+  const inbox = (role: string) => `/${role === 'ADMIN' ? 'admin' : role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`;
+  const where = convo.name ?? 'a group';
+  // @here / @channel: one batch per portal (their inbox links differ).
+  for (const role of ['ADMIN', 'TEACHER', 'STUDENT']) {
+    const ids = wide.filter((m) => (m.user.role === 'ADMIN' || m.user.role === 'TEACHER' ? m.user.role : 'STUDENT') === role).map((m) => m.userId).slice(0, 500);
+    if (ids.length) await notifyMany(ids, { type: 'mention', title: `${from.name} mentioned ${toEveryone ? 'everyone' : 'everyone online'} in ${where}`, body: body.slice(0, 200), link: inbox(role), email: false });
+  }
+  const pinged = new Set(wide.map((m) => m.userId));
+  const named = others.filter(({ userId, user }) => {
+    if (pinged.has(userId)) return false;
     const full = user.name.toLowerCase();
     const first = full.split(' ')[0];
     return text.includes(`@${full}`) || new RegExp(`@${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`).test(text);
   });
   await Promise.all(
-    mentioned.map((m) =>
+    named.map((m) =>
       notify(m.userId, {
         type: 'mention',
-        title: `${from.name} mentioned you in ${convo.name ?? 'a group'}`,
+        title: `${from.name} mentioned you in ${where}`,
         body: body.slice(0, 200),
-        link: `/${m.user.role === 'ADMIN' ? 'admin' : m.user.role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`,
+        link: inbox(m.user.role),
         email: false,
       }),
     ),

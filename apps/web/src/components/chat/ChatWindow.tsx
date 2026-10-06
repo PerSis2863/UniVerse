@@ -684,6 +684,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onTyping={typing}
           onExtra={onExtra}
           mentionables={convo.isGroup ? others.map((o) => ({ id: o.id, name: o.name })) : []}
+          canMentionAll={convo.isGroup && (convo.members.length <= 50 || convo.myRole === 'ADMIN' || channel?.role === 'OWNER' || channel?.role === 'MOD')}
           draftLanguages={[...tr.detected, appLanguage]}
           disabledReason={channel?.kind === 'ANNOUNCE' && channel.role === 'MEMBER' ? 'Only moderators can post in announcements. You can still react and reply in threads.' : undefined}
           slowModeSec={channel?.slowModeSec}

@@ -250,6 +250,11 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 
 **Phase 0 is built** (TURN keys are set by the owner).
 
+### Phase 1 (messaging; in progress: 1.1 built)
+| # | Item | State | Where |
+|---|---|---|---|
+| 1.1 | Rich text | **Done** | `src/components/chat/RichText.tsx` (`parseBlocks` + inline parser: `**bold**`/`*bold*`, `_italic_`, `~strike~`, `` `code` ``, fenced code blocks with a language label and Copy, `>` quotes, `-`/`1.` lists, links, @mentions, `@here`/`@channel`/`@everyone`; marks only at word edges; 1–3 emoji drawn large; React elements only, never HTML). Code colours: `src/lib/highlight.ts` (tiny regex tokenizer, dynamic import). Composer: "Aa" formatting bar, ⌘/Ctrl B I E ⇧X, Enter makes a new line inside an open code block, `@here`/`@channel` suggestions (`canMentionAll`: group admins, groups of up to 50, community mods). Server: `notifyMentions` sends `@here` (online) / `@channel` (everyone, cap 500) with `notifyMany`, in-app only. Previews strip marks (`plainText` in `chat-client.ts`) |
+
 ### Phase 2 (2.1–2.7 built; next per "Suggested order": Phase 1.1–1.7 (messaging), then Phase 3.1–3.3)
 | # | Item | State | Where |
 |---|---|---|---|
