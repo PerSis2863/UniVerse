@@ -452,6 +452,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         ? others.map((o) => o.name.split(' ')[0]).slice(0, 5).join(', ') + (others.length > 5 ? ` +${others.length - 5}` : '') + ', you'
         : other ? statusLine(other.status) ?? lastSeenLabel(other.online, other.lastSeenAt) : '';
   const channel = convo?.channel ?? null;
+  // A community channel's own emoji (:name:), for messages, reactions and the picker.
+  const emojiMap: Record<string, string> | undefined = channel?.emoji?.length ? Object.fromEntries(channel.emoji.map((e) => [e.name, e.url])) : undefined;
   const subtitle = channel && !typingNames.length
     ? `${channel.communityName} · ${convo!.members.length} member${convo!.members.length === 1 ? '' : 's'}${channel.slowModeSec ? ' · slow mode' : ''}`
     : convo?.disappearingSec && !typingNames.length ? `⏱ ${disappearingLabel(convo.disappearingSec)} · ${subtitleBase}` : subtitleBase;
@@ -631,6 +633,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                   <div key={m.id} id={`msg-${m.id}`} className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
                     <MessageBubble
                       onCallBack={(kind) => void call(kind)}
+                      customEmoji={emojiMap}
                       m={m}
                       mine={m.senderId === me}
                       me={me}
@@ -688,6 +691,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           draftLanguages={[...tr.detected, appLanguage]}
           disabledReason={channel?.kind === 'ANNOUNCE' && channel.role === 'MEMBER' ? 'Only moderators can post in announcements. You can still react and reply in threads.' : undefined}
           slowModeSec={channel?.slowModeSec}
+          customEmoji={channel?.emoji}
           onCommand={convo.isOfficial ? undefined : command}
           onSuggest={convo.isOfficial ? undefined : suggestReplies}
         />

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes, plainText } from './chat-client';
 import { RichText } from './RichText';
+import { EmojiGlyph, EmojiPicker } from './EmojiPicker';
 import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
 
@@ -108,6 +109,8 @@ interface Props {
   onToggleOriginal?: () => void;
   /** Opens this message's thread (Discord-style); absent inside a thread or where threads don't apply. */
   onThread?: () => void;
+  /** A community channel's own emoji (name → picture). */
+  customEmoji?: Record<string, string>;
 }
 
 export type TranslationState = { status: 'pending' } | { status: 'error'; message?: string } | { status: 'done'; text: string; from: string; same: boolean };
@@ -118,6 +121,7 @@ export function MessageBubble(p: Props) {
   const { m, mine, me, showSender, readState, canModerate, highlight } = p;
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [fullPicker, setFullPicker] = useState(false);
   const [touch, setTouch] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const x = useMotionValue(0);
@@ -305,7 +309,7 @@ export function MessageBubble(p: Props) {
     const showing = translated && !p.showOriginal;
     content = (
       <div className="px-3.5 py-2.5">
-        <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} />
+        <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} emoji={p.customEmoji} />
         {m.metadata?.link && <LinkCard link={m.metadata.link} mine={mine} />}
         {translated && (
           <button onClick={p.onToggleOriginal} className={cn('mt-1.5 flex items-center gap-1 text-[11px] font-medium', mine ? 'text-white/75 hover:text-white' : 'text-indigo-500 dark:text-indigo-300 hover:underline')}>
@@ -326,7 +330,7 @@ export function MessageBubble(p: Props) {
     pressTimer.current = setTimeout(() => { haptic('tap'); setMenu(true); setPicker(true); }, 480);
   };
   const cancelPress = () => { if (pressTimer.current) clearTimeout(pressTimer.current); };
-  const close = () => { setMenu(false); setPicker(false); };
+  const close = () => { setMenu(false); setPicker(false); setFullPicker(false); };
 
   return (
     <div className={cn('group relative flex gap-2 items-end', mine ? 'justify-end' : 'justify-start')}>
@@ -383,7 +387,16 @@ export function MessageBubble(p: Props) {
                   {REACTIONS.map((e) => (
                     <button key={e} onClick={() => { p.onReact(e); close(); }} className="w-8 h-8 rounded-full text-lg hover:bg-zinc-100 dark:hover:bg-white/10 hover:scale-125 transition-transform">{e}</button>
                   ))}
+                  <button type="button" onClick={() => { setFullPicker(true); setPicker(false); setMenu(false); }} aria-label="More reactions" title="More reactions" className="w-8 h-8 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 flex items-center justify-center"><SmilePlus className="w-4 h-4" /></button>
                 </div>
+              )}
+              {fullPicker && (
+                <>
+                  <div className="fixed inset-0 z-[60]" onClick={close} aria-hidden />
+                  <div className={cn('z-[61] fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5rem)] flex justify-center sm:absolute sm:inset-x-auto sm:bottom-full sm:mb-1', mine ? 'sm:right-0' : 'sm:left-0')}>
+                    <EmojiPicker onPick={(e) => { p.onReact(e); close(); }} onClose={close} custom={p.customEmoji ? Object.entries(p.customEmoji).map(([name, url]) => ({ name, url })) : []} />
+                  </div>
+                </>
               )}
               {menu && (
                 <div className={cn('absolute z-20 w-48 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', picker ? 'top-full mt-1' : 'bottom-full mb-1', mine ? 'right-0' : 'left-0')} onMouseLeave={() => !touch && setMenu(false)}>
@@ -422,7 +435,7 @@ export function MessageBubble(p: Props) {
                 onClick={() => p.onReact(emoji)}
                 className={cn('px-1.5 py-0.5 rounded-full text-xs border shadow-sm', users.includes(me) ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-400/40' : 'bg-white dark:bg-[#121830] border-zinc-200 dark:border-white/10')}
               >
-                {emoji} {users.length > 1 && <span className="text-zinc-600 dark:text-zinc-300">{users.length}</span>}
+                <EmojiGlyph emoji={emoji} custom={p.customEmoji} /> {users.length > 1 && <span className="text-zinc-600 dark:text-zinc-300">{users.length}</span>}
               </button>
             ))}
           </div>

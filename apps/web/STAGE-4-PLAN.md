@@ -233,7 +233,7 @@ touches calls, merged when the owner says.
 ## Progress (keep this up to date, so either agent can take over)
 
 **Branch:** `claude/great-hamilton-8g8xdm`. One commit per feature; typecheck + eslint on the changed
-files only; push at each checkpoint; merge only when the owner says "merge". Next migration: `0050`.
+files only; push at each checkpoint; merge only when the owner says "merge". Next migration: `0051`.
 
 **Not merged yet on the branch:** call fixes round 2 (echo, quality, camera while sharing, layout),
 the read-only cache log fix (`open-next.config.ts`), this plan, and everything under "Done" below.
@@ -250,10 +250,11 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 
 **Phase 0 is built** (TURN keys are set by the owner).
 
-### Phase 1 (messaging; in progress: 1.1 built)
+### Phase 1 (messaging; in progress: 1.1–1.2 built)
 | # | Item | State | Where |
 |---|---|---|---|
 | 1.1 | Rich text | **Done** | `src/components/chat/RichText.tsx` (`parseBlocks` + inline parser: `**bold**`/`*bold*`, `_italic_`, `~strike~`, `` `code` ``, fenced code blocks with a language label and Copy, `>` quotes, `-`/`1.` lists, links, @mentions, `@here`/`@channel`/`@everyone`; marks only at word edges; 1–3 emoji drawn large; React elements only, never HTML). Code colours: `src/lib/highlight.ts` (tiny regex tokenizer, dynamic import). Composer: "Aa" formatting bar, ⌘/Ctrl B I E ⇧X, Enter makes a new line inside an open code block, `@here`/`@channel` suggestions (`canMentionAll`: group admins, groups of up to 50, community mods). Server: `notifyMentions` sends `@here` (online) / `@channel` (everyone, cap 500) with `notifyMany`, in-app only. Previews strip marks (`plainText` in `chat-client.ts`) |
+| 1.2 | Emoji picker, community emoji | **Done** (swipe to reply and the long-press menu already existed) | `src/components/chat/EmojiPicker.tsx` (search, groups, recents in localStorage, "This community" group; `EmojiGlyph` draws `:name:` as its picture) with `src/lib/emoji-data.ts` (about 1,200 emoji with search words, dynamic import). In the message box (inserts at the caret) and for reactions ("+" after the quick six). Reactions: any one emoji (`isReactionEmoji` in `src/lib/chat.ts`) or the community's `:name:`, at most 20 different per message. Community emoji: `CommunityEmoji` (migration `0050_community_emoji.sql`), `listEmoji`/`addEmoji`/`removeEmoji` in `src/server/communities.ts`, `/api/chat/communities/:cid/emoji`, up to 50, moderators; pictures shrunk to 128 px on the device; the channel's list comes with the thread (`channel.emoji`) and `RichText` draws known `:name:` as pictures |
 
 ### Phase 2 (2.1–2.7 built; next per "Suggested order": Phase 1.1–1.7 (messaging), then Phase 3.1–3.3)
 | # | Item | State | Where |

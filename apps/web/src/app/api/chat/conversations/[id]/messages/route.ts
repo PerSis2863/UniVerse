@@ -128,9 +128,12 @@ async function getThread(req: Request, { params }: Ctx) {
     : [];
   const threadOf2 = new Map(threads.map((t) => [t.threadId!, { count: t._count._all, lastAt: t._max.createdAt }]));
   const withThreads = messages.map((m) => (threadOf2.has(m.id) ? { ...m, thread: threadOf2.get(m.id) } : m));
-  const communityRole = convo.communityId
-    ? (await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: convo.communityId, userId: user.id } }, select: { role: true } }))?.role ?? null
-    : null;
+  const [communityRole, communityEmoji] = convo.communityId
+    ? await Promise.all([
+        prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: convo.communityId, userId: user.id } }, select: { role: true } }).then((m) => m?.role ?? null),
+        prisma.communityEmoji.findMany({ where: { communityId: convo.communityId }, orderBy: { name: 'asc' }, select: { name: true, url: true } }),
+      ])
+    : [null, []];
 
   return NextResponse.json(
     {
@@ -147,7 +150,7 @@ async function getThread(req: Request, { params }: Ctx) {
         archived: !!prefs?.archivedAt,
         translateTo: prefs?.translateTo ?? null,
         channel: convo.communityId
-          ? { kind: convo.channelKind ?? 'TEXT', communityId: convo.communityId, communityName: convo.community?.name ?? '', color: convo.community?.color ?? null, slowModeSec: convo.slowModeSec, role: communityRole }
+          ? { kind: convo.channelKind ?? 'TEXT', communityId: convo.communityId, communityName: convo.community?.name ?? '', color: convo.community?.color ?? null, slowModeSec: convo.slowModeSec, role: communityRole, emoji: communityEmoji }
           : null,
         members: convo.participants.map((p) => ({
           id: p.user.id,

@@ -9,7 +9,8 @@ import type { Token, TokenKind } from '@/lib/highlight';
 // HTML, so nothing in a message can run or restyle the page:
 //   **bold** or *bold*, _italic_ or __italic__, ~strike~ or ~~strike~~, `code`
 //   ```lang … ``` code blocks (coloured by src/lib/highlight.ts, loaded only when needed)
-//   > quotes, - or * lists, 1. lists, links, @mentions and @here / @channel / @everyone
+//   > quotes, - or * lists, 1. lists, links, @mentions and @here / @channel / @everyone, and a
+//   community's own :emoji: as pictures
 // A message of just one to three emoji is drawn large, like on phones.
 
 type Block =
@@ -71,11 +72,11 @@ export function parseBlocks(text: string): Block[] {
 }
 
 // Links (without trailing punctuation), @here-style and @Name mentions, then formatting.
-const INLINE = /(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|(@(?:here|channel|everyone)\b)|(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)|(`[^`\n]+`)|(\*\*[^*\n]+?\*\*)|(\*[^*\n]+?\*)|(__[^_\n]+?__)|(_[^_\n]+?_)|(~~[^~\n]+?~~)|(~[^~\n]+?~)/g;
+const INLINE = /(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|(@(?:here|channel|everyone)\b)|(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)|(`[^`\n]+`)|(\*\*[^*\n]+?\*\*)|(\*[^*\n]+?\*)|(__[^_\n]+?__)|(_[^_\n]+?_)|(~~[^~\n]+?~~)|(~[^~\n]+?~)|(:[a-z0-9_]{2,32}:)/g;
 const WORD = /[\p{L}\p{N}]/u;
 
 /** One line or paragraph of text: links, mentions and formatting (formatting can be nested). */
-function Inline({ text, mine, depth = 0 }: { text: string; mine: boolean; depth?: number }) {
+function Inline({ text, mine, depth = 0, emoji }: { text: string; mine: boolean; depth?: number; emoji?: Record<string, string> }) {
   const out: React.ReactNode[] = [];
   let last = 0;
   const re = new RegExp(INLINE.source, 'g');
@@ -88,9 +89,14 @@ function Inline({ text, mine, depth = 0 }: { text: string; mine: boolean; depth?
       re.lastIndex = i + 1;
       continue;
     }
+    // :name: is a picture only when it's one of the community's emoji (else it stays text).
+    if (m[11] && !emoji?.[t.slice(1, -1)]) {
+      re.lastIndex = i + 1;
+      continue;
+    }
     if (i > last) out.push(text.slice(last, i));
     const key = `${depth}-${i}`;
-    const inner = (s: string) => (depth < 3 ? <Inline text={s} mine={mine} depth={depth + 1} /> : s);
+    const inner = (s: string) => (depth < 3 ? <Inline text={s} mine={mine} depth={depth + 1} emoji={emoji} /> : s);
     if (m[1]) out.push(<a key={key} href={t} target="_blank" rel="noopener noreferrer nofollow" className={cn('underline underline-offset-2 break-all', mine ? 'text-white' : 'text-indigo-500 dark:text-indigo-300')}>{t}</a>);
     else if (m[2]) out.push(<span key={key} className={cn('font-semibold rounded px-1', mine ? 'bg-amber-300/30 text-amber-100' : 'bg-amber-400/20 text-amber-700 dark:text-amber-300')}>{t}</span>);
     else if (m[3]) out.push(<span key={key} className={cn('font-semibold', mine ? 'text-sky-200' : 'text-indigo-500 dark:text-indigo-300')}>{t}</span>);
@@ -101,6 +107,7 @@ function Inline({ text, mine, depth = 0 }: { text: string; mine: boolean; depth?
     else if (m[8]) out.push(<em key={key}>{inner(t.slice(1, -1))}</em>);
     else if (m[9]) out.push(<s key={key}>{inner(t.slice(2, -2))}</s>);
     else if (m[10]) out.push(<s key={key}>{inner(t.slice(1, -1))}</s>);
+    else if (m[11]) out.push(<img key={key} src={emoji![t.slice(1, -1)]} alt={t} title={t} className="inline-block w-[1.35em] h-[1.35em] object-contain align-[-0.3em]" draggable={false} />);
     last = i + t.length;
   }
   if (last < text.length) out.push(text.slice(last));
@@ -143,17 +150,21 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 const ONLY_EMOJI = /^(?:\p{Extended_Pictographic}(?:️|\p{Emoji_Modifier}|‍\p{Extended_Pictographic})*\s*){1,3}$/u;
 
 /** A message's text, formatted. */
-export function RichText({ text, mine }: { text: string; mine: boolean }) {
+export function RichText({ text, mine, emoji }: { text: string; mine: boolean; emoji?: Record<string, string> }) {
   if (ONLY_EMOJI.test(text.trim())) return <span className="block text-[2.4rem] leading-tight">{text.trim()}</span>;
+  // Only a community's own emoji: large, too.
+  if (emoji && /^(?:\s*:[a-z0-9_]{2,32}:){1,3}\s*$/.test(text) && text.match(/:[a-z0-9_]{2,32}:/g)!.every((t) => emoji[t.slice(1, -1)])) {
+    return <span className="flex gap-1">{text.match(/:[a-z0-9_]{2,32}:/g)!.map((t, i) => <img key={i} src={emoji[t.slice(1, -1)]} alt={t} title={t} className="w-12 h-12 object-contain" draggable={false} />)}</span>;
+  }
   const blocks = parseBlocks(text);
   return (
     <div className="break-words [overflow-wrap:anywhere] space-y-1">
       {blocks.map((b, i) => {
         if (b.kind === 'code') return <CodeBlock key={i} code={b.code} lang={b.lang} />;
-        if (b.kind === 'quote') return <blockquote key={i} className={cn('border-l-[3px] pl-2.5 whitespace-pre-wrap', mine ? 'border-white/60 text-white/90' : 'border-indigo-400/70 text-zinc-700 dark:text-zinc-300')}><Inline text={b.text} mine={mine} /></blockquote>;
-        if (b.kind === 'ul') return <ul key={i} className="list-disc pl-5 space-y-0.5">{b.items.map((it, j) => <li key={j}><Inline text={it} mine={mine} /></li>)}</ul>;
-        if (b.kind === 'ol') return <ol key={i} start={b.start} className="list-decimal pl-6 space-y-0.5">{b.items.map((it, j) => <li key={j}><Inline text={it} mine={mine} /></li>)}</ol>;
-        return <p key={i} className="whitespace-pre-wrap"><Inline text={b.text} mine={mine} /></p>;
+        if (b.kind === 'quote') return <blockquote key={i} className={cn('border-l-[3px] pl-2.5 whitespace-pre-wrap', mine ? 'border-white/60 text-white/90' : 'border-indigo-400/70 text-zinc-700 dark:text-zinc-300')}><Inline text={b.text} mine={mine} emoji={emoji} /></blockquote>;
+        if (b.kind === 'ul') return <ul key={i} className="list-disc pl-5 space-y-0.5">{b.items.map((it, j) => <li key={j}><Inline text={it} mine={mine} emoji={emoji} /></li>)}</ul>;
+        if (b.kind === 'ol') return <ol key={i} start={b.start} className="list-decimal pl-6 space-y-0.5">{b.items.map((it, j) => <li key={j}><Inline text={it} mine={mine} emoji={emoji} /></li>)}</ol>;
+        return <p key={i} className="whitespace-pre-wrap"><Inline text={b.text} mine={mine} emoji={emoji} /></p>;
       })}
     </div>
   );

@@ -10,6 +10,13 @@ export const ONLINE_WINDOW_MS = 60_000;
 export const MAX_BODY = 4000;
 export const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
+/** A reaction: one emoji (any, flags and keycaps included), never text. */
+export function isReactionEmoji(s: string) {
+  return s.length > 0 && s.length <= 16 && !/\s/.test(s)
+    && /^(?:\p{Extended_Pictographic}|\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3)/u.test(s)
+    && !/[\p{L}\p{N}]{2}/u.test(s);
+}
+
 export const userCard = { select: { id: true, name: true, avatar: true, role: true, lastSeenAt: true, email: true, presence: true, statusText: true, statusEmoji: true, statusUntil: true } } as const;
 
 /** Active in the last minute, and not set to Invisible. */

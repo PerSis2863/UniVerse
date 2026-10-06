@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
-import { getSystemUser } from '@/lib/chat';
+import { getSystemUser, isOwnBlobUrl } from '@/lib/chat';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
@@ -33,6 +33,34 @@ async function requireRole(communityId: string, user: SessionUser, min: 'MEMBER'
   const rank = { MEMBER: 0, MOD: 1, OWNER: 2 };
   if (rank[role] < rank[min]) throw new ForbiddenException(min === 'OWNER' ? 'Only the community’s owner can do that.' : 'Only the community’s moderators can do that.');
   return role;
+}
+
+// ── Custom emoji (Stage 4 · 1.2): a community's own, used as :name: in its channels and reactions ──
+
+const EMOJI_NAME = /^[a-z0-9_]{2,32}$/;
+export const MAX_COMMUNITY_EMOJI = 50;
+
+export async function listEmoji(user: SessionUser, id: string) {
+  await requireRole(id, user, 'MEMBER');
+  return prisma.communityEmoji.findMany({ where: { communityId: id }, orderBy: { name: 'asc' }, select: { name: true, url: true } });
+}
+
+/** A moderator adds an emoji: a name (letters, numbers, _) and an uploaded picture. */
+export async function addEmoji(user: SessionUser, id: string, body: Record<string, unknown>) {
+  await requireRole(id, user, 'MOD');
+  const name = String(body.name ?? '').trim().toLowerCase().replace(/^:+|:+$/g, '');
+  if (!EMOJI_NAME.test(name)) throw new BadRequestException('Use 2–32 lowercase letters, numbers or _ for the name.');
+  if (!isOwnBlobUrl(body.url)) throw new BadRequestException('Upload a picture for the emoji.');
+  if ((await prisma.communityEmoji.count({ where: { communityId: id } })) >= MAX_COMMUNITY_EMOJI) throw new BadRequestException(`A community can have up to ${MAX_COMMUNITY_EMOJI} emoji.`);
+  if (await prisma.communityEmoji.findUnique({ where: { communityId_name: { communityId: id, name } }, select: { id: true } })) throw new BadRequestException(`:${name}: is already one of this community’s emoji.`);
+  await prisma.communityEmoji.create({ data: { communityId: id, name, url: String(body.url), createdById: user.id } });
+  return listEmoji(user, id);
+}
+
+export async function removeEmoji(user: SessionUser, id: string, name: unknown) {
+  await requireRole(id, user, 'MOD');
+  await prisma.communityEmoji.deleteMany({ where: { communityId: id, name: String(name ?? '') } });
+  return listEmoji(user, id);
 }
 
 /** Tells members' open tabs to refresh their communities (capped: each live push is a subrequest). */

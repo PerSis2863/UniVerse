@@ -2632,8 +2632,23 @@ model Community {
   createdAt   DateTime          @default(now())
   members     CommunityMember[]
   channels    Conversation[]
+  emoji       CommunityEmoji[]
 
   @@map("communities")
+}
+
+/// A community's own emoji (Stage 4 · 1.2), up to 50, used as :name: in its channels and reactions.
+model CommunityEmoji {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  name        String
+  url         String
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([communityId, name])
+  @@map("community_emoji")
 }
 
 model CommunityMember {

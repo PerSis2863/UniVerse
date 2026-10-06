@@ -6,9 +6,8 @@ import { BarChart3, Bold, Camera, Code, FileCode2, FileText, Flame, ImageIcon, I
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
+import { EmojiPicker, type CustomEmoji } from './EmojiPicker';
 import { languageName } from '@/lib/languages';
-
-const EMOJIS = ['😀', '😂', '😊', '😍', '🥳', '😎', '🤔', '😅', '😢', '😡', '👍', '👎', '🙏', '👏', '🙌', '💪', '🔥', '✨', '❤️', '💯', '🎉', '✅', '📚', '🌍', '🌱', '💡', '🚀', '⭐', '☕', '👋'];
 
 export interface SendPayload {
   text?: string;
@@ -69,9 +68,11 @@ interface Props {
   slowModeSec?: number;
   /** Groups: whether this person may use @here and @channel (admins, or small groups). */
   canMentionAll?: boolean;
+  /** A community channel's own emoji, in the picker. */
+  customEmoji?: CustomEmoji[];
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll, customEmoji }: Props) {
   const [formatting, setFormatting] = useState(false);
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
@@ -312,10 +313,14 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               <Smile className="w-5 h-5" />
             </button>
             {emoji && (
-              <div className="absolute bottom-full mb-2 left-0 z-30 w-72 max-w-[calc(100vw-1.5rem)] p-2 grid grid-cols-8 gap-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
-                {EMOJIS.map((e) => (
-                  <button key={e} onClick={() => { setText((t) => t + e); areaRef.current?.focus(); }} className="w-8 h-8 rounded-lg text-lg hover:bg-zinc-100 dark:hover:bg-white/10">{e}</button>
-                ))}
+              <div className="absolute bottom-full mb-2 left-0 z-30">
+                <EmojiPicker custom={customEmoji} onClose={() => setEmoji(false)} onPick={(e) => {
+                  // At the caret, not always at the end.
+                  const el = areaRef.current;
+                  const at = el?.selectionStart ?? text.length, to = el?.selectionEnd ?? at;
+                  setText(text.slice(0, at) + e + text.slice(to));
+                  requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(at + e.length, at + e.length); });
+                }} />
               </div>
             )}
           </div>

@@ -65,7 +65,7 @@ export interface ConversationSummary {
 }
 
 export interface UserStatus { presence: 'auto' | 'busy' | 'in_class' | 'studying' | 'sleeping'; statusText: string | null; statusEmoji: string | null; hidden?: boolean; focus?: boolean }
-export interface ChannelInfo { kind: 'TEXT' | 'ANNOUNCE' | 'VOICE'; communityId: string; communityName: string; color: string | null; slowModeSec: number; role: 'OWNER' | 'MOD' | 'MEMBER' | null }
+export interface ChannelInfo { kind: 'TEXT' | 'ANNOUNCE' | 'VOICE'; communityId: string; communityName: string; color: string | null; slowModeSec: number; role: 'OWNER' | 'MOD' | 'MEMBER' | null; /** The community's own emoji (:name:). */ emoji?: { name: string; url: string }[] }
 
 /** A person's custom status or availability, for under their name ("📚 Revising for finals", "In class"). */
 export function statusLine(s: UserStatus | null | undefined): string | null {
