@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff } from 'lucide-react';
+import { Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -13,6 +13,7 @@ import { SfuLink, kindOf, type Layer, type MediaKind, type SfuTrack } from '@/li
 import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDevice, cleanMic, listDevices, noiseMode, openMedia, setNoiseMode } from '@/lib/call-media';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { PeoplePanel, type ControlAction, type Person } from './PeoplePanel';
+import { FloatingReactions, ReactionBar, type Floating, type Reaction } from './Reactions';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +34,7 @@ interface Ticket {
   kind: 'audio' | 'video'; type: 'chat' | 'group' | 'class'; title: string; oneToOne: boolean; conversationId: string | null; host: boolean; sfu?: boolean; max?: number;
   path: string; iceServers: RTCIceServer[];
 }
-interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
+interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 type Quality = 'good' | 'fair' | 'poor' | null;
 interface Remote {
   peer: Peer; stream: MediaStream | null; /** Their shared screen (sent beside their camera). */ screen: MediaStream | null; muted: boolean; camera: boolean; sharing: boolean; cc: boolean; recording: boolean; notes: boolean;
@@ -42,6 +43,8 @@ interface Remote {
   paused: boolean;
   /** Their connection is weak: they asked not to be sent video (audio-only fallback). */
   lowData: boolean;
+  /** When their hand went up (the queue's order), or null. */
+  hand: number | null;
 }
 /** prejoin: meetings (class, group, link calls) show a check-yourself screen before joining. */
 type Phase = 'starting' | 'prejoin' | 'live' | 'ended' | 'error';
@@ -87,20 +90,37 @@ function deviceName() {
   const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux|CrOS/.test(ua) ? 'Linux' : 'other';
   return `${browser} on ${os}`;
 }
+/** The time, for handlers reached through the "More" sheet (React's linter can't tell that those
+ *  only run on a tap, and flags Date.now in them). */
+const nowMs = () => Date.now();
 const CAPTION_MS = 5000;
 const MAX_REC_MS = 2 * 3600_000;
 const MAX_REC_BYTES = 950 * 1024 * 1024;
 
-const fresh = (peer: Peer): Remote => ({ peer, stream: null, screen: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false, lowData: false });
+const fresh = (peer: Peer): Remote => ({ peer, stream: null, screen: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false, lowData: false, hand: peer.hand ?? null });
 
 // One audio context and one timer measure everyone's voice (a call of 30 doesn't run 30 of
 // each), and a tile re-renders only when its person starts or stops talking.
 const meter = {
   ctx: null as AudioContext | null,
   timer: null as ReturnType<typeof setInterval> | null,
-  subs: new Set<{ an: AnalyserNode; buf: Uint8Array<ArrayBuffer>; on: boolean; set: (on: boolean) => void }>(),
+  subs: new Set<{ id: string; an: AnalyserNode; buf: Uint8Array<ArrayBuffer>; on: boolean; set: (on: boolean) => void }>(),
+  /** How long each person has spoken in this call (ms), for the people panel's speaking-time bars. */
+  talk: new Map<string, number>(),
 };
-function useSpeaking(stream: MediaStream | null) {
+/** Speaking time per person, read every second while shown. */
+function useTalkTimes(on: boolean) {
+  const [talk, setTalk] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!on) return;
+    const read = () => setTalk(Object.fromEntries(meter.talk));
+    const first = setTimeout(read, 0);
+    const t = setInterval(read, 1000);
+    return () => { clearTimeout(first); clearInterval(t); };
+  }, [on]);
+  return talk;
+}
+function useSpeaking(stream: MediaStream | null, id = '') {
   const [speaking, setSpeaking] = useState(false);
   useEffect(() => {
     if (!stream || !stream.getAudioTracks().length) return;
@@ -112,7 +132,7 @@ function useSpeaking(stream: MediaStream | null) {
     const an = ctx.createAnalyser();
     an.fftSize = 256;
     src.connect(an);
-    const sub = { an, buf: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), on: false, set: setSpeaking };
+    const sub = { id, an, buf: new Uint8Array(new ArrayBuffer(an.frequencyBinCount)), on: false, set: setSpeaking };
     meter.subs.add(sub);
     meter.timer ??= setInterval(() => {
       for (const s of meter.subs) {
@@ -121,6 +141,7 @@ function useSpeaking(stream: MediaStream | null) {
         for (const v of s.buf) sum += v;
         const on = sum / s.buf.length / 60 > 0.12;
         if (on !== s.on) { s.on = on; s.set(on); }
+        if (on && s.id) meter.talk.set(s.id, (meter.talk.get(s.id) ?? 0) + 200);
       }
     }, 200);
     return () => {
@@ -129,7 +150,7 @@ function useSpeaking(stream: MediaStream | null) {
       setSpeaking(false);
       if (!meter.subs.size && meter.timer) { clearInterval(meter.timer); meter.timer = null; }
     };
-  }, [stream]);
+  }, [stream, id]);
   return speaking;
 }
 
@@ -162,15 +183,16 @@ function useLiveVideo(stream: MediaStream | null) {
   return !!stream?.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled && !t.muted);
 }
 
-function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent, screen, spotlight, className }: {
+function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent, screen, spotlight, className, hand }: {
   id: string; name: string; stream: MediaStream | null; mirrored?: boolean; muted?: boolean; camera: boolean; me?: boolean; quality?: Quality; state?: string; silent?: boolean;
   paused?: boolean; compact?: boolean; animateLayout?: boolean; onShow?: () => void; videoRef?: (v: HTMLVideoElement | null) => void;
   /** Showing a shared screen: fit it whole instead of cropping. */ screen?: boolean;
   /** Takes the whole first row (someone is sharing their screen). */ spotlight?: boolean;
   className?: string;
+  /** Their place in the raised-hands queue. */ hand?: number;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
-  const speaking = useSpeaking(muted ? null : stream);
+  const speaking = useSpeaking(muted ? null : stream, id);
   const live = useLiveVideo(stream);
   useEffect(() => {
     const v = ref.current;
@@ -204,14 +226,24 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
       <span className={cn('absolute bottom-2 left-2 font-medium text-white bg-black/45 backdrop-blur-md rounded-full flex items-center gap-1.5 max-w-[85%]', compact ? 'text-[11px] px-2 py-0.5' : 'text-xs px-3 py-1')}>
         {muted && <MicOff className="w-3 h-3 shrink-0" />}{screen && <MonitorUp className="w-3 h-3 shrink-0" />}<span className="truncate">{me ? `${name} (you)` : name}{screen ? ' · screen' : ''}</span>
       </span>
-      {paused && onShow && (
-        <button type="button" onClick={onShow} className="absolute top-2 left-2 text-[11px] text-white bg-black/55 hover:bg-black/70 backdrop-blur-md rounded-full px-2.5 py-1 transition-colors">Show video</button>
-      )}
+      <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+        <AnimatePresence>
+          {hand ? (
+            <motion.span key="hand" initial={{ opacity: 0, scale: 0.5, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.5 }} transition={spring.snappy}
+              className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-400 text-amber-950 rounded-full px-2 py-0.5 shadow-lg" aria-label={`Hand raised, number ${hand} in the queue`}>
+              <motion.span initial={{ rotate: 0 }} animate={{ rotate: [0, 18, -10, 18, 0] }} transition={{ duration: 0.9, delay: 0.1 }} className="inline-block origin-bottom-right">✋</motion.span>{hand}
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
+        {paused && onShow && (
+          <button type="button" onClick={onShow} className="text-[11px] text-white bg-black/55 hover:bg-black/70 backdrop-blur-md rounded-full px-2.5 py-1 transition-colors">Show video</button>
+        )}
+        {state && state !== 'connected' && state !== 'new' && (
+          <span className="text-[11px] text-white bg-black/55 backdrop-blur-md rounded-full px-2.5 py-1">{state === 'connecting' ? 'Connecting…' : state === 'failed' || state === 'disconnected' ? 'Reconnecting…' : state}</span>
+        )}
+      </div>
       {quality && !me && (
         <span className={cn('absolute top-2 right-2 bg-black/45 backdrop-blur-md rounded-full p-1.5', QUALITY[quality].className)} title={QUALITY[quality].label} aria-label={QUALITY[quality].label}><Signal className="w-3.5 h-3.5" /></span>
-      )}
-      {state && state !== 'connected' && state !== 'new' && (
-        <span className="absolute top-2 left-2 text-[11px] text-white bg-black/55 backdrop-blur-md rounded-full px-2.5 py-1">{state === 'connecting' ? 'Connecting…' : state === 'failed' || state === 'disconnected' ? 'Reconnecting…' : state}</span>
       )}
     </motion.div>
   );
@@ -343,6 +375,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [meCohost, setMeCohost] = useState(false);
   const [spotlight, setSpotlightState] = useState<string | null>(null);
   const spotlightRef = useRef<string | null>(null);
+  // Raised hand (when mine went up), reactions floating up, and the reactions and "More" sheets.
+  const [myHand, setMyHand] = useState<number | null>(null);
+  const [floats, setFloats] = useState<Floating[]>([]);
+  const floatSeq = useRef(0);
+  const reactLog = useRef<number[]>([]);
+  const [reactOpen, setReactOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  // Whether I can moderate, for the socket handler (set up once): hand-raise toasts are for hosts.
+  const modRef = useRef(false);
   // The latest mic and camera controls, for the host's requests (the socket handler is set up once).
   const actions = useRef<{ toggleCamera: () => Promise<void>; setMicOff: (off: boolean) => void } | null>(null);
   const notesRef = useRef<{ start: number; lines: NoteLine[]; chars: number } | null>(null);
@@ -521,6 +562,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (sfuRef.current) syncSfu();
   }, [syncSfu]);
 
+  /** A reaction floating up the screen for three seconds. */
+  const addFloat = useCallback((emoji: string, name: string) => {
+    const id = ++floatSeq.current;
+    setFloats((f) => [...f.slice(-23), { id, emoji, name, x: 4 + Math.random() * 30 }]);
+    setTimeout(() => setFloats((f) => f.filter((y) => y.id !== id)), 3200);
+  }, []);
+
   /** Who everyone sees large (the host's spotlight), or nobody. */
   const setSpotlight = useCallback((id: string | null) => {
     spotlightRef.current = id;
@@ -653,6 +701,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   useEffect(() => {
     if (phase === 'error' && held) onLeave(null);
   }, [phase, held, onLeave]);
+
+  // Speaking times start again for each call.
+  useEffect(() => { meter.talk.clear(); }, [callId]);
 
   // "End & answer" (IncomingCall) ends this call through the call list.
   useEffect(() => {
@@ -817,7 +868,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       if (preview) {
         // Meetings: check yourself first. Joining fetches a fresh ticket (they expire quickly).
         setPhase('prejoin');
-        resumeJoin.current = () => { joinConfirmed.current = true; setPhase('starting'); void open(); };
+        resumeJoin.current = () => { joinConfirmed.current = true; meter.talk.clear(); setPhase('starting'); void open(); };
         void authedJson<{ names?: string[] }>(`/api/calls/${callId}/peers`).then((r) => setInRoom(r.names ?? [])).catch(() => setInRoom([]));
         return;
       }
@@ -836,6 +887,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setMyPeerId(msg.you);
           setMeHost(msg.host === true);
           setMeCohost(msg.cohost === true);
+          modRef.current = msg.host === true || msg.cohost === true;
           setSpotlight(typeof msg.spotlight === 'string' ? msg.spotlight : null);
           announce();
           if (t.sfu) {
@@ -901,10 +953,22 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         } else if (msg.type === 'role') {
           if (msg.peerId === myId.current) {
             setMeCohost(msg.cohost === true);
+            modRef.current = msg.cohost === true;
             toast(msg.cohost ? `${msg.by} made you a co-host` : `${msg.by} took back co-host`, { icon: '🛡️' });
           } else {
             setR((r) => (r[msg.peerId] ? { ...r, [msg.peerId]: { ...r[msg.peerId], peer: { ...r[msg.peerId].peer, cohost: msg.cohost === true } } } : r));
           }
+        } else if (msg.type === 'hand') {
+          const at = typeof msg.at === 'number' ? msg.at : null;
+          if (msg.peerId === myId.current) setMyHand(at);
+          else {
+            const who = remotesRef.current[msg.peerId];
+            if (at && who && !who.hand && modRef.current) toast(`${who.peer.name} raised their hand`, { icon: '✋' });
+            patch(msg.peerId, { hand: at });
+          }
+        } else if (msg.type === 'react') {
+          const who = remotesRef.current[msg.from];
+          if (who && typeof msg.emoji === 'string') addFloat(msg.emoji, who.peer.name);
         } else if (msg.type === 'spotlight') {
           setSpotlight(typeof msg.peerId === 'string' ? msg.peerId : null);
         } else if (msg.type === 'declined') {
@@ -1046,7 +1110,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const toggleNotes = () => {
     haptic('tap');
     if (notesRef.current) { void submitNotes(); return; }
-    notesRef.current = { start: Date.now(), lines: [], chars: 0 };
+    notesRef.current = { start: nowMs(), lines: [], chars: 0 };
     setNotes(true);
     stateRef.current.notes = true;
     announce();
@@ -1117,6 +1181,23 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const toggleMute = () => {
     haptic('tap');
     setMicOff(!stateRef.current.muted);
+  };
+  /** Raises or lowers my hand (the call room keeps the queue's order). */
+  const toggleHand = () => {
+    haptic('tap');
+    const up = !myHand;
+    setMyHand(up ? Date.now() : null);
+    send({ type: 'hand', up });
+  };
+  /** A reaction for everyone (a few a second at most, like the call room allows). */
+  const react = (emoji: Reaction) => {
+    const now = Date.now();
+    reactLog.current = reactLog.current.filter((t) => now - t < 4000);
+    if (reactLog.current.length >= 8) return;
+    reactLog.current.push(now);
+    haptic('tap');
+    send({ type: 'react', emoji });
+    addFloat(emoji, 'You');
   };
   /** Host controls, sent through the call room (it checks I'm allowed). */
   const control = (action: ControlAction, target?: string | null, on?: boolean) => send({ type: 'control', action, target: target ?? null, on: on === true });
@@ -1285,7 +1366,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled && kind === 'video' && list.length > 0;
   const canRec = !!info?.host && info.type === 'class' && canRecord();
   const canNotes = !!info?.host && info.type === 'class';
-  const btn = 'w-14 h-14 rounded-full flex items-center justify-center transition-colors';
+  const btn = 'w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-colors';
   const status = phase === 'prejoin' ? 'Ready to join?' : phase === 'starting' ? 'Connecting…' : phase === 'error' ? 'Couldn’t join' : phase === 'ended' ? notice ?? 'Call ended' : waiting ? (info?.type === 'chat' && !talked ? 'Ringing…' : 'Waiting for others to join…') : `${kind === 'video' ? 'Video' : 'Voice'} call · ${clock(seconds)}`;
   const firstRemoteId = list[0]?.peer.peerId;
   // Presenting: someone's shared screen fills the stage (theirs first), cameras go to a strip below.
@@ -1293,13 +1374,37 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const count = list.length + 1;
   const compact = count > 9;
   const someoneRecording = recording || list.some((r) => r.recording);
+  const talk = useTalkTimes(peopleOpen && phase === 'live');
   // The host's spotlight: that person large, everyone else in the strip (a shared screen comes first).
   const lit: Remote | 'me' | null = presenter || !spotlight ? null : spotlight === myPeerId ? 'me' : list.find((r) => r.peer.peerId === spotlight) ?? null;
   const canModerate = meHost || meCohost;
   const people: Person[] = [
-    { id: myPeerId ?? 'me', name: myName, me: true, host: meHost, cohost: meCohost, muted, camera, sharing },
-    ...list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host, cohost: r.peer.cohost, muted: r.muted, camera: r.camera, sharing: r.sharing })),
+    { id: myPeerId ?? 'me', name: myName, me: true, host: meHost, cohost: meCohost, muted, camera, sharing, hand: myHand, talkMs: talk.me ?? 0 },
+    ...list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host, cohost: r.peer.cohost, muted: r.muted, camera: r.camera, sharing: r.sharing, hand: r.hand, talkMs: talk[r.peer.peerId] ?? 0 })),
   ];
+  // The raised-hands queue, by when each went up ("me" is my own tile).
+  const queue = [...(myHand ? [{ id: 'me', at: myHand }] : []), ...list.filter((r) => r.hand).map((r) => ({ id: r.peer.peerId, at: r.hand! }))].sort((a, b) => a.at - b.at);
+  const handPos = (id: string) => { const i = queue.findIndex((q) => q.id === id); return i < 0 ? undefined : i + 1; };
+  // Everything that isn't a main control, in the "More" sheet.
+  const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+  const moreItems: { key: 'cc' | 'devices' | 'flip' | 'rec' | 'notes' | 'pip'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+    { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
+    { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
+    ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
+    ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : 'Record class', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
+    ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : 'Class notes', icon: NotebookPen, on: notes }] : []),
+    ...(canPip ? [{ key: 'pip' as const, label: 'Picture in picture', icon: PictureInPicture2 }] : []),
+  ];
+  const runMore = (key: (typeof moreItems)[number]['key']) => {
+    haptic('tap');
+    setMoreOpen(false);
+    if (key === 'cc') toggleCc();
+    else if (key === 'devices') void openSettings();
+    else if (key === 'flip') void flipCamera();
+    else if (key === 'rec') { if (recording) void stopRecording(); else startRecording(); }
+    else if (key === 'notes') toggleNotes();
+    else void pip();
+  };
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
 
   return (
@@ -1415,19 +1520,19 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               ) : presenter ? (
                 <ScreenStage stream={presenter.screen} name={presenter.peer.name} />
               ) : lit === 'me' ? (
-                <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
+                <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
               ) : lit ? (
                 <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
-                  paused={lit.paused || audioOnly} onShow={() => showVideo(lit.peer.peerId)} className="absolute inset-0 h-full w-full aspect-auto rounded-none"
+                  paused={lit.paused || audioOnly} onShow={() => showVideo(lit.peer.peerId)} hand={handPos(lit.peer.peerId)} className="absolute inset-0 h-full w-full aspect-auto rounded-none"
                   videoRef={lit.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
               ) : null}
             </motion.div>
             <div className="shrink-0 h-24 sm:h-32 flex gap-2 overflow-x-auto justify-center">
               <AnimatePresence initial={false}>
-                {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact className="h-full shrink-0" />}
+                {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact hand={handPos('me')} className="h-full shrink-0" />}
                 {list.filter((r) => r !== lit).map((r) => (
                   <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
-                    paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact className="h-full shrink-0"
+                    paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact hand={handPos(r.peer.peerId)} className="h-full shrink-0"
                     videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
                 ))}
               </AnimatePresence>
@@ -1436,10 +1541,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         ) : (
         <main className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
           <AnimatePresence initial={false}>
-            <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} />
+            <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} hand={handPos('me')} />
             {list.map((r) => (
               <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
-                paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12}
+                paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12} hand={handPos(r.peer.peerId)}
                 videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
             ))}
           </AnimatePresence>
@@ -1499,32 +1604,52 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 className={cn(btn, 'shrink-0', camera ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}>
                 {cameraBusy ? <Loader2 className="animate-spin" /> : camera ? <Video /> : <VideoOff />}
               </motion.button>
-              <AnimatePresence initial={false}>
-                {camera && (
-                  <motion.button key="flip" initial={{ opacity: 0, scale: 0.6, width: 0 }} animate={{ opacity: 1, scale: 1, width: 56 }} exit={{ opacity: 0, scale: 0.6, width: 0 }} transition={spring.snappy}
-                    whileTap={{ scale: 0.9 }} type="button" onClick={flipCamera} aria-label="Switch camera" className={cn(btn, 'shrink-0 bg-white/10 hover:bg-white/20 sm:hidden')}><RefreshCcw /></motion.button>
-                )}
-              </AnimatePresence>
-              {phase !== 'prejoin' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleCc} aria-pressed={cc} aria-label={cc ? 'Turn captions off' : 'Turn captions on'} title="Live captions" className={cn(btn, 'shrink-0', cc ? 'bg-indigo-500' : 'bg-white/10 hover:bg-white/20')}>{cc ? <Captions /> : <CaptionsOff />}</motion.button>}
-              {canShare && phase !== 'prejoin' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn(btn, 'shrink-0', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
-              <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void openSettings()} aria-expanded={settingsOpen} aria-label="Microphone, camera and noise suppression" title="Microphone, camera and noise suppression" className={cn(btn, 'shrink-0', settingsOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}><SlidersHorizontal /></motion.button>
-              {canRec && phase !== 'prejoin' && (
-                <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => (recording ? void stopRecording() : startRecording())} aria-pressed={recording} aria-label={recording ? 'Stop recording' : 'Record the class'} title={recording ? 'Stop and save to class materials' : 'Record the class'} className={cn(btn, 'shrink-0', recording ? 'bg-rose-600 hover:bg-rose-500' : 'bg-white/10 hover:bg-white/20')}>
-                  {recording ? <Square className="w-5 h-5 fill-current" /> : <Circle className="w-5 h-5 fill-rose-500 text-rose-500" />}
-                </motion.button>
+              {phase !== 'live' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void openSettings()} aria-expanded={settingsOpen} aria-label="Microphone, camera and noise suppression" title="Microphone, camera and noise suppression" className={cn(btn, 'shrink-0', settingsOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}><SlidersHorizontal /></motion.button>}
+              {phase === 'live' && (
+                <>
+                  {canShare && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn(btn, 'shrink-0', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
+                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleHand} aria-pressed={!!myHand} aria-label={myHand ? 'Lower your hand' : 'Raise your hand'} title={myHand ? 'Lower your hand' : 'Raise your hand'}
+                    className={cn(btn, 'shrink-0 hidden sm:flex', myHand ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-white/10 hover:bg-white/20')}><Hand /></motion.button>
+                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setMoreOpen(false); setReactOpen((o) => !o); }} aria-expanded={reactOpen} aria-label="Reactions and raise hand" title="Reactions"
+                    className={cn(btn, 'shrink-0 relative', reactOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
+                    <Smile />
+                    {myHand && <span className="sm:hidden absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-amber-400 text-[11px] flex items-center justify-center" aria-hidden>✋</span>}
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setReactOpen(false); setMoreOpen((o) => !o); }} aria-expanded={moreOpen} aria-label="More options" title="More"
+                    className={cn(btn, 'shrink-0 relative', moreOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
+                    <MoreHorizontal />
+                    {(cc || recording || notes) && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-fuchsia-400" aria-hidden />}
+                  </motion.button>
+                </>
               )}
-              {canNotes && phase !== 'prejoin' && (
-                <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleNotes} aria-pressed={notes} aria-label={notes ? 'Stop class notes and make the study pack' : 'Take class notes'} title={notes ? 'Stop and make the study pack' : 'Class notes: turn this class into a study pack'} className={cn(btn, 'shrink-0', notes ? 'bg-amber-500 text-amber-950 hover:bg-amber-400' : 'bg-white/10 hover:bg-white/20')}>
-                  <NotebookPen className="w-5 h-5" />
-                </motion.button>
-              )}
-              {canPip && phase !== 'prejoin' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={pip} aria-label="Picture in picture" className={cn(btn, 'shrink-0', 'bg-white/10 hover:bg-white/20')}><PictureInPicture2 /></motion.button>}
             </>
           )}
           <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => finish()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
         </div>
       </motion.footer>
-      <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} />
+      <FloatingReactions items={floats} />
+      <ReactionBar open={reactOpen && phase === 'live'} onClose={() => setReactOpen(false)} onReact={react} hand={!!myHand} onHand={toggleHand} />
+      <AnimatePresence>
+        {moreOpen && phase === 'live' && (
+          <>
+            <motion.div key="more-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMoreOpen(false)} className="absolute inset-0 z-30" aria-hidden />
+            <div key="more" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
+              <motion.div role="dialog" aria-label="More call options" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={spring.smooth}
+                className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-2 grid grid-cols-3 gap-1">
+                {moreItems.map((it, i) => (
+                  <motion.div key={it.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.02 }}>
+                    <button type="button" onClick={() => runMore(it.key)} aria-pressed={it.on}
+                      className={cn('w-full h-full flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3 text-xs font-medium text-center transition-colors active:scale-95', it.on ? 'bg-gradient-to-br from-indigo-500/40 to-fuchsia-500/40 text-white' : 'text-zinc-200 hover:bg-white/[0.08]')}>
+                      <it.icon className={cn('w-5 h-5', it.tone)} />{it.label}
+                    </button>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+      <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} onLowerMyHand={toggleHand} />
       {/* Microphone, camera and noise suppression */}
       <AnimatePresence>
         {settingsOpen && (

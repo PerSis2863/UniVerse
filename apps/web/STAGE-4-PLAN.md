@@ -254,8 +254,8 @@ the read-only cache log fix (`open-next.config.ts`), this plan, and everything u
 | # | Item | State | Where |
 |---|---|---|---|
 | 2.1 | People panel + host controls | **Done** | `src/components/call/PeoplePanel.tsx`; `CallRoom.control()` in `cloudflare/worker.ts` (mute, mute everyone, ask to unmute, stop video, spotlight, co-host, remove → `removed:<userId>` for 4 h). Hosts: `callAccess` in `src/server/calls.ts` (teacher, group creator/admins, room mods, group chat call starter/admins); link creators via `CallRoom` `/creator` (`createCallLink`). `welcome` carries `host`, `cohost`, `spotlight` |
-| 2.2 | Raise hand, reactions, speaking time | Next | |
-| 2.5 | Waiting room | To do | |
+| 2.2 | Raise hand, reactions, speaking time | **Done** | `CallRoom`: `hand` (time on the socket = queue order), `react` (6 emoji, 8 per 4 s), `lower-hand`/`lower-all` controls. `src/components/call/Reactions.tsx` (bar + floating emoji); hand badge with queue number on tiles; speaking time from `useSpeaking` → `meter.talk`, shown in PeoplePanel. Footer is now Mic, Camera, Share, Hand, React, More (captions, devices, flip, record, notes, PiP), Leave |
+| 2.5 | Waiting room | Next | |
 | 2.3 | In-call chat | To do | |
 | 2.4 | Background blur/replace | To do | |
 

@@ -658,13 +658,16 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
+interface CallPeer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number }
 
 const MAX_CALL_PEERS = 6; // small calls: everyone connects to everyone
 const MAX_SFU_PEERS = 150; // bigger calls through the SFU (the app sets the real cap per ticket)
 const MAX_SIGNAL_BYTES = 64 * 1024;
 const MAX_CAPTION = 300;
+/** Reactions anyone can send (floating emoji), and how many per person in a few seconds. */
+const REACTIONS = new Set(['👍', '👏', '❤️', '😂', '😮', '🎉']);
+const REACTION_BURST = 8, REACTION_WINDOW_MS = 4000;
 /** Someone the host removed can't come back into the same call for this long. */
 const REMOVED_MS = 4 * 3600_000;
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
@@ -680,6 +683,9 @@ const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid ===
  * and a browser can only touch its own SFU session. Nothing is stored except one-time join tickets.
  */
 export class CallRoom extends DurableObject<Env> {
+  /** Recent reactions per person (a burst limit; forgotten when the room sleeps, which is fine). */
+  private reacted = new Map<string, number[]>();
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
@@ -772,7 +778,7 @@ export class CallRoom extends DurableObject<Env> {
     if (typeof raw !== 'string' || raw.length > MAX_SIGNAL_BYTES) return;
     const me = ws.deserializeAttachment() as CallPeer | null;
     if (!me) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -790,6 +796,19 @@ export class CallRoom extends DurableObject<Env> {
       if (text) this.others(ws, { type: 'caption', from: me.peerId, text, final: msg.final === true });
       return;
     }
+    if (msg.type === 'hand') {
+      // Raised hands queue by when they went up (kept on the socket, so newcomers see the queue).
+      this.setHand(me, ws, msg.up === true);
+      return;
+    }
+    if (msg.type === 'react' && typeof msg.emoji === 'string' && REACTIONS.has(msg.emoji)) {
+      const now = Date.now();
+      const recent = (this.reacted.get(me.peerId) ?? []).filter((t) => now - t < REACTION_WINDOW_MS);
+      if (recent.length >= REACTION_BURST) return;
+      this.reacted.set(me.peerId, [...recent, now]);
+      this.others(ws, { type: 'react', from: me.peerId, emoji: msg.emoji });
+      return;
+    }
     if (msg.type === 'control' && typeof msg.action === 'string') {
       await this.control(ws, me, msg.action, typeof msg.target === 'string' ? msg.target : null, msg.on === true);
       return;
@@ -803,6 +822,15 @@ export class CallRoom extends DurableObject<Env> {
     }
   }
 
+  /** Raises or lowers someone's hand, and tells everyone (the time orders the queue). */
+  private setHand(peer: CallPeer, ws: WebSocket, up: boolean) {
+    if (!!peer.hand === up) return;
+    peer.hand = up ? Date.now() : undefined;
+    ws.serializeAttachment(peer);
+    const text = JSON.stringify({ type: 'hand', peerId: peer.peerId, at: peer.hand ?? null });
+    for (const { ws: p } of this.peers()) try { p.send(text); } catch { /* closing */ }
+  }
+
   /**
    * Host controls (src/components/call/PeoplePanel.tsx): from the host or a co-host only. Muting asks
    * the person's app to mute (it can't be undone remotely: unmuting is only ever asked for).
@@ -812,7 +840,11 @@ export class CallRoom extends DurableObject<Env> {
     const all = this.peers();
     const them = target ? all.find(({ peer }) => peer.peerId === target) : undefined;
     const by = me.name;
-    if ((action === 'mute' || action === 'ask-unmute' || action === 'stop-video') && them && them.ws !== ws) {
+    if (action === 'lower-hand' && them) {
+      this.setHand(them.peer, them.ws, false);
+    } else if (action === 'lower-all') {
+      for (const p of all) this.setHand(p.peer, p.ws, false);
+    } else if ((action === 'mute' || action === 'ask-unmute' || action === 'stop-video') && them && them.ws !== ws) {
       this.send(them.ws, { type: 'control', action, by });
     } else if (action === 'mute-all') {
       for (const p of all) if (p.ws !== ws && !p.peer.host && !p.peer.cohost) this.send(p.ws, { type: 'control', action: 'mute', by, all: true });
