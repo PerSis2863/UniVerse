@@ -182,6 +182,21 @@ export function MessageBubble(p: Props) {
       : <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
   } else if (m.metadata?.viewOnce && (m.type === 'IMAGE' || m.type === 'VIDEO' || m.type === 'AUDIO')) {
     content = <ViewOnce m={m} mine={mine} />;
+  } else if (m.type === 'IMAGE' && (m.metadata?.album?.length ?? 0) > 1) {
+    // An album: a grid (2 side by side; 3+ as a mosaic, the 5th onwards as "+n").
+    const album = m.metadata!.album!;
+    const shown = album.slice(0, 4);
+    content = (
+      <div className={cn('grid gap-0.5 p-0.5 w-72 max-w-full', shown.length === 2 ? 'grid-cols-2' : 'grid-cols-2')}>
+        {shown.map((x, i) => (
+          <button key={x.url} type="button" onClick={() => p.onOpenImage(x.url)} className={cn('relative overflow-hidden bg-black/10', shown.length === 3 && i === 0 ? 'row-span-2 aspect-[1/2]' : 'aspect-square', i === 0 && 'rounded-tl-[14px]', i === 1 && 'rounded-tr-[14px]')}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a chat photo, any size */}
+            <img src={safeHref(x.url)} alt={x.name} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+            {i === 3 && album.length > 4 && <span className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xl font-bold">+{album.length - 4}</span>}
+          </button>
+        ))}
+      </div>
+    );
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
       <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />

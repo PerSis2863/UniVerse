@@ -295,14 +295,30 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     onChanged();
   };
 
-  const send = async ({ text, file, voice, viewOnce }: SendPayload) => {
+  const send = async ({ text, file, voice, viewOnce, album }: SendPayload) => {
     haptic('tap');
     const tempId = `temp-${Date.now()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
     const replyToId = replyTo?.id;
     setReplyTo(null);
     try {
-      if (file || voice) {
+      if (album?.length) {
+        // An album: every photo uploads, then one message holds them all.
+        setPending((p) => [...p, { ...base, type: 'IMAGE', body: '', attachmentUrl: null, attachmentName: album[0].name, attachmentSize: album[0].size, attachmentMime: album[0].type, metadata: null } as ChatMessage]);
+        setUploadProgress(0);
+        const items: { url: string; name: string; size: number; mime: string }[] = [];
+        for (const [i, f] of album.entries()) {
+          const url = await uploadChatFile(f, (pct) => setUploadProgress(Math.round(((i + pct / 100) / album.length) * 100)));
+          items.push({ url, name: f.name, size: f.size, mime: f.type });
+        }
+        setUploadProgress(null);
+        const msg = await chatJson<ChatMessage>(key, {
+          method: 'POST',
+          body: JSON.stringify({ type: 'IMAGE', attachmentUrl: items[0].url, attachmentName: items[0].name, attachmentSize: items[0].size, attachmentMime: items[0].mime, album: items, replyToId }),
+        });
+        appendSent(msg, tempId);
+        if (text) await send({ text });
+      } else if (file || voice) {
         const upload = file ?? new File([voice!.blob], `voice-${Date.now()}.${voice!.blob.type.includes('mp4') ? 'm4a' : voice!.blob.type.includes('ogg') ? 'ogg' : 'webm'}`, { type: voice!.blob.type });
         const type = voice ? 'AUDIO' : messageTypeFor(upload.type);
         setPending((p) => [...p, { ...base, type, body: '', attachmentUrl: null, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, metadata: viewOnce ? { viewOnce: true } : null } as ChatMessage]);

@@ -252,6 +252,12 @@ export async function POST(req: Request, { params }: Ctx) {
       if (type === 'AUDIO' && Number.isFinite(b.durationSec)) meta.durationSec = Math.round(b.durationSec);
       // A voice message left after a missed call (shown as Voicemail, transcribed straight away).
       if (type === 'AUDIO' && b.voicemail === true) meta.voicemail = true;
+      // An album (Stage 4 · 1.7): several photos sent as one message, shown as a grid (2–10, all uploaded here).
+      if (type === 'IMAGE' && Array.isArray(b.album)) {
+        const album = (b.album as unknown[]).slice(0, 10).map((x) => x as { url?: unknown; name?: unknown; size?: unknown; mime?: unknown });
+        if (album.length < 2 || album.some((x) => !isOwnBlobUrl(x.url) || typeof x.mime !== 'string' || !x.mime.startsWith('image/'))) return NextResponse.json({ error: 'Invalid album.' }, { status: 400 });
+        meta.album = album.map((x) => ({ url: String(x.url), name: String(x.name ?? 'photo').slice(0, 200), size: Number.isFinite(x.size) ? Math.max(0, Math.floor(Number(x.size))) : null, mime: String(x.mime).slice(0, 120) }));
+      }
       // View once (photos, videos, voice messages): each person can open it once (…/messages/[id]/opened).
       if (b.viewOnce === true && type !== 'FILE') Object.assign(meta, { viewOnce: true, openedBy: [] });
       if (Object.keys(meta).length) data.metadata = meta;

@@ -15,6 +15,8 @@ import { ScheduleSheet } from './ScheduledMessages';
 export interface SendPayload {
   text?: string;
   file?: File;
+  /** Several photos at once: sent as one album. */
+  album?: File[];
   voice?: { blob: Blob; durationSec: number };
   /** Photo, video or voice message that each person can open only once. */
   viewOnce?: boolean;
@@ -254,6 +256,21 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     }
   };
 
+  /** Several photos picked together go as one album (up to 10); anything else one at a time. */
+  const pickMedia = async (files: File[]) => {
+    const photos = files.filter((f) => f.type.startsWith('image/'));
+    if (photos.length < 2 || onceRef.current) { for (const f of files.slice(0, 10)) await pickFile(f); return; }
+    if (photos.length > 10) toast('An album holds up to 10 photos; the first 10 are sent.');
+    setAttach(false);
+    setBusy(true);
+    try {
+      await onSend({ album: photos.slice(0, 10), text: text.trim() || undefined });
+      setText('');
+      for (const f of files.filter((x) => !x.type.startsWith('image/')).slice(0, 5)) await pickFile(f);
+    } finally {
+      setBusy(false);
+    }
+  };
   const pickFile = async (file: File | undefined) => {
     setAttach(false);
     if (!file) return;
@@ -539,7 +556,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           onClose={() => { setScheduling(null); held.current = false; }} />
       )}
       {!!slowModeSec && <p className="mt-1.5 text-[11px] text-zinc-500 text-center">Slow mode: one message every {slowModeSec < 60 ? `${slowModeSec} s` : `${Math.round(slowModeSec / 60)} min`}</p>}
-      <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
+      <input ref={mediaRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; void pickMedia(fs); }} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
       <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
     </div>

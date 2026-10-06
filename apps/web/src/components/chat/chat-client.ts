@@ -23,6 +23,7 @@ export interface ChatMessage {
     moderated?: 'edited' | 'removed'; team?: boolean; // changed or posted by UniVerse (owner console)
     viewOnce?: boolean; opened?: boolean; openedCount?: number; // view-once photo / video / voice message
     transcript?: string; voicemail?: boolean; // voice message text (AI); a voicemail left after a missed call
+    album?: { url: string; name: string; size: number | null; mime: string }[]; // IMAGE: several photos as one (Stage 4 · 1.7)
     link?: { url: string; title: string; description: string | null; site: string } | null; // link preview
     broadcast?: boolean;
     ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`
