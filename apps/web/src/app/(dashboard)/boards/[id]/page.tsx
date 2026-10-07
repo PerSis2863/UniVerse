@@ -1,22 +1,24 @@
 'use client';
 
-import { use, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { use, useCallback, useEffect, useRef, useState, useSyncExternalStore, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { ArrowLeft, BarChart3, FileDown, ThumbsUp, ChevronLeft, ChevronRight, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, MonitorUp, PenTool, Share2, Sparkles, Timer as TimerIcon, Trash2, Wallpaper } from 'lucide-react';
+import { ArrowLeft, BarChart3, FileDown, History, MessageSquare, ThumbsUp, ChevronLeft, ChevronRight, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, MonitorUp, PenTool, Share2, Sparkles, Timer as TimerIcon, Trash2, Wallpaper } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { Sheet } from '@/components/chat/ChatDialogs';
 import { drawMindMap, drawSummary, drawThemes } from '@/components/boards/board-ai-draw';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from '@/components/ui/Link';
+import { useAuthStore } from '@/store/auth';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { Avatar } from '@/components/chat/MessageBubble';
 import { ShareBoardDialog, type BoardMeta } from '@/components/boards/ShareBoardDialog';
 import type { BoardControls, BoardGone, BoardPeer, LiveStatus, Presenting } from '@/components/boards/BoardCanvas';
 import { MAX_VOTES, type Voted } from '@/components/boards/votes';
+import { BoardComments, BoardVersions, useBoardComments, type BoardApi } from '@/components/boards/BoardExtras';
 import type { TemplateId } from '@/components/boards/templates';
 import { cn } from '@/lib/utils';
 
@@ -104,6 +106,20 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
       setTimeout(() => win.print(), 400);
     } catch (e) { win.close(); toast.error((e as Error).message || 'Couldn’t export the board.'); } finally { setExporting(false); }
   };
+  // Comments on shapes and versions (3.4, part 3).
+  const meId = useAuthStore((st) => st.user?.id ?? null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const { data: commentData } = useBoardComments(id);
+  const openThreads = new Set((commentData?.comments ?? []).filter((c) => !c.resolvedAt).map((c) => c.elementId)).size;
+  // The panels get functions that read the board when they're called (never during render).
+  const boardApi = useMemo<BoardApi>(() => ({
+    selected: () => controls.current?.selected() ?? null,
+    labelOf: (elementId) => controls.current?.labelOf(elementId) ?? null,
+    focus: (elementId) => controls.current?.focus(elementId),
+    elements: () => controls.current?.elements() ?? [],
+    restore: (els) => controls.current?.restore(els),
+  }), []);
   // AI on boards (3.5): one AI request per action; the result is drawn by this browser.
   const [aiOpen, setAiOpen] = useState(false);
   const [aiBusy, setAiBusy] = useState<string | null>(null);
@@ -139,6 +155,15 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
   const myRole = role ?? board?.myRole ?? 'VIEWER';
   const canEdit = myRole !== 'VIEWER';
+  // While editors draw, a version is saved every 10 minutes (the server skips unchanged boards).
+  useEffect(() => {
+    if (!canEdit || status !== 'live') return;
+    const t = setInterval(() => {
+      const els = controls.current?.elements();
+      if (els?.length) void authedJson(`/api/boards/${id}/versions`, { method: 'POST', body: JSON.stringify({ elements: els, auto: true }) }).catch(() => {});
+    }, 10 * 60_000);
+    return () => clearInterval(t);
+  }, [canEdit, status, id]);
 
   const onPeers = useCallback((list: BoardPeer[]) => setPeers(list), []);
   const onRole = useCallback((r: BoardMeta['myRole']) => {
@@ -272,6 +297,8 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         )}
         {canEdit && <button onClick={vote} disabled={status !== 'live'} className={btn} title={`Vote for the selected note (${MAX_VOTES} votes each)`}><ThumbsUp className="w-4 h-4" /><span className="hidden lg:inline">Vote</span></button>}
         {votes.length > 0 && <button onClick={() => setVotesOpen((o) => !o)} className={cn(btn, votesOpen && 'bg-zinc-100 dark:bg-white/[0.06]')} title="Results of the vote"><BarChart3 className="w-4 h-4" /><span className="text-xs tabular-nums">{votes.reduce((t, v) => t + v.count, 0)}</span></button>}
+        <button onClick={() => setCommentsOpen((o) => !o)} className={cn(btn, commentsOpen && 'bg-zinc-100 dark:bg-white/[0.06]')} title="Comments on shapes"><MessageSquare className="w-4 h-4" />{openThreads > 0 && <span className="text-xs tabular-nums">{openThreads}</span>}</button>
+        <button onClick={() => setVersionsOpen(true)} className={cn(btn, 'hidden sm:inline-flex')} title="Versions"><History className="w-4 h-4" /></button>
         <button onClick={() => void exportPdf()} disabled={exporting || status !== 'live'} className={cn(btn, 'hidden sm:inline-flex')} title="Export to PDF (each frame is a page)">{exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}<span className="hidden lg:inline">PDF</span></button>
         <div className="relative">
           <button onClick={() => setTimerOpen((o) => !o)} disabled={status !== 'live' || !canEdit} className={btn} title="Workshop timer for everyone" aria-expanded={timerOpen}><TimerIcon className="w-4 h-4" /></button>
@@ -319,7 +346,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
           <p className="mt-4 text-[11px] text-zinc-400 inline-flex items-center gap-1"><Sparkles className="w-3 h-3" />Made with AI from the text on the board</p>
         </Sheet>
       )}
+      {versionsOpen && <BoardVersions boardId={id} controls={boardApi} canEdit={canEdit} onClose={() => setVersionsOpen(false)} />}
       <main className="flex-1 min-h-0 relative">
+        <AnimatePresence>{commentsOpen && <BoardComments key="comments" boardId={id} controls={boardApi} meId={meId} onClose={() => setCommentsOpen(false)} />}</AnimatePresence>
         {/* Presenting, following and the timer (3.4), floating over the board. */}
         <div className="pointer-events-none absolute top-3 inset-x-0 z-30 flex flex-col items-center gap-2 px-3">
           <AnimatePresence>

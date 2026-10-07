@@ -52,6 +52,16 @@ export interface BoardControls {
   vote(): string | null;
   /** Each frame (or the whole board when there are none) as a picture, for a PDF. */
   exportPages(): Promise<string[]>;
+  /** The selected shape (a label's shape), for commenting on it (3.4). */
+  selected(): string | null;
+  /** A shape's text (or its kind), to name a comment thread. */
+  labelOf(elementId: string): string | null;
+  /** Selects a shape and shows it. */
+  focus(elementId: string): void;
+  /** The board's elements, to save a version. */
+  elements(): readonly ExcalidrawElement[];
+  /** Puts a saved version back (synced to everyone like any edit). */
+  restore(elements: ExcalidrawElement[]): void;
 }
 
 
@@ -639,6 +649,38 @@ export default function BoardCanvas({
         });
         api.updateScene({ elements: next, captureUpdate: CaptureUpdateAction.IMMEDIATELY });
         return refused ? `You have ${MAX_VOTES} votes. Take one back to vote for something else.` : null;
+      },
+      selected: () => {
+        const ids = Object.keys(api.getAppState().selectedElementIds);
+        if (!ids.length) return null;
+        const e = api.getSceneElements().find((x) => x.id === ids[0]);
+        return (e as unknown as { containerId?: string | null } | undefined)?.containerId ?? ids[0];
+      },
+      labelOf: (elementId) => {
+        const all = api.getSceneElements();
+        const e = all.find((x) => x.id === elementId);
+        if (!e) return null;
+        const own = (e as unknown as { text?: string }).text;
+        const label = all.find((t) => t.type === 'text' && (t as unknown as { containerId?: string }).containerId === elementId) as unknown as { text?: string } | undefined;
+        return (own ?? label?.text ?? e.type).replace(/\s+/g, ' ').slice(0, 60);
+      },
+      focus: (elementId) => {
+        const e = api.getSceneElements().find((x) => x.id === elementId);
+        if (!e) return;
+        api.updateScene({ appState: { selectedElementIds: { [elementId]: true } as AppState['selectedElementIds'] } });
+        api.scrollToContent(e, { fitToContent: false, animate: true });
+      },
+      elements: () => api.getSceneElements(),
+      restore: (saved) => {
+        // The room keeps the newest version of each element, so the restored ones are numbered
+        // above what's there now; elements made since are deleted.
+        const now = api.getSceneElementsIncludingDeleted();
+        const byId = new Map(now.map((e) => [e.id, e]));
+        const keep = new Set(saved.map((e) => e.id));
+        const restored = saved.map((e) => ({ ...e, isDeleted: false, version: Math.max(e.version, byId.get(e.id)?.version ?? 0) + 1, versionNonce: Math.floor(Math.random() * 2 ** 31), updated: Date.now() }));
+        const gone = now.filter((e) => !keep.has(e.id) && !e.isDeleted && !isBackground(e)).map((e) => newElementWith(e, { isDeleted: true }));
+        const bg = now.filter((e) => isBackground(e) && !keep.has(e.id));
+        api.updateScene({ elements: [...bg, ...restored, ...gone] as ExcalidrawElement[], captureUpdate: CaptureUpdateAction.IMMEDIATELY });
       },
       exportPages: async () => {
         const elements = api.getSceneElements();
