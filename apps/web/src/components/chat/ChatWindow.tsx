@@ -12,6 +12,7 @@ import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
+import { ImageViewer } from './ImageViewer';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
@@ -797,12 +798,14 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       {extra === 'contact' && <ContactPicker onClose={() => setExtra(null)} onPick={(contactId) => sendSpecial({ type: 'CONTACT', contactId })} />}
 
       <AnimatePresence>
-        {lightbox && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setLightbox(null)} className="fixed inset-0 z-[90] bg-black/90 flex items-center justify-center p-4">
-            <button aria-label="Close" className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white"><X className="w-6 h-6" /></button>
-            <motion.img initial={{ scale: 0.95 }} animate={{ scale: 1 }} src={lightbox} alt="" className="max-w-full max-h-full rounded-xl object-contain" />
-          </motion.div>
-        )}
+        {lightbox && (() => {
+          // Every photo in the chat (albums too), so the viewer can go through them (1.8).
+          const photos = messages.flatMap((m) => (m.type !== 'IMAGE' || m.deletedAt || m.metadata?.viewOnce ? []
+            : m.metadata?.album?.length ? m.metadata.album.map((x) => ({ url: x.url, name: x.name }))
+            : m.attachmentUrl ? [{ url: m.attachmentUrl, name: m.attachmentName }] : []));
+          const at = photos.findIndex((x) => x.url === lightbox);
+          return <ImageViewer key="viewer" images={at < 0 ? [{ url: lightbox }] : photos} start={Math.max(0, at)} onClose={() => setLightbox(null)} />;
+        })()}
       </AnimatePresence>
     </div>
   );

@@ -4,12 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
+import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
 import { fallbackBars, useVoice, voice } from '@/lib/voice-player';
 import { VideoNoteBubble } from './VideoNote';
+import { FileBubble } from './FilePreview';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes, plainText } from './chat-client';
 import { RichText } from './RichText';
@@ -264,18 +265,8 @@ export function MessageBubble(p: Props) {
       </div>
     );
   } else if (m.type === 'FILE' && m.attachmentUrl) {
-    content = (
-      <a href={safeHref(m.attachmentUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 w-64 max-w-full">
-        <span className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', mine ? 'bg-white/15' : 'bg-indigo-500/10 text-indigo-500')}>
-          <FileText className="w-5 h-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold truncate">{m.attachmentName || 'File'}</span>
-          <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{formatBytes(m.attachmentSize)}</span>
-        </span>
-        <Download className="w-4 h-4 opacity-70" />
-      </a>
-    );
+    // PDFs show their first page and open in a viewer; text and code show their first lines (1.8).
+    content = <FileBubble url={m.attachmentUrl} name={m.attachmentName ?? null} size={m.attachmentSize ?? null} mime={m.attachmentMime ?? null} mine={mine} />;
   } else if (m.type === 'CALL') {
     // A call reads like a phone's call log: live (Join), how long it lasted, missed, no answer
     // or declined. Calls from before UniVerse had its own (Jitsi links) show as ended.

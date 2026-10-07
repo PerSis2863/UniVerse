@@ -48,6 +48,8 @@ next-env.d.ts
 /public/excalidraw-assets
 # call-background engine, copied from node_modules at build time (scripts/copy-mediapipe-assets.mjs)
 /public/mediapipe/wasm
+# pdf.js worker for file previews, copied at build time (scripts/copy-pdfjs-assets.mjs)
+/public/pdfjs
 
 # next-pwa builds src/worker into this on every build (sw.js loads it)
 /public/worker-*.js

@@ -22,7 +22,7 @@ const withPWA = withPWAInit({
   // (12 MB) load on demand, not at install.
   // `_headers` is Cloudflare's config file and is never served: listing it made every install fail
   // (a 404), so from 29 Sep no device got a working service worker. Lookup data loads when needed.
-  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!mediapipe/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!voice-worklet.js', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*'],
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!mediapipe/**/*', '!pdfjs/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!voice-worklet.js', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*'],
   // Shown for pages not saved on the device when offline: a plain static page (public/offline.html,
   // served at /offline by Cloudflare's free static files, not the Worker).
   fallbacks: {
