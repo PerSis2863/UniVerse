@@ -6,6 +6,7 @@ import { later, notify, notifyMany } from './email';
 import { quietFor } from './focus';
 import { firstUrl, linkPreview } from './link-preview';
 import { alertOwner, watchWordsIn } from './moderation';
+import { guardMessage } from './safety';
 import { deliver, publishChat } from './realtime';
 import { pushService } from './services/push.service';
 import { pretranslate } from './translate';
@@ -17,8 +18,8 @@ import { pretranslate } from './translate';
 
 /**
  * Everything after a message is saved, in the background: a preview card for its first link,
- * translations for members with auto-translate, live updates and notifications, @mentions, and
- * watch words for the owner.
+ * translations for members with auto-translate, live updates and notifications, @mentions, watch
+ * words for the owner, and the chat safety check.
  */
 export function afterSend(
   message: { id: string; conversationId: string; type: string; body: string; metadata: unknown },
@@ -52,6 +53,8 @@ export function afterSend(
       if (found.length) await alertOwner(found, from, conversationId, body);
     });
   }
+  // The chat safety check (Stage 4 · 4.10): flags for the school's moderators, never shown to anyone else.
+  if (type === 'TEXT' && body && from.id !== chat.systemUserId) later(() => guardMessage({ id, conversationId, body }, from));
 }
 
 const AWAY_MS = 5 * 60_000;

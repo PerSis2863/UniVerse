@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { CheckCircle, Loader2, MapPin, ShieldAlert, UserX } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, SAFETY_TABS } from '@/components/layout/SectionTabs';
 import { api } from '@/lib/api';
 import { SearchBox, matchesQuery, RoleChip, fmtAgo, fmtDate, shownSummary } from '@/components/impact/AdminPeople';
 
@@ -62,6 +63,7 @@ export default function AdminSafetyPage() {
   return (
     <>
       <Topbar title="Safety reports" subtitle="BeeSafe reports sent by students and staff. Every new report alerts all admins." />
+      <SectionTabs tabs={SAFETY_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-6">
           <div className="space-y-4">

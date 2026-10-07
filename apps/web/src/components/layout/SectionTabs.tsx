@@ -91,6 +91,12 @@ export const TEACHER_STUDENT_TABS: SectionTab[] = [
   { href: '/teacher/analytics', label: 'Course analytics' },
 ];
 
+export const SAFETY_TABS: SectionTab[] = [
+  { href: '/admin/safety', label: 'BeeSafe reports' },
+  { href: '/admin/safety/chats', label: 'Chat safety' },
+  { href: '/admin/safety/policy', label: 'Policy' },
+];
+
 export const ADMIN_INSIGHT_TABS: SectionTab[] = [
   { href: '/admin/insights', label: 'School insights' },
   { href: '/admin/analytics', label: 'Analytics' },

@@ -15,6 +15,7 @@ import { BadRequestException, ForbiddenException, HttpException, NotFoundExcepti
 import { canSeeCall } from './meeting-notes';
 import { chatMuted } from './moderation';
 import { publish } from './realtime';
+import { recordingBlocked } from './safety';
 
 // Recording calls. The recorder's browser records what it shows and hears (src/lib/call-recorder.ts:
 // 720p at most, 2 hours at most) and uploads it straight to R2 (no Worker time spent on the bytes).
@@ -55,6 +56,9 @@ async function rights(callId: string, user: SessionUser) {
 export async function checkRecording(callId: string, user: SessionUser) {
   const r = await rights(callId, user);
   if (!hasR2Storage()) throw new HttpException('Recordings need file storage (R2), which isn’t set up yet.', 503);
+  // Someone under 18 in the call: only if the school allows it (Stage 4 · 4.10; the call room also
+  // stops a recording when someone under 18 joins later).
+  if (await recordingBlocked([...(await callPeople(callId)).ids, user.id])) throw new HttpException('Your school doesn’t allow recording calls with students under 18.', 403);
   const goes = r.kind === 'class' ? 'the class materials' : r.kind === 'group' ? 'the group' : r.kind === 'link' ? 'Calls, for everyone in the call' : 'the chat';
   return { ok: true, goes };
 }

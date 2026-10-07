@@ -15,6 +15,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { AccountSecurity } from '@/components/settings/AccountSecurity';
 import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { LowDataToggle } from '@/components/settings/LowDataToggle';
+import { QuietHoursSetting } from '@/components/settings/QuietHoursSetting';
 import { ConsentsPanel } from '@/components/settings/ConsentsPanel';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
 import { NetworkVisibility } from '@/components/settings/NetworkVisibility';
@@ -358,6 +359,7 @@ function Notifications({ role }: { role: Role }) {
       <Row icon={Bell} title="Email notifications" desc={role === 'ADMIN' ? 'New teacher and NGO applications, and messages you miss.' : role === 'TEACHER' ? 'Submissions to grade, messages you miss and reminders.' : 'New grades, credential decisions, messages you miss and quizzes due tomorrow.'}>
         {on === null ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : <Switch checked={on} label="Email notifications" onChange={(v) => void toggle(v)} />}
       </Row>
+      <QuietHoursSetting />
     </Card>
   );
 }

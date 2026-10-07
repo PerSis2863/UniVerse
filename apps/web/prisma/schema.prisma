@@ -261,6 +261,8 @@ model User {
   ratingsReceived      PeerRating[]       @relation("RatingsReceived")
   officeHours          OfficeHours?       @relation("OfficeHours")
   dailyBrief           DailyBrief?        @relation("DailyBrief")
+  quietHours           QuietHours?        @relation("QuietHours")
+  safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
   presence             String            @default("auto")
@@ -593,6 +595,7 @@ model Conversation {
 
   scheduledCalls ScheduledCall[]
   scheduledMessages ScheduledMessage[]
+  safetyFlags       SafetyFlag[]       @relation("SafetyFlags")
 
   @@index([communityId])
   @@map("conversations")
@@ -683,6 +686,7 @@ model Message {
   pollVotes      PollVote[]
   translations   MessageTranslation[]
   edits          MessageEdit[]
+  safetyFlags    SafetyFlag[]         @relation("SafetyFlags")
 
   pinnedAt   DateTime? // pinned to the top of the chat
   pinnedById String?
@@ -2647,6 +2651,66 @@ model DailyBrief {
 
   @@index([push, nextAt])
   @@map("daily_briefs")
+}
+
+/// The school's safety policy (Stage 4 · 4.10; one row, "main"; src/server/safety.ts): the chat
+/// safety check, recording calls with students under 18, quiet hours for them, and whether students
+/// without a birth date count as under 18.
+model SchoolPolicy {
+  id             String   @id
+  guard          Boolean  @default(true)
+  recordMinors   Boolean  @default(false)
+  quietMinors    Boolean  @default(true)
+  quietStart     String   @default("22:00")
+  quietEnd       String   @default("07:00")
+  studentsMinors Boolean  @default(false)
+  updatedAt      DateTime @default(now())
+  updatedById    String?
+
+  @@map("school_policy")
+}
+
+/// Quiet hours (Stage 4 · 4.10): no push notifications between start and end in this time zone.
+/// `bySchool`: the school's quiet hours for a student under 18 (they can't turn them off).
+model QuietHours {
+  userId    String   @id
+  user      User     @relation("QuietHours", fields: [userId], references: [id], onDelete: Cascade)
+  on        Boolean  @default(true)
+  start     String   @default("22:00")
+  end       String   @default("07:00")
+  timeZone  String   @default("UTC")
+  bySchool  Boolean  @default(false)
+  updatedAt DateTime @default(now())
+
+  @@index([bySchool])
+  @@map("quiet_hours")
+}
+
+/// A chat message the safety check flagged for the school's moderators (Stage 4 · 4.10).
+model SafetyFlag {
+  id             String       @id @default(cuid())
+  messageId      String?
+  message        Message?     @relation("SafetyFlags", fields: [messageId], references: [id], onDelete: SetNull)
+  conversationId String
+  conversation   Conversation @relation("SafetyFlags", fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("SafetyFlagsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  kind           String // bullying, threat, self_harm, sexual, personal_info, hate, other
+  severity       String // low, medium, high
+  reason         String?
+  excerpt        String
+  source         String // ai, words
+  repeats        Int          @default(0)
+  status         String       @default("OPEN") // OPEN, REVIEWED, DISMISSED
+  reviewedById   String?
+  reviewedAt     DateTime?
+  note           String?
+  createdAt      DateTime     @default(now())
+
+  @@index([status, createdAt])
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("safety_flags")
 }
 
 /// A teacher's private note about a student's office hours visit.

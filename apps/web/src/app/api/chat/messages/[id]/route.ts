@@ -4,6 +4,8 @@ import { getSessionUser } from '@/lib/server-auth';
 import { MAX_BODY, membership, messageSelect, serializeMessage } from '@/lib/chat';
 import { publishChat } from '@/server/realtime';
 import { chatMuted } from '@/server/moderation';
+import { later } from '@/server/email';
+import { guardMessage } from '@/server/safety';
 
 type Ctx = { params: Promise<{ id: string }> };
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -43,6 +45,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const older = await prisma.messageEdit.findMany({ where: { messageId: id }, orderBy: { writtenAt: 'desc' }, skip: KEEP_VERSIONS, select: { id: true } });
   if (older.length) await prisma.messageEdit.deleteMany({ where: { id: { in: older.map((o) => o.id) } } });
   publishChat(msg.conversationId);
+  // The edited text gets the chat safety check too (Stage 4 · 4.10).
+  later(() => guardMessage({ id, conversationId: msg.conversationId, body: text }, { id: user.id, name: user.name }));
   return NextResponse.json(serializeMessage(updated));
 }
 

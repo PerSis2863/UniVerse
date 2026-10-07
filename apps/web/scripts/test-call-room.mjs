@@ -62,8 +62,8 @@ let failures = 0;
 const check = (ok, label) => { console.log(`${ok ? '✓' : '✗'} ${label}`); if (!ok) failures++; };
 
 /** A participant: joins a room (ticket like the app gets one), and keeps what the room says. */
-async function joinRoom(callId, user, host = false) {
-  const t = await room(callId).fetch('https://call/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host, max: 50 }) });
+async function joinRoom(callId, user, host = false, extra = {}) {
+  const t = await room(callId).fetch('https://call/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host, max: 50, ...extra }) });
   const { ticket } = await t.json();
   const ws = new WebSocket(`${BASE.replace('http', 'ws')}/__do/${encodeURIComponent(callId)}/call-live?call=${encodeURIComponent(callId)}&ticket=${ticket}`);
   const p = { user, callId, ws, msgs: [], welcome: null, bo: undefined };
@@ -513,6 +513,35 @@ if (process.env.TIMER) {
   const again = await joinRoom(g, cai);
   check(again.welcome?.watch === null, 'watch: when the call empties, the video ends');
   await leave(again);
+}
+
+// ── Recording with students under 18 (Stage 4 · 4.10) ──
+{
+  const last = (p, type) => [...p.msgs].reverse().find((m) => m.type === type);
+  const stateOf = (p, from) => [...p.msgs].reverse().find((m) => m.type === 'state' && m.from === from);
+  // The school doesn't allow it (the default): a teacher can't record with a minor in the call.
+  const T = await joinRoom('c_course10', teacher, true, { recMinors: false });
+  const M = await joinRoom('c_course10', ana, false, { minor: true, recMinors: false });
+  check(!JSON.stringify(T.msgs).includes('"minor"'), 'recording: nobody is told who is under 18');
+  send(T, { type: 'state', recording: true });
+  await sleep(200);
+  check(!!last(T, 'rec-blocked') && stateOf(M, T.peerId)?.recording === false, 'recording: blocked while someone under 18 is in the call');
+  // Recording with adults only, then someone under 18 comes in: the recorder is told to stop.
+  const T2 = await joinRoom('c_course11', teacher, true, { recMinors: false });
+  const B = await joinRoom('c_course11', ben, false, { recMinors: false });
+  send(T2, { type: 'state', recording: true });
+  await sleep(200);
+  check(!last(T2, 'rec-blocked') && stateOf(B, T2.peerId)?.recording === true, 'recording: fine with no one under 18');
+  const M2 = await joinRoom('c_course11', cai, false, { minor: true, recMinors: false });
+  await sleep(200);
+  check(last(T2, 'rec-blocked')?.joined === true, 'recording: someone under 18 joining stops it');
+  // The school allows it: recording works with minors.
+  const T3 = await joinRoom('c_course12', teacher, true, { recMinors: true });
+  const M3 = await joinRoom('c_course12', ana, false, { minor: true, recMinors: true });
+  send(T3, { type: 'state', recording: true });
+  await sleep(200);
+  check(!last(T3, 'rec-blocked') && stateOf(M3, T3.peerId)?.recording === true, 'recording: allowed when the school allows it');
+  for (const p of [T, M, T2, B, M2, T3, M3]) await leave(p);
 }
 
 // An ordinary call (no breakouts) still works as before.

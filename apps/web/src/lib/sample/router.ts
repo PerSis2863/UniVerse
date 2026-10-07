@@ -376,6 +376,11 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/meeting-notes\/([^/]+)$/, () => fail('These notes aren’t available in the sample.', 404)],
   // Smart replay search (Stage 4 · 4.6): the sample's classes have no transcript.
   [/^\/api\/class-sessions\/([^/]+)\/replay$/, () => ok({ results: [] })],
+  // Safe by default (Stage 4 · 4.10): no flags in the sample; the default policy; quiet hours off.
+  [/^\/api\/safety\/flags$/, () => ok({ open: 0, flags: [] })],
+  [/^\/api\/safety\/flags\/([^/]+)$/, () => ok({ messages: [] })],
+  [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, open: 0, ai: false })],
+  [/^\/api\/me\/quiet$/, () => ok({ on: false, start: '22:00', end: '07:00', locked: false })],
   // Daily brief (Stage 4 · 4.9): the sample's day, from its timetable; no AI brief.
   [/^\/api\/brief$/, ({ db: d }) => {
     const wd = (new Date().getDay() + 6) % 7;

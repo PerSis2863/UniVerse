@@ -711,8 +711,8 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null]; since?: number; turnAt?: number }
-interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean }
+interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null]; since?: number; turnAt?: number; /** Under 18 (4.10): never sent to anyone. */ minor?: boolean; /** Recording right now. */ rec?: boolean }
+interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean; /** Under 18 (4.10). */ minor?: boolean; /** The school allows recording calls with students under 18. */ recMinors?: boolean }
 /**
  * Guest links (Stage 4 · 2.11): a call link's creator invites people without an account. A guest
  * gives a name only, always waits in the waiting room until a host lets them in (every time), and
@@ -740,8 +740,8 @@ const MAX_CAPTION_TR = 600;
  * with their name (see publicPeer).
  */
 const PULSE_PUSH_MS = 800;
-/** A person as the others in the call see them: without their pulse. */
-const publicPeer = (p: CallPeer): Omit<CallPeer, 'pulse'> => { const { pulse, ...rest } = p; void pulse; return rest; };
+/** A person as the others in the call see them: without their pulse, or whether they're under 18. */
+const publicPeer = (p: CallPeer): Omit<CallPeer, 'pulse' | 'minor'> => { const { pulse, minor, ...rest } = p; void pulse; void minor; return rest; };
 /** Reactions anyone can send (floating emoji), and how many per person in a few seconds. */
 const REACTIONS = new Set(['👍', '👏', '❤️', '😂', '😮', '🎉']);
 const REACTION_BURST = 8, REACTION_WINDOW_MS = 4000;
@@ -871,6 +871,8 @@ export class CallRoom extends DurableObject<Env> {
   private chatted = new Map<string, number[]>();
   /** Watch together (kept in storage too; undefined until read after waking). */
   private watchMem: Watch | null | undefined = undefined;
+  /** Whether the school allows recording calls with students under 18 (from the latest ticket; 4.10). */
+  private recMinors: boolean | undefined = undefined;
   /** This room's call id, and when each person last asked the hosts for help (breakout rooms). */
   private self: string | null = null;
   private helped = new Map<string, number>();
@@ -951,6 +953,8 @@ export class CallRoom extends DurableObject<Env> {
     this.pulseTell();
     if (w.on) this.audienceTell();
     if (mod) this.tellWaiting();
+    // Someone under 18 came in while someone records and the school doesn't allow it: they stop (4.10).
+    if (me.minor && !(await this.recAllowed())) for (const { ws: other, peer } of current) if (peer.rec) this.send(other, { type: 'rec-blocked', joined: true });
     // Office hours: the teacher sees the line as they come in; those waiting hear the new wait.
     await this.queueTell();
     if (child) await this.reportRoom();
@@ -1047,6 +1051,12 @@ export class CallRoom extends DurableObject<Env> {
     } else return;
     await this.ctx.storage.put('qa', items);
     this.qaTell();
+  }
+
+  /** Whether the school allows recording calls with students under 18 (off until a ticket says so). */
+  private async recAllowed() {
+    this.recMinors ??= (await this.ctx.storage.get<boolean>('rec-minors')) ?? false;
+    return this.recMinors;
   }
 
   private async watchLoad() {
@@ -1471,6 +1481,8 @@ export class CallRoom extends DurableObject<Env> {
       if (((await this.ctx.storage.get<{ until: number }>(`removed:${who.userId}`))?.until ?? 0) > now) return Response.json({ error: 'removed' }, { status: 403 });
       // A call link's creator hosts it.
       if (who.userId && (await this.ctx.storage.get<string>('creator')) === who.userId) who.host = true;
+      // The school's recording rule (4.10), as the app says it now.
+      if (typeof who.recMinors === 'boolean' && who.recMinors !== (await this.recAllowed())) { this.recMinors = who.recMinors; await this.ctx.storage.put('rec-minors', who.recMinors); }
       const ticket = crypto.randomUUID();
       await this.ctx.storage.put(`ticket:${ticket}`, { ...who, exp: now + TICKET_TTL_MS });
       // A webinar: joins as audience (no camera or microphone asked for) unless a host or on stage.
@@ -1568,7 +1580,7 @@ export class CallRoom extends DurableObject<Env> {
       // A webinar fits more people (the audience only receives): three times the call's cap, up to 300.
       const cap = (await this.webinar()).on ? Math.min(WEBINAR_MAX, (who.max ?? MAX_CALL_PEERS) * 3) : Math.min(MAX_SFU_PEERS, who.max ?? MAX_CALL_PEERS);
       if (current.length >= cap) return new Response('This call is full', { status: 429 });
-      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true, ...(who.guest ? { guest: true } : {}) };
+      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true, ...(who.guest ? { guest: true } : {}), ...(who.minor ? { minor: true } : {}) };
       // Co-hosts stay co-hosts when they reconnect.
       if (!me.host && (await this.ctx.storage.get(`cohost:${who.userId}`))) me.cohost = true;
       // Waiting room: on for call links (with a creator to let people in; older links have none)
@@ -1621,8 +1633,15 @@ export class CallRoom extends DurableObject<Env> {
     if (msg.type === 'state') {
       // Whoever records or takes notes says so, and everyone sees the REC and Notes badges. The app
       // decides who may save a recording or notes (src/server/call-recordings.ts, meeting-notes.ts);
-      // these flags only tell people.
-      await this.toSeers(ws, me, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true, lowData: msg.lowData === true });
+      // these flags only tell people. Recording with someone under 18 here: only when the school
+      // allows it (4.10); otherwise the recorder's app is told to stop.
+      let recording = msg.recording === true;
+      if (recording && !me.rec && !(await this.recAllowed()) && this.peers().some(({ peer }) => peer.minor)) {
+        this.send(ws, { type: 'rec-blocked' });
+        recording = false;
+      }
+      if ((me.rec === true) !== recording) { me.rec = recording; ws.serializeAttachment(me); }
+      await this.toSeers(ws, me, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording, notes: msg.notes === true, lowData: msg.lowData === true });
       return;
     }
     if (msg.type === 'caption' && typeof msg.text === 'string') {

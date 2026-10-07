@@ -798,7 +798,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setTimeout(() => { if (rpcWait.current.delete(id)) reject(new Error('The call server didn’t answer.')); }, 15_000);
   }), []);  
 
-  const stopRecording = useCallback(async () => {
+  /** Stops recording and saves it (or, `discard`, throws it away: it wasn't allowed). */
+  const stopRecording = useCallback(async (discard = false) => {
     const rec = recRef.current;
     if (!rec) return;
     recRef.current = null;
@@ -806,7 +807,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     stateRef.current.recording = false;
     announce();
     const { blob, durationSec } = await rec.stop();
-    if (blob.size < 1024) return;
+    if (discard || blob.size < 1024) return;
     const t = toast.loading('Saving the recording… 0%');
     try {
       const saved = await uploadRecording(callId, blob, durationSec, authedJson, (p) => toast.loading(`Saving the recording… ${Math.round(p * 100)}%`, { id: t }));
@@ -1337,6 +1338,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setLobbyOn(msg.on === true);
         } else if (msg.type === 'denied') {
           finish('The host didn’t let you in');
+        } else if (msg.type === 'rec-blocked') {
+          // The school doesn't allow recording calls with students under 18 (4.10): blocked as it
+          // started (nothing kept), or someone under 18 just joined (what came before is saved).
+          const startedAt = recRef.current?.startedAt ?? 0;
+          void stopRecording(!msg.joined || Date.now() - startedAt < 5000);
+          toast(msg.joined ? 'Recording stopped: someone under 18 joined, and your school doesn’t allow recording them. What was recorded before is saved.' : 'Your school doesn’t allow recording calls with students under 18.', { icon: '🔒', duration: 9000 });
         } else if (msg.type === 'watch') {
           if (typeof msg.now === 'number') skew.current = msg.now - Date.now();
           const w = msg.watch as WatchState | null;

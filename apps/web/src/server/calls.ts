@@ -4,6 +4,7 @@ import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
+import { isMinor, schoolPolicy } from './safety';
 import { featureOff } from './moderation';
 import { planLimits } from '@/lib/plan-limits';
 import { publishChat } from './realtime';
@@ -216,7 +217,11 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
     host = out.host === true;
     breakout = { parent: room.parent, n: room.n, name: out.name ?? `Room ${room.n}` };
   }
-  const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host, max }) });
+  // Safe by default (4.10): whether I'm under 18, and whether the school allows recording calls with
+  // students under 18 (the call room stops recordings otherwise; never shown to anyone).
+  const [me, policy] = await Promise.all([prisma.user.findUnique({ where: { id: user.id }, select: { role: true, dateOfBirth: true } }), schoolPolicy()]);
+  const minor = !!me && isMinor(me, policy);
+  const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host, max, minor, recMinors: policy.recordMinors }) });
   if (res?.status === 403) throw new HttpException('The host removed you from this call.', 403);
   if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
   const { ticket, audience } = (await res.json()) as { ticket: string; audience?: boolean };

@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import { SYSTEM_EMAIL } from '@/lib/chat';
+import { validZone, wallClock as wall } from '@/lib/local-time';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
@@ -26,17 +27,6 @@ const SOON_MS = 36 * 3600_000;
 /** Chats: what's still waiting from the last 3 days. */
 const WAITING_MS = 3 * DAY;
 const PLANNER_BOARD = 'My tasks';
-
-export const validZone = (tz: unknown) => {
-  if (typeof tz !== 'string' || !tz || tz.length > 64) return 'UTC';
-  try { new Intl.DateTimeFormat('en', { timeZone: tz }); return tz; } catch { return 'UTC'; }
-};
-
-/** A moment's wall clock in a time zone. */
-function wall(d: Date, tz: string) {
-  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d).map((x) => [x.type, x.value]));
-  return { day: `${p.year}-${p.month}-${p.day}`, y: Number(p.year), m: Number(p.month), d: Number(p.day), hour: Number(p.hour), min: Number(p.minute) };
-}
 
 /** The UTC moment it's `hour`:00 on the local day `add` days after `from`'s, in this time zone. */
 function localAt(tz: string, from: number, add: number, hour: number) {
