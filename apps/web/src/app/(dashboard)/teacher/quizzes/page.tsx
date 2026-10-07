@@ -11,17 +11,20 @@ import { fetcher, api } from '@/lib/fetcher';
 import { QuizManager } from '@/components/quizzes/QuizManager';
 import { OfflineQuizReview } from '@/components/quizzes/OfflineQuizReview';
 
+/** /quizzes/teacher/my-quizzes: one row per quiz, ready to show. */
+interface TeacherQuiz { id: string; title: string; course: string; status: string; dueDate?: string | null; timeLimit?: number | null; questions: number; submissions: number }
+
 export default function TeacherQuizzes() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const { data: quizzes = [], isLoading: loadingQuizzes, mutate: mutateQuizzes } = useSWR('/quizzes/teacher/my-quizzes', fetcher);
-  const { data: courses = [], isLoading: loadingCourses } = useSWR('/courses/my', fetcher);
+  const { data: quizzes = [], isLoading: loadingQuizzes, mutate: mutateQuizzes } = useSWR<TeacherQuiz[]>('/quizzes/teacher/my-quizzes', fetcher);
+  const { data: courses = [], isLoading: loadingCourses } = useSWR<{ id: string; name: string }[]>('/courses/my', fetcher);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newQuiz, setNewQuiz] = useState({ title: '', courseId: '', timeLimit: 30 });
   const [managing, setManaging] = useState<string | null>(null);
 
-  const filteredQuizzes = quizzes.filter((q: any) => {
+  const filteredQuizzes = quizzes.filter((q) => {
     const matchesSearch = q.title.toLowerCase().includes(searchTerm.toLowerCase()) || q.course.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || q.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -109,7 +112,7 @@ export default function TeacherQuizzes() {
           </div>
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredQuizzes.map((quiz: any) => (
+          {filteredQuizzes.map((quiz) => (
             <div key={quiz.id} className="card p-0 flex flex-col group hover:border-indigo-500/50 transition-colors">
               <div className="p-6 pb-4">
                 <div className="flex justify-between items-start mb-4">
@@ -200,7 +203,7 @@ export default function TeacherQuizzes() {
                   disabled={loadingCourses}
                 >
                   <option value="">Select a course...</option>
-                  {courses.map((c: any) => (
+                  {courses.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>

@@ -11,12 +11,14 @@ import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { courseColor } from '@/lib/course-color';
 
+interface TeacherCourse { id: string; name: string; code: string; description?: string | null; color?: string | null; emoji?: string | null; _count?: { enrollments?: number; materials?: number } }
+
 export default function TeacherCourses() {
   const router = useRouter();
-  const { data: courses = [], isLoading, mutate } = useSWR('/courses/my', fetcher);
+  const { data: courses = [], isLoading, mutate } = useSWR<TeacherCourse[]>('/courses/my', fetcher);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState<any>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState<TeacherCourse | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState<TeacherCourse | null>(null);
   
   const [formData, setFormData] = useState({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
 
@@ -47,7 +49,7 @@ export default function TeacherCourses() {
     }
   };
 
-  const openEdit = (course: any) => {
+  const openEdit = (course: TeacherCourse) => {
     setFormData({ code: course.code, name: course.name, description: course.description, emoji: course.emoji, color: course.color });
     setShowEditModal(course);
   };
@@ -88,7 +90,7 @@ export default function TeacherCourses() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course: any) => (
+            {courses.map((course) => (
               <div key={course.id} className="card p-0 overflow-hidden group border border-white/[0.05] hover:border-indigo-500/50 transition-all flex flex-col h-full relative cursor-pointer" onClick={() => setShowDetailsModal(course)}>
                 
                 {/* Actions Overlay */}

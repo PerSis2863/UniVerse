@@ -1,7 +1,7 @@
 'use client';
 import { errorMessage } from '@/lib/api';
 import { confirmDialog } from '@/components/ui/Dialogs';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { ChevronRight, Download, GraduationCap, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
@@ -26,15 +26,15 @@ function band(avg: number | null) {
 }
 
 export default function TeacherGradesPage() {
-  const { data: coursesData, isLoading: loadingCourses } = useSWR<any[]>('/courses/my', fetcher);
+  const { data: coursesData, isLoading: loadingCourses } = useSWR<{ id: string; name: string; code: string }[]>('/courses/my', fetcher);
   const courses = Array.isArray(coursesData) ? coursesData : [];
-  const [courseId, setCourseId] = useState('');
+  const [pickedId, setCourseId] = useState('');
+  const courseId = pickedId || courses[0]?.id || ''; // the picked course, or the first
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState<{ studentId: string; assignmentName: string; score: string; maxScore: string; feedback: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState<string | null>(null);
 
-  useEffect(() => { if (!courseId && courses.length) setCourseId(courses[0].id); }, [courses, courseId]);
   const { data, isLoading, error, mutate } = useSWR<Gradebook>(courseId ? `/grades/course/${courseId}` : null, fetcher);
 
   const rows = useMemo(() => {
@@ -130,7 +130,7 @@ export default function TeacherGradesPage() {
           </div>
         )}
 
-        {error ? <p className="text-sm text-rose-500">{(error as any)?.response?.data?.message ?? 'Could not load grades.'}</p>
+        {error ? <p className="text-sm text-rose-500">{errorMessage(error, 'Could not load grades.')}</p>
           : isLoading || loadingCourses ? <div className="h-64 rounded-2xl skeleton" />
           : rows.length === 0 ? <div className={`${card} p-10 text-center text-sm text-zinc-500`}>No students are enrolled in this course yet. Ask your campus admin to enroll them.</div>
           : (
