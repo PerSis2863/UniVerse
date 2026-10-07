@@ -29,16 +29,18 @@ const frame = (type: number, body: Uint8Array) => { const out = new Uint8Array(b
 
 export type DocStatus = 'connecting' | 'live' | 'offline' | 'unavailable';
 
-export function DocEditor({ docId, me, onStatus, onPeers, onEditor }: {
+export function DocEditor({ docId, me, onStatus, onPeers, onEditor, onPresence }: {
   docId: string; me: { id: string; name: string };
   onStatus: (s: DocStatus, canEdit: boolean) => void;
   onPeers: (names: string[]) => void;
+  /** Who else is here, with their cursor colour (3.8). */
+  onPresence?: (people: { name: string; color: string }[]) => void;
   onEditor: (e: Editor | null) => void;
 }) {
   const [ydoc] = useState(() => new Y.Doc());
   const [awareness] = useState(() => new Awareness(ydoc));
-  const callbacks = useRef({ onStatus, onPeers, onEditor });
-  useEffect(() => { callbacks.current = { onStatus, onPeers, onEditor }; });
+  const callbacks = useRef({ onStatus, onPeers, onEditor, onPresence });
+  useEffect(() => { callbacks.current = { onStatus, onPeers, onEditor, onPresence }; });
   const color = COLORS[[...me.id].reduce((t, c) => t + c.charCodeAt(0), 0) % COLORS.length];
 
   const editor = useEditor({
@@ -63,7 +65,11 @@ export function DocEditor({ docId, me, onStatus, onPeers, onEditor }: {
     let ws: WebSocket | null = null, stopped = false, retry = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const send = (data: Uint8Array) => { if (ws?.readyState === WebSocket.OPEN) ws.send(data); };
-    const peers = () => callbacks.current.onPeers([...awareness.getStates().entries()].filter(([id]) => id !== ydoc.clientID).map(([, s]) => (s as { user?: { name?: string } }).user?.name ?? 'Someone'));
+    const peers = () => {
+      const others = [...awareness.getStates().entries()].filter(([id]) => id !== ydoc.clientID).map(([, s]) => (s as { user?: { name?: string; color?: string } }).user ?? {});
+      callbacks.current.onPeers(others.map((u) => u.name ?? 'Someone'));
+      callbacks.current.onPresence?.(others.map((u) => ({ name: u.name ?? 'Someone', color: u.color ?? '#6366f1' })));
+    };
     const onDoc = (update: Uint8Array, origin: unknown) => { if (origin !== 'remote') send(frame(DOC, update)); };
     const onAware = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
       if (origin === 'local') send(frame(AWARENESS, encodeAwarenessUpdate(awareness, [...added, ...updated, ...removed])));

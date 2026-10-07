@@ -13,6 +13,7 @@ import Image from '@tiptap/extension-image';
 import { ArrowLeft, Check, Download, FileText, History, Loader2, MessageSquare, MessageSquarePlus, RotateCcw, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
+import { PresenceStack, type Present } from '@/components/ui/PresenceStack';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { Sheet } from '@/components/chat/ChatDialogs';
@@ -51,6 +52,8 @@ function exportPdf(title: string, html: string) {
   setTimeout(() => { frame.contentWindow?.print(); setTimeout(() => frame.remove(), 1000); }, 300);
 }
 
+const noop = () => {};
+
 export default function DocPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -59,7 +62,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   const { data, error, mutate } = useSWR<DocInfo>(`/api/docs/${id}`, authedJson);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [status, setStatus] = useState<{ s: DocStatus; canEdit: boolean }>({ s: 'connecting', canEdit: false });
-  const [peers, setPeers] = useState<string[]>([]);
+  const [present, setPresent] = useState<Present[]>([]);
   const [title, setTitle] = useState<string | null>(null);
   const [panel, setPanel] = useState<'comments' | null>(null);
   const [sheet, setSheet] = useState<'history' | 'share' | null>(null);
@@ -89,9 +92,10 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
             {status.s === 'live' ? (status.canEdit ? 'Saved as you type' : 'You can read this document') : status.s === 'connecting' ? 'Connecting…' : status.s === 'unavailable' ? 'Not available right now' : 'Offline: reconnecting'}
             {data.course && <span>· {data.course.code}</span>}
             {data.chat && <span>· Canvas of {data.chat.name}</span>}
-            {peers.length > 0 && <span>· {peers.slice(0, 3).join(', ')}{peers.length > 3 ? ` +${peers.length - 3}` : ''} here</span>}
+
           </p>
         </div>
+        <PresenceStack people={present} />
         <div className="relative">
           <button type="button" onClick={() => setExportOpen((o) => !o)} title="Download" aria-label="Download" className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Download className="w-4 h-4" /></button>
           <AnimatePresence>
@@ -113,7 +117,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm">
-            <DocEditor docId={id} me={data.me} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={setPeers} onEditor={setEditor} />
+            <DocEditor docId={id} me={data.me} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={noop} onPresence={setPresent} onEditor={setEditor} />
           </div>
         </div>
         <AnimatePresence>

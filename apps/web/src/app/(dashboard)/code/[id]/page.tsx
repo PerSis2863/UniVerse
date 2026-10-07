@@ -13,6 +13,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import type { Status } from '@/components/code/CodeEditor';
+import { PresenceStack, type Present } from '@/components/ui/PresenceStack';
 
 // The editor (CodeMirror + Yjs) loads only on this page.
 const CodeEditor = dynamic(() => import('@/components/code/CodeEditor').then((m) => m.CodeEditor), { ssr: false, loading: () => <div className="h-[60vh] rounded-xl skeleton" /> });
@@ -47,6 +48,8 @@ self.fetch = undefined; self.XMLHttpRequest = undefined; self.WebSocket = undefi
   });
 }
 
+const noop = () => {};
+
 export default function CodeRoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -54,7 +57,7 @@ export default function CodeRoomPage({ params }: { params: Promise<{ id: string 
   const user = useAuthStore((s) => s.user);
   const { data: room, error, mutate } = useSWR<Room>(`/api/code/${id}`, authedJson);
   const [status, setStatus] = useState<{ s: Status; canEdit: boolean }>({ s: 'connecting', canEdit: false });
-  const [peers, setPeers] = useState<string[]>([]);
+  const [present, setPresent] = useState<Present[]>([]);
   const [output, setOutput] = useState<{ lines: string[]; error: string | null; timedOut: boolean } | null>(null);
   const [running, setRunning] = useState(false);
   const getText = useRef<() => string>(() => '');
@@ -87,7 +90,7 @@ export default function CodeRoomPage({ params }: { params: Promise<{ id: string 
             <Link href="/code" className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white mr-auto"><ArrowLeft className="w-4 h-4" /> Code rooms</Link>
             <span className={`text-xs font-semibold ${status.s === 'live' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500'}`} role="status">● {STATUS_TEXT[status.s]}</span>
             {status.s === 'live' && !status.canEdit && <span className="text-xs text-zinc-500 inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> View only</span>}
-            <span className="text-xs text-zinc-500 inline-flex items-center gap-1" title={peers.join(', ')}><Users className="w-3.5 h-3.5" /> {peers.length ? peers.slice(0, 3).join(', ') + (peers.length > 3 ? ` +${peers.length - 3}` : '') : 'Only you'}</span>
+            {present.length ? <PresenceStack people={present} /> : <span className="text-xs text-zinc-500 inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Only you</span>}
             {room?.canManage && (
               <>
                 <button type="button" className="btn-secondary" onClick={() => patch({ locked: !room.locked })} title={room.locked ? 'Let everyone edit' : 'Only you and the teacher edit'}>
@@ -100,7 +103,7 @@ export default function CodeRoomPage({ params }: { params: Promise<{ id: string 
           </div>
           <div className="h-[60vh]">
             {room && user?.id && (
-              <CodeEditor roomId={id} lang={room.language} me={{ id: user.id, name: user.name ?? 'Me' }} dark={resolvedTheme === 'dark'} onStatus={onStatus} onPeers={setPeers} onReady={onReady} />
+              <CodeEditor roomId={id} lang={room.language} me={{ id: user.id, name: user.name ?? 'Me' }} dark={resolvedTheme === 'dark'} onStatus={onStatus} onPeers={noop} onPresence={setPresent} onReady={onReady} />
             )}
           </div>
           {room && !runnable && <p className="text-xs text-zinc-500">Running code in the browser is available for JavaScript rooms.</p>}
