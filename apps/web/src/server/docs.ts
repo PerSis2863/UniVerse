@@ -8,6 +8,7 @@ import { notify } from './email';
 import { groupAccess, groupPeople } from './spaces';
 import { channelSendCheck } from './communities';
 import { notifyMentioned } from './mentions';
+import { pushService } from './services/push.service';
 import { indexDoc, indexLater } from './semester';
 
 // Documents (Stage 4 · 3.2). The text is written together live: a Yjs document kept by the same
@@ -240,6 +241,27 @@ export async function resolveDocComment(docId: string, commentId: string, user: 
   }
   publish(await audience(doc), { type: 'refresh', keys: [`/api/docs/${docId}/comments`] });
   return { ok: true };
+}
+
+/**
+ * POST /api/docs/:id/mention { userId, context }: I @mentioned someone in the document's text. They
+ * get an in-app notification and a push (never email) if they can see the document, at most once a
+ * day per document (picking them again, or undo/redo, doesn't ping twice).
+ */
+export async function mentionInDoc(docId: string, user: SessionUser, body: Record<string, unknown>) {
+  const { doc, canEdit } = await access(docId, user);
+  if (!canEdit) throw new ForbiddenException('You can only look at this document.');
+  const target = typeof body.userId === 'string' ? body.userId : '';
+  if (!target || target === user.id) return { notified: false };
+  if (!(await audience(doc)).includes(target)) throw new BadRequestException('They can’t see this document. Share it with them first.');
+  const link = `/docs/${docId}`;
+  const recent = await prisma.notification.findFirst({ where: { userId: target, type: 'mention', link, createdAt: { gt: new Date(Date.now() - 86_400_000) } }, select: { id: true } });
+  if (recent) return { notified: false };
+  const title = `${user.name} mentioned you in ${doc.title}`;
+  const context = clean(body.context, 200);
+  await notify(target, { type: 'mention', title, body: context || 'Open the document to see where.', link, email: false });
+  await pushService.sendToMany([target], { title, body: context.slice(0, 140) || 'Open the document to see where.', url: link, tag: `mention-${link}` }).catch(() => 0);
+  return { notified: true };
 }
 
 /** Who can be @mentioned here (3.9 autocomplete): the people who can see it. */

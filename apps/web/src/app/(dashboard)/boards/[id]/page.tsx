@@ -8,7 +8,7 @@ import { ArrowLeft, BarChart3, FileDown, History, MessageSquare, ThumbsUp, Chevr
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { Sheet } from '@/components/chat/ChatDialogs';
-import { drawMindMap, drawSummary, drawThemes } from '@/components/boards/board-ai-draw';
+import { drawDiagram, drawMindMap, drawSummary, drawThemes, type Diagram } from '@/components/boards/board-ai-draw';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
@@ -145,6 +145,20 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         c.addElements(drawMindMap(r as unknown as { center: string; branches: { label: string; ideas: string[] }[] }));
         toast.success('Mind map added');
       } else setSummary(r as unknown as { title: string; summary: string; nextSteps: string[] });
+    } catch (e) { toast.error((e as Error).message); } finally { setAiBusy(null); }
+  };
+  // Sketch → clean diagram (3.5): the selected drawing (or the whole board) goes to AI as a picture.
+  const tidySketch = async () => {
+    setAiOpen(false);
+    const c = controls.current;
+    if (!c) return;
+    setAiBusy('diagram');
+    try {
+      const sketch = await c.sketch();
+      if (!sketch) { toast('Draw something first, then select it.'); return; }
+      const d = await authedJson<Diagram>(`/api/boards/${id}/ai`, { method: 'POST', body: JSON.stringify({ action: 'diagram', image: sketch.image, texts: sketch.texts }) });
+      c.addElements(drawDiagram(d));
+      toast.success(`Clean diagram added beside your sketch: ${d.nodes.length} shape${d.nodes.length === 1 ? '' : 's'}${d.edges.length ? `, ${d.edges.length} arrow${d.edges.length === 1 ? '' : 's'}` : ''}`);
     } catch (e) { toast.error((e as Error).message); } finally { setAiBusy(null); }
   };
   const fileInput = useRef<HTMLInputElement>(null);
@@ -320,6 +334,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
               <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
                 className="absolute right-0 top-11 z-40 w-64 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
                 {canEdit && <button type="button" onClick={() => void runAi('themes')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Group notes into themes</span><span className="block text-xs text-zinc-500">Adds the sticky notes again, sorted into columns</span></button>}
+                {canEdit && <button type="button" onClick={() => void tidySketch()} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Tidy a sketch into a diagram</span><span className="block text-xs text-zinc-500">Select your drawing (or nothing, for the whole board): AI redraws it cleanly beside it</span></button>}
                 {canEdit && <button type="button" onClick={() => void runAi('mindmap')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Mind map from a topic…</span><span className="block text-xs text-zinc-500">Draws a mind map beside your board</span></button>}
                 <button type="button" onClick={() => void runAi('summary')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Summarise this board</span><span className="block text-xs text-zinc-500">A summary and next steps</span></button>
               </motion.div>

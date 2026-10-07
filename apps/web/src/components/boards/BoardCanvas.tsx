@@ -52,6 +52,8 @@ export interface BoardControls {
   vote(): string | null;
   /** Each frame (or the whole board when there are none) as a picture, for a PDF. */
   exportPages(): Promise<string[]>;
+  /** The selected shapes (or the whole board) as a small PNG for AI to redraw (3.5), with their typed text. */
+  sketch(): Promise<{ image: string; texts: string[]; selected: boolean } | null>;
   /** The selected shape (a label's shape), for commenting on it (3.4). */
   selected(): string | null;
   /** A shape's text (or its kind), to name a comment thread. */
@@ -693,6 +695,20 @@ export default function BoardCanvas({
           pages.push(await toUrl(blob));
         }
         return pages;
+      },
+      sketch: async () => {
+        const all = api.getSceneElements().filter((e) => !isBackground(e));
+        const picked = new Set(Object.keys(api.getAppState().selectedElementIds));
+        // A selected shape brings its label along.
+        const elements = picked.size ? all.filter((e) => picked.has(e.id) || picked.has((e as unknown as { containerId?: string | null }).containerId ?? '')) : all;
+        if (!elements.length) return null;
+        const blob = await exportToBlob({
+          elements, files: api.getFiles(), mimeType: 'image/png', exportPadding: 24, maxWidthOrHeight: 1024,
+          appState: { ...api.getAppState(), exportBackground: true, viewBackgroundColor: '#ffffff', exportWithDarkMode: false },
+        });
+        const image = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).replace(/^data:image\/png;base64,/, '')); r.onerror = rej; r.readAsDataURL(blob); });
+        const texts = elements.filter((e) => e.type === 'text').map((e) => (e as unknown as { text: string }).text.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 60);
+        return { image, texts, selected: picked.size > 0 };
       },
       removeBackground: () => {
         api.updateScene({

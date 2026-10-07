@@ -3,7 +3,7 @@ import { diagnoseErrors } from '../errors';
 import prisma from '@/lib/db';
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import { forgetUser, isOwnerEmail } from '../auth';
-import schema from '../owner-schema.json';
+import { dbSchema as schema } from '../db-schema';
 import { decideDeletion, eraseAccount } from '../account-deletion';
 import { publishChat } from '../realtime';
 import { emailScheduleEntries, FEATURE_SWITCHES, OWNER_EMAILS, parseEmailSchedule, parseSwitches } from '@/lib/feature-switches';
