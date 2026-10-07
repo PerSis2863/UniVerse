@@ -245,6 +245,7 @@ model User {
   assignmentSubmissions AssignmentSubmission[]
   guardianContacts      GuardianContact[]
   impactUpdates         ImpactUpdate[]
+  boardComments         BoardComment[]
   impactFollows         ImpactFollower[]
   timePledges           TimePledge[]
   livePollsCreated      LivePoll[]             @relation("LivePollAuthor")
@@ -906,6 +907,8 @@ model Board {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   members    BoardMember[]
+  comments   BoardComment[]
+  versions   BoardVersion[]
 
   @@index([ownerId, updatedAt])
   @@map("boards")
@@ -3331,4 +3334,35 @@ model SpaceFileVersion {
 
   @@index([fileId, createdAt])
   @@map("space_file_versions")
+}
+
+/// A comment on a shape of a board (Stage 4 · 3.4).
+model BoardComment {
+  id         String    @id @default(cuid())
+  boardId    String
+  board      Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  elementId  String
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body       String
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([boardId, createdAt])
+  @@map("board_comments")
+}
+
+/// A saved version of a board (Stage 4 · 3.4): its elements as JSON, named or automatic.
+model BoardVersion {
+  id          String   @id @default(cuid())
+  boardId     String
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name        String?
+  elements    String
+  count       Int
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([boardId, createdAt])
+  @@map("board_versions")
 }
