@@ -1,4 +1,6 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { LoadError } from '@/components/ui/LoadError';
 import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
@@ -29,7 +31,7 @@ interface AdminOverview {
 export default function AdminDashboard() {
   const router = useRouter();
   const { t } = useLanguageStore();
-  const { data, mutate } = useSWR<AdminOverview>('/dashboard/admin', fetcher);
+  const { data, error, mutate } = useSWR<AdminOverview>('/dashboard/admin', fetcher);
   
   const pendingUsers = data?.pendingUsers ?? [];
 
@@ -54,6 +56,15 @@ export default function AdminDashboard() {
   const maxDeptStudents = Math.max(1, ...departments.map((d) => d.students || 0));
 
   const handleSendAnnouncement = () => router.push('/admin/announcements');
+
+  if (!data) {
+    return (
+      <>
+        <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} action={{ label: t('admin.send_announcement'), onClick: handleSendAnnouncement }} />
+        <div className="flex-1 p-8">{error ? <LoadError onRetry={() => mutate()} message="Couldn’t load the dashboard." /> : <ContentSkeleton variant="dashboard" />}</div>
+      </>
+    );
+  }
 
   return (
     <>
