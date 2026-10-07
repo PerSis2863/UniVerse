@@ -50,6 +50,8 @@ next-env.d.ts
 /public/mediapipe/wasm
 # pdf.js worker for file previews, copied at build time (scripts/copy-pdfjs-assets.mjs)
 /public/pdfjs
+# Python (Pyodide) for code rooms, copied at build time (scripts/copy-pyodide-assets.mjs)
+/public/pyodide
 
 # next-pwa builds src/worker into this on every build (sw.js loads it)
 /public/worker-*.js

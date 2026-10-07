@@ -45,7 +45,7 @@ async function access(roomId: string, user: SessionUser) {
   const a = room ? await courseAccess(room.courseId, user) : null;
   if (!room || !a) throw new NotFoundException('This code room doesn’t exist or isn’t in one of your courses.');
   const canManage = a.canManage || room.createdById === user.id;
-  return { room, course: a.course, canManage, canEdit: canManage || !room.locked };
+  return { room, course: a.course, canManage, canEdit: canManage || !room.locked, isTeacher: a.canManage };
 }
 
 export async function listRooms(user: SessionUser) {
@@ -74,15 +74,33 @@ export async function createRoom(user: SessionUser, body: Record<string, unknown
   return prisma.codeRoom.create({ data: { courseId, createdById: user.id, title, language } });
 }
 
+/** The teacher's tests (3.6): up to 30, each a name and a few lines that throw when the answer is wrong. */
+function cleanTests(raw: unknown): { name: string; code: string }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 30).flatMap((t, i) => {
+    const x = (t ?? {}) as { name?: unknown; code?: unknown };
+    const code = typeof x.code === 'string' ? x.code.trim().slice(0, 2000) : '';
+    if (!code) return [];
+    const name = typeof x.name === 'string' && x.name.trim() ? x.name.trim().slice(0, 80) : `Test ${i + 1}`;
+    return [{ name, code }];
+  });
+}
+const parseTests = (v: string | null) => { try { return cleanTests(JSON.parse(v ?? '[]')); } catch { return []; } };
+
 export async function getRoom(roomId: string, user: SessionUser) {
-  const { room, course, canManage, canEdit } = await access(roomId, user);
-  return { ...room, course: { id: course.id, code: course.code, name: course.name }, canManage, canEdit };
+  const { room, course, canManage, canEdit, isTeacher } = await access(roomId, user);
+  return { ...room, tests: parseTests(room.tests), course: { id: course.id, code: course.code, name: course.name }, canManage, canEdit, canEditTests: isTeacher };
 }
 
 export async function updateRoom(roomId: string, user: SessionUser, body: Record<string, unknown>) {
-  const { canManage } = await access(roomId, user);
+  const { canManage, isTeacher } = await access(roomId, user);
   if (!canManage) throw new ForbiddenException('Only the teacher or whoever made this room can change it.');
-  const data: { title?: string; language?: string; locked?: boolean } = {};
+  const data: { title?: string; language?: string; locked?: boolean; tests?: string | null } = {};
+  if (body.tests !== undefined) {
+    if (!isTeacher) throw new ForbiddenException('Only the course’s teacher can write the tests.');
+    const tests = cleanTests(body.tests);
+    data.tests = tests.length ? JSON.stringify(tests) : null;
+  }
   if (typeof body.title === 'string' && body.title.trim()) data.title = body.title.trim().slice(0, 120);
   if ((LANGUAGES as readonly string[]).includes(String(body.language))) data.language = String(body.language);
   if (typeof body.locked === 'boolean') data.locked = body.locked;

@@ -2628,6 +2628,7 @@ model CodeRoom {
   title       String
   language    String   @default("javascript") // javascript, typescript, python, java, cpp
   locked      Boolean  @default(false) // only the teacher (and the creator) can edit
+  tests       String? // JSON [{ name, code }]: the teacher's checks, run in the browser (Stage 4 · 3.6)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

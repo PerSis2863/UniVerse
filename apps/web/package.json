@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/copy-excalidraw-assets.mjs && node scripts/copy-mediapipe-assets.mjs && node scripts/copy-pdfjs-assets.mjs && next dev --webpack",
-    "build": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate && node scripts/gen-owner-schema.mjs && node scripts/copy-excalidraw-assets.mjs && node scripts/copy-mediapipe-assets.mjs && node scripts/copy-pdfjs-assets.mjs && next build --webpack",
+    "dev": "node scripts/copy-excalidraw-assets.mjs && node scripts/copy-mediapipe-assets.mjs && node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pyodide-assets.mjs && next dev --webpack",
+    "build": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate && node scripts/gen-owner-schema.mjs && node scripts/copy-excalidraw-assets.mjs && node scripts/copy-mediapipe-assets.mjs && node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pyodide-assets.mjs && next build --webpack",
     "postinstall": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate",
     "start": "next start",
     "lint": "eslint",
@@ -57,6 +57,7 @@
     "next": "16.3.8",
     "next-themes": "^0.3.0",
     "pdfjs-dist": "^5.7.284",
+    "pyodide": "^0.28.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-phone-number-input": "^3.4.18",
