@@ -5,23 +5,27 @@ import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Target, Trophy, Clock, CheckCircle2, ChevronRight, BrainCircuit, AlertCircle, Loader2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import useSWR, { mutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 import { QuizReview } from '@/components/dashboard/CourseBoard';
 import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
-import { getPack } from '@/lib/offline-packs';
+import { getPack, type PackQuiz } from '@/lib/offline-packs';
 import { TabPill } from '@/components/ui/Glide';
 
+interface QuizSummary { id: string; title: string; status: string; completed: boolean; score?: number | null; dueDate?: string | null; timeLimit?: number | null; courseId: string; course: { name: string }; _count?: { questions: number } }
+/** A quiz being taken: its questions (from the server, or the copy saved for offline use). */
+type FullQuiz = PackQuiz & { course?: { name: string } | null };
+
 export default function QuizzesPage() {
-  const { data: quizzes = [], error, isLoading } = useSWR('/quizzes/student/my-quizzes', fetcher);
+  const { data: quizzes = [], error, isLoading } = useSWR<QuizSummary[]>('/quizzes/student/my-quizzes', fetcher);
 
-  const activeQuizzesList = quizzes.filter((q: any) => !q.completed && q.status === 'PUBLISHED');
-  const completedQuizzesList = quizzes.filter((q: any) => q.completed);
+  const activeQuizzesList = quizzes.filter((q) => !q.completed && q.status === 'PUBLISHED');
+  const completedQuizzesList = quizzes.filter((q) => q.completed);
 
-  const [activeQuiz, setActiveQuiz] = useState<any>(null);
+  const [activeQuiz, setActiveQuiz] = useState<FullQuiz | null>(null);
   const [currentQ, setCurrentQ] = useState(0);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -34,22 +38,25 @@ export default function QuizzesPage() {
   const [showAllResults, setShowAllResults] = useState(false);
   const [loadingQuizId, setLoadingQuizId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [endsAt, setEndsAt] = useState(0); // when the time limit runs out (ms)
 
-  const startQuiz = async (quizSummary: any) => {
+  const startQuiz = async (quizSummary: QuizSummary) => {
     setLoadingQuizId(quizSummary.id);
     try {
       // Offline (upgrade 4): open the copy saved with the course in Courses → Offline, if there is one.
-      const fullQuiz = await api.get(`/quizzes/${quizSummary.id}`).then((r) => r.data).catch(async (e) => {
+      const fullQuiz: FullQuiz = await api.get<FullQuiz>(`/quizzes/${quizSummary.id}`).then((r) => r.data).catch(async (e) => {
         const saved = isOfflineError(e) ? (await getPack(quizSummary.courseId).catch(() => null))?.quizzes?.find((q) => q.id === quizSummary.id) : null;
         if (!saved) throw e;
         return saved;
       });
-      setStartedAt(new Date().toISOString());
+      const started = new Date();
+      setStartedAt(started.toISOString());
       setActiveQuiz(fullQuiz);
       setCurrentQ(0);
       setSelected(null);
       setAnswers({});
       setTimeLeft((fullQuiz.timeLimit || 30) * 60);
+      setEndsAt(started.getTime() + (fullQuiz.timeLimit || 30) * 60_000);
       setSubmitted(false);
       setShowResults(false);
       setConfirming(false);
@@ -60,7 +67,7 @@ export default function QuizzesPage() {
     }
   };
 
-  const submitQuiz = useCallback(async () => {
+  const submitQuiz = async () => {
     if (!activeQuiz) return;
     const finalAnswers = { ...answers };
     if (selected !== null) {
@@ -88,16 +95,24 @@ export default function QuizzesPage() {
       setActiveQuiz(null);
       toast.success('You’re offline: your answers are saved on this device and sent when you’re back online.');
     }
-  }, [activeQuiz, answers, currentQ, selected, startedAt]);
+  };
 
+  // The countdown runs against the clock (a background tab's timers can be slowed down), and
+  // submits by itself when time is up.
+  const submitRef = useRef(submitQuiz);
+  useEffect(() => { submitRef.current = submitQuiz; });
   useEffect(() => {
     if (!activeQuiz || submitted) return;
-    if (timeLeft <= 0) { submitQuiz(); return; }
-    const timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
+    const timer = setInterval(() => {
+      const left = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+      setTimeLeft(left);
+      if (left === 0) { clearInterval(timer); void submitRef.current(); }
+    }, 1000);
     return () => clearInterval(timer);
-  }, [activeQuiz, submitted, timeLeft, submitQuiz]);
+  }, [activeQuiz, submitted, endsAt]);
 
   const nextQuestion = () => {
+    if (!activeQuiz) return;
     if (selected !== null) {
       setAnswers(prev => ({
         ...prev,
@@ -122,7 +137,7 @@ export default function QuizzesPage() {
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   const avgScore = completedQuizzesList.length > 0 
-    ? Math.round(completedQuizzesList.reduce((acc: number, q: any) => acc + (q.score || 0), 0) / completedQuizzesList.length)
+    ? Math.round(completedQuizzesList.reduce((acc, q) => acc + (q.score || 0), 0) / completedQuizzesList.length)
     : 0;
 
   return (
@@ -150,7 +165,7 @@ export default function QuizzesPage() {
                 <div className="text-zinc-500 text-sm">No active quizzes right now.</div>
               ) : (
                 <div className="space-y-4">
-                  {activeQuizzesList.map((quiz: any, i: number) => (
+                  {activeQuizzesList.map((quiz, i) => (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                       key={quiz.id}
@@ -197,7 +212,7 @@ export default function QuizzesPage() {
                 <div className="text-zinc-500 text-sm">No completed quizzes yet.</div>
               ) : (
                 <div className="card space-y-2">
-                  {(showAllResults ? completedQuizzesList : completedQuizzesList.slice(0, 3)).map((quiz: any, i: number) => (
+                  {(showAllResults ? completedQuizzesList : completedQuizzesList.slice(0, 3)).map((quiz, i) => (
                     <motion.div
                       initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                       key={quiz.id}

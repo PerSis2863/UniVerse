@@ -31,15 +31,19 @@ const getLevelValue = (level: string) => {
   return 30; // BEGINNER
 };
 
+interface Skill { id: string; name: string; category?: string | null; level?: string | null }
+interface Credential { title: string; status: string; organization?: string | null; issuedAt?: string | null }
+interface ImpactStats { sdgBadges?: { num: number; partner?: string }[]; levelInfo?: { current?: { level: number; title: string } } }
+
 export default function StudentSkills() {
   // Real achievements: issued credentials and SDG badges from accepted NGO projects.
-  const { data: credentials } = useSWR<any[]>('/impact/blockchain-credentials', fetcher);
-  const { data: impactStats } = useSWR<any>('/impact/dashboard/stats', fetcher);
+  const { data: credentials } = useSWR<Credential[]>('/impact/blockchain-credentials', fetcher);
+  const { data: impactStats } = useSWR<ImpactStats>('/impact/dashboard/stats', fetcher);
   const achievements = (Array.isArray(credentials) ? credentials : [])
     .filter((c) => c.status === 'ISSUED')
     .map((c) => ({ title: c.title, date: [c.organization, c.issuedAt && new Date(c.issuedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })].filter(Boolean).join(' · '), icon: Award, color: 'text-yellow-500', bg: 'bg-yellow-500/10' }));
-  const impactBadges = (impactStats?.sdgBadges ?? []).map((b: any) => ({ title: `SDG ${b.num}`, date: b.partner, icon: Target, color: 'text-emerald-500', bg: 'bg-emerald-500/10' }));
-  const { data: mySkills, isLoading, mutate: refreshSkills } = useSWR('/skills/my', fetcher);
+  const impactBadges = (impactStats?.sdgBadges ?? []).map((b) => ({ title: `SDG ${b.num}`, date: b.partner, icon: Target, color: 'text-emerald-500', bg: 'bg-emerald-500/10' }));
+  const { data: mySkills, isLoading, mutate: refreshSkills } = useSWR<Skill[]>('/skills/my', fetcher);
   const level = impactStats?.levelInfo?.current;
   const [editor, setEditor] = useState<{ id?: string; name: string; category: string; level: string } | null>(null);
   const [savingSkill, setSavingSkill] = useState(false);
@@ -57,10 +61,10 @@ export default function StudentSkills() {
     if (!editor?.id || !(await confirmDialog({ title: `Remove ${editor.name}?`, message: 'It will disappear from your profile.', confirmLabel: 'Remove', destructive: true }))) return;
     try { await api.delete(`/skills/${editor.id}`); toast.success('Skill removed'); setEditor(null); refreshSkills(); } catch { toast.error('Could not remove the skill.'); }
   };
-  const openSkill = (skill: any) => setEditor({ id: skill.id, name: skill.name, category: skill.category || 'Technical', level: skill.level || 'BEGINNER' });
+  const openSkill = (skill: Skill) => setEditor({ id: skill.id, name: skill.name, category: skill.category || 'Technical', level: skill.level || 'BEGINNER' });
 
-  const technicalSkills = (mySkills || []).filter((s: any) => s.category?.toLowerCase() === 'technical' || !s.category?.toLowerCase().includes('soft'));
-  const softSkills = (mySkills || []).filter((s: any) => s.category?.toLowerCase() === 'soft skill' || s.category?.toLowerCase().includes('soft'));
+  const technicalSkills = (mySkills || []).filter((s) => s.category?.toLowerCase() === 'technical' || !s.category?.toLowerCase().includes('soft'));
+  const softSkills = (mySkills || []).filter((s) => s.category?.toLowerCase() === 'soft skill' || s.category?.toLowerCase().includes('soft'));
 
   const getLevelColor = (level: number) => {
     if (level >= 90) return 'bg-emerald-500';
@@ -129,7 +133,7 @@ export default function StudentSkills() {
                   <div className="text-center py-8 text-zinc-500">Loading skills...</div>
                 ) : technicalSkills.length === 0 ? (
                   <div className="text-center py-8 text-zinc-500">No technical skills added yet.</div>
-                ) : technicalSkills.map((skill: any, i: number) => {
+                ) : technicalSkills.map((skill, i) => {
                   const Icon = getSkillIcon(skill.name, skill.category);
                   const levelVal = getLevelValue(skill.level);
                   return (
@@ -165,7 +169,7 @@ export default function StudentSkills() {
                     <div className="text-center py-8 text-zinc-500">Loading soft skills...</div>
                   ) : softSkills.length === 0 ? (
                     <div className="text-center py-8 text-zinc-500">No soft skills added yet.</div>
-                  ) : softSkills.map((skill: any, i: number) => {
+                  ) : softSkills.map((skill, i) => {
                     const Icon = getSkillIcon(skill.name, skill.category);
                     const levelVal = getLevelValue(skill.level);
                     return (
@@ -198,7 +202,7 @@ export default function StudentSkills() {
                 </h3>
                 <div className="grid gap-4">
                   {achievements.length === 0 && <p className="text-sm text-zinc-500">Verified credentials you earn appear here. <Link href="/student/credentials" className="text-indigo-500 font-semibold">Request one</Link></p>}
-                  {achievements.map((item: any, i: number) => (
+                  {achievements.map((item, i) => (
                     <div key={i} className="flex items-center gap-4 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/50">
                       <div className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center flex-shrink-0 border border-white/5`}>
                         <item.icon className={`w-6 h-6 ${item.color}`} />
@@ -219,7 +223,7 @@ export default function StudentSkills() {
                 </h3>
                 <div className="grid gap-4">
                   {impactBadges.length === 0 && <p className="text-sm text-zinc-500">Complete an NGO project linked to a UN SDG to earn your first badge.</p>}
-                  {impactBadges.map((item: any, i: number) => (
+                  {impactBadges.map((item, i) => (
                     <div key={i} className="flex items-center gap-4 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/50">
                       <div className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center flex-shrink-0 border border-white/5`}>
                         <item.icon className={`w-6 h-6 ${item.color}`} />
