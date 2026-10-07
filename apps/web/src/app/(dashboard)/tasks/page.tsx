@@ -117,7 +117,7 @@ export default function TasksPage() {
                       <Link key={b.id} href={`/tasks/${b.id}`} className={`panel lift p-4 flex items-center gap-3 hover:border-indigo-400/50`}>
                         <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0"><KanbanSquare className="w-5 h-5" /></span>
                         <span className="flex-1 min-w-0">
-                          <span className="block font-medium text-zinc-900 dark:text-white truncate">{b.title}</span>
+                          <span data-shared={`task-board:${b.id}`} className="block font-medium text-zinc-900 dark:text-white truncate">{b.title}</span>
                           <span className="block text-xs text-zinc-500 truncate">{b.course ? `${b.course} · ` : b.mine ? '' : 'Shared with you · '}{b.tasks} card{b.tasks === 1 ? '' : 's'}</span>
                         </span>
                         <ChevronRight className="w-4 h-4 text-zinc-400" />

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { setPendingNav } from '@/lib/nav-pending';
 import { motionFor, startPageTransition } from '@/lib/page-transition';
+import { rememberShared } from '@/lib/shared-element';
 
 /**
  * A slim bar at the top of the screen while a page is opening, so every tap on a link gets
@@ -29,7 +30,7 @@ export function NavProgress() {
       // iOS (sections rise in, deeper pages slide in from the right, going up from the left): see
       // nav-pending and PendingPage.
       if (url.pathname !== location.pathname) {
-        startPageTransition(motionFor(location.pathname, url.pathname, a.dataset.vt));
+        startPageTransition(rememberShared(a) ? 'shared' : motionFor(location.pathname, url.pathname, a.dataset.vt));
         setPendingNav(url.pathname);
       }
     };

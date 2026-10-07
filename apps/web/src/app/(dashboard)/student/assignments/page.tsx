@@ -60,7 +60,7 @@ export default function StudentAssignmentsPage() {
                     <Link key={a.id} href={`/student/assignments/${a.id}`} className={`panel lift p-4 flex items-center gap-4 hover:border-indigo-400/50`}>
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-300">{a.course.code}</p>
-                        <h3 className="font-semibold text-zinc-900 dark:text-white truncate">{a.title}</h3>
+                        <h3 data-shared={`assignment:${a.id}`} className="font-semibold text-zinc-900 dark:text-white truncate">{a.title}</h3>
                         {a.dueDate && <p className="text-xs text-zinc-500 mt-0.5">Due {new Date(a.dueDate).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
                       </div>
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${s.style}`}>{s.label}</span>

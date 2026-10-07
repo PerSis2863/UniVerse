@@ -66,7 +66,7 @@ export default function DocsPage() {
                 <Link key={d.id} href={`/docs/${d.id}`} className={`panel lift p-4 flex gap-3 hover:border-indigo-400/50`}>
                   <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></span>
                   <span className="flex-1 min-w-0">
-                    <span className="block font-medium text-zinc-900 dark:text-white truncate">{d.title}</span>
+                    <span data-shared={`doc:${d.id}`} className="block font-medium text-zinc-900 dark:text-white truncate">{d.title}</span>
                     <span className="block text-xs text-zinc-500 truncate">{d.course ? `${d.course} · ` : d.mine ? '' : 'Shared with you · '}{new Date(d.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
                     {d.preview && <span className="block text-xs text-zinc-400 line-clamp-2 mt-1">{d.preview}</span>}
                   </span>

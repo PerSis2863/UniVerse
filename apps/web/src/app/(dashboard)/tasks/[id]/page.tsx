@@ -97,7 +97,7 @@ export default function TaskBoardPage({ params }: { params: Promise<{ id: string
 
   return (
     <>
-      <Topbar title={data.title} subtitle={data.course ? `${data.course.code} · everyone in ${data.course.name}` : 'Task board'} />
+      <Topbar title={data.title} sharedId={`task-board:${id}`} subtitle={data.course ? `${data.course.code} · everyone in ${data.course.name}` : 'Task board'} />
       <div className="px-4 md:px-8 pt-3 flex flex-wrap items-center gap-2">
         <Link href="/tasks" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-indigo-500"><ArrowLeft className="w-4 h-4" />Tasks</Link>
         <span className="flex-1" />

@@ -85,7 +85,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
       <header className="px-3 sm:px-6 pt-3 pb-2 flex items-center gap-2 border-b border-zinc-200/70 dark:border-white/[0.06]">
         <Link href={data.chat ? `${inboxPath}?c=${data.chat.id}` : '/docs'} aria-label={data.chat ? `Back to ${data.chat.name}` : 'Docs'} className="p-2 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-4 h-4" /></Link>
         <div className="flex-1 min-w-0">
-          <input value={shownTitle} readOnly={!data.canEdit} maxLength={120} onChange={(e) => setTitle(e.target.value)} onBlur={() => void saveTitle()} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          <input data-shared={`doc:${id}`} value={shownTitle} readOnly={!data.canEdit} maxLength={120} onChange={(e) => setTitle(e.target.value)} onBlur={() => void saveTitle()} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             aria-label="Title" className="w-full bg-transparent text-lg font-bold text-zinc-900 dark:text-white outline-none truncate" />
           <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
             <span className={cn('w-1.5 h-1.5 rounded-full', status.s === 'live' ? 'bg-emerald-500' : status.s === 'connecting' ? 'bg-amber-400 animate-pulse' : 'bg-zinc-400')} />

@@ -91,7 +91,7 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
 
   return (
     <>
-      <Topbar title={data.name} subtitle={[data.ngo.name, data.location].filter(Boolean).join(' · ')} />
+      <Topbar title={data.name} sharedId={`impact-room:${id}`} subtitle={[data.ngo.name, data.location].filter(Boolean).join(' · ')} />
       <SectionTabs tabs={impactTabs(role)} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-4">

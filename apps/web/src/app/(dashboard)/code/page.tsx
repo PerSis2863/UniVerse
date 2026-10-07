@@ -87,7 +87,7 @@ export default function CodeRoomsPage() {
                   <Link key={r.id} href={`/code/${r.id}`} className={`panel lift p-4 flex items-center gap-3 hover:border-indigo-400/50`}>
                     <Code2 className="w-5 h-5 text-indigo-500 shrink-0" />
                     <span className="flex-1 min-w-0">
-                      <span className="block font-medium text-zinc-900 dark:text-white truncate">{r.title}</span>
+                      <span data-shared={`code-room:${r.id}`} className="block font-medium text-zinc-900 dark:text-white truncate">{r.title}</span>
                       <span className="block text-xs text-zinc-500">{LANG_LABEL[r.language] ?? r.language}{r.createdBy ? ` · by ${r.createdBy.name}` : ''} · {new Date(r.updatedAt).toLocaleDateString()}</span>
                     </span>
                     {r.locked && <Lock className="w-4 h-4 text-zinc-400" aria-label="Locked: only the teacher edits" />}

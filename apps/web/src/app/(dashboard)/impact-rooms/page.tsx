@@ -50,7 +50,7 @@ export default function ImpactRoomsPage() {
                           {r.ngo.logoUrl ? <img src={r.ngo.logoUrl} alt="" className="w-full h-full object-cover" /> : <HandHeart className="w-5 h-5" />}
                         </span>
                         <span className="flex-1 min-w-0">
-                          <span className="block font-semibold text-zinc-900 dark:text-white truncate">{r.name}</span>
+                          <span data-shared={`impact-room:${r.id}`} className="block font-semibold text-zinc-900 dark:text-white truncate">{r.name}</span>
                           <span className="flex items-center gap-1 text-xs text-zinc-500 truncate">{r.ngo.name}{r.ngo.isVerified && <BadgeCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}{r.location && <><MapPin className="w-3 h-3 ml-1 shrink-0" />{r.location}</>}</span>
                         </span>
                         {r.following && <span className="text-[10px] font-bold uppercase rounded-full px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">{ROLE_LABEL[r.following] ?? 'Following'}</span>}
