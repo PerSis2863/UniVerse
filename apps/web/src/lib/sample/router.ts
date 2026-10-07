@@ -303,6 +303,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/impact\/startups$/, ({ db: d }) => ok(d.startups)],
   [/^\/impact\/summits$/, ({ db: d }) => ok(d.summits)],
   [/^\/consents\/my$/, () => ok([])],
+  [/^\/medical\/my$/, () => ok(null)],
+  [/^\/electives\/(available|my|major-requests)$/, () => ok([])],
   [/^\/impact\/summits\/my-registrations$/, ({ db: d }) => ok(d.summitRegs.map((id) => ({ id: `reg-${id}`, summitId: id, userId: d.me.id, registeredAt: at(-2), summit: d.summits.find((s) => s.id === id) })))],
   [/^\/impact\/blockchain-credentials$/, ({ db: d }) => ok(d.credentials)],
 

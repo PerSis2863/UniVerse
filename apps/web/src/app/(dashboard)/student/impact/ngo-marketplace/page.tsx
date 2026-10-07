@@ -9,37 +9,29 @@ import { Globe, Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin,
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
 import { TabPill } from '@/components/ui/Glide';
+
+interface NgoProject {
+  id: string; name: string; description: string; type?: string | null; location?: string | null; duration?: string | null;
+  openings: number; impactPoints: number; skillsRequired?: string[] | null; sdgNumber?: number | null; ngo?: { name: string } | null;
+}
 
 export default function NGOMarketplacePage() {
   const [search, setSearch] = useState('');
   useInitialSearch(setSearch);
   const [selectedType, setSelectedType] = useState('ALL');
-  const [selected, setSelected] = useState<any | null>(null);
+  const [selected, setSelected] = useState<NgoProject | null>(null);
   const [applied, setApplied] = useState<string[]>([]);
   const { t } = useLanguageStore();
 
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: projectsData, isLoading: loading } = useSWR<NgoProject[]>('/impact/ngo-projects', fetcher, {
+    onError: () => toast.error('Failed to load projects'),
+  });
+  const projects = projectsData ?? [];
   const [applying, setApplying] = useState(false);
-
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  const fetchProjects = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/impact/ngo-projects');
-      setProjects(res.data);
-    } catch (error) {
-      console.error('Failed to fetch NGO projects:', error);
-      toast.error('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const types = ['ALL', 'Volunteer', 'Internship', 'Field Work'];
   const filtered = projects.filter(p => {
@@ -49,7 +41,7 @@ export default function NGOMarketplacePage() {
     return matchSearch && matchType;
   });
 
-  const handleApply = async (p: any) => {
+  const handleApply = async (p: NgoProject) => {
     setApplying(true);
     try {
       await api.post(`/impact/ngo-projects/${p.id}/apply`, {
@@ -138,7 +130,7 @@ export default function NGOMarketplacePage() {
                             <div className="text-xs text-zinc-500 font-medium">{project.ngo?.name || 'Partner NGO'}</div>
                           </div>
                         </div>
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>SDG {project.sdg || 4}</span>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>SDG {project.sdgNumber || 4}</span>
                       </div>
                       
                       <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{project.description}</p>
@@ -187,7 +179,7 @@ export default function NGOMarketplacePage() {
               <button onClick={() => setSelected(null)} className="absolute top-4 right-4 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
               
               <div className="mb-6">
-                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border mb-3 inline-block bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>SDG {selected.sdg || 4}</span>
+                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border mb-3 inline-block bg-emerald-500/20 text-emerald-400 border-emerald-500/30")}>SDG {selected.sdgNumber || 4}</span>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">{selected.name}</h2>
                 <p className="text-sm font-medium text-zinc-500">{selected.ngo?.name || 'Partner NGO'}</p>
               </div>
