@@ -10,9 +10,11 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 
+interface Post { id: string; title?: string | null; content?: string | null; body?: string | null; createdAt?: string | null; author?: { name: string } | null }
+
 export default function StudentCommunity() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: posts, isLoading, mutate } = useSWR('/announcements', fetcher);
+  const { data: posts, isLoading, mutate } = useSWR<Post[]>('/announcements', fetcher);
   const role = useAuthStore((st) => st.user?.role);
   const canPost = role === 'TEACHER' || role === 'ADMIN';
   const [draftTitle, setDraftTitle] = useState('');
@@ -45,7 +47,7 @@ export default function StudentCommunity() {
     .slice(0, 3)
     .map(([name, n], i) => ({ name, posts: n, color: COLORS[i] }));
 
-  const filteredPosts = (posts || []).filter((p: any) => p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || p.content?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredPosts = (posts || []).filter((p) => p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || p.content?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <>
@@ -83,7 +85,7 @@ export default function StudentCommunity() {
                 <div className="text-center py-8 text-zinc-500">Loading posts...</div>
               ) : filteredPosts.length === 0 ? (
                 <div className="text-center py-8 text-zinc-500">No posts found.</div>
-              ) : filteredPosts.map((post: any) => (
+              ) : filteredPosts.map((post) => (
                 <div key={post.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors">
                   
                   {/* Author Row */}

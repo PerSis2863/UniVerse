@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
@@ -159,34 +161,17 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
 }
 
 export default function AIMatchPage() {
-  const [matches, setMatches] = useState<MatchedProject[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-
-  const fetchMatches = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true); else setLoading(true);
-    try {
-      const res = await api.get('/impact/ai-match');
-      setMatches(res.data?.length ? res.data.map((m: any, i: number) => ({
-        rank: i + 1,
-        score: m.score || 80,
-        matchPercentage: m.matchPercentage || 80,
-        matchReasons: m.matchReasons || ['Recommended for you'],
-        skillMatches: m.skillMatches || [],
-        project: m.project,
-      })) : []);
-      setLoadError(false);
-    } catch {
-      setMatches([]);
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => { fetchMatches(); }, []);
+  const { data, isLoading: loading, isValidating, error, mutate } = useSWR<Partial<MatchedProject>[]>('/impact/ai-match', fetcher);
+  const matches: MatchedProject[] = (data ?? []).map((m, i) => ({
+    rank: i + 1,
+    score: m.score || 80,
+    matchPercentage: m.matchPercentage || 80,
+    matchReasons: m.matchReasons || ['Recommended for you'],
+    skillMatches: m.skillMatches || [],
+    project: m.project as MatchedProject['project'],
+  }));
+  const loadError = !!error;
+  const refreshing = isValidating && !loading;
 
   return (
     <>
@@ -213,7 +198,7 @@ export default function AIMatchPage() {
                   ))}
                 </div>
               </div>
-              <button onClick={() => fetchMatches(true)} disabled={refreshing}
+              <button onClick={() => void mutate()} disabled={refreshing}
                 className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all flex-shrink-0">
                 <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
               </button>

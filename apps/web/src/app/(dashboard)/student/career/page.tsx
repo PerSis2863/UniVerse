@@ -1,16 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { Briefcase, Calendar, MapPin, Building, ChevronRight, Loader2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Image from 'next/image';
 
+interface Opportunity { id: string; title: string; company: string; logo: string; type: string; location: string; deadline: string }
+interface CareerEvent { id: string; title: string; date: string; location?: string | null }
+
 export default function CareerPage() {
-  const [opportunities, setOpportunities] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const opps = useSWR<Opportunity[]>('/career/opportunities', fetcher);
+  const evts = useSWR<CareerEvent[]>('/career/events', fetcher);
+  const opportunities = opps.data ?? [];
+  const events = evts.data ?? [];
+  const loading = opps.isLoading || evts.isLoading;
   const router = useRouter();
   // Bookmarked opportunities, kept on this device.
   const [saved, setSaved] = useState<string[]>(() => {
@@ -31,23 +37,6 @@ export default function CareerPage() {
       return next;
     });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [opps, evts] = await Promise.all([
-          api.get('/career/opportunities'),
-          api.get('/career/events')
-        ]);
-        setOpportunities(opps.data);
-        setEvents(evts.data);
-      } catch (error) {
-        console.error('Failed to fetch career data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
 
   return (
     <>

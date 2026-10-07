@@ -1,34 +1,29 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   Award, HeartHandshake, Globe2, Sparkles, Download, CheckCircle2,
   Clock, TrendingUp, ShieldCheck, FileCheck, ExternalLink, Share2, Loader2
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
-import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { useRouter } from 'next/navigation';
+
+/** An impact level (see the levels table on the server). */
+interface Level { level: number; title: string; minXP: number; color: string; emoji: string }
+interface ImpactStats {
+  userName?: string; totalPoints?: number; completedNGOs?: number;
+  levelInfo?: { current?: Level; next?: Level; progress?: number; xp?: number };
+  sdgBadges?: { num: number; name: string; color: string; partner?: string; hours?: number; status?: string }[];
+  activities?: { title: string; ngo?: string; hours?: number; date: string }[];
+}
 
 export default function MySocialImpactPage() {
   const router = useRouter();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await api.get('/impact/dashboard/stats');
-        setData(res.data);
-      } catch (err) {
-        console.error('Failed to fetch dashboard stats', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+  const { data, isLoading: loading } = useSWR<ImpactStats>('/impact/dashboard/stats', fetcher);
 
   const level = data?.levelInfo;
   const stats = data ? [
@@ -142,7 +137,7 @@ export default function MySocialImpactPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {sdgBadges.length === 0 && <p className="col-span-full text-sm text-zinc-500">No SDG badges yet. They appear when an NGO accepts your project application.</p>}
-              {sdgBadges.map((badge: any, idx: number) => (
+              {sdgBadges.map((badge, idx) => (
                 <div
                   key={idx}
                   className="bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800/80 rounded-xl p-4 text-center space-y-3 relative overflow-hidden group hover:border-indigo-500/40 transition-colors"
@@ -176,7 +171,7 @@ export default function MySocialImpactPage() {
 
             <div className="divide-y divide-zinc-800/60">
               {impactActivities.length === 0 && <p className="p-6 text-sm text-zinc-500">No impact points yet.</p>}
-              {impactActivities.map((act: any, i: number) => (
+              {impactActivities.map((act, i) => (
                 <div key={i} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">

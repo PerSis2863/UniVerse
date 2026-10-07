@@ -13,19 +13,21 @@ import { fetcher } from '@/lib/fetcher';
 import { RequestAssociationModal } from './RequestAssociationModal';
 import { TabPill } from '@/components/ui/Glide';
 
+interface Club { id: string; name: string; description: string; category: string; status: string; members?: number; _count?: { memberships?: number } }
+
 export default function AssociationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
-  const { data: associationsData, isLoading, mutate } = useSWR('/associations', fetcher);
-  const { data: myMemberships, mutate: mutateMemberships } = useSWR('/associations/my-memberships', fetcher);
+  const { data: associationsData, isLoading, mutate } = useSWR<Club[]>('/associations', fetcher);
+  const { data: myMemberships, mutate: mutateMemberships } = useSWR<{ associationId: string; role: string; association?: { communityId?: string | null } }[]>('/associations/my-memberships', fetcher);
 
   const associations = associationsData || [];
-  const membershipsSet = new Set(myMemberships?.map((m: any) => m.associationId) || []);
+  const membershipsSet = new Set(myMemberships?.map((m) => m.associationId) || []);
   // A club's own space (upgrade 7): a Community with its members, made by the founder.
   const router = useRouter();
   const [making, setMaking] = useState<string | null>(null);
-  const mine = (id: string) => (myMemberships as { associationId: string; role: string; association?: { communityId?: string | null } }[] | undefined)?.find((m) => m.associationId === id);
+  const mine = (id: string) => myMemberships?.find((m) => m.associationId === id);
   const clubSpace = async (id: string) => {
     setMaking(id);
     try {
@@ -36,7 +38,7 @@ export default function AssociationsPage() {
     } catch (e) { toast.error((e as Error).message); } finally { setMaking(null); }
   };
 
-  const filteredAssociations = associations.filter((club: any) => {
+  const filteredAssociations = associations.filter((club) => {
     const matchesSearch = club.name.toLowerCase().includes(searchQuery.toLowerCase()) || club.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === 'All' || club.category === activeCategory;
     return matchesSearch && matchesCategory;
@@ -117,7 +119,7 @@ export default function AssociationsPage() {
             <div className="py-12 text-center text-zinc-500">Loading associations...</div>
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-4">
-            {filteredAssociations.map((club: any, i: number) => (
+            {filteredAssociations.map((club, i) => (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

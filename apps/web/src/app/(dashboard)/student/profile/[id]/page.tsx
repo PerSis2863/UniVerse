@@ -3,9 +3,10 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { usePathname, useRouter } from 'next/navigation';
 import { Mail, Book, MapPin, Building2, Download, ExternalLink, FileText } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { authedJson } from '@/lib/authed-fetch';
 
 type Resource = {
@@ -25,38 +26,21 @@ export default function StudentProfile() {
   const id = pathname.split('/').pop() || 'Unknown User';
   const userName = decodeURIComponent(id);
 
-  const [sharedResources, setSharedResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchSharedResources = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get('/knowledge-hub/public');
-        
-        // Filter by the author name. (In a real app, this would be done on the backend by ID)
-        const userResources = res.data.filter((r: any) => r.author?.name === userName);
-        
-        const mapped = userResources.map((r: any) => ({
-          id: r.id,
-          title: r.title,
-          type: r.url ? 'Link' : 'Document',
-          category: r.category || 'General',
-          url: r.url || r.fileUrl,
-          date: new Date(r.createdAt).toISOString().split('T')[0],
-        }));
-        
-        setSharedResources(mapped);
-      } catch (error) {
-        console.error('Failed to load shared resources', error);
-        toast.error('Failed to load shared resources');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSharedResources();
-  }, [userName]);
+  // Public resources this person shared (matched by author name until the API filters by id).
+  type PublicResource = { id: string; title: string; url?: string | null; fileUrl?: string | null; category?: string | null; createdAt: string; author?: { name: string } | null };
+  const { data: publicResources, isLoading: loading } = useSWR<PublicResource[]>('/knowledge-hub/public', fetcher, {
+    onError: () => toast.error('Failed to load shared resources'),
+  });
+  const sharedResources: Resource[] = (publicResources ?? [])
+    .filter((r) => r.author?.name === userName)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      type: r.url ? 'Link' : 'Document',
+      category: r.category || 'General',
+      url: r.url || r.fileUrl || undefined,
+      date: new Date(r.createdAt).toISOString().split('T')[0],
+    }));
 
   const handleDownload = (resource: Resource) => {
     if (resource.type === 'Link' && resource.url) {
