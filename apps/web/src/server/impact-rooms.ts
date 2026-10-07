@@ -5,6 +5,7 @@ import { later, notifyMany } from './email';
 import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { featureOff } from './moderation';
+import { notifyMentioned } from './mentions';
 import { publish } from './realtime';
 import { CredentialSigner, publicAppUrl } from './services/credential-signer';
 
@@ -199,6 +200,8 @@ export async function postUpdate(id: string, user: SessionUser, b: Record<string
   }
   const update = await prisma.impactUpdate.create({ data: { projectId: id, authorId: user.id, body, isPublic: staff && b.public === true }, select: { id: true } });
   await refresh(id, [user.id]);
+  // @mentions (3.9): followers named in the post hear about it.
+  await notifyMentioned(body, await followers(id), user, { title: p.name, link: `/impact-rooms/${id}` });
   // News from the people running the room reaches its followers (in the app only).
   if (staff) {
     const ids = (await followers(id)).filter((u) => u !== user.id);

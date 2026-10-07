@@ -7,6 +7,7 @@ import { publish } from './realtime';
 import { notify } from './email';
 import { groupAccess, groupPeople } from './spaces';
 import { channelSendCheck } from './communities';
+import { notifyMentioned } from './mentions';
 import { indexDoc, indexLater } from './semester';
 
 // Documents (Stage 4 · 3.2). The text is written together live: a Yjs document kept by the same
@@ -218,8 +219,11 @@ export async function addDocComment(docId: string, user: SessionUser, body: Reco
   const text = clean(body.body, 2000);
   if (!text) throw new BadRequestException('Write something first.');
   const c = await prisma.docComment.create({ data: { docId, userId: user.id, body: text, quote: clean(body.quote, 500) || null } });
-  if (doc.ownerId !== user.id) void notify(doc.ownerId, { title: `${user.name} commented on ${doc.title}`, body: text.slice(0, 160), link: `/docs/${docId}`, type: 'info', email: false });
-  publish(await audience(doc), { type: 'refresh', keys: [`/api/docs/${docId}/comments`] });
+  const people = await audience(doc);
+  // @mentions (3.9) notify whoever is named; the owner hears about other comments as before.
+  const pinged = await notifyMentioned(text, people, user, { title: doc.title, link: `/docs/${docId}` });
+  if (doc.ownerId !== user.id && !pinged.includes(doc.ownerId)) void notify(doc.ownerId, { title: `${user.name} commented on ${doc.title}`, body: text.slice(0, 160), link: `/docs/${docId}`, type: 'info', email: false });
+  publish(people, { type: 'refresh', keys: [`/api/docs/${docId}/comments`] });
   return c;
 }
 

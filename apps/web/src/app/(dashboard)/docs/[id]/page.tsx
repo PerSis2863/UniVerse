@@ -201,7 +201,7 @@ function Comments({ docId, editor, me, canEdit, onClose }: { docId: string; edit
           <button type="button" onClick={pickSelection} className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1"><MessageSquarePlus className="w-3.5 h-3.5" />About the text I selected</button>
         )}
         <div className="flex gap-2">
-          <input value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} placeholder="Write a comment" className={field} />
+          <input value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} placeholder="Write a comment (@name to notify someone)" className={field} />
           <button type="submit" aria-label="Send" className="w-10 shrink-0 rounded-xl btn-primary flex items-center justify-center"><Send className="w-4 h-4" /></button>
         </div>
       </form>

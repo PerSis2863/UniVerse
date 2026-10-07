@@ -139,7 +139,7 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
               </div>
               {data.canPost ? (
                 <div className={`${card} p-3`}>
-                  <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={2000} placeholder={data.staff ? 'Share news from the project…' : 'Share how it went, ask a question, offer help…'} aria-label="New post" className={`${input} resize-none`} />
+                  <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={2000} placeholder={data.staff ? 'Share news from the project… (@name to notify a follower)' : 'Share how it went, ask a question, offer help… (@name to notify someone)'} aria-label="New post" className={`${input} resize-none`} />
                   <div className="mt-2 flex items-center gap-3">
                     {data.staff && (
                       <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">

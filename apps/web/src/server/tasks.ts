@@ -5,6 +5,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from './ht
 import { publish } from './realtime';
 import { notify } from './email';
 import { groupAccess, groupPeople } from './spaces';
+import { notifyMentioned } from './mentions';
 
 // Task boards (Stage 4 · 3.3): Kanban lists of cards with an assignee, a due date, a checklist,
 // notes and comments. A board is yours and whoever you add (editors or viewers), or a course's:
@@ -269,10 +270,13 @@ export async function addComment(taskId: string, user: SessionUser, body: Record
   const text = clean(body.body, MAX_COMMENT);
   if (!text) throw new BadRequestException('Write something first.');
   const c = await prisma.taskComment.create({ data: { taskId, userId: user.id, body: text } });
-  if (task.assigneeId && task.assigneeId !== user.id) {
+  const people = await audience(board);
+  // @mentions (3.9) notify whoever is named; the assignee hears about other comments as before.
+  const pinged = await notifyMentioned(text, people, user, { title: task.title, link: `/tasks/${task.boardId}?task=${taskId}` });
+  if (task.assigneeId && task.assigneeId !== user.id && !pinged.includes(task.assigneeId)) {
     void notify(task.assigneeId, { title: `${user.name} commented on your task`, body: `${task.title}: ${text.slice(0, 140)}`, link: `/tasks/${task.boardId}?task=${taskId}`, type: 'info', email: false });
   }
-  publish(await audience(board), { type: 'refresh', keys: [`/api/tasks/items/${taskId}/comments`, `/api/tasks/${task.boardId}`] });
+  publish(people, { type: 'refresh', keys: [`/api/tasks/items/${taskId}/comments`, `/api/tasks/${task.boardId}`] });
   return c;
 }
 
