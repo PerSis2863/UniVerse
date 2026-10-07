@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
 import { ImageViewer } from './ImageViewer';
+import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
@@ -41,6 +42,7 @@ function byDay<T extends { createdAt: string }>(list: T[]) {
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const router = useRouter();
+  const locked = useChatLocked(conversationId);
   const key = `/api/chat/conversations/${conversationId}/messages`;
   // Live updates refresh the thread on every change, so it only polls without them.
   const refreshInterval = useLiveInterval(5000, 0);
@@ -526,6 +528,17 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     );
   }
   if (isLoading || !convo) return <div className="flex-1 min-w-0"><ContentSkeleton variant="chat" /></div>;
+  // A locked chat (1.10): nothing of it shows until Face ID / fingerprint / PIN on this device.
+  if (locked) {
+    return (
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+        <div className="flex items-center gap-2 px-3 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06] md:hidden">
+          <button type="button" onClick={onBack} aria-label="Back" className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><ArrowLeft className="w-5 h-5" /></button>
+        </div>
+        <LockedChat title={convo.isGroup ? convo.title : 'This chat'} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex min-w-0 min-h-0">
@@ -884,6 +897,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
                 </select>
               )}
           </div>
+          <LockSwitch chatId={convo.id} />
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-zinc-800 dark:text-zinc-200 flex items-center gap-2"><Timer className="w-4 h-4 text-zinc-500" /> Disappearing messages</span>
             {canSetTimer ? (

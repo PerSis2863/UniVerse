@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { useChatLock, watchRelock } from '@/lib/chat-lock';
 import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import dynamic from 'next/dynamic';
@@ -38,6 +39,10 @@ const StatusBar = dynamic(() => import('./StatusBar').then((m) => m.StatusBar), 
 interface FoundMessage { id: string; conversationId: string; title: string; avatar: string | null; sender: string; snippet: string; createdAt: string }
 
 export function MessagingHub() {
+  // Locked chats (1.10): no preview in the list until unlocked on this device.
+  const lockedChats = useChatLock((s) => s.chats);
+  const lockOpen = useChatLock((s) => s.unlocked);
+  useEffect(() => watchRelock(), []);
   const refreshInterval = useLiveInterval(15_000, 0);
   const drafts = useLocalDrafts();
   const { data, error, isLoading, mutate } = useSWR<{ conversations: ConversationSummary[]; me: string }>('/api/chat/conversations', authedJson, {
@@ -143,9 +148,9 @@ export function MessagingHub() {
       if (filter === 'groups' && !c.isGroup) return false;
       if (filter === 'direct' && c.isGroup) return false;
       if (filter.startsWith('folder:') && !activeFolder?.chatIds.includes(c.id)) return false;
-      return !q || c.title.toLowerCase().includes(q) || (c.lastMessage?.body ?? '').toLowerCase().includes(q);
+      return !q || c.title.toLowerCase().includes(q) || (!lockedChats.includes(c.id) && (c.lastMessage?.body ?? '').toLowerCase().includes(q));
     });
-  }, [data, search, filter, view, activeFolder]);
+  }, [data, search, filter, view, activeFolder, lockedChats]);
   const totalUnread = (data?.conversations ?? []).filter((c) => !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
   const archivedCount = (data?.conversations ?? []).filter((c) => c.archived).length;
   const archivedUnread = (data?.conversations ?? []).filter((c) => c.archived && c.unread > 0).length;
@@ -246,7 +251,7 @@ export function MessagingHub() {
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-0.5">
                     <p className={cn('text-sm truncate', typing ? 'text-emerald-500 font-medium' : c.unread && !draft ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-500')}>
-                      {typing ? `${c.isGroup ? c.typing[0] + ' is ' : ''}typing…` : draft
+                      {!lockOpen && lockedChats.includes(c.id) ? <span className="inline-flex items-center gap-1"><Lock className="w-3.5 h-3.5" />Locked chat</span> : typing ? `${c.isGroup ? c.typing[0] + ' is ' : ''}typing…` : draft
                         ? <><span className="font-medium text-fuchsia-600 dark:text-fuchsia-400">Draft: </span>{plainText(draft)}</>
                         : `${c.lastMessage?.mine ? 'You: ' : ''}${previewText(c.lastMessage)}`}
                     </p>
