@@ -21,8 +21,23 @@ self.addEventListener('push', (event) => {
     vibrate: data.call ? [400, 200, 400, 200, 400] : [120],
     actions: data.call ? [{ action: 'answer', title: 'Answer' }, { action: 'decline', title: 'Decline' }] : [],
   };
-  event.waitUntil(self.registration.showNotification(data.title ?? 'UniVerse', options));
+  event.waitUntil(lockedChat(data.url).then((locked) => {
+    // A chat locked on this device (Stage 4 · 1.10): nothing of it shows on the lock screen.
+    if (locked) { options.body = 'New message'; return self.registration.showNotification('UniVerse', options); }
+    return self.registration.showNotification(data.title ?? 'UniVerse', options);
+  }));
 });
+
+/** Whether a push's link opens a chat locked on this device (src/lib/chat-lock.ts keeps the list here). */
+async function lockedChat(url: string | undefined): Promise<boolean> {
+  const id = url ? new URL(url, self.location.origin).searchParams.get('c') : null;
+  if (!id) return false;
+  try {
+    const res = await (await caches.open('universe-private')).match('/__chat-lock');
+    const chats = res ? ((await res.json()) as { chats?: string[] }).chats ?? [] : [];
+    return chats.includes(id);
+  } catch { return false; }
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

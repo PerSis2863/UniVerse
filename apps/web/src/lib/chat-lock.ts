@@ -7,7 +7,8 @@ import { persist } from 'zustand/middleware';
 // the device's own Face ID, fingerprint or PIN (a WebAuthn passkey made only for this). It's a
 // privacy screen for a shared or borrowed phone, kept on this device: nothing goes to the server,
 // and other devices aren't locked. Unlocking opens every locked chat until the app has been in
-// the background for a minute (or the page is reloaded).
+// the background for a minute (or the page is reloaded). Push notifications from a locked chat
+// say only "New message".
 
 interface LockStore {
   credId: string | null; // the passkey's id (base64url)
@@ -32,6 +33,17 @@ export const useChatLock = create<LockStore>()(
     { name: 'universe-chat-lock', partialize: (s) => ({ credId: s.credId, chats: s.chats }) },
   ),
 );
+
+// The service worker reads the locked chats from here (it can't read localStorage), so their push
+// notifications say only "New message" (src/worker/index.ts).
+function mirror(chats: string[]) {
+  if (typeof caches === 'undefined') return;
+  void caches.open('universe-private').then((c) => c.put('/__chat-lock', new Response(JSON.stringify({ chats }), { headers: { 'Content-Type': 'application/json' } }))).catch(() => {});
+}
+if (typeof window !== 'undefined') {
+  mirror(useChatLock.getState().chats);
+  useChatLock.subscribe((s, prev) => { if (s.chats !== prev.chats) mirror(s.chats); });
+}
 
 const b64 = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64 = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
