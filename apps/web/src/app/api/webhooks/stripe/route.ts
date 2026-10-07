@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 import { getStripe, syncSubscription } from '@/lib/billing';
 
 // Checking the signature needs no API key; a placeholder keeps this working if the key is missing.
-const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as any, httpClient: Stripe.createFetchHttpClient() });
+const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as unknown as Stripe.LatestApiVersion, httpClient: Stripe.createFetchHttpClient() });
 
 export async function POST(req: Request) {
   const payload = await req.text();

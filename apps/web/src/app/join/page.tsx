@@ -40,14 +40,11 @@ function JoinContent() {
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
 
-  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>('loading');
+  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>(code ? 'loading' : 'invalid');
   const [role, setRole] = useState<string>('');
 
   useEffect(() => {
-    if (!code) {
-      setStatus('invalid');
-      return;
-    }
+    if (!code) return;
 
     // Resolve the invite code
     fetch(`/api/invite?code=${code}`)

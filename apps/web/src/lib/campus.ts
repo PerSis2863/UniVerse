@@ -3,7 +3,7 @@
 // MENU (upgrade 7): one dining menu: startAt is its day, category the meal, description one dish per line.
 export const CAMPUS_KINDS = ['SERVICE', 'LINK', 'EVENT', 'MENU'] as const;
 
-export function cleanCampusItem(b: any) {
+export function cleanCampusItem(b: Record<string, unknown>) {
   const str = (v: unknown, n: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : null);
   const url = str(b.url, 500);
   const startAt = typeof b.startAt === 'string' && !isNaN(Date.parse(b.startAt)) ? new Date(b.startAt) : null;

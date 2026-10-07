@@ -23,7 +23,7 @@ export function getStripe(): Stripe | null {
   const key = stripeSecretKey();
   if (!key) return null;
   // A new key (changed on the Worker) gets a new client.
-  if (stripeClient?.key !== key) stripeClient = { key, client: new Stripe(key, { apiVersion: '2024-06-20' as any, httpClient: Stripe.createFetchHttpClient() }) };
+  if (stripeClient?.key !== key) stripeClient = { key, client: new Stripe(key, { apiVersion: '2024-06-20' as unknown as Stripe.LatestApiVersion, httpClient: Stripe.createFetchHttpClient() }) };
   return stripeClient.client;
 }
 
@@ -71,7 +71,7 @@ export async function syncSubscription(sub: Stripe.Subscription) {
   const where = orgId ? { id: orgId } : { stripeSubscriptionId: sub.id };
   const item = sub.items.data[0];
   // current_period_end moved from the subscription to its items in newer Stripe API versions.
-  const periodEnd = (item as any)?.current_period_end ?? (sub as any).current_period_end;
+  const periodEnd = (item as { current_period_end?: number } | undefined)?.current_period_end ?? sub.current_period_end;
   const ended = sub.status === 'canceled' || sub.status === 'incomplete_expired';
 
   await prisma.organization.updateMany({

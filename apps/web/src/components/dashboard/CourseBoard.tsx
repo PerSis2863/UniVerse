@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
@@ -77,25 +77,19 @@ const absolute = (url: string) => (url.startsWith('/') ? `${window.location.orig
 /** `tabs` (e.g. Course board / AI tutor) show under the page title. */
 export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   const router = useRouter();
-  const { data: mine, isLoading: loadingCourses } = useSWR<any[]>('/courses/my', fetcher);
+  // Teachers get their courses; students their enrolments, each holding its course.
+  const { data: mine, isLoading: loadingCourses } = useSWR<(Course | { course?: Course | null })[]>('/courses/my', fetcher);
   const courses: Course[] = useMemo(
-    () => (Array.isArray(mine) ? (role === 'student' ? mine.map((e) => e.course).filter(Boolean) : mine) : []),
+    () => (Array.isArray(mine) ? (role === 'student' ? mine.map((e) => (e as { course?: Course | null }).course).filter((c): c is Course => !!c) : (mine as Course[])) : []),
     [mine, role],
   );
-  const [courseId, setCourseId] = useState<string | null>(null);
-  const [tab, setTab] = useState('board');
-  const [sessionId, setSessionId] = useState<string | null>(null);
-
-  // Deep links: ?course=<id>&tab=<tab>
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    if (sp.get('tab') && TABS.some((t) => t.id === sp.get('tab'))) setTab(sp.get('tab')!);
-    if (sp.get('course')) setCourseId(sp.get('course'));
-    if (sp.get('session')) setSessionId(sp.get('session'));
-  }, []);
-  useEffect(() => {
-    if (courses.length && (!courseId || !courses.some((c) => c.id === courseId))) setCourseId(courses[0].id);
-  }, [courses, courseId]);
+  // Deep links: ?course=<id>&tab=<tab>&session=<id> (dashboard pages render only in the browser).
+  const [link] = useState(() => new URLSearchParams(window.location.search));
+  const [pickedId, setCourseId] = useState<string | null>(() => link.get('course'));
+  const [tab, setTab] = useState(() => (TABS.some((t) => t.id === link.get('tab')) ? link.get('tab')! : 'board'));
+  const [sessionId, setSessionId] = useState<string | null>(() => link.get('session'));
+  // The picked course, or the first one when it isn't among yours (once your courses have loaded).
+  const courseId = !courses.length || courses.some((c) => c.id === pickedId) ? pickedId : courses[0].id;
 
   const { data: board, error, isLoading, mutate } = useSWR<Board>(courseId ? `/api/courses/${courseId}/board` : null, authedJson);
 

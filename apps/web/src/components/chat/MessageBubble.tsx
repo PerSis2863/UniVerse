@@ -528,7 +528,7 @@ export function MessageBubble(p: Props) {
 
 /** An edited message's earlier versions (Stage 4 · 1.3), newest first. */
 function EditHistory({ id, onClose, emoji }: { id: string; onClose: () => void; emoji?: Record<string, string> }) {
-  const { data } = useSWR<{ versions: { body: string; at: string; current: boolean }[] }>(`/api/chat/messages/${id}/edits`, (url: string) => authedJson(url));
+  const { data } = useSWR<{ versions: { body: string; at: string; current: boolean }[] }>(`/api/chat/messages/${id}/edits`, authedJson);
   const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   return createPortal(
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>

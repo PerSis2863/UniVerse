@@ -54,10 +54,11 @@ export async function PATCH(req: Request) {
   }
   if (Array.isArray(body.emergencyContacts)) {
     const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
-    const contacts = body.emergencyContacts.slice(0, 5).map((c: any) => ({
-      name: str(c?.name, 80), relation: str(c?.relation, 40), phone: str(c?.phone, 30), email: str(c?.email, 120),
-    }));
-    if (contacts.some((c: any) => !c.name || !c.phone)) return NextResponse.json({ error: 'Each contact needs a name and phone number.' }, { status: 400 });
+    const contacts = (body.emergencyContacts as unknown[]).slice(0, 5).map((raw) => {
+      const c = (raw ?? {}) as Record<string, unknown>;
+      return { name: str(c.name, 80), relation: str(c.relation, 40), phone: str(c.phone, 30), email: str(c.email, 120) };
+    });
+    if (contacts.some((c) => !c.name || !c.phone)) return NextResponse.json({ error: 'Each contact needs a name and phone number.' }, { status: 400 });
     await prisma.user.update({ where: { id: user.id }, data: { emergencyContacts: contacts } });
   }
 

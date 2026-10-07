@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { NextResponse } from 'next/server';
 import { clientIdOf } from '@/server/offline';
 import { presenceOf } from '@/lib/presence';
@@ -293,7 +294,7 @@ export async function POST(req: Request, { params }: Ctx) {
   }
 
   const [message] = await prisma.$transaction([
-    prisma.message.create({ data: data as any, select: { ...messageSelect, sender } }),
+    prisma.message.create({ data: data as Prisma.MessageUncheckedCreateInput, select: { ...messageSelect, sender } }),
     prisma.conversation.update({ where: { id }, data: { updatedAt: new Date() } }),
     prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: new Date(), typingUntil: null } }),
   ]);

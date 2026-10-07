@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   // 30-day payment terms (bank transfer or card via the hosted invoice page).
   if (payByInvoice) {
     const productId = `universe_${plan.id.toLowerCase()}`;
-    await stripe.products.create({ id: productId, name: `UniVerse ${plan.name}` }).catch((e: any) => {
+    await stripe.products.create({ id: productId, name: `UniVerse ${plan.name}` }).catch((e: { code?: string }) => {
       if (e?.code !== 'resource_already_exists') throw e;
     });
     const subscription = await stripe.subscriptions.create({

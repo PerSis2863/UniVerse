@@ -11,8 +11,8 @@ import 'react-phone-number-input/style.css';
 // Add the window type extension here so we don't get TS errors
 declare global {
   interface Window {
-    recaptchaVerifier: any;
-    grecaptcha: any;
+    recaptchaVerifier?: RecaptchaVerifier;
+    grecaptcha?: { reset(widgetId?: number): void };
   }
 }
 
@@ -91,8 +91,8 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
       console.error('Error sending code:', err);
       // Reset reCAPTCHA on error
       if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.render().then(function(widgetId: any) {
-          window.grecaptcha.reset(widgetId);
+        window.recaptchaVerifier.render().then((widgetId: number) => {
+          window.grecaptcha?.reset(widgetId);
         });
       }
       setError(authErrorMessage(err, 'Failed to send SMS code. Make sure the phone number includes the country code (e.g. +1).'));

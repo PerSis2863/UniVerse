@@ -91,7 +91,7 @@ interface FullNote extends NotesCardData { callId: string; kind: string; started
 
 /** From Calls or a notification: one call's notes. */
 export function MeetingNotesSheet({ id, onClose }: { id: string; onClose: () => void }) {
-  const { data, error, mutate } = useSWR<FullNote>(`/api/meeting-notes/${id}`, (url: string) => authedJson(url));
+  const { data, error, mutate } = useSWR<FullNote>(`/api/meeting-notes/${id}`, (url: string) => authedJson<FullNote>(url));
   const [busy, setBusy] = useState(false);
   const retry = async () => {
     setBusy(true);

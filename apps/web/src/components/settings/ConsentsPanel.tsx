@@ -2,11 +2,13 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { ShieldCheck, ToggleRight, ToggleLeft, AlertCircle, X, ChevronRight, Info, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ShieldCheck, ToggleRight, ToggleLeft, AlertCircle, X, ChevronRight, Info } from 'lucide-react';
+import { useState } from 'react';
+import useSWR from 'swr';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { fetcher } from '@/lib/fetcher';
 
 const CONSENT_DETAILS = {
   MARKETING: {
@@ -39,55 +41,29 @@ type ConsentKey = keyof typeof CONSENT_DETAILS;
 
 /** Consent toggles (marketing, alumni directory, photos, research). Shown in Settings → Consents. */
 export function ConsentsPanel({ embedded = false }: { embedded?: boolean }) {
-  const [consents, setConsents] = useState<Record<ConsentKey, boolean>>({
-    MARKETING: false,
-    ALUMNI: false,
-    PHOTO: false,
-    RESEARCH: false,
+  const { data, isLoading, mutate } = useSWR<{ type: ConsentKey; granted: boolean }[]>('/consents/my', fetcher, {
+    onError: () => toast.error('Failed to load consents'),
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const consents: Record<ConsentKey, boolean> = { MARKETING: false, ALUMNI: false, PHOTO: false, RESEARCH: false };
+  for (const c of data ?? []) if (c.type in consents) consents[c.type] = c.granted;
 
   const [activeModal, setActiveModal] = useState<ConsentKey | null>(null);
 
-  useEffect(() => {
-    fetchConsents();
-  }, []);
-
-  const fetchConsents = async () => {
-    try {
-      const res = await api.get('/consents/my');
-      const data = res.data;
-      const newConsents: Record<string, boolean> = {
-        MARKETING: false,
-        ALUMNI: false,
-        PHOTO: false,
-        RESEARCH: false,
-      };
-      
-      data.forEach((consent: any) => {
-        newConsents[consent.type] = consent.isGranted;
-      });
-
-      setConsents(newConsents as Record<ConsentKey, boolean>);
-    } catch (error) {
-      toast.error('Failed to load consents');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const toggleConsent = async (key: ConsentKey) => {
     const newState = !consents[key];
+    // Shown straight away; put back if saving fails.
+    const others = (data ?? []).filter((c) => c.type !== key);
+    void mutate([...others, { type: key, granted: newState }], { revalidate: false });
     try {
       await api.post('/consents/upsert', { type: key, granted: newState });
-      setConsents(prev => ({ ...prev, [key]: newState }));
       if (newState) {
         toast.success(`Consent granted for ${CONSENT_DETAILS[key].title}`);
       } else {
         toast.info(`Consent revoked for ${CONSENT_DETAILS[key].title}`);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to update consent');
+      void mutate();
     }
   };
 

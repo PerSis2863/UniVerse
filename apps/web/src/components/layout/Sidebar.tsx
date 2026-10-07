@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, PenTool, ShieldCheck } from 'lucide-react';
+import { BarChart3, PenTool, ShieldCheck, type LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard, Users,
   MessageSquare, Settings, LogOut,
@@ -21,7 +21,7 @@ import { useOptimisticPath } from '@/lib/nav-pending';
 export type NavItem = {
   href?: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
   subItems?: { href: string; label: string; also?: string[] }[];
   action?: string;
   /** Other pages that count as this entry (tabs of the same section). */

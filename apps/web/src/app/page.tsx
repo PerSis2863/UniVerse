@@ -267,10 +267,13 @@ function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
 
 /* ─────────────────────────────────── Page ─────────────────────────────────── */
 
+/** Chrome's beforeinstallprompt event (not in the DOM types). */
+type InstallPromptEvent = Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
+
 export default function ShowcasePage() {
   const { user } = useAuthStore();
   const router = useRouter();
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
 
   const { scrollYProgress } = useScroll();
@@ -283,7 +286,7 @@ export default function ShowcasePage() {
   }, [user, router]);
 
   useEffect(() => {
-    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e); };
+    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e as InstallPromptEvent); };
     const onInstalled = () => setInstalled(true);
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', onInstalled);
@@ -302,7 +305,7 @@ export default function ShowcasePage() {
       setInstallPrompt(null);
       return;
     }
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
     toast(isIOS ? '📱 How to install on iOS' : '💻 How to install', {
       description: isIOS
         ? 'Tap the Share icon at the bottom of Safari, then scroll down and tap "Add to Home Screen".'
