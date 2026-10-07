@@ -20,6 +20,7 @@ import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconc
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 import { templateElements, type TemplateId } from './templates';
+import { MAX_VOTES, type Voted } from './votes';
 
 // The live whiteboard: Excalidraw (every drawing tool, shapes, text, arrows, pictures, laser
 // pointer, export) connected to the board's room (BoardRoom in cloudflare/worker.ts). Each change
@@ -47,7 +48,12 @@ export interface BoardControls {
   showFrame(id: string): void;
   /** Starts a workshop timer for everyone (minutes), or stops it (null). */
   setTimer(minutes: number | null): void;
+  /** Dot voting (3.4): adds or takes back my vote on the selected notes (3 votes each). */
+  vote(): string | null;
+  /** Each frame (or the whole board when there are none) as a picture, for a PDF. */
+  exportPages(): Promise<string[]>;
 }
+
 
 /** Someone presenting (3.4). */
 export interface Presenting { name: string; mine: boolean }
@@ -128,6 +134,7 @@ export default function BoardCanvas({
   onError,
   onPresent,
   onTimer,
+  onVotes,
 }: {
   boardId: string;
   title: string;
@@ -146,6 +153,8 @@ export default function BoardCanvas({
   onPresent?: (p: Presenting | null) => void;
   /** The workshop timer (3.4). */
   onTimer?: (t: { endsAt: number; by: string } | null) => void;
+  /** The notes with votes, most first (3.4). */
+  onVotes?: (votes: Voted[]) => void;
 }) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const ws = useRef<WebSocket | null>(null);
@@ -162,11 +171,12 @@ export default function BoardCanvas({
   const thumbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCursor = useRef(0);
   const lastPos = useRef<{ x: number; y: number; button: string }>({ x: NaN, y: NaN, button: 'up' });
-  const callbacks = useRef({ onPeers, onStatus, onRole, onGone, onError, onBackground, onPresent, onTimer });
+  const callbacks = useRef({ onPeers, onStatus, onRole, onGone, onError, onBackground, onPresent, onTimer, onVotes });
   useLayoutEffect(() => {
     editable.current = canEdit;
-    callbacks.current = { onPeers, onStatus, onRole, onGone, onError, onBackground, onPresent, onTimer };
+    callbacks.current = { onPeers, onStatus, onRole, onGone, onError, onBackground, onPresent, onTimer, onVotes };
   });
+  const lastVotes = useRef('');
   // Presenting (3.4): am I presenting, do I follow, and the presenter's last view.
   const presenting = useRef(false);
   const following = useRef(true);
@@ -496,6 +506,22 @@ export default function BoardCanvas({
         hasBackground.current = bg;
         callbacks.current.onBackground(bg);
       }
+      // Votes (3.4) live on the notes themselves, so they arrive with everyone's edits.
+      if (callbacks.current.onVotes) {
+        const voted = elements.filter((e) => !e.isDeleted && ((e.customData as { votes?: string[] } | undefined)?.votes?.length ?? 0) > 0);
+        const key = voted.map((e) => `${e.id}:${(e.customData as { votes: string[] }).votes.join(',')}`).join('|');
+        if (key !== lastVotes.current) {
+          lastVotes.current = key;
+          const textOf = (e: OrderedExcalidrawElement) => {
+            const own = (e as unknown as { text?: string }).text;
+            if (own) return own;
+            const label = elements.find((t) => t.type === 'text' && (t as unknown as { containerId?: string }).containerId === e.id) as unknown as { text?: string } | undefined;
+            return label?.text ?? 'A shape';
+          };
+          const mine = me.current?.userId;
+          callbacks.current.onVotes(voted.map((e) => { const v = (e.customData as { votes: string[] }).votes; return { id: e.id, label: textOf(e).replace(/\s+/g, ' ').slice(0, 80), count: v.length, mine: !!mine && v.includes(mine) }; }).sort((a, b) => b.count - a.count));
+        }
+      }
       if (!ready.current || !editable.current) return;
       if (!sendTimer.current) sendTimer.current = setTimeout(flush, SEND_EVERY_MS);
       uploadFiles(files);
@@ -592,6 +618,40 @@ export default function BoardCanvas({
         setTimeout(() => { if (presenting.current) { const v = myView(); if (v) send({ type: 'present', view: v }); } }, 380);
       },
       setTimer: (minutes) => send({ type: 'timer', endsAt: minutes ? Date.now() + minutes * 60_000 : null }),
+      vote: () => {
+        const mine = me.current?.userId;
+        if (!mine) return 'Not connected yet.';
+        const picked = new Set(Object.keys(api.getAppState().selectedElementIds));
+        const all = api.getSceneElementsIncludingDeleted();
+        // A label's note is voted, not the label itself.
+        const targets = new Set([...picked].map((id) => { const e = all.find((x) => x.id === id); return (e as unknown as { containerId?: string } | undefined)?.containerId ?? id; }));
+        if (!targets.size) return 'Select a note to vote for it.';
+        const votesOf = (e: ExcalidrawElement) => (e.customData as { votes?: string[] } | undefined)?.votes ?? [];
+        let used = all.filter((e) => !e.isDeleted && votesOf(e).includes(mine)).length;
+        let refused = false;
+        const next = all.map((e) => {
+          if (!targets.has(e.id) || e.isDeleted) return e;
+          const v = votesOf(e);
+          if (v.includes(mine)) { used -= 1; return newElementWith(e, { customData: { ...e.customData, votes: v.filter((x) => x !== mine) } }); }
+          if (used >= MAX_VOTES) { refused = true; return e; }
+          used += 1;
+          return newElementWith(e, { customData: { ...e.customData, votes: [...v, mine] } });
+        });
+        api.updateScene({ elements: next, captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+        return refused ? `You have ${MAX_VOTES} votes. Take one back to vote for something else.` : null;
+      },
+      exportPages: async () => {
+        const elements = api.getSceneElements();
+        const frames = elements.filter((e) => e.type === 'frame' || e.type === 'magicframe').sort((a, b) => (Math.abs(a.y - b.y) > 200 ? a.y - b.y : a.x - b.x));
+        const appState = { ...api.getAppState(), exportBackground: true };
+        const toUrl = (b: Blob) => new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(b); });
+        const pages: string[] = [];
+        for (const frame of frames.length ? frames : [null]) {
+          const blob = await exportToBlob({ elements, appState, files: api.getFiles(), mimeType: 'image/png', exportPadding: 16, ...(frame ? { exportingFrame: frame as never } : {}) });
+          pages.push(await toUrl(blob));
+        }
+        return pages;
+      },
       removeBackground: () => {
         api.updateScene({
           elements: api.getSceneElementsIncludingDeleted().map((e) => (isBackground(e) ? newElementWith(e, { isDeleted: true }) : e)),

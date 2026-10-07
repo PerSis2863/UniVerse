@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useRef, useState, useSyncExternalStore } f
 import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, MonitorUp, PenTool, Share2, Sparkles, Timer as TimerIcon, Trash2, Wallpaper } from 'lucide-react';
+import { ArrowLeft, BarChart3, FileDown, ThumbsUp, ChevronLeft, ChevronRight, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, MonitorUp, PenTool, Share2, Sparkles, Timer as TimerIcon, Trash2, Wallpaper } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { Sheet } from '@/components/chat/ChatDialogs';
@@ -16,6 +16,7 @@ import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { Avatar } from '@/components/chat/MessageBubble';
 import { ShareBoardDialog, type BoardMeta } from '@/components/boards/ShareBoardDialog';
 import type { BoardControls, BoardGone, BoardPeer, LiveStatus, Presenting } from '@/components/boards/BoardCanvas';
+import { MAX_VOTES, type Voted } from '@/components/boards/votes';
 import type { TemplateId } from '@/components/boards/templates';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +78,31 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
     if (!slides[i]) return;
     setSlide(i);
     controls.current?.showFrame(slides[i].id);
+  };
+  // Dot voting and PDF export (3.4).
+  const [votes, setVotes] = useState<Voted[]>([]);
+  const [votesOpen, setVotesOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const vote = () => { const why = controls.current?.vote(); if (why) toast(why); };
+  const exportPdf = async () => {
+    const c = controls.current;
+    if (!c) return;
+    // Opened now (a click), filled when the pictures are ready: pop-up blockers allow it.
+    const win = window.open('', '_blank');
+    if (!win) return toast.error('Allow pop-ups to export the board.');
+    win.document.title = board?.title ?? 'Board';
+    win.document.body.textContent = 'Preparing the PDF…';
+    setExporting(true);
+    try {
+      const pages = await c.exportPages();
+      const doc = win.document;
+      doc.body.textContent = '';
+      const style = doc.createElement('style');
+      style.textContent = '@page { size: landscape; margin: 10mm } body { margin: 0 } img { display: block; max-width: 100%; max-height: 180mm; margin: 0 auto; page-break-after: always } img:last-child { page-break-after: auto }';
+      doc.head.appendChild(style);
+      for (const src of pages) { const img = doc.createElement('img'); img.src = src; doc.body.appendChild(img); }
+      setTimeout(() => win.print(), 400);
+    } catch (e) { win.close(); toast.error((e as Error).message || 'Couldn’t export the board.'); } finally { setExporting(false); }
   };
   // AI on boards (3.5): one AI request per action; the result is drawn by this browser.
   const [aiOpen, setAiOpen] = useState(false);
@@ -244,6 +270,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             ? <button onClick={() => { controls.current?.present(false); setPresentState(null); }} className={cn(btn, 'text-rose-600 dark:text-rose-400')} title="Stop presenting"><MonitorUp className="w-4 h-4" /><span className="hidden md:inline">Stop</span></button>
             : <button onClick={startPresenting} disabled={status !== 'live'} className={btn} title="Present: frames become slides, and everyone following sees your screen"><MonitorUp className="w-4 h-4" /><span className="hidden md:inline">Present</span></button>
         )}
+        {canEdit && <button onClick={vote} disabled={status !== 'live'} className={btn} title={`Vote for the selected note (${MAX_VOTES} votes each)`}><ThumbsUp className="w-4 h-4" /><span className="hidden lg:inline">Vote</span></button>}
+        {votes.length > 0 && <button onClick={() => setVotesOpen((o) => !o)} className={cn(btn, votesOpen && 'bg-zinc-100 dark:bg-white/[0.06]')} title="Results of the vote"><BarChart3 className="w-4 h-4" /><span className="text-xs tabular-nums">{votes.reduce((t, v) => t + v.count, 0)}</span></button>}
+        <button onClick={() => void exportPdf()} disabled={exporting || status !== 'live'} className={cn(btn, 'hidden sm:inline-flex')} title="Export to PDF (each frame is a page)">{exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}<span className="hidden lg:inline">PDF</span></button>
         <div className="relative">
           <button onClick={() => setTimerOpen((o) => !o)} disabled={status !== 'live' || !canEdit} className={btn} title="Workshop timer for everyone" aria-expanded={timerOpen}><TimerIcon className="w-4 h-4" /></button>
           <AnimatePresence>
@@ -308,6 +337,19 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                 <button type="button" onClick={() => { const on = !follow; setFollow(on); controls.current?.follow(on); }} className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25">{follow ? 'Stop following' : 'Follow'}</button>
               </motion.div>
             )}
+            {votesOpen && votes.length > 0 && (
+              <motion.div key="votes" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto w-full max-w-sm rounded-2xl bg-white/95 dark:bg-[#121830]/95 border border-zinc-200 dark:border-white/10 shadow-2xl p-3 backdrop-blur">
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Votes</p>
+                <ul className="space-y-1.5 max-h-60 overflow-y-auto">
+                  {votes.map((v) => (
+                    <motion.li key={v.id} layout className="flex items-center gap-2 text-sm">
+                      <span className={cn('min-w-7 h-6 px-1.5 rounded-full text-xs font-bold flex items-center justify-center', v.mine ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.08] text-zinc-700 dark:text-zinc-200')}>{v.count}</span>
+                      <span className="flex-1 min-w-0 truncate text-zinc-800 dark:text-zinc-100">{v.label}</span>
+                    </motion.li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
         {board ? (
@@ -326,6 +368,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             onError={onError}
             onPresent={setPresentState}
             onTimer={setTimer}
+            onVotes={setVotes}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-sm text-zinc-500 gap-2"><ImageIcon className="w-4 h-4" /> Loading board…</div>
