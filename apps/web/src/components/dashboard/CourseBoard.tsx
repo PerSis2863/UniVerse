@@ -134,7 +134,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
     try {
       const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: teacherId }) });
       router.push(`/student/inbox?c=${id}`);
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   return (
@@ -312,8 +312,8 @@ function useRemove(courseId: string, refresh: KeyedMutator<Board>) {
       settled = true;
       try {
         await authedJson(`/api/courses/${courseId}/board?kind=${kind}&itemId=${itemId}`, { method: 'DELETE' });
-      } catch (e: any) {
-        toast.error(e.message || 'Could not remove it');
+      } catch (e) {
+        toast.error((e as Error).message || 'Could not remove it');
         refresh();
       }
     };
@@ -335,7 +335,7 @@ function usePost(courseId: string, refresh: () => void) {
       refresh();
       toast.success(ok);
       return true;
-    } catch (e: any) { toast.error(e.message); return false; } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); return false; } finally { setBusy(false); }
   };
   return { post, busy };
 }
@@ -419,7 +419,7 @@ function Materials({ board, canManage, refresh }: SectionProps) {
       const url = await uploadChatFile(file, (p) => setUploading(Math.max(1, p)));
       const size = file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`;
       setForm((f) => f && { ...f, url, fileName: file.name, size, title: f.title || file.name.replace(/\.[^.]+$/, '') });
-    } catch (e: any) { toast.error(e.message); } finally { setUploading(0); }
+    } catch (e) { toast.error((e as Error).message); } finally { setUploading(0); }
   };
 
   return (

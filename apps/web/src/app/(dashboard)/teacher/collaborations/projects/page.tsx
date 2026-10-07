@@ -9,7 +9,7 @@ import {
   CheckCircle2, X, Send, ChevronDown, Edit, Trash2, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { TabPill } from '@/components/ui/Glide';
 
 const STATUSES = ['All', 'Active', 'Recruiting', 'Completed'];
@@ -322,8 +322,8 @@ export default function NGOMentorshipPage() {
                     setProjects((ps) => ps.filter((p) => p.id !== selectedProject.id));
                     setSelectedProject(null);
                     toast.success('Project removed');
-                  } catch (e: any) {
-                    toast.error(e.response?.data?.message || 'Could not remove the project');
+                  } catch (e) {
+                    toast.error(errorMessage(e, 'Could not remove the project'));
                   }
                 }}
                 className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"

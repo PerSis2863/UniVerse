@@ -87,7 +87,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
       const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
       setConfirmationResult(confirmation);
       setStep('CODE_INPUT');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error sending code:', err);
       // Reset reCAPTCHA on error
       if (window.recaptchaVerifier) {
@@ -116,7 +116,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
       const result = await confirmationResult.confirm(code);
       const token = await result.user.getIdToken();
       await onSuccess(token, isRegister ? name : undefined);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error verifying code:', err);
       setError(authErrorMessage(err, 'Invalid verification code.'));
     } finally {

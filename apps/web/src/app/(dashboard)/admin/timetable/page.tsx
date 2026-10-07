@@ -36,11 +36,11 @@ export default function TimetableManagementPage() {
       toast.success('Class added to the timetable');
       setForm(null);
       mutate();
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
   const remove = async (id: string) => {
     if (!(await confirmDialog({ title: 'Remove this class?', message: 'It will be taken off the timetable for everyone.', confirmLabel: 'Remove', destructive: true }))) return;
-    try { await authedJson(`/api/admin/timetable?id=${id}`, { method: 'DELETE' }); mutate(); } catch (e: any) { toast.error(e.message); }
+    try { await authedJson(`/api/admin/timetable?id=${id}`, { method: 'DELETE' }); mutate(); } catch (e) { toast.error((e as Error).message); }
   };
 
   const [q, setQ] = useState('');

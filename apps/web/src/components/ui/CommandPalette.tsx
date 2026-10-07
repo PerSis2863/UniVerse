@@ -192,7 +192,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     setRecents(next);
     try { localStorage.setItem(RECENTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
     setOpen(false);
-    try { await item.run(); } catch (e: any) { toast.error(e?.message || 'Could not open that. Please try again.'); }
+    try { await item.run(); } catch (e) { toast.error((e as Error)?.message || 'Could not open that. Please try again.'); }
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {

@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
@@ -55,14 +56,14 @@ export default function TeacherGradesPage() {
       await mutate();
       toast.success('Grade saved', { description: 'The student can see it on their Grades page.' });
       setAdding((a) => a && { ...a, studentId: '', score: '', feedback: '' }); // keep the assessment name for quick entry
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Could not save the grade');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not save the grade'));
     } finally { setBusy(false); }
   };
 
   const removeGrade = async (g: Grade) => {
     if (!(await confirmDialog({ title: `Delete "${g.assignmentName}"?`, message: `${g.score}/${g.maxScore} will be removed from the student’s record.`, destructive: true }))) return;
-    try { await api.delete(`/grades/${g.id}`); await mutate(); toast.success('Grade deleted'); } catch (e: any) { toast.error(e.response?.data?.message || 'Could not delete'); }
+    try { await api.delete(`/grades/${g.id}`); await mutate(); toast.success('Grade deleted'); } catch (e) { toast.error(errorMessage(e, 'Could not delete')); }
   };
 
   const exportCsv = () => {

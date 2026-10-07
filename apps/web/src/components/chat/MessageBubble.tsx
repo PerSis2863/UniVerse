@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useNow } from '@/lib/use-now';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
@@ -172,21 +173,24 @@ export type TranslationState = { status: 'pending' } | { status: 'error'; messag
 
 const FORWARDABLE = new Set(['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'LOCATION', 'CONTACT']);
 
+const noSubscribe = () => () => {};
+const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
+
 export function MessageBubble(p: Props) {
   const { m, mine, me, showSender, readState, canModerate, highlight } = p;
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
   const [fullPicker, setFullPicker] = useState(false);
   const [history, setHistory] = useState(false);
-  const [touch, setTouch] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const x = useMotionValue(0);
   const replyHint = useTransform(x, [0, 60], [0, 1]);
-  useEffect(() => { setTouch(window.matchMedia('(pointer: coarse)').matches); }, []);
+  const touch = useSyncExternalStore(noSubscribe, isTouch, () => false);
+  const now = useNow();
 
   const time = new Date(m.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const deleted = m.type === 'DELETED';
-  const age = Date.now() - new Date(m.createdAt).getTime();
+  const age = now - new Date(m.createdAt).getTime();
   const canEdit = mine && m.type === 'TEXT' && !deleted && age < 86_400_000;
   // Delete for everyone: your own for 48 hours; admins and moderators any time.
   const canDeleteForAll = canModerate || (mine && age < 48 * 3_600_000);
@@ -279,7 +283,7 @@ export function MessageBubble(p: Props) {
     // or declined. Calls from before UniVerse had its own (Jitsi links) show as ended.
     const meta = m.metadata ?? {};
     const video = meta.kind === 'video';
-    const live = !!meta.inApp && !meta.endedAt && Date.now() - new Date(m.createdAt).getTime() < 4 * 3600_000;
+    const live = !!meta.inApp && !meta.endedAt && now - new Date(m.createdAt).getTime() < 4 * 3600_000;
     const dur = meta.durationSec ? `${Math.floor(meta.durationSec / 60)}:${String(meta.durationSec % 60).padStart(2, '0')}` : null;
     const missed = !live && !mine && !meta.answered;
     const title = live ? (video ? 'Video call' : 'Voice call')

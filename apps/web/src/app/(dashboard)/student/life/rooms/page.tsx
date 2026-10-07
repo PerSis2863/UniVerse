@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { Map, Calendar as CalendarIcon, Clock, Users, Search, X, CheckCircle2 } from 'lucide-react';
@@ -75,8 +76,8 @@ export default function RoomReservationPage() {
       });
       setBookingId(res.data.id || Math.random().toString(36).substring(2, 10).toUpperCase());
       setBookingStatus('success');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Booking failed');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Booking failed'));
       setBookingStatus('confirm');
     }
   };

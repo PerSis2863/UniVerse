@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { X, Info, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -28,8 +29,8 @@ export function RequestAssociationModal({ onClose, onSuccess }: RequestAssociati
       });
       toast.success('Association requested successfully! Waiting for admin approval.');
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to request association.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to request association.'));
     } finally {
       setIsSubmitting(false);
     }

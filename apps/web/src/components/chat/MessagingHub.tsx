@@ -53,13 +53,19 @@ export function MessagingHub() {
     refreshInterval,
     revalidateOnFocus: true,
   });
-  const [activeId, setActiveId] = useState<string | null>(null);
+  // A link can open a conversation (?c=<id>), e.g. from a call notification. (Dashboard pages
+  // render only in the browser, so the URL can be read straight away.)
+  const [activeId, setActiveId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('c'));
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [dialog, setDialog] = useState<null | 'chat' | 'group'>(null);
   const [view, setView] = useState<'chats' | 'archived'>('chats');
   // Chats, or Communities (Discord-style servers with channels).
-  const [space, setSpace] = useState<'chats' | 'communities'>('chats');
+  // A club's space (upgrade 7) and community invite links (?join=) open on Communities.
+  const [space, setSpace] = useState<'chats' | 'communities'>(() => {
+    const sp = new URLSearchParams(window.location.search);
+    return sp.get('space') === 'communities' || sp.get('join') ? 'communities' : 'chats';
+  });
   const [starredOpen, setStarredOpen] = useState(false);
   const [jumpTo, setJumpTo] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -96,7 +102,7 @@ export function MessagingHub() {
       }),
     }, { revalidate: false });
     try { await chatJson(`/api/chat/conversations/${c.id}/prefs`, { method: 'PATCH', body: JSON.stringify(body) }); if (ok) toast.success(ok); }
-    catch (e: any) { toast.error(e.message); }
+    catch (e) { toast.error((e as Error).message); }
     finally { mutate(); }
   };
 
@@ -114,17 +120,10 @@ export function MessagingHub() {
   const activeFolder = filter.startsWith('folder:') ? folders.find((f) => `folder:${f.id}` === filter) ?? null : null;
   const mutedLabel = (c: ConversationSummary) => (!c.mutedUntil || new Date(c.mutedUntil).getFullYear() > 9000 ? 'Unmute' : `Unmute (muted until ${new Date(c.mutedUntil).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })})`);
 
-  // Open a conversation from a link (?c=<id>), e.g. from a call notification; join a community
-  // from its invite link (?join=<code>).
+  // Join a community from its invite link (?join=<code>).
   useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const c = sp.get('c');
-    if (c) setActiveId(c);
-    // A club's space (upgrade 7) opens on Communities.
-    if (sp.get('space') === 'communities') setSpace('communities');
-    const join = sp.get('join');
+    const join = new URLSearchParams(window.location.search).get('join');
     if (join) {
-      setSpace('communities');
       void chatJson<{ name: string }>('/api/chat/communities/join', { method: 'POST', body: JSON.stringify({ code: join }) })
         .then((r) => toast.success(`You joined ${r.name}`))
         .catch((e: Error) => toast.error(e.message))

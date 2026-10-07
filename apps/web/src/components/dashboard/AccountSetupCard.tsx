@@ -65,8 +65,8 @@ export function AccountSetupCard() {
       if (!auth.currentUser) throw new Error('Please sign in again.');
       await sendEmailVerification(auth.currentUser);
       toast.success('Verification email sent', { description: `Check ${data.email} and click the link, then refresh this page.` });
-    } catch (e: any) {
-      toast.error(e?.code === 'auth/too-many-requests' ? 'Please wait a few minutes before requesting another email.' : e.message || 'Could not send the email.');
+    } catch (e) {
+      toast.error((e as { code?: string })?.code === 'auth/too-many-requests' ? 'Please wait a few minutes before requesting another email.' : (e as Error).message || 'Could not send the email.');
     } finally {
       setBusy(false);
     }
@@ -81,8 +81,8 @@ export function AccountSetupCard() {
       toast.success(open === 'phone' ? 'Phone number saved' : 'Department saved');
       setOpen(null);
       setValue('');
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }

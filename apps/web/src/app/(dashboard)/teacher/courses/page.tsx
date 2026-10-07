@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
@@ -30,8 +31,8 @@ export default function TeacherCourses() {
       setShowCreateModal(false);
       setFormData({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
       toast.success('Course created successfully!');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to create course');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to create course'));
     }
   };
 
@@ -41,8 +42,8 @@ export default function TeacherCourses() {
       await mutate();
       setShowEditModal(null);
       toast.success('Course updated successfully!');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to update course');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to update course'));
     }
   };
 
@@ -57,8 +58,8 @@ export default function TeacherCourses() {
       await api.delete(`/courses/${id}`);
       await mutate();
       toast.success('Course deleted.');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to delete course');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to delete course'));
     }
   };
 

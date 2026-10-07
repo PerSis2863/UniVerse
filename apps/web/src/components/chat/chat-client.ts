@@ -127,7 +127,7 @@ export interface ThreadResponse {
 export const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
-export async function chatJson<T = any>(url: string, init?: RequestInit): Promise<T> {
+export async function chatJson<T = unknown>(url: string, init?: RequestInit): Promise<T> {
   const res = await authedFetch(url, init);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || 'Something went wrong. Please try again.');

@@ -98,8 +98,8 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
         await post({ text: value });
       }
       setText('');
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setSending(false);
     }
@@ -124,8 +124,8 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
       if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed.');
       const url = json.url.startsWith('/') ? `${window.location.origin}${json.url}` : json.url;
       await post(asImage || IMAGE_RE.test(file.name) ? { imageUrl: json.url } : { text: `📎 ${url}` });
-    } catch (e: any) {
-      toast.error(e.message || 'Upload failed.');
+    } catch (e) {
+      toast.error((e as Error).message || 'Upload failed.');
     } finally {
       setUploading(false);
     }

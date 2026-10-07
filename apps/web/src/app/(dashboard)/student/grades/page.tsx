@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';
@@ -340,8 +341,8 @@ export default function GradesPage() {
         description: `${me?.name ?? 'A student'} (${me?.email ?? ''}) is requesting an official transcript. Current record: ${gradesData.length} graded items, average ${Math.round(avg)}%.`,
       });
       toast.success('Request sent to your campus admin', { description: 'Track it under Support.' });
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Could not send the request. Please try again.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not send the request. Please try again.'));
     } finally {
       setRequesting(false);
     }

@@ -127,8 +127,8 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
       toast.success(editingId ? 'Saved' : `${label} added`);
       setForm(null);
       mutate();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -139,8 +139,8 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
     try {
       await authedJson(`/api/campus-items/${it.id}`, { method: 'DELETE' });
       mutate();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   };
 

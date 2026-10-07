@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTick } from '@/lib/use-now';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
@@ -35,11 +36,12 @@ export function IncomingCall({ inboxPath }: { inboxPath: string }) {
   const router = useRouter();
   const refreshInterval = useLiveInterval(15_000, 0);
   const { data } = useSWR<IncomingCallItem[]>('/api/chat/incoming', authedJson, { refreshInterval, revalidateOnFocus: true, shouldRetryOnError: false });
-  const [dismissed, setDismissed] = useState<string[]>([]);
-  useEffect(() => setDismissed(readDismissed()), []);
+  const [dismissed, setDismissed] = useState<string[]>(readDismissed);
+  // Ticks each second only while a call might still be ringing.
+  const now = useTick((data ?? []).some((c) => c.metadata?.inApp && !c.metadata.endedAt));
 
   // Only UniVerse's own calls ring (calls from before, with outside links, never did after 45 s anyway).
-  const call = (data ?? []).find((c) => c.metadata?.inApp && !c.metadata.endedAt && !dismissed.includes(c.id) && Date.now() - new Date(c.createdAt).getTime() < 45_000);
+  const call = (data ?? []).find((c) => c.metadata?.inApp && !c.metadata.endedAt && !dismissed.includes(c.id) && now - new Date(c.createdAt).getTime() < 45_000);
 
   // Already on a call (call waiting): hold it or end it to answer this one.
   const onCall = useCalls((st) => st.active);

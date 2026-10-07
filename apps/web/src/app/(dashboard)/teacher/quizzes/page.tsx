@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
@@ -38,8 +39,8 @@ export default function TeacherQuizzes() {
       setNewQuiz({ title: '', courseId: '', timeLimit: 30 });
       toast.success('Draft created — now add your questions');
       if (created?.id) setManaging(created.id);
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to create quiz');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to create quiz'));
     }
   };
 
@@ -49,8 +50,8 @@ export default function TeacherQuizzes() {
       await api.delete(`/quizzes/${id}`);
       await mutateQuizzes();
       toast.success('Quiz deleted.');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to delete quiz');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to delete quiz'));
     }
   };
 

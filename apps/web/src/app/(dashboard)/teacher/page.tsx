@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
@@ -50,8 +51,8 @@ export default function TeacherDashboard() {
       setCourseName(''); setCourseCode(''); setCourseCapacity('3'); setCourseDesc('');
       toast.success(`Course "${courseName}" created`, { description: 'It starts as a draft. Your admin can enroll students, and you can post materials on Blackboard.' });
       router.push('/teacher/blackboard');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Could not create the course');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not create the course'));
     } finally {
       setCreating(false);
     }

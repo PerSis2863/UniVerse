@@ -5,7 +5,7 @@ import { uploadChatFile } from '@/components/chat/chat-client';
 import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, Copy } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { TabPill } from '@/components/ui/Glide';
 
@@ -108,9 +108,9 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
       setSelectedFile(null);
       toast.success('Resource added successfully!');
       fetchResources();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      toast.error(error?.response?.data?.message || error?.message || 'Failed to add resource');
+      toast.error(errorMessage(error, (error as Error)?.message || 'Failed to add resource'));
     }
   };
 

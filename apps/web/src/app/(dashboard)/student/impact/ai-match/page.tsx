@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
@@ -71,9 +71,8 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
       await api.post(`/impact/ngo-projects/${match.project.id}/apply`, { motivation: 'AI-matched application' });
       setApplied(true);
       toast.success('Applied successfully!', { description: 'The NGO will review your profile.' });
-    } catch (e: any) {
-      const msg = e?.response?.data?.message;
-      toast.error(typeof msg === 'string' ? msg : 'Could not apply right now. Please try again.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not apply right now. Please try again.'));
     } finally {
       setApplying(false);
     }

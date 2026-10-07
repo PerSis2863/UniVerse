@@ -32,7 +32,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
       await mutate();
       onChanged();
       toast.success(ok);
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
 
   const addQuestion = async () => {
@@ -44,11 +44,11 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
       setDraft({ question: '', options: ['', '', '', ''], correct: 0, points: 1 });
       await mutate();
       toast.success('Question added');
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
 
   const removeQuestion = async (qid: string) => {
-    try { await authedJson(`/api/quizzes/${quizId}/questions?qid=${qid}`, { method: 'DELETE' }); await mutate(); } catch (e: any) { toast.error(e.message); }
+    try { await authedJson(`/api/quizzes/${quizId}/questions?qid=${qid}`, { method: 'DELETE' }); await mutate(); } catch (e) { toast.error((e as Error).message); }
   };
 
   return (

@@ -103,7 +103,7 @@ export function ForwardDialog({ message, onClose, onDone }: { message: ChatMessa
       await Promise.all(picked.map((id) => chatJson(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ forwardOf: message.id }) })));
       toast.success(picked.length === 1 ? 'Message forwarded' : `Forwarded to ${picked.length} chats`);
       onDone();
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
   return (
     <Sheet title="Forward to…" onClose={onClose} footer={

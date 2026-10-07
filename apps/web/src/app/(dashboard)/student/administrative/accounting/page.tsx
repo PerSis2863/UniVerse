@@ -85,9 +85,9 @@ function AccountingContent() {
       } else {
         toast.error(data.error || 'Failed to create payment session.');
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
-      toast.error(e.message || 'An error occurred while creating the payment session.');
+      toast.error((e as Error).message || 'An error occurred while creating the payment session.');
     } finally {
       setIsLoading(false);
     }

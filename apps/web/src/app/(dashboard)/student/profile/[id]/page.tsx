@@ -74,8 +74,8 @@ export default function StudentProfile() {
       if (!person) return void toast.error(`Couldn't find ${userName} to message.`);
       const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: person.id }) });
       router.push(`/student/inbox?c=${id}`);
-    } catch (e: any) {
-      toast.error(e.message || 'Could not start the chat.');
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not start the chat.');
     }
   };
 

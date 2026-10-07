@@ -213,7 +213,7 @@ export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboa
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success('Whiteboard saved as an image');
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   const share = async () => {
@@ -230,8 +230,8 @@ export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboa
         return;
       }
       await exportPng();
-    } catch (e: any) {
-      if (e?.name !== 'AbortError') toast.error('Could not share the image. Try Export instead.');
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') toast.error('Could not share the image. Try Export instead.');
     }
   };
 

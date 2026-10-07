@@ -41,8 +41,8 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
     try {
       const { id } = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id }) });
       onOpen(id);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -57,8 +57,8 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
       });
       toast.success(`"${groupName.trim()}" created`);
       onOpen(id);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }

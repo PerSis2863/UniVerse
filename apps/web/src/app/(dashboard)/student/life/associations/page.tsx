@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { Search, Users, ExternalLink, Globe, MessagesSquare } from 'lucide-react';
@@ -46,8 +47,8 @@ export default function AssociationsPage() {
       const api = (await import('@/lib/fetcher')).api;
       await api.post(`/associations/${id}/join`);
       toast.success(`Joined ${name}!`);
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || `Failed to join ${name}`);
+    } catch (e) {
+      toast.error(errorMessage(e, `Failed to join ${name}`));
     }
   };
 

@@ -125,8 +125,8 @@ export default function AdminFinances() {
       // Refresh list
       const data = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken()));
       setTransactions(data);
-    } catch (e: any) {
-      toast.error(`Error: ${e.message}`);
+    } catch (e) {
+      toast.error(`Error: ${(e as Error).message}`);
     }
   };
 

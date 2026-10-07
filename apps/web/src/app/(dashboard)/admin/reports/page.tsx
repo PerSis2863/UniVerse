@@ -122,8 +122,8 @@ function Exports() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`${name} downloaded`);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -198,8 +198,8 @@ function AiReport() {
     try {
       const { report } = await authedJson<{ report: string }>('/api/premium/ai-report', { method: 'POST' });
       setReport(report);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setLoading(false);
     }

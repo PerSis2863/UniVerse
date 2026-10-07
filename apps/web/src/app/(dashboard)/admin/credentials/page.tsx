@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { CheckCircle, Clock, ExternalLink, Loader2, ShieldCheck, XCircle, History, Link2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
 import { SearchBox, matchesQuery, RoleChip, StatusChip, fmtDate, fmtAgo, shownSummary } from '@/components/impact/AdminPeople';
 
@@ -54,13 +54,6 @@ const DECISION_STYLE: Record<Decision['status'], { label: string; cls: string }>
   UNVERIFIED_LEGACY: { label: 'Unverified (legacy)', cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
 };
 
-function apiErrorMessage(err: any, fallback: string): string {
-  const msg = err?.response?.data?.message;
-  if (Array.isArray(msg)) return msg.join(', ');
-  if (typeof msg === 'string') return msg;
-  return fallback;
-}
-
 export default function AdminCredentialVerificationPage() {
   const { data, error, isLoading, mutate } = useSWR<PendingCredential[]>('/impact/blockchain-credentials/pending', fetcher);
   const { data: recentData, error: recentError, mutate: mutateRecent } = useSWR<Decision[]>('/impact/blockchain-credentials/recent', fetcher);
@@ -77,7 +70,7 @@ export default function AdminCredentialVerificationPage() {
       if (res.data?.enabled === false) toast.info('Blockchain anchoring is not configured on the server yet.');
       else toast.success(`${res.data?.queued ?? 0} credential(s) queued for blockchain anchoring`);
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Could not start anchoring'));
+      toast.error(errorMessage(err, 'Could not start anchoring'));
     } finally {
       setAnchorBusy(false);
     }
@@ -96,7 +89,7 @@ export default function AdminCredentialVerificationPage() {
       }
       await Promise.all([mutate(), mutateRecent()]);
     } catch (err) {
-      toast.error(apiErrorMessage(err, `Could not ${action} this credential`));
+      toast.error(errorMessage(err, `Could not ${action} this credential`));
     } finally {
       setBusyId(null);
     }
@@ -109,7 +102,7 @@ export default function AdminCredentialVerificationPage() {
       toast.success(`${res.data?.movedToReview ?? 0} legacy credential(s) moved to the review queue`);
       await mutate();
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Could not move legacy credentials'));
+      toast.error(errorMessage(err, 'Could not move legacy credentials'));
     } finally {
       setLegacyBusy(false);
     }
@@ -165,7 +158,7 @@ export default function AdminCredentialVerificationPage() {
             <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-indigo-500" /></div>
           ) : error ? (
             <div className="p-6 rounded-2xl border border-red-500/30 bg-red-500/10 text-sm text-red-600 dark:text-red-300">
-              {apiErrorMessage(error, 'Could not load pending credentials.')}
+              {errorMessage(error, 'Could not load pending credentials.')}
             </div>
           ) : allItems.length === 0 ? (
             <div className="text-center p-12 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
@@ -233,7 +226,7 @@ export default function AdminCredentialVerificationPage() {
               <p className="text-xs text-zinc-500 mt-0.5">The latest 60 credentials that were issued, rejected or revoked, with the student and the admin who verified them.</p>
             </div>
             {recentError ? (
-              <p className="p-5 text-sm text-red-600 dark:text-red-300">{apiErrorMessage(recentError, 'Could not load recent decisions.')}</p>
+              <p className="p-5 text-sm text-red-600 dark:text-red-300">{errorMessage(recentError, 'Could not load recent decisions.')}</p>
             ) : !recentData ? (
               <div className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
             ) : recentAll.length === 0 ? (

@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { toast } from 'sonner';
@@ -29,8 +30,8 @@ export function ManageAssociationModal({ association, onClose, onSuccess }: Mana
       });
       toast.success('Association updated successfully!');
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to update association.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to update association.'));
     } finally {
       setIsSubmitting(false);
     }

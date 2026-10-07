@@ -51,11 +51,11 @@ export default function RoomBookingsPage() {
       toast.success('Room added');
       setForm(null);
       mutate();
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
   const cancel = async (id: string) => {
     if (!(await confirmDialog({ title: 'Cancel this booking?', message: 'The room becomes free for others to book.', confirmLabel: 'Cancel booking', cancelLabel: 'Keep', destructive: true }))) return;
-    try { await authedJson(`/api/admin/rooms?reservationId=${id}`, { method: 'DELETE' }); mutate(); } catch (e: any) { toast.error(e.message); }
+    try { await authedJson(`/api/admin/rooms?reservationId=${id}`, { method: 'DELETE' }); mutate(); } catch (e) { toast.error((e as Error).message); }
   };
 
   return (

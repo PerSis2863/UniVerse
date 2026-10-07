@@ -16,9 +16,9 @@ export async function POST(req: Request) {
     // The async variant uses Web Crypto, which is what Cloudflare Workers provide.
     // Trimmed: a pasted secret often carries a trailing space or line break.
     event = await stripeClient().webhooks.constructEventAsync(payload, signature, (process.env.STRIPE_WEBHOOK_SECRET ?? '').trim());
-  } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
-    return NextResponse.json({ error: err.message }, { status: 400 });
+  } catch (err) {
+    console.error(`Webhook Error: ${(err as Error).message}`);
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }
 
   // Organization subscriptions (see /api/billing/checkout)
