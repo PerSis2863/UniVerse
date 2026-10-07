@@ -24,15 +24,27 @@ function createClient(db: D1Database): PrismaClient {
   return new WasmPrismaClient({ adapter });
 }
 
-const clients = new WeakMap<D1Database, PrismaClient>();
+// A client connects once, and queries that arrive while it's connecting await that same promise
+// (Prisma's ClientEngine: `case "connecting": return await this.#e.promise`). On Workers a request
+// must never wait on a promise another request started: the waiting request has no I/O of its own,
+// so the runtime cancels it as hung ("your Worker's code had hung", HTTP 500 after ~30 ms, in bursts
+// when a dashboard's many requests reach a fresh instance together, Oct 2026). So each request uses
+// its own client until one has finished connecting; from then on that one serves every request.
+let warm: { db: D1Database; client: PrismaClient } | null = null;
+const starting = new WeakMap<object, PrismaClient>(); // per request (keyed by its context)
 
 export function getPrisma(): PrismaClient {
-  const { env } = getCloudflareContext();
+  const { env, ctx } = getCloudflareContext();
   if (!env.DB) throw new Error('D1 binding "DB" is missing; check wrangler.jsonc');
-  let client = clients.get(env.DB);
+  if (warm?.db === env.DB) return warm.client;
+  const key = (ctx as object | undefined) ?? env.DB;
+  let client = starting.get(key);
   if (!client) {
-    client = createClient(env.DB);
-    clients.set(env.DB, client);
+    const c = createClient(env.DB);
+    starting.set(key, c);
+    // Started by this request; once connected it's safe to share.
+    c.$connect().then(() => { if (warm?.db !== env.DB) warm = { db: env.DB, client: c }; }, () => {});
+    client = c;
   }
   return client;
 }
