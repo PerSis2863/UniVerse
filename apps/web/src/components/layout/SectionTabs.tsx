@@ -31,13 +31,14 @@ export const OPPORTUNITY_TABS: SectionTab[] = [
 
 export const STUDENT_BOARD_TABS: SectionTab[] = [
   { href: '/student/blackboard', label: 'Course board' },
-  { href: '/student/tutor', label: 'AI tutor', also: ['/student/voice-tutor'] },
+  { href: '/student/tutor', label: 'AI tutor', also: ['/student/voice-tutor', '/student/semester'] },
 ];
 
 /** Inside the AI tutor tab: type to it, or talk to it (the voice tutor). */
 export const STUDENT_TUTOR_MODES: SectionTab[] = [
   { href: '/student/tutor', label: 'Type' },
   { href: '/student/voice-tutor', label: 'Talk' },
+  { href: '/student/semester', label: 'My semester' },
 ];
 
 export const TEACHER_BOARD_TABS: SectionTab[] = [

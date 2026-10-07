@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -56,15 +56,15 @@ export function ClassSessions({ sessions, canManage, materials, openId, refresh 
   return (
     <div className="space-y-3 stagger">
       {sessions.map((s) => (
-        <SessionCard key={s.id} s={s} canManage={canManage} open={open === s.id} onToggle={() => setOpen(open === s.id ? null : s.id)}
+        <SessionCard key={s.id} s={s} canManage={canManage} open={open === s.id} linked={openId === s.id} onToggle={() => setOpen(open === s.id ? null : s.id)}
           recordingUrl={materials.find((m) => m.id === s.recordingMaterialId)?.fileUrl ?? null} refresh={refresh} />
       ))}
     </div>
   );
 }
 
-function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
-  s: ClassSession; canManage: boolean; open: boolean; onToggle: () => void; recordingUrl: string | null; refresh: () => void;
+function SessionCard({ s, canManage, open, linked, onToggle, recordingUrl, refresh }: {
+  s: ClassSession; canManage: boolean; open: boolean; linked: boolean; onToggle: () => void; recordingUrl: string | null; refresh: () => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<null | 'cards' | 'retry' | 'delete' | 'tr'>(null);
@@ -81,6 +81,23 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
     if (v) { v.currentTime = t; void v.play().catch(() => {}); v.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
     else if (recordingUrl) window.open(`${recordingUrl}#t=${t}`, '_blank', 'noopener');
   };
+  // Opened from a link to a class moment (…&t=<seconds>, e.g. from "Ask your semester"): the replay starts there.
+  useEffect(() => {
+    if (!linked) return;
+    const t = Number(new URLSearchParams(window.location.search).get('t'));
+    if (!Number.isFinite(t) || t <= 0) return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      const v = video.current;
+      if (!v && ++tries < 20) return;
+      clearInterval(timer);
+      if (!v) return;
+      const go = () => { v.currentTime = t; };
+      if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
+      v.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 150);
+    return () => clearInterval(timer);
+  }, [linked]);
   const translate = async () => {
     if (trOn) return setTrOn(false);
     if (tr?.lang === lang) return setTrOn(true);

@@ -2611,6 +2611,37 @@ model VoiceSession {
 /// "Class notes" in a class call; everyone's captions are collected by the teacher's browser and
 /// sent here once, when notes stop. One AI request makes the pack. The transcript (text only,
 /// never audio) is deleted after 90 days by the daily job; the pack itself stays with the course.
+/// "Ask your semester" (Stage 4 · 4.5; src/server/semester.ts): a searchable passage from a class,
+/// study pack, material, document, graded work or meeting notes. The full-text index (memory_fts,
+/// FTS5) lives beside it in the migration; Prisma doesn't model it.
+model MemoryPassage {
+  id    Int     @id @default(autoincrement())
+  kind  String // transcript | pack | material | doc | work | meeting
+  ref   String // the source's id
+  scope String // who may search it: course:<id> | doc:<id> | user:<id>
+  title String
+  body  String
+  link  String // where it opens; {portal} = the reader's portal (student, teacher, admin)
+  at    Int? // seconds into a class (a transcript passage)
+  day   String? // when (YYYY-MM-DD)
+
+  @@index([kind, ref])
+  @@index([scope])
+  @@map("memory_passages")
+}
+
+/// What has been indexed for "Ask your semester", at which version (stamp).
+model MemorySource {
+  id        String   @id @default(cuid())
+  kind      String
+  ref       String
+  stamp     String
+  indexedAt DateTime @default(now())
+
+  @@unique([kind, ref])
+  @@map("memory_sources")
+}
+
 /// Fair group work (Stage 4 · 4.3): how many edits someone made to a document or code room on a day,
 /// counted by the live room (cloudflare/worker.ts CodeRoom) and added up here.
 model Contribution {

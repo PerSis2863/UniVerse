@@ -4,6 +4,7 @@ import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { isLanguage } from '@/lib/languages';
+import { indexClassSession, indexLater } from './semester';
 import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
@@ -234,7 +235,7 @@ export async function createClassSession(callId: string, user: SessionUser, body
     },
     select: { id: true, status: true },
   });
-  if (pack) await tellClass(course, session.id);
+  if (pack) { await tellClass(course, session.id); indexLater(() => indexClassSession(session.id)); }
   return { ...session, quizId, message: pack ? 'Study pack ready. The quiz is a draft: check it, then publish it.' : 'The class notes are saved. AI isn’t available right now: open Class sessions and tap Make study pack later.' };
 }
 
@@ -251,6 +252,7 @@ export async function retryClassSession(sessionId: string, user: SessionUser) {
   const quizId = s.quizId ?? (await draftQuiz(course.id, pack, s.startedAt));
   await prisma.classSession.update({ where: { id: s.id }, data: { ...packData(pack), quizId } });
   await tellClass(course, s.id);
+  indexLater(() => indexClassSession(s.id));
   return { id: s.id, status: 'READY', quizId };
 }
 
@@ -391,6 +393,7 @@ export async function makeReplay(sessionId: string, user: SessionUser) {
   const pack = await makePack(lines, `${course.code} ${course.name}`, s.durationSec, user, cleanPulse(JSON.parse(s.pulse || '[]')));
   if (!pack) throw new HttpException('AI isn’t available right now. Please try again later.', 503);
   await prisma.classSession.update({ where: { id: s.id }, data: { chapters: JSON.stringify(pack.chapters), recap: pack.recap || null, practice: JSON.stringify(pack.practice) } });
+  indexLater(() => indexClassSession(s.id));
   return { ok: true };
 }
 

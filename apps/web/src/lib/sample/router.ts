@@ -366,6 +366,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/premium\/analytics$/, ({ db: d }) => ok(d.analytics)],
   // A study pack in another language (Stage 4 · 4.1): the sample's packs are shown as they are.
   [/^\/api\/class-sessions\/([^/]+)\/translation$/, () => ok({ same: true, pack: null })],
+  // Ask your semester (Stage 4 · 4.5): the sample's semester isn't indexed.
+  [/^\/api\/semester$/, () => ok({ results: [], pending: 0 })],
   // Fair group work (Stage 4 · 4.3): the sample's spaces have no tracked work yet.
   [/^\/api\/spaces\/(course|group)\/([^/]+)\/contributions$/, () => ok({ days: 30, used: [], totals: {}, canManage: false, canVerify: false, ratings: false, size: 0, people: [], me: null, teammates: [] })],
   // Call recordings (Stage 4 · 2.9): the sample has none.

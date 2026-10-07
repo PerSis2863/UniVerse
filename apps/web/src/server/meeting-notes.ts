@@ -12,6 +12,7 @@ import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { chatMuted, featureOff } from './moderation';
 import { groupAccess } from './spaces';
+import { indexLater, indexMeeting } from './semester';
 
 // Meeting notes for every call that isn't a class (Stage 4 · 2.8; class calls make study packs,
 // src/server/class-companion.ts). Whoever runs the call (or either person in a one-to-one call)
@@ -106,6 +107,7 @@ async function deliver(noteId: string, user: SessionUser) {
   const note = await prisma.callNote.findUnique({ where: { id: noteId } });
   if (!note || note.status !== 'READY') return;
   const shown = { title: note.title, summary: note.summary, decisions: parse<string>(note.decisions), actions: parse<ActionItem>(note.actions) };
+  indexLater(() => indexMeeting(note.id)); // for each person's "Ask your semester" (Stage 4 · 4.5)
   const body = notesText(shown);
   const link = `/calls?note=${note.id}`;
   if (note.conversationId) {

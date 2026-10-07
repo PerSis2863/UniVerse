@@ -6,6 +6,7 @@ import { BadRequestException, ForbiddenException, HttpException, NotFoundExcepti
 import { publish } from './realtime';
 import { notify } from './email';
 import { groupAccess, groupPeople } from './spaces';
+import { indexDoc, indexLater } from './semester';
 
 // Documents (Stage 4 · 3.2). The text is written together live: a Yjs document kept by the same
 // Durable Object as code rooms (cloudflare/worker.ts CodeRoom), in a room named "doc:<id>", so
@@ -143,6 +144,7 @@ export async function saveVersion(docId: string, user: SessionUser, body: Record
     if (last && (last.html === html || Date.now() - last.createdAt.getTime() < VERSION_GAP_MS)) return { saved: false };
   }
   await prisma.docVersion.create({ data: { docId, html, authorId: user.id, name } });
+  indexLater(() => indexDoc(docId)); // "Ask your semester" (Stage 4 · 4.5)
   // Keep the latest unnamed versions; named ones stay.
   const old = await prisma.docVersion.findMany({ where: { docId, name: null }, orderBy: { createdAt: 'desc' }, skip: KEEP_AUTO, take: 50, select: { id: true } });
   if (old.length) await prisma.docVersion.deleteMany({ where: { id: { in: old.map((v) => v.id) } } });
