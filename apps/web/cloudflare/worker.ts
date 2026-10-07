@@ -1623,7 +1623,7 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     // In the waiting room nothing goes to the call.
     if (!me || me.waiting) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; anon?: unknown; x?: unknown; y?: unknown; t?: unknown; focus?: unknown; brk?: unknown; id?: unknown; op?: unknown; src?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; lite?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; anon?: unknown; x?: unknown; y?: unknown; t?: unknown; focus?: unknown; brk?: unknown; id?: unknown; op?: unknown; src?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -1641,7 +1641,7 @@ export class CallRoom extends DurableObject<Env> {
         recording = false;
       }
       if ((me.rec === true) !== recording) { me.rec = recording; ws.serializeAttachment(me); }
-      await this.toSeers(ws, me, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording, notes: msg.notes === true, lowData: msg.lowData === true });
+      await this.toSeers(ws, me, { type: 'state', from: me.peerId, muted: msg.muted === true, camera: msg.camera !== false, sharing: msg.sharing === true, cc: msg.cc === true, recording, notes: msg.notes === true, lowData: msg.lowData === true, lite: msg.lite === true });
       return;
     }
     if (msg.type === 'caption' && typeof msg.text === 'string') {

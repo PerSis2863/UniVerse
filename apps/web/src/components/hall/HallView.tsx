@@ -9,6 +9,7 @@ import { SfuLink, kindOf, type MediaKind, type SfuTrack } from '@/lib/sfu-client
 import { CallChatPanel, useCallChat, type RoomLine } from '@/components/call/CallChat';
 import { HALL_H, HALL_W, SPAWN, TABLES, ZONES, hearing, tableNear, zoneAt, type Spot } from '@/lib/hall-map';
 import { cn } from '@/lib/utils';
+import { AUDIO_2G_BPS, AUDIO_BPS, twoGOn } from '@/store/low-data';
 
 // Study Hall (Stage 4 · 4.2): a class's or study group's 2D campus. Walk around (tap, click or the
 // arrow keys); people's voices get louder as you get closer and come from their side (each voice is
@@ -164,7 +165,8 @@ export function HallView({ hallId }: { hallId: string }) {
     for (const id of [...voices.current.keys()]) dropVoice(id);
     const l = new SfuLink(rpc, t.iceServers, onTrack);
     link.current = l;
-    if (sendMic && mic.current) await l.start(you, mic.current, false, true);
+    // 2G mode (4.11): the voice at 16 kbps.
+    if (sendMic && mic.current) await l.start(you, mic.current, false, true, twoGOn() ? AUDIO_2G_BPS : AUDIO_BPS);
     else await l.watch(true);
     syncVoices();
   };

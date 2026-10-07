@@ -4,9 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
+import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
@@ -61,6 +62,8 @@ interface Remote {
   paused: boolean;
   /** Their connection is weak: they asked not to be sent video (audio-only fallback). */
   lowData: boolean;
+  /** In 2G mode: send them voice at 16 kbps. */
+  lite: boolean;
   /** When their hand went up (the queue's order), or null. */
   hand: number | null;
 }
@@ -107,9 +110,10 @@ const videoLines = (pc: RTCPeerConnection) => pc.getTransceivers().filter((t) =>
 /**
  * Quality for one-to-one and small calls: clear voice (Opus up to 64 kbps), a sharp camera, and a
  * screen share that keeps its resolution (text stays readable) and drops frames instead when the
- * connection is slow.
+ * connection is slow. `lite` (2G mode on either end, Stage 4 · 4.11): voice at 16 kbps and the
+ * screen at a few frames a second.
  */
-async function tuneSenders(pc: RTCPeerConnection, sendCamera = true) {
+async function tuneSenders(pc: RTCPeerConnection, sendCamera = true, lite = false) {
   const set = async (sender: RTCRtpSender | undefined, enc: RTCRtpEncodingParameters, pref?: RTCDegradationPreference) => {
     if (!sender) return;
     const p = sender.getParameters();
@@ -120,10 +124,10 @@ async function tuneSenders(pc: RTCPeerConnection, sendCamera = true) {
   };
   const audio = pc.getTransceivers().find((t) => t.receiver.track.kind === 'audio');
   const [cam, screen] = videoLines(pc);
-  await set(audio?.sender, { maxBitrate: 64_000 });
+  await set(audio?.sender, { maxBitrate: lite ? AUDIO_2G_BPS : AUDIO_BPS });
   // Someone on a weak connection asked for audio only: stop my camera to them (their screen stays).
   await set(cam?.sender, { maxBitrate: 1_500_000, maxFramerate: 30, active: sendCamera }, 'balanced');
-  await set(screen?.sender, { maxBitrate: 2_500_000, maxFramerate: 30 }, 'maintain-resolution');
+  await set(screen?.sender, lite ? { maxBitrate: 300_000, maxFramerate: 5 } : { maxBitrate: 2_500_000, maxFramerate: 30 }, 'maintain-resolution');
 }
 /** 720p. Bigger calls send it in three sizes (simulcast, src/lib/sfu-client.ts), so each viewer
  *  receives only what its tile needs. */
@@ -142,7 +146,7 @@ const CAPTION_MS = 5000;
 const MAX_REC_MS = 2 * 3600_000;
 const MAX_REC_BYTES = 950 * 1024 * 1024;
 
-const fresh = (peer: Peer): Remote => ({ peer, stream: null, screen: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false, lowData: false, hand: peer.hand ?? null });
+const fresh = (peer: Peer): Remote => ({ peer, stream: null, screen: null, muted: false, camera: false, sharing: false, cc: false, recording: false, notes: false, state: 'new', quality: null, paused: false, lowData: false, lite: false, hand: peer.hand ?? null });
 
 // One audio context and one timer measure everyone's voice (a call of 30 doesn't run 30 of
 // each), and a tile re-renders only when its person starts or stops talking.
@@ -529,10 +533,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const joinConfirmed = useRef(false);
   const resumeJoin = useRef<(() => void) | null>(null);
   const [inRoom, setInRoom] = useState<string[] | null>(null);
-  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false, lowData: false });
+  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false, lowData: false, lite: false });
   // Audio-only fallback: a poor connection for 10 s pauses incoming video (people's screens stay).
   const [audioOnly, setAudioOnly] = useState(false);
   const audioOnlyRef = useRef(false);
+  // 2G mode (Stage 4 · 4.11): voice only at 16 kbps, both ways; set in Settings, before joining or in More.
+  const twoG = useLowData((s) => s.twoG);
+  const twoGRef = useRef(twoG);
+  const twoGApplied = useRef<boolean | null>(null);
   const poorSince = useRef<number | null>(null);
   // Call health log: how this call went, sent once when it ends (connection numbers only).
   const stat = useRef({ joinAt: 0, peers: 0, worstRtt: 0, worstLoss: 0, relay: false, audioOnly: false, failure: null as string | null, sent: false });
@@ -588,7 +596,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const goOnStage = async () => {
     setStageInvite(null);
     try {
-      const opened = await openMedia(infoRef.current?.kind === 'video' ? cameraConstraints() : false, noiseMode());
+      const opened = await openMedia(infoRef.current?.kind === 'video' && !twoGRef.current ? cameraConstraints() : false, noiseMode());
       rawMic.current = opened.getAudioTracks()[0] ?? null;
       micClean.current = rawMic.current ? await cleanMic(rawMic.current, noiseMode()) : null;
       rawCam.current = opened.getVideoTracks()[0] ?? null;
@@ -686,7 +694,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     pc.onconnectionstatechange = () => {
       patch(peer.peerId, { state: pc.connectionState });
       if (lost) { clearTimeout(lost); lost = null; }
-      if (pc.connectionState === 'connected') { markTalking(); void tuneSenders(pc, !remotesRef.current[peer.peerId]?.lowData); }
+      if (pc.connectionState === 'connected') { markTalking(); void tuneSenders(pc, !remotesRef.current[peer.peerId]?.lowData, twoGRef.current || !!remotesRef.current[peer.peerId]?.lite); }
       const mine = (myId.current ?? '') < peer.peerId;
       if (pc.connectionState === 'failed' && mine) void restart();
       if (pc.connectionState === 'disconnected' && mine) lost = setTimeout(() => { if (pc.connectionState === 'disconnected') void restart(); }, 3000);
@@ -765,6 +773,26 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'state', ...stateRef.current }));
     if (sfuRef.current) syncSfu();
   }, [syncSfu]);
+
+  /** 2G mode on or off: my camera off, others' cameras not received, voice at 16 kbps both ways. */
+  const applyTwoG = useCallback((on: boolean) => {
+    if (twoGApplied.current === on) return;
+    const first = twoGApplied.current === null;
+    twoGApplied.current = on;
+    twoGRef.current = on;
+    stateRef.current.lite = on;
+    if (first && !on) return;
+    if (on && stateRef.current.camera) void actions.current?.toggleCamera();
+    if (audioOnlyRef.current !== on) setLowData(on);
+    else if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'state', ...stateRef.current }));
+    for (const [id, pc] of pcs.current) {
+      if (pc.connectionState === 'connected') void tuneSenders(pc, !remotesRef.current[id]?.lowData, on || !!remotesRef.current[id]?.lite);
+    }
+    void sfuRef.current?.setAudioBitrate(on ? AUDIO_2G_BPS : AUDIO_BPS);
+  }, [setLowData]);
+  useEffect(() => { applyTwoG(twoG); }, [twoG, applyTwoG]);
+  /** Trying to use video in 2G mode: say why not, and offer to leave it. */
+  const videoIn2G = () => toast('2G mode is on, so calls are voice only.', { icon: '📶', action: { label: 'Turn off 2G mode', onClick: () => useLowData.getState().setTwoG(false) } });
 
   /** A reaction floating up the screen for three seconds. */
   const addFloat = useCallback((emoji: string, name: string) => {
@@ -1059,7 +1087,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     /** Sends my microphone, camera and screen, or (a webinar's audience) only receives. */
     const sendOrWatch = async (link: SfuLink, you: string, freshSession: boolean) => {
       if (audienceRef.current) return link.watch(freshSession);
-      await link.start(you, localRef.current!, true, freshSession);
+      await link.start(you, localRef.current!, true, freshSession, twoGRef.current ? AUDIO_2G_BPS : AUDIO_BPS);
       if (stateRef.current.muted) await link.replace('audio', null);
       if (screenRef.current) await link.replace('screen', screenRef.current);
       if (!stateRef.current.camera) await link.replace('video', null);
@@ -1117,7 +1145,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       } else if (!localRef.current) {
         try {
           // Voice calls start with the camera off (it can be turned on during the call).
-          const video = t.kind === 'video' ? cameraConstraints() : false;
+          const video = t.kind === 'video' && !twoGRef.current ? cameraConstraints() : false;
           const opened = await openMedia(video, noiseMode());
           if (cancelled) { opened.getTracks().forEach((x) => x.stop()); return; }
           // What's sent: the microphone through noise suppression, and the camera.
@@ -1230,9 +1258,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           if (msg.notes && before && !before.notes) toast(callId.startsWith('c_')
             ? `${before.peer.name} turned on class notes: what’s said in the class becomes a study pack (summary, notes and flashcards). Only text is kept, never audio.`
             : `${before.peer.name} turned on meeting notes: what’s said becomes notes (summary, decisions and action items) for everyone in the call. Only text is kept, never audio.`, { icon: '📝', duration: 8000 });
-          patch(msg.from, { muted: msg.muted, camera: msg.camera, sharing: msg.sharing, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true, lowData: msg.lowData === true });
+          patch(msg.from, { muted: msg.muted, camera: msg.camera, sharing: msg.sharing, cc: msg.cc === true, recording: msg.recording === true, notes: msg.notes === true, lowData: msg.lowData === true, lite: msg.lite === true });
           const pc = pcs.current.get(msg.from);
-          if (pc && before && before.lowData !== (msg.lowData === true)) void tuneSenders(pc, msg.lowData !== true);
+          if (pc && before && (before.lowData !== (msg.lowData === true) || before.lite !== (msg.lite === true))) void tuneSenders(pc, msg.lowData !== true, twoGRef.current || msg.lite === true);
           if (sfuRef.current && before && (before.camera !== msg.camera || before.sharing !== msg.sharing)) syncSfu();
         } else if (msg.type === 'caption') {
           const who = remotesRef.current[msg.from];
@@ -1747,6 +1775,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     haptic('tap');
     if (cameraBusy) return;
     const next = !camera;
+    if (next && twoGRef.current) { videoIn2G(); return; }
     if (next) {
       setCameraBusy(true);
       let track: MediaStreamTrack;
@@ -1881,7 +1910,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     try { await navigator.clipboard.writeText(window.location.href); toast.success('Call link copied'); } catch { toast.error('Couldn’t copy the link.'); }
   };
   const showVideo = (peerId: string) => {
-    if (audioOnlyRef.current) { setLowData(false); return; }
+    if (audioOnlyRef.current) { if (twoGRef.current) videoIn2G(); else setLowData(false); return; }
     pinned.current = peerId;
     syncSfu();
   };
@@ -1967,13 +1996,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   const canBg = backgroundsSupported();
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
     ...(cc ? [{ key: 'cclang' as const, label: ccLang ? `Captions in ${languageName(ccLang)}` : 'Captions as spoken', icon: Languages }] : []),
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
-    ...(canBg ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
+    { key: '2g', label: twoG ? '2G mode on' : '2G mode', icon: SignalLow, on: twoG },
+    ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
     ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : info?.type === 'class' ? 'Class notes' : 'Meeting notes', icon: NotebookPen, on: notes }] : []),
@@ -1995,6 +2025,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       if (!webinar) toast('Webinar mode: you and your co-hosts are on stage; everyone else watches and can ask in Q&A or raise a hand. Bring people on stage from People.', { icon: '🎙️', duration: 9000 });
     }
     else if (key === 'devices') void openSettings();
+    else if (key === '2g') {
+      useLowData.getState().setTwoG(!twoG);
+      toast(twoG ? '2G mode off: turn your camera on whenever you like.' : '2G mode: voice only at 16 kbps. Shared screens still show.', { icon: '📶' });
+    }
     else if (key === 'bg') setBgOpen(true);
     else if (key === 'flip') void flipCamera();
     else if (key === 'rec') { if (recording) void stopRecording(); else void startRecording(); }
@@ -2094,14 +2128,26 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={playTestSound} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><Volume2 className="w-4 h-4" /> Test speaker</button>
                 <button type="button" onClick={() => void openSettings()} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><SlidersHorizontal className="w-4 h-4" /> Devices & noise</button>
-                {canBg && <button type="button" onClick={() => setBgOpen(true)} className={cn('px-3.5 py-2 rounded-full text-sm font-medium inline-flex items-center gap-1.5', bgChoice.kind !== 'none' ? 'bg-gradient-to-r from-indigo-500/50 to-fuchsia-500/50' : 'bg-white/10 hover:bg-white/20')}><Wand2 className="w-4 h-4" /> Background</button>}
+                {canBg && !twoG && <button type="button" onClick={() => setBgOpen(true)} className={cn('px-3.5 py-2 rounded-full text-sm font-medium inline-flex items-center gap-1.5', bgChoice.kind !== 'none' ? 'bg-gradient-to-r from-indigo-500/50 to-fuchsia-500/50' : 'bg-white/10 hover:bg-white/20')}><Wand2 className="w-4 h-4" /> Background</button>}
+                <button type="button" onClick={() => { haptic('tap'); useLowData.getState().setTwoG(!twoG); }} aria-pressed={twoG}
+                  className={cn('px-3.5 py-2 rounded-full text-sm font-medium inline-flex items-center gap-1.5 transition-colors', twoG ? 'bg-amber-400/25 text-amber-100 ring-1 ring-amber-300/40' : 'bg-white/10 hover:bg-white/20')}>
+                  <SignalLow className="w-4 h-4" /> 2G mode{twoG ? ' on' : ''}
+                </button>
               </div>
+              <AnimatePresence initial={false}>
+                {twoG && (
+                  <motion.p key="2g" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="text-xs text-amber-200/90 overflow-hidden">
+                    Voice only at 16 kbps (about 7 MB an hour). Cameras stay off both ways; shared screens still show.
+                  </motion.p>
+                )}
+              </AnimatePresence>
               {bgBusy && <p className="text-xs text-fuchsia-200 inline-flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Applying your background…</p>}
               {(() => {
                 const net = typeof navigator !== 'undefined' ? networkGuess() : null;
                 return net && (
                   <p className={cn('text-xs inline-flex items-center gap-1.5', net.weak ? 'text-amber-300' : 'text-emerald-300')}>
                     <Signal className="w-3.5 h-3.5" />{net.label}
+                    {net.weak && !twoG && <button type="button" onClick={() => useLowData.getState().setTwoG(true)} className="underline underline-offset-2 font-semibold">Use 2G mode</button>}
                     {net.weak && camera && <button type="button" onClick={() => void toggleCamera().then(() => resumeJoin.current?.())} className="underline underline-offset-2 font-semibold">Join with camera off</button>}
                   </p>
                 );
@@ -2225,7 +2271,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           )}
         </AnimatePresence>
         <AnimatePresence>
-          {audioOnly && phase === 'live' && (() => {
+          {audioOnly && twoG && phase === 'live' && (
+            <motion.div key="2g" role="status" initial={{ opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -14, scale: 0.96 }} transition={spring.smooth}
+              className="pointer-events-auto w-full max-w-lg rounded-2xl bg-[#1b1a2e]/90 border border-amber-400/30 backdrop-blur-xl shadow-2xl px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <SignalLow className="w-4 h-4 shrink-0 text-amber-300" />
+              <p className="text-sm flex-1 min-w-[12rem]"><span className="font-semibold">2G mode.</span> <span className="text-zinc-300">Voice only at 16 kbps; shared screens still show.</span></p>
+              <button type="button" onClick={() => { haptic('tap'); useLowData.getState().setTwoG(false); }} className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors">Turn off</button>
+            </motion.div>
+          )}
+          {audioOnly && !twoG && phase === 'live' && (() => {
             const now = info?.sfu ? sfuQuality : list.some((r) => r.quality === 'poor') ? 'poor' : list.some((r) => r.quality === 'fair') ? 'fair' : list.some((r) => r.quality === 'good') ? 'good' : null;
             return (
               <motion.div key="audio-only" role="status" initial={{ opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -14, scale: 0.96 }} transition={spring.smooth}

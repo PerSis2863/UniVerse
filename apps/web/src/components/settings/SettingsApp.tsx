@@ -45,7 +45,7 @@ interface Section { id: string; label: string; icon: typeof User; tile: string; 
 const SECTIONS: Section[] = [
   { id: 'profile', label: 'Profile', icon: User, tile: '#8e8e93', keywords: 'name photo phone email account picture avatar' },
   { id: 'appearance', label: 'Appearance', icon: Palette, tile: '#5856d6', keywords: 'theme dark light mode text size bigger font motion animation vibration haptics' },
-  { id: 'language', label: 'Language & data', icon: Globe, tile: '#007aff', keywords: 'language translate english french hindi spanish low data saver' },
+  { id: 'language', label: 'Language & data', icon: Globe, tile: '#007aff', keywords: 'language translate english french hindi spanish low data saver 2g weak connection voice only calls' },
   { id: 'notifications', label: 'Notifications', icon: Bell, tile: '#ff3b30', keywords: 'push email alerts notify' },
   { id: 'privacy', label: 'Privacy & security', icon: Shield, tile: '#0a84ff', keywords: 'password two-step 2fa sign in devices visibility network privacy security' },
   { id: 'family', label: 'Parent or guardian', icon: Users, tile: '#34c759', keywords: 'parent guardian family share progress', roles: ['STUDENT'] },

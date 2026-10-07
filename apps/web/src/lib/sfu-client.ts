@@ -76,14 +76,15 @@ export class SfuLink {
     return this.run(async () => { await this.rpc('session', fresh ? { fresh: true } : {}); });
   }
 
-  /** Opens the session and sends my tracks (named after me so others can pull them). */
-  start(peerId: string, stream: MediaStream, video: boolean, fresh = false): Promise<void> {
+  /** Opens the session and sends my tracks (named after me so others can pull them).
+   *  `audioBps`: 16 kbps in 2G mode (Stage 4 · 4.11), else 64 kbps. */
+  start(peerId: string, stream: MediaStream, video: boolean, fresh = false, audioBps = 64_000): Promise<void> {
     return this.run(async () => {
       await this.rpc('session', fresh ? { fresh: true } : {});
       const audio = stream.getAudioTracks()[0] ?? null;
       const cam = video ? stream.getVideoTracks()[0] ?? null : null;
       const tracks: { tx: RTCRtpTransceiver; kind: MediaKind }[] = [];
-      tracks.push({ tx: this.pc.addTransceiver(audio ?? 'audio', { direction: 'sendonly', streams: [stream], sendEncodings: [{ maxBitrate: 64_000 }] }), kind: 'audio' });
+      tracks.push({ tx: this.pc.addTransceiver(audio ?? 'audio', { direction: 'sendonly', streams: [stream], sendEncodings: [{ maxBitrate: audioBps }] }), kind: 'audio' });
       if (video) tracks.push({ tx: this.pc.addTransceiver(cam ?? 'video', { direction: 'sendonly', streams: [stream], sendEncodings: CAMERA_LAYERS.map((e) => ({ ...e })) }), kind: 'video' });
       // A screen share has its own track, so people keep seeing the presenter's camera too.
       tracks.push({ tx: this.pc.addTransceiver('video', { direction: 'sendonly', sendEncodings: [{ maxBitrate: SCREEN_BITRATE, maxFramerate: 30 }] }), kind: 'screen' });
@@ -103,6 +104,16 @@ export class SfuLink {
     const sender = this.senders[kind];
     if (!sender) return;
     await sender.replaceTrack(track).catch(() => {});
+  }
+
+  /** Changes how much my microphone may send (2G mode on or off during the call). */
+  async setAudioBitrate(bps: number) {
+    const sender = this.senders.audio;
+    if (!sender) return;
+    const p = sender.getParameters();
+    if (!p.encodings?.length) return;
+    p.encodings[0].maxBitrate = bps;
+    await sender.setParameters(p).catch(() => {});
   }
 
   isPulled(trackName: string) { return this.pulled.has(trackName); }
