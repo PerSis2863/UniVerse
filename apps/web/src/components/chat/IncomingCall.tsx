@@ -9,7 +9,7 @@ import { Phone, PhoneOff, Video } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringtone } from '@/lib/call-sounds';
 import { spring } from '@/lib/motion';
-import { Avatar } from './MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { useCalls } from '@/store/calls';
 import { haptic } from '@/lib/haptics';

@@ -21,8 +21,6 @@ import { TabPill } from '@/components/ui/Glide';
 // for 30 days. "Message them" opens a one-to-one chat with the person who posted it.
 
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const input = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 const ago = (iso: string, now: number) => {
   const d = Math.floor((now - Date.parse(iso)) / 86_400_000);
   return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
@@ -76,7 +74,7 @@ export default function LostFoundPage() {
           ) : error ? (
             <p className="text-sm text-rose-500">{(error as Error).message}</p>
           ) : !data?.length ? (
-            <div className={`${card} p-8 text-center space-y-2`}>
+            <div className={`panel p-8 text-center space-y-2`}>
               <PackageSearch className="w-10 h-10 text-zinc-400 mx-auto" />
               <p className="font-semibold text-zinc-900 dark:text-white">{tab === 'mine' ? 'You haven’t posted anything' : tab === 'FOUND' ? 'Nothing found lately' : 'Nothing reported lost'}</p>
               <p className="text-sm text-zinc-500">Posts stay up for 30 days. Tap Post to add one.</p>
@@ -87,7 +85,7 @@ export default function LostFoundPage() {
                 {data.map((it) => {
                   const mine = it.reporter.id === me;
                   return (
-                    <motion.li key={it.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }} transition={spring.smooth} className={`${card} overflow-hidden flex flex-col`}>
+                    <motion.li key={it.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }} transition={spring.smooth} className={`panel overflow-hidden flex flex-col`}>
                       {it.photoUrl && (<>
                         {/* eslint-disable-next-line @next/next/no-img-element -- a student's photo from our own storage; next/image can't optimise on Workers */}
                         <img src={it.photoUrl} alt="" loading="lazy" className="w-full h-40 object-cover bg-zinc-100 dark:bg-white/5" />
@@ -143,16 +141,16 @@ function ReportForm({ onClose, onDone }: { onClose: () => void; onDone: (kind: '
 
   return (
     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
-      <div className={`${card} p-4 space-y-3`}>
+      <div className={`panel p-4 space-y-3`}>
         <div className="flex items-center justify-between">
           <div className="inline-flex gap-1">
             {(['FOUND', 'LOST'] as const).map((k) => <button key={k} type="button" onClick={() => setKind(k)} className={cn('relative isolate px-3 py-1.5 rounded-lg text-sm font-medium', kind === k ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-600 dark:text-zinc-300')}>{kind === k && <TabPill id="student-life-lost-found-page-0" />}{k === 'FOUND' ? 'I found something' : 'I lost something'}</button>)}
           </div>
           <button type="button" onClick={onClose} aria-label="Cancel" className="p-1 text-zinc-500"><X className="w-4 h-4" /></button>
         </div>
-        <input className={input} placeholder="What is it? e.g. Blue water bottle" maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <textarea className={`${input} min-h-[70px]`} placeholder="Details (no personal info like card numbers)" maxLength={600} value={description} onChange={(e) => setDescription(e.target.value)} />
-        <input className={input} placeholder={kind === 'FOUND' ? 'Where you found it, and where it is now' : 'Where you last had it'} maxLength={120} value={location} onChange={(e) => setLocation(e.target.value)} />
+        <input className="input" placeholder="What is it? e.g. Blue water bottle" maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <textarea className={`input min-h-[70px]`} placeholder="Details (no personal info like card numbers)" maxLength={600} value={description} onChange={(e) => setDescription(e.target.value)} />
+        <input className="input" placeholder={kind === 'FOUND' ? 'Where you found it, and where it is now' : 'Where you last had it'} maxLength={120} value={location} onChange={(e) => setLocation(e.target.value)} />
         <div className="flex items-center gap-2">
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
           <button type="button" className="btn-secondary btn-sm inline-flex" onClick={() => fileRef.current?.click()}><Camera className="w-4 h-4" /> {photo ? 'Change photo' : 'Add a photo'}</button>

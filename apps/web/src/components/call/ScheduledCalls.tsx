@@ -24,8 +24,6 @@ interface Upcoming {
 interface Rooms { classes: { id: string; name: string }[]; groups: { id: string; name: string }[]; chats: { id: string; name: string }[] }
 
 const JOIN_EARLY_MS = 10 * 60_000;
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const input = 'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40 transition-shadow';
 
 function when(d: Date) {
   const day = isToday(d) ? 'Today' : isTomorrow(d) ? 'Tomorrow' : format(d, 'EEE d MMM');
@@ -88,7 +86,7 @@ export function ScheduledCalls({ role }: { role?: string }) {
       ) : !data ? (
         <div className="h-16 rounded-2xl skeleton" />
       ) : (
-        <motion.ul variants={list} initial="hidden" animate="show" className={`${card} divide-y divide-zinc-200/80 dark:divide-white/[0.06] overflow-hidden`}>
+        <motion.ul variants={list} initial="hidden" animate="show" className={`panel divide-y divide-zinc-200/80 dark:divide-white/[0.06] overflow-hidden`}>
           <AnimatePresence initial={false}>
             {rows.map((c) => {
               const start = new Date(c.startAt);
@@ -165,7 +163,7 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
         <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-zinc-500">Where</span>
           {!rooms ? <div className="h-10 rounded-xl skeleton" /> : (
-            <select value={chosen} onChange={(e) => setRoom(e.target.value)} className={input}>
+            <select value={chosen} onChange={(e) => setRoom(e.target.value)} className="input">
               {options.length === 0 && <option value="">No classes, groups or chats yet</option>}
               {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -173,16 +171,16 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
         </label>
         <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-zinc-500">Title</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} placeholder={chosen.startsWith('class:') ? 'Class call' : 'Study session'} className={input} />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} placeholder={chosen.startsWith('class:') ? 'Class call' : 'Study session'} className="input" />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block space-y-1.5 col-span-2 sm:col-span-1">
             <span className="text-xs font-semibold text-zinc-500">Starts</span>
-            <input type="datetime-local" required value={startAt} onChange={(e) => setStartAt(e.target.value)} className={input} />
+            <input type="datetime-local" required value={startAt} onChange={(e) => setStartAt(e.target.value)} className="input" />
           </label>
           <label className="block space-y-1.5 col-span-2 sm:col-span-1">
             <span className="text-xs font-semibold text-zinc-500">Length</span>
-            <select value={durationMin} onChange={(e) => setDuration(Number(e.target.value))} className={input}>
+            <select value={durationMin} onChange={(e) => setDuration(Number(e.target.value))} className="input">
               {[15, 30, 45, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`}</option>)}
             </select>
           </label>

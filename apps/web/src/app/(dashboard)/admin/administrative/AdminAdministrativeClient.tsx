@@ -41,7 +41,6 @@ interface Payment { id: string; description: string; amount: number; currency?: 
 type DocForm = { title: string; type: string; fileUrl: string; issuedAt: string };
 type ScholarshipForm = { name: string; amount: string; deadline: string; provider: string; description: string };
 
-const field = 'w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors';
 const label = 'text-sm font-medium text-zinc-600 dark:text-zinc-400';
 const card = 'bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden';
 const fmtDate = (v?: string | Date | null) => (v ? format(new Date(v), 'd MMM yyyy') : '—');
@@ -228,23 +227,23 @@ export default function AdminAdministrativeClient() {
                   <p className="text-xs text-zinc-500">Documents you add here are stored under your own account.</p>
                   <div className="space-y-2">
                     <label className={label}>Document Title</label>
-                    <input required value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} type="text" className={field} />
+                    <input required value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} type="text" className="input" />
                   </div>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className={label}>Type</label>
-                      <select value={docForm.type} onChange={(e) => setDocForm({ ...docForm, type: e.target.value })} className={field}>
+                      <select value={docForm.type} onChange={(e) => setDocForm({ ...docForm, type: e.target.value })} className="input">
                         {DOC_TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
                       </select>
                     </div>
                     <div className="space-y-2">
                       <label className={label}>Issued on</label>
-                      <input value={docForm.issuedAt} onChange={(e) => setDocForm({ ...docForm, issuedAt: e.target.value })} type="date" className={field} />
+                      <input value={docForm.issuedAt} onChange={(e) => setDocForm({ ...docForm, issuedAt: e.target.value })} type="date" className="input" />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className={label}>File link</label>
-                    <input required value={docForm.fileUrl} onChange={(e) => setDocForm({ ...docForm, fileUrl: e.target.value })} type="url" placeholder="https://…" className={field} />
+                    <input required value={docForm.fileUrl} onChange={(e) => setDocForm({ ...docForm, fileUrl: e.target.value })} type="url" placeholder="https://…" className="input" />
                   </div>
                 </>
               )}
@@ -253,25 +252,25 @@ export default function AdminAdministrativeClient() {
                 <>
                   <div className="space-y-2">
                     <label className={label}>Scholarship Name</label>
-                    <input required value={schForm.name} onChange={(e) => setSchForm({ ...schForm, name: e.target.value })} type="text" className={field} />
+                    <input required value={schForm.name} onChange={(e) => setSchForm({ ...schForm, name: e.target.value })} type="text" className="input" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className={label}>Amount ($)</label>
-                      <input value={schForm.amount} onChange={(e) => setSchForm({ ...schForm, amount: e.target.value })} type="number" min="0" className={field} />
+                      <input value={schForm.amount} onChange={(e) => setSchForm({ ...schForm, amount: e.target.value })} type="number" min="0" className="input" />
                     </div>
                     <div className="space-y-2">
                       <label className={label}>Deadline</label>
-                      <input value={schForm.deadline} onChange={(e) => setSchForm({ ...schForm, deadline: e.target.value })} type="date" className={field} />
+                      <input value={schForm.deadline} onChange={(e) => setSchForm({ ...schForm, deadline: e.target.value })} type="date" className="input" />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className={label}>Provider</label>
-                    <input value={schForm.provider} onChange={(e) => setSchForm({ ...schForm, provider: e.target.value })} type="text" placeholder="e.g. Internal" className={field} />
+                    <input value={schForm.provider} onChange={(e) => setSchForm({ ...schForm, provider: e.target.value })} type="text" placeholder="e.g. Internal" className="input" />
                   </div>
                   <div className="space-y-2">
                     <label className={label}>Description</label>
-                    <textarea value={schForm.description} onChange={(e) => setSchForm({ ...schForm, description: e.target.value })} className={`${field} min-h-[80px]`} />
+                    <textarea value={schForm.description} onChange={(e) => setSchForm({ ...schForm, description: e.target.value })} className={`input min-h-[80px]`} />
                   </div>
                 </>
               )}

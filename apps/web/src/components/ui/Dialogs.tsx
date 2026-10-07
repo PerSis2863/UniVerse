@@ -25,7 +25,8 @@ const subscribe = (l: () => void) => { listeners.add(l); return () => { listener
 
 function open(p: Pending) {
   // A new dialog replaces any open one (the old one resolves as cancelled).
-  if (current) current.kind === 'confirm' ? current.resolve(false) : current.resolve(null);
+  if (current?.kind === 'confirm') current.resolve(false);
+  else if (current) current.resolve(null);
   current = p;
   emit();
 }

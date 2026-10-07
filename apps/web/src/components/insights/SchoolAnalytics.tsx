@@ -18,7 +18,6 @@ import { TabPill, TabPanel } from '@/components/ui/Glide';
 
 const MetricChart = dynamic(() => import('./MetricChart'), { ssr: false, loading: () => <div className="h-32 rounded-xl skeleton" /> });
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const th = 'text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 pb-2';
 const select = 'h-8 rounded-lg bg-zinc-100 dark:bg-white/[0.06] px-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40';
 const API = '/api/admin/school-analytics';
@@ -70,7 +69,7 @@ export function SchoolAnalytics() {
     <>
       <section className="space-y-3" aria-labelledby="ask-school">
         <h2 id="ask-school" className="text-lg font-bold text-zinc-900 dark:text-white">Ask about your school</h2>
-        <div className={`${card} p-4 md:p-5 space-y-4`}>
+        <div className={`panel p-4 md:p-5 space-y-4`}>
           <form onSubmit={ask} className="flex gap-2">
             <label htmlFor="school-question" className="sr-only">Your question</label>
             <div className="relative flex-1 min-w-0">
@@ -214,7 +213,7 @@ function DataTable({ a }: { a: MetricResult }) {
 function TrendCard({ r, onOpen }: { r: MetricResult; onOpen: () => void }) {
   const big = !r.rows.length ? '–' : r.kind === 'column' ? formatValue(r.rows.reduce((s, x) => s + x.value, 0), r.unit) : formatValue(r.rows[r.rows.length - 1].value, r.unit);
   return (
-    <div className={`${card} p-4 flex flex-col gap-2`}>
+    <div className={`panel p-4 flex flex-col gap-2`}>
       <p className="text-xs text-zinc-500">{r.title} · {r.range}</p>
       <p className="text-2xl font-black text-zinc-900 dark:text-white tabular-nums">{big}</p>
       {r.rows.length > 1 ? <MetricChart result={r} compact /> : <div className="h-[110px] rounded-xl bg-zinc-100/60 dark:bg-white/[0.03]" aria-hidden />}

@@ -11,8 +11,8 @@ import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, impactTabs } from '@/components/layout/SectionTabs';
 import { Switch } from '@/components/ui/Switch';
-import { Avatar } from '@/components/chat/MessageBubble';
-import { Sheet } from '@/components/chat/ChatDialogs';
+import { Avatar } from '@/components/ui/Avatar';
+import { Sheet } from '@/components/ui/Sheet';
 import { ImpactReportView, type ImpactCallReport } from '@/components/impact/ImpactReport';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
@@ -42,8 +42,6 @@ interface Room {
 }
 
 const ROLE_LABEL: Record<FollowRole, string> = { VOLUNTEER: 'Volunteer', SPONSOR: 'Sponsor', SUPPORTER: 'Supporter' };
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const input = 'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/40';
 const dateTime = (d: string) => new Date(d).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 /** The value for a datetime-local input, in local time. */
 const localInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -116,7 +114,7 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
 
           <motion.div variants={list} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {stats.map((s) => (
-              <motion.div key={s.label} variants={fadeUp} className={`${card} p-4`}>
+              <motion.div key={s.label} variants={fadeUp} className={`panel p-4`}>
                 <s.icon className="w-4 h-4 text-indigo-500" />
                 <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white tabular-nums">{s.value}</p>
                 <p className="text-xs text-zinc-500">{s.label}</p>
@@ -128,7 +126,7 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
           <div className="grid lg:grid-cols-[1fr_340px] gap-4 items-start">
             {/* Posts */}
             <section className="space-y-3 min-w-0">
-              <div className={`${card} p-4`}>
+              <div className={`panel p-4`}>
                 <p className="text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-line">{data.description}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {data.ngo.isVerified && <span className="text-[11px] rounded-full px-2 py-0.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1"><BadgeCheck className="w-3 h-3" />Verified NGO</span>}
@@ -138,8 +136,8 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
               {data.canPost ? (
-                <div className={`${card} p-3`}>
-                  <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={2000} placeholder={data.staff ? 'Share news from the project… (@name to notify a follower)' : 'Share how it went, ask a question, offer help… (@name to notify someone)'} aria-label="New post" className={`${input} resize-none`} />
+                <div className={`panel p-3`}>
+                  <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={2000} placeholder={data.staff ? 'Share news from the project… (@name to notify a follower)' : 'Share how it went, ask a question, offer help… (@name to notify someone)'} aria-label="New post" className={`input resize-none`} />
                   <div className="mt-2 flex items-center gap-3">
                     {data.staff && (
                       <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
@@ -158,7 +156,7 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
                 <ul className="space-y-3">
                   <AnimatePresence initial={false}>
                     {data.updates.map((u) => (
-                      <motion.li key={u.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className={cn(card, 'p-4', u.kind === 'REPORT' && 'border-indigo-400/40')}>
+                      <motion.li key={u.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className={cn('panel', 'p-4', u.kind === 'REPORT' && 'border-indigo-400/40')}>
                         <div className="flex items-center gap-2.5">
                           <Avatar name={u.author.name} src={u.author.avatar} size={32} />
                           <span className="flex-1 min-w-0">
@@ -186,7 +184,7 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
               <ImpactCallCard data={data} busy={busy} run={run} call={call} onJoin={() => router.push(`/call/${data.calls.callId}`)} onReport={(cid) => void openReport(cid)} />
               <PledgeCard data={data} busy={busy} run={run} call={call} />
               {data.shifts.length > 0 && (
-                <section className={`${card} p-4 space-y-2`}>
+                <section className={`panel p-4 space-y-2`}>
                   <div className="flex items-center gap-2"><CalendarClock className="w-4 h-4 text-indigo-500" /><h2 className="text-sm font-semibold text-zinc-900 dark:text-white flex-1">Coming shifts</h2><Link href={shiftsHref} className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">All shifts</Link></div>
                   {data.shifts.map((s) => (
                     <Link key={s.id} href={shiftsHref} className="block px-2 py-2 -mx-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.05]">
@@ -197,7 +195,7 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
                 </section>
               )}
               {data.staff && (
-                <section className={`${card} p-4 space-y-2`}>
+                <section className={`panel p-4 space-y-2`}>
                   <div className="flex items-center gap-3">
                     <Globe2 className="w-4 h-4 text-indigo-500" />
                     <span className="flex-1 min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Public page</span><span className="block text-xs text-zinc-500">For sponsors: figures, public posts and reports. Never students.</span></span>
@@ -211,7 +209,7 @@ export default function ImpactRoomPage({ params }: { params: Promise<{ id: strin
                   )}
                 </section>
               )}
-              <section className={`${card} p-4`}>
+              <section className={`panel p-4`}>
                 <div className="flex items-center gap-2 mb-3"><Users className="w-4 h-4 text-indigo-500" /><h2 className="text-sm font-semibold text-zinc-900 dark:text-white">People</h2></div>
                 {data.followers.people.length === 0 ? <p className="text-sm text-zinc-500">Nobody follows this room yet.</p> : (
                   <div className="flex flex-wrap gap-2">
@@ -259,7 +257,7 @@ function ImpactCallCard({ data, busy, run, call, onJoin, onReport }: { data: Roo
     if (await run('plan', () => call(`/api/impact-rooms/${data.id}/calls`, 'POST', { startsAt: at.toISOString(), title: title.trim() || undefined }), 'Impact call planned. Followers were told.')) { setPlanning(false); setTitle(''); }
   };
   return (
-    <section className={`${card} p-4 space-y-3`}>
+    <section className={`panel p-4 space-y-3`}>
       <div className="flex items-center gap-2"><Video className="w-4 h-4 text-indigo-500" /><h2 className="text-sm font-semibold text-zinc-900 dark:text-white flex-1">Monthly impact call</h2></div>
       {next ? (
         <div className="rounded-xl bg-indigo-500/[0.07] p-3">
@@ -278,8 +276,8 @@ function ImpactCallCard({ data, busy, run, call, onJoin, onReport }: { data: Roo
           <AnimatePresence initial={false}>
             {planning ? (
               <motion.div key="plan" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden space-y-2">
-                <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="When" className={input} />
-                <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="Title (optional)" aria-label="Title" className={input} />
+                <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="When" className="input" />
+                <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="Title (optional)" aria-label="Title" className="input" />
                 <div className="flex gap-2">
                   <button type="button" disabled={!!busy} onClick={() => void plan()} className="btn-primary flex-1">{busy === 'plan' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarPlus className="w-4 h-4" />}Plan the call</button>
                   <button type="button" onClick={() => setPlanning(false)} className="btn-secondary">Cancel</button>
@@ -322,7 +320,7 @@ function PledgeCard({ data, busy, run, call }: { data: Room; busy: string | null
   };
   const pct = p ? Math.min(100, Math.round((p.hoursThisMonth / p.hoursPerMonth) * 100)) : 0;
   return (
-    <section className={`${card} p-4 space-y-3`}>
+    <section className={`panel p-4 space-y-3`}>
       <div className="flex items-center gap-2"><HandHeart className="w-4 h-4 text-emerald-500" /><h2 className="text-sm font-semibold text-zinc-900 dark:text-white flex-1">Donate time</h2></div>
       {p && !editing ? (
         <>
@@ -342,10 +340,10 @@ function PledgeCard({ data, busy, run, call }: { data: Room; busy: string | null
         <div className="space-y-2">
           {!p && <p className="text-xs text-zinc-500">Promise hours a month. Your verified shift hours on this project count towards it, and sponsors see the total.</p>}
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-zinc-500">Hours a month<input type="number" min={1} max={40} value={hours} onChange={(e) => setHours(Number(e.target.value))} className={`${input} mt-1`} /></label>
-            <label className="text-xs text-zinc-500">For<select value={months} onChange={(e) => setMonths(Number(e.target.value))} className={`${input} mt-1`}>{[1, 3, 6, 12].map((m) => <option key={m} value={m}>{m} {m === 1 ? 'month' : 'months'}</option>)}</select></label>
+            <label className="text-xs text-zinc-500">Hours a month<input type="number" min={1} max={40} value={hours} onChange={(e) => setHours(Number(e.target.value))} className={`input mt-1`} /></label>
+            <label className="text-xs text-zinc-500">For<select value={months} onChange={(e) => setMonths(Number(e.target.value))} className={`input mt-1`}>{[1, 3, 6, 12].map((m) => <option key={m} value={m}>{m} {m === 1 ? 'month' : 'months'}</option>)}</select></label>
           </div>
-          <input value={skill} onChange={(e) => setSkill(e.target.value)} maxLength={60} placeholder="What you can help with (optional)" aria-label="Skill" className={input} />
+          <input value={skill} onChange={(e) => setSkill(e.target.value)} maxLength={60} placeholder="What you can help with (optional)" aria-label="Skill" className="input" />
           <div className="flex gap-2">
             <button type="button" disabled={!!busy} onClick={() => void save()} className="btn-primary flex-1">{busy === 'pledge' ? <Loader2 className="w-4 h-4 animate-spin" /> : <HandHeart className="w-4 h-4" />}{p ? 'Save' : 'Pledge my time'}</button>
             {p && <button type="button" onClick={() => setEditing(false)} className="btn-secondary">Cancel</button>}

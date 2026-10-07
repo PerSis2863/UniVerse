@@ -9,7 +9,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { Avatar } from './MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { uploadChatFile } from './chat-client';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useAuthStore } from '@/store/auth';

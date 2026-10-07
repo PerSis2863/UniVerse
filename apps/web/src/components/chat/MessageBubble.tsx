@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useNow } from '@/lib/use-now';
+import { Avatar } from '@/components/ui/Avatar';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
@@ -22,34 +23,6 @@ import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
-const AVATAR_GRADIENTS = [
-  'from-indigo-500 to-violet-500', 'from-sky-500 to-cyan-500', 'from-emerald-500 to-teal-500', 'from-amber-500 to-orange-500',
-  'from-rose-500 to-pink-500', 'from-fuchsia-500 to-purple-500', 'from-blue-500 to-indigo-500', 'from-lime-500 to-emerald-500',
-];
-function avatarGradient(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
-}
-
-export function Avatar({ name, src, size = 40, online }: { name: string; src?: string | null; size?: number; online?: boolean }) {
-  const letters = name.split(/\s+/).filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-  // A photo that fails to load (deleted, blocked, offline) falls back to the initials.
-  const [failed, setFailed] = useState<string | null>(null);
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      {src && failed !== src ? (
-        <img loading="lazy" decoding="async" src={src} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
-      ) : (
-        <div className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold', avatarGradient(name))} style={{ fontSize: size * 0.36 }}>
-          {letters}
-        </div>
-      )}
-      {online && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121830]" />}
-    </div>
-  );
-}
-
 /**
  * Voice-note player (Stage 4 · 1.7): one player for the whole app (src/lib/voice-player.ts), so it
  * keeps playing when you open another chat or page (MiniPlayer). Tap or drag along the waveform to

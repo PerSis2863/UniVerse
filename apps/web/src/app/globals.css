@@ -272,6 +272,23 @@
     box-shadow: var(--card-shadow);
   }
 
+  /* Panels: the frosted-glass card used across the app's pages (sections, lists, forms). No
+     padding of its own, so lists can run edge to edge; add p-4 / p-5 for content. */
+  .panel {
+    border-radius: 1rem;
+    border: 1px solid rgb(228 228 231 / 0.8);
+    background-color: rgb(255 255 255 / 0.7);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+  }
+  .dark .panel {
+    border-color: rgb(255 255 255 / 0.07);
+    background-color: rgb(255 255 255 / 0.03);
+  }
+  @media print {
+    .panel { background-color: #fff; border-color: rgb(212 212 216); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+
   .card-hover {
     background-color: var(--card-bg);
     border: 1px solid var(--card-border);

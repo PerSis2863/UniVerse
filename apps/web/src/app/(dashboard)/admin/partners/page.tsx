@@ -20,7 +20,6 @@ type Partnership = {
 };
 const TYPE_LABEL: Record<string, string> = { ACADEMIC: 'University / college', NGO: 'NGO / non-profit', CORPORATE: 'Company', GOVERNMENT: 'Government body' };
 
-const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 
 export default function SponsorPortalPage() {
   const { data: partnerships, isLoading, mutate } = useSWR<Partnership[]>('/partners/partnerships', fetcher);
@@ -72,14 +71,14 @@ export default function SponsorPortalPage() {
                 <p className="text-sm text-zinc-500">Add a partner organization first on <Link href="/admin/partnerships" className="text-indigo-500 font-semibold">Partner Institutions</Link>.</p>
               ) : (
                 <>
-                  <select className={input} value={form.partnerId} onChange={(e) => setForm({ ...form, partnerId: e.target.value })}>
+                  <select className="input" value={form.partnerId} onChange={(e) => setForm({ ...form, partnerId: e.target.value })}>
                     {partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
-                  <input className={input} placeholder="Title, e.g. 2026 Scholarship Sponsorship" value={form.title} maxLength={120} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-                  <textarea className={`${input} min-h-[80px]`} placeholder="What the partnership covers (optional)" value={form.description} maxLength={1000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                  <input className="input" placeholder="Title, e.g. 2026 Scholarship Sponsorship" value={form.title} maxLength={120} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                  <textarea className={`input min-h-[80px]`} placeholder="What the partnership covers (optional)" value={form.description} maxLength={1000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
                   <div className="grid grid-cols-2 gap-3">
-                    <label className="text-xs text-zinc-500">Start<input type="date" className={input} value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></label>
-                    <label className="text-xs text-zinc-500">End<input type="date" className={input} value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></label>
+                    <label className="text-xs text-zinc-500">Start<input type="date" className="input" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></label>
+                    <label className="text-xs text-zinc-500">End<input type="date" className="input" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></label>
                   </div>
                   <button onClick={save} disabled={busy || !form.title.trim()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
                 </>

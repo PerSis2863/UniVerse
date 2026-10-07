@@ -14,8 +14,6 @@ type Student = { id: string; name: string; email: string };
 type Grade = { id: string; studentId: string; assignmentName: string; score: number; maxScore: number; feedback: string | null; gradedAt: string };
 type Gradebook = { enrollments: { student: Student }[]; grades: Grade[] };
 
-const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 
 function band(avg: number | null) {
   if (avg == null) return { label: 'Not graded', cls: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20' };
@@ -97,13 +95,13 @@ export default function TeacherGradesPage() {
       <Topbar title="Grade Book" subtitle="Record and review student results" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-5">
         <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
-          <select className={cn(input, 'md:w-80')} value={courseId} onChange={(e) => { setCourseId(e.target.value); setAdding(null); }}>
+          <select className={cn('input', 'md:w-80')} value={courseId} onChange={(e) => { setCourseId(e.target.value); setAdding(null); }}>
             {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
           </select>
           <div className="flex gap-2">
             <div className="relative flex-1 md:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input className={cn(input, 'pl-9')} placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <input className={cn('input', 'pl-9')} placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <button onClick={exportCsv} className="btn-secondary text-sm px-3 flex items-center gap-1.5"><Download className="w-4 h-4" /> <span className="hidden sm:inline">Export</span></button>
             <button onClick={() => setAdding({ studentId: '', assignmentName: '', score: '', maxScore: '100', feedback: '' })} disabled={!rows.length} className="btn-primary text-sm px-3 flex items-center gap-1.5 disabled:opacity-50"><Plus className="w-4 h-4" /> Add grade</button>
@@ -111,20 +109,20 @@ export default function TeacherGradesPage() {
         </div>
 
         {adding && (
-          <div className={`${card} p-5 space-y-3`}>
+          <div className={`panel p-5 space-y-3`}>
             <div className="flex items-center justify-between"><p className="font-semibold text-zinc-900 dark:text-white">Record a grade</p><button onClick={() => setAdding(null)} aria-label="Close" className="p-1 text-zinc-500"><X className="w-4 h-4" /></button></div>
             <div className="grid sm:grid-cols-2 gap-3">
-              <select className={input} value={adding.studentId} onChange={(e) => setAdding({ ...adding, studentId: e.target.value })}>
+              <select className="input" value={adding.studentId} onChange={(e) => setAdding({ ...adding, studentId: e.target.value })}>
                 <option value="">Choose a student…</option>
                 {rows.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
-              <input className={input} placeholder="Assessment, e.g. Midterm exam" maxLength={200} value={adding.assignmentName} onChange={(e) => setAdding({ ...adding, assignmentName: e.target.value })} />
+              <input className="input" placeholder="Assessment, e.g. Midterm exam" maxLength={200} value={adding.assignmentName} onChange={(e) => setAdding({ ...adding, assignmentName: e.target.value })} />
               <div className="flex items-center gap-2">
-                <input className={input} type="number" min={0} step="0.5" placeholder="Score" value={adding.score} onChange={(e) => setAdding({ ...adding, score: e.target.value })} />
+                <input className="input" type="number" min={0} step="0.5" placeholder="Score" value={adding.score} onChange={(e) => setAdding({ ...adding, score: e.target.value })} />
                 <span className="text-zinc-400">/</span>
-                <input className={input} type="number" min={1} step="1" placeholder="Out of" value={adding.maxScore} onChange={(e) => setAdding({ ...adding, maxScore: e.target.value })} />
+                <input className="input" type="number" min={1} step="1" placeholder="Out of" value={adding.maxScore} onChange={(e) => setAdding({ ...adding, maxScore: e.target.value })} />
               </div>
-              <input className={input} placeholder="Feedback for the student (optional)" maxLength={2000} value={adding.feedback} onChange={(e) => setAdding({ ...adding, feedback: e.target.value })} />
+              <input className="input" placeholder="Feedback for the student (optional)" maxLength={2000} value={adding.feedback} onChange={(e) => setAdding({ ...adding, feedback: e.target.value })} />
             </div>
             <button onClick={saveGrade} disabled={busy || !adding.studentId || !adding.assignmentName.trim() || adding.score === ''} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save grade</button>
           </div>
@@ -132,9 +130,9 @@ export default function TeacherGradesPage() {
 
         {error ? <p className="text-sm text-rose-500">{errorMessage(error, 'Could not load grades.')}</p>
           : isLoading || loadingCourses ? <div className="h-64 rounded-2xl skeleton" />
-          : rows.length === 0 ? <div className={`${card} p-10 text-center text-sm text-zinc-500`}>No students are enrolled in this course yet. Ask your campus admin to enroll them.</div>
+          : rows.length === 0 ? <div className={`panel p-10 text-center text-sm text-zinc-500`}>No students are enrolled in this course yet. Ask your campus admin to enroll them.</div>
           : (
-            <div className={`${card} overflow-hidden`}>
+            <div className={`panel overflow-hidden`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead><tr className="border-b border-zinc-200/70 dark:border-white/[0.06] text-xs uppercase tracking-wider text-zinc-500">

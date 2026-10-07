@@ -11,12 +11,11 @@ import { FeatureGuide } from '@/components/ui/FeatureGuide';
 // Spaces (Stage 4 · 3.1): each of my classes and study groups, with everything for it in one place.
 
 interface Mine { courses: { id: string; code: string; name: string }[]; groups: { id: string; name: string }[] }
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 
 export default function SpacesPage() {
   const { data, isLoading } = useSWR<Mine>('/api/spaces', authedJson);
   const row = (href: string, title: string, meta: string, Icon: typeof Users) => (
-    <Link key={href} href={href} className={`${card} lift p-4 flex items-center gap-3 hover:border-indigo-400/50`}>
+    <Link key={href} href={href} className={`panel lift p-4 flex items-center gap-3 hover:border-indigo-400/50`}>
       <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0"><Icon className="w-5 h-5" /></span>
       <span className="flex-1 min-w-0"><span className="block font-medium text-zinc-900 dark:text-white truncate">{title}</span><span className="block text-xs text-zinc-500">{meta}</span></span>
       <ChevronRight className="w-4 h-4 text-zinc-400" />

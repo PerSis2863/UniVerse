@@ -11,7 +11,6 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 
 interface Contact { id: string; email: string; name: string | null; confirmedAt: string | null; weeklyDigest: boolean; absenceAlerts: boolean; lastDigestAt: string | null }
 
-const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 
 export function GuardianContactsCard() {
   const { data: res, mutate: refresh, isLoading } = useSWR<{ enabled: boolean; contacts: Contact[] }>('/api/student/guardians', authedJson);
@@ -104,8 +103,8 @@ export function GuardianContactsCard() {
 
       {(data?.length ?? 0) < 3 && (
         <form onSubmit={add} className="grid sm:grid-cols-[1fr_1fr_auto] gap-2">
-          <input aria-label="Their name (optional)" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Name (optional)" className={field} />
-          <input aria-label="Their email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} placeholder="parent@example.com" className={field} />
+          <input aria-label="Their name (optional)" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Name (optional)" className="input" />
+          <input aria-label="Their email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} placeholder="parent@example.com" className="input" />
           <button type="submit" className="btn-primary" disabled={busy} aria-busy={busy || undefined}>{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add</button>
         </form>
       )}

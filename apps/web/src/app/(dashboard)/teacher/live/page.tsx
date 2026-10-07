@@ -14,8 +14,6 @@ import { PollResults } from '@/components/live/PollResults';
 
 interface Poll { id: string; question: string; options: string[]; status: 'OPEN' | 'CLOSED'; showResults: boolean; createdAt: string; results: number[]; total: number }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 
 /** Live class: quick polls students answer on their phones, with results updating live. */
 export default function TeacherLivePage() {
@@ -37,7 +35,7 @@ export default function TeacherLivePage() {
           <div className="flex flex-wrap items-end gap-3">
             <label className="space-y-1 text-sm flex-1 min-w-48">
               <span className="text-zinc-600 dark:text-zinc-400">Course</span>
-              <select value={active} onChange={(e) => setCourseId(e.target.value)} className={field}>
+              <select value={active} onChange={(e) => setCourseId(e.target.value)} className="input">
                 {!courses?.length && <option value="">{courses ? 'No courses yet' : 'Loading…'}</option>}
                 {courses?.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
               </select>
@@ -49,7 +47,7 @@ export default function TeacherLivePage() {
 
           {data?.polls.map((p) => <PollCard key={p.id} poll={p} enrolled={data.enrolled} onChange={() => mutate()} />)}
           {data && data.polls.length === 0 && (
-            <p className={`${card} p-6 text-sm text-zinc-500 text-center`}>No polls yet. Ask one above: students in the course get it straight away.</p>
+            <p className={`panel p-6 text-sm text-zinc-500 text-center`}>No polls yet. Ask one above: students in the course get it straight away.</p>
           )}
         </div>
       </div>
@@ -79,13 +77,13 @@ function NewPoll({ courseId, onCreated }: { courseId: string; onCreated: () => v
   };
 
   return (
-    <form onSubmit={start} className={`${card} p-5 space-y-3`}>
+    <form onSubmit={start} className={`panel p-5 space-y-3`}>
       <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Radio className="w-4 h-4 text-rose-500" /> New poll</h2>
-      <input aria-label="Question" required maxLength={300} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Which sorting algorithm is stable?" className={field} />
+      <input aria-label="Question" required maxLength={300} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Which sorting algorithm is stable?" className="input" />
       <div className="grid sm:grid-cols-2 gap-2">
         {options.map((o, i) => (
           <div key={i} className="flex gap-1">
-            <input aria-label={`Answer ${i + 1}`} maxLength={120} value={o} onChange={(e) => setOptions((l) => l.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`Answer ${i + 1}`} className={field} />
+            <input aria-label={`Answer ${i + 1}`} maxLength={120} value={o} onChange={(e) => setOptions((l) => l.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`Answer ${i + 1}`} className="input" />
             {options.length > 2 && <button type="button" aria-label={`Remove answer ${i + 1}`} onClick={() => setOptions((l) => l.filter((_, j) => j !== i))} className="p-2 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
           </div>
         ))}
@@ -110,7 +108,7 @@ function PollCard({ poll, enrolled, onChange }: { poll: Poll; enrolled: number; 
     try { await authedJson(`/api/live/${poll.id}`, { method: 'DELETE' }); onChange(); } catch (err) { toast.error((err as Error).message); }
   };
   return (
-    <section className={`${card} p-5 space-y-4`} aria-label={poll.question}>
+    <section className={`panel p-5 space-y-4`} aria-label={poll.question}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className={`text-[11px] font-bold uppercase tracking-wider ${poll.status === 'OPEN' ? 'text-rose-500' : 'text-zinc-500'}`}>{poll.status === 'OPEN' ? '● Live' : 'Closed'}</p>

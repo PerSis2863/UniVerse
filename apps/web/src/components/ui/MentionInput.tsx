@@ -6,7 +6,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { authedJson } from '@/lib/authed-fetch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 
 // A one-line input that suggests people after "@" (Stage 4 · 3.9): the people who can see this doc,
 // task board or whiteboard (/api/mentions). Picking one writes "@First Last ", which the server

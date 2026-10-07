@@ -24,7 +24,6 @@ interface Shift {
 }
 interface Report { year: number; totals: { hours: number; volunteers: number; shifts: number }; places: Place[] }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 const hrs = (m: number) => `${Math.round((m / 60) * 10) / 10} h`;
@@ -87,7 +86,7 @@ export default function ShiftsPage() {
             </motion.div>
           )}
           {isLoading ? <div className="grid gap-3">{[0, 1, 2].map((i) => <div key={i} className="h-28 rounded-2xl skeleton" />)}</div> : error ? <p className="text-sm text-rose-500">{(error as Error).message}</p> : !shifts.length ? (
-            <div className={`${card} p-8 text-center space-y-2`}>
+            <div className={`panel p-8 text-center space-y-2`}>
               <HandHeart className="w-10 h-10 text-zinc-400 mx-auto" />
               <p className="font-semibold text-zinc-900 dark:text-white">No shifts yet</p>
               <p className="text-sm text-zinc-500">When an NGO project needs volunteers on site, its shifts appear here.</p>
@@ -99,7 +98,7 @@ export default function ShiftsPage() {
                 const over = now > Date.parse(s.endAt);
                 const m = s.mine;
                 return (
-                  <motion.li key={s.id} layout transition={spring.smooth} className={cn(card, 'p-4 sm:p-5 space-y-3', over && !m && 'opacity-60')}>
+                  <motion.li key={s.id} layout transition={spring.smooth} className={cn('panel', 'p-4 sm:p-5 space-y-3', over && !m && 'opacity-60')}>
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-zinc-900 dark:text-white">{s.title}</p>

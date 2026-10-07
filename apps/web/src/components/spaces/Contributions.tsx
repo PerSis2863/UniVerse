@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { BadgeCheck, Loader2, Scale, Star } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 
 // Fair group work (Stage 4 · 4.3; src/server/contributions.ts): who did what in a space's shared work.
@@ -24,7 +24,6 @@ interface Data {
   people: Row[]; me: Row | null; teammates: { id: string; name: string; avatar: string | null; myScore: number | null }[];
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const kb = (b: number) => (b >= 1024 ? `${(b / 1024).toFixed(b >= 10_240 ? 0 : 1)} KB` : `${b} B`);
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
@@ -93,10 +92,10 @@ export function Contributions({ kind, id }: { kind: string; id: string }) {
     mutate((d) => (d ? { ...d, teammates: d.teammates.map((t) => (t.id === rateeId ? { ...t, myScore: score } : t)) } : d), { revalidate: false });
     try { await authedJson(`/api/spaces/${kind}/${id}/ratings`, { method: 'POST', body: JSON.stringify({ rateeId, score }) }); } catch (e) { toast.error((e as Error).message); void mutate(); }
   };
-  if (!data) return <section className={`${card} p-4`}><div className="h-24 rounded-xl skeleton" /></section>;
+  if (!data) return <section className={`panel p-4`}><div className="h-24 rounded-xl skeleton" /></section>;
   const nothing = !data.used.length;
   return (
-    <section className={`${card} p-4 space-y-3`} aria-label="Who did what">
+    <section className={`panel p-4 space-y-3`} aria-label="Who did what">
       <div className="flex flex-wrap items-center gap-2">
         <Scale className="w-4 h-4 text-indigo-500" />
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white flex-1">{data.canManage ? 'Who did what' : 'Your part'}</h2>

@@ -17,7 +17,6 @@ import type { LostFoundItem } from '@/components/campus/lost-found';
 // Lost & found moderation (upgrade 7): every post, including sorted and expired ones. Hiding a post
 // tells the person who posted it (in the app, never by email).
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 
 export default function AdminLostFoundPage() {
   const { data, isLoading, mutate } = useSWR<LostFoundItem[]>('/api/campus/lost-found?all=1', authedJson);
@@ -43,9 +42,9 @@ export default function AdminLostFoundPage() {
         <div className="max-w-5xl mx-auto space-y-4">
           <AdminSearch value={q} onChange={setQ} placeholder="Search items, places or who posted them…" />
           {isLoading ? <div className="h-32 rounded-2xl skeleton" /> : !rows.length ? (
-            <p className={`${card} p-6 text-sm text-zinc-500 text-center`}>{data?.length ? `Nothing matches “${q}”.` : 'No posts yet.'}</p>
+            <p className={`panel p-6 text-sm text-zinc-500 text-center`}>{data?.length ? `Nothing matches “${q}”.` : 'No posts yet.'}</p>
           ) : (
-            <ul className={`${card} divide-y divide-zinc-100 dark:divide-white/[0.05]`}>
+            <ul className={`panel divide-y divide-zinc-100 dark:divide-white/[0.05]`}>
               <AnimatePresence initial={false}>
                 {rows.map((it) => (
                   <motion.li key={it.id} layout exit={{ opacity: 0, height: 0 }} transition={spring.snappy} className="p-3 flex items-center gap-3">

@@ -33,7 +33,6 @@ const TYPE_LABEL: Record<CallRow['type'], string> = { chat: '', class: 'Class', 
 const TYPE_ICON = { class: GraduationCap, group: Users, room: Headphones, link: Link2, hall: Coffee, office: DoorOpen } as const;
 const withWho = (names: string[], more: number) => (names.length ? `With ${names.join(', ')}${more ? ` and ${more} more` : ''}` : '');
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const dur = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 
 /** A call's meeting notes or recording opened from a chat or a notification (?note=, ?recording=; Stage 4 · 2.8, 2.9). */
@@ -97,13 +96,13 @@ export default function CallsPage() {
           ) : isLoading ? (
             <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-16 rounded-2xl skeleton" />)}</div>
           ) : rows.length === 0 ? (
-            <motion.div variants={fadeUp} initial="hidden" animate="show" className={`${card} p-10 text-center`}>
+            <motion.div variants={fadeUp} initial="hidden" animate="show" className={`panel p-10 text-center`}>
               <Phone className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
               <p className="font-semibold text-zinc-900 dark:text-white">{filter === 'missed' ? 'No missed calls' : filter === 'notes' ? 'No notes or recordings yet' : 'No calls yet'}</p>
               <p className="text-sm text-zinc-500 mt-1">Start one from any chat with the phone or camera button.</p>
             </motion.div>
           ) : (
-            <motion.ul variants={list} initial="hidden" animate="show" className={`${card} divide-y divide-zinc-200/80 dark:divide-white/[0.06] overflow-hidden`}>
+            <motion.ul variants={list} initial="hidden" animate="show" className={`panel divide-y divide-zinc-200/80 dark:divide-white/[0.06] overflow-hidden`}>
               {rows.map((c) => {
                 const chat = c.type === 'chat';
                 const Icon = chat ? (c.live ? (c.kind === 'video' ? Video : Phone) : c.missed ? PhoneMissed : c.outgoing ? PhoneOutgoing : PhoneIncoming) : TYPE_ICON[c.type];

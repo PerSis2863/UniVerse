@@ -275,7 +275,7 @@ export default function TeacherStudents() {
             {activeModal.type !== 'profile' && (
               <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex justify-end gap-3">
                 <button onClick={() => setActiveModal(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
-                <button onClick={submitModal} className={`px-5 py-2 rounded-xl text-sm font-bold text-zinc-900 dark:text-white shadow-lg transition-all ${activeModal.type === 'warning' ? 'bg-red-600 hover:bg-red-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
+                <button onClick={submitModal} className={activeModal.type === 'warning' ? 'btn-danger' : 'btn-primary'}>
                   {activeModal.type === 'warning' ? 'Send Warning' : 'Send Message'}
                 </button>
               </div>

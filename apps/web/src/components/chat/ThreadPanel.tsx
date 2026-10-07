@@ -8,7 +8,7 @@ import { Loader2, MessageCircle, Send, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { Avatar } from './MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { type ChatMessage, chatJson, timeLabel } from './chat-client';
 
 // A thread (Discord-style): replies to one message, beside the chat, so the main conversation

@@ -16,7 +16,6 @@ type Quiz = {
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
 };
 
-const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 const toLocalInput = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
 
 /** Teacher panel: publish/close a quiz, set due date and time limit, add questions, see results. */
@@ -80,10 +79,10 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <label className="text-xs text-zinc-500">Due date
-                  <input type="datetime-local" className={input} defaultValue={toLocalInput(quiz.dueDate)} onBlur={(e) => e.target.value !== toLocalInput(quiz.dueDate) && patch({ dueDate: e.target.value ? new Date(e.target.value).toISOString() : null }, 'Due date saved')} />
+                  <input type="datetime-local" className="input" defaultValue={toLocalInput(quiz.dueDate)} onBlur={(e) => e.target.value !== toLocalInput(quiz.dueDate) && patch({ dueDate: e.target.value ? new Date(e.target.value).toISOString() : null }, 'Due date saved')} />
                 </label>
                 <label className="text-xs text-zinc-500">Time limit (minutes)
-                  <input type="number" min={1} max={600} className={input} defaultValue={quiz.timeLimit ?? ''} onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== quiz.timeLimit) patch({ timeLimit: v }, 'Time limit saved'); }} />
+                  <input type="number" min={1} max={600} className="input" defaultValue={quiz.timeLimit ?? ''} onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== quiz.timeLimit) patch({ timeLimit: v }, 'Time limit saved'); }} />
                 </label>
               </div>
             </section>
@@ -109,11 +108,11 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
               ))}
 
               <div className="p-4 rounded-2xl border border-dashed border-indigo-300/60 dark:border-indigo-400/25 space-y-2.5">
-                <textarea className={`${input} min-h-[70px]`} placeholder="Write a question…" value={draft.question} maxLength={1000} onChange={(e) => setDraft({ ...draft, question: e.target.value })} />
+                <textarea className={`input min-h-[70px]`} placeholder="Write a question…" value={draft.question} maxLength={1000} onChange={(e) => setDraft({ ...draft, question: e.target.value })} />
                 {draft.options.map((o, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <input type="radio" name="correct" checked={draft.correct === i} onChange={() => setDraft({ ...draft, correct: i })} aria-label={`Option ${i + 1} is correct`} className="accent-indigo-600" />
-                    <input className={input} placeholder={`Option ${i + 1}${i < 2 ? '' : ' (optional)'}`} value={o} maxLength={300} onChange={(e) => setDraft({ ...draft, options: draft.options.map((x, j) => (j === i ? e.target.value : x)) })} />
+                    <input className="input" placeholder={`Option ${i + 1}${i < 2 ? '' : ' (optional)'}`} value={o} maxLength={300} onChange={(e) => setDraft({ ...draft, options: draft.options.map((x, j) => (j === i ? e.target.value : x)) })} />
                   </div>
                 ))}
                 <div className="flex items-center justify-between gap-3">

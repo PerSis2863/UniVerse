@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Check, Copy, Globe2, Loader2, Lock, Search, UserPlus, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 
 export type BoardMeta = {

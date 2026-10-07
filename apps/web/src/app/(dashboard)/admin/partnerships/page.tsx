@@ -57,7 +57,6 @@ const TYPES = [
 ];
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
 
-const input = 'w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 
 export default function AdminPartnershipsPage() {
   const { data: partnersData, isLoading: partnersLoading, mutate: refreshPartners } = useSWR<Partner[]>('/partners', fetcher);
@@ -267,15 +266,15 @@ export default function AdminPartnershipsPage() {
               <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">Add an organization you actually work with. Students will see it on the Partner Network page.</p>
             </div>
             <div className="space-y-3">
-              <input className={input} placeholder="Organization name" value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              <select className={input} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+              <input className="input" placeholder="Organization name" value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
                 {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
               <div className="grid grid-cols-2 gap-3">
-                <input className={input} placeholder="Country (optional)" value={form.country} maxLength={60} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-                <input className={input} placeholder="Website (optional)" type="url" value={form.websiteUrl} maxLength={200} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} />
+                <input className="input" placeholder="Country (optional)" value={form.country} maxLength={60} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                <input className="input" placeholder="Website (optional)" type="url" value={form.websiteUrl} maxLength={200} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} />
               </div>
-              <textarea className={`${input} min-h-[90px]`} placeholder="What you work on together (optional)" value={form.description} maxLength={600} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <textarea className={`input min-h-[90px]`} placeholder="What you work on together (optional)" value={form.description} maxLength={600} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </div>
             <div className="flex items-center justify-end gap-3 pt-2">
               <button onClick={() => setShowAddModal(false)} aria-busy={saving || undefined} disabled={saving} className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">Cancel</button>

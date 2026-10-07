@@ -8,7 +8,7 @@ import { Check, Loader2, Megaphone, Search, Users, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
-import { Avatar } from './MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { chatJson } from './chat-client';
 import { TabPill } from '@/components/ui/Glide';
 

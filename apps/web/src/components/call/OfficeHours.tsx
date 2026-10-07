@@ -7,7 +7,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { format, formatDistanceToNowStrict } from 'date-fns';
 import { BellRing, ChevronRight, DoorClosed, DoorOpen, Loader2, NotebookPen, Plus, Users, X } from 'lucide-react';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { Segmented } from '@/components/ui/Segmented';
 import { authedJson } from '@/lib/authed-fetch';
 import { chime } from '@/lib/call-sounds';
@@ -26,7 +26,6 @@ interface TeacherState {
 }
 interface StudentState { role: 'student'; open: { teacherId: string; id: string; name: string; avatar: string | null; courses: string[]; topic: string | null; until: string | null; callId: string }[] }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const LENGTHS = [{ value: '30', label: '30 min' }, { value: '60', label: '1 hour' }, { value: '90', label: '1½ hours' }, { value: '120', label: '2 hours' }] as const;
 const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
 
@@ -46,7 +45,7 @@ function StudentOffice({ open }: { open: StudentState['open'] }) {
   const router = useRouter();
   if (!open.length) return null;
   return (
-    <motion.section variants={fadeUp} initial="hidden" animate="show" className={`${card} p-4 space-y-3`} aria-label="Office hours">
+    <motion.section variants={fadeUp} initial="hidden" animate="show" className={`panel p-4 space-y-3`} aria-label="Office hours">
       <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5"><DoorOpen className="w-3.5 h-3.5" />Office hours now</p>
       <ul className="space-y-2">
         {open.map((o) => (
@@ -76,7 +75,7 @@ function TeacherOffice({ s, onChange }: { s: TeacherState; onChange: (s: Teacher
   };
   const notes = allNotes ? s.notes : s.notes.slice(0, 3);
   return (
-    <motion.section variants={fadeUp} initial="hidden" animate="show" className={`${card} p-4 space-y-3`} aria-label="Office hours">
+    <motion.section variants={fadeUp} initial="hidden" animate="show" className={`panel p-4 space-y-3`} aria-label="Office hours">
       <div className="flex items-start gap-3">
         <span className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-white shadow-lg', s.open ? 'bg-emerald-500 shadow-emerald-500/25' : 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-fuchsia-500/25')}>
           {s.open ? <DoorOpen className="w-5 h-5" /> : <DoorClosed className="w-5 h-5" />}
@@ -109,7 +108,7 @@ function TeacherOffice({ s, onChange }: { s: TeacherState; onChange: (s: Teacher
             <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={80} placeholder="Topic (optional), e.g. Essay questions" aria-label="Topic"
               className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
             <Segmented label="How long" value={minutes} onChange={setMinutes} segments={LENGTHS.map((l) => ({ value: l.value, label: l.label }))} className="w-full" />
-            <button type="submit" disabled={!!busy} className="w-full h-11 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-semibold inline-flex items-center justify-center gap-1.5 disabled:opacity-50">
+            <button type="submit" disabled={!!busy} className="btn-primary w-full">
               {busy === 'open' ? <Loader2 className="w-4 h-4 animate-spin" /> : <DoorOpen className="w-4 h-4" />}Open office hours
             </button>
           </motion.form>

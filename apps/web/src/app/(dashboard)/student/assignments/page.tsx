@@ -18,7 +18,6 @@ interface Row {
   mine: { status: string; score: number | null; submittedAt: string } | null;
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 
 function state(a: Row) {
   if (a.mine?.status === 'RETURNED') return { label: `${a.mine.score}/${a.maxScore}`, style: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' };
@@ -58,7 +57,7 @@ export default function StudentAssignmentsPage() {
                 {g.list.map((a) => {
                   const s = state(a);
                   return (
-                    <Link key={a.id} href={`/student/assignments/${a.id}`} className={`${card} lift p-4 flex items-center gap-4 hover:border-indigo-400/50`}>
+                    <Link key={a.id} href={`/student/assignments/${a.id}`} className={`panel lift p-4 flex items-center gap-4 hover:border-indigo-400/50`}>
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-300">{a.course.code}</p>
                         <h3 className="font-semibold text-zinc-900 dark:text-white truncate">{a.title}</h3>

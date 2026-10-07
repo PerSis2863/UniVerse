@@ -139,7 +139,6 @@ export default function BeeSafeReporting() {
 }
 
 
-const field = 'w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors';
 
 /** The incident report: sent to the school's admins (POST /api/core/safety/report). */
 function ReportForm() {
@@ -195,7 +194,7 @@ function ReportForm() {
     <form className="space-y-6" onSubmit={submit}>
       <div className="space-y-2">
         <label htmlFor="bs-type" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Incident type</label>
-        <select id="bs-type" required value={type} onChange={(e) => setType(e.target.value)} className={`${field} py-3 appearance-none`}>
+        <select id="bs-type" required value={type} onChange={(e) => setType(e.target.value)} className={`input py-3 appearance-none`}>
           <option value="" disabled>Select an option…</option>
           {INCIDENT_TYPES.map((t) => <option key={t.label}>{t.label}</option>)}
         </select>
@@ -204,22 +203,22 @@ function ReportForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-2">
           <label htmlFor="bs-date" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Date of incident</label>
-          <input id="bs-date" type="date" value={date} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)} className={`${field} dark:[color-scheme:dark]`} />
+          <input id="bs-date" type="date" value={date} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)} className={`input dark:[color-scheme:dark]`} />
         </div>
         <div className="space-y-2">
           <label htmlFor="bs-time" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Time of incident</label>
-          <input id="bs-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${field} dark:[color-scheme:dark]`} />
+          <input id="bs-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`input dark:[color-scheme:dark]`} />
         </div>
       </div>
 
       <div className="space-y-2">
         <label htmlFor="bs-location" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Location</label>
-        <input id="bs-location" type="text" maxLength={300} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where did this happen? (e.g., Library 2nd Floor)" className={field} />
+        <input id="bs-location" type="text" maxLength={300} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where did this happen? (e.g., Library 2nd Floor)" className="input" />
       </div>
 
       <div className="space-y-2">
         <label htmlFor="bs-desc" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Detailed description</label>
-        <textarea id="bs-desc" required rows={5} maxLength={4800} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Please provide as much detail as possible about what occurred, who was involved, and any witnesses..." className={`${field} py-3`} />
+        <textarea id="bs-desc" required rows={5} maxLength={4800} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Please provide as much detail as possible about what occurred, who was involved, and any witnesses..." className={`input py-3`} />
       </div>
 
       <div className="bg-zinc-100 dark:bg-zinc-800/30 border border-zinc-300/60 dark:border-zinc-700/50 rounded-lg p-4">

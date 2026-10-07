@@ -11,7 +11,6 @@ import { deletePack, getPack, listPacks, offlineSupported, savedFileUrl, savePac
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const subscribeOnline = (cb: () => void) => {
   window.addEventListener('online', cb);
   window.addEventListener('offline', cb);
@@ -52,11 +51,11 @@ export default function OfflinePage() {
           {!online && <p className="rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm p-3 flex items-center gap-2"><WifiOff className="w-4 h-4" /> You&apos;re offline. Saved courses still open, and quizzes and assignments you finish are sent when you&apos;re back.</p>}
           <OutboxList />
           {!supported ? (
-            <p className={`${card} p-6 text-sm text-zinc-500`}>This browser can&apos;t save courses for offline use.</p>
+            <p className={`panel p-6 text-sm text-zinc-500`}>This browser can&apos;t save courses for offline use.</p>
           ) : packs === null ? (
             <div className="h-24 rounded-2xl skeleton" />
           ) : packs.length === 0 ? (
-            <div className={`${card} p-8 text-center space-y-2`}>
+            <div className={`panel p-8 text-center space-y-2`}>
               <CloudOff className="w-10 h-10 text-zinc-400 mx-auto" />
               <p className="font-semibold text-zinc-900 dark:text-white">No courses saved yet</p>
               <p className="text-sm text-zinc-500">Open a course in Blackboard and tap <b>Save offline</b>. Its announcements, materials, reading list, your flashcards, and open quizzes and assignments are kept on this device.</p>
@@ -66,7 +65,7 @@ export default function OfflinePage() {
           ) : (
             <div className="grid gap-3 stagger">
               {packs.map((p) => (
-                <div key={p.courseId} className={`${card} p-4 flex items-center gap-3`}>
+                <div key={p.courseId} className={`panel p-4 flex items-center gap-3`}>
                   <button type="button" onClick={async () => setOpen(await getPack(p.courseId))} className="flex-1 min-w-0 text-left">
                     <p className="font-semibold text-zinc-900 dark:text-white truncate">{p.code} · {p.name}</p>
                     <p className="text-xs text-zinc-500">{p.savedFiles} of {p.files} files · {mb(p.bytes)} · saved {new Date(p.savedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
@@ -127,7 +126,7 @@ function PackView({ pack, onBack }: { pack: Pack; onBack: () => void }) {
           </button>
         ))}
       </div>
-      <div className={`${card} divide-y divide-zinc-200 dark:divide-white/[0.06]`}>
+      <div className={`panel divide-y divide-zinc-200 dark:divide-white/[0.06]`}>
         {tab === 'files' && (pack.files.length ? pack.files.map((f) => (
           <button key={f.url} type="button" onClick={() => openFile(f.url, f.saved)} className="w-full text-left p-4 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
             <FileText className="w-5 h-5 text-indigo-500 shrink-0" />

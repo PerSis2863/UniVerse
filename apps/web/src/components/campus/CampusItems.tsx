@@ -28,7 +28,6 @@ export interface CampusItem {
   createdBy?: PersonInfo | null;
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 
 function eventDate(iso: string) {
   return new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -68,7 +67,7 @@ export function CampusItemList({ kind, guide }: {
           <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3">{group}</h3>
           <div className="grid sm:grid-cols-2 gap-4">
             {items.map((it, i) => (
-              <motion.div key={it.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} className={`${card} p-5 hover:border-indigo-500/30 transition-colors`}>
+              <motion.div key={it.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} className={`panel p-5 hover:border-indigo-500/30 transition-colors`}>
                 <div className="flex items-start justify-between gap-3">
                   <h4 className="font-bold text-zinc-900 dark:text-white">{it.title}</h4>
                   {it.url && (
@@ -92,7 +91,6 @@ export function CampusItemList({ kind, guide }: {
   );
 }
 
-const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 const empty = { title: '', category: '', description: '', url: '', location: '', hours: '', startAt: '', capacity: '' };
 
 /** Admin editor for one kind of campus info. `query` filters the list; `showPast` includes past events. */
@@ -145,7 +143,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
   };
 
   return (
-    <div className={`${card} p-5`}>
+    <div className={`panel p-5`}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-zinc-900 dark:text-white">
           {label}s
@@ -160,22 +158,22 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
             <p className="text-sm font-semibold text-zinc-900 dark:text-white">{editingId ? `Edit ${label.toLowerCase()}` : `New ${label.toLowerCase()}`}</p>
             <button onClick={() => setForm(null)} aria-label="Cancel" className="p-1 text-zinc-500"><X className="w-4 h-4" /></button>
           </div>
-          <input className={input} placeholder="Title" value={form.title} maxLength={120} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="input" placeholder="Title" value={form.title} maxLength={120} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           {categories ? (
-            <select className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
               {categories.map((c) => <option key={c}>{c}</option>)}
             </select>
           ) : (
-            <input className={input} placeholder="Category (optional)" value={form.category} maxLength={60} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+            <input className="input" placeholder="Category (optional)" value={form.category} maxLength={60} onChange={(e) => setForm({ ...form, category: e.target.value })} />
           )}
-          <textarea className={`${input} min-h-[70px]`} placeholder={kind === 'MENU' ? 'One dish per line, e.g. Lentil curry (vegan)' : 'Description (optional)'} value={form.description} maxLength={1000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <textarea className={`input min-h-[70px]`} placeholder={kind === 'MENU' ? 'One dish per line, e.g. Lentil curry (vegan)' : 'Description (optional)'} value={form.description} maxLength={1000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <div className="grid sm:grid-cols-2 gap-3">
-            {kind === 'EVENT' && <input className={input} type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
-            {kind === 'EVENT' && <input className={input} type="number" min={1} placeholder="Seats (empty: no limit)" aria-label="Seats" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />}
-            {kind === 'MENU' && <input className={input} type="date" aria-label="Day" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
-            {kind === 'SERVICE' && <input className={input} placeholder="Opening hours, e.g. Mon–Fri 8am–8pm" value={form.hours} maxLength={120} onChange={(e) => setForm({ ...form, hours: e.target.value })} />}
-            {kind !== 'LINK' && <input className={input} placeholder={kind === 'MENU' ? 'Dining hall (optional)' : 'Location (optional)'} value={form.location} maxLength={120} onChange={(e) => setForm({ ...form, location: e.target.value })} />}
-            <input className={input} placeholder={kind === 'LINK' ? 'https://…' : 'Link (optional)'} value={form.url} maxLength={500} onChange={(e) => setForm({ ...form, url: e.target.value })} />
+            {kind === 'EVENT' && <input className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
+            {kind === 'EVENT' && <input className="input" type="number" min={1} placeholder="Seats (empty: no limit)" aria-label="Seats" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />}
+            {kind === 'MENU' && <input className="input" type="date" aria-label="Day" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
+            {kind === 'SERVICE' && <input className="input" placeholder="Opening hours, e.g. Mon–Fri 8am–8pm" value={form.hours} maxLength={120} onChange={(e) => setForm({ ...form, hours: e.target.value })} />}
+            {kind !== 'LINK' && <input className="input" placeholder={kind === 'MENU' ? 'Dining hall (optional)' : 'Location (optional)'} value={form.location} maxLength={120} onChange={(e) => setForm({ ...form, location: e.target.value })} />}
+            <input className="input" placeholder={kind === 'LINK' ? 'https://…' : 'Link (optional)'} value={form.url} maxLength={500} onChange={(e) => setForm({ ...form, url: e.target.value })} />
           </div>
           <button onClick={save} disabled={busy || !form.title.trim()} className="btn-primary">
             {busy && <Loader2 className="w-4 h-4 animate-spin" />} Save

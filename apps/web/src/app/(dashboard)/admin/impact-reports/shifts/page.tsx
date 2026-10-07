@@ -18,8 +18,6 @@ import { spring } from '@/lib/motion';
 interface Shift { id: string; title: string; startAt: string; endAt: string; location: string | null; capacity: number; taken: number; project: { name: string; ngo: { name: string } | null } }
 interface Roster { people: { id: string; checkInAt: string | null; checkOutAt: string | null; method: string | null; minutes: number; verified: boolean; student: { id: string; name: string; email: string } }[] }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const input = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const empty = { projectId: '', title: '', day: '', start: '09:00', end: '13:00', location: '', lat: '', lng: '', radiusM: '200', capacity: '20' };
 
@@ -42,10 +40,10 @@ export default function AdminShiftsPage() {
         <div className="max-w-5xl mx-auto space-y-4">
           <div className="flex justify-end"><button type="button" className="btn-primary btn-sm rounded-full" onClick={() => setForm({ ...empty })}><Plus className="w-4 h-4" /> New shift</button></div>
           <AnimatePresence>{form && <ShiftForm form={form} setForm={setForm} onDone={() => { setForm(null); void mutate(); }} />}</AnimatePresence>
-          {isLoading ? <div className="h-32 rounded-2xl skeleton" /> : !shifts?.length ? <p className={`${card} p-6 text-sm text-zinc-500 text-center`}>No shifts yet. Add one for an NGO project.</p> : (
+          {isLoading ? <div className="h-32 rounded-2xl skeleton" /> : !shifts?.length ? <p className={`panel p-6 text-sm text-zinc-500 text-center`}>No shifts yet. Add one for an NGO project.</p> : (
             <ul className="space-y-3">
               {shifts.map((s) => (
-                <li key={s.id} className={`${card} overflow-hidden`}>
+                <li key={s.id} className={`panel overflow-hidden`}>
                   <div className="p-4 flex flex-wrap items-center gap-3">
                     <button type="button" onClick={() => setOpen(open === s.id ? null : s.id)} className="flex-1 min-w-0 text-left" aria-expanded={open === s.id}>
                       <p className="font-semibold text-zinc-900 dark:text-white truncate">{s.title} <span className="font-normal text-zinc-500">· {s.project.name}</span></p>
@@ -88,24 +86,24 @@ function ShiftForm({ form, setForm, onDone }: { form: typeof empty; setForm: (f:
   const here = () => navigator.geolocation?.getCurrentPosition((p) => setForm({ ...form, lat: p.coords.latitude.toFixed(5), lng: p.coords.longitude.toFixed(5) }), () => toast.error('Allow location to use where you are.'));
   return (
     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
-      <div className={`${card} p-4 space-y-3`}>
+      <div className={`panel p-4 space-y-3`}>
         <div className="flex items-center justify-between"><p className="font-semibold text-zinc-900 dark:text-white">New shift</p><button type="button" onClick={() => setForm(null)} aria-label="Cancel" className="p-1 text-zinc-500"><X className="w-4 h-4" /></button></div>
-        <select className={input} value={form.projectId} onChange={set('projectId')} aria-label="Project">
+        <select className="input" value={form.projectId} onChange={set('projectId')} aria-label="Project">
           <option value="">Pick an NGO project…</option>
           {(projects ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}{p.ngo ? ` · ${p.ngo.name}` : ''}</option>)}
         </select>
-        <input className={input} placeholder="Shift name, e.g. Saturday tree planting" maxLength={120} value={form.title} onChange={set('title')} />
+        <input className="input" placeholder="Shift name, e.g. Saturday tree planting" maxLength={120} value={form.title} onChange={set('title')} />
         <div className="grid grid-cols-3 gap-2">
-          <input className={input} type="date" aria-label="Day" value={form.day} onChange={set('day')} />
-          <input className={input} type="time" aria-label="Starts" value={form.start} onChange={set('start')} />
-          <input className={input} type="time" aria-label="Ends" value={form.end} onChange={set('end')} />
+          <input className="input" type="date" aria-label="Day" value={form.day} onChange={set('day')} />
+          <input className="input" type="time" aria-label="Starts" value={form.start} onChange={set('start')} />
+          <input className="input" type="time" aria-label="Ends" value={form.end} onChange={set('end')} />
         </div>
-        <input className={input} placeholder="Place (shown to students)" maxLength={120} value={form.location} onChange={set('location')} />
+        <input className="input" placeholder="Place (shown to students)" maxLength={120} value={form.location} onChange={set('location')} />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <input className={input} placeholder="Latitude (optional)" inputMode="decimal" value={form.lat} onChange={set('lat')} />
-          <input className={input} placeholder="Longitude" inputMode="decimal" value={form.lng} onChange={set('lng')} />
-          <input className={input} type="number" min={50} aria-label="Check-in radius in metres" placeholder="Radius (m)" value={form.radiusM} onChange={set('radiusM')} />
-          <input className={input} type="number" min={1} aria-label="Places" placeholder="Places" value={form.capacity} onChange={set('capacity')} />
+          <input className="input" placeholder="Latitude (optional)" inputMode="decimal" value={form.lat} onChange={set('lat')} />
+          <input className="input" placeholder="Longitude" inputMode="decimal" value={form.lng} onChange={set('lng')} />
+          <input className="input" type="number" min={50} aria-label="Check-in radius in metres" placeholder="Radius (m)" value={form.radiusM} onChange={set('radiusM')} />
+          <input className="input" type="number" min={1} aria-label="Places" placeholder="Places" value={form.capacity} onChange={set('capacity')} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="btn-ghost btn-sm" onClick={here}>Use where I am</button>

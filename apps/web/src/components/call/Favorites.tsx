@@ -10,7 +10,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 
 // Favourites at the top of Calls (like the iPhone's): one-tap voice or video calls; favourites
 // also still ring you in Focus. Plus a call link (like a FaceTime link) to share with anyone.

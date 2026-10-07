@@ -29,7 +29,6 @@ export interface ClassSession {
   chapters?: Chapter[]; recap?: string | null; practice?: Practice[]; canMakeReplay?: boolean;
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const clock = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 const dayOf = (iso: string) => new Date(iso).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 const minutes = (s: number) => `${Math.max(1, Math.round(s / 60))} min`;
@@ -41,7 +40,7 @@ export function ClassSessions({ sessions, canManage, materials, openId, refresh 
 
   if (!sessions.length) {
     return (
-      <div className={cn(card, 'p-8 text-center')}>
+      <div className={cn('panel', 'p-8 text-center')}>
         <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center"><NotebookPen className="w-6 h-6" /></div>
         <p className="mt-3 font-semibold text-zinc-900 dark:text-white">No class sessions yet</p>
         <p className="mt-1 text-sm text-zinc-500 max-w-md mx-auto">
@@ -136,7 +135,7 @@ function SessionCard({ s, canManage, open, linked, onToggle, recordingUrl, refre
   };
 
   return (
-    <motion.article layout transition={spring.smooth} className={cn(card, 'overflow-hidden')}>
+    <motion.article layout transition={spring.smooth} className={cn('panel', 'overflow-hidden')}>
       <button type="button" onClick={onToggle} aria-expanded={open} className="w-full text-left p-4 sm:p-5 flex items-start gap-3">
         <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20"><NotebookPen className="w-5 h-5" /></div>
         <div className="min-w-0 flex-1">

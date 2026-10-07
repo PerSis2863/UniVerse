@@ -20,8 +20,6 @@ interface Row {
   counts: { submitted: number; toGrade: number; returned: number };
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 
 /** Written assignments with a rubric; the AI drafts grades for the teacher to review. */
 export default function TeacherAssignmentsPage() {
@@ -55,7 +53,7 @@ export default function TeacherAssignmentsPage() {
           ) : (
             <div className="grid gap-3 stagger">
               {data.map((a) => (
-                <Link key={a.id} href={`/teacher/assignments/${a.id}`} className={`${card} lift p-4 flex items-center gap-4 hover:border-indigo-400/50`}>
+                <Link key={a.id} href={`/teacher/assignments/${a.id}`} className={`panel lift p-4 flex items-center gap-4 hover:border-indigo-400/50`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300">{a.course.code}</span>
@@ -122,27 +120,27 @@ function NewAssignment({ onClose, onCreated }: { onClose: () => void; onCreated:
   };
 
   return (
-    <form onSubmit={save} className={`${card} p-5 space-y-4`}>
+    <form onSubmit={save} className={`panel p-5 space-y-4`}>
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-zinc-900 dark:text-white">New assignment</h3>
         <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="space-y-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">Course</span>
-          <select required value={courseId} onChange={(e) => setCourseId(e.target.value)} className={field}>
+          <select required value={courseId} onChange={(e) => setCourseId(e.target.value)} className="input">
             <option value="" disabled>{courses ? 'Choose a course…' : 'Loading…'}</option>
             {courses?.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
           </select>
         </label>
         <label className="space-y-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">Due (optional)</span>
-          <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className={`${field} dark:[color-scheme:dark]`} />
+          <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className={`input dark:[color-scheme:dark]`} />
         </label>
       </div>
       <label className="block space-y-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">Title</span>
-        <input required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Essay: why recursion matters" className={field} />
+        <input required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Essay: why recursion matters" className="input" />
       </label>
       <label className="block space-y-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">Instructions for students</span>
-        <textarea required rows={4} maxLength={8000} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="What should they write, how long, what to include…" className={field} />
+        <textarea required rows={4} maxLength={8000} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="What should they write, how long, what to include…" className="input" />
       </label>
 
       <div className="space-y-2">
@@ -152,9 +150,9 @@ function NewAssignment({ onClose, onCreated }: { onClose: () => void; onCreated:
         </div>
         {rubric.map((r, i) => (
           <div key={i} className="grid grid-cols-[1fr_5rem_auto] sm:grid-cols-[1fr_1.4fr_5rem_auto] gap-2 items-start">
-            <input required aria-label={`Criterion ${i + 1}`} maxLength={120} value={r.criterion} onChange={(e) => set(i, { criterion: e.target.value })} placeholder="Criterion" className={field} />
-            <input aria-label={`What criterion ${i + 1} means`} maxLength={400} value={r.description} onChange={(e) => set(i, { description: e.target.value })} placeholder="What a good answer does" className={`${field} hidden sm:block`} />
-            <input required aria-label={`Points for criterion ${i + 1}`} type="number" min={0.5} max={1000} step={0.5} value={r.points} onChange={(e) => set(i, { points: e.target.value })} className={field} />
+            <input required aria-label={`Criterion ${i + 1}`} maxLength={120} value={r.criterion} onChange={(e) => set(i, { criterion: e.target.value })} placeholder="Criterion" className="input" />
+            <input aria-label={`What criterion ${i + 1} means`} maxLength={400} value={r.description} onChange={(e) => set(i, { description: e.target.value })} placeholder="What a good answer does" className={`input hidden sm:block`} />
+            <input required aria-label={`Points for criterion ${i + 1}`} type="number" min={0.5} max={1000} step={0.5} value={r.points} onChange={(e) => set(i, { points: e.target.value })} className="input" />
             <button type="button" aria-label={`Remove criterion ${i + 1}`} disabled={rubric.length === 1} onClick={() => setRubric((l) => l.filter((_, j) => j !== i))} className="p-2 rounded-lg text-zinc-400 hover:text-rose-500 disabled:opacity-30"><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}

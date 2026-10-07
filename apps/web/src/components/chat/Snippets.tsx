@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { chatJson } from './chat-client';
-import { Sheet } from './ChatDialogs';
+import { Sheet } from '@/components/ui/Sheet';
 import { spring } from '@/lib/motion';
 import { useAuthStore } from '@/store/auth';
 
@@ -34,7 +34,6 @@ const TEACHER_STARTERS: Omit<Snippet, 'id'>[] = [
   { title: 'Well done', shortcut: 'great', body: 'Great work, {name}! Keep it up.' },
 ];
 
-const input = 'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/40';
 
 export function SnippetsSheet({ onClose, onInsert, recipientName }: { onClose: () => void; onInsert: (text: string) => void; recipientName?: string }) {
   const { data, mutate } = useSnippets();
@@ -59,11 +58,11 @@ export function SnippetsSheet({ onClose, onInsert, recipientName }: { onClose: (
       <AnimatePresence mode="wait" initial={false}>
         {edit ? (
           <motion.div key="edit" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={spring.smooth} className="space-y-3">
-            <input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} maxLength={60} placeholder="Title, e.g. Deadline reminder" aria-label="Title" className={input} autoFocus />
-            <textarea value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} maxLength={2000} rows={5} placeholder="The message" aria-label="Message" className={`${input} resize-none`} />
+            <input value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} maxLength={60} placeholder="Title, e.g. Deadline reminder" aria-label="Title" className="input" autoFocus />
+            <textarea value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} maxLength={2000} rows={5} placeholder="The message" aria-label="Message" className={`input resize-none`} />
             <div className="flex items-center gap-2">
               <span className="text-sm text-zinc-500">/</span>
-              <input value={edit.shortcut ?? ''} onChange={(e) => setEdit({ ...edit, shortcut: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 20) })} placeholder="shortcut (optional)" aria-label="Shortcut" className={input} />
+              <input value={edit.shortcut ?? ''} onChange={(e) => setEdit({ ...edit, shortcut: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 20) })} placeholder="shortcut (optional)" aria-label="Shortcut" className="input" />
             </div>
             <p className="text-xs text-zinc-500">Write <code>{'{name}'}</code> for the person’s first name (or “everyone” in a group) and <code>{'{date}'}</code> for today’s date.</p>
             <div className="flex gap-2">
@@ -80,7 +79,7 @@ export function SnippetsSheet({ onClose, onInsert, recipientName }: { onClose: (
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search saved replies" className={`${input} pl-9`} />
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search saved replies" className={`input pl-9`} />
               </div>
               <button type="button" disabled={list.length >= (data?.max ?? 50)} onClick={() => setEdit({ id: crypto.randomUUID().slice(0, 8), title: '', body: '', shortcut: null })} className="btn-primary"><Plus className="w-4 h-4" />New</button>
             </div>

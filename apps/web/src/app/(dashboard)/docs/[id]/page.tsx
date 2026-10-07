@@ -16,8 +16,8 @@ import Link from '@/components/ui/Link';
 import { PresenceStack, type Present } from '@/components/ui/PresenceStack';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
-import { Sheet } from '@/components/chat/ChatDialogs';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Sheet } from '@/components/ui/Sheet';
+import { Avatar } from '@/components/ui/Avatar';
 import { DocEditor, DocToolbar, type DocStatus } from '@/components/docs/DocEditor';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -29,7 +29,6 @@ import { MentionInput } from '@/components/ui/MentionInput';
 interface DocInfo { id: string; title: string; course: { code: string; name: string } | null; chat?: { id: string; name: string } | null; canEdit: boolean; canManage: boolean; me: { id: string; name: string }; members: { userId: string; role: string; name: string }[] }
 interface Comment { id: string; userId: string; quote: string | null; body: string; resolvedAt: string | null; createdAt: string; user: { id: string; name: string; avatar: string | null } }
 
-const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 const call = (url: string, method: string, body?: unknown) => authedJson(url, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 const PRINT_CSS = 'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#18181b;max-width:46rem;margin:2rem auto;padding:0 1.5rem}h1{font-size:2rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d4d4d8;padding:.4em .6em;text-align:left}pre{background:#f4f4f5;padding:1em;border-radius:.5em;white-space:pre-wrap}img{max-width:100%}blockquote{border-left:3px solid #818cf8;margin-left:0;padding-left:1em;color:#52525b}';
@@ -206,7 +205,7 @@ function Comments({ docId, editor, me, canEdit, onClose }: { docId: string; edit
           <button type="button" onClick={pickSelection} className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1"><MessageSquarePlus className="w-3.5 h-3.5" />About the text I selected</button>
         )}
         <div className="flex gap-2">
-          <MentionInput kind="doc" id={docId} value={body} onChange={setBody} maxLength={2000} placeholder="Write a comment (@name to notify someone)" aria-label="Comment" className={field} />
+          <MentionInput kind="doc" id={docId} value={body} onChange={setBody} maxLength={2000} placeholder="Write a comment (@name to notify someone)" aria-label="Comment" className="input" />
           <button type="submit" aria-label="Send" className="w-10 shrink-0 rounded-xl btn-primary flex items-center justify-center"><Send className="w-4 h-4" /></button>
         </div>
       </form>
@@ -234,7 +233,7 @@ function HistorySheet({ docId, editor, canEdit, onClose }: { docId: string; edit
     ) : undefined}>
       {canEdit && (
         <form onSubmit={(e) => { e.preventDefault(); void saveNamed(); }} className="flex gap-2 mb-4">
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Name this version, e.g. First draft" className={field} />
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Name this version, e.g. First draft" className="input" />
           <button type="submit" disabled={!name.trim()} className="btn-primary shrink-0 disabled:opacity-50">Save</button>
         </form>
       )}
@@ -268,8 +267,8 @@ function ShareSheet({ doc, onClose, onChanged }: { doc: DocInfo; onClose: () => 
   return (
     <Sheet title="Share document" onClose={onClose}>
       <form onSubmit={async (e) => { e.preventDefault(); setBusy(true); try { await call(`/api/docs/${doc.id}/members`, 'POST', { email, role }); setEmail(''); toast.success('Shared'); onChanged(); } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); } }} className="flex gap-2 mb-4">
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their email" className={field} />
-        <select value={role} onChange={(e) => setRole(e.target.value as 'EDITOR' | 'VIEWER')} className={cn(field, 'w-28')}><option value="EDITOR">Can edit</option><option value="VIEWER">Can read</option></select>
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their email" className="input" />
+        <select value={role} onChange={(e) => setRole(e.target.value as 'EDITOR' | 'VIEWER')} className={cn('input', 'w-28')}><option value="EDITOR">Can edit</option><option value="VIEWER">Can read</option></select>
         <button type="submit" disabled={busy} className="btn-primary shrink-0">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}</button>
       </form>
       <div className="space-y-1">

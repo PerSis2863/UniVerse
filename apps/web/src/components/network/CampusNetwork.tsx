@@ -29,8 +29,6 @@ export interface Network {
 interface ShareCourse { id: string; code: string; name: string; status: string; teacher: string; students: number; home: { id: string; name: string } | null; sharedWith: { id: string; name: string }[] }
 interface Exchange { id: string; name: string; email: string; home: string | null; host: string; from: string | null; until: string | null; now: boolean }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const input = 'w-full px-3 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 const label = 'text-xs font-semibold text-zinc-600 dark:text-zinc-300';
 const nf = new Intl.NumberFormat('en-US');
 const dateText = (v: string | null) => (v ? new Date(v).toLocaleDateString(undefined, { dateStyle: 'medium', timeZone: 'UTC' }) : '');
@@ -81,7 +79,7 @@ export function CampusDirectory({ network, onEdit }: { network: Network; onEdit?
       <CampusMap campuses={network.campuses} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 stagger">
         {network.campuses.map((c) => (
-          <div key={c.id} className={cn(card, 'p-4 flex flex-col gap-3', c.id === mine && 'ring-1 ring-indigo-400/60')}>
+          <div key={c.id} className={cn('panel', 'p-4 flex flex-col gap-3', c.id === mine && 'ring-1 ring-indigo-400/60')}>
             <div className="flex items-start gap-3">
               {c.logoUrl
                 // eslint-disable-next-line @next/next/no-img-element -- an admin's https logo link; next/image can't optimise on Workers
@@ -121,7 +119,7 @@ export function VisibilitySwitch({ network, onChange }: { network: Network; onCh
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
   return (
-    <div className={cn(card, 'p-4 flex items-center justify-between gap-4')}>
+    <div className={cn('panel', 'p-4 flex items-center justify-between gap-4')}>
       <span>
         <span className="block text-sm font-semibold text-zinc-900 dark:text-white">Let partner campuses find me</span>
         <span className="block text-xs text-zinc-500 mt-0.5">People at other campuses in the network can find you in search and message you. Your own campus always can.</span>
@@ -161,16 +159,16 @@ export function ShareCourses({ network, admin }: { network: Network; admin: bool
           <h2 id="joint-courses" className="text-lg font-bold text-zinc-900 dark:text-white">Joint courses</h2>
           <p className="text-sm text-zinc-500">Share a course with a partner campus and its students can find and join it (class calls included).</p>
         </div>
-        {admin && (data?.length ?? 0) > 8 && <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a course" aria-label="Find a course" className={cn(input, 'max-w-56 py-2')} />}
+        {admin && (data?.length ?? 0) > 8 && <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a course" aria-label="Find a course" className={cn('input', 'max-w-56 py-2')} />}
       </div>
       {network.campuses.length < 2 ? (
-        <p className={cn(card, 'p-5 text-sm text-zinc-500')}>{admin ? 'Add at least two campuses to share courses between them.' : 'Your school needs at least two campuses in the network before courses can be shared.'}</p>
+        <p className={cn('panel', 'p-5 text-sm text-zinc-500')}>{admin ? 'Add at least two campuses to share courses between them.' : 'Your school needs at least two campuses in the network before courses can be shared.'}</p>
       ) : isLoading ? (
         <div className="h-32 rounded-2xl skeleton" />
       ) : !list.length ? (
-        <p className={cn(card, 'p-5 text-sm text-zinc-500')}>{admin ? 'No courses yet.' : 'You don’t teach any courses yet.'}</p>
+        <p className={cn('panel', 'p-5 text-sm text-zinc-500')}>{admin ? 'No courses yet.' : 'You don’t teach any courses yet.'}</p>
       ) : (
-        <div className={cn(card, 'divide-y divide-zinc-200 dark:divide-white/[0.06]')}>
+        <div className={cn('panel', 'divide-y divide-zinc-200 dark:divide-white/[0.06]')}>
           {list.slice(0, admin ? 100 : 60).map((c) => {
             const options = network.campuses.filter((x) => x.id !== c.home?.id && !c.sharedWith.some((s) => s.id === x.id));
             return (
@@ -243,19 +241,19 @@ function CampusForm({ editing, onDone, onCancel }: { editing: CampusCard | null;
     try { await authedJson(`/api/network/campuses/${editing.id}`, { method: 'DELETE' }); toast.success('Campus removed'); onDone(); } catch (err) { toast.error((err as Error).message); }
   };
   return (
-    <motion.form onSubmit={save} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className={cn(card, 'p-4 md:p-5 space-y-4')}>
+    <motion.form onSubmit={save} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className={cn('panel', 'p-4 md:p-5 space-y-4')}>
       <div className="flex items-center justify-between gap-3">
         <h3 className="font-bold text-zinc-900 dark:text-white">{editing ? `Edit ${editing.name}` : 'Add a campus'}</h3>
         <button type="button" onClick={onCancel} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="space-y-1 sm:col-span-2"><span className={label}>Name</span><input id="campus-name" required maxLength={120} value={f.name} onChange={set('name')} className={input} placeholder="e.g. Lakeside University" /></label>
-        <label className="space-y-1 sm:col-span-2"><span className={label}>Email domains</span><input id="campus-domains" value={f.emailDomains} onChange={set('emailDomains')} className={input} placeholder="lakeside.edu, student.lakeside.edu" />
+        <label className="space-y-1 sm:col-span-2"><span className={label}>Name</span><input id="campus-name" required maxLength={120} value={f.name} onChange={set('name')} className="input" placeholder="e.g. Lakeside University" /></label>
+        <label className="space-y-1 sm:col-span-2"><span className={label}>Email domains</span><input id="campus-domains" value={f.emailDomains} onChange={set('emailDomains')} className="input" placeholder="lakeside.edu, student.lakeside.edu" />
           <span className="block text-[11px] text-zinc-500">People who sign in with these addresses join this campus automatically. Shared services like gmail.com aren’t allowed.</span></label>
-        <label className="space-y-1"><span className={label}>City</span><input id="campus-city" maxLength={80} value={f.city} onChange={set('city')} className={input} /></label>
-        <label className="space-y-1"><span className={label}>Country</span><input id="campus-country" maxLength={80} value={f.country} onChange={set('country')} className={input} /></label>
-        <label className="space-y-1"><span className={label}>Latitude (for the map)</span><input id="campus-lat" inputMode="decimal" value={f.lat} onChange={set('lat')} className={input} placeholder="48.8566" /></label>
-        <label className="space-y-1"><span className={label}>Longitude</span><input id="campus-lng" inputMode="decimal" value={f.lng} onChange={set('lng')} className={input} placeholder="2.3522" /></label>
+        <label className="space-y-1"><span className={label}>City</span><input id="campus-city" maxLength={80} value={f.city} onChange={set('city')} className="input" /></label>
+        <label className="space-y-1"><span className={label}>Country</span><input id="campus-country" maxLength={80} value={f.country} onChange={set('country')} className="input" /></label>
+        <label className="space-y-1"><span className={label}>Latitude (for the map)</span><input id="campus-lat" inputMode="decimal" value={f.lat} onChange={set('lat')} className="input" placeholder="48.8566" /></label>
+        <label className="space-y-1"><span className={label}>Longitude</span><input id="campus-lng" inputMode="decimal" value={f.lng} onChange={set('lng')} className="input" placeholder="2.3522" /></label>
         <div className="space-y-1 sm:col-span-2">
           <span className={label}>Logo (optional)</span>
           <div className="flex items-center gap-3">
@@ -305,19 +303,19 @@ function ExchangeStudents({ network }: { network: Network }) {
         <h2 id="exchange-students" className="text-lg font-bold text-zinc-900 dark:text-white">Exchange students</h2>
         <p className="text-sm text-zinc-500">During an exchange, a student can also join their host campus’s courses and find its people.</p>
       </div>
-      <form onSubmit={add} className={cn(card, 'p-4 grid gap-3 md:grid-cols-[1.4fr_1fr_auto_auto_auto] md:items-end')}>
-        <label className="space-y-1"><span className={label}>Student’s email</span><input id="exchange-email" type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={input} placeholder="name@school.edu" /></label>
+      <form onSubmit={add} className={cn('panel', 'p-4 grid gap-3 md:grid-cols-[1.4fr_1fr_auto_auto_auto] md:items-end')}>
+        <label className="space-y-1"><span className={label}>Student’s email</span><input id="exchange-email" type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className="input" placeholder="name@school.edu" /></label>
         <label className="space-y-1"><span className={label}>Going to</span>
-          <select id="exchange-campus" required value={f.campusId} onChange={(e) => setF({ ...f, campusId: e.target.value })} className={input}>
+          <select id="exchange-campus" required value={f.campusId} onChange={(e) => setF({ ...f, campusId: e.target.value })} className="input">
             <option value="">Pick a campus</option>
             {network.campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select></label>
-        <label className="space-y-1"><span className={label}>From</span><input id="exchange-from" type="date" required value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className={input} /></label>
-        <label className="space-y-1"><span className={label}>Until</span><input id="exchange-until" type="date" required value={f.until} min={f.from || undefined} onChange={(e) => setF({ ...f, until: e.target.value })} className={input} /></label>
+        <label className="space-y-1"><span className={label}>From</span><input id="exchange-from" type="date" required value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} className="input" /></label>
+        <label className="space-y-1"><span className={label}>Until</span><input id="exchange-until" type="date" required value={f.until} min={f.from || undefined} onChange={(e) => setF({ ...f, until: e.target.value })} className="input" /></label>
         <button type="submit" disabled={busy} className="btn-primary justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add</button>
       </form>
       {!!data?.length && (
-        <div className={cn(card, 'divide-y divide-zinc-200 dark:divide-white/[0.06]')}>
+        <div className={cn('panel', 'divide-y divide-zinc-200 dark:divide-white/[0.06]')}>
           {data.map((x) => (
             <div key={x.id} className="p-4 flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
@@ -361,17 +359,17 @@ function People({ network, onChange }: { network: Network; onChange: () => void 
     <section className="space-y-3" aria-labelledby="campus-people">
       <h2 id="campus-people" className="text-lg font-bold text-zinc-900 dark:text-white">Who belongs where</h2>
       <div className="grid gap-3 md:grid-cols-2">
-        <div className={cn(card, 'p-4 space-y-3')}>
+        <div className={cn('panel', 'p-4 space-y-3')}>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
             {network.unassigned ? <><b className="text-zinc-900 dark:text-white">{nf.format(network.unassigned)}</b> active students and teachers don’t belong to a campus yet. They can still see every course.</> : 'Every active student and teacher belongs to a campus.'}
           </p>
           <button type="button" onClick={() => void assign()} disabled={busy} className="btn-secondary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />} Place people by email domain</button>
         </div>
-        <form onSubmit={move} className={cn(card, 'p-4 space-y-3')}>
+        <form onSubmit={move} className={cn('panel', 'p-4 space-y-3')}>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">Move one person (for example someone with a personal email address).</p>
           <div className="flex flex-col sm:flex-row gap-2">
-            <input id="move-email" type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="their email" aria-label="Their email" className={input} />
-            <select id="move-campus" value={f.campusId} onChange={(e) => setF({ ...f, campusId: e.target.value })} aria-label="Campus" className={cn(input, 'sm:max-w-48')}>
+            <input id="move-email" type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="their email" aria-label="Their email" className="input" />
+            <select id="move-campus" value={f.campusId} onChange={(e) => setF({ ...f, campusId: e.target.value })} aria-label="Campus" className={cn('input', 'sm:max-w-48')}>
               <option value="">No campus</option>
               {network.campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -399,7 +397,7 @@ export function NetworkAdmin() {
         {editing !== null && <CampusForm key={editing === 'new' ? 'new' : editing.id} editing={editing === 'new' ? null : editing} onDone={done} onCancel={() => setEditing(null)} />}
       </AnimatePresence>
       {data.campuses.length === 0 ? (
-        <div className={cn(card, 'p-6 text-center space-y-2')}>
+        <div className={cn('panel', 'p-6 text-center space-y-2')}>
           <Building2 className="w-8 h-8 mx-auto text-indigo-500" aria-hidden />
           <p className="font-semibold text-zinc-900 dark:text-white">No campuses yet</p>
           <p className="text-sm text-zinc-500 max-w-md mx-auto">Add your own campus first, then your partner universities. Until then nothing changes: everyone sees every course, as now.</p>
@@ -422,7 +420,7 @@ export function NetworkTeacher() {
   if (!data) return <div className="space-y-3"><div className="h-40 rounded-2xl skeleton" /><div className="h-40 rounded-2xl skeleton" /></div>;
   if (!data.campuses.length) {
     return (
-      <div className={cn(card, 'p-6 text-center space-y-2')}>
+      <div className={cn('panel', 'p-6 text-center space-y-2')}>
         <Building2 className="w-8 h-8 mx-auto text-indigo-500" aria-hidden />
         <p className="font-semibold text-zinc-900 dark:text-white">Your school isn’t in a campus network yet</p>
         <p className="text-sm text-zinc-500 max-w-md mx-auto">When your admin adds partner universities, you’ll see them here and can open your courses to their students.</p>

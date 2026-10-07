@@ -11,7 +11,7 @@ import { haptic } from '@/lib/haptics';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
-import { Avatar } from './MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { type ConversationSummary, chatJson, plainText, previewText, timeLabel } from './chat-client';
 import { pickDraft, useLocalDrafts } from '@/lib/chat-drafts';
 import { useLiveInterval } from '@/lib/realtime-client';
