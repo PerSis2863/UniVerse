@@ -1,19 +1,26 @@
+import type { Prisma } from '@prisma/client';
 import { ForbiddenException, NotFoundException } from '../http';
 import { pick } from '../pick';
+import type { Body } from '../body';
 
 type Actor = { id: string; role: string };
-const PROJECT_FIELDS = ['title', 'description', 'partner', 'ngo', 'deadline', 'contactEmail', 'ngoProjectId'] as const;
-const MILESTONE_FIELDS = ['title', 'description', 'status', 'dueDate'] as const;
+type NewProject = Prisma.CollaborationProjectUncheckedCreateInput;
+type NewMilestone = Prisma.ProjectMilestoneUncheckedCreateInput;
+const PROJECT_FIELDS = ['title', 'description', 'partner', 'ngo', 'deadline', 'contactEmail', 'ngoProjectId'] as const satisfies readonly (keyof NewProject)[];
+const MILESTONE_FIELDS = ['title', 'description', 'status', 'dueDate'] as const satisfies readonly (keyof NewMilestone)[];
 import prisma from '@/lib/db';
 
 export class CollaborationsService {
   getMyCollabs(userId: string) { return prisma.teacherCollaboration.findMany({ where: { OR: [{ initiatorId: userId }, { partnerId: userId }] }, include: { initiator: { select: { id: true, name: true, avatar: true } }, partner: { select: { id: true, name: true, avatar: true } } } }); }
-  create(initiatorId: string, data: any) { return prisma.teacherCollaboration.create({ data: { ...(pick(data, ['partnerId', 'type', 'title', 'description'] as const) as any), initiatorId } }); }
-  async update(id: string, actor: Actor, data: any) {
+  create(initiatorId: string, data: Body) {
+    type New = Prisma.TeacherCollaborationUncheckedCreateInput;
+    return prisma.teacherCollaboration.create({ data: { ...pick<New>(data, ['partnerId', 'type', 'title', 'description']), initiatorId } as New });
+  }
+  async update(id: string, actor: Actor, data: Body) {
     const c = await prisma.teacherCollaboration.findUnique({ where: { id }, select: { initiatorId: true, partnerId: true } });
     if (!c) throw new NotFoundException();
     if (actor.role !== 'ADMIN' && c.initiatorId !== actor.id && c.partnerId !== actor.id) throw new ForbiddenException();
-    return prisma.teacherCollaboration.update({ where: { id }, data: pick(data, ['title', 'description', 'status', 'type'] as const) });
+    return prisma.teacherCollaboration.update({ where: { id }, data: pick<Prisma.TeacherCollaborationUncheckedUpdateInput>(data, ['title', 'description', 'status', 'type']) });
   }
 
   private async assertSupervisor(projectId: string, actor: Actor) {
@@ -65,13 +72,13 @@ export class CollaborationsService {
     return { ...project, members: project.members.map((m) => ({ ...m, user: { ...m.user, email: undefined } })) };
   }
 
-  createProject(supervisingTeacherId: string, data: any) {
+  createProject(supervisingTeacherId: string, data: Body) {
     return prisma.collaborationProject.create({
       data: {
-        ...(pick(data, PROJECT_FIELDS) as any),
+        ...pick<NewProject>(data, PROJECT_FIELDS),
         supervisingTeacherId,
         status: 'PendingReview',
-      },
+      } as NewProject,
     });
   }
 
@@ -82,9 +89,9 @@ export class CollaborationsService {
     });
   }
 
-  async updateProject(id: string, actor: Actor, data: any) {
+  async updateProject(id: string, actor: Actor, data: Body) {
     await this.assertSupervisor(id, actor);
-    return prisma.collaborationProject.update({ where: { id }, data: pick(data, PROJECT_FIELDS) });
+    return prisma.collaborationProject.update({ where: { id }, data: pick<Prisma.CollaborationProjectUncheckedUpdateInput>(data, PROJECT_FIELDS) });
   }
 
   async deleteProject(id: string, actor: Actor) {
@@ -99,15 +106,15 @@ export class CollaborationsService {
     });
   }
 
-  async createMilestone(projectId: string, actor: Actor, data: any) {
+  async createMilestone(projectId: string, actor: Actor, data: Body) {
     await this.assertSupervisor(projectId, actor);
-    return prisma.projectMilestone.create({ data: { ...(pick(data, MILESTONE_FIELDS) as any), projectId } });
+    return prisma.projectMilestone.create({ data: { ...pick<NewMilestone>(data, MILESTONE_FIELDS), projectId } as NewMilestone });
   }
 
-  async updateMilestone(milestoneId: string, actor: Actor, data: any) {
+  async updateMilestone(milestoneId: string, actor: Actor, data: Body) {
     const m = await prisma.projectMilestone.findUnique({ where: { id: milestoneId }, select: { projectId: true } });
     if (!m) throw new NotFoundException();
     await this.assertSupervisor(m.projectId, actor);
-    return prisma.projectMilestone.update({ where: { id: milestoneId }, data: pick(data, MILESTONE_FIELDS) });
+    return prisma.projectMilestone.update({ where: { id: milestoneId }, data: pick<Prisma.ProjectMilestoneUncheckedUpdateInput>(data, MILESTONE_FIELDS) });
   }
 }

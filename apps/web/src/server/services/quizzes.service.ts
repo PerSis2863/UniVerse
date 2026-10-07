@@ -2,6 +2,7 @@ import { evidenceFromQuiz, safely } from '../skill-evidence';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '../http';
 import type { CreateQuizDto, UpdateQuizDto } from '../dto';
 import prisma from '@/lib/db';
+import type { Prisma } from '@prisma/client';
 import { clientIdOf, offlineTime, tellTeacher } from '../offline';
 import { publish } from '../realtime';
 import { pushService } from './push.service';
@@ -139,7 +140,7 @@ export class QuizzesService {
    * outbox. A retry with the same clientId gets the saved result back. Finished before the due date
    * it counts as on time; finished after it, it's kept but waits for the teacher to accept it.
    */
-  async submitQuiz(studentId: string, quizId: string, answers: any, offline?: { clientId?: unknown; startedAt?: unknown; finishedAt?: unknown }) {
+  async submitQuiz(studentId: string, quizId: string, answers: Prisma.InputJsonObject, offline?: { clientId?: unknown; startedAt?: unknown; finishedAt?: unknown }) {
     const clientId = clientIdOf(offline?.clientId);
     const finishedAt = offlineTime(offline?.finishedAt);
     const startedAt = offlineTime(offline?.startedAt);

@@ -8,6 +8,7 @@ import prisma from '@/lib/db';
 import { BadRequestException, ForbiddenException } from '../http';
 import { audit } from '../audit';
 import { later, notify } from '../email';
+import { text } from '../body';
 
 /** Tells the credential's owner about an admin decision (in-app + email). */
 const notifyCredential = (id: string, verb: 'approved' | 'rejected' | 'revoked', reason?: string) =>
@@ -67,7 +68,7 @@ export default function impactModule(router: Router) {
 
   // NGOs & projects
   r.get('ngos', ({ query }) => impact.getNGOs(query));
-  r.get('ngo-projects', ({ query }) => impact.getNGOProjects(query));
+  r.get('ngo-projects', ({ query }) => impact.getNGOProjects());
   r.post<{ id: string }>('ngo-projects/:id/apply', ({ params, user, body }) => impact.applyToNGOProject(params.id, user.id, body));
 
   // Startups
@@ -127,7 +128,7 @@ export default function impactModule(router: Router) {
 
   // Legacy certificates
   r.get('certificates', ({ user }) => impact.getCertificates(user.id));
-  r.post('certificates/request', ({ user, body }) => impact.requestCertificate(user.id, body.title));
+  r.post('certificates/request', ({ user, body }) => impact.requestCertificate(user.id, text(body.title)));
   r.get('certificates/pending', { roles: ['ADMIN'] }, () => impact.getPendingCertificateRequests());
   r.post<{ id: string }>('certificates/:id/approve', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
     const doc = await impact.approveCertificate(params.id);

@@ -1,7 +1,10 @@
 
+import type { Prisma } from '@prisma/client';
 import { pick } from '../pick';
+import type { Body } from '../body';
 
-const FIELDS = ['type', 'title', 'fileUrl', 'issuedAt', 'expiresAt'] as const;
+type NewDocument = Prisma.StudentDocumentUncheckedCreateInput;
+const FIELDS = ['type', 'title', 'fileUrl', 'issuedAt', 'expiresAt'] as const satisfies readonly (keyof NewDocument)[];
 import prisma from '@/lib/db';
 
 export class DocumentsService {
@@ -14,7 +17,7 @@ export class DocumentsService {
     });
   }
   findByUser(userId: string) { return prisma.studentDocument.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }); }
-  create(userId: string, data: any) { return prisma.studentDocument.create({ data: { ...(pick(data, FIELDS) as any), userId, isVerified: false } }); }
-  update(id: string, userId: string, data: any) { return prisma.studentDocument.update({ where: { id, userId }, data: { ...pick(data, FIELDS), isVerified: false } }); }
+  create(userId: string, data: Body) { return prisma.studentDocument.create({ data: { ...pick<NewDocument>(data, FIELDS), userId, isVerified: false } as NewDocument }); }
+  update(id: string, userId: string, data: Body) { return prisma.studentDocument.update({ where: { id, userId }, data: { ...pick<Prisma.StudentDocumentUncheckedUpdateInput>(data, FIELDS), isVerified: false } }); }
   remove(id: string, userId: string) { return prisma.studentDocument.delete({ where: { id, userId } }); }
 }

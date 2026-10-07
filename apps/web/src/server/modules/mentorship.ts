@@ -1,5 +1,6 @@
 import type { Router } from '../router';
 import { MentorshipService } from '../services/mentorship.service';
+import { text } from '../body';
 
 const mentorship = new MentorshipService();
 
@@ -15,5 +16,5 @@ export default function mentorshipModule(router: Router) {
   r.post('mentors/profile', ({ user, body }) => mentorship.createMentorProfile(user.id, body));
   r.get('bookings', ({ user }) => mentorship.getBookings(user.id, user.role));
   r.post<{ mentorId: string }>('mentors/:mentorId/book', ({ user, params, body }) => mentorship.createBooking(user.id, params.mentorId, body));
-  r.patch<{ id: string }>('bookings/:id/status', ({ params, user, body }) => mentorship.updateBookingStatus(params.id, user, body.status));
+  r.patch<{ id: string }>('bookings/:id/status', ({ params, user, body }) => mentorship.updateBookingStatus(params.id, user, text(body.status)));
 }

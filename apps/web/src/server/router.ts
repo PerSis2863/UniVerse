@@ -5,6 +5,7 @@ import type { RateLimit } from '@cloudflare/workers-types';
 import { ForbiddenException, HttpException, NotFoundException } from './http';
 import { extractBearer, resolveUser, demoWriteBlocked, isOwner } from './auth';
 import { hasPass, needsTwoStep } from './two-step';
+import type { Body, Query } from './body';
 
 // A small router for the API that used to run as a NestJS app on Render. Routes keep
 // their NestJS paths, guards (sign-in + @Roles) and response conventions, and are served from
@@ -16,8 +17,9 @@ export interface Ctx<P extends Record<string, string> = Record<string, string>> 
   /** The signed-in user (routes declared with `public: true` get null). */
   user: User;
   params: P;
-  query: Record<string, any>;
-  body: any;
+  /** Untrusted: read with the helpers in ./body (oneOf, str, text…). */
+  query: Query;
+  body: Body;
   req: Request;
 }
 
@@ -35,7 +37,8 @@ export interface RouteOptions {
 interface Route extends RouteOptions {
   method: Method;
   segments: string[];
-  handler: (ctx: Ctx<any>) => unknown;
+  // Method syntax: each route's handler takes its own params type.
+  handler(ctx: Ctx): unknown;
 }
 
 export class Router {
@@ -129,19 +132,23 @@ function split(path: string) {
 
 /** Query string → object like Express: repeated keys and `key[]` become arrays. */
 function parseQuery(url: URL) {
-  const out: Record<string, any> = {};
+  const out: Query = {};
   for (const [rawKey, value] of url.searchParams) {
     const key = rawKey.endsWith('[]') ? rawKey.slice(0, -2) : rawKey;
-    if (key in out) out[key] = ([] as string[]).concat(out[key], value);
+    if (key in out) out[key] = ([] as string[]).concat(out[key] ?? [], value);
     else out[key] = rawKey.endsWith('[]') ? [value] : value;
   }
   return out;
 }
 
-async function readBody(req: Request) {
+async function readBody(req: Request): Promise<Body> {
   if (req.method === 'GET' || req.method === 'HEAD') return {};
   const type = req.headers.get('content-type') ?? '';
-  if (type.includes('application/json')) return req.clone().json().catch(() => ({}));
+  if (type.includes('application/json')) {
+    // Always an object, so handlers can read body.x (a JSON null, array or number becomes {}).
+    const json: unknown = await req.clone().json().catch(() => ({}));
+    return json && typeof json === 'object' && !Array.isArray(json) ? (json as Body) : {};
+  }
   if (type.includes('application/x-www-form-urlencoded')) return Object.fromEntries(new URLSearchParams(await req.clone().text()));
   // multipart and other bodies are read by the handler itself via ctx.req.
   return {};

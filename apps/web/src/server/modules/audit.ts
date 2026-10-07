@@ -15,7 +15,7 @@ async function withActorEmail(query: Record<string, unknown>): Promise<Prisma.Au
   return where;
 }
 
-function whereFrom(query: Record<string, any>): Prisma.AuditLogWhereInput {
+function whereFrom(query: Record<string, unknown>): Prisma.AuditLogWhereInput {
   const where: Prisma.AuditLogWhereInput = {};
   if (typeof query.action === 'string' && query.action) {
     // "user" matches every "user.*" action; "user.deleted" matches exactly.

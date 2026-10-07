@@ -1,12 +1,14 @@
 import { BadRequestException, NotFoundException, ForbiddenException } from '../http';
 import prisma from '@/lib/db';
+import { first, str, text, type Body, type Query } from '../body';
 
 export class GroupsService {
-  async findAll(query: any) {
+  async findAll(query: Query) {
+    const search = first(query.search);
     return prisma.group.findMany({
       where: {
         isPublic: true,
-        ...(query.search && { name: { contains: query.search } }),
+        ...(search && { name: { contains: search } }),
       },
       include: {
         _count: { select: { members: true, posts: true } },
@@ -67,11 +69,13 @@ export class GroupsService {
     return g;
   }
 
-  async create(userId: string, data: any) {
+  async create(userId: string, data: Body) {
+    const name = text(data.name).trim();
+    if (!name) throw new BadRequestException('Give the group a name.');
     const group = await prisma.group.create({
       data: {
-        name: data.name,
-        category: data.category || data.type,
+        name,
+        category: str(data.category) || str(data.type),
         createdById: userId,
         members: {
           create: {
@@ -110,10 +114,12 @@ export class GroupsService {
     });
   }
 
-  async createPost(groupId: string, authorId: string, data: any) {
+  async createPost(groupId: string, authorId: string, data: Body) {
     await this.checkMembership(groupId, authorId);
+    const body = (str(data.text) || text(data.content)).trim();
+    if (!body) throw new BadRequestException('Write something to post.');
     return prisma.groupPost.create({
-      data: { groupId, authorId, body: data.text || data.content },
+      data: { groupId, authorId, body },
     });
   }
 

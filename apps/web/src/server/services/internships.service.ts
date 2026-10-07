@@ -1,14 +1,18 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
+import type { Prisma } from '@prisma/client';
 import { pick } from '../pick';
+import { first, oneOf, str, type Body, type Query } from '../body';
 import prisma from '@/lib/db';
 
 export class InternshipsService {
-  async findAll(query: any) {
+  async findAll(query: Query) {
+    const search = first(query.search);
+    const type = first(query.type);
     return prisma.internship.findMany({
       where: {
         isActive: true,
-        ...(query.search && { OR: [{ title: { contains: query.search } }, { description: { contains: query.search } }] }),
-        ...(query.type && { type: query.type }),
+        ...(search && { OR: [{ title: { contains: search } }, { description: { contains: search } }] }),
+        ...(type && { type: type as Prisma.InternshipWhereInput['type'] }),
       },
       include: { company: true, _count: { select: { applications: true } } },
       orderBy: { createdAt: 'desc' },
@@ -61,9 +65,9 @@ export class InternshipsService {
     if (user.role !== 'ADMIN' && item.postedById !== user.id) throw new ForbiddenException('Only the poster or an admin can do this.');
   }
 
-  async apply(internshipId: string, studentId: string, body: any) {
+  async apply(internshipId: string, studentId: string, body: Body) {
     // Applicants can only submit their cover letter and CV; status is set by reviewers.
-    const data = pick(body, ['coverLetter', 'cvUrl'] as const);
+    const data = pick<Prisma.InternshipApplicationUncheckedCreateInput>(body, ['coverLetter', 'cvUrl']);
     return prisma.internshipApplication.upsert({
       where: { internshipId_studentId: { internshipId, studentId } },
       create: { ...data, internshipId, studentId },
@@ -75,27 +79,28 @@ export class InternshipsService {
     return prisma.internshipApplication.findMany({ where: { studentId }, include: { internship: { include: { company: true } } } });
   }
 
-  async updateApplication(id: string, data: any, user: { id: string; role: string }) {
+  async updateApplication(id: string, data: Body, user: { id: string; role: string }) {
     const app = await prisma.internshipApplication.findUnique({ where: { id }, select: { internshipId: true, studentId: true } });
     if (!app) throw new NotFoundException();
 
     // Applicants can edit their cover letter / CV and withdraw; nothing else.
     if (app.studentId === user.id && user.role !== 'ADMIN') {
-      if (data?.status !== undefined && data.status !== 'WITHDRAWN') throw new ForbiddenException('You can only withdraw your application.');
+      if (data.status !== undefined && data.status !== 'WITHDRAWN') throw new ForbiddenException('You can only withdraw your application.');
       return prisma.internshipApplication.update({
         where: { id },
-        data: { ...pick(data, ['coverLetter', 'cvUrl'] as const), ...(data?.status === 'WITHDRAWN' ? { status: 'WITHDRAWN' as const } : {}) },
+        data: { ...pick<Prisma.InternshipApplicationUncheckedUpdateInput>(data, ['coverLetter', 'cvUrl']), ...(data.status === 'WITHDRAWN' ? { status: 'WITHDRAWN' as const } : {}) },
       });
     }
 
     // Reviewers (poster or admin) set the status.
     await this.assertCanManage(app.internshipId, user);
-    const allowed = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'];
-    if (!allowed.includes(data?.status)) throw new BadRequestException('Invalid status');
-    return prisma.internshipApplication.update({ where: { id }, data: { status: data.status } });
+    const allowed = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'] as const;
+    const status = data.status;
+    if (!oneOf(allowed, status)) throw new BadRequestException('Invalid status');
+    return prisma.internshipApplication.update({ where: { id }, data: { status } });
   }
 
-  private async getOrCreateCompany(companyName: string) {
+  private async getOrCreateCompany(companyName: string | undefined) {
     if (!companyName) return null;
     let company = await prisma.company.findFirst({
       where: { name: { equals: companyName } }
@@ -108,25 +113,24 @@ export class InternshipsService {
     return company.id;
   }
 
-  private static FIELDS = ['title', 'description', 'type', 'location', 'duration', 'isPaid', 'salary', 'openings', 'deadline', 'startDate', 'isActive'] as const;
+  private static FIELDS = ['title', 'description', 'type', 'location', 'duration', 'isPaid', 'salary', 'openings', 'deadline', 'startDate', 'isActive'] as const satisfies readonly (keyof Prisma.InternshipUncheckedCreateInput)[];
 
-  async create(userId: string, data: any) {
-    const company = data?.company;
-    const rest = pick(data, InternshipsService.FIELDS);
-    const companyId = await this.getOrCreateCompany(company);
+  async create(userId: string, data: Body) {
+    type New = Prisma.InternshipUncheckedCreateInput;
+    const companyId = await this.getOrCreateCompany(str(data.company));
     return prisma.internship.create({
       data: {
-        ...(rest as any),
+        ...pick<New>(data, InternshipsService.FIELDS),
         companyId: companyId as string,
         postedById: userId,
-      }
+      } as New,
     });
   }
 
-  async update(id: string, data: any, user: { id: string; role: string }) {
+  async update(id: string, data: Body, user: { id: string; role: string }) {
     await this.assertCanManage(id, user);
-    const company = data?.company;
-    const updateData: any = pick(data, InternshipsService.FIELDS);
+    const company = str(data.company);
+    const updateData = pick<Prisma.InternshipUncheckedUpdateInput>(data, InternshipsService.FIELDS);
     if (company) {
       updateData.companyId = await this.getOrCreateCompany(company);
     }

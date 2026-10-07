@@ -5,6 +5,7 @@ import { forgetUser, isOwnerEmail } from '../auth';
 import { PLANS } from '@/lib/plans';
 import { parseSwitches, parseWatchWords } from '@/lib/feature-switches';
 import { selectColumns } from '../table-stats';
+import { oneOf } from '../body';
 
 // Owner console extras that read across the app:
 //   attention  what needs the owner now (the Overview card and the counts on the console tabs)
@@ -173,7 +174,7 @@ export default function ownerInsightsModule(router: Router) {
   r.post('people/bulk', async ({ body, user }) => {
     const ids = Array.isArray(body?.ids) ? [...new Set((body.ids as unknown[]).filter((x): x is string => typeof x === 'string'))].slice(0, 90) : [];
     const action = body?.action;
-    if (!ids.length || !['ban', 'unban', 'notify'].includes(action)) throw new BadRequestException('Choose people and what to do.');
+    if (!ids.length || !oneOf(['ban', 'unban', 'notify'] as const, action)) throw new BadRequestException('Choose people and what to do.');
     const people = (await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, email: true, status: true } }))
       .filter((p) => !isOwnerEmail(p.email) && p.id !== user.id);
     if (!people.length) throw new BadRequestException('Nobody to change (the owner account is skipped).');

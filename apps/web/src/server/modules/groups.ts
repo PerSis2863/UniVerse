@@ -1,5 +1,6 @@
 import type { Router } from '../router';
 import { GroupsService } from '../services/groups.service';
+import { strings } from '../body';
 
 const groups = new GroupsService();
 
@@ -14,5 +15,5 @@ export default function groupsModule(router: Router) {
   r.delete<{ id: string }>(':id/leave', ({ params, user }) => groups.leave(params.id, user.id));
   r.get<{ id: string }>(':id/posts', ({ params, user }) => groups.getPosts(params.id, user.id));
   r.post<{ id: string }>(':id/posts', ({ params, user, body }) => groups.createPost(params.id, user.id, body));
-  r.post<{ id: string }>(':id/invite', ({ params, user, body }) => groups.inviteMembers(params.id, user.id, body.emails));
+  r.post<{ id: string }>(':id/invite', ({ params, user, body }) => groups.inviteMembers(params.id, user.id, strings(body.emails)));
 }

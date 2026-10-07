@@ -2,6 +2,7 @@ import { joinClubSpace } from '../campus-life';
 import { NotFoundException } from '../http';
 import { AssociationStatus } from '@prisma/client';
 import prisma from '@/lib/db';
+import type { Prisma } from '@prisma/client';
 import { differenceInYears } from 'date-fns';
 
 export class AssociationsService {
@@ -190,7 +191,7 @@ export class AssociationsService {
     return association;
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.AssociationUpdateInput) {
     return prisma.association.update({
       where: { id },
       data,

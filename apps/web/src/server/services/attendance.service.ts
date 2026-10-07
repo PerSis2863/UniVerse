@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import type { AttendanceStatus } from '@prisma/client';
 import { BadRequestException } from '../http';
 
 export class AttendanceService {
@@ -45,7 +46,7 @@ export class AttendanceService {
     return { enrollments, attendance, summary };
   }
 
-  async markAttendance(courseId: string, date: string, studentId: string, status: any) {
+  async markAttendance(courseId: string, date: string, studentId: string, status: AttendanceStatus) {
     const targetDate = new Date(date);
     const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId } }, select: { id: true } });
     if (!enrolled) throw new BadRequestException('That student is not enrolled in this course');

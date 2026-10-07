@@ -19,6 +19,7 @@ import { cloudflareAccount } from '../cloudflare-account';
 import { healthCheck } from '../owner-health';
 import { callHealth } from '../calls';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
+import { oneOf } from '../body';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -184,7 +185,7 @@ export default function ownerModule(router: Router) {
   r.post('errors/bulk', async ({ body }) => {
     const ids = Array.isArray(body?.ids) ? (body.ids as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, 90) : [];
     const status = body?.status;
-    if (!ids.length || !['NEW', 'RESOLVED', 'IGNORED'].includes(status)) throw new BadRequestException('Choose problems and a status.');
+    if (!ids.length || !oneOf(['NEW', 'RESOLVED', 'IGNORED'] as const, status)) throw new BadRequestException('Choose problems and a status.');
     const { count } = await prisma.errorReport.updateMany({ where: { id: { in: ids } }, data: { status, resolvedAt: status === 'RESOLVED' ? new Date() : null } });
     return { updated: count };
   });
@@ -305,7 +306,7 @@ export default function ownerModule(router: Router) {
     const ctl = await serverControl();
     const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null; switches?: string | null; aiLimits?: string } = {};
     if (body?.mode !== undefined) {
-      if (!['LIVE', 'READ_ONLY', 'MAINTENANCE'].includes(body.mode)) throw new BadRequestException('Mode must be LIVE, READ_ONLY or MAINTENANCE');
+      if (!oneOf(['LIVE', 'READ_ONLY', 'MAINTENANCE'] as const, body.mode)) throw new BadRequestException('Mode must be LIVE, READ_ONLY or MAINTENANCE');
       data.mode = body.mode;
     }
     if (body?.message !== undefined) data.message = String(body.message ?? '').trim().slice(0, 500) || null;
@@ -450,7 +451,7 @@ export default function ownerModule(router: Router) {
   r.get('activity', async ({ query }) => {
     const before = query.before ? new Date(String(query.before)) : new Date(Date.now() + 1000);
     const userId = typeof query.userId === 'string' && query.userId ? query.userId : undefined;
-    const kind = ['signin', 'action', 'message', 'ui'].includes(query.kind) ? String(query.kind) : '';
+    const kind = oneOf(['signin', 'action', 'message', 'ui'] as const, query.kind) ? query.kind : '';
     const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
     const role = (['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR'] as const).find((x) => x === query.role);
     const want = (k: string) => !kind || kind === k;
@@ -504,8 +505,8 @@ export default function ownerModule(router: Router) {
   r.get('people', async ({ query }) => {
     const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
     const where: Record<string, unknown> = {};
-    if (['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR'].includes(query.role)) where.role = query.role;
-    if (['PENDING', 'ACTIVE', 'SUSPENDED'].includes(query.status)) where.status = query.status;
+    if (oneOf(['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR'] as const, query.role)) where.role = query.role;
+    if (oneOf(['PENDING', 'ACTIVE', 'SUSPENDED'] as const, query.status)) where.status = query.status;
     if (q) where.OR = [{ name: { contains: q } }, { email: { contains: q } }, { phone: { contains: q } }];
     const people = await prisma.user.findMany({
       where,
@@ -682,7 +683,7 @@ export default function ownerModule(router: Router) {
   // ── Payments (Money tab) ──
   // Fixing a payment by hand changes UniVerse's record only: Stripe is not refunded or charged.
 
-  const PAY_STATUS = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'];
+  const PAY_STATUS = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'] as const;
   /** An invoice tied to these payments follows their new status. */
   const syncInvoices = (ids: string[], status: string) => prisma.invoice.updateMany({
     where: { paymentId: { in: ids } }, data: { status: status as 'PENDING', ...(status === 'COMPLETED' && { paidAt: new Date() }) },
@@ -692,9 +693,9 @@ export default function ownerModule(router: Router) {
   r.patch<{ id: string }>('payments/:id', async ({ params, body, user }) => {
     const before = await prisma.payment.findUnique({ where: { id: params.id } });
     if (!before) throw new NotFoundException('Payment not found');
-    const data: { status?: 'PENDING'; amount?: number; description?: string } = {};
+    const data: { status?: (typeof PAY_STATUS)[number]; amount?: number; description?: string } = {};
     if (body?.status !== undefined) {
-      if (!PAY_STATUS.includes(body.status)) throw new BadRequestException('Unknown status.');
+      if (!oneOf(PAY_STATUS, body.status)) throw new BadRequestException('Unknown status.');
       data.status = body.status;
     }
     if (body?.amount !== undefined) {
@@ -736,7 +737,7 @@ export default function ownerModule(router: Router) {
   r.post('payments/bulk', async ({ body, user }) => {
     const ids = Array.isArray(body?.ids) ? [...new Set((body.ids as unknown[]).filter((x): x is string => typeof x === 'string'))].slice(0, 90) : [];
     const action = String(body?.action ?? '');
-    if (!ids.length || !(action === 'delete' || PAY_STATUS.includes(action))) throw new BadRequestException('Choose payments and what to do.');
+    if (!ids.length || !(action === 'delete' || oneOf(PAY_STATUS, action))) throw new BadRequestException('Choose payments and what to do.');
     const rows = await prisma.payment.findMany({ where: { id: { in: ids } } });
     if (!rows.length) throw new BadRequestException('Those payments are already gone.');
     const found = rows.map((p) => p.id);

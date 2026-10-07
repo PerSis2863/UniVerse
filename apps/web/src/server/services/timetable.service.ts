@@ -1,5 +1,6 @@
 
 import prisma from '@/lib/db';
+import type { Prisma } from '@prisma/client';
 
 export class TimetableService {
   async findByCourse(courseId: string) {
@@ -13,11 +14,11 @@ export class TimetableService {
     return prisma.timetableSlot.findMany({ where: { courseId: { in: courseIds } }, include: { course: { select: { id: true, name: true, code: true, color: true, emoji: true } }, room: true } });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.TimetableSlotUncheckedCreateInput) {
     return prisma.timetableSlot.create({ data });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.TimetableSlotUncheckedUpdateInput) {
     return prisma.timetableSlot.update({ where: { id }, data });
   }
 

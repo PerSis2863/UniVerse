@@ -6,6 +6,7 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { forgetUser } from '../auth';
 import { audit } from '../audit';
 import { later, notify } from '../email';
+import { oneOf } from '../body';
 
 // Applications to become a teacher or NGO representative.
 //
@@ -152,7 +153,7 @@ export default function applicationsModule(router: Router) {
   /** Start an application (students applying later; people who signed up as teacher already have one). */
   r.post('', async ({ user, body }) => {
     if (user.role !== 'STUDENT') throw new ForbiddenException('Your account already has staff access.');
-    const requestedRole = (REQUESTABLE_ROLES as readonly string[]).includes(body?.requestedRole) ? (body.requestedRole as RequestableRole) : 'TEACHER';
+    const requestedRole: RequestableRole = oneOf(REQUESTABLE_ROLES, body.requestedRole) ? body.requestedRole : 'TEACHER';
     const last = await prisma.roleApplication.findFirst({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { status: true, reviewedAt: true } });
     if (last && OPEN.includes(last.status)) throw new ConflictException('You already have an application in progress.');
     if (last?.status === 'REJECTED' && last.reviewedAt && Date.now() - last.reviewedAt.getTime() < REAPPLY_AFTER_DAYS * 86_400_000) {
@@ -169,7 +170,7 @@ export default function applicationsModule(router: Router) {
     const app = await prisma.roleApplication.findFirst({ where: { userId: user.id, status: { in: OPEN } }, orderBy: { createdAt: 'desc' } });
     if (!app) throw new NotFoundException('You have no open application.');
     const data = applicantFields(body);
-    if ((REQUESTABLE_ROLES as readonly string[]).includes(body?.requestedRole) && app.status === 'DRAFT') data.requestedRole = body.requestedRole;
+    if (oneOf(REQUESTABLE_ROLES, body.requestedRole) && app.status === 'DRAFT') data.requestedRole = body.requestedRole;
     const changed = Object.keys(data).length > 0;
     const updated = changed
       ? await prisma.roleApplication.update({
