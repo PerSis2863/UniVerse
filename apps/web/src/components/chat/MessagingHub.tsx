@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
+import { spring } from '@/lib/motion';
 import { useChatLock, watchRelock } from '@/lib/chat-lock';
 import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
@@ -38,7 +39,10 @@ const StatusBar = dynamic(() => import('./StatusBar').then((m) => m.StatusBar), 
 
 interface FoundMessage { id: string; conversationId: string; title: string; avatar: string | null; sender: string; snippet: string; createdAt: string }
 
+const SEARCH_CHIPS: [string, string][] = [['from:me', 'From me'], ['has:file', 'Files'], ['has:link', 'Links'], ['has:photo', 'Photos'], ['has:voice', 'Voice'], ['after:', 'Last 7 days']];
+
 export function MessagingHub() {
+  const [weekAgo] = useState(() => new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10));
   // Locked chats (1.10): no preview in the list until unlocked on this device.
   const lockedChats = useChatLock((s) => s.chats);
   const lockOpen = useChatLock((s) => s.unlocked);
@@ -189,8 +193,25 @@ export function MessagingHub() {
           {space === 'chats' && <>
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats" className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/40" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats and messages" aria-label="Search chats and messages" title="Filters: from:name, in:chat, has:file, has:link, has:photo, has:voice, before:2026-10-01, after:2026-09-01" className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/40" />
           </div>
+          {/* Message search filters (1.14): each chip adds or removes its filter in the search box. */}
+          <AnimatePresence initial={false}>
+            {search.trim() && (
+              <motion.div key="search-filters" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] -mx-1 px-1">
+                {SEARCH_CHIPS.map(([token, label]) => {
+                  const tok = token === 'after:' ? `after:${weekAgo}` : token;
+                  const on = token === 'after:' ? /(^|\s)after:\S+/.test(search) : search.split(/\s+/).includes(tok);
+                  return (
+                    <button key={token} type="button" aria-pressed={on} onClick={() => setSearch((cur) => {
+                      const rest = cur.split(/\s+/).filter((w) => w && (token === 'after:' ? !w.startsWith('after:') : w !== tok));
+                      return (on ? rest : [...rest, tok]).join(' ') + ' ';
+                    })} className={cn('shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors', on ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300')}>{label}</button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 pb-0.5">
             {([['all', 'All'], ['unread', 'Unread'], ['direct', 'Direct'], ['groups', 'Groups'], ...folders.map((f) => [`folder:${f.id}`, `${f.emoji} ${f.name}`.trim()])] as [Filter, string][]).map(([f, label]) => (
               <button key={f} onClick={() => setFilter(f)} className={cn('relative isolate shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap', filter === f ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10')}>{filter === f && <TabPill id="components-chat-messaginghub-0" />}
