@@ -11,6 +11,7 @@ import { TableKit } from '@tiptap/extension-table';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import Image from '@tiptap/extension-image';
 import { ArrowLeft, Check, Download, FileText, History, Loader2, MessageSquare, MessageSquarePlus, RotateCcw, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
+import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
@@ -23,7 +24,7 @@ import { cn } from '@/lib/utils';
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
 // select, version history (preview and restore), sharing, and PDF / Word copies.
 
-interface DocInfo { id: string; title: string; course: { code: string; name: string } | null; canEdit: boolean; canManage: boolean; me: { id: string; name: string }; members: { userId: string; role: string; name: string }[] }
+interface DocInfo { id: string; title: string; course: { code: string; name: string } | null; chat?: { id: string; name: string } | null; canEdit: boolean; canManage: boolean; me: { id: string; name: string }; members: { userId: string; role: string; name: string }[] }
 interface Comment { id: string; userId: string; quote: string | null; body: string; resolvedAt: string | null; createdAt: string; user: { id: string; name: string; avatar: string | null } }
 
 const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
@@ -53,6 +54,8 @@ function exportPdf(title: string, html: string) {
 export default function DocPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const role = useAuthStore((st) => st.user?.role);
+  const inboxPath = role === 'ADMIN' ? '/admin/inbox' : role === 'TEACHER' ? '/teacher/inbox' : '/student/inbox';
   const { data, error, mutate } = useSWR<DocInfo>(`/api/docs/${id}`, authedJson);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [status, setStatus] = useState<{ s: DocStatus; canEdit: boolean }>({ s: 'connecting', canEdit: false });
@@ -77,7 +80,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <header className="px-3 sm:px-6 pt-3 pb-2 flex items-center gap-2 border-b border-zinc-200/70 dark:border-white/[0.06]">
-        <Link href="/docs" aria-label="Docs" className="p-2 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-4 h-4" /></Link>
+        <Link href={data.chat ? `${inboxPath}?c=${data.chat.id}` : '/docs'} aria-label={data.chat ? `Back to ${data.chat.name}` : 'Docs'} className="p-2 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-4 h-4" /></Link>
         <div className="flex-1 min-w-0">
           <input value={shownTitle} readOnly={!data.canEdit} maxLength={120} onChange={(e) => setTitle(e.target.value)} onBlur={() => void saveTitle()} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             aria-label="Title" className="w-full bg-transparent text-lg font-bold text-zinc-900 dark:text-white outline-none truncate" />
@@ -85,6 +88,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
             <span className={cn('w-1.5 h-1.5 rounded-full', status.s === 'live' ? 'bg-emerald-500' : status.s === 'connecting' ? 'bg-amber-400 animate-pulse' : 'bg-zinc-400')} />
             {status.s === 'live' ? (status.canEdit ? 'Saved as you type' : 'You can read this document') : status.s === 'connecting' ? 'Connecting…' : status.s === 'unavailable' ? 'Not available right now' : 'Offline: reconnecting'}
             {data.course && <span>· {data.course.code}</span>}
+            {data.chat && <span>· Canvas of {data.chat.name}</span>}
             {peers.length > 0 && <span>· {peers.slice(0, 3).join(', ')}{peers.length > 3 ? ` +${peers.length - 3}` : ''} here</span>}
           </p>
         </div>
@@ -102,7 +106,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
         </div>
         <button type="button" onClick={() => setSheet('history')} title="Version history" aria-label="Version history" className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><History className="w-4 h-4" /></button>
         <button type="button" onClick={() => setPanel(panel ? null : 'comments')} aria-pressed={panel === 'comments'} title="Comments" aria-label="Comments" className={cn('p-2 rounded-full', panel ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><MessageSquare className="w-4 h-4" /></button>
-        {data.canManage && !data.course && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
+        {data.canManage && !data.course && !data.chat && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
         {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </header>
       <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06]"><DocToolbar editor={editor} disabled={!editable} /></div>

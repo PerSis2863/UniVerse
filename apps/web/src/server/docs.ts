@@ -6,6 +6,7 @@ import { BadRequestException, ForbiddenException, HttpException, NotFoundExcepti
 import { publish } from './realtime';
 import { notify } from './email';
 import { groupAccess, groupPeople } from './spaces';
+import { channelSendCheck } from './communities';
 import { indexDoc, indexLater } from './semester';
 
 // Documents (Stage 4 · 3.2). The text is written together live: a Yjs document kept by the same
@@ -28,18 +29,53 @@ async function roomFetch(docId: string, path: string, init?: RequestInit): Promi
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 async function access(docId: string, user: SessionUser) {
-  const doc = await prisma.doc.findUnique({ where: { id: docId }, select: { id: true, title: true, ownerId: true, courseId: true, groupId: true, members: { select: { userId: true, role: true } } } });
+  const doc = await prisma.doc.findUnique({ where: { id: docId }, select: { id: true, title: true, ownerId: true, courseId: true, groupId: true, conversationId: true, members: { select: { userId: true, role: true } } } });
   if (!doc) throw new NotFoundException('Document not found.');
   const mine = doc.members.find((m) => m.userId === user.id);
   const course = doc.courseId ? await courseAccess(doc.courseId, user) : null;
   const group = doc.groupId ? await groupAccess(doc.groupId, user) : null;
+  const chat = doc.conversationId ? await chatAccess(doc.conversationId, user) : null;
   const isOwner = doc.ownerId === user.id;
-  if (!isOwner && !mine && !course && !group && user.role !== 'ADMIN') throw new NotFoundException('Document not found.');
-  return { doc, canEdit: isOwner || mine?.role === 'EDITOR' || !!course || !!group, canManage: isOwner || !!course?.canManage || !!group?.canManage };
+  // A chat's canvas belongs to the chat: someone who left it can't open it any more.
+  if (doc.conversationId && !chat && user.role !== 'ADMIN') throw new NotFoundException('Document not found.');
+  if (!isOwner && !mine && !course && !group && !chat && user.role !== 'ADMIN') throw new NotFoundException('Document not found.');
+  return { doc, canEdit: isOwner || mine?.role === 'EDITOR' || !!course || !!group || !!chat?.canEdit, canManage: !!course?.canManage || !!group?.canManage || !!chat?.canManage || (isOwner && !doc.conversationId) };
 }
 
-async function audience(doc: { ownerId: string; courseId: string | null; groupId?: string | null; members: { userId: string }[] }) {
+/** A chat's canvas (1.12): everyone in the chat edits it (in a community channel, those who may
+ *  post there); the group's admins or the community's moderators manage it. */
+async function chatAccess(conversationId: string, user: SessionUser) {
+  const me = await prisma.conversationParticipant.findUnique({ where: { conversationId_userId: { conversationId, userId: user.id } }, select: { role: true, conversation: { select: { communityId: true, isGroup: true } } } });
+  if (!me) return null;
+  const c = me.conversation;
+  if (c.communityId) {
+    const m = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: c.communityId, userId: user.id } }, select: { role: true } });
+    const mod = m?.role === 'OWNER' || m?.role === 'MOD';
+    return { canEdit: mod || !(await channelSendCheck(conversationId, user.id, { slowMode: false })), canManage: mod };
+  }
+  return { canEdit: true, canManage: !c.isGroup || me.role === 'ADMIN' };
+}
+
+/** GET (create: false) or POST (create: true) /api/chat/conversations/:id/canvas → { id } or { id: null }. */
+export async function chatCanvas(conversationId: string, user: SessionUser, create: boolean) {
+  const a = await chatAccess(conversationId, user);
+  if (!a) throw new NotFoundException('Chat not found.');
+  const found = await prisma.doc.findUnique({ where: { conversationId }, select: { id: true } });
+  if (found || !create) return { id: found?.id ?? null };
+  if (!a.canEdit) throw new ForbiddenException('Only people who can post here can start the canvas.');
+  const convo = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { name: true, isGroup: true } });
+  try {
+    const doc = await prisma.doc.create({ data: { title: `${convo?.isGroup && convo.name ? convo.name : 'Chat'} canvas`.slice(0, 120), ownerId: user.id, conversationId } });
+    return { id: doc.id };
+  } catch {
+    // Someone else made it a moment ago.
+    return { id: (await prisma.doc.findUnique({ where: { conversationId }, select: { id: true } }))?.id ?? null };
+  }
+}
+
+async function audience(doc: { ownerId: string; courseId: string | null; groupId?: string | null; conversationId?: string | null; members: { userId: string }[] }) {
   const ids = new Set([doc.ownerId, ...doc.members.map((m) => m.userId)]);
+  if (doc.conversationId) for (const p of await prisma.conversationParticipant.findMany({ where: { conversationId: doc.conversationId }, select: { userId: true }, take: 300 })) ids.add(p.userId);
   if (doc.groupId) for (const u of await groupPeople(doc.groupId)) ids.add(u);
   if (doc.courseId) {
     const c = await prisma.course.findUnique({ where: { id: doc.courseId }, select: { teacherId: true, enrollments: { select: { studentId: true }, take: 300 } } });
@@ -76,12 +112,13 @@ export async function createDoc(user: SessionUser, body: Record<string, unknown>
 
 export async function getDoc(docId: string, user: SessionUser) {
   const { doc, canEdit, canManage } = await access(docId, user);
-  const [course, people] = await Promise.all([
+  const [course, people, chat] = await Promise.all([
     doc.courseId ? prisma.course.findUnique({ where: { id: doc.courseId }, select: { code: true, name: true } }) : null,
     prisma.user.findMany({ where: { id: { in: doc.members.map((m) => m.userId).slice(0, 90) } }, select: { id: true, name: true } }),
+    doc.conversationId ? prisma.conversation.findUnique({ where: { id: doc.conversationId }, select: { id: true, name: true, isGroup: true } }) : null,
   ]);
   const name = new Map(people.map((p) => [p.id, p.name]));
-  return { id: doc.id, title: doc.title, course, canEdit, canManage, me: { id: user.id, name: user.name }, members: doc.members.map((m) => ({ ...m, name: name.get(m.userId) ?? 'Someone' })) };
+  return { id: doc.id, title: doc.title, course, chat: chat ? { id: chat.id, name: chat.isGroup ? chat.name ?? 'Group chat' : 'Chat' } : null, canEdit, canManage, me: { id: user.id, name: user.name }, members: doc.members.map((m) => ({ ...m, name: name.get(m.userId) ?? 'Someone' })) };
 }
 
 export async function updateDoc(docId: string, user: SessionUser, body: Record<string, unknown>) {

@@ -45,6 +45,15 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const router = useRouter();
   const locked = useChatLocked(conversationId);
   const startHuddle = useStartHuddle(conversationId);
+  // The chat's canvas (1.12): made the first time someone opens it.
+  const [canvasBusy, setCanvasBusy] = useState(false);
+  const openCanvas = async () => {
+    setCanvasBusy(true);
+    try {
+      const r = await chatJson<{ id: string | null }>(`/api/chat/conversations/${conversationId}/canvas`, { method: 'POST' });
+      if (r.id) router.push(`/docs/${r.id}`);
+    } catch (e) { toast.error((e as Error).message); } finally { setCanvasBusy(false); }
+  };
   const key = `/api/chat/conversations/${conversationId}/messages`;
   // Live updates refresh the thread on every change, so it only polls without them.
   const refreshInterval = useLiveInterval(5000, 0);
@@ -563,6 +572,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <p className={cn('text-xs truncate', typingNames.length ? 'text-emerald-500 font-medium' : 'text-zinc-500')}>{subtitle}</p>
             </div>
           </button>
+          {convo.isGroup && !convo.isOfficial && (
+            <button onClick={() => void openCanvas()} disabled={canvasBusy} aria-label="Canvas" title="Canvas: a living document pinned to this chat (rules, links, notes), edited together" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-60">{canvasBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}</button>
+          )}
           {convo.isGroup && !convo.isOfficial && (
             <button onClick={() => void runCatchup()} aria-label="Catch up with AI" title="Catch up: what you missed (AI)" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/10 hidden sm:block"><Sparkles className="w-5 h-5" /></button>
           )}
