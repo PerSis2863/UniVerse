@@ -134,6 +134,10 @@ async function deliver(noteId: string, user: SessionUser) {
   if (note.groupId) {
     await prisma.groupPost.create({ data: { groupId: note.groupId, authorId: user.id, body: body.replace(/\*\*/g, '') } });
   }
+  // An impact room's call (4.12): the notes go into the room (for its followers, never public).
+  if (note.kind === 'impact') {
+    await prisma.impactUpdate.create({ data: { projectId: note.callId.slice(2), authorId: user.id, kind: 'NOTES', body: body.replace(/\*\*/g, '').slice(0, 2000) } }).catch(() => null);
+  }
   // Everyone who was in the call (and isn't reading it in a chat): in the app, never by email.
   const people = [...new Set([...parse<string>(note.people), ...(await prisma.callStat.findMany({ where: { callId: note.callId }, select: { userId: true }, take: 500 })).map((s) => s.userId)])].filter((id) => id !== user.id);
   if (people.length) await notifyMany(people, { type: 'event', title: `Meeting notes: ${note.title}`, body: shown.summary ?? '', link, email: false });
@@ -150,7 +154,7 @@ export async function createMeetingNotes(callId: string, user: SessionUser, body
   const lines = cleanTranscript(body.transcript);
   if (!lines.length) throw new BadRequestException('No transcript: captions need Chrome, Edge or Safari, and someone has to speak while notes are on.');
   const durationSec = Math.max(lines[lines.length - 1].t, Math.min(6 * 3600, Math.round(Number(body.durationSec) || 0)));
-  const kind = link ? 'link' : callId.startsWith('g_') ? 'group' : callId.startsWith('r_') ? 'room' : 'chat';
+  const kind = link ? 'link' : callId.startsWith('g_') ? 'group' : callId.startsWith('r_') ? 'room' : callId.startsWith('i_') ? 'impact' : 'chat';
   const notes = await makeNotes(lines, info.title, durationSec, user);
   const note = await prisma.callNote.create({
     data: {
@@ -164,7 +168,7 @@ export async function createMeetingNotes(callId: string, user: SessionUser, body
   // A recording of the same call (2.9) gets its chapters and transcript from these notes.
   await prisma.callRecording.updateMany({ where: { callId, noteId: null, createdAt: { gte: new Date(Date.now() - 3 * 3600_000) } }, data: { noteId: note.id } });
   if (notes) await deliver(note.id, user);
-  const where = note.kind === 'group' ? 'posted in the group' : note.kind === 'link' ? 'sent to everyone who was in the call' : 'posted in the chat';
+  const where = note.kind === 'group' ? 'posted in the group' : note.kind === 'impact' ? 'posted in the impact room' : note.kind === 'link' ? 'sent to everyone who was in the call' : 'posted in the chat';
   return { ...note, message: notes ? `Meeting notes ${where}.` : 'The notes are saved. AI isn’t available right now: open Calls and tap Make notes later.' };
 }
 

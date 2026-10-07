@@ -381,6 +381,25 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/safety\/flags\/([^/]+)$/, () => ok({ messages: [] })],
   [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, open: 0, ai: false })],
   [/^\/api\/me\/quiet$/, () => ok({ on: false, start: '22:00', end: '07:00', locked: false })],
+  // Impact rooms (Stage 4 · 4.12): one room, followed, with a planned impact call.
+  [/^\/api\/impact-rooms$/, () => ok({ staff: false, rooms: [
+    { id: 'sample-p1', name: 'Green City Drive', description: 'Planting trees and caring for them through their first summer.', location: 'Riverside Park', sdgNumber: 13, isPublic: true, ngo: { name: 'Earth Collective', logoUrl: null, isVerified: true }, followers: 18, following: 'VOLUNTEER', hours: 180, volunteers: 31, shifts: 9, nextCall: { startsAt: at(6, 17), title: 'Monthly impact call', open: false }, lastActivity: at(-1) },
+    { id: 'sample-p2', name: 'Read Together', description: 'Reading clubs for children at the community library.', location: 'Community library', sdgNumber: 4, isPublic: false, ngo: { name: 'Bright Minds', logoUrl: null, isVerified: true }, followers: 7, following: null, hours: 96, volunteers: 14, shifts: 6, nextCall: null, lastActivity: at(-4) },
+  ] })],
+  [/^\/api\/impact-rooms\/([^/]+)$/, ({ db: d }) => ok({
+    id: 'sample-p1', name: 'Green City Drive', description: 'Planting trees and caring for them through their first summer.', type: 'Field', location: 'Riverside Park', duration: '3 months', sdgNumber: 13, skills: ['Teamwork', 'Outdoor work'], active: true, isPublic: true, publicUrl: null,
+    ngo: { name: 'Earth Collective', logoUrl: null, websiteUrl: null, sector: 'Environment', isVerified: true },
+    total: { hours: 180, volunteers: 31, shifts: 9 }, month: { hours: 42, volunteers: 12, shifts: 2 }, pledged: { people: 6, hoursPerMonth: 38 },
+    followers: { count: 18, byRole: { VOLUNTEER: 12, SPONSOR: 2, SUPPORTER: 4 }, people: d.classmates.slice(0, 5).map((u, i) => ({ id: u.id, name: u.name, avatar: null, role: 'STUDENT', followRole: i ? 'SUPPORTER' : 'VOLUNTEER' })) },
+    following: 'VOLUNTEER', staff: false, canPost: true,
+    pledge: { hoursPerMonth: 6, months: 3, skill: 'Outdoor work', note: null, startAt: at(-20), endsAt: at(70), running: true, hoursThisMonth: 4, hoursSoFar: 8 },
+    updates: [
+      { id: 'sample-u1', body: '120 saplings are in the ground. Thank you to everyone who came on Saturday!', kind: 'UPDATE', isPublic: true, callId: null, createdAt: at(-1), author: { id: 'sample-t', name: 'Dr. Jane Smith', avatar: null, role: 'TEACHER' }, mine: false, canDelete: false },
+      { id: 'sample-u2', body: 'Can someone bring extra gloves next time? We ran out.', kind: 'UPDATE', isPublic: false, callId: null, createdAt: at(-3), author: { id: d.me.id, name: d.me.name, avatar: null, role: 'STUDENT' }, mine: true, canDelete: true },
+    ],
+    calls: { callId: 'i_sample-p1', canJoin: true, upcoming: [{ id: 'sample-c1', startsAt: at(6, 17), title: 'Monthly impact call', reportAt: null, open: false }], past: [] },
+    shifts: [{ id: 'sample-sh1', title: 'Saturday tree planting', startAt: at(3, 9), endAt: at(3, 13), location: 'Riverside Park', left: 11 }],
+  })],
   // Daily brief (Stage 4 · 4.9): the sample's day, from its timetable; no AI brief.
   [/^\/api\/brief$/, ({ db: d }) => {
     const wd = (new Date().getDay() + 6) % 7;

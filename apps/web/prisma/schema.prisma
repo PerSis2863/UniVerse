@@ -243,6 +243,9 @@ model User {
   assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
   assignmentSubmissions AssignmentSubmission[]
   guardianContacts      GuardianContact[]
+  impactUpdates         ImpactUpdate[]
+  impactFollows         ImpactFollower[]
+  timePledges           TimePledge[]
   livePollsCreated      LivePoll[]             @relation("LivePollAuthor")
   livePollVotes         LivePollVote[]
   codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
@@ -1443,12 +1446,17 @@ model NGOProject {
   sdgNumber      Int?
   deadline       DateTime?
   isActive       Boolean   @default(true)
+  roomPublic     Boolean   @default(false) // its impact room has a public page for sponsors (4.12)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   applications         NGOProjectApplication[]
   collaborationProject CollaborationProject?
   shifts               VolunteerShift[]
+  impactUpdates        ImpactUpdate[]
+  impactFollowers      ImpactFollower[]
+  timePledges          TimePledge[]
+  impactCalls          ImpactCall[]
 
   @@index([ngoId])
   @@map("ngo_projects")
@@ -1497,6 +1505,75 @@ model ShiftCheckin {
   @@unique([shiftId, studentId])
   @@index([studentId])
   @@map("shift_checkins")
+}
+
+/// Impact rooms (Stage 4 · 4.12, src/server/impact-rooms.ts): a post in a project's room. Staff
+/// (admins, teachers) may make one public (shown on the room's public page); reports of the
+/// monthly impact call are kind REPORT.
+model ImpactUpdate {
+  id        String     @id @default(cuid())
+  projectId String
+  project   NGOProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  kind      String     @default("UPDATE") // UPDATE | NOTES (impact call notes) | REPORT
+  isPublic  Boolean    @default(false)
+  callId    String? // the impact call it's about
+  createdAt DateTime   @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([authorId])
+  @@map("impact_updates")
+}
+
+/// Someone who follows an impact room: as a volunteer, a sponsor or a supporter.
+model ImpactFollower {
+  projectId String
+  project   NGOProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String     @default("SUPPORTER") // VOLUNTEER | SPONSOR | SUPPORTER
+  createdAt DateTime   @default(now())
+
+  @@id([projectId, userId])
+  @@index([userId])
+  @@map("impact_followers")
+}
+
+/// A donation of time: hours a month for some months, checked against verified shift hours.
+model TimePledge {
+  id            String     @id @default(cuid())
+  projectId     String
+  project       NGOProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hoursPerMonth Int
+  months        Int        @default(3)
+  skill         String?
+  note          String?
+  startAt       DateTime   @default(now())
+  createdAt     DateTime   @default(now())
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("time_pledges")
+}
+
+/// The monthly live impact call of a room (call id i_<project>), and its report for sponsors.
+model ImpactCall {
+  id          String     @id @default(cuid())
+  projectId   String
+  project     NGOProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startsAt    DateTime
+  title       String
+  report      Json?
+  reportAt    DateTime?
+  createdById String
+  createdAt   DateTime   @default(now())
+
+  @@index([projectId, startsAt])
+  @@map("impact_calls")
 }
 
 model NGOProjectApplication {
@@ -2826,7 +2903,7 @@ model CallRecording {
 model CallNote {
   id             String   @id @default(cuid())
   callId         String
-  kind           String // chat | room | group | link
+  kind           String // chat | room | group | link | impact (an impact room's call, 4.12)
   conversationId String? // chat calls and voice rooms: the chat the notes were posted to
   groupId        String? // study group calls
   messageId      String? // the chat message with the notes

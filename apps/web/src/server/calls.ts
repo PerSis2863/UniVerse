@@ -8,6 +8,7 @@ import { isMinor, schoolPolicy } from './safety';
 import { featureOff } from './moderation';
 import { planLimits } from '@/lib/plan-limits';
 import { publishChat } from './realtime';
+import { impactCallAccess } from './impact-rooms';
 
 // UniVerse's own voice and video calls. Audio and video go straight between browsers (WebRTC,
 // up to 6 people, each connected to each); the call's Durable Object (cloudflare/worker.ts
@@ -140,6 +141,11 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
   if (callId.startsWith('l_')) {
     if (!/^l_[A-Za-z0-9_-]{10,40}$/.test(callId)) throw new NotFoundException('This call link isn’t valid.');
     return { kind: wantKind === 'audio' ? 'audio' : 'video', type: 'group', title: 'Call link', conversationId: null, oneToOne: false, startedBy: null, ended: false, host: false };
+  }
+  if (callId.startsWith('i_')) {
+    // An impact room's call (Stage 4 · 4.12): staff run it, the room's followers join.
+    const a = await impactCallAccess(callId.slice(2), user);
+    return { kind, type: 'group', title: a.title, conversationId: null, chatId: null, oneToOne: false, startedBy: null, ended: false, host: a.host };
   }
   if (callId.startsWith('c_')) {
     const a = await courseAccess(callId.slice(2), user);

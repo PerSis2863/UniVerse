@@ -25,6 +25,7 @@ export const SUPPORT_TABS: SectionTab[] = [
 export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/ngo-marketplace', label: 'NGO projects' },
   { href: '/student/impact/shifts', label: 'Volunteer shifts' },
+  { href: '/impact-rooms', label: 'Impact rooms' },
   { href: '/student/impact/startups', label: 'Startups' },
   { href: '/student/impact/companies', label: 'Companies' },
 ];
@@ -130,7 +131,17 @@ export const IMPACT_REPORT_TABS: SectionTab[] = [
   { href: '/admin/impact-reports', label: 'Signed reports' },
   { href: '/admin/impact-reports/shifts', label: 'Volunteer shifts' },
   { href: '/admin/impact-reports/volunteering', label: 'Yearly volunteering' },
+  { href: '/impact-rooms', label: 'Impact rooms' },
 ];
+
+// NGO work (teacher): mentoring NGO projects, and their impact rooms (Stage 4 · 4.12)
+export const TEACHER_IMPACT_TABS: SectionTab[] = [
+  { href: '/teacher/collaborations/projects', label: 'NGO mentorship' },
+  { href: '/impact-rooms', label: 'Impact rooms' },
+];
+
+/** Impact rooms sit in a different menu for each role. */
+export const impactTabs = (role: string | undefined) => (role === 'ADMIN' ? IMPACT_REPORT_TABS : role === 'TEACHER' ? TEACHER_IMPACT_TABS : OPPORTUNITY_TABS);
 
 // Campus Monitoring (admin): rooms, clubs, and the campus super-app's events and lost & found (upgrade 7)
 export const MONITORING_TABS: SectionTab[] = [
