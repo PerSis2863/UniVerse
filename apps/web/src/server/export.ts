@@ -1,5 +1,5 @@
 import prisma from '@/lib/db';
-import schema from './owner-schema.json';
+import { dbSchema as schema } from './db-schema';
 
 // "Download my data" (GDPR / DPDPA / CCPA data portability): everything that belongs to one person,
 // as JSON. Only follows links that mean "this is theirs" (their messages, their grades, their

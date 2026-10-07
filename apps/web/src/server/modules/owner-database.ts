@@ -1,7 +1,7 @@
 import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { selectColumns } from '../table-stats';
-import schema from '../owner-schema.json';
+import { dbSchema as schema } from '../db-schema';
 
 // Owner console → Database: what is stored in the real database. Every table with its number of
 // records, how many were added today and this week, when the last one was added, and records added
