@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useMemo, useState } from 'react';
@@ -176,7 +177,7 @@ export default function AdminPartnershipsPage() {
             </div>
             <div className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
               {partnersLoading ? (
-                <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
+                <ContentSkeleton variant="list" className="p-4" />
               ) : partners.length > 0 && shownPartners.length === 0 ? (
                 <div className="p-8 text-center text-sm text-zinc-500">No partners match “{q}”.</div>
               ) : partners.length === 0 ? (
@@ -226,7 +227,7 @@ export default function AdminPartnershipsPage() {
             </div>
             <div className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
               {projectsLoading ? (
-                <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
+                <ContentSkeleton variant="list" className="p-4" />
               ) : pendingProjects.length === 0 ? (
                 <div className="p-8 text-center text-sm text-zinc-500">{filtering ? `No pending projects match “${q}”.` : 'No pending projects to review.'}</div>
               ) : pendingProjects.map((project) => (
@@ -249,7 +250,7 @@ export default function AdminPartnershipsPage() {
             </div>
             <div className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
               {projectsLoading ? (
-                <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
+                <ContentSkeleton variant="list" className="p-4" />
               ) : otherProjects.length === 0 ? (
                 <div className="p-8 text-center text-sm text-zinc-500">{filtering ? `No projects match “${q}”.` : 'No reviewed projects yet.'}</div>
               ) : otherProjects.map((project) => <ProjectRow key={project.id} project={project} />)}

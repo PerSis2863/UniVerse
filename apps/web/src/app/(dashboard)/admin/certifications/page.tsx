@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
@@ -104,7 +105,7 @@ export default function AdminCertificationsPage() {
           </div>
 
           {isLoading ? (
-            <p className="text-zinc-500">Loading pending requests...</p>
+            <ContentSkeleton variant="list" />
           ) : all.length === 0 ? (
             <div className="text-center p-12 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
               <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-4 opacity-50" />

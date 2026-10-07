@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { errorMessage } from '@/lib/api';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
@@ -116,7 +117,7 @@ export default function AssociationsPage() {
 
           {/* Grid */}
           {isLoading ? (
-            <div className="py-12 text-center text-zinc-500">Loading associations...</div>
+            <ContentSkeleton variant="grid" />
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pt-4">
             {filteredAssociations.map((club, i) => (

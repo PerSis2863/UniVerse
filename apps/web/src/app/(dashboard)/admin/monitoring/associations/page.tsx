@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, MONITORING_TABS } from '@/components/layout/SectionTabs';
@@ -108,7 +109,7 @@ export default function AdminAssociationsMonitoringPage() {
           </div>
 
           {isLoading ? (
-            <div className="py-12 text-center text-zinc-500">Loading associations...</div>
+            <ContentSkeleton variant="table" />
           ) : allAssociations.length === 0 ? (
             <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-10 text-center text-sm text-zinc-500">No associations have been created yet.</div>
           ) : associations.length === 0 ? (

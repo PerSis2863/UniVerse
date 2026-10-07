@@ -1,10 +1,12 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import { fetcher } from '@/lib/fetcher';
-import { Briefcase, Calendar, MapPin, Building, ChevronRight, Loader2 } from 'lucide-react';
+import { Briefcase, Calendar, MapPin, Building, ChevronRight } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Image from 'next/image';
 
@@ -44,9 +46,9 @@ export default function CareerPage() {
       
       <div className="flex-1 p-8 overflow-y-auto">
         {loading ? (
-          <div className="flex h-40 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-          </div>
+          <ContentSkeleton variant="grid" />
+        ) : (opps.error && !opps.data) || (evts.error && !evts.data) ? (
+          <LoadError onRetry={() => Promise.all([opps.mutate(), evts.mutate()])} message="Couldn’t load the career hub." />
         ) : (
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">

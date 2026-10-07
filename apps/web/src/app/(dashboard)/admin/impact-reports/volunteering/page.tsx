@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import { Printer } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, IMPACT_REPORT_TABS } from '@/components/layout/SectionTabs';
@@ -21,7 +22,7 @@ const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-
 export default function VolunteeringReportPage() {
   const [thisYear] = useState(() => new Date().getFullYear());
   const [year, setYear] = useState(thisYear);
-  const { data, isLoading } = useSWR<Report>(`/api/volunteer/report?year=${year}`, authedJson);
+  const { data, isLoading, error, mutate } = useSWR<Report>(`/api/volunteer/report?year=${year}`, authedJson);
   const most = Math.max(1, ...(data?.sdgs ?? []).map((s) => s.hours));
   return (
     <>
@@ -37,7 +38,7 @@ export default function VolunteeringReportPage() {
             </select>
             <button type="button" className="btn-primary btn-sm ml-auto" onClick={() => window.print()}><Printer className="w-4 h-4" /> Print / save as PDF</button>
           </div>
-          {isLoading || !data ? <div className="h-64 rounded-2xl skeleton" /> : (
+          {error && !data ? <LoadError onRetry={() => mutate()} message="Couldn’t load the volunteering report." /> : isLoading || !data ? <div className="h-64 rounded-2xl skeleton" /> : (
             <article className="space-y-5 text-zinc-900 dark:text-white print:text-black">
               <header>
                 <h1 className="text-2xl font-black">Volunteering impact report {data.year}</h1>

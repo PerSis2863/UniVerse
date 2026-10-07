@@ -3,6 +3,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import { fetcher } from '@/lib/fetcher';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
@@ -20,7 +21,7 @@ const LABEL: Record<Status, string> = { PRESENT: 'Present', ABSENT: 'Absent', LA
 
 export default function AttendancePage() {
   const [selectedCourse, setSelectedCourse] = useState('All Courses');
-  const { data, isLoading } = useSWR<AttendanceData>('/attendance/student', fetcher);
+  const { data, isLoading, error, mutate } = useSWR<AttendanceData>('/attendance/student', fetcher);
 
   if (isLoading) {
     return (
@@ -30,6 +31,15 @@ export default function AttendancePage() {
         <div className="flex-1 p-8 flex items-center justify-center">
           <ContentSkeleton variant="list" />
         </div>
+      </>
+    );
+  }
+  if (error && !data) {
+    return (
+      <>
+        <Topbar title="Attendance" subtitle="Track your class presence and absences." />
+        <SectionTabs tabs={PROGRESS_TABS} />
+        <div className="flex-1 p-4 md:p-8"><LoadError onRetry={() => mutate()} message="Couldn’t load your attendance." /></div>
       </>
     );
   }

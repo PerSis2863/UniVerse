@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -113,6 +114,7 @@ export default function TeacherCollaborationsPage() {
             </div>
 
             <div className="divide-y divide-zinc-800/60">
+              {!realProposals && <ContentSkeleton variant="grid" className="col-span-full" />}
               {displayProposals.map((prop) => (
                 <div key={prop.id} className="p-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors space-y-4">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">

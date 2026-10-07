@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import Link from '@/components/ui/Link';
 import { m as motion } from 'framer-motion';
 import { Building2, ExternalLink, MapPin } from 'lucide-react';
@@ -15,8 +16,8 @@ type Partner = { id: string; name: string; type: string; description: string | n
 type Internship = { id: string; title: string; location: string | null; company: { id: string; name: string; logoUrl: string | null; websiteUrl: string | null; sector: string | null; description: string | null } };
 
 export default function CorporatePartnersPage() {
-  const { data: partners, isLoading: l1 } = useSWR<Partner[]>('/partners', fetcher);
-  const { data: internships, isLoading: l2 } = useSWR<Internship[]>('/internships', fetcher);
+  const { data: partners, isLoading: l1, error: e1, mutate: m1 } = useSWR<Partner[]>('/partners', fetcher);
+  const { data: internships, isLoading: l2, error: e2, mutate: m2 } = useSWR<Internship[]>('/internships', fetcher);
 
   const companies = useMemo(() => {
     const map = new Map<string, { name: string; logoUrl: string | null; websiteUrl: string | null; description: string | null; sector: string | null; country: string | null; roles: Internship[] }>();
@@ -41,6 +42,8 @@ export default function CorporatePartnersPage() {
         <div className="max-w-6xl mx-auto">
           {l1 || l2 ? (
             <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-3xl skeleton" />)}</div>
+          ) : (e1 && !partners) || (e2 && !internships) ? (
+            <LoadError onRetry={() => Promise.all([m1(), m2()])} message="Couldn’t load the companies." />
           ) : companies.length === 0 ? (
             <FeatureGuide
               icon={Building2}

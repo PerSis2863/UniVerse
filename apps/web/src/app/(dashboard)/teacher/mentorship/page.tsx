@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { m as motion } from 'framer-motion';
@@ -120,9 +121,7 @@ export default function MentorshipPage() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            </div>
+            <ContentSkeleton variant="grid" />
           ) : mentors.length === 0 ? (
             <div className="text-center py-10 text-zinc-500">No mentors available at the moment.</div>
           ) : (

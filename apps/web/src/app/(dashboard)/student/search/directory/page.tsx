@@ -1,11 +1,14 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { Search, Mail, Filter, Building2,  X, User } from 'lucide-react';
+import { Search, Mail, Filter, Building2, X, User, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { api } from '@/lib/api';
 
 interface DirectoryStudent { id: string; name: string; avatar?: string | null; studentProfile?: { department?: string | null; year?: number | null } | null }
@@ -15,7 +18,7 @@ export default function StudentDirectory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeModal, setActiveModal] = useState<'filter' | null>(null);
 
-  const { data: directoryData } = useSWR<DirectoryStudent[]>('/users/directory', async (url: string) => {
+  const { data: directoryData, error, mutate } = useSWR<DirectoryStudent[]>('/users/directory', async (url: string) => {
     const res = await api.get(url);
     return res.data;
   });
@@ -95,9 +98,10 @@ export default function StudentDirectory() {
             ))}
           </div>
           
-          {filteredStudents.length === 0 && (
-            <div className="p-12 text-center bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-              <div className="text-zinc-600 dark:text-zinc-400 text-lg">No students found matching your search.</div>
+          {error && !directoryData ? <LoadError onRetry={() => mutate()} message="Couldn’t load the student directory." /> : !directoryData && <ContentSkeleton variant="grid" />}
+          {directoryData && filteredStudents.length === 0 && (
+            <div className="panel">
+              <EmptyState icon={Users} title="No students found" hint="Try another name, or clear the year filter." />
             </div>
           )}
 

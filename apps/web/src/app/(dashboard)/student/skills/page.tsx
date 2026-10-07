@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
 import { api } from '@/lib/api';
@@ -130,7 +131,7 @@ export default function StudentSkills() {
               
               <div className="space-y-6">
                 {isLoading ? (
-                  <div className="text-center py-8 text-zinc-500">Loading skills...</div>
+                  <ContentSkeleton variant="list" />
                 ) : technicalSkills.length === 0 ? (
                   <div className="text-center py-8 text-zinc-500">No technical skills added yet.</div>
                 ) : technicalSkills.map((skill, i) => {
@@ -166,7 +167,7 @@ export default function StudentSkills() {
                 
                 <div className="space-y-6">
                   {isLoading ? (
-                    <div className="text-center py-8 text-zinc-500">Loading soft skills...</div>
+                    <ContentSkeleton variant="list" />
                   ) : softSkills.length === 0 ? (
                     <div className="text-center py-8 text-zinc-500">No soft skills added yet.</div>
                   ) : softSkills.map((skill, i) => {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { CheckCircle2, Clock, QrCode as QrIcon, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -22,7 +23,7 @@ interface Attendees { item: { id: string; title: string; capacity: number | null
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export default function AdminEventsPage() {
-  const { data: events, isLoading } = useSWR<Event[]>('/api/campus/events', authedJson);
+  const { data: events, isLoading, error, mutate } = useSWR<Event[]>('/api/campus/events', authedJson);
   const [open, setOpen] = useState<string | null>(null);
   const [door, setDoor] = useState<Event | null>(null);
 
@@ -33,7 +34,7 @@ export default function AdminEventsPage() {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-4">
           <p className="text-sm text-zinc-500">Add or edit events (and their number of seats) in <Link href="/admin/student-life" className="text-indigo-500 hover:underline">Student Life management</Link>.</p>
-          {isLoading ? <div className="h-32 rounded-2xl skeleton" /> : !events?.length ? (
+          {error && !events ? <LoadError onRetry={() => mutate()} message="Couldn’t load events." /> : isLoading ? <div className="h-32 rounded-2xl skeleton" /> : !events?.length ? (
             <p className={`panel p-6 text-sm text-zinc-500 text-center`}>No upcoming events.</p>
           ) : (
             <ul className="space-y-3">

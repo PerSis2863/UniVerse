@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState, useMemo } from 'react';
@@ -173,9 +174,7 @@ export default function NGOMentorshipPage() {
 
           {/* Projects Grid */}
           {loading ? (
-             <div className="flex items-center justify-center py-16">
-               <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-             </div>
+             <ContentSkeleton variant="grid" />
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 text-zinc-500 dark:text-zinc-500">
               <Globe2 className="w-12 h-12 mx-auto mb-4 opacity-30" />

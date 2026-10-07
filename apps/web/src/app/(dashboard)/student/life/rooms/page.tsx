@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { errorMessage } from '@/lib/api';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
@@ -229,6 +230,7 @@ export default function RoomReservationPage() {
               className="space-y-4"
             >
               <h3 className="text-lg font-bold text-white mb-4">Available Rooms</h3>
+              {!allRooms && <ContentSkeleton variant="list" />}
               {(allRooms || []).map((r) => ({
                 id: r.id,
                 name: r.name,

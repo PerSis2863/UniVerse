@@ -1,6 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import { ChevronRight, GraduationCap, LayoutGrid, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
@@ -13,7 +14,7 @@ import { FeatureGuide } from '@/components/ui/FeatureGuide';
 interface Mine { courses: { id: string; code: string; name: string }[]; groups: { id: string; name: string }[] }
 
 export default function SpacesPage() {
-  const { data, isLoading } = useSWR<Mine>('/api/spaces', authedJson);
+  const { data, isLoading, error, mutate } = useSWR<Mine>('/api/spaces', authedJson);
   const row = (href: string, title: string, meta: string, Icon: typeof Users) => (
     <Link key={href} href={href} className={`panel lift p-4 flex items-center gap-3 hover:border-indigo-400/50`}>
       <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0"><Icon className="w-5 h-5" /></span>
@@ -27,7 +28,7 @@ export default function SpacesPage() {
       <SectionTabs tabs={COLLAB_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
-          {isLoading ? <div className="h-40 rounded-2xl skeleton" /> : !data?.courses.length && !data?.groups.length ? (
+          {error && !data ? <LoadError onRetry={() => mutate()} message="Couldn’t load your spaces." /> : isLoading ? <div className="h-40 rounded-2xl skeleton" /> : !data?.courses.length && !data?.groups.length ? (
             <FeatureGuide icon={LayoutGrid} title="Everything for a class in one place" description="A space gathers a class's or study group's call, documents, task boards and code rooms, so nobody hunts through menus."
               steps={['Join a class or a study group', 'Open its space here', 'Start a call, a document or a task board for everyone in it']} />
           ) : (

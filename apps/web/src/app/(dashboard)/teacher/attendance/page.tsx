@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { CheckCircle2, XCircle, Clock, Users, Calendar } from 'lucide-react';
@@ -153,7 +154,10 @@ export default function TeacherAttendance() {
                     </tr>
                   );
                 })}
-                {currentStudents.length === 0 && (
+                {selectedCourse && !attendanceData && (
+                  <tr><td colSpan={3} className="p-4"><ContentSkeleton variant="list" /></td></tr>
+                )}
+                {attendanceData && currentStudents.length === 0 && (
                   <tr>
                     <td colSpan={3} className="p-8 text-center text-zinc-600 dark:text-zinc-400">
                       No students enrolled in this course yet.

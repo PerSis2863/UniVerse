@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
@@ -155,7 +156,7 @@ export default function AdminCredentialVerificationPage() {
           />
 
           {isLoading ? (
-            <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-indigo-500" /></div>
+            <ContentSkeleton variant="list" />
           ) : error ? (
             <div className="p-6 rounded-2xl border border-red-500/30 bg-red-500/10 text-sm text-red-600 dark:text-red-300">
               {errorMessage(error, 'Could not load pending credentials.')}

@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { format } from 'date-fns';
@@ -122,7 +123,7 @@ export default function AdminKnowledgeHubPage() {
                 <span className="text-xs text-zinc-500">{shown.length} item{shown.length === 1 ? '' : 's'}</span>
               </div>
               {error ? <p className="p-10 text-center text-sm text-rose-500">Could not load resources.</p>
-                : isLoading ? <div className="p-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
+                : isLoading ? <ContentSkeleton variant="list" className="p-4" />
                 : resources.length === 0 ? <p className="p-10 text-center text-sm text-zinc-500">No one has added a resource yet.</p>
                 : shown.length === 0 ? <p className="p-10 text-center text-sm text-zinc-500">No resources match your search.</p>
                 : (

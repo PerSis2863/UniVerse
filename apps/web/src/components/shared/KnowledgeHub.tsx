@@ -1,9 +1,11 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, STUDENT_LEARN_TABS } from '@/components/layout/SectionTabs';
 import { uploadChatFile } from '@/components/chat/chat-client';
-import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2 } from 'lucide-react';
+import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, FolderOpen } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { EmptyState } from '@/components/ui/EmptyState';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/lib/api';
@@ -34,7 +36,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   
 
   // KnowledgeHubResource rows, shaped for this page.
-  const { data: resources = [], mutate: fetchResources } = useSWR<Resource[]>('/knowledge-hub', async (url: string) => {
+  const { data: resources = [], isLoading: loading, mutate: fetchResources } = useSWR<Resource[]>('/knowledge-hub', async (url: string) => {
     const res = await api.get<{ id: string; title: string; url: string | null; category: string | null; createdAt: string; isPublic: boolean }[]>(url);
     return res.data.map((r) => ({
       id: r.id,
@@ -231,10 +233,10 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                   <span className="text-sm text-zinc-400">{filteredResources.length} items</span>
                 </div>
                 <div className="divide-y divide-zinc-800/50">
-                  {filteredResources.length === 0 ? (
-                    <div className="p-12 text-center text-zinc-500">
-                      No resources found in this category.
-                    </div>
+                  {loading ? (
+                    <ContentSkeleton variant="list" className="p-4" />
+                  ) : filteredResources.length === 0 ? (
+                    <EmptyState compact icon={FolderOpen} title="No resources here yet" hint="Share notes, slides or links and they’ll appear in this category." />
                   ) : (
                     filteredResources.map((resource) => (
                       <div key={resource.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">

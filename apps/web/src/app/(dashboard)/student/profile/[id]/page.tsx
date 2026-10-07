@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { usePathname, useRouter } from 'next/navigation';
@@ -116,9 +117,7 @@ export default function StudentProfile() {
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
               <div className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
                 {loading ? (
-                  <div className="p-12 text-center text-zinc-500">
-                    Loading shared resources...
-                  </div>
+                  <ContentSkeleton variant="list" />
                 ) : sharedResources.length === 0 ? (
                   <div className="p-12 text-center text-zinc-500">
                     This user hasn’t shared any resources yet.

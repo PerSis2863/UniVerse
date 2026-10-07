@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
@@ -120,7 +121,7 @@ export default function ImpactReportsPage() {
           <p className="text-xs text-zinc-500 mt-0.5">For your review only — issued reports never include names. The latest 100 signed, non-revoked credentials that feed the figures.</p>
         </div>
         {!data ? (
-          <div className="p-6"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>
+          <ContentSkeleton variant="list" className="p-4" />
         ) : !data.holders ? (
           <p className="p-5 text-sm text-zinc-500">Credential holders could not be loaded.</p>
         ) : data.holders.length === 0 ? (

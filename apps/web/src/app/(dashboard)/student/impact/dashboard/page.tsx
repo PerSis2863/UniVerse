@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import { fetcher } from '@/lib/fetcher';
 import { useRouter } from 'next/navigation';
 
@@ -22,7 +23,7 @@ interface ImpactStats {
 
 export default function MySocialImpactPage() {
   const router = useRouter();
-  const { data, isLoading: loading } = useSWR<ImpactStats>('/impact/dashboard/stats', fetcher);
+  const { data, isLoading: loading, error, mutate } = useSWR<ImpactStats>('/impact/dashboard/stats', fetcher);
 
   const level = data?.levelInfo;
   const stats = data ? [
@@ -41,6 +42,9 @@ export default function MySocialImpactPage() {
         <ContentSkeleton variant="dashboard" />
       </div>
     );
+  }
+  if (error && !data) {
+    return <div className="flex-1 p-4 md:p-8"><LoadError onRetry={() => mutate()} message="Couldn’t load your impact ledger." /></div>;
   }
 
   return (

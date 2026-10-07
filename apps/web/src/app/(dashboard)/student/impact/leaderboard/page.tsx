@@ -14,6 +14,7 @@ const TwitterIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
@@ -130,7 +131,7 @@ export default function LeaderboardPage() {
   // The time buttons choose whose points count: earned this week, month, semester, or ever.
 
   type ApiEntry = { id: string; name?: string | null; totalPoints?: number; levelInfo?: LevelInfo };
-  const { data: board, isLoading: loadingBoard } = useSWR<ApiEntry[]>(`/impact/leaderboard?period=${PERIOD[timeframe] ?? 'all'}`, fetcher, { keepPreviousData: true });
+  const { data: board, isLoading: loadingBoard, error: boardError, mutate: retryBoard } = useSWR<ApiEntry[]>(`/impact/leaderboard?period=${PERIOD[timeframe] ?? 'all'}`, fetcher, { keepPreviousData: true });
   const { data: myLevelInfo = null } = useSWR<LevelInfo>('/impact/my-level', fetcher);
   const loading = loadingBoard && !board;
   const meId = useAuthStore((st) => st.user?.id);
@@ -233,7 +234,9 @@ export default function LeaderboardPage() {
           )}
 
           {/* Podium */}
-          {loading ? (
+          {boardError && !board ? (
+            <LoadError onRetry={() => retryBoard()} message="Couldn’t load the leaderboard." />
+          ) : loading ? (
             <div className="flex justify-center py-20"><ContentSkeleton variant="list" /></div>
           ) : search === '' && top3.length >= 3 && (
             <div className="flex items-end justify-center gap-2 sm:gap-6 pt-10 pb-6 px-4">

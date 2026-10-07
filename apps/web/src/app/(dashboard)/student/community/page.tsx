@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api';
 
@@ -82,7 +83,7 @@ export default function StudentCommunity() {
             {/* Posts */}
             <div className="space-y-4">
               {isLoading ? (
-                <div className="text-center py-8 text-zinc-500">Loading posts...</div>
+                <ContentSkeleton variant="list" />
               ) : filteredPosts.length === 0 ? (
                 <div className="text-center py-8 text-zinc-500">No posts found.</div>
               ) : filteredPosts.map((post) => (

@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, SUPPORT_TABS } from '@/components/layout/SectionTabs';
@@ -178,7 +179,7 @@ export default function StudentSupport() {
                   <Clock className="w-5 h-5 text-indigo-400" /> My Recent Tickets
                 </h3>
                 {isLoadingTickets ? (
-                  <div className="text-zinc-500 text-sm">Loading tickets...</div>
+                  <ContentSkeleton variant="list" />
                 ) : tickets.length === 0 ? (
                   <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-lg p-5 text-center text-zinc-500">
                     You have no active or past tickets.
