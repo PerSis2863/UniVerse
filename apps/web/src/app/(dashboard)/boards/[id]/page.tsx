@@ -1,10 +1,10 @@
 'use client';
 
-import { use, useCallback, useRef, useState, useSyncExternalStore } from 'react';
+import { use, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { ArrowLeft, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, PenTool, Share2, Sparkles, Trash2, Wallpaper } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, MonitorUp, PenTool, Share2, Sparkles, Timer as TimerIcon, Trash2, Wallpaper } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { Sheet } from '@/components/chat/ChatDialogs';
@@ -15,7 +15,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { Avatar } from '@/components/chat/MessageBubble';
 import { ShareBoardDialog, type BoardMeta } from '@/components/boards/ShareBoardDialog';
-import type { BoardControls, BoardGone, BoardPeer, LiveStatus } from '@/components/boards/BoardCanvas';
+import type { BoardControls, BoardGone, BoardPeer, LiveStatus, Presenting } from '@/components/boards/BoardCanvas';
 import type { TemplateId } from '@/components/boards/templates';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +56,28 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [sharing, setSharing] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const controls = useRef<BoardControls | null>(null);
+  // Presenting and the workshop timer (3.4).
+  const [presentState, setPresentState] = useState<Presenting | null>(null);
+  const [follow, setFollow] = useState(true);
+  const [slides, setSlides] = useState<{ id: string; name: string }[]>([]);
+  const [slide, setSlide] = useState(0);
+  const [timer, setTimer] = useState<{ endsAt: number; by: string } | null>(null);
+  const [timerOpen, setTimerOpen] = useState(false);
+  const startPresenting = () => {
+    const c = controls.current;
+    if (!c) return;
+    const frames = c.frames();
+    setSlides(frames);
+    setSlide(0);
+    c.present(true);
+    if (frames.length) c.showFrame(frames[0].id);
+    toast.success(frames.length ? `Presenting ${frames.length} slides: everyone following sees your screen` : 'Presenting: everyone following sees what you see. Add frames to make slides.');
+  };
+  const goSlide = (i: number) => {
+    if (!slides[i]) return;
+    setSlide(i);
+    controls.current?.showFrame(slides[i].id);
+  };
   // AI on boards (3.5): one AI request per action; the result is drawn by this browser.
   const [aiOpen, setAiOpen] = useState(false);
   const [aiBusy, setAiBusy] = useState<string | null>(null);
@@ -217,6 +239,22 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             )}
           </>
         )}
+        {canEdit && (
+          presentState?.mine
+            ? <button onClick={() => { controls.current?.present(false); setPresentState(null); }} className={cn(btn, 'text-rose-600 dark:text-rose-400')} title="Stop presenting"><MonitorUp className="w-4 h-4" /><span className="hidden md:inline">Stop</span></button>
+            : <button onClick={startPresenting} disabled={status !== 'live'} className={btn} title="Present: frames become slides, and everyone following sees your screen"><MonitorUp className="w-4 h-4" /><span className="hidden md:inline">Present</span></button>
+        )}
+        <div className="relative">
+          <button onClick={() => setTimerOpen((o) => !o)} disabled={status !== 'live' || !canEdit} className={btn} title="Workshop timer for everyone" aria-expanded={timerOpen}><TimerIcon className="w-4 h-4" /></button>
+          <AnimatePresence>
+            {timerOpen && (
+              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy} className="absolute right-0 top-11 z-40 w-44 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+                {[1, 3, 5, 10, 15].map((m) => <button key={m} type="button" onClick={() => { controls.current?.setTimer(m); setTimerOpen(false); }} className="w-full text-left px-3 py-1.5 rounded-xl text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06]">{m} {m === 1 ? 'minute' : 'minutes'}</button>)}
+                {timer && <button type="button" onClick={() => { controls.current?.setTimer(null); setTimerOpen(false); }} className="w-full text-left px-3 py-1.5 rounded-xl text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-500/10">Stop the timer</button>}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <div className="relative">
           <button onClick={() => setAiOpen((o) => !o)} disabled={!!aiBusy || status !== 'live'} className={btn} title="AI on this board" aria-expanded={aiOpen}>
             {aiBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}<span className="hidden md:inline">AI</span>
@@ -253,6 +291,25 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         </Sheet>
       )}
       <main className="flex-1 min-h-0 relative">
+        {/* Presenting, following and the timer (3.4), floating over the board. */}
+        <div className="pointer-events-none absolute top-3 inset-x-0 z-30 flex flex-col items-center gap-2 px-3">
+          <AnimatePresence>
+            {timer && <TimerPill key="timer" endsAt={timer.endsAt} by={timer.by} onDone={() => setTimer(null)} />}
+            {presentState?.mine && slides.length > 0 && (
+              <motion.div key="slides" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto flex items-center gap-1 rounded-full bg-zinc-900/90 text-white px-2 py-1 shadow-xl backdrop-blur">
+                <button type="button" aria-label="Previous slide" disabled={slide === 0} onClick={() => goSlide(slide - 1)} className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+                <span className="text-xs font-semibold px-1 tabular-nums">{slides[slide]?.name} · {slide + 1}/{slides.length}</span>
+                <button type="button" aria-label="Next slide" disabled={slide >= slides.length - 1} onClick={() => goSlide(slide + 1)} className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
+              </motion.div>
+            )}
+            {presentState && !presentState.mine && presentState.name && (
+              <motion.div key="following" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto flex items-center gap-2 rounded-full bg-indigo-600/95 text-white pl-3 pr-1 py-1 shadow-xl text-xs font-semibold">
+                <MonitorUp className="w-3.5 h-3.5" />{presentState.name.split(' ')[0]} is presenting
+                <button type="button" onClick={() => { const on = !follow; setFollow(on); controls.current?.follow(on); }} className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25">{follow ? 'Stop following' : 'Follow'}</button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         {board ? (
           <BoardCanvas
             boardId={id}
@@ -267,6 +324,8 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             onRole={onRole}
             onGone={onGone}
             onError={onError}
+            onPresent={setPresentState}
+            onTimer={setTimer}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-sm text-zinc-500 gap-2"><ImageIcon className="w-4 h-4" /> Loading board…</div>
@@ -275,5 +334,37 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
       {sharing && board && <ShareBoardDialog board={{ ...board, myRole }} onClose={() => setSharing(false)} onChanged={() => mutate()} />}
     </div>
+  );
+}
+
+/** The workshop timer everyone on the board sees (3.4), with a soft chime at the end. */
+function TimerPill({ endsAt, by, onDone }: { endsAt: number; by: string; onDone: () => void }) {
+  const [now, setNow] = useState(() => Date.now());
+  const done = useRef(false);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, []);
+  const left = Math.max(0, Math.ceil((endsAt - now) / 1000));
+  useEffect(() => {
+    if (left > 0 || done.current) return;
+    done.current = true;
+    try {
+      const ctx = new AudioContext();
+      for (const [i, f] of [660, 880].entries()) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = f; g.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.25); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.25 + 0.5);
+        o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + i * 0.25); o.stop(ctx.currentTime + i * 0.25 + 0.5);
+      }
+    } catch { /* no sound */ }
+    const t = setTimeout(onDone, 4000);
+    return () => clearTimeout(t);
+  }, [left, onDone]);
+  return (
+    <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={spring.smooth}
+      className={cn('pointer-events-auto rounded-full px-4 py-1.5 shadow-xl text-sm font-bold tabular-nums inline-flex items-center gap-2', left === 0 ? 'bg-emerald-600 text-white' : left <= 30 ? 'bg-amber-500 text-white' : 'bg-zinc-900/90 text-white')}
+      title={`Timer started by ${by}`} role="timer" aria-live="polite">
+      <TimerIcon className="w-4 h-4" />{left === 0 ? 'Time’s up!' : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}
+    </motion.div>
   );
 }

@@ -322,6 +322,9 @@ const PEER_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#0ea5e9', '#ef
  */
 export class BoardRoom extends DurableObject<Env> {
   private elementCount: number | undefined; // counted on first need after each wake-up
+  // Someone presenting (Stage 4 · 3.4): followers see what they see. Kept in memory only (a
+  // wake-up after everyone left forgets it, which is right).
+  private presenting: { sid: string; name: string; view: { cx: number; cy: number; zoom: number } } | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -421,7 +424,8 @@ export class BoardRoom extends DurableObject<Env> {
       this.ctx.acceptWebSocket(server);
       server.serializeAttachment(peer);
       const { elements, files } = await this.snapshot();
-      server.send(JSON.stringify({ type: 'init', me: peer, elements, files, peers: this.presence() }));
+      const timer = await this.ctx.storage.get<{ endsAt: number; by: string }>('timer');
+      server.send(JSON.stringify({ type: 'init', me: peer, elements, files, peers: this.presence(), present: this.presenting, timer: timer && timer.endsAt > Date.now() ? timer : null }));
       this.broadcast({ type: 'peers', peers: this.presence() }, server);
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -464,6 +468,25 @@ export class BoardRoom extends DurableObject<Env> {
     }
 
     if (!peer.canEdit) return; // viewers watch only
+
+    // Presenting (3.4): the presenter's view (the centre of their screen and zoom), passed on to
+    // followers; null stops it. Never stored.
+    if (msg.type === 'present') {
+      const v = msg.view as { cx?: unknown; cy?: unknown; zoom?: unknown } | null;
+      const ok = !!v && [v.cx, v.cy, v.zoom].every((n) => typeof n === 'number' && Number.isFinite(n));
+      const view = ok ? { cx: v!.cx as number, cy: v!.cy as number, zoom: Math.min(30, Math.max(0.1, v!.zoom as number)) } : null;
+      if (view) this.presenting = { sid: peer.sid, name: peer.name, view };
+      else if (this.presenting?.sid === peer.sid) this.presenting = null;
+      this.broadcast({ type: 'present', sid: peer.sid, name: peer.name, view }, ws);
+      return;
+    }
+    // A workshop timer everyone sees (up to an hour); null stops it.
+    if (msg.type === 'timer') {
+      const endsAt = typeof msg.endsAt === 'number' && msg.endsAt > Date.now() && msg.endsAt <= Date.now() + 3_600_000 ? msg.endsAt : null;
+      await this.ctx.storage.put('timer', endsAt ? { endsAt, by: peer.name } : null);
+      this.broadcast({ type: 'timer', endsAt, by: peer.name });
+      return;
+    }
 
     if (msg.type === 'update' && Array.isArray(msg.elements)) {
       const incoming = (msg.elements as BoardElement[]).filter(validElement);
@@ -510,7 +533,13 @@ export class BoardRoom extends DurableObject<Env> {
     } catch {
       /* already closed */
     }
-    this.broadcast({ type: 'peers', peers: this.presence().filter((p) => p.sid !== (ws.deserializeAttachment() as BoardPeer | null)?.sid) });
+    const gone = (ws.deserializeAttachment() as BoardPeer | null)?.sid;
+    this.broadcast({ type: 'peers', peers: this.presence().filter((p) => p.sid !== gone) });
+    // The presenter left: followers are told it stopped.
+    if (gone && this.presenting?.sid === gone) {
+      this.presenting = null;
+      this.broadcast({ type: 'present', sid: gone, name: '', view: null });
+    }
   }
 }
 
