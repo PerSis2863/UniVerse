@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Sheet } from '@/components/chat/ChatDialogs';
 import { Avatar } from '@/components/chat/MessageBubble';
 import { TabPill } from '@/components/ui/Glide';
+import { MentionInput } from '@/components/ui/MentionInput';
 
 // A task board (Stage 4 · 3.3): lists of cards, dragged across as work moves on (on phones, "Move
 // to" in the card), or as one list. Changes from others arrive live (src/server/tasks.ts).
@@ -253,7 +254,7 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
             </div>
           ))}
           <form onSubmit={async (e) => { e.preventDefault(); const t = comment.trim(); if (!t) return; setComment(''); try { await call(ckey, 'POST', { body: t }); void mutate(); } catch (err) { setComment(t); toast.error((err as Error).message); } }} className="flex gap-2">
-            <input value={comment} onChange={(e) => setComment(e.target.value)} maxLength={2000} placeholder="Write a comment (@name to notify someone)" className={field} />
+            <MentionInput kind="tasks" id={board.id} value={comment} onChange={setComment} maxLength={2000} placeholder="Write a comment (@name to notify someone)" aria-label="Comment" className={field} />
             <button type="submit" aria-label="Send" className="w-10 shrink-0 rounded-xl btn-primary flex items-center justify-center"><Send className="w-4 h-4" /></button>
           </form>
         </section>

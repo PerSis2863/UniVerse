@@ -284,3 +284,9 @@ export async function addComment(taskId: string, user: SessionUser, body: Record
 export function plannerTasks(userId: string, from: Date, to: Date) {
   return prisma.task.findMany({ where: { assigneeId: userId, doneAt: null, dueAt: { gte: from, lte: to } }, select: { id: true, title: true, dueAt: true }, take: 50 });
 }
+
+/** Who can be @mentioned here (3.9 autocomplete): the people who can see it. */
+export async function boardPeople(id: string, user: SessionUser) {
+  const { board } = await access(id, user);
+  return audience(board);
+}

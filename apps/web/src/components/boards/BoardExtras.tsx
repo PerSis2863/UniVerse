@@ -13,6 +13,7 @@ import { Avatar } from '@/components/chat/MessageBubble';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { BoardControls } from './BoardCanvas';
+import { MentionInput } from '@/components/ui/MentionInput';
 
 // Boards (Stage 4 · 3.4, part 3; src/server/board-extras.ts): comments on shapes, and versions.
 
@@ -63,8 +64,8 @@ export function BoardComments({ boardId, controls, onClose, meId }: { boardId: s
   };
   const composer = (elementId: string, placeholder: string) => (
     <div className="flex gap-2 mt-2">
-      <input value={text[elementId] ?? ''} onChange={(e) => setText((t) => ({ ...t, [elementId]: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && void post(elementId)} maxLength={1000} placeholder={placeholder} aria-label="Comment"
-        className="flex-1 min-w-0 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/40" />
+      <MentionInput kind="board" id={boardId} value={text[elementId] ?? ''} onChange={(v) => setText((t) => ({ ...t, [elementId]: v }))} onSubmit={() => void post(elementId)} maxLength={1000} placeholder={placeholder} aria-label="Comment"
+        className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/40" />
       <button type="button" aria-label="Send" disabled={busy === elementId || !(text[elementId] ?? '').trim()} onClick={() => void post(elementId)} className="btn-primary btn-sm">{busy === elementId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}</button>
     </div>
   );

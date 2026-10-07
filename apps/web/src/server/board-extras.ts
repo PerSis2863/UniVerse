@@ -95,3 +95,9 @@ export async function getBoardVersion(versionId: string, user: SessionUser) {
   const a = await access(v.boardId, user);
   return { id: v.id, name: v.name, at: v.createdAt, canRestore: canEdit(a.role), elements: JSON.parse(v.elements) as unknown[] };
 }
+
+/** Who can be @mentioned on a board (3.9 autocomplete). */
+export async function whiteboardPeople(boardId: string, user: SessionUser) {
+  const a = await access(boardId, user);
+  return people(boardId, a.board.ownerId);
+}

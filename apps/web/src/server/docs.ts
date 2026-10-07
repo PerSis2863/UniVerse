@@ -241,3 +241,9 @@ export async function resolveDocComment(docId: string, commentId: string, user: 
   publish(await audience(doc), { type: 'refresh', keys: [`/api/docs/${docId}/comments`] });
   return { ok: true };
 }
+
+/** Who can be @mentioned here (3.9 autocomplete): the people who can see it. */
+export async function docPeople(id: string, user: SessionUser) {
+  const { doc } = await access(id, user);
+  return audience(doc);
+}

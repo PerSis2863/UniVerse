@@ -21,6 +21,7 @@ import { Avatar } from '@/components/chat/MessageBubble';
 import { DocEditor, DocToolbar, type DocStatus } from '@/components/docs/DocEditor';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { MentionInput } from '@/components/ui/MentionInput';
 
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
 // select, version history (preview and restore), sharing, and PDF / Word copies.
@@ -205,7 +206,7 @@ function Comments({ docId, editor, me, canEdit, onClose }: { docId: string; edit
           <button type="button" onClick={pickSelection} className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1"><MessageSquarePlus className="w-3.5 h-3.5" />About the text I selected</button>
         )}
         <div className="flex gap-2">
-          <input value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} placeholder="Write a comment (@name to notify someone)" className={field} />
+          <MentionInput kind="doc" id={docId} value={body} onChange={setBody} maxLength={2000} placeholder="Write a comment (@name to notify someone)" aria-label="Comment" className={field} />
           <button type="submit" aria-label="Send" className="w-10 shrink-0 rounded-xl btn-primary flex items-center justify-center"><Send className="w-4 h-4" /></button>
         </div>
       </form>
