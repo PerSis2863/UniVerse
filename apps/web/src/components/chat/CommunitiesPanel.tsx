@@ -15,6 +15,7 @@ import { chatJson, uploadChatFile } from './chat-client';
 import { Switch } from '@/components/ui/Switch';
 import { useActivePoll } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
+import { CommunityModeration } from './CommunityModeration';
 
 // Communities (Discord server / WhatsApp community), src/server/communities.ts: a list of
 // communities, each opening to its channels. Text channels open in the chat on the right; voice
@@ -302,6 +303,8 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
           )}
 
           {mod && <CustomEmoji communityId={community.id} />}
+
+          {mod && <CommunityModeration communityId={community.id} members={data.members} />}
 
           <section className="space-y-2">
             <div className="flex items-center justify-between"><p className="text-xs font-semibold text-zinc-500">{data.members.length} members</p>{mod && <button type="button" onClick={() => setAdding(!adding)} className="text-xs font-semibold text-indigo-500 inline-flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Add people</button>}</div>

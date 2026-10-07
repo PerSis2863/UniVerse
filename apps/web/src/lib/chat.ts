@@ -151,7 +151,9 @@ type RawMessage = {
 
 /** What a deleted message still shows: only that UniVerse removed it, if it did (owner console). */
 export function removedBy(metadata: unknown) {
-  return (metadata as { moderated?: string } | null)?.moderated === 'removed' ? { moderated: 'removed' as const } : null;
+  const by = (metadata as { moderated?: string } | null)?.moderated;
+  // UniVerse (owner console), or a community's moderator (Stage 4 · 1.13).
+  return by === 'removed' || by === 'community' ? { moderated: by } : null;
 }
 
 /** Hides the content of deleted messages and groups reactions by emoji. */

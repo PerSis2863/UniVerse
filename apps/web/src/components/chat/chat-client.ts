@@ -20,7 +20,7 @@ export interface ChatMessage {
     question?: string; options?: string[]; multiple?: boolean; // POLL
     lat?: number; lng?: number; label?: string | null; // LOCATION
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
-    moderated?: 'edited' | 'removed'; team?: boolean; // changed or posted by UniVerse (owner console)
+    moderated?: 'edited' | 'removed' | 'community'; team?: boolean; // changed or posted by UniVerse (owner console)
     viewOnce?: boolean; opened?: boolean; openedCount?: number; // view-once photo / video / voice message
     transcript?: string; voicemail?: boolean; // voice message text (AI); a voicemail left after a missed call
     album?: { url: string; name: string; size: number | null; mime: string }[]; // IMAGE: several photos as one (Stage 4 · 1.7)

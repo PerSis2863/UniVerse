@@ -412,13 +412,25 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
 
   const remove = async (m: ChatMessage) => {
     try {
-      await chatJson(`/api/chat/messages/${m.id}`, { method: 'DELETE' });
+      // A community moderator removing someone else's message: logged, shown as "Removed by a moderator" (1.13).
+      const modRemove = !!channel && m.sender?.id !== me;
+      await chatJson(`/api/chat/messages/${m.id}${modRemove ? '/moderate' : ''}`, { method: modRemove ? 'POST' : 'DELETE' });
       mutate();
       setOlder((cur) => cur.map((x) => (x.id === m.id ? { ...x, type: 'DELETED', body: '', attachmentUrl: null } : x)));
       onChanged();
     } catch (e: any) {
       toast.error(e.message);
     }
+  };
+
+  /** Reports a community channel message to its moderators (1.13). */
+  const report = async (m: ChatMessage) => {
+    const reason = await promptDialog({ title: 'Report to the moderators', message: 'Only this community’s moderators see reports. What’s wrong with it? (optional)', placeholder: 'e.g. spam, rude, off-topic', confirmLabel: 'Report', maxLength: 300 });
+    if (reason === null) return;
+    try {
+      const r = await chatJson<{ already?: boolean }>(`/api/chat/messages/${m.id}/report`, { method: 'POST', body: JSON.stringify({ reason }) });
+      toast.success(r.already ? 'You already reported this message.' : 'Reported. The moderators will take a look.');
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   const react = async (m: ChatMessage, emoji: string) => {
@@ -736,6 +748,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onEdit={() => { setReplyTo(null); setEditing(m); }}
                       onDelete={async () => { if (await confirmDialog({ title: 'Delete for everyone?', message: 'The message will be removed for everyone in this chat.', destructive: true })) remove(m); }}
                       onDeleteForMe={() => deleteForMe(m)}
+                      onReport={channel && m.sender?.id !== me && !m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => void report(m) : undefined}
                       onStar={() => star(m)}
                       onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
                       onForward={() => setForwarding(m)}

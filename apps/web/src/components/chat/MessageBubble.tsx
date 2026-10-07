@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
+import { Ban, BarChart3, Eye, Flag, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
@@ -143,6 +143,8 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onDeleteForMe: () => void;
+  /** Report to the community's moderators (community channels, others' messages; Stage 4 · 1.13). */
+  onReport?: () => void;
   onStar: () => void;
   /** Present when this person may pin messages here. */
   onPin?: () => void;
@@ -230,6 +232,8 @@ export function MessageBubble(p: Props) {
   if (deleted) {
     content = m.metadata?.moderated === 'removed'
       ? <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Removed by UniVerse</p>
+      : m.metadata?.moderated === 'community'
+      ? <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Removed by a moderator</p>
       : <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
   } else if (m.metadata?.huddle && m.type === 'TEXT') {
     content = <HuddleCard callId={m.metadata.huddle.callId} by={m.sender?.name ?? 'Someone'} mine={mine} live={age < 4 * 3600_000} />;
@@ -485,7 +489,8 @@ export function MessageBubble(p: Props) {
                   {canEdit && <MenuItem icon={Pencil} label="Edit" onClick={() => { p.onEdit(); close(); }} />}
                   {mine && <MenuItem icon={Info} label="Info" onClick={() => { p.onInfo(); close(); }} />}
                   <MenuItem icon={EyeOff} label="Delete for me" onClick={() => { p.onDeleteForMe(); close(); }} />
-                  {canDeleteForAll && <MenuItem icon={Trash2} label="Delete for everyone" danger onClick={() => { p.onDelete(); close(); }} />}
+                  {p.onReport && <MenuItem icon={Flag} label="Report to moderators" onClick={() => { p.onReport!(); close(); }} />}
+                  {canDeleteForAll && <MenuItem icon={Trash2} label={canModerate && !mine && p.onReport ? 'Remove (moderator)' : 'Delete for everyone'} danger onClick={() => { p.onDelete(); close(); }} />}
                   {touch && <MenuItem icon={Ban} label="Cancel" onClick={close} />}
                 </div>
               )}

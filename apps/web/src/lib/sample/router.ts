@@ -255,6 +255,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
+  [/^\/api\/chat\/communities\/[^/]+\/moderation$/, () => ok({ reports: [], resolved: [], timeouts: [], automod: { words: [], mode: 'BLOCK' }, log: [] })],
   [/^\/api\/chat\/snippets$/, () => ok({ max: 50, snippets: [{ id: 'sample-s1', title: 'Deadline reminder', shortcut: 'due', body: 'Hi {name}, a quick reminder: the lab report is due soon.' }] })],
   [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
