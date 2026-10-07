@@ -2,7 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, TEACHER_STUDENT_TABS } from '@/components/layout/SectionTabs';
-import { Search, Filter, MoreVertical, Mail, GraduationCap, X, Loader2 } from 'lucide-react';
+import { Search, Filter, MoreVertical, Mail, GraduationCap, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';

@@ -55,7 +55,7 @@ export default function TeacherRoomReservationPage() {
       setPurpose('');
       mutateRooms();
       mutateBookings();
-    } catch (error) {
+    } catch {
       toast.error('Failed to reserve room.');
     }
   };
@@ -175,7 +175,7 @@ export default function TeacherRoomReservationPage() {
                           toast.success('Booking cancelled.');
                           mutateBookings();
                           if (date === b.date) mutateRooms();
-                        } catch (e) {
+                        } catch {
                           toast.error('Failed to cancel');
                         }
                       }}

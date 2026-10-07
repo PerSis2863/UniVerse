@@ -1,11 +1,11 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Rocket, Users, DollarSign, Globe2, Sparkles, Heart, CheckCircle2, X, Send, TrendingUp, Lightbulb, Building2, Award, ArrowUpRight, Search, Loader2 } from 'lucide-react';
+import { Rocket, Users,   Sparkles,  CheckCircle2, X, Send,  Lightbulb, Building2,  ArrowUpRight, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';

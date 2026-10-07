@@ -4,7 +4,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
-import { BookOpen, Users, FileText, ChevronRight, Edit, Trash2, Plus, X, Upload, Loader2 } from 'lucide-react';
+import { BookOpen, Users, FileText, ChevronRight, Edit, Trash2, Plus, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';

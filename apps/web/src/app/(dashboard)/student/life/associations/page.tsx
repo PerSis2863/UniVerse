@@ -2,7 +2,7 @@
 import { errorMessage } from '@/lib/api';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
-import { Search, Users, ExternalLink, Globe, MessagesSquare } from 'lucide-react';
+import { Search, Users, ExternalLink,  MessagesSquare } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authedJson } from '@/lib/authed-fetch';
 import { m as motion } from 'framer-motion';

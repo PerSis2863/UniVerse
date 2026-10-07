@@ -29,7 +29,7 @@ interface AdminOverview {
 export default function AdminDashboard() {
   const router = useRouter();
   const { t } = useLanguageStore();
-  const { data, isLoading, mutate } = useSWR<AdminOverview>('/dashboard/admin', fetcher);
+  const { data, mutate } = useSWR<AdminOverview>('/dashboard/admin', fetcher);
   
   const pendingUsers = data?.pendingUsers ?? [];
 
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
             {pendingUsers.length === 0 ? (
               <div className="text-sm text-zinc-500 dark:text-zinc-500 py-4 text-center">No pending approvals.</div>
             ) : (
-              pendingUsers.map((u, i) => (
+              pendingUsers.map((u) => (
                 <div key={u.id} className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
                   <div className="w-9 h-9 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
                     {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}

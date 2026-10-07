@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, STUDENT_LEARN_TABS } from '@/components/layout/SectionTabs';
-import { Target, Award, CheckCircle2, ChevronRight, BookOpen, Code, Terminal, Monitor, Layout, Database, MessageSquare, Users, Brain, Clock } from 'lucide-react';
+import { Target, Award,  ChevronRight,  Code, Terminal, Monitor, Layout, Database, MessageSquare, Users, Brain, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 import useSWR from 'swr';

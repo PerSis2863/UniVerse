@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '../http';
 import prisma from '@/lib/db';
-import { Role, CourseStatus, type Prisma } from '@prisma/client';
+import { Role,  type Prisma } from '@prisma/client';
 import type { Body } from '../body';
 import { pick } from '../pick';
 import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-network';

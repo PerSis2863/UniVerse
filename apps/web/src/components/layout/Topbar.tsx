@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { openCommandPalette } from '@/lib/palette';
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Plus, CheckCircle2, X, Archive, AlertCircle } from 'lucide-react';
+import { Bell, Search, Plus,  X, Archive, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';

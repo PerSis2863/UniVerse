@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Trophy, Medal, Star, TrendingUp, Users, ArrowUp, ArrowDown, Minus, Search, Loader2, Zap, Shield, Share2, Copy } from 'lucide-react';
+import { Trophy, Medal, Star,  Users, ArrowUp, ArrowDown, Minus, Search,  Zap,   Copy } from 'lucide-react';
 
 const TwitterIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -203,7 +203,7 @@ export default function LeaderboardPage() {
               {showLevels && (
                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                   <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-0 border-t border-zinc-200 dark:border-zinc-800">
-                    {LEVELS.map((lv, i) => {
+                    {LEVELS.map((lv) => {
                       const isCurrentLevel = (myLevelInfo?.current?.level || 1) === lv.level;
                       return (
                         <div key={lv.level} className={cn('p-4 text-center border-r last:border-0 border-zinc-200 dark:border-zinc-800', isCurrentLevel ? 'bg-indigo-500/5' : '')}>

@@ -14,7 +14,7 @@ import { navByRole, searchOnlyPages } from '@/components/layout/Sidebar';
 import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
-import { applyTheme, getSavedTheme } from '@/lib/theme';
+import { applyTheme } from '@/lib/theme';
 import { spring } from '@/lib/motion';
 
 type Item = { id: string; label: string; hint?: string; icon: LucideIcon; group: string; keywords?: string; run: () => void | Promise<void> };

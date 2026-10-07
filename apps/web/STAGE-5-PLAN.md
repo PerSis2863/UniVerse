@@ -756,9 +756,12 @@ A "round" ≈ one long agent session. Mark each item in Progress as it lands.
 
 ## Progress (keep this up to date, so either agent can take over)
 
-**Branch:** create one from `main` (e.g. `claude/stage-5`). One commit per item; push at
+**Branch:** `claude/great-hamilton-8g8xdm` (from `main`). One commit per item; push at
 checkpoints; merge only when the owner says "merge". **Next migration: `0075`.**
 
 | ID | Item | State | Where / notes |
 |---|---|---|---|
 | — | Stage 4 complete | **Done** | See STAGE-4-PLAN.md |
+| — | Hotfix: requests hanging on a fresh Worker | **Done, merged (PR #44)** | `src/lib/db.ts`: Prisma's ClientEngine shares its connect promise; on Workers the waiting requests were cancelled as hung (HTTP 500 after ~33 ms, in bursts on dashboard load). Each request uses its own client until one has connected. Check production logs: "code had hung" should be gone. |
+| A1 | Lint and type debt to zero | **Done** | `npx eslint src cloudflare scripts`: 371 errors → **0**, 162 warnings → 42. `pnpm lint` now lints those folders; rules in AGENTS.md. New helpers: `src/lib/use-now.ts` (`useNow` 30 s shared clock, `useTick`), `src/server/body.ts` (`Body`/`Query`, `oneOf`, `str`, `text`, `strings`, `first`), typed `pick<Prisma.XInput>()`, `errorMessage()` in `lib/api.ts`. ~25 old pages moved to SWR. **Bugs found and fixed:** anyone could attach calendar events to any course; scholarships/partners passed whole request bodies to the DB; admin announcements never reached the server (local only); scholarship statements, medical allergies/conditions/medications, consents (`isGranted` vs `granted`), major-change requests (`newMajor` vs `requestedProgram`, APPROVED vs ACCEPTED) never saved or showed; NGO SDG numbers, group avatars, late attendance labels wrong. **Needs a real check:** admin announcements create/edit/delete, consents toggles, medical lists, scholarship apply, major-change request. |
+

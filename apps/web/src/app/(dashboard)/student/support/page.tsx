@@ -2,7 +2,7 @@
 
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, SUPPORT_TABS } from '@/components/layout/SectionTabs';
-import { LifeBuoy, FileText, MessageCircle, ChevronRight, Search, Send, Book, Wifi, Laptop, X, HelpCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { LifeBuoy, FileText, MessageCircle, ChevronRight, Search, Send, Book, Wifi, Laptop, X, HelpCircle, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';

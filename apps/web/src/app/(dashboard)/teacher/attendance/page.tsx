@@ -37,7 +37,7 @@ export default function TeacherAttendance() {
       });
       mutate();
       toast.success('Attendance updated');
-    } catch (e) {
+    } catch {
       toast.error('Failed to update attendance');
     }
   };

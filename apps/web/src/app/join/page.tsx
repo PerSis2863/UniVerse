@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { GraduationCap, Building2, Globe, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import Link from '@/components/ui/Link';
 
@@ -36,7 +36,6 @@ const ROLE_DETAILS: Record<string, {
 };
 
 function JoinContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
 

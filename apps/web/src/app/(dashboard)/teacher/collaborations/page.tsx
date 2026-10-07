@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, RESEARCH_TABS } from '@/components/layout/SectionTabs';
 import {
-  Globe2, Building2, Users, PlusCircle, CheckCircle2, ArrowUpRight,
-  BookOpen, HeartHandshake, Sparkles, FileText, Send, X, User, MessageSquare
+  Globe2,   PlusCircle, CheckCircle2, ArrowUpRight,
+      Send, X,  MessageSquare
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import useSWR from 'swr';
@@ -55,7 +55,7 @@ export default function TeacherCollaborationsPage() {
       setShowNewProposalModal(false);
       setProposalTitle('');
       toast.success('Proposal submitted for admin review');
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit proposal');
     }
   };

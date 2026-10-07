@@ -2,7 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { BookmarkPlus, GraduationCap, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { BookmarkPlus, GraduationCap, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -89,7 +89,7 @@ export default function StudentChoices() {
       toast.success('Request submitted for advisor approval!');
       e.currentTarget.reset();
       await fetchElectives();
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit request.');
     }
   };

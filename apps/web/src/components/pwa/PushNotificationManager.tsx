@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { Bell, BellOff, CheckCircle, X } from 'lucide-react';
+import { Bell,   X } from 'lucide-react';
 import { subscribePush } from '@/lib/push-subscribe';
 import { useAuthStore } from '@/store/auth';
 import { LogoMark } from '@/components/ui/LogoMark';

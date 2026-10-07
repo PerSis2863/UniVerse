@@ -1,7 +1,7 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
-import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2, X, FileSearch, Loader2 } from 'lucide-react';
+import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2, X, FileSearch } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef } from 'react';
 import useSWR from 'swr';
@@ -58,7 +58,7 @@ export default function DocumentsPage() {
       });
       
       finishUpload(file.name, res.data.url);
-    } catch (error) {
+    } catch {
       toast.error('Failed to upload file');
       setUploadProgress(0);
     }
@@ -75,7 +75,7 @@ export default function DocumentsPage() {
       await fetchDocuments();
       setActiveModal(null);
       setUploadProgress(0);
-    } catch (error) {
+    } catch {
       toast.error('Failed to save document record');
       setUploadProgress(0);
     }
@@ -100,7 +100,7 @@ export default function DocumentsPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (e) {
+    } catch {
       toast.error('Failed to download document');
     }
   };

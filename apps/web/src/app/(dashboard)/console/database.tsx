@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ChevronRight, Database, Download, HardDrive, Loader2, Plus, Table2 } from 'lucide-react';
+import { ChevronRight, Database, Download, HardDrive,  Plus, Table2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, downloadCsv, fetcher, matches } from './shared';
 import { ConsoleSkeleton } from './shared';

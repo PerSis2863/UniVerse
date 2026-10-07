@@ -22,7 +22,6 @@ import { useLanguageStore } from '@/store/language';
 
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
-import { Loader2 } from 'lucide-react';
 import { courseColor } from '@/lib/course-color';
 
 interface TeacherCourse { id?: string; name: string; code: string; color?: string | null; students: number; completion: number }

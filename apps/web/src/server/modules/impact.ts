@@ -68,7 +68,7 @@ export default function impactModule(router: Router) {
 
   // NGOs & projects
   r.get('ngos', ({ query }) => impact.getNGOs(query));
-  r.get('ngo-projects', ({ query }) => impact.getNGOProjects());
+  r.get('ngo-projects', () => impact.getNGOProjects());
   r.post<{ id: string }>('ngo-projects/:id/apply', ({ params, user, body }) => impact.applyToNGOProject(params.id, user.id, body));
 
   // Startups

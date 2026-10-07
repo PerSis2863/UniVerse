@@ -1,7 +1,6 @@
 import type { Role, User } from '@prisma/client';
 import { recordServerError } from './errors';
 import { later } from './email';
-import type { RateLimit } from '@cloudflare/workers-types';
 import { ForbiddenException, HttpException, NotFoundException } from './http';
 import { extractBearer, resolveUser, demoWriteBlocked, isOwner } from './auth';
 import { hasPass, needsTwoStep } from './two-step';

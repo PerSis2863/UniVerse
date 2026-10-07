@@ -7,7 +7,7 @@
     "build": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate && node scripts/gen-owner-schema.mjs && node scripts/copy-excalidraw-assets.mjs && node scripts/copy-mediapipe-assets.mjs && node scripts/copy-pdfjs-assets.mjs && node scripts/copy-pyodide-assets.mjs && NODE_OPTIONS=--max-old-space-size=4096 next build --webpack",
     "postinstall": "PRISMA_GENERATE_SKIP_AUTOINSTALL=1 prisma generate",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src cloudflare scripts",
     "typecheck": "tsc --noEmit && tsc -p cloudflare/tsconfig.json",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && wrangler d1 migrations apply universe-db --remote && opennextjs-cloudflare deploy",

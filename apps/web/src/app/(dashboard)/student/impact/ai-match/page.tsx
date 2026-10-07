@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
-import { m as motion, AnimatePresence } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  Sparkles, Loader2, ArrowRight, CheckCircle2, Clock,
-  Users, Globe2, Zap, Star, TrendingUp, RefreshCw,
-  ChevronRight, BookOpen, Award, Target, Brain
+   Loader2, ArrowRight, CheckCircle2, Clock,
+  Users, Globe2,  Star,  RefreshCw,
+  ChevronRight,   Target, Brain
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { cn } from '@/lib/utils';

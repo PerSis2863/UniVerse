@@ -1,7 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { Search, Mail, Filter, Building2, MapPin, X, User } from 'lucide-react';
+import { Search, Mail, Filter, Building2,  X, User } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { m as motion, AnimatePresence } from 'framer-motion';

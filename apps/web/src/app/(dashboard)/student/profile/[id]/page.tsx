@@ -3,7 +3,6 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { usePathname, useRouter } from 'next/navigation';
 import { Mail, Book, MapPin, Building2, Download, ExternalLink, FileText } from 'lucide-react';
-import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';

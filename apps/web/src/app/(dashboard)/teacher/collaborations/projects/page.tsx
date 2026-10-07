@@ -6,7 +6,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, TEACHER_IMPACT_TABS } from '@/components/layout/SectionTabs';
 import {
   Search, Filter, Briefcase, Globe2, ArrowUpRight, Clock, Users, Building2,
-  CheckCircle2, X, Send, ChevronDown, Edit, Trash2, Plus
+  CheckCircle2, X, Send, ChevronDown,  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/lib/api';
@@ -87,7 +87,7 @@ export default function NGOMentorshipPage() {
       setProposeDesc('');
       setProposeTags('');
       fetchProjects();
-    } catch (error) {
+    } catch {
       toast.error('Failed to create project');
     }
   };
@@ -96,7 +96,7 @@ export default function NGOMentorshipPage() {
     try {
       const res = await api.get(`/collaborations/projects/${id}`);
       setSelectedProject(res.data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load details');
     }
   };

@@ -3,7 +3,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { Target, Trophy, Clock, CheckCircle2, ChevronRight, BrainCircuit, AlertCircle, Loader2 } from 'lucide-react';
+import { Target,  Clock, CheckCircle2, ChevronRight, BrainCircuit, AlertCircle, Loader2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
@@ -20,7 +20,7 @@ interface QuizSummary { id: string; title: string; status: string; completed: bo
 type FullQuiz = PackQuiz & { course?: { name: string } | null };
 
 export default function QuizzesPage() {
-  const { data: quizzes = [], error, isLoading } = useSWR<QuizSummary[]>('/quizzes/student/my-quizzes', fetcher);
+  const { data: quizzes = [], isLoading } = useSWR<QuizSummary[]>('/quizzes/student/my-quizzes', fetcher);
 
   const activeQuizzesList = quizzes.filter((q) => !q.completed && q.status === 'PUBLISHED');
   const completedQuizzesList = quizzes.filter((q) => q.completed);
@@ -60,7 +60,7 @@ export default function QuizzesPage() {
       setSubmitted(false);
       setShowResults(false);
       setConfirming(false);
-    } catch (e) {
+    } catch {
       toast.error('Failed to load quiz');
     } finally {
       setLoadingQuizId(null);

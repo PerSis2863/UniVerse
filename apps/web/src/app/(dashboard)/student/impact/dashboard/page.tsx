@@ -1,11 +1,10 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
-import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
-  Award, HeartHandshake, Globe2, Sparkles, Download, CheckCircle2,
-  Clock, TrendingUp, ShieldCheck, FileCheck, ExternalLink, Share2, Loader2
+  Award,     CheckCircle2,
+   TrendingUp, ShieldCheck, FileCheck
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import useSWR from 'swr';

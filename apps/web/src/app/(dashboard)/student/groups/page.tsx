@@ -3,7 +3,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { Users, MessageSquare, Search, Plus, MoreHorizontal, X, ChevronRight, Upload, Video, Mic, Trash2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef, useEffect } from 'react';
+import { useState,  useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -387,7 +387,7 @@ export default function GroupsPage() {
                           const updatedGroup = { ...selectedGroup, isJoined: true, members: selectedGroup.members + 1 };
                           setSelectedGroup(updatedGroup);
                           setGroupsList(groupsList.map(g => g.id === selectedGroup.id ? updatedGroup : g));
-                        } catch (e) {
+                        } catch {
                           toast.error('Failed to join group');
                         }
                       }}
@@ -600,7 +600,7 @@ export default function GroupsPage() {
                     try {
                       await api.post(`/groups/${inviteGroup.id}/invite`, { emails: inviteMembers });
                       toast.success(`Invited ${inviteMembers.length} members to ${inviteGroup.name}`);
-                    } catch (e) {
+                    } catch {
                       toast.error('Failed to invite members');
                     }
                   }

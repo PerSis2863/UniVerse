@@ -40,7 +40,7 @@ export default function MentorshipPage() {
         topic: 'Initial Discussion'
       });
       toast.success('Match request sent!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to send request');
     }
   };

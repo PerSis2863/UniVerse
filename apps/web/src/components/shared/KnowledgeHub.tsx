@@ -2,12 +2,11 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, STUDENT_LEARN_TABS } from '@/components/layout/SectionTabs';
 import { uploadChatFile } from '@/components/chat/chat-client';
-import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, Copy } from 'lucide-react';
+import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
 import { TabPill } from '@/components/ui/Glide';
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
@@ -33,7 +32,6 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { user } = useAuthStore();
 
   // KnowledgeHubResource rows, shaped for this page.
   const { data: resources = [], mutate: fetchResources } = useSWR<Resource[]>('/knowledge-hub', async (url: string) => {

@@ -3,7 +3,7 @@ import { useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { MessageSquare, Heart, Share2, Search, Filter, TrendingUp, Users } from 'lucide-react';
+import {   Share2, Search,  TrendingUp, Users } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 

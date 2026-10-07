@@ -46,7 +46,7 @@ export default function Scholarships() {
       await refreshApplications(); // hides it from the available list
       setApplicationStep(3);
       toast.success('Application submitted successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit application');
     } finally {
       setIsSubmitting(false);

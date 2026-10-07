@@ -1,13 +1,12 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Globe, Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin, Sparkles, Building, X, Loader2 } from 'lucide-react';
+import {  Users, Heart, ArrowUpRight, Search, CheckCircle2, Clock, MapPin, Sparkles, Building, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
@@ -25,7 +24,6 @@ export default function NGOMarketplacePage() {
   const [selectedType, setSelectedType] = useState('ALL');
   const [selected, setSelected] = useState<NgoProject | null>(null);
   const [applied, setApplied] = useState<string[]>([]);
-  const { t } = useLanguageStore();
 
   const { data: projectsData, isLoading: loading } = useSWR<NgoProject[]>('/impact/ngo-projects', fetcher, {
     onError: () => toast.error('Failed to load projects'),

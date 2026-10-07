@@ -63,7 +63,7 @@ export default function MedicalPage() {
       await mutate(payload, { revalidate: false });
       toast.success('Medical profile updated successfully');
       handleClose();
-    } catch (error) {
+    } catch {
       toast.error('Failed to update medical profile');
     } finally {
       setIsSaving(false);
