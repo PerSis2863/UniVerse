@@ -7,6 +7,7 @@ import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, 
 import { afterSend } from '@/server/chat-notify';
 import { linkScheduledCall } from '@/server/scheduled-calls';
 import { channelSendCheck } from '@/server/communities';
+import { automodCheck, automodReport } from '@/server/community-moderation';
 import { storedTranslations } from '@/server/translate';
 import { listScheduled } from '@/server/scheduled-messages';
 import { recordServerError } from '@/server/errors';
@@ -278,6 +279,14 @@ export async function POST(req: Request, { params }: Ctx) {
     data.threadId = root.id;
   }
 
+  // Community automod (Stage 4 · 1.13): banned words are refused, or sent and reported to the moderators.
+  let automodFlag: string[] | null = null;
+  if (convo?.communityId && (data.type === 'TEXT' || data.type === 'POLL') && data.body) {
+    const am = await automodCheck(id, user.id, String(data.body));
+    if (am && 'block' in am) return NextResponse.json({ error: am.block }, { status: 400 });
+    if (am && 'flag' in am) automodFlag = am.flag;
+  }
+
   if (typeof b.replyToId === 'string') {
     const parent = await prisma.message.findFirst({ where: { id: b.replyToId, conversationId: id }, select: { id: true } });
     if (parent) data.replyToId = parent.id;
@@ -293,5 +302,6 @@ export async function POST(req: Request, { params }: Ctx) {
   if (data.type === 'CALL' && typeof b.scheduledId === 'string') await linkScheduledCall(b.scheduledId, id, message.id);
   // Link preview, translations, notifications, @mentions and watch words (src/server/chat-notify.ts).
   afterSend({ id: message.id, conversationId: id, type: String(data.type ?? 'TEXT'), body: String(data.body ?? ''), metadata: message.metadata }, user, { communityId: convo?.communityId ?? null, systemUserId: system.id });
+  if (automodFlag) await automodReport(message.id, automodFlag).catch(() => null);
   return NextResponse.json(out, { status: 201 });
 }

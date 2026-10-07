@@ -2995,11 +2995,15 @@ model Community {
   color       String            @default("#4f46e5")
   inviteCode  String            @unique
   discoverable Boolean          @default(false) // listed under Discover, open to anyone in the network (upgrade 9)
+  automodWords String? // JSON string[]: words members' messages may not contain (Stage 4 · 1.13)
+  automodAction String          @default("BLOCK") // BLOCK (refused) | FLAG (sent, and reported to the moderators)
   createdById String?
   createdAt   DateTime          @default(now())
   members     CommunityMember[]
   channels    Conversation[]
   emoji       CommunityEmoji[]
+  reports     CommunityReport[]
+  modLog      CommunityModLog[]
 
   @@map("communities")
 }
@@ -3025,11 +3029,50 @@ model CommunityMember {
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   role        String    @default("MEMBER") // OWNER | MOD | MEMBER
+  timeoutUntil DateTime? // timed out by a moderator: can read, can't post (Stage 4 · 1.13)
   joinedAt    DateTime  @default(now())
 
   @@unique([communityId, userId])
   @@index([userId])
   @@map("community_members")
+}
+
+/// A message reported to a community's moderators (Stage 4 · 1.13): by a member, or by automod
+/// (reporterId null).
+model CommunityReport {
+  id             String    @id @default(cuid())
+  communityId    String
+  community      Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  conversationId String
+  messageId      String
+  reporterId     String?
+  senderId       String
+  reason         String?
+  excerpt        String
+  status         String    @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  resolvedById   String?
+  resolvedAt     DateTime?
+  outcome        String? // removed | timeout:<minutes> | dismissed
+  createdAt      DateTime  @default(now())
+
+  @@unique([messageId, reporterId])
+  @@index([communityId, status])
+  @@map("community_reports")
+}
+
+/// What a community's moderators did (Stage 4 · 1.13), for the owner and moderators to see.
+model CommunityModLog {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  actorId     String?
+  action      String // remove_message | timeout | untimeout | remove_member | role | automod | dismiss_report
+  targetId    String?
+  detail      String?
+  createdAt   DateTime  @default(now())
+
+  @@index([communityId, createdAt])
+  @@map("community_mod_log")
 }
 
 // "/remind" in a chat: an in-app (and push) reminder at a time, sent by the 15-minute cron.

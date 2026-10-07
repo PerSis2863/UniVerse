@@ -6,6 +6,7 @@ import { publishChat } from '@/server/realtime';
 import { chatMuted } from '@/server/moderation';
 import { later } from '@/server/email';
 import { guardMessage } from '@/server/safety';
+import { automodCheck } from '@/server/community-moderation';
 
 type Ctx = { params: Promise<{ id: string }> };
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -36,6 +37,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const text = String(body.body ?? '').trim().slice(0, MAX_BODY);
   if (!text) return NextResponse.json({ error: 'Message is empty.' }, { status: 400 });
   if (text === msg.body) return NextResponse.json({ error: 'Nothing changed.' }, { status: 400 });
+  // Community automod (1.13): an edit can't bring in banned words either.
+  const am = await automodCheck(msg.conversationId, user.id, text);
+  if (am && 'block' in am) return NextResponse.json({ error: am.block }, { status: 400 });
   const [updated] = await prisma.$transaction([
     prisma.message.update({ where: { id }, data: { body: text, editedAt: new Date() }, select: { ...messageSelect, sender: { select: { id: true, name: true, avatar: true } } } }),
     prisma.messageTranslation.deleteMany({ where: { messageId: id } }), // the old translations no longer match

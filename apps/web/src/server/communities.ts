@@ -22,12 +22,12 @@ const code = () => randomBytes(6).toString('base64url');
 const cleanName = (v: unknown, max = 60) => String(v ?? '').trim().replace(/\s+/g, ' ').slice(0, max);
 const channelName = (v: unknown) => cleanName(v, 40).toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s+/g, '-') || 'channel';
 
-async function myRole(communityId: string, userId: string): Promise<Role | null> {
+export async function myRole(communityId: string, userId: string): Promise<Role | null> {
   const m = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId, userId } }, select: { role: true } });
   return (m?.role as Role | undefined) ?? null;
 }
 
-async function requireRole(communityId: string, user: SessionUser, min: 'MEMBER' | 'MOD' | 'OWNER') {
+export async function requireRole(communityId: string, user: SessionUser, min: 'MEMBER' | 'MOD' | 'OWNER') {
   const role = await myRole(communityId, user.id);
   if (!role) throw new NotFoundException('This community isn’t one of yours.');
   const rank = { MEMBER: 0, MOD: 1, OWNER: 2 };
@@ -225,11 +225,13 @@ export async function manageMember(user: SessionUser, id: string, body: Record<s
   if (body.remove === true) {
     if (theirs === 'OWNER' || (theirs === 'MOD' && mine !== 'OWNER')) throw new ForbiddenException('You can’t remove them.');
     await removeFromCommunity(id, target);
+    await prisma.communityModLog.create({ data: { communityId: id, actorId: user.id, action: 'remove_member', targetId: target } }).catch(() => null);
     return { ok: true };
   }
   if (mine !== 'OWNER') throw new ForbiddenException('Only the owner can change roles.');
   const role = body.role === 'MOD' || body.role === 'OWNER' ? body.role : 'MEMBER';
   await prisma.communityMember.update({ where: { communityId_userId: { communityId: id, userId: target } }, data: { role } });
+  await prisma.communityModLog.create({ data: { communityId: id, actorId: user.id, action: 'role', targetId: target, detail: role } }).catch(() => null);
   await refreshMembers(id);
   return { ok: true };
 }
@@ -295,8 +297,11 @@ export async function updateCommunity(user: SessionUser, id: string, body: Recor
 export async function channelSendCheck(conversationId: string, userId: string, opts: { slowMode?: boolean } = {}): Promise<string | null> {
   const ch = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { communityId: true, channelKind: true, slowModeSec: true } });
   if (!ch?.communityId) return null;
-  const role = await myRole(ch.communityId, userId);
+  const member = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: ch.communityId, userId } }, select: { role: true, timeoutUntil: true } });
+  const role = (member?.role as Role | undefined) ?? null;
   if (ch.channelKind === 'VOICE') return 'This is a voice room: join the call to talk.';
+  // Timed out by a moderator (Stage 4 · 1.13): can read, can't post.
+  if (member?.timeoutUntil && member.timeoutUntil > new Date()) return `A moderator timed you out: you can post again in ${Math.max(1, Math.ceil((member.timeoutUntil.getTime() - Date.now()) / 60_000))} min.`;
   if (ch.channelKind === 'ANNOUNCE' && role === 'MEMBER') return 'Only moderators can post in announcements.';
   // Scheduled messages are spaced out when they're scheduled instead (src/server/scheduled-messages.ts).
   if (opts.slowMode !== false && ch.slowModeSec > 0 && role === 'MEMBER') {
