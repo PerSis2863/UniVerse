@@ -255,6 +255,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
+  [/^\/api\/chat\/snippets$/, () => ok({ max: 50, snippets: [{ id: 'sample-s1', title: 'Deadline reminder', shortcut: 'due', body: 'Hi {name}, a quick reminder: the lab report is due soon.' }] })],
   [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
   [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
@@ -483,6 +484,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     c.messages.push(message);
     return ok(decorateMsg(d, message), 201);
   }],
+  ['PUT', /^\/api\/chat\/snippets$/, ({ body }) => ok({ max: 50, snippets: Array.isArray(body?.snippets) ? body.snippets.slice(0, 50) : [] })],
   ['PUT', /^\/api\/chat\/folders$/, ({ body }) => ok({ folders: Array.isArray(body?.folders) ? body.folders.slice(0, 10) : [] })],
   ['PATCH', /^\/api\/chat\/conversations\/([^/]+)\/prefs$/, ({ db: d, m, body }) => {
     const c: any = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);

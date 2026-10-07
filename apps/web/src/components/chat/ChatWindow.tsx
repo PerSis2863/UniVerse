@@ -753,6 +753,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           draftKey={conversationId}
           serverDraft={{ text: convo.draft, at: convo.draftAt }}
           onSchedule={convo.isOfficial ? undefined : schedule}
+          recipientName={convo.isGroup ? undefined : convo.title}
           disabled={convo.isOfficial}
           replyTo={replyTo}
           editing={editing}

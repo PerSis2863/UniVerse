@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, CircleDot, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, CircleDot, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
@@ -11,6 +11,7 @@ import { languageName } from '@/lib/languages';
 import { haptic } from '@/lib/haptics';
 import { keepDraft, localDraft, pickDraft, saveDraft } from '@/lib/chat-drafts';
 import { ScheduleSheet } from './ScheduledMessages';
+import { SnippetsSheet, fillSnippet, useSnippets } from './Snippets';
 import dynamic from 'next/dynamic';
 
 const VideoNoteRecorder = dynamic(() => import('./VideoNote').then((m) => m.VideoNoteRecorder));
@@ -85,9 +86,11 @@ interface Props {
   serverDraft?: { text?: string | null; at?: string | null };
   /** Schedules a message (hold or right-click Send, or Attach → Schedule message). */
   onSchedule?: (body: string, sendAt: string) => Promise<void>;
+  /** Who a saved reply's {name} becomes (a direct chat's other person; "everyone" in groups). */
+  recipientName?: string;
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll, customEmoji, draftKey, serverDraft, onSchedule }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll, customEmoji, draftKey, serverDraft, onSchedule, recipientName }: Props) {
   const [formatting, setFormatting] = useState(false);
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
@@ -118,6 +121,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   const setOnce = (v: boolean) => { onceRef.current = v; setOnceState(v); };
   const [emoji, setEmoji] = useState(false);
   const [attach, setAttach] = useState(false);
+  const [snippetsOpen, setSnippetsOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [recording, setRecording] = useState<{ start: number } | null>(null);
@@ -351,6 +355,10 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     recorder.current?.stop();
   };
 
+  // Saved replies by shortcut (1.9), fetched the first time "/" is typed.
+  const slashTyped = !editing && /^\/[\w-]*$/.test(text);
+  const { data: snipData } = useSnippets(slashTyped || snippetsOpen);
+
   if (disabled || disabledReason) {
     return (
       <div className="px-4 py-3 text-center text-xs text-zinc-500 border-t border-zinc-200/80 dark:border-white/[0.06]">
@@ -365,6 +373,8 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     try { setSuggestions(await onSuggest()); } finally { setSuggesting(false); }
   };
   const slash = !editing && /^\/\w*$/.test(text) ? SLASH_COMMANDS.filter((c) => c.name.startsWith(text.slice(1).toLowerCase())) : [];
+  const slashSnips = slashTyped ? (snipData?.snippets ?? []).filter((x) => x.shortcut?.startsWith(text.slice(1).toLowerCase())).slice(0, 5) : [];
+  const insertSnippet = (body: string) => { setText(body); setSuggestions(null); requestAnimationFrame(() => areaRef.current?.focus()); };
 
   return (
     <div className="border-t border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl px-3 md:px-4 py-3">
@@ -476,6 +486,9 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                       <span className="w-8 h-8 rounded-full bg-violet-500/15 text-violet-500 flex items-center justify-center"><CalendarClock className="w-4 h-4" /></span> Schedule message
                     </button>
                   )}
+                  <button onClick={() => { setAttach(false); setSnippetsOpen(true); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className="w-8 h-8 rounded-full bg-teal-500/15 text-teal-500 flex items-center justify-center"><MessageSquareText className="w-4 h-4" /></span> Saved replies
+                  </button>
                   <button onClick={() => { setAttach(false); onExtra('poll'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center"><BarChart3 className="w-4 h-4" /></span> Poll
                   </button>
@@ -491,8 +504,14 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           )}
 
           <div className="relative flex-1 min-w-0 flex">
-          {slash.length > 0 && (
+          {(slash.length > 0 || slashSnips.length > 0) && (
             <div className="absolute bottom-full mb-2 left-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
+              {slashSnips.map((x) => (
+                <button key={x.id} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); insertSnippet(fillSnippet(x.body, recipientName)); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                  <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{x.shortcut} <span className="font-normal text-zinc-500">· {x.title}</span></span>
+                  <span className="block text-xs text-zinc-500 truncate">{x.body}</span>
+                </button>
+              ))}
               {slash.map((c) => (
                 <button key={c.name} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); setText(`/${c.name} `); areaRef.current?.focus(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{c.name}</span>
@@ -591,6 +610,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           onSave={async (body, sendAt) => { await onSchedule(body, sendAt); setText(''); setSuggestions(null); }}
           onClose={() => { setScheduling(null); held.current = false; }} />
       )}
+      {snippetsOpen && <SnippetsSheet recipientName={recipientName} onClose={() => setSnippetsOpen(false)} onInsert={insertSnippet} />}
       {!!slowModeSec && <p className="mt-1.5 text-[11px] text-zinc-500 text-center">Slow mode: one message every {slowModeSec < 60 ? `${slowModeSec} s` : `${Math.round(slowModeSec / 60)} min`}</p>}
       {videoNote && <VideoNoteRecorder onClose={() => setVideoNote(false)} onSend={async (file, durationSec) => { setBusy(true); try { await onSend({ videoNote: { file, durationSec } }); } finally { setBusy(false); } }} />}
       <input ref={mediaRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; void pickMedia(fs); }} />
