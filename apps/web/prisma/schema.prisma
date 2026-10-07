@@ -3278,3 +3278,57 @@ model DocComment {
   @@index([docId])
   @@map("doc_comments")
 }
+
+/// A folder in a space's files hub (Stage 4 · 3.7, src/server/space-files.ts). A space is a class
+/// (spaceKind "course") or a study group ("group").
+model SpaceFolder {
+  id          String        @id @default(cuid())
+  spaceKind   String
+  spaceId     String
+  parentId    String?
+  parent      SpaceFolder?  @relation("SpaceFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    SpaceFolder[] @relation("SpaceFolderTree")
+  name        String
+  createdById String
+  createdAt   DateTime      @default(now())
+  files       SpaceFile[]
+
+  @@index([spaceKind, spaceId])
+  @@map("space_folders")
+}
+
+/// A file in a space's files hub: the current version's upload, with every version kept.
+model SpaceFile {
+  id          String             @id @default(cuid())
+  spaceKind   String
+  spaceId     String
+  folderId    String?
+  folder      SpaceFolder?       @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  name        String
+  url         String
+  mime        String
+  size        Int
+  createdById String
+  updatedById String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @default(now())
+  versions    SpaceFileVersion[]
+
+  @@index([spaceKind, spaceId, folderId])
+  @@map("space_files")
+}
+
+model SpaceFileVersion {
+  id           String    @id @default(cuid())
+  fileId       String
+  file         SpaceFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  url          String
+  mime         String
+  size         Int
+  note         String?
+  uploadedById String
+  createdAt    DateTime  @default(now())
+
+  @@index([fileId, createdAt])
+  @@map("space_file_versions")
+}
