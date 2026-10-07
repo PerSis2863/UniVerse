@@ -99,6 +99,15 @@ export async function evidenceFromShift(v: { userId: string; checkinId: string; 
 }
 
 /** Never lets evidence break the action that triggered it (grading, submitting, issuing). */
+/** A teacher verified someone's part in a class's or study group's work (Stage 4 · 4.3, fair group work). */
+export async function evidenceFromGroupWork(g: { userId: string; spaceKey: string; spaceTitle: string; skills: string[]; level: string; detail: string; teacher: { id: string; name: string } }) {
+  if (!g.skills.length) return forget(g.userId, 'PROJECT', g.spaceKey);
+  await record({
+    userId: g.userId, kind: 'PROJECT', sourceId: g.spaceKey, skills: g.skills, title: `Group work · ${g.spaceTitle}`, detail: g.detail,
+    level: g.level, verifiedById: g.teacher.id, verifiedByName: g.teacher.name,
+  });
+}
+
 export const safely = (p: Promise<unknown>) => p.catch((e) => console.error('skill evidence', e));
 
 export interface EvidenceGroup {

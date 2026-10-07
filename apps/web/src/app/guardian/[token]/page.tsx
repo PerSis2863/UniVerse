@@ -21,6 +21,8 @@ interface GuardianView {
   courses: { id: string; code: string; name: string; color: string | null; emoji: string | null; grade: number | null; attendance: number | null }[];
   deadlines: DeadlineItem[];
   achievements: { id: string; kind: 'certificate' | 'points'; title: string; detail: string; at: string }[];
+  /** This week in numbers (Stage 4 · 4.10): never messages or who they talk to. */
+  activity?: { daysActive: number; messages: number; calls: number; callMinutes: number; handedIn: number; quiet: { start: string; end: string; bySchool: boolean } | null };
 }
 
 const panel = 'rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/80 dark:bg-white/[0.03] p-4 sm:p-6';
@@ -153,6 +155,19 @@ export default function GuardianPage() {
               )}
             </section>
 
+            {data.activity && (
+              <section className={panel} aria-label="This week">
+                <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-1"><Clock className="w-4 h-4 text-indigo-500" /> This week on UniVerse</h2>
+                <p className="text-xs text-zinc-500 mb-4">How active {data.firstName} was. Messages and who they talk to are never shown.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Stat icon={CalendarCheck} label="Days active" value={String(data.activity.daysActive)} sub="of the last 7" />
+                  <Stat icon={BookOpen} label="Work handed in" value={String(data.activity.handedIn)} sub="Assignments and quizzes" />
+                  <Stat icon={Eye} label="Messages sent" value={String(data.activity.messages)} sub="Chats and groups" />
+                  <Stat icon={Clock} label="Calls" value={String(data.activity.calls)} sub={`${data.activity.callMinutes} min in calls`} />
+                </div>
+                {data.activity.quiet && <p className="text-xs text-zinc-500 mt-3">Quiet hours {data.activity.quiet.start}–{data.activity.quiet.end}{data.activity.quiet.bySchool ? ' (set by the school)' : ''}: no notifications to their devices then.</p>}
+              </section>
+            )}
             <section className={panel}>
               <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4"><Target className="w-4 h-4 text-indigo-500" /> Coming up</h2>
               <DeadlineList items={data.deadlines} />

@@ -11,7 +11,7 @@ import { type ChatMessage, type ConversationSummary, type Member, chatJson, prev
 
 const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/40';
 
-function Sheet({ title, onClose, children, footer }: { title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode }) {
+export function Sheet({ title, onClose, children, footer }: { title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
     <div className="backdrop-in fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div data-sheet className="sheet-in w-full sm:max-w-md max-h-[85dvh] flex flex-col rounded-t-3xl sm:rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl">
@@ -139,6 +139,9 @@ export function MessageInfo({ message, members, me, onClose }: { message: ChatMe
   const others = members.filter((m) => m.id !== me);
   const read = others.filter((m) => m.lastReadAt && new Date(m.lastReadAt).getTime() >= sentAt);
   const notYet = others.filter((m) => !read.includes(m));
+  // Delivered: online, or opened UniVerse since it was sent; the rest haven't had it yet.
+  const delivered = notYet.filter((m) => m.online || (m.lastSeenAt && new Date(m.lastSeenAt).getTime() >= sentAt));
+  const waiting = notYet.filter((m) => !delivered.includes(m));
   const when = (iso: string) => `${timeLabel(iso)}${timeLabel(iso).includes(':') ? '' : ', ' + new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
   return (
     <Sheet title="Message info" onClose={onClose}>
@@ -155,19 +158,19 @@ export function MessageInfo({ message, members, me, onClose }: { message: ChatMe
         ))}
         {!read.length && <p className="text-sm text-zinc-500 px-2">No one yet.</p>}
       </div>
-      {notYet.length > 0 && (
-        <>
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1 mb-2"><CheckCheck className="w-4 h-4" /> Delivered</p>
+      {([['Delivered', delivered, CheckCheck], ['Not delivered yet', waiting, Check]] as const).map(([label, list, Icon]) => list.length > 0 && (
+        <div key={label} className="mb-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1 mb-2"><Icon className="w-4 h-4" /> {label}</p>
           <div className="space-y-1">
-            {notYet.map((m) => (
+            {list.map((m) => (
               <div key={m.id} className="flex items-center gap-3 p-2">
                 <Avatar name={m.name} src={m.avatar} size={34} />
                 <span className="flex-1 text-sm text-zinc-900 dark:text-white truncate">{m.name}</span>
               </div>
             ))}
           </div>
-        </>
-      )}
+        </div>
+      ))}
     </Sheet>
   );
 }

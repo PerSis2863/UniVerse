@@ -32,10 +32,14 @@ function pattern(tones: { freq: number[]; on: number; off: number }, volume: num
     timer = setTimeout(cycle, tones.on + tones.off);
   };
   void ctx.resume().then(cycle).catch(() => {});
+  // Safe to call more than once (the call answered, then the screen closing): closing a closed
+  // AudioContext rejects, which showed up as an error in the owner console.
   return () => {
+    if (stopped) return;
     stopped = true;
     if (timer) clearTimeout(timer);
-    try { oscs.forEach((o) => o.stop()); void ctx?.close(); } catch { /* closed */ }
+    try { oscs.forEach((o) => o.stop()); } catch { /* already stopped */ }
+    void ctx?.close().catch(() => {});
   };
 }
 
@@ -47,3 +51,22 @@ export const ringtone = (waiting = false) => (waiting
   // Call waiting: two short soft beeps every few seconds, so the current call isn't drowned out.
   ? pattern({ freq: [440], on: 180, off: 2800 }, 0.03)
   : pattern({ freq: [660, 880], on: 900, off: 1400 }, 0.05));
+
+/** A soft two-note chime, once (office hours: it's your turn). */
+export function chime() {
+  let ctx: AudioContext;
+  try { ctx = new AudioContext(); } catch { return; }
+  const t = ctx.currentTime;
+  [[880, 0], [1320, 0.18]].forEach(([f, at]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t + at);
+    g.gain.exponentialRampToValueAtTime(0.07, t + at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.7);
+    o.connect(g).connect(ctx.destination);
+    o.start(t + at);
+    o.stop(t + at + 0.75);
+  });
+  void ctx.resume().catch(() => {});
+  setTimeout(() => void ctx.close().catch(() => {}), 1200);
+}

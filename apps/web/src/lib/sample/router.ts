@@ -254,6 +254,15 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
+  [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
+  [/^\/api\/chat\/communities\/[^/]+\/moderation$/, () => ok({ reports: [], resolved: [], timeouts: [], automod: { words: [], mode: 'BLOCK' }, log: [] })],
+  [/^\/api\/chat\/snippets$/, () => ok({ max: 50, snippets: [{ id: 'sample-s1', title: 'Deadline reminder', shortcut: 'due', body: 'Hi {name}, a quick reminder: the lab report is due soon.' }] })],
+  [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
+  [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
+  [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
+  [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
+  [/^\/api\/tasks\/([^/]+)$/, () => fail('Task boards aren’t in the sample yet.', 404)],
+  [/^\/api\/tasks\/items\/([^/]+)\/comments$/, () => ok([])],
   [/^\/api\/chat\/starred$/, ({ db: d }) => ok(d.conversations.flatMap((c) => visible(d, c).filter((m: any) => d.starred.has(m.id)).map((m: any) => ({ ...decorateMsg(d, m), chat: { id: c.id, title: c.title } }))))],
   [/^\/api\/chat\/conversations\/([^/]+)\/messages$/, ({ db: d, m, q }) => {
     const c = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);
@@ -357,6 +366,54 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map(({ reservations, ...r }) => r))],
   [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
   [/^\/api\/premium\/analytics$/, ({ db: d }) => ok(d.analytics)],
+  // A study pack in another language (Stage 4 · 4.1): the sample's packs are shown as they are.
+  [/^\/api\/class-sessions\/([^/]+)\/translation$/, () => ok({ same: true, pack: null })],
+  // Ask your semester (Stage 4 · 4.5): the sample's semester isn't indexed.
+  [/^\/api\/semester$/, () => ok({ results: [], pending: 0 })],
+  // Fair group work (Stage 4 · 4.3): the sample's spaces have no tracked work yet.
+  [/^\/api\/spaces\/(course|group)\/([^/]+)\/contributions$/, () => ok({ days: 30, used: [], totals: {}, canManage: false, canVerify: false, ratings: false, size: 0, people: [], me: null, teammates: [] })],
+  // Call recordings (Stage 4 · 2.9): the sample has none.
+  [/^\/api\/call-recordings\/([^/]+)$/, () => fail('This recording isn’t available in the sample.', 404)],
+  // Meeting notes (Stage 4 · 2.8): the sample has none.
+  [/^\/api\/meeting-notes\/([^/]+)$/, () => fail('These notes aren’t available in the sample.', 404)],
+  // Smart replay search (Stage 4 · 4.6): the sample's classes have no transcript.
+  [/^\/api\/class-sessions\/([^/]+)\/replay$/, () => ok({ results: [] })],
+  // Safe by default (Stage 4 · 4.10): no flags in the sample; the default policy; quiet hours off.
+  [/^\/api\/safety\/flags$/, () => ok({ open: 0, flags: [] })],
+  [/^\/api\/safety\/flags\/([^/]+)$/, () => ok({ messages: [] })],
+  [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, open: 0, ai: false })],
+  [/^\/api\/me\/quiet$/, () => ok({ on: false, start: '22:00', end: '07:00', locked: false })],
+  // Impact rooms (Stage 4 · 4.12): one room, followed, with a planned impact call.
+  [/^\/api\/impact-rooms$/, () => ok({ staff: false, rooms: [
+    { id: 'sample-p1', name: 'Green City Drive', description: 'Planting trees and caring for them through their first summer.', location: 'Riverside Park', sdgNumber: 13, isPublic: true, ngo: { name: 'Earth Collective', logoUrl: null, isVerified: true }, followers: 18, following: 'VOLUNTEER', hours: 180, volunteers: 31, shifts: 9, nextCall: { startsAt: at(6, 17), title: 'Monthly impact call', open: false }, lastActivity: at(-1) },
+    { id: 'sample-p2', name: 'Read Together', description: 'Reading clubs for children at the community library.', location: 'Community library', sdgNumber: 4, isPublic: false, ngo: { name: 'Bright Minds', logoUrl: null, isVerified: true }, followers: 7, following: null, hours: 96, volunteers: 14, shifts: 6, nextCall: null, lastActivity: at(-4) },
+  ] })],
+  [/^\/api\/impact-rooms\/([^/]+)$/, ({ db: d }) => ok({
+    id: 'sample-p1', name: 'Green City Drive', description: 'Planting trees and caring for them through their first summer.', type: 'Field', location: 'Riverside Park', duration: '3 months', sdgNumber: 13, skills: ['Teamwork', 'Outdoor work'], active: true, isPublic: true, publicUrl: null,
+    ngo: { name: 'Earth Collective', logoUrl: null, websiteUrl: null, sector: 'Environment', isVerified: true },
+    total: { hours: 180, volunteers: 31, shifts: 9 }, month: { hours: 42, volunteers: 12, shifts: 2 }, pledged: { people: 6, hoursPerMonth: 38 },
+    followers: { count: 18, byRole: { VOLUNTEER: 12, SPONSOR: 2, SUPPORTER: 4 }, people: d.classmates.slice(0, 5).map((u, i) => ({ id: u.id, name: u.name, avatar: null, role: 'STUDENT', followRole: i ? 'SUPPORTER' : 'VOLUNTEER' })) },
+    following: 'VOLUNTEER', staff: false, canPost: true,
+    pledge: { hoursPerMonth: 6, months: 3, skill: 'Outdoor work', note: null, startAt: at(-20), endsAt: at(70), running: true, hoursThisMonth: 4, hoursSoFar: 8 },
+    updates: [
+      { id: 'sample-u1', body: '120 saplings are in the ground. Thank you to everyone who came on Saturday!', kind: 'UPDATE', isPublic: true, callId: null, createdAt: at(-1), author: { id: 'sample-t', name: 'Dr. Jane Smith', avatar: null, role: 'TEACHER' }, mine: false, canDelete: false },
+      { id: 'sample-u2', body: 'Can someone bring extra gloves next time? We ran out.', kind: 'UPDATE', isPublic: false, callId: null, createdAt: at(-3), author: { id: d.me.id, name: d.me.name, avatar: null, role: 'STUDENT' }, mine: true, canDelete: true },
+    ],
+    calls: { callId: 'i_sample-p1', canJoin: true, upcoming: [{ id: 'sample-c1', startsAt: at(6, 17), title: 'Monthly impact call', reportAt: null, open: false }], past: [] },
+    shifts: [{ id: 'sample-sh1', title: 'Saturday tree planting', startAt: at(3, 9), endAt: at(3, 13), location: 'Riverside Park', left: 11 }],
+  })],
+  // Daily brief (Stage 4 · 4.9): the sample's day, from its timetable; no AI brief.
+  [/^\/api\/brief$/, ({ db: d }) => {
+    const wd = (new Date().getDay() + 6) % 7;
+    const classes = (d.slots as { courseId: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; room?: { name?: string } }[]).filter((x) => x.dayOfWeek === wd)
+      .map((x) => { const c = d.courses.find((y) => y.id === x.courseId); return { courseId: x.courseId, code: c?.code ?? '', name: c?.name ?? '', start: x.startTime, end: x.endTime, type: x.type ?? 'LECTURE', room: x.room?.name ?? null }; });
+    return ok({ day: new Date().toISOString().slice(0, 10), classes, due: [], calls: [], waiting: [], toGrade: 0, ai: null, aiOn: false, push: false, hour: 7 });
+  }],
+  // Watch together (Stage 4 · 4.8): the sample's courses have no videos (YouTube links still work).
+  [/^\/api\/calls\/([^/]+)\/videos$/, () => ok({ videos: [] })],
+  // Office hours (Stage 4 · 4.7): nobody in the sample keeps office hours right now.
+  [/^\/api\/office-hours$/, ({ db: d }) => ok(d.me.role === 'TEACHER' || d.me.role === 'ADMIN' ? { role: 'teacher', open: false, until: null, topic: null, callId: 'o_sample', waiting: 0, inTurn: 0, avgMin: 5, notes: [] } : { role: 'student', open: [] })],
+  [/^\/api\/office-hours\/notes$/, () => ok([])],
   [/^\/api\/billing\/subscription$/, () => ok({ organization: { id: 'sample-org', name: 'Sample University' }, plan: 'ENTERPRISE', subscribedPlan: 'ENTERPRISE', status: 'active', interval: 'year', currentPeriodEnd: at(200), cancelAtPeriodEnd: false, hasBillingAccount: false })],
   [/^\/api\/admin\/impact$/, ({ db: d }) => ok(d.adminImpact)],
   [/^\/documents$/, ({ db: d }) => ok(d.documents.map((doc) => ({ ...doc, issuedAt: doc.createdAt, user: { name: d.people.aarav.name } })))],
@@ -428,6 +485,8 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     c.messages.push(message);
     return ok(decorateMsg(d, message), 201);
   }],
+  ['PUT', /^\/api\/chat\/snippets$/, ({ body }) => ok({ max: 50, snippets: Array.isArray(body?.snippets) ? body.snippets.slice(0, 50) : [] })],
+  ['PUT', /^\/api\/chat\/folders$/, ({ body }) => ok({ folders: Array.isArray(body?.folders) ? body.folders.slice(0, 10) : [] })],
   ['PATCH', /^\/api\/chat\/conversations\/([^/]+)\/prefs$/, ({ db: d, m, body }) => {
     const c: any = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);
     if (typeof body.pinned === 'boolean') c.prefs.pinned = body.pinned;

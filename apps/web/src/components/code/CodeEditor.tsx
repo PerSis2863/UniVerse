@@ -40,13 +40,15 @@ function frame(type: number, payload?: Uint8Array) {
   return out;
 }
 
-export function CodeEditor({ roomId, lang, me, dark, onStatus, onPeers, onReady }: {
+export function CodeEditor({ roomId, lang, me, dark, onStatus, onPeers, onReady, onPresence }: {
   roomId: string;
   lang: string;
   me: { id: string; name: string };
   dark: boolean;
   onStatus: (s: Status, canEdit: boolean) => void;
   onPeers: (names: string[]) => void;
+  /** Who else is here, with their cursor colour (3.8). */
+  onPresence?: (people: { name: string; color: string }[]) => void;
   /** Gives the page a way to read the current code (for Run). */
   onReady: (getText: () => string) => void;
 }) {
@@ -56,8 +58,8 @@ export function CodeEditor({ roomId, lang, me, dark, onStatus, onPeers, onReady 
   const editSlot = useRef(new Compartment());
   const view = useRef<EditorView | null>(null);
   const [, force] = useState(0);
-  const callbacks = useRef({ onStatus, onPeers, onReady });
-  useEffect(() => { callbacks.current = { onStatus, onPeers, onReady }; });
+  const callbacks = useRef({ onStatus, onPeers, onReady, onPresence });
+  useEffect(() => { callbacks.current = { onStatus, onPeers, onReady, onPresence }; });
 
   useEffect(() => {
     const doc = new Y.Doc();
@@ -89,7 +91,11 @@ export function CodeEditor({ roomId, lang, me, dark, onStatus, onPeers, onReady 
     let retry = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const peers = () => callbacks.current.onPeers([...awareness.getStates().entries()].filter(([id]) => id !== doc.clientID).map(([, s]) => (s as { user?: { name?: string } }).user?.name ?? 'Someone'));
+    const peers = () => {
+      const others = [...awareness.getStates().entries()].filter(([id]) => id !== doc.clientID).map(([, s]) => (s as { user?: { name?: string; color?: string } }).user ?? {});
+      callbacks.current.onPeers(others.map((u) => u.name ?? 'Someone'));
+      callbacks.current.onPresence?.(others.map((u) => ({ name: u.name ?? 'Someone', color: u.color ?? '#6366f1' })));
+    };
     const send = (data: Uint8Array) => { if (ws?.readyState === WebSocket.OPEN) ws.send(data); };
 
     const onDocUpdate = (update: Uint8Array, origin: unknown) => { if (origin !== 'remote') send(frame(DOC, update)); };

@@ -20,12 +20,18 @@ export interface ChatMessage {
     question?: string; options?: string[]; multiple?: boolean; // POLL
     lat?: number; lng?: number; label?: string | null; // LOCATION
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
-    moderated?: 'edited' | 'removed'; team?: boolean; // changed or posted by UniVerse (owner console)
+    moderated?: 'edited' | 'removed' | 'community'; team?: boolean; // changed or posted by UniVerse (owner console)
     viewOnce?: boolean; opened?: boolean; openedCount?: number; // view-once photo / video / voice message
     transcript?: string; voicemail?: boolean; // voice message text (AI); a voicemail left after a missed call
+    album?: { url: string; name: string; size: number | null; mime: string }[]; // IMAGE: several photos as one (Stage 4 · 1.7)
+    waveform?: number[]; // AUDIO: loudness bars (0–31) recorded with it
+    videoNote?: boolean; // VIDEO: a round video note
     link?: { url: string; title: string; description: string | null; site: string } | null; // link preview
     broadcast?: boolean;
     ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`
+    recording?: { id: string; durationSec: number }; // VIDEO / AUDIO: a call's recording (Stage 4 · 2.9)
+    huddle?: { callId: string }; // someone started a huddle, a drop-in voice room in this chat (Stage 4 · 1.11)
+    meetingNotes?: { id: string; title: string; summary: string | null; decisions: string[]; actions: { text: string; who: string; due: string }[]; durationSec?: number }; // a call's meeting notes (Stage 4 · 2.8)
   } | null;
   createdAt: string;
   editedAt: string | null;
@@ -60,12 +66,20 @@ export interface ConversationSummary {
   markedUnread?: boolean;
   pinned?: boolean;
   muted?: boolean;
+  /** Muted until then (far in the future: always). */
+  mutedUntil?: string | null;
   archived?: boolean;
+  /** What I was writing in this chat (on any device), and when. */
+  draft?: string | null;
+  draftAt?: string | null;
   activityAt: string;
 }
 
+/** One of my messages scheduled to send later (Stage 4 · 1.4). */
+export interface ScheduledItem { id: string; body: string; sendAt: string; replyToId: string | null }
+
 export interface UserStatus { presence: 'auto' | 'busy' | 'in_class' | 'studying' | 'sleeping'; statusText: string | null; statusEmoji: string | null; hidden?: boolean; focus?: boolean }
-export interface ChannelInfo { kind: 'TEXT' | 'ANNOUNCE' | 'VOICE'; communityId: string; communityName: string; color: string | null; slowModeSec: number; role: 'OWNER' | 'MOD' | 'MEMBER' | null }
+export interface ChannelInfo { kind: 'TEXT' | 'ANNOUNCE' | 'VOICE'; communityId: string; communityName: string; color: string | null; slowModeSec: number; role: 'OWNER' | 'MOD' | 'MEMBER' | null; /** The community's own emoji (:name:). */ emoji?: { name: string; url: string }[] }
 
 /** A person's custom status or availability, for under their name ("📚 Revising for finals", "In class"). */
 export function statusLine(s: UserStatus | null | undefined): string | null {
@@ -95,7 +109,12 @@ export interface ThreadResponse {
     translateTo?: string | null;
     /** A channel in a community (Discord-style); null for chats and groups. */
     channel?: ChannelInfo | null;
+    /** What I was writing here (on any device), and when. */
+    draft?: string | null;
+    draftAt?: string | null;
   };
+  /** My messages scheduled to send later in this chat, soonest first. */
+  scheduled?: ScheduledItem[];
   /** Stored translations (into `translateTo`) of messages on this page. */
   translations?: Record<string, { text: string; from: string; same: boolean }>;
   typing: string[];
@@ -184,6 +203,18 @@ export function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
 }
 
+/** A message's text without its formatting marks (code fences, quotes, list marks, *bold*…), for previews. */
+export function plainText(body: string): string {
+  return body
+    .replace(/^\s*```[\w+#.-]*\s*$/gm, '')
+    .replace(/```/g, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^\s*[-*•]\s+/gm, '• ')
+    .replace(/(\*\*|__|~~)(.+?)\1/g, '$2')
+    .replace(/(^|[^\w])([*_~`])([^*_~`\n]+?)\2(?!\w)/g, '$1$3')
+    .trim();
+}
+
 export function previewText(m: { type: string; body: string; attachmentName?: string | null; deletedAt?: string | null } | null) {
   if (!m) return 'No messages yet';
   if (m.deletedAt || m.type === 'DELETED') return '🚫 Message deleted';
@@ -196,8 +227,18 @@ export function previewText(m: { type: string; body: string; attachmentName?: st
     case 'POLL': return `📊 ${m.body}`;
     case 'LOCATION': return '📍 Location';
     case 'CONTACT': return `👤 ${m.body}`;
-    default: return m.body.split('\n')[0];
+    default: return plainText(m.body).split('\n').find((l) => l.trim()) ?? '';
   }
+}
+
+/** When a scheduled message goes out: "Today, 18:00", "Tomorrow, 08:00", "Mon 12 Oct, 09:00". */
+export function scheduleLabel(iso: string) {
+  const d = new Date(iso);
+  const days = Math.round((new Date(d.toDateString()).getTime() - new Date(new Date().toDateString()).getTime()) / 86_400_000);
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  if (days === 0) return `Today, ${time}`;
+  if (days === 1) return `Tomorrow, ${time}`;
+  return `${d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}, ${time}`;
 }
 
 export function timeLabel(iso: string) {

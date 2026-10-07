@@ -2,6 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
+import { DailyBrief } from '@/components/dashboard/DailyBrief';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useAuthStore } from '@/store/auth';
@@ -103,6 +104,7 @@ export default function TeacherDashboard() {
           <KpiCard title={t('teacher.pending_grades')} value={pendingGrades.toString()} icon={FileText} color="amber" />
           <KpiCard title={t('teacher.avg_class_score')} value={`${avgClassScore}%`} icon={BarChart3} color="green" />
         </div>
+        <DailyBrief />
         {/* Below the main figures, so it never pushes them down when it appears. */}
         <AccountSetupCard />
 

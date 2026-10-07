@@ -32,7 +32,10 @@ export function audioConstraints(mode: NoiseMode, deviceId?: string | null): Med
     noiseSuppression: mode !== 'off',
     autoGainControl: mode !== 'off',
     channelCount: 1,
-  };
+    // Voice isolation where the device has it (Macs, newer Chrome): keeps your voice and drops
+    // echo and room sound. Unknown constraints are ignored elsewhere.
+    ...(mode !== 'off' ? { voiceIsolation: true } : {}),
+  } as MediaTrackConstraints;
 }
 
 /**
@@ -110,7 +113,7 @@ export async function cleanMic(raw: MediaStreamTrack, mode: NoiseMode): Promise<
     highpass.type = 'highpass';
     highpass.frequency.value = 85;
     const rnnoise = new lib.RnnoiseWorkletNode(ctx, { maxChannels: 1, wasmBinary });
-    const gate = new lib.NoiseGateWorkletNode(ctx, { openThreshold: -52, closeThreshold: -58, holdMs: 150, maxChannels: 1 });
+    const gate = new lib.NoiseGateWorkletNode(ctx, { openThreshold: -48, closeThreshold: -54, holdMs: 180, maxChannels: 1 });
     const out = ctx.createMediaStreamDestination();
     src.connect(highpass).connect(rnnoise).connect(gate).connect(out);
     await ctx.resume().catch(() => {});

@@ -98,6 +98,9 @@ enum TicketPriority {
 model User {
   id          String     @id @default(cuid())
   name        String
+  /// My chat folders (Stage 4 · 1.6), JSON: [{ id, name, emoji, chatIds }] (src/app/api/chat/folders).
+  chatFolders String?
+  chatSnippets String? // saved replies and templates (Stage 4 · 1.9), JSON
   email       String     @unique
   firebaseUid String?    @unique
   role        Role       @default(STUDENT)
@@ -241,6 +244,10 @@ model User {
   assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
   assignmentSubmissions AssignmentSubmission[]
   guardianContacts      GuardianContact[]
+  impactUpdates         ImpactUpdate[]
+  boardComments         BoardComment[]
+  impactFollows         ImpactFollower[]
+  timePledges           TimePledge[]
   livePollsCreated      LivePoll[]             @relation("LivePollAuthor")
   livePollVotes         LivePollVote[]
   codeRoomsCreated      CodeRoom[]             @relation("CodeRoomAuthor")
@@ -252,6 +259,17 @@ model User {
   // Messages: availability (auto | busy | in_class | studying | sleeping | invisible) and a custom
   // status. Busy, in class and sleeping are Focus modes: calls don't ring and pushes wait, except
   // from favourites.
+  scheduledMessages    ScheduledMessage[] @relation("ScheduledMessages")
+  callNotes            CallNote[]         @relation("CallNotes")
+  callRecordings       CallRecording[]    @relation("CallRecordings")
+  ratingsGiven         PeerRating[]       @relation("RatingsGiven")
+  ratingsReceived      PeerRating[]       @relation("RatingsReceived")
+  officeHours          OfficeHours?       @relation("OfficeHours")
+  dailyBrief           DailyBrief?        @relation("DailyBrief")
+  quietHours           QuietHours?        @relation("QuietHours")
+  safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
+  officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
+  officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
   presence             String            @default("auto")
   statusText           String?
   statusEmoji          String?
@@ -581,9 +599,42 @@ model Conversation {
   messages     Message[]
 
   scheduledCalls ScheduledCall[]
+  scheduledMessages ScheduledMessage[]
+  safetyFlags       SafetyFlag[]       @relation("SafetyFlags")
 
   @@index([communityId])
   @@map("conversations")
+}
+
+/// A message set to send later (Stage 4 · 1.4): sent by the 15-minute cron at its quarter hour,
+/// then deleted (src/server/scheduled-messages.ts).
+model ScheduledMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("ScheduledMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  body           String
+  replyToId      String?
+  sendAt         DateTime
+  createdAt      DateTime     @default(now())
+
+  @@index([sendAt])
+  @@index([conversationId, senderId])
+  @@map("scheduled_messages")
+}
+
+/// An earlier version of an edited message (Stage 4 · 1.3): its text and when it was written.
+model MessageEdit {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  body      String
+  writtenAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
+  @@map("message_edits")
 }
 
 model ConversationParticipant {
@@ -602,6 +653,8 @@ model ConversationParticipant {
   archivedAt     DateTime?
   markedUnread   Boolean      @default(false)
   translateTo    String? // auto-translate incoming messages into this language (ISO 639-1); null = off
+  draft          String? // what this person was writing here, on any device (Stage 4 · 1.4)
+  draftAt        DateTime?
 
   @@unique([conversationId, userId])
   @@index([conversationId])
@@ -637,6 +690,8 @@ model Message {
   userStates     MessageUserState[]
   pollVotes      PollVote[]
   translations   MessageTranslation[]
+  edits          MessageEdit[]
+  safetyFlags    SafetyFlag[]         @relation("SafetyFlags")
 
   pinnedAt   DateTime? // pinned to the top of the chat
   pinnedById String?
@@ -852,6 +907,8 @@ model Board {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   members    BoardMember[]
+  comments   BoardComment[]
+  versions   BoardVersion[]
 
   @@index([ownerId, updatedAt])
   @@map("boards")
@@ -1393,12 +1450,17 @@ model NGOProject {
   sdgNumber      Int?
   deadline       DateTime?
   isActive       Boolean   @default(true)
+  roomPublic     Boolean   @default(false) // its impact room has a public page for sponsors (4.12)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   applications         NGOProjectApplication[]
   collaborationProject CollaborationProject?
   shifts               VolunteerShift[]
+  impactUpdates        ImpactUpdate[]
+  impactFollowers      ImpactFollower[]
+  timePledges          TimePledge[]
+  impactCalls          ImpactCall[]
 
   @@index([ngoId])
   @@map("ngo_projects")
@@ -1447,6 +1509,75 @@ model ShiftCheckin {
   @@unique([shiftId, studentId])
   @@index([studentId])
   @@map("shift_checkins")
+}
+
+/// Impact rooms (Stage 4 · 4.12, src/server/impact-rooms.ts): a post in a project's room. Staff
+/// (admins, teachers) may make one public (shown on the room's public page); reports of the
+/// monthly impact call are kind REPORT.
+model ImpactUpdate {
+  id        String     @id @default(cuid())
+  projectId String
+  project   NGOProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  kind      String     @default("UPDATE") // UPDATE | NOTES (impact call notes) | REPORT
+  isPublic  Boolean    @default(false)
+  callId    String? // the impact call it's about
+  createdAt DateTime   @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([authorId])
+  @@map("impact_updates")
+}
+
+/// Someone who follows an impact room: as a volunteer, a sponsor or a supporter.
+model ImpactFollower {
+  projectId String
+  project   NGOProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String     @default("SUPPORTER") // VOLUNTEER | SPONSOR | SUPPORTER
+  createdAt DateTime   @default(now())
+
+  @@id([projectId, userId])
+  @@index([userId])
+  @@map("impact_followers")
+}
+
+/// A donation of time: hours a month for some months, checked against verified shift hours.
+model TimePledge {
+  id            String     @id @default(cuid())
+  projectId     String
+  project       NGOProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hoursPerMonth Int
+  months        Int        @default(3)
+  skill         String?
+  note          String?
+  startAt       DateTime   @default(now())
+  createdAt     DateTime   @default(now())
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("time_pledges")
+}
+
+/// The monthly live impact call of a room (call id i_<project>), and its report for sponsors.
+model ImpactCall {
+  id          String     @id @default(cuid())
+  projectId   String
+  project     NGOProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startsAt    DateTime
+  title       String
+  report      Json?
+  reportAt    DateTime?
+  createdById String
+  createdAt   DateTime   @default(now())
+
+  @@index([projectId, startsAt])
+  @@map("impact_calls")
 }
 
 model NGOProjectApplication {
@@ -2002,6 +2133,31 @@ model ErrorReport {
   @@map("error_reports")
 }
 
+/// How one person's call went (src/components/call/CallView.tsx → POST /api/calls/:id/stat), for the
+/// owner console's Calls tab: connection numbers only, never what was said or shown.
+model CallStat {
+  id         String   @id @default(cuid())
+  callId     String
+  userId     String
+  type       String // chat, group, class, room
+  mode       String // p2p, sfu
+  peers      Int      @default(0) // most other people at once
+  seconds    Int      @default(0) // time connected to someone
+  setupMs    Int? // from "Join" to the first connection
+  worstRttMs Int?
+  worstLoss  Float? // 0..1, packets lost in the worst reading
+  relay      Boolean  @default(false) // went through the TURN relay
+  audioOnly  Boolean  @default(false) // the audio-only fallback switched on
+  failure    String? // media, ticket, connect, dropped
+  device     String? // "Chrome on Mac"
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([callId])
+  @@map("call_stats")
+}
+
 /// Machine translations of chat messages, one per message and language, shared by everyone in the
 /// conversation (so a group of 30 costs one translation, not 30). Deleted when the message is edited.
 model MessageTranslation {
@@ -2475,6 +2631,7 @@ model CodeRoom {
   title       String
   language    String   @default("javascript") // javascript, typescript, python, java, cpp
   locked      Boolean  @default(false) // only the teacher (and the creator) can edit
+  tests       String? // JSON [{ name, code }]: the teacher's checks, run in the browser (Stage 4 · 3.6)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -2544,6 +2701,238 @@ model VoiceSession {
 /// "Class notes" in a class call; everyone's captions are collected by the teacher's browser and
 /// sent here once, when notes stop. One AI request makes the pack. The transcript (text only,
 /// never audio) is deleted after 90 days by the daily job; the pack itself stays with the course.
+/// A teacher's office hours (Stage 4 · 4.7; src/server/office-hours.ts): open until when, about what.
+/// Students queue in the call room o_<teacherId>.
+model OfficeHours {
+  teacherId  String    @id
+  teacher    User      @relation("OfficeHours", fields: [teacherId], references: [id], onDelete: Cascade)
+  open       Boolean   @default(false)
+  until      DateTime?
+  topic      String?
+  /// When the teacher's students were last told office hours opened (at most every few hours).
+  notifiedAt DateTime?
+  updatedAt  DateTime  @default(now())
+
+  @@index([open, until])
+  @@map("office_hours")
+}
+
+/// Daily brief (Stage 4 · 4.9): the morning push (on, time zone, hour, next due in UTC) and today's
+/// AI brief, one per person per day (src/server/daily-brief.ts).
+model DailyBrief {
+  userId    String    @id
+  user      User      @relation("DailyBrief", fields: [userId], references: [id], onDelete: Cascade)
+  push      Boolean   @default(true)
+  timeZone  String    @default("UTC")
+  hour      Int       @default(7)
+  nextAt    DateTime?
+  sentAt    DateTime?
+  aiDay     String?
+  ai        String?
+  updatedAt DateTime  @default(now())
+
+  @@index([push, nextAt])
+  @@map("daily_briefs")
+}
+
+/// The school's safety policy (Stage 4 · 4.10; one row, "main"; src/server/safety.ts): the chat
+/// safety check, recording calls with students under 18, quiet hours for them, and whether students
+/// without a birth date count as under 18.
+model SchoolPolicy {
+  id             String   @id
+  guard          Boolean  @default(true)
+  recordMinors   Boolean  @default(false)
+  quietMinors    Boolean  @default(true)
+  quietStart     String   @default("22:00")
+  quietEnd       String   @default("07:00")
+  studentsMinors Boolean  @default(false)
+  updatedAt      DateTime @default(now())
+  updatedById    String?
+
+  @@map("school_policy")
+}
+
+/// Quiet hours (Stage 4 · 4.10): no push notifications between start and end in this time zone.
+/// `bySchool`: the school's quiet hours for a student under 18 (they can't turn them off).
+model QuietHours {
+  userId    String   @id
+  user      User     @relation("QuietHours", fields: [userId], references: [id], onDelete: Cascade)
+  on        Boolean  @default(true)
+  start     String   @default("22:00")
+  end       String   @default("07:00")
+  timeZone  String   @default("UTC")
+  bySchool  Boolean  @default(false)
+  updatedAt DateTime @default(now())
+
+  @@index([bySchool])
+  @@map("quiet_hours")
+}
+
+/// A chat message the safety check flagged for the school's moderators (Stage 4 · 4.10).
+model SafetyFlag {
+  id             String       @id @default(cuid())
+  messageId      String?
+  message        Message?     @relation("SafetyFlags", fields: [messageId], references: [id], onDelete: SetNull)
+  conversationId String
+  conversation   Conversation @relation("SafetyFlags", fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("SafetyFlagsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  kind           String // bullying, threat, self_harm, sexual, personal_info, hate, other
+  severity       String // low, medium, high
+  reason         String?
+  excerpt        String
+  source         String // ai, words
+  repeats        Int          @default(0)
+  status         String       @default("OPEN") // OPEN, REVIEWED, DISMISSED
+  reviewedById   String?
+  reviewedAt     DateTime?
+  note           String?
+  createdAt      DateTime     @default(now())
+
+  @@index([status, createdAt])
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("safety_flags")
+}
+
+/// A teacher's private note about a student's office hours visit.
+model OfficeNote {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation("OfficeNotesWritten", fields: [teacherId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation("OfficeNotesAbout", fields: [studentId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([teacherId, createdAt])
+  @@index([teacherId, studentId])
+  @@map("office_notes")
+}
+
+/// "Ask your semester" (Stage 4 · 4.5; src/server/semester.ts): a searchable passage from a class,
+/// study pack, material, document, graded work or meeting notes. The full-text index (memory_fts,
+/// FTS5) lives beside it in the migration; Prisma doesn't model it.
+model MemoryPassage {
+  id    Int     @id @default(autoincrement())
+  kind  String // transcript | pack | material | doc | work | meeting
+  ref   String // the source's id
+  scope String // who may search it: course:<id> | doc:<id> | user:<id>
+  title String
+  body  String
+  link  String // where it opens; {portal} = the reader's portal (student, teacher, admin)
+  at    Int? // seconds into a class (a transcript passage)
+  day   String? // when (YYYY-MM-DD)
+
+  @@index([kind, ref])
+  @@index([scope])
+  @@map("memory_passages")
+}
+
+/// What has been indexed for "Ask your semester", at which version (stamp).
+model MemorySource {
+  id        String   @id @default(cuid())
+  kind      String
+  ref       String
+  stamp     String
+  indexedAt DateTime @default(now())
+
+  @@unique([kind, ref])
+  @@map("memory_sources")
+}
+
+/// Fair group work (Stage 4 · 4.3): how many edits someone made to a document or code room on a day,
+/// counted by the live room (cloudflare/worker.ts CodeRoom) and added up here.
+model Contribution {
+  id        String   @id @default(cuid())
+  userId    String
+  tool      String // doc | code
+  refId     String // the document or code room
+  day       String // YYYY-MM-DD (UTC)
+  edits     Int      @default(0)
+  bytes     Int      @default(0)
+  updatedAt DateTime @default(now())
+
+  @@unique([userId, tool, refId, day])
+  @@index([tool, refId, day])
+  @@map("contributions")
+}
+
+/// How a teammate rates someone's part in a class's or study group's work (1–5), for the teacher.
+model PeerRating {
+  id        String   @id @default(cuid())
+  spaceKind String // course | group
+  spaceId   String
+  raterId   String
+  rater     User     @relation("RatingsGiven", fields: [raterId], references: [id], onDelete: Cascade)
+  rateeId   String
+  ratee     User     @relation("RatingsReceived", fields: [rateeId], references: [id], onDelete: Cascade)
+  score     Int
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([spaceKind, spaceId, raterId, rateeId])
+  @@index([spaceKind, spaceId])
+  @@map("peer_ratings")
+}
+
+/// A recording of a call that isn't a class (Stage 4 · 2.9; src/server/call-recordings.ts), saved where
+/// the call happened; kept 90 days. Class recordings are course materials.
+model CallRecording {
+  id             String   @id @default(cuid())
+  callId         String
+  kind           String // chat | room | group | link
+  conversationId String? // the chat it was posted to
+  groupId        String?
+  messageId      String?
+  noteId         String? // the call's meeting notes, for chapters and the transcript
+  createdById    String
+  createdBy      User     @relation("CallRecordings", fields: [createdById], references: [id], onDelete: Cascade)
+  url            String
+  mime           String
+  size           Int      @default(0)
+  durationSec    Int      @default(0)
+  people         String   @default("[]") // JSON account ids of who was in the call
+  createdAt      DateTime @default(now())
+
+  @@index([callId])
+  @@index([conversationId])
+  @@index([groupId])
+  @@index([createdById, createdAt])
+  @@map("call_recordings")
+}
+
+/// Meeting notes for a call that isn't a class (Stage 4 · 2.8; src/server/meeting-notes.ts): made from
+/// the live captions when someone turns notes on, posted where the call happened.
+model CallNote {
+  id             String   @id @default(cuid())
+  callId         String
+  kind           String // chat | room | group | link | impact (an impact room's call, 4.12)
+  conversationId String? // chat calls and voice rooms: the chat the notes were posted to
+  groupId        String? // study group calls
+  messageId      String? // the chat message with the notes
+  createdById    String
+  createdBy      User     @relation("CallNotes", fields: [createdById], references: [id], onDelete: Cascade)
+  title          String
+  startedAt      DateTime
+  durationSec    Int      @default(0)
+  status         String   @default("READY") // READY | PENDING (AI wasn't available; can be made later)
+  summary        String?
+  decisions      String   @default("[]") // JSON string[]
+  actions        String   @default("[]") // JSON [{ text, who, due }]
+  chapters       String   @default("[]") // JSON [{ t, title }]
+  transcript     String? // JSON [{ t, who, text }]; removed after 90 days
+  people         String   @default("[]") // JSON user ids of who was in the call (call links have no members to go by)
+  createdAt      DateTime @default(now())
+
+  @@index([callId])
+  @@index([conversationId])
+  @@index([groupId])
+  @@index([createdById, createdAt])
+  @@map("call_notes")
+}
+
 model ClassSession {
   id                  String   @id @default(cuid())
   courseId            String
@@ -2559,6 +2948,11 @@ model ClassSession {
   quizId              String?
   recordingMaterialId String?
   transcript          String? // JSON [{ t, who, text }]; removed after 90 days
+  pulse               String   @default("[]") // JSON [{ t, lost, got, total }]: classroom pulse counts over the class (Stage 4 · 4.4)
+  reexplain           String   @default("[]") // JSON [{ t, topic, why }]: AI suggestions for the teacher, from the pulse
+  chapters            String   @default("[]") // JSON [{ t, title }]: smart replay (Stage 4 · 4.6)
+  recap               String? // a recap to read in about two minutes
+  practice            String   @default("[]") // JSON [{ question, options, answer (index), explain, t }]: practice questions for students
   createdAt           DateTime @default(now())
 
   @@index([courseId, createdAt])
@@ -2605,12 +2999,31 @@ model Community {
   color       String            @default("#4f46e5")
   inviteCode  String            @unique
   discoverable Boolean          @default(false) // listed under Discover, open to anyone in the network (upgrade 9)
+  automodWords String? // JSON string[]: words members' messages may not contain (Stage 4 · 1.13)
+  automodAction String          @default("BLOCK") // BLOCK (refused) | FLAG (sent, and reported to the moderators)
   createdById String?
   createdAt   DateTime          @default(now())
   members     CommunityMember[]
   channels    Conversation[]
+  emoji       CommunityEmoji[]
+  reports     CommunityReport[]
+  modLog      CommunityModLog[]
 
   @@map("communities")
+}
+
+/// A community's own emoji (Stage 4 · 1.2), up to 50, used as :name: in its channels and reactions.
+model CommunityEmoji {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  name        String
+  url         String
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([communityId, name])
+  @@map("community_emoji")
 }
 
 model CommunityMember {
@@ -2620,11 +3033,50 @@ model CommunityMember {
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   role        String    @default("MEMBER") // OWNER | MOD | MEMBER
+  timeoutUntil DateTime? // timed out by a moderator: can read, can't post (Stage 4 · 1.13)
   joinedAt    DateTime  @default(now())
 
   @@unique([communityId, userId])
   @@index([userId])
   @@map("community_members")
+}
+
+/// A message reported to a community's moderators (Stage 4 · 1.13): by a member, or by automod
+/// (reporterId null).
+model CommunityReport {
+  id             String    @id @default(cuid())
+  communityId    String
+  community      Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  conversationId String
+  messageId      String
+  reporterId     String?
+  senderId       String
+  reason         String?
+  excerpt        String
+  status         String    @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  resolvedById   String?
+  resolvedAt     DateTime?
+  outcome        String? // removed | timeout:<minutes> | dismissed
+  createdAt      DateTime  @default(now())
+
+  @@unique([messageId, reporterId])
+  @@index([communityId, status])
+  @@map("community_reports")
+}
+
+/// What a community's moderators did (Stage 4 · 1.13), for the owner and moderators to see.
+model CommunityModLog {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  actorId     String?
+  action      String // remove_message | timeout | untimeout | remove_member | role | automod | dismiss_report
+  targetId    String?
+  detail      String?
+  createdAt   DateTime  @default(now())
+
+  @@index([communityId, createdAt])
+  @@map("community_mod_log")
 }
 
 // "/remind" in a chat: an in-app (and push) reminder at a time, sent by the 15-minute cron.
@@ -2685,4 +3137,232 @@ model CourseCampus {
   @@id([courseId, campusId])
   @@index([campusId])
   @@map("course_campuses")
+}
+
+/// Task boards (Stage 4 · 3.3): Kanban lists of cards, for a person and whoever they add, or for a
+/// whole course (src/server/tasks.ts).
+model TaskBoard {
+  id        String            @id @default(cuid())
+  title     String
+  ownerId   String
+  courseId  String? // everyone in the course can see and edit it
+  groupId   String? // or everyone in the study group (Stage 4 · 3.1)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  members   TaskBoardMember[]
+  lists     TaskList[]
+  tasks     Task[]
+
+  @@index([ownerId])
+  @@index([courseId])
+  @@index([groupId])
+  @@map("task_boards")
+}
+
+model TaskBoardMember {
+  id      String    @id @default(cuid())
+  boardId String
+  board   TaskBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId  String
+  role    String    @default("EDITOR") // EDITOR or VIEWER
+  addedAt DateTime  @default(now())
+
+  @@unique([boardId, userId])
+  @@index([userId])
+  @@map("task_board_members")
+}
+
+model TaskList {
+  id        String    @id @default(cuid())
+  boardId   String
+  board     TaskBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title     String
+  position  Float     @default(0)
+  createdAt DateTime  @default(now())
+  tasks     Task[]
+
+  @@index([boardId])
+  @@map("task_lists")
+}
+
+model Task {
+  id          String        @id @default(cuid())
+  boardId     String
+  board       TaskBoard     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  listId      String
+  list        TaskList      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?
+  assigneeId  String?
+  dueAt       DateTime?
+  position    Float         @default(0)
+  checklist   String? // JSON [{ text, done }]
+  doneAt      DateTime?
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  comments    TaskComment[]
+
+  @@index([boardId])
+  @@index([assigneeId, doneAt])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@map("task_comments")
+}
+
+/// Documents (Stage 4 · 3.2): written together live (Tiptap + Yjs through the CodeRoom Durable
+/// Object, room "doc:<id>"); versions and comments here (src/server/docs.ts).
+model Doc {
+  id        String       @id @default(cuid())
+  title     String
+  ownerId   String
+  courseId  String? // everyone in the course can open and edit it
+  groupId   String? // or everyone in the study group (Stage 4 · 3.1)
+  conversationId String? @unique // or a chat's canvas: everyone in the chat (Stage 4 · 1.12)
+  preview   String? // the start of the text, for lists and search
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  members   DocMember[]
+  versions  DocVersion[]
+  comments  DocComment[]
+
+  @@index([ownerId])
+  @@index([courseId])
+  @@index([groupId])
+  @@map("docs")
+}
+
+model DocMember {
+  id      String   @id @default(cuid())
+  docId   String
+  doc     Doc      @relation(fields: [docId], references: [id], onDelete: Cascade)
+  userId  String
+  role    String   @default("EDITOR") // EDITOR or VIEWER
+  addedAt DateTime @default(now())
+
+  @@unique([docId, userId])
+  @@index([userId])
+  @@map("doc_members")
+}
+
+model DocVersion {
+  id        String   @id @default(cuid())
+  docId     String
+  doc       Doc      @relation(fields: [docId], references: [id], onDelete: Cascade)
+  html      String
+  authorId  String
+  name      String? // a version someone named ("Before feedback")
+  createdAt DateTime @default(now())
+
+  @@index([docId, createdAt])
+  @@map("doc_versions")
+}
+
+model DocComment {
+  id         String    @id @default(cuid())
+  docId      String
+  doc        Doc       @relation(fields: [docId], references: [id], onDelete: Cascade)
+  userId     String
+  quote      String? // the text it's about
+  body       String
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([docId])
+  @@map("doc_comments")
+}
+
+/// A folder in a space's files hub (Stage 4 · 3.7, src/server/space-files.ts). A space is a class
+/// (spaceKind "course") or a study group ("group").
+model SpaceFolder {
+  id          String        @id @default(cuid())
+  spaceKind   String
+  spaceId     String
+  parentId    String?
+  parent      SpaceFolder?  @relation("SpaceFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    SpaceFolder[] @relation("SpaceFolderTree")
+  name        String
+  createdById String
+  createdAt   DateTime      @default(now())
+  files       SpaceFile[]
+
+  @@index([spaceKind, spaceId])
+  @@map("space_folders")
+}
+
+/// A file in a space's files hub: the current version's upload, with every version kept.
+model SpaceFile {
+  id          String             @id @default(cuid())
+  spaceKind   String
+  spaceId     String
+  folderId    String?
+  folder      SpaceFolder?       @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  name        String
+  url         String
+  mime        String
+  size        Int
+  createdById String
+  updatedById String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @default(now())
+  versions    SpaceFileVersion[]
+
+  @@index([spaceKind, spaceId, folderId])
+  @@map("space_files")
+}
+
+model SpaceFileVersion {
+  id           String    @id @default(cuid())
+  fileId       String
+  file         SpaceFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  url          String
+  mime         String
+  size         Int
+  note         String?
+  uploadedById String
+  createdAt    DateTime  @default(now())
+
+  @@index([fileId, createdAt])
+  @@map("space_file_versions")
+}
+
+/// A comment on a shape of a board (Stage 4 · 3.4).
+model BoardComment {
+  id         String    @id @default(cuid())
+  boardId    String
+  board      Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  elementId  String
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body       String
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([boardId, createdAt])
+  @@map("board_comments")
+}
+
+/// A saved version of a board (Stage 4 · 3.4): its elements as JSON, named or automatic.
+model BoardVersion {
+  id          String   @id @default(cuid())
+  boardId     String
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name        String?
+  elements    String
+  count       Int
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([boardId, createdAt])
+  @@map("board_versions")
 }

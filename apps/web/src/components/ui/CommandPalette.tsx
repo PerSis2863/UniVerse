@@ -1,11 +1,11 @@
 'use client';
-import { lowDataOn, useLowData } from '@/store/low-data';
+import { lowDataOn, twoGOn, useLowData } from '@/store/low-data';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { BookOpen, Briefcase, ChevronRight, Command, Compass, CornerDownLeft, FileSearch, FlaskConical, HeartHandshake, Library, Loader2, MessageSquarePlus, Moon, Search, Sun, User, Users, type LucideIcon, Gauge } from 'lucide-react';
+import { BookOpen, Briefcase, ChevronRight, Command, Compass, CornerDownLeft, FileSearch, FlaskConical, HeartHandshake, Library, Loader2, MessageSquarePlus, Moon, Search, Sun, User, Users, type LucideIcon, Gauge, SignalLow } from 'lucide-react';
 import { isSampleMode } from '@/lib/sample-mode';
 import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
@@ -120,6 +120,10 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       {
         id: 'act:low-data', label: lowDataOn() ? 'Turn off low-data mode' : 'Turn on low-data mode', hint: 'Photos load on tap, fewer refreshes', icon: Gauge, group: 'Actions', keywords: 'data saver slow connection mobile data bandwidth offline',
         run: () => { const on = !lowDataOn(); useLowData.getState().setEnabled(on); import('sonner').then((m) => m.toast.success(on ? 'Low-data mode is on' : 'Low-data mode is off')); },
+      },
+      {
+        id: 'act:2g', label: twoGOn() ? 'Turn off 2G mode' : 'Turn on 2G mode', hint: 'Voice-only calls at 16 kbps, plus low-data mode', icon: SignalLow, group: 'Actions', keywords: '2g edge weak signal slow connection data saver audio only voice calls bandwidth',
+        run: () => { const on = !twoGOn(); useLowData.getState().setTwoG(on); import('sonner').then((m) => m.toast.success(on ? '2G mode is on: calls are voice only' : '2G mode is off')); },
       },
       isSampleMode()
         ? { id: 'act:sample-off', label: 'Exit sample mode', hint: 'Back to your real account', icon: FlaskConical, group: 'Actions', keywords: 'demo example sample data exit', run: stopSampleMode }

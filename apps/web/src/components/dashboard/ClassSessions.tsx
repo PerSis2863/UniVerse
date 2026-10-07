@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BookmarkPlus, CheckCircle2, ChevronDown, Clock, Layers, ListChecks, Loader2, NotebookPen, PlayCircle, Sparkles, Trash2 } from 'lucide-react';
+import { BookmarkPlus, CheckCircle2, ChevronDown, Clock, Languages, Layers, ListChecks, Loader2, NotebookPen, PlayCircle, Sparkles, Trash2 } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { languageName } from '@/lib/languages';
+import { useLanguageStore } from '@/store/language';
+import { PulseTimeline, type PulsePoint, type Reexplain } from './PulseTimeline';
+import { PracticeQuestions, ReplayPanel, type Chapter, type Practice } from './SmartReplay';
 
 // Course board → Class sessions (upgrade 1, AI class companion). Each class call the teacher took
 // class notes in becomes a study pack: summary, notes, key moments (with the recording when there
@@ -19,6 +23,10 @@ export interface ClassSession {
   id: string; startedAt: string; durationSec: number; status: 'READY' | 'PENDING'; summary: string | null;
   notes: string[]; keyMoments: { t: number; text: string }[]; flashcards: { front: string; back: string }[];
   quiz: { id: string; status: string } | null; recordingMaterialId: string | null;
+  /** Teacher only: the classroom pulse over the class, and what to re-explain (Stage 4 · 4.4). */
+  pulse?: PulsePoint[]; reexplain?: Reexplain[];
+  /** Smart replay (Stage 4 · 4.6); `canMakeReplay`: the teacher can make it for an older class. */
+  chapters?: Chapter[]; recap?: string | null; practice?: Practice[]; canMakeReplay?: boolean;
 }
 
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
@@ -48,19 +56,58 @@ export function ClassSessions({ sessions, canManage, materials, openId, refresh 
   return (
     <div className="space-y-3 stagger">
       {sessions.map((s) => (
-        <SessionCard key={s.id} s={s} canManage={canManage} open={open === s.id} onToggle={() => setOpen(open === s.id ? null : s.id)}
+        <SessionCard key={s.id} s={s} canManage={canManage} open={open === s.id} linked={openId === s.id} onToggle={() => setOpen(open === s.id ? null : s.id)}
           recordingUrl={materials.find((m) => m.id === s.recordingMaterialId)?.fileUrl ?? null} refresh={refresh} />
       ))}
     </div>
   );
 }
 
-function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
-  s: ClassSession; canManage: boolean; open: boolean; onToggle: () => void; recordingUrl: string | null; refresh: () => void;
+function SessionCard({ s, canManage, open, linked, onToggle, recordingUrl, refresh }: {
+  s: ClassSession; canManage: boolean; open: boolean; linked: boolean; onToggle: () => void; recordingUrl: string | null; refresh: () => void;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<null | 'cards' | 'retry' | 'delete'>(null);
+  const [busy, setBusy] = useState<null | 'cards' | 'retry' | 'delete' | 'tr'>(null);
   const [flipped, setFlipped] = useState<number | null>(null);
+  // The pack in my language (Stage 4 · 4.1): made once per language, shared with the class.
+  const lang = useLanguageStore((st) => st.language);
+  const [tr, setTr] = useState<{ lang: string; pack: Pick<ClassSession, 'summary' | 'notes' | 'keyMoments' | 'flashcards' | 'chapters' | 'recap' | 'practice'> } | null>(null);
+  const [trOn, setTrOn] = useState(false);
+  const view = trOn && tr?.lang === lang ? { ...s, ...tr.pack } : s;
+  // The replay's player: chapters, search results, key moments and practice questions jump in it.
+  const video = useRef<HTMLVideoElement>(null);
+  const seek = (t: number) => {
+    const v = video.current;
+    if (v) { v.currentTime = t; void v.play().catch(() => {}); v.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    else if (recordingUrl) window.open(`${recordingUrl}#t=${t}`, '_blank', 'noopener');
+  };
+  // Opened from a link to a class moment (…&t=<seconds>, e.g. from "Ask your semester"): the replay starts there.
+  useEffect(() => {
+    if (!linked) return;
+    const t = Number(new URLSearchParams(window.location.search).get('t'));
+    if (!Number.isFinite(t) || t <= 0) return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      const v = video.current;
+      if (!v && ++tries < 20) return;
+      clearInterval(timer);
+      if (!v) return;
+      const go = () => { v.currentTime = t; };
+      if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
+      v.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 150);
+    return () => clearInterval(timer);
+  }, [linked]);
+  const translate = async () => {
+    if (trOn) return setTrOn(false);
+    if (tr?.lang === lang) return setTrOn(true);
+    setBusy('tr');
+    try {
+      const r = await authedJson<{ same: boolean; pack: ClassSession | null }>(`/api/class-sessions/${s.id}/translation?to=${lang}`);
+      if (r.same || !r.pack) toast(`This study pack is already in ${languageName(lang)}.`);
+      else { setTr({ lang, pack: r.pack }); setTrOn(true); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
+  };
 
   const addCards = async () => {
     setBusy('cards');
@@ -125,31 +172,40 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
               ) : (
                 <>
                   <section>
-                    <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Summary</h4>
-                    <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">{s.summary}</p>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500">Summary</h4>
+                      <button type="button" onClick={() => void translate()} disabled={busy === 'tr'} aria-pressed={trOn}
+                        className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors', trOn ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/15')}>
+                        {busy === 'tr' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Languages className="w-3.5 h-3.5" />}
+                        {trOn ? 'Show original' : `Read in ${languageName(lang)}`}
+                      </button>
+                    </div>
+                    <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">{view.summary}</p>
                   </section>
 
-                  {s.notes.length > 0 && (
+                  <ReplayPanel sessionId={s.id} chapters={view.chapters ?? []} recap={view.recap ?? null} recordingUrl={recordingUrl} canMakeReplay={!!s.canMakeReplay} video={video} seek={seek} onMade={refresh} />
+
+                  {view.notes.length > 0 && (
                     <section>
                       <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Notes</h4>
                       <ul className="space-y-1.5">
-                        {s.notes.map((n, i) => (
+                        {view.notes.map((n, i) => (
                           <li key={i} className="text-sm text-zinc-700 dark:text-zinc-300 flex gap-2"><span className="mt-2 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />{n}</li>
                         ))}
                       </ul>
                     </section>
                   )}
 
-                  {s.keyMoments.length > 0 && (
+                  {view.keyMoments.length > 0 && (
                     <section>
                       <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-1.5">Key moments</h4>
                       <ol className="space-y-1">
-                        {s.keyMoments.map((k, i) => {
+                        {view.keyMoments.map((k, i) => {
                           const inner = (<><span className="font-mono text-xs tabular-nums px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 shrink-0">{clock(k.t)}</span><span className="min-w-0">{k.text}</span></>);
                           return (
                             <li key={i}>
                               {recordingUrl ? (
-                                <a href={`${recordingUrl}#t=${k.t}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300 rounded-lg p-1.5 -mx-1.5 hover:bg-indigo-500/[0.06]" title="Watch from here">{inner}</a>
+                                <button type="button" onClick={() => seek(k.t)} className="w-full text-left flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300 rounded-lg p-1.5 -mx-1.5 hover:bg-indigo-500/[0.06]" title="Watch from here">{inner}</button>
                               ) : <div className="flex items-start gap-2.5 text-sm text-zinc-700 dark:text-zinc-300 p-1.5 -mx-1.5">{inner}</div>}
                             </li>
                           );
@@ -158,7 +214,9 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                     </section>
                   )}
 
-                  {s.flashcards.length > 0 && (
+                  {canManage && <PulseTimeline pulse={s.pulse ?? []} reexplain={s.reexplain ?? []} durationSec={s.durationSec} recordingUrl={recordingUrl} />}
+
+                  {view.flashcards.length > 0 && (
                     <section>
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <h4 className="text-xs font-bold uppercase tracking-wide text-zinc-500 inline-flex items-center gap-1.5"><Layers className="w-3.5 h-3.5" /> Flashcards <span className="font-normal normal-case">(tap to flip)</span></h4>
@@ -169,7 +227,7 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {s.flashcards.slice(0, 6).map((c, i) => (
+                        {view.flashcards.slice(0, 6).map((c, i) => (
                           <button key={i} type="button" onClick={() => setFlipped(flipped === i ? null : i)} className="text-left min-w-0 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 p-3 lift" style={{ perspective: 800 }}>
                             <AnimatePresence mode="wait" initial={false}>
                               <motion.p key={flipped === i ? 'back' : 'front'} initial={{ rotateX: -80, opacity: 0 }} animate={{ rotateX: 0, opacity: 1 }} exit={{ rotateX: 80, opacity: 0 }} transition={{ duration: 0.18 }}
@@ -180,9 +238,11 @@ function SessionCard({ s, canManage, open, onToggle, recordingUrl, refresh }: {
                           </button>
                         ))}
                       </div>
-                      {s.flashcards.length > 6 && <p className="mt-1.5 text-xs text-zinc-500">+{s.flashcards.length - 6} more in the pack</p>}
+                      {view.flashcards.length > 6 && <p className="mt-1.5 text-xs text-zinc-500">+{s.flashcards.length - 6} more in the pack</p>}
                     </section>
                   )}
+
+                  <PracticeQuestions practice={view.practice ?? []} canWatch={!!recordingUrl} seek={seek} />
 
                   {s.quiz && (
                     <section className="flex flex-wrap items-center gap-2 rounded-xl bg-indigo-500/[0.06] border border-indigo-500/15 p-3">

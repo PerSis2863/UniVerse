@@ -1,52 +1,24 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Eye, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, Download, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck } from 'lucide-react';
+import { Ban, BarChart3, Eye, Flag, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
+import { fallbackBars, useVoice, voice } from '@/lib/voice-player';
+import { VideoNoteBubble } from './VideoNote';
+import { FileBubble } from './FilePreview';
+import { HuddleCard } from './Huddle';
 import { haptic } from '@/lib/haptics';
-import { type ChatMessage, REACTIONS, formatBytes } from './chat-client';
+import { type ChatMessage, REACTIONS, formatBytes, plainText } from './chat-client';
+import { RichText } from './RichText';
+import { MeetingNotesCard } from '@/components/call/MeetingNotes';
+import { EmojiGlyph, EmojiPicker } from './EmojiPicker';
 import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
-
-const URL_SPLIT = /(https?:\/\/[^\s]+)/g;
-const MENTION_SPLIT = /(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)/g;
-
-// WhatsApp-style formatting: *bold*, _italic_, ~strikethrough~ and `code`.
-const FORMAT_SPLIT = /(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~|`[^`\n]+`)/g;
-function Formatted({ text, mine }: { text: string; mine: boolean }) {
-  return (
-    <>
-      {text.split(FORMAT_SPLIT).map((t, k) => {
-        if (t.length > 2 && t.startsWith('*') && t.endsWith('*')) return <strong key={k}>{t.slice(1, -1)}</strong>;
-        if (t.length > 2 && t.startsWith('_') && t.endsWith('_')) return <em key={k}>{t.slice(1, -1)}</em>;
-        if (t.length > 2 && t.startsWith('~') && t.endsWith('~')) return <s key={k}>{t.slice(1, -1)}</s>;
-        if (t.length > 2 && t.startsWith('`') && t.endsWith('`')) return <code key={k} className={cn('px-1 py-0.5 rounded font-mono text-[0.85em]', mine ? 'bg-white/15' : 'bg-zinc-200/70 dark:bg-white/10')}>{t.slice(1, -1)}</code>;
-        return <span key={k}>{t}</span>;
-      })}
-    </>
-  );
-}
-
-function RichText({ text, mine }: { text: string; mine: boolean }) {
-  return (
-    <span className="whitespace-pre-wrap break-words">
-      {text.split(URL_SPLIT).map((part, i) =>
-        /^https?:\/\/\S+$/.test(part) ? (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={cn('underline underline-offset-2 break-all', mine ? 'text-white' : 'text-indigo-500 dark:text-indigo-300')}>
-            {part}
-          </a>
-        ) : (
-          part.split(MENTION_SPLIT).map((p, j) =>
-            /^@[A-Za-z]/.test(p) ? <span key={`${i}-${j}`} className={cn('font-semibold', mine ? 'text-sky-200' : 'text-indigo-500 dark:text-indigo-300')}>{p}</span> : <Formatted key={`${i}-${j}`} text={p} mine={mine} />,
-          )
-        ),
-      )}
-    </span>
-  );
-}
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
 const AVATAR_GRADIENTS = [
@@ -77,8 +49,54 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
   );
 }
 
-/** Voice-note player: play/pause, scrubbable progress and 1× / 1.5× / 2× speed. */
-export function VoicePlayer({ src, mine, durationSec }: { src: string; mine: boolean; durationSec?: number }) {
+/**
+ * Voice-note player (Stage 4 · 1.7): one player for the whole app (src/lib/voice-player.ts), so it
+ * keeps playing when you open another chat or page (MiniPlayer). Tap or drag along the waveform to
+ * move; 1× / 1.5× / 2×.
+ */
+export function VoicePlayer({ src, mine, durationSec, title = 'Voice message', waveform }: { src: string; mine: boolean; durationSec?: number; title?: string; waveform?: number[] }) {
+  const v = useVoice();
+  const current = v.src === src;
+  const playing = current && v.playing;
+  const dur = current && v.dur ? v.dur : durationSec ?? 0;
+  const pos = current ? v.pos : 0;
+  const bars = useMemo(() => (waveform?.length ? waveform.map((x) => 4 + Math.min(31, Math.max(0, x)) * 0.7) : fallbackBars(src)), [waveform, src]);
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  // While this message is on screen the mini player stays hidden.
+  useEffect(() => { if (!current) return; voice.shown(1); return () => voice.shown(-1); }, [current]);
+  const seekAt = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const t = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (dur || 0);
+    if (!current) voice.toggle(src, title, durationSec);
+    voice.seek(src, t);
+  };
+  const done = dur ? pos / dur : 0;
+  return (
+    <div className="flex items-center gap-2.5 px-3 pt-2.5 w-64 max-w-full">
+      <button onClick={() => voice.toggle(src, title, durationSec)} aria-label={playing ? 'Pause' : 'Play'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', mine ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white')}>
+        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div role="slider" aria-label="Seek" aria-valuemin={0} aria-valuemax={Math.round(dur)} aria-valuenow={Math.round(pos)} tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); voice.seek(src, Math.max(0, pos + (e.key === 'ArrowRight' ? 5 : -5))); } }}
+          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); seekAt(e); }}
+          onPointerMove={(e) => { if (e.buttons) seekAt(e); }}
+          className="h-7 flex items-center gap-[2px] cursor-pointer touch-none">
+          {bars.map((h, i) => (
+            <span key={i} className={cn('flex-1 rounded-full transition-colors', (i + 0.5) / bars.length <= done ? (mine ? 'bg-white' : 'bg-indigo-600') : (mine ? 'bg-white/40' : 'bg-zinc-300 dark:bg-white/20'))} style={{ height: `${Math.round(h)}px` }} />
+          ))}
+        </div>
+        <div className={cn('text-[10px] tabular-nums', mine ? 'text-white/70' : 'text-zinc-500')}>{fmt(playing || pos ? pos : dur)}</div>
+      </div>
+      <button onClick={() => voice.setRate(v.rate === 1 ? 1.5 : v.rate === 1.5 ? 2 : 1)} aria-label="Playback speed" className={cn('px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0', mine ? 'bg-white/20' : 'bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300')}>
+        {v.rate}×
+      </button>
+    </div>
+  );
+}
+
+/** A voice message played on its own (view once: never kept in the app-wide player). */
+export function LocalVoicePlayer({ src, mine, durationSec }: { src: string; mine: boolean; durationSec?: number }) {
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
@@ -118,13 +136,15 @@ interface Props {
   mine: boolean;
   me: string;
   showSender: boolean;
-  readState: 'sent' | 'read' | null;
+  readState: 'sent' | 'delivered' | 'read' | null;
   canModerate: boolean;
   highlight?: boolean;
   onReply: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onDeleteForMe: () => void;
+  /** Report to the community's moderators (community channels, others' messages; Stage 4 · 1.13). */
+  onReport?: () => void;
   onStar: () => void;
   /** Present when this person may pin messages here. */
   onPin?: () => void;
@@ -144,6 +164,8 @@ interface Props {
   onToggleOriginal?: () => void;
   /** Opens this message's thread (Discord-style); absent inside a thread or where threads don't apply. */
   onThread?: () => void;
+  /** A community channel's own emoji (name → picture). */
+  customEmoji?: Record<string, string>;
 }
 
 export type TranslationState = { status: 'pending' } | { status: 'error'; message?: string } | { status: 'done'; text: string; from: string; same: boolean };
@@ -154,6 +176,8 @@ export function MessageBubble(p: Props) {
   const { m, mine, me, showSender, readState, canModerate, highlight } = p;
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [fullPicker, setFullPicker] = useState(false);
+  const [history, setHistory] = useState(false);
   const [touch, setTouch] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const x = useMotionValue(0);
@@ -162,7 +186,10 @@ export function MessageBubble(p: Props) {
 
   const time = new Date(m.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const deleted = m.type === 'DELETED';
-  const canEdit = mine && m.type === 'TEXT' && !deleted && Date.now() - new Date(m.createdAt).getTime() < 86_400_000;
+  const age = Date.now() - new Date(m.createdAt).getTime();
+  const canEdit = mine && m.type === 'TEXT' && !deleted && age < 86_400_000;
+  // Delete for everyone: your own for 48 hours; admins and moderators any time.
+  const canDeleteForAll = canModerate || (mine && age < 48 * 3_600_000);
   const reactionEntries = Object.entries(m.reactions ?? {}).filter(([, users]) => users.length > 0);
   const interactive = !deleted && !m.pending;
 
@@ -194,8 +221,10 @@ export function MessageBubble(p: Props) {
     <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine ? 'text-white/70' : 'text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
-      {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : 'edited ·')} {time}
-      {mine && !deleted && (m.pending ? <Check className="w-3 h-3" /> : readState === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" /> : <CheckCheck className="w-3.5 h-3.5" />)}
+      {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : (
+        <button type="button" onClick={(e) => { e.stopPropagation(); setHistory(true); }} className="underline-offset-2 hover:underline" title="See the earlier versions">edited ·</button>
+      ))} {time}
+      {mine && !deleted && (m.pending ? <Check className="w-3 h-3 opacity-60" aria-label="Sending" /> : readState === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" aria-label="Read" /> : readState === 'delivered' ? <CheckCheck className="w-3.5 h-3.5" aria-label="Delivered" /> : <Check className="w-3.5 h-3.5" aria-label="Sent" />)}
     </span>
   );
 
@@ -203,36 +232,48 @@ export function MessageBubble(p: Props) {
   if (deleted) {
     content = m.metadata?.moderated === 'removed'
       ? <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Removed by UniVerse</p>
+      : m.metadata?.moderated === 'community'
+      ? <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Removed by a moderator</p>
       : <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
+  } else if (m.metadata?.huddle && m.type === 'TEXT') {
+    content = <HuddleCard callId={m.metadata.huddle.callId} by={m.sender?.name ?? 'Someone'} mine={mine} live={age < 4 * 3600_000} />;
   } else if (m.metadata?.viewOnce && (m.type === 'IMAGE' || m.type === 'VIDEO' || m.type === 'AUDIO')) {
     content = <ViewOnce m={m} mine={mine} />;
+  } else if (m.type === 'IMAGE' && (m.metadata?.album?.length ?? 0) > 1) {
+    // An album: a grid (2 side by side; 3+ as a mosaic, the 5th onwards as "+n").
+    const album = m.metadata!.album!;
+    const shown = album.slice(0, 4);
+    content = (
+      <div className={cn('grid gap-0.5 p-0.5 w-72 max-w-full', shown.length === 2 ? 'grid-cols-2' : 'grid-cols-2')}>
+        {shown.map((x, i) => (
+          <button key={x.url} type="button" onClick={() => p.onOpenImage(x.url)} className={cn('relative overflow-hidden bg-black/10', shown.length === 3 && i === 0 ? 'row-span-2 aspect-[1/2]' : 'aspect-square', i === 0 && 'rounded-tl-[14px]', i === 1 && 'rounded-tr-[14px]')}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a chat photo, any size */}
+            <img src={safeHref(x.url)} alt={x.name} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+            {i === 3 && album.length > 4 && <span className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xl font-bold">+{album.length - 4}</span>}
+          </button>
+        ))}
+      </div>
+    );
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
       <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />
     );
+  } else if (m.type === 'VIDEO' && m.attachmentUrl && m.metadata?.videoNote) {
+    content = <VideoNoteBubble url={m.attachmentUrl} />;
   } else if (m.type === 'VIDEO' && m.attachmentUrl) {
-    content = <ChatVideo url={m.attachmentUrl} />;
+    content = m.metadata?.recording ? <div><ChatVideo url={m.attachmentUrl} /><RecordingLink id={m.metadata.recording.id} mine={mine} /></div> : <ChatVideo url={m.attachmentUrl} />;
   } else if (m.type === 'AUDIO' && m.attachmentUrl) {
     content = (
       <div>
         {m.metadata?.voicemail && <p className={cn('px-3 pt-2.5 text-[11px] font-semibold flex items-center gap-1', mine ? 'text-white/80' : 'text-indigo-500')}><PhoneMissed className="w-3 h-3" /> Voicemail</p>}
-        <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} />
+        <VoicePlayer src={m.attachmentUrl} mine={mine} durationSec={m.metadata?.durationSec} waveform={m.metadata?.waveform} title={mine ? 'Your voice message' : `${m.sender?.name ?? 'Voice message'}`} />
         <VoiceTranscript id={m.id} transcript={m.metadata?.transcript} mine={mine} pending={!!m.pending} />
+        {m.metadata?.recording && <RecordingLink id={m.metadata.recording.id} mine={mine} />}
       </div>
     );
   } else if (m.type === 'FILE' && m.attachmentUrl) {
-    content = (
-      <a href={safeHref(m.attachmentUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 w-64 max-w-full">
-        <span className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', mine ? 'bg-white/15' : 'bg-indigo-500/10 text-indigo-500')}>
-          <FileText className="w-5 h-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold truncate">{m.attachmentName || 'File'}</span>
-          <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{formatBytes(m.attachmentSize)}</span>
-        </span>
-        <Download className="w-4 h-4 opacity-70" />
-      </a>
-    );
+    // PDFs show their first page and open in a viewer; text and code show their first lines (1.8).
+    content = <FileBubble url={m.attachmentUrl} name={m.attachmentName ?? null} size={m.attachmentSize ?? null} mime={m.attachmentMime ?? null} mine={mine} />;
   } else if (m.type === 'CALL') {
     // A call reads like a phone's call log: live (Join), how long it lasted, missed, no answer
     // or declined. Calls from before UniVerse had its own (Jitsi links) show as ended.
@@ -335,13 +376,15 @@ export function MessageBubble(p: Props) {
         )}
       </div>
     );
+  } else if (m.type === 'TEXT' && m.metadata?.meetingNotes) {
+    content = <MeetingNotesCard notes={m.metadata.meetingNotes} mine={mine} />;
   } else {
     const t = p.translation;
     const translated = t?.status === 'done' && !t.same && !!t.text;
     const showing = translated && !p.showOriginal;
     content = (
       <div className="px-3.5 py-2.5">
-        <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} />
+        <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} emoji={p.customEmoji} />
         {m.metadata?.link && <LinkCard link={m.metadata.link} mine={mine} />}
         {translated && (
           <button onClick={p.onToggleOriginal} className={cn('mt-1.5 flex items-center gap-1 text-[11px] font-medium', mine ? 'text-white/75 hover:text-white' : 'text-indigo-500 dark:text-indigo-300 hover:underline')}>
@@ -362,7 +405,7 @@ export function MessageBubble(p: Props) {
     pressTimer.current = setTimeout(() => { haptic('tap'); setMenu(true); setPicker(true); }, 480);
   };
   const cancelPress = () => { if (pressTimer.current) clearTimeout(pressTimer.current); };
-  const close = () => { setMenu(false); setPicker(false); };
+  const close = () => { setMenu(false); setPicker(false); setFullPicker(false); };
 
   return (
     <div className={cn('group relative flex gap-2 items-end', mine ? 'justify-end' : 'justify-start')}>
@@ -399,7 +442,7 @@ export function MessageBubble(p: Props) {
             {m.replyTo && !deleted && (
               <div className={cn('mx-2 mt-2 px-3 py-1.5 rounded-lg border-l-4 text-xs', mine ? 'bg-white/10 border-white/60' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400')}>
                 <p className="font-semibold">{m.replyTo.sender.id === me ? 'You' : m.replyTo.sender.name}</p>
-                <p className="opacity-80 line-clamp-2">{m.replyTo.body || (m.replyTo.type === 'TEXT' ? 'Message deleted' : 'Attachment')}</p>
+                <p className="opacity-80 line-clamp-2">{plainText(m.replyTo.body) || (m.replyTo.type === 'TEXT' ? 'Message deleted' : 'Attachment')}</p>
               </div>
             )}
             {content}
@@ -419,7 +462,16 @@ export function MessageBubble(p: Props) {
                   {REACTIONS.map((e) => (
                     <button key={e} onClick={() => { p.onReact(e); close(); }} className="w-8 h-8 rounded-full text-lg hover:bg-zinc-100 dark:hover:bg-white/10 hover:scale-125 transition-transform">{e}</button>
                   ))}
+                  <button type="button" onClick={() => { setFullPicker(true); setPicker(false); setMenu(false); }} aria-label="More reactions" title="More reactions" className="w-8 h-8 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10 flex items-center justify-center"><SmilePlus className="w-4 h-4" /></button>
                 </div>
+              )}
+              {fullPicker && (
+                <>
+                  <div className="fixed inset-0 z-[60]" onClick={close} aria-hidden />
+                  <div className={cn('z-[61] fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5rem)] flex justify-center sm:absolute sm:inset-x-auto sm:bottom-full sm:mb-1', mine ? 'sm:right-0' : 'sm:left-0')}>
+                    <EmojiPicker onPick={(e) => { p.onReact(e); close(); }} onClose={close} custom={p.customEmoji ? Object.entries(p.customEmoji).map(([name, url]) => ({ name, url })) : []} />
+                  </div>
+                </>
               )}
               {menu && (
                 <div className={cn('absolute z-20 w-48 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', picker ? 'top-full mt-1' : 'bottom-full mb-1', mine ? 'right-0' : 'left-0')} onMouseLeave={() => !touch && setMenu(false)}>
@@ -437,7 +489,8 @@ export function MessageBubble(p: Props) {
                   {canEdit && <MenuItem icon={Pencil} label="Edit" onClick={() => { p.onEdit(); close(); }} />}
                   {mine && <MenuItem icon={Info} label="Info" onClick={() => { p.onInfo(); close(); }} />}
                   <MenuItem icon={EyeOff} label="Delete for me" onClick={() => { p.onDeleteForMe(); close(); }} />
-                  {(mine || canModerate) && <MenuItem icon={Trash2} label="Delete for everyone" danger onClick={() => { p.onDelete(); close(); }} />}
+                  {p.onReport && <MenuItem icon={Flag} label="Report to moderators" onClick={() => { p.onReport!(); close(); }} />}
+                  {canDeleteForAll && <MenuItem icon={Trash2} label={canModerate && !mine && p.onReport ? 'Remove (moderator)' : 'Delete for everyone'} danger onClick={() => { p.onDelete(); close(); }} />}
                   {touch && <MenuItem icon={Ban} label="Cancel" onClick={close} />}
                 </div>
               )}
@@ -458,13 +511,51 @@ export function MessageBubble(p: Props) {
                 onClick={() => p.onReact(emoji)}
                 className={cn('px-1.5 py-0.5 rounded-full text-xs border shadow-sm', users.includes(me) ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-400/40' : 'bg-white dark:bg-[#121830] border-zinc-200 dark:border-white/10')}
               >
-                {emoji} {users.length > 1 && <span className="text-zinc-600 dark:text-zinc-300">{users.length}</span>}
+                <EmojiGlyph emoji={emoji} custom={p.customEmoji} /> {users.length > 1 && <span className="text-zinc-600 dark:text-zinc-300">{users.length}</span>}
               </button>
             ))}
           </div>
         )}
       </motion.div>
+      {history && <EditHistory id={m.id} onClose={() => setHistory(false)} emoji={p.customEmoji} />}
     </div>
+  );
+}
+
+/** An edited message's earlier versions (Stage 4 · 1.3), newest first. */
+function EditHistory({ id, onClose, emoji }: { id: string; onClose: () => void; emoji?: Record<string, string> }) {
+  const { data } = useSWR<{ versions: { body: string; at: string; current: boolean }[] }>(`/api/chat/messages/${id}/edits`, (url: string) => authedJson(url));
+  const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <motion.div role="dialog" aria-label="Edit history" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+        className="w-full sm:max-w-md max-h-[70vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#121830] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-4 space-y-3 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <p className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Pencil className="w-4 h-4 text-indigo-500" />Edit history</p>
+          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
+        </div>
+        {!data ? <div className="space-y-2">{[0, 1].map((i) => <div key={i} className="h-14 rounded-2xl skeleton" />)}</div>
+          : data.versions.length === 0 ? <p className="text-sm text-zinc-500">No earlier versions to show.</p>
+          : data.versions.map((v, i) => (
+            <div key={i} className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{v.current ? 'Now' : i === data.versions.length - 1 ? 'First sent' : 'Earlier'} · <span className="normal-case font-normal">{when(v.at)}</span></p>
+              <div className={cn('rounded-2xl px-3.5 py-2.5 text-[15px] text-zinc-900 dark:text-white', v.current ? 'bg-indigo-500/10 ring-1 ring-indigo-400/30' : 'bg-zinc-100 dark:bg-white/[0.06]')}>
+                <RichText text={v.body} mine={false} emoji={emoji} />
+              </div>
+            </div>
+          ))}
+      </motion.div>
+    </div>,
+    document.body,
+  );
+}
+
+/** Under a call's recording in the chat (Stage 4 · 2.9): chapters and the transcript, in Calls. */
+function RecordingLink({ id, mine }: { id: string; mine: boolean }) {
+  return (
+    <a href={`/calls?recording=${id}`} className={cn('flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold', mine ? 'text-white/85 hover:text-white' : 'text-indigo-600 dark:text-indigo-300 hover:underline')}>
+      <Clapperboard className="w-3.5 h-3.5" /> Call recording · chapters and transcript
+    </a>
   );
 }
 
@@ -530,7 +621,7 @@ function ViewOnce({ m, mine }: { m: ChatMessage; mine: boolean }) {
           <p className="text-white/70 text-xs mb-3 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> View once: it disappears when you close it</p>
           {m.type === 'IMAGE' && <img src={m.attachmentUrl} alt="" className="max-w-full max-h-[80vh] object-contain rounded-xl" onContextMenu={(e) => e.preventDefault()} draggable={false} />}
           {m.type === 'VIDEO' && <video src={m.attachmentUrl} autoPlay controls controlsList="nodownload" className="max-w-full max-h-[80vh] rounded-xl" />}
-          {m.type === 'AUDIO' && <div className="bg-white/10 rounded-2xl pb-2"><VoicePlayer src={m.attachmentUrl} mine durationSec={meta.durationSec} /></div>}
+          {m.type === 'AUDIO' && <div className="bg-white/10 rounded-2xl pb-2"><LocalVoicePlayer src={m.attachmentUrl} mine durationSec={meta.durationSec} /></div>}
           <button type="button" onClick={() => { setOpen(false); setUsed(true); }} className="mt-5 px-5 py-2 rounded-full bg-white/15 text-white text-sm font-semibold">Close</button>
         </div>
       )}

@@ -2,23 +2,47 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Camera, FileText, Flame, ImageIcon, Sparkles, Languages, Loader2, MapPin, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, CircleDot, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
+import { EmojiPicker, type CustomEmoji } from './EmojiPicker';
 import { languageName } from '@/lib/languages';
+import { haptic } from '@/lib/haptics';
+import { keepDraft, localDraft, pickDraft, saveDraft } from '@/lib/chat-drafts';
+import { ScheduleSheet } from './ScheduledMessages';
+import { SnippetsSheet, fillSnippet, useSnippets } from './Snippets';
+import dynamic from 'next/dynamic';
 
-const EMOJIS = ['😀', '😂', '😊', '😍', '🥳', '😎', '🤔', '😅', '😢', '😡', '👍', '👎', '🙏', '👏', '🙌', '💪', '🔥', '✨', '❤️', '💯', '🎉', '✅', '📚', '🌍', '🌱', '💡', '🚀', '⭐', '☕', '👋'];
+const VideoNoteRecorder = dynamic(() => import('./VideoNote').then((m) => m.VideoNoteRecorder));
 
 export interface SendPayload {
   text?: string;
   file?: File;
-  voice?: { blob: Blob; durationSec: number };
+  /** Several photos at once: sent as one album. */
+  album?: File[];
+  voice?: { blob: Blob; durationSec: number; waveform?: number[] };
+  /** A round video note (with how long it is). */
+  videoNote?: { file: File; durationSec: number };
   /** Photo, video or voice message that each person can open only once. */
   viewOnce?: boolean;
 }
 
 export type ComposerExtra = 'poll' | 'location' | 'contact';
+
+type Format = 'bold' | 'italic' | 'strike' | 'code' | 'block' | 'quote' | 'ul' | 'ol';
+const FORMATS: { kind: Format; label: string; icon: typeof Bold; keys?: string }[] = [
+  { kind: 'bold', label: 'Bold', icon: Bold, keys: '⌘B' },
+  { kind: 'italic', label: 'Italic', icon: Italic, keys: '⌘I' },
+  { kind: 'strike', label: 'Strikethrough', icon: Strikethrough, keys: '⌘⇧X' },
+  { kind: 'code', label: 'Code', icon: Code, keys: '⌘E' },
+  { kind: 'block', label: 'Code block', icon: FileCode2 },
+  { kind: 'quote', label: 'Quote', icon: Quote },
+  { kind: 'ul', label: 'Bulleted list', icon: List },
+  { kind: 'ol', label: 'Numbered list', icon: ListOrdered },
+];
+/** Whether the caret is inside an open ``` code block (Enter then starts a new line). */
+const inCodeBlock = (before: string) => (before.match(/^\s*```/gm)?.length ?? 0) % 2 === 1;
 
 /** "/" commands in the message box (Discord-style). */
 export const SLASH_COMMANDS: { name: string; hint: string; example?: string }[] = [
@@ -53,14 +77,43 @@ interface Props {
   onSuggest?: () => Promise<string[]>;
   /** Slow mode: a hint under the box. */
   slowModeSec?: number;
+  /** Groups: whether this person may use @here and @channel (admins, or small groups). */
+  canMentionAll?: boolean;
+  /** A community channel's own emoji, in the picker. */
+  customEmoji?: CustomEmoji[];
+  /** Drafts (Stage 4 · 1.4): this chat's id, and the draft saved on my account (the newer one wins). */
+  draftKey?: string;
+  serverDraft?: { text?: string | null; at?: string | null };
+  /** Schedules a message (hold or right-click Send, or Attach → Schedule message). */
+  onSchedule?: (body: string, sendAt: string) => Promise<void>;
+  /** Who a saved reply's {name} becomes (a direct chat's other person; "everyone" in groups). */
+  recipientName?: string;
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll, customEmoji, draftKey, serverDraft, onSchedule, recipientName }: Props) {
+  const [formatting, setFormatting] = useState(false);
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [text, setText] = useState('');
+  // The draft shown when the chat opened (or taken since): this device's or my account's, whichever is newer.
+  const [shown, setShown] = useState(() => {
+    const local = draftKey ? localDraft(draftKey) : null;
+    return { text: draftKey ? pickDraft(local, serverDraft ?? {}) : '', at: Math.max(local?.at ?? 0, serverDraft?.at ? Date.parse(serverDraft.at) : 0) };
+  });
+  const [text, setText] = useState(shown.text);
+  const [wrote, setWrote] = useState(false);
+  // A newer draft from another device came in (this chat was shown from memory first): show it,
+  // unless something was written here since.
+  const accountAt = serverDraft?.at ? Date.parse(serverDraft.at) : 0;
+  if (draftKey && !editing && !wrote && accountAt > shown.at && text === shown.text) {
+    const next = { text: serverDraft?.text ?? '', at: accountAt };
+    setShown(next);
+    setText(next.text);
+  }
+  const [scheduling, setScheduling] = useState<{ at: number } | null>(null);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const held = useRef(false);
   const [busy, setBusy] = useState(false);
   // View once for the next photo, video or voice message (a ref too: the recorder's callback reads it).
   const [once, setOnceState] = useState(false);
@@ -68,6 +121,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   const setOnce = (v: boolean) => { onceRef.current = v; setOnceState(v); };
   const [emoji, setEmoji] = useState(false);
   const [attach, setAttach] = useState(false);
+  const [snippetsOpen, setSnippetsOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [recording, setRecording] = useState<{ start: number } | null>(null);
@@ -88,6 +142,38 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   }, [editing]);
   useEffect(() => { if (replyTo) areaRef.current?.focus(); }, [replyTo]);
 
+  // Drafts: every change is kept on this device; my account gets it 2 s after typing stops.
+  const draftBox = useRef({ saved: serverDraft?.text ?? '', pending: null as string | null });
+  const accountText = serverDraft?.text ?? '';
+  useEffect(() => {
+    if (!draftKey || editing) return;
+    keepDraft(draftKey, text);
+    const box = draftBox.current;
+    if (text === box.saved || text === accountText) { box.saved = text; box.pending = null; return; }
+    box.pending = text;
+    const t = setTimeout(() => { box.pending = null; box.saved = text; setWrote(true); void saveDraft(draftKey, text); }, 2000);
+    return () => clearTimeout(t);
+  }, [text, draftKey, editing, accountText]);
+  // Leaving the chat, or the app going to the background: what's waiting is saved straight away.
+  useEffect(() => {
+    if (!draftKey) return;
+    const box = draftBox.current;
+    const flush = () => {
+      if (box.pending === null) return;
+      const t = box.pending;
+      box.pending = null;
+      box.saved = t;
+      void saveDraft(draftKey, t, { keepalive: true });
+    };
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onHide);
+    return () => { document.removeEventListener('visibilitychange', onHide); flush(); };
+  }, [draftKey]);
+  /** What I was writing before editing a message. */
+  const beforeEdit = () => (draftKey ? localDraft(draftKey)?.text ?? '' : '');
+  const canSchedule = !!onSchedule && !editing;
+  const openSchedule = () => { held.current = true; clearTimeout(holdTimer.current); setAttach(false); setEmoji(false); setScheduling({ at: Date.now() }); };
+
   // Replaces the draft with its translation; "Undo" puts the original back.
   const translateDraft = async (to: string) => {
     setTranslateOpen(false);
@@ -104,6 +190,41 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     } finally {
       setTranslating(false);
     }
+  };
+
+  /** Formats the selection (or starts formatting at the caret): marks around it, or line prefixes. */
+  const format = (kind: Format) => {
+    const el = areaRef.current;
+    if (!el) return;
+    const s0 = el.selectionStart ?? text.length, e0 = el.selectionEnd ?? s0;
+    const sel = text.slice(s0, e0);
+    let next = text, a = s0, b = e0;
+    const marks: Partial<Record<Format, string>> = { bold: '*', italic: '_', strike: '~', code: '`' };
+    if (marks[kind]) {
+      const mk = marks[kind]!;
+      next = text.slice(0, s0) + mk + sel + mk + text.slice(e0);
+      a = s0 + mk.length;
+      b = a + sel.length;
+    } else if (kind === 'block') {
+      const lead = s0 > 0 && text[s0 - 1] !== '\n' ? '\n' : '';
+      const tail = text.slice(e0).startsWith('\n') || e0 === text.length ? '' : '\n';
+      next = `${text.slice(0, s0)}${lead}\`\`\`\n${sel}\n\`\`\`${tail}${text.slice(e0)}`;
+      a = s0 + lead.length + 4;
+      b = a + sel.length;
+    } else {
+      // Quotes and lists: every line the selection touches gets the prefix.
+      const start = text.lastIndexOf('\n', s0 - 1) + 1;
+      const endNl = text.indexOf('\n', e0);
+      const end = endNl === -1 ? text.length : endNl;
+      const lines = text.slice(start, end).split('\n').map((l, i) => `${kind === 'quote' ? '> ' : kind === 'ul' ? '- ' : `${i + 1}. `}${l}`);
+      const block = lines.join('\n');
+      next = text.slice(0, start) + block + text.slice(end);
+      a = sel ? start : start + lines[0].length;
+      b = start + block.length;
+      if (!sel) a = b;
+    }
+    setText(next);
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a, b); });
   };
 
   // Auto-grow the textarea.
@@ -125,8 +246,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     if (!value || busy) return;
     setBusy(true);
     try {
-      if (editing) await onSaveEdit(value);
-      else {
+      if (editing) {
+        await onSaveEdit(value);
+        setText(beforeEdit());
+        return;
+      } else {
         // "/command arg": handled by the chat (AI, reminders, calls…) instead of being sent.
         const cmd = /^\/(\w+)\s*([\s\S]*)$/.exec(value);
         if (cmd && onCommand && SLASH_COMMANDS.some((c) => c.name === cmd[1].toLowerCase())) {
@@ -141,6 +265,21 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     }
   };
 
+  /** Several photos picked together go as one album (up to 10); anything else one at a time. */
+  const pickMedia = async (files: File[]) => {
+    const photos = files.filter((f) => f.type.startsWith('image/'));
+    if (photos.length < 2 || onceRef.current) { for (const f of files.slice(0, 10)) await pickFile(f); return; }
+    if (photos.length > 10) toast('An album holds up to 10 photos; the first 10 are sent.');
+    setAttach(false);
+    setBusy(true);
+    try {
+      await onSend({ album: photos.slice(0, 10), text: text.trim() || undefined });
+      setText('');
+      for (const f of files.filter((x) => !x.type.startsWith('image/')).slice(0, 5)) await pickFile(f);
+    } finally {
+      setBusy(false);
+    }
+  };
   const pickFile = async (file: File | undefined) => {
     setAttach(false);
     if (!file) return;
@@ -163,11 +302,29 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'].find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      // Loudness while you speak, ten times a second: drawn as the message's waveform.
+      const levels: number[] = [];
+      let meterStop = () => {};
+      try {
+        const ctx = new AudioContext();
+        const an = ctx.createAnalyser();
+        an.fftSize = 512;
+        ctx.createMediaStreamSource(stream).connect(an);
+        const buf = new Uint8Array(an.fftSize);
+        const t = setInterval(() => {
+          an.getByteTimeDomainData(buf);
+          let sum = 0;
+          for (const x of buf) sum += (x - 128) * (x - 128);
+          levels.push(Math.sqrt(sum / buf.length));
+        }, 100);
+        meterStop = () => { clearInterval(t); void ctx.close().catch(() => {}); };
+      } catch { /* no waveform, the player draws its own */ }
       chunks.current = [];
       cancelled.current = false;
       const start = Date.now();
       rec.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
       rec.onstop = async () => {
+        meterStop();
         stream.getTracks().forEach((t) => t.stop());
         setRecording(null);
         setElapsed(0);
@@ -175,7 +332,13 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         const blob = new Blob(chunks.current, { type: rec.mimeType || 'audio/webm' });
         const durationSec = Math.max(1, Math.round((Date.now() - start) / 1000));
         setBusy(true);
-        try { await onSend({ voice: { blob, durationSec }, viewOnce: onceRef.current || undefined }); } finally { setBusy(false); setOnce(false); }
+        // 40 bars, scaled so the loudest is full height.
+        const n = 40, peak = Math.max(1, ...levels);
+        const waveform = levels.length >= 3 ? Array.from({ length: n }, (_, i) => {
+          const part = levels.slice(Math.floor((i * levels.length) / n), Math.max(Math.floor(((i + 1) * levels.length) / n), Math.floor((i * levels.length) / n) + 1));
+          return Math.round((Math.max(...part) / peak) * 31);
+        }) : undefined;
+        try { await onSend({ voice: { blob, durationSec, waveform }, viewOnce: onceRef.current || undefined }); } finally { setBusy(false); setOnce(false); }
       };
       rec.start();
       recorder.current = rec;
@@ -185,10 +348,16 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     }
   };
 
+  const [videoNote, setVideoNote] = useState(false);
+
   const stopRecording = (cancel: boolean) => {
     cancelled.current = cancel;
     recorder.current?.stop();
   };
+
+  // Saved replies by shortcut (1.9), fetched the first time "/" is typed.
+  const slashTyped = !editing && /^\/[\w-]*$/.test(text);
+  const { data: snipData } = useSnippets(slashTyped || snippetsOpen);
 
   if (disabled || disabledReason) {
     return (
@@ -204,6 +373,8 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     try { setSuggestions(await onSuggest()); } finally { setSuggesting(false); }
   };
   const slash = !editing && /^\/\w*$/.test(text) ? SLASH_COMMANDS.filter((c) => c.name.startsWith(text.slice(1).toLowerCase())) : [];
+  const slashSnips = slashTyped ? (snipData?.snippets ?? []).filter((x) => x.shortcut?.startsWith(text.slice(1).toLowerCase())).slice(0, 5) : [];
+  const insertSnippet = (body: string) => { setText(body); setSuggestions(null); requestAnimationFrame(() => areaRef.current?.focus()); };
 
   return (
     <div className="border-t border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl px-3 md:px-4 py-3">
@@ -214,7 +385,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             <p className="font-semibold text-indigo-600 dark:text-indigo-300">{editing ? 'Editing message' : `Replying to ${replyTo!.sender.name}`}</p>
             {!editing && <p className="text-zinc-600 dark:text-zinc-400 truncate">{replyTo!.body || 'Attachment'}</p>}
           </div>
-          <button onClick={() => { if (editing) { onCancelEdit(); setText(''); } else onCancelReply(); }} aria-label="Cancel" className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
+          <button onClick={() => { if (editing) { onCancelEdit(); setText(beforeEdit()); } else onCancelReply(); }} aria-label="Cancel" className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -224,6 +395,17 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading… {uploadProgress}%
           <div className="flex-1 h-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className="h-full bg-indigo-500 transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+        </div>
+      )}
+
+      {formatting && !recording && (
+        <div className="mb-2 flex items-center gap-1 overflow-x-auto scrollbar-none" role="toolbar" aria-label="Formatting">
+          {FORMATS.map((f) => (
+            <button key={f.kind} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => format(f.kind)} aria-label={f.label} title={f.keys ? `${f.label} (${f.keys})` : f.label}
+              className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.08] hover:text-indigo-500">
+              <f.icon className="w-4 h-4" />
+            </button>
+          ))}
         </div>
       )}
 
@@ -249,13 +431,20 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               <Smile className="w-5 h-5" />
             </button>
             {emoji && (
-              <div className="absolute bottom-full mb-2 left-0 z-30 w-72 max-w-[calc(100vw-1.5rem)] p-2 grid grid-cols-8 gap-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
-                {EMOJIS.map((e) => (
-                  <button key={e} onClick={() => { setText((t) => t + e); areaRef.current?.focus(); }} className="w-8 h-8 rounded-lg text-lg hover:bg-zinc-100 dark:hover:bg-white/10">{e}</button>
-                ))}
+              <div className="absolute bottom-full mb-2 left-0 z-30">
+                <EmojiPicker custom={customEmoji} onClose={() => setEmoji(false)} onPick={(e) => {
+                  // At the caret, not always at the end.
+                  const el = areaRef.current;
+                  const at = el?.selectionStart ?? text.length, to = el?.selectionEnd ?? at;
+                  setText(text.slice(0, at) + e + text.slice(to));
+                  requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(at + e.length, at + e.length); });
+                }} />
               </div>
             )}
           </div>
+          <button type="button" onClick={() => { setFormatting((v) => !v); setEmoji(false); setAttach(false); }} aria-pressed={formatting} aria-label="Formatting" title="Formatting: bold, code, lists…" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', formatting ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
+            <Type className="w-5 h-5" />
+          </button>
           {text.trim().length > 1 && (
             <div className="relative">
               <button onClick={() => { setTranslateOpen((v) => !v); setEmoji(false); setAttach(false); }} disabled={translating} aria-label="Translate before sending" title="Translate before sending" aria-expanded={translateOpen} className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60', translateOpen ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
@@ -276,6 +465,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                   <button onClick={() => mediaRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span> Photos & videos
                   </button>
+                  {typeof MediaRecorder !== 'undefined' && (
+                    <button onClick={() => { setAttach(false); setVideoNote(true); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-fuchsia-500/15 text-fuchsia-500 flex items-center justify-center"><CircleDot className="w-4 h-4" /></span> Video note
+                    </button>
+                  )}
                   <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-500 flex items-center justify-center"><Camera className="w-4 h-4" /></span> Camera
                   </button>
@@ -286,6 +480,14 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                     <span className={cn('w-8 h-8 rounded-full flex items-center justify-center border-2 border-dashed', once ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-300 dark:border-zinc-600 text-zinc-500')}><Flame className="w-4 h-4" /></span>
                     <span className="flex-1 text-left">View once</span>
                     <span className={cn('text-[10px] font-bold uppercase', once ? 'text-indigo-500' : 'text-zinc-400')}>{once ? 'On' : 'Off'}</span>
+                  </button>
+                  {onSchedule && (
+                    <button onClick={openSchedule} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-violet-500/15 text-violet-500 flex items-center justify-center"><CalendarClock className="w-4 h-4" /></span> Schedule message
+                    </button>
+                  )}
+                  <button onClick={() => { setAttach(false); setSnippetsOpen(true); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className="w-8 h-8 rounded-full bg-teal-500/15 text-teal-500 flex items-center justify-center"><MessageSquareText className="w-4 h-4" /></span> Saved replies
                   </button>
                   <button onClick={() => { setAttach(false); onExtra('poll'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center"><BarChart3 className="w-4 h-4" /></span> Poll
@@ -302,8 +504,14 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           )}
 
           <div className="relative flex-1 min-w-0 flex">
-          {slash.length > 0 && (
+          {(slash.length > 0 || slashSnips.length > 0) && (
             <div className="absolute bottom-full mb-2 left-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
+              {slashSnips.map((x) => (
+                <button key={x.id} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); insertSnippet(fillSnippet(x.body, recipientName)); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                  <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{x.shortcut} <span className="font-normal text-zinc-500">· {x.title}</span></span>
+                  <span className="block text-xs text-zinc-500 truncate">{x.body}</span>
+                </button>
+              ))}
               {slash.map((c) => (
                 <button key={c.name} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); setText(`/${c.name} `); areaRef.current?.focus(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{c.name}</span>
@@ -320,7 +528,9 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             </div>
           )}
           {mentionQuery !== null && (() => {
-            const list = mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6);
+            // @here (online members) and @channel (everyone) for groups, for those allowed.
+            const everyone = canMentionAll ? [{ id: '@here', name: 'here', hint: 'Online members' }, { id: '@channel', name: 'channel', hint: 'Everyone in this chat' }].filter((x) => x.name.startsWith(mentionQuery)) : [];
+            const list = [...everyone, ...mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6)] as { id: string; name: string; hint?: string }[];
             if (!list.length) return null;
             return (
               <div className="absolute bottom-full mb-2 left-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
@@ -329,12 +539,12 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                     e.preventDefault();
                     const el = areaRef.current!;
                     const pos = el.selectionStart ?? text.length;
-                    const before = text.slice(0, pos).replace(/@[\w.-]*$/, `@${u.name.split(' ')[0]} `);
+                    const before = text.slice(0, pos).replace(/@[\w.-]*$/, `@${u.hint ? u.name : u.name.split(' ')[0]} `);
                     setText(before + text.slice(pos));
                     setMentionQuery(null);
                     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(before.length, before.length); });
                   }} className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
-                    @{u.name}
+                    @{u.name}{u.hint && <span className="ml-2 text-xs text-zinc-500">{u.hint}</span>}
                   </button>
                 ))}
               </div>
@@ -357,8 +567,14 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               if (f && !editing) { e.preventDefault(); pickFile(f); }
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
-              if (e.key === 'Escape' && editing) { onCancelEdit(); setText(''); }
+              if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+                const k = e.key.toLowerCase();
+                const kind: Format | null = k === 'b' ? 'bold' : k === 'i' ? 'italic' : k === 'e' ? 'code' : k === 'x' && e.shiftKey ? 'strike' : null;
+                if (kind) { e.preventDefault(); format(kind); return; }
+              }
+              // Enter sends, except inside a code block (a new line there).
+              if (e.key === 'Enter' && !e.shiftKey && !inCodeBlock(text.slice(0, e.currentTarget.selectionStart ?? text.length))) { e.preventDefault(); submit(); }
+              if (e.key === 'Escape' && editing) { onCancelEdit(); setText(beforeEdit()); }
             }}
             placeholder={editing ? 'Edit your message' : onCommand ? 'Type a message, or / for commands' : 'Type a message'}
             className="flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
@@ -366,7 +582,12 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           </div>
 
           {text.trim() || editing ? (
-            <button onClick={submit} disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 disabled:opacity-50 active:scale-95 transition-transform">
+            <button onClick={() => { if (held.current) { held.current = false; return; } void submit(); }}
+              onPointerDown={() => { held.current = false; if (canSchedule) holdTimer.current = setTimeout(() => { haptic('tap'); openSchedule(); }, 450); }}
+              onPointerUp={() => clearTimeout(holdTimer.current)} onPointerLeave={() => clearTimeout(holdTimer.current)} onPointerCancel={() => clearTimeout(holdTimer.current)}
+              onContextMenu={(e) => { if (canSchedule) { e.preventDefault(); openSchedule(); } }}
+              title={canSchedule ? 'Send · hold or right-click to schedule' : undefined}
+              disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 disabled:opacity-50 active:scale-95 transition-transform">
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           ) : (
@@ -384,8 +605,15 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         </div>
       )}
 
+      {scheduling && onSchedule && (
+        <ScheduleSheet now={scheduling.at} title="Schedule message" initialText={text}
+          onSave={async (body, sendAt) => { await onSchedule(body, sendAt); setText(''); setSuggestions(null); }}
+          onClose={() => { setScheduling(null); held.current = false; }} />
+      )}
+      {snippetsOpen && <SnippetsSheet recipientName={recipientName} onClose={() => setSnippetsOpen(false)} onInsert={insertSnippet} />}
       {!!slowModeSec && <p className="mt-1.5 text-[11px] text-zinc-500 text-center">Slow mode: one message every {slowModeSec < 60 ? `${slowModeSec} s` : `${Math.round(slowModeSec / 60)} min`}</p>}
-      <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
+      {videoNote && <VideoNoteRecorder onClose={() => setVideoNote(false)} onSend={async (file, durationSec) => { setBusy(true); try { await onSend({ videoNote: { file, durationSec } }); } finally { setBusy(false); } }} />}
+      <input ref={mediaRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; void pickMedia(fs); }} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
       <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
     </div>

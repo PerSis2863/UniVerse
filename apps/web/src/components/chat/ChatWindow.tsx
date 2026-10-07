@@ -8,13 +8,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
+import { ImageViewer } from './ImageViewer';
+import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
+import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
-import { type ChatMessage, type ThreadResponse, chatJson, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
+import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
+import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
 import { useLanguageStore } from '@/store/language';
 import { cachedChat, cacheChat, enqueue, isOfflineError, listOutbox, newClientId, onOutbox, type OutboxItem } from '@/lib/outbox';
@@ -39,6 +43,17 @@ function byDay<T extends { createdAt: string }>(list: T[]) {
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const router = useRouter();
+  const locked = useChatLocked(conversationId);
+  const startHuddle = useStartHuddle(conversationId);
+  // The chat's canvas (1.12): made the first time someone opens it.
+  const [canvasBusy, setCanvasBusy] = useState(false);
+  const openCanvas = async () => {
+    setCanvasBusy(true);
+    try {
+      const r = await chatJson<{ id: string | null }>(`/api/chat/conversations/${conversationId}/canvas`, { method: 'POST' });
+      if (r.id) router.push(`/docs/${r.id}`);
+    } catch (e) { toast.error((e as Error).message); } finally { setCanvasBusy(false); }
+  };
   const key = `/api/chat/conversations/${conversationId}/messages`;
   // Live updates refresh the thread on every change, so it only polls without them.
   const refreshInterval = useLiveInterval(5000, 0);
@@ -85,6 +100,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [dragOver, setDragOver] = useState(false);
   const [wallpaper, setWallpaperId] = useState('dots');
   const [translateOpen, setTranslateOpen] = useState(false);
+  const [editScheduled, setEditScheduled] = useState<{ item: ScheduledItem; at: number } | null>(null);
   const appLanguage = useLanguageStore((s) => s.language);
   useEffect(() => {
     const sync = () => setWallpaperId(getWallpaper());
@@ -131,6 +147,10 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   }, [older, data?.messages, pending]);
   const others = convo?.members.filter((m) => m.id !== me) ?? [];
   const other = !convo?.isGroup ? others[0] : undefined;
+  // A huddle that may be going (1.11): its latest "started a huddle" message is under 4 hours old.
+  const [openedAt] = useState(() => Date.now());
+  const lastHuddle = useMemo(() => [...messages].reverse().find((m) => m.metadata?.huddle && !m.deletedAt), [messages]);
+  const { data: huddlePeers } = useHuddlePeers(lastHuddle && huddleMayBeLive(lastHuddle.createdAt, openedAt) ? lastHuddle.metadata!.huddle!.callId : null);
   const canModerate = convo?.isGroup && convo.myRole === 'ADMIN';
   const canPin = !!convo && !convo.isOfficial && (!convo.isGroup || convo.myRole === 'ADMIN');
   const pins = data?.pinned ?? [];
@@ -293,14 +313,31 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     onChanged();
   };
 
-  const send = async ({ text, file, voice, viewOnce }: SendPayload) => {
+  const send = async ({ text, file: picked, voice, viewOnce, album, videoNote }: SendPayload) => {
+    const file = picked ?? videoNote?.file;
     haptic('tap');
     const tempId = `temp-${Date.now()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
     const replyToId = replyTo?.id;
     setReplyTo(null);
     try {
-      if (file || voice) {
+      if (album?.length) {
+        // An album: every photo uploads, then one message holds them all.
+        setPending((p) => [...p, { ...base, type: 'IMAGE', body: '', attachmentUrl: null, attachmentName: album[0].name, attachmentSize: album[0].size, attachmentMime: album[0].type, metadata: null } as ChatMessage]);
+        setUploadProgress(0);
+        const items: { url: string; name: string; size: number; mime: string }[] = [];
+        for (const [i, f] of album.entries()) {
+          const url = await uploadChatFile(f, (pct) => setUploadProgress(Math.round(((i + pct / 100) / album.length) * 100)));
+          items.push({ url, name: f.name, size: f.size, mime: f.type });
+        }
+        setUploadProgress(null);
+        const msg = await chatJson<ChatMessage>(key, {
+          method: 'POST',
+          body: JSON.stringify({ type: 'IMAGE', attachmentUrl: items[0].url, attachmentName: items[0].name, attachmentSize: items[0].size, attachmentMime: items[0].mime, album: items, replyToId }),
+        });
+        appendSent(msg, tempId);
+        if (text) await send({ text });
+      } else if (file || voice) {
         const upload = file ?? new File([voice!.blob], `voice-${Date.now()}.${voice!.blob.type.includes('mp4') ? 'm4a' : voice!.blob.type.includes('ogg') ? 'ogg' : 'webm'}`, { type: voice!.blob.type });
         const type = voice ? 'AUDIO' : messageTypeFor(upload.type);
         setPending((p) => [...p, { ...base, type, body: '', attachmentUrl: null, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, metadata: viewOnce ? { viewOnce: true } : null } as ChatMessage]);
@@ -309,7 +346,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         setUploadProgress(null);
         const msg = await chatJson<ChatMessage>(key, {
           method: 'POST',
-          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec, replyToId, viewOnce: viewOnce || undefined }),
+          body: JSON.stringify({ type, attachmentUrl: url, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, durationSec: voice?.durationSec ?? videoNote?.durationSec, waveform: voice?.waveform, videoNote: videoNote ? true : undefined, replyToId, viewOnce: viewOnce || undefined }),
         });
         appendSent(msg, tempId);
         if (text) await send({ text });
@@ -334,6 +371,33 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     }
   };
 
+  // Scheduled messages (Stage 4 · 1.4): sent by the server at their time, even with UniVerse closed.
+  const schedule = async (body: string, sendAt: string) => {
+    await chatJson(`/api/chat/conversations/${conversationId}/scheduled`, { method: 'POST', body: JSON.stringify({ body, sendAt, replyToId: replyTo?.id }) });
+    setReplyTo(null);
+    void mutate();
+    toast.success(`Scheduled for ${scheduleLabel(sendAt)}`);
+  };
+  const sendScheduledNow = async (s: ScheduledItem) => {
+    try {
+      const msg = await chatJson<ChatMessage>(`/api/chat/scheduled/${s.id}`, { method: 'POST' });
+      mutate((prev) => (prev ? { ...prev, scheduled: prev.scheduled?.filter((x) => x.id !== s.id), messages: [...prev.messages.filter((x) => x.id !== msg.id), msg] } : prev), { revalidate: false });
+      onChanged();
+    } catch (e) {
+      toast.error((e as Error).message);
+      void mutate();
+    }
+  };
+  const deleteScheduled = async (s: ScheduledItem) => {
+    if (!(await confirmDialog({ title: 'Delete scheduled message?', message: 'It won’t be sent.', destructive: true }))) return;
+    try {
+      await chatJson(`/api/chat/scheduled/${s.id}`, { method: 'DELETE' });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+    void mutate();
+  };
+
   const saveEdit = async (text: string) => {
     if (!editing) return;
     try {
@@ -348,13 +412,25 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
 
   const remove = async (m: ChatMessage) => {
     try {
-      await chatJson(`/api/chat/messages/${m.id}`, { method: 'DELETE' });
+      // A community moderator removing someone else's message: logged, shown as "Removed by a moderator" (1.13).
+      const modRemove = !!channel && m.sender?.id !== me;
+      await chatJson(`/api/chat/messages/${m.id}${modRemove ? '/moderate' : ''}`, { method: modRemove ? 'POST' : 'DELETE' });
       mutate();
       setOlder((cur) => cur.map((x) => (x.id === m.id ? { ...x, type: 'DELETED', body: '', attachmentUrl: null } : x)));
       onChanged();
     } catch (e: any) {
       toast.error(e.message);
     }
+  };
+
+  /** Reports a community channel message to its moderators (1.13). */
+  const report = async (m: ChatMessage) => {
+    const reason = await promptDialog({ title: 'Report to the moderators', message: 'Only this community’s moderators see reports. What’s wrong with it? (optional)', placeholder: 'e.g. spam, rude, off-topic', confirmLabel: 'Report', maxLength: 300 });
+    if (reason === null) return;
+    try {
+      const r = await chatJson<{ already?: boolean }>(`/api/chat/messages/${m.id}/report`, { method: 'POST', body: JSON.stringify({ reason }) });
+      toast.success(r.already ? 'You already reported this message.' : 'Reported. The moderators will take a look.');
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   const react = async (m: ChatMessage, emoji: string) => {
@@ -437,12 +513,21 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     }
   };
 
-  const readState = (m: ChatMessage): 'sent' | 'read' | null => {
+  // Ticks, worked out from what's already known (nothing stored per message): read = everyone's
+  // last read is after it; delivered = someone has read it, is online, or opened UniVerse since it
+  // was sent (people who hide their last seen only count once they read it); else sent.
+  const readersOf = (m: ChatMessage) => { const t = new Date(m.createdAt).getTime(); return others.filter((o) => o.lastReadAt && new Date(o.lastReadAt).getTime() >= t); };
+  const readState = (m: ChatMessage): 'sent' | 'delivered' | 'read' | null => {
     if (m.senderId !== me || !convo) return null;
     const t = new Date(m.createdAt).getTime();
-    const readers = others.filter((o) => o.lastReadAt && new Date(o.lastReadAt).getTime() >= t);
-    return others.length > 0 && readers.length === others.length ? 'read' : 'sent';
+    const readers = readersOf(m);
+    if (others.length > 0 && readers.length === others.length) return 'read';
+    const reached = readers.length > 0 || others.some((o) => o.online || (o.lastSeenAt && new Date(o.lastSeenAt).getTime() >= t));
+    return reached ? 'delivered' : 'sent';
   };
+  // Groups: "Seen by N" under my latest message (tap for who and when).
+  const lastMine = convo?.isGroup ? [...messages].reverse().find((m) => m.senderId === me && !m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED') : undefined;
+  const seenBy = lastMine ? readersOf(lastMine).length : 0;
 
   const subtitleBase = typingNames.length
     ? `${convo?.isGroup ? typingNames.join(', ') + ' ' : ''}typing…`
@@ -452,6 +537,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         ? others.map((o) => o.name.split(' ')[0]).slice(0, 5).join(', ') + (others.length > 5 ? ` +${others.length - 5}` : '') + ', you'
         : other ? statusLine(other.status) ?? lastSeenLabel(other.online, other.lastSeenAt) : '';
   const channel = convo?.channel ?? null;
+  // A community channel's own emoji (:name:), for messages, reactions and the picker.
+  const emojiMap: Record<string, string> | undefined = channel?.emoji?.length ? Object.fromEntries(channel.emoji.map((e) => [e.name, e.url])) : undefined;
   const subtitle = channel && !typingNames.length
     ? `${channel.communityName} · ${convo!.members.length} member${convo!.members.length === 1 ? '' : 's'}${channel.slowModeSec ? ' · slow mode' : ''}`
     : convo?.disappearingSec && !typingNames.length ? `⏱ ${disappearingLabel(convo.disappearingSec)} · ${subtitleBase}` : subtitleBase;
@@ -468,6 +555,17 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     );
   }
   if (isLoading || !convo) return <div className="flex-1 min-w-0"><ContentSkeleton variant="chat" /></div>;
+  // A locked chat (1.10): nothing of it shows until Face ID / fingerprint / PIN on this device.
+  if (locked) {
+    return (
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+        <div className="flex items-center gap-2 px-3 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06] md:hidden">
+          <button type="button" onClick={onBack} aria-label="Back" className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><ArrowLeft className="w-5 h-5" /></button>
+        </div>
+        <LockedChat title={convo.isGroup ? convo.title : 'This chat'} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex min-w-0 min-h-0">
@@ -487,10 +585,17 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             </div>
           </button>
           {convo.isGroup && !convo.isOfficial && (
+            <button onClick={() => void openCanvas()} disabled={canvasBusy} aria-label="Canvas" title="Canvas: a living document pinned to this chat (rules, links, notes), edited together" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-60">{canvasBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}</button>
+          )}
+          {convo.isGroup && !convo.isOfficial && (
             <button onClick={() => void runCatchup()} aria-label="Catch up with AI" title="Catch up: what you missed (AI)" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/10 hidden sm:block"><Sparkles className="w-5 h-5" /></button>
           )}
-          {convo.isGroup && !channel && !convo.isOfficial && (
-            <button onClick={() => router.push(`/call/r_${conversationId}?kind=audio`)} aria-label="Join the voice room" title="Voice room: drop in, nobody is rung" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
+          {!channel && !convo.isOfficial && (
+            huddlePeers?.count ? (
+              <button onClick={() => void startHuddle()} aria-label={`Join the huddle (${huddlePeers.count} in it)`} title={huddlePeers.names.join(', ')} className="px-3 h-9 rounded-full bg-emerald-500 text-white text-xs font-bold inline-flex items-center gap-1.5 animate-pulse"><Headphones className="w-4 h-4" />Huddle · {huddlePeers.count}</button>
+            ) : (
+              <button onClick={() => void startHuddle()} aria-label="Start a huddle" title="Huddle: a drop-in voice room in this chat, nobody is rung" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
+            )
           )}
           {!convo.isOfficial && !channel && (
             <>
@@ -631,6 +736,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                   <div key={m.id} id={`msg-${m.id}`} className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
                     <MessageBubble
                       onCallBack={(kind) => void call(kind)}
+                      customEmoji={emojiMap}
                       m={m}
                       mine={m.senderId === me}
                       me={me}
@@ -642,6 +748,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onEdit={() => { setReplyTo(null); setEditing(m); }}
                       onDelete={async () => { if (await confirmDialog({ title: 'Delete for everyone?', message: 'The message will be removed for everyone in this chat.', destructive: true })) remove(m); }}
                       onDeleteForMe={() => deleteForMe(m)}
+                      onReport={channel && m.sender?.id !== me && !m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => void report(m) : undefined}
                       onStar={() => star(m)}
                       onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
                       onForward={() => setForwarding(m)}
@@ -655,6 +762,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                         ? { translation: tr.get(m.id), showOriginal: tr.showingOriginal(m.id), onTranslate: () => tr.translate(m.id), onToggleOriginal: () => tr.toggleOriginal(m.id) }
                         : {})}
                     />
+                    {lastMine?.id === m.id && seenBy > 0 && (
+                      <motion.button type="button" onClick={() => setInfoMsg(m)} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                        className="ml-auto mr-2 mt-0.5 flex items-center gap-1 text-[11px] text-zinc-500 hover:text-sky-500">
+                        <CheckCheck className="w-3.5 h-3.5 text-sky-500" />{seenBy === others.length ? 'Seen by everyone' : `Seen by ${seenBy}`}
+                      </motion.button>
+                    )}
                   </div>
                 );
               })}
@@ -672,7 +785,23 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           )}
         </AnimatePresence>
 
+        {!convo.isOfficial && (
+          <ScheduledBar items={data?.scheduled ?? []} onSendNow={sendScheduledNow} onDelete={deleteScheduled} onEdit={(item) => setEditScheduled({ item, at: Date.now() })} />
+        )}
+        {editScheduled && (
+          <ScheduleSheet now={editScheduled.at} title="Edit scheduled message" initialText={editScheduled.item.body} initialAt={editScheduled.item.sendAt}
+            onSave={async (body, sendAt) => {
+              await chatJson(`/api/chat/scheduled/${editScheduled.item.id}`, { method: 'PATCH', body: JSON.stringify({ body, sendAt }) });
+              void mutate();
+              toast.success(`Will send ${scheduleLabel(sendAt).replace(/^Today/, 'today').replace(/^Tomorrow/, 'tomorrow')}`);
+            }}
+            onClose={() => setEditScheduled(null)} />
+        )}
         <Composer
+          draftKey={conversationId}
+          serverDraft={{ text: convo.draft, at: convo.draftAt }}
+          onSchedule={convo.isOfficial ? undefined : schedule}
+          recipientName={convo.isGroup ? undefined : convo.title}
           disabled={convo.isOfficial}
           replyTo={replyTo}
           editing={editing}
@@ -684,9 +813,11 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onTyping={typing}
           onExtra={onExtra}
           mentionables={convo.isGroup ? others.map((o) => ({ id: o.id, name: o.name })) : []}
+          canMentionAll={convo.isGroup && (convo.members.length <= 50 || convo.myRole === 'ADMIN' || channel?.role === 'OWNER' || channel?.role === 'MOD')}
           draftLanguages={[...tr.detected, appLanguage]}
           disabledReason={channel?.kind === 'ANNOUNCE' && channel.role === 'MEMBER' ? 'Only moderators can post in announcements. You can still react and reply in threads.' : undefined}
           slowModeSec={channel?.slowModeSec}
+          customEmoji={channel?.emoji}
           onCommand={convo.isOfficial ? undefined : command}
           onSuggest={convo.isOfficial ? undefined : suggestReplies}
         />
@@ -716,12 +847,14 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       {extra === 'contact' && <ContactPicker onClose={() => setExtra(null)} onPick={(contactId) => sendSpecial({ type: 'CONTACT', contactId })} />}
 
       <AnimatePresence>
-        {lightbox && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setLightbox(null)} className="fixed inset-0 z-[90] bg-black/90 flex items-center justify-center p-4">
-            <button aria-label="Close" className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white"><X className="w-6 h-6" /></button>
-            <motion.img initial={{ scale: 0.95 }} animate={{ scale: 1 }} src={lightbox} alt="" className="max-w-full max-h-full rounded-xl object-contain" />
-          </motion.div>
-        )}
+        {lightbox && (() => {
+          // Every photo in the chat (albums too), so the viewer can go through them (1.8).
+          const photos = messages.flatMap((m) => (m.type !== 'IMAGE' || m.deletedAt || m.metadata?.viewOnce ? []
+            : m.metadata?.album?.length ? m.metadata.album.map((x) => ({ url: x.url, name: x.name }))
+            : m.attachmentUrl ? [{ url: m.attachmentUrl, name: m.attachmentName }] : []));
+          const at = photos.findIndex((x) => x.url === lightbox);
+          return <ImageViewer key="viewer" images={at < 0 ? [{ url: lightbox }] : photos} start={Math.max(0, at)} onClose={() => setLightbox(null)} />;
+        })()}
       </AnimatePresence>
     </div>
   );
@@ -799,6 +932,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
                 </select>
               )}
           </div>
+          <LockSwitch chatId={convo.id} />
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-zinc-800 dark:text-zinc-200 flex items-center gap-2"><Timer className="w-4 h-4 text-zinc-500" /> Disappearing messages</span>
             {canSetTimer ? (

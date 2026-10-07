@@ -14,11 +14,13 @@ import {
   WelcomeScreen,
 } from '@excalidraw/excalidraw';
 import type { AppState, BinaryFileData, BinaryFiles, Collaborator, DataURL, ExcalidrawImperativeAPI, SocketId } from '@excalidraw/excalidraw/types';
+import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform';
 import type { ExcalidrawElement, FileId, OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 import { templateElements, type TemplateId } from './templates';
+import { MAX_VOTES, type Voted } from './votes';
 
 // The live whiteboard: Excalidraw (every drawing tool, shapes, text, arrows, pictures, laser
 // pointer, export) connected to the board's room (BoardRoom in cloudflare/worker.ts). Each change
@@ -32,11 +34,46 @@ export interface BoardControls {
   setBackground(file: File): Promise<void>;
   removeBackground(): void;
   addPhoto(file: File): Promise<void>;
+  /** The text on the board: sticky notes, labels, text boxes (AI on boards, 3.5). */
+  texts(): string[];
+  /** Adds elements to the right of what's on the board, and shows them. */
+  addElements(build: (origin: { x: number; y: number }) => ExcalidrawElementSkeleton[]): void;
+  /** Presenting (3.4): start or stop sharing my view; followers see what I see. */
+  present(on: boolean): void;
+  /** Follow (or stop following) whoever is presenting. */
+  follow(on: boolean): void;
+  /** The board's frames, in reading order (left to right, then top to bottom): the slides. */
+  frames(): { id: string; name: string }[];
+  /** Shows a frame (as a slide) on my screen, and so on my followers'. */
+  showFrame(id: string): void;
+  /** Starts a workshop timer for everyone (minutes), or stops it (null). */
+  setTimer(minutes: number | null): void;
+  /** Dot voting (3.4): adds or takes back my vote on the selected notes (3 votes each). */
+  vote(): string | null;
+  /** Each frame (or the whole board when there are none) as a picture, for a PDF. */
+  exportPages(): Promise<string[]>;
+  /** The selected shape (a label's shape), for commenting on it (3.4). */
+  selected(): string | null;
+  /** A shape's text (or its kind), to name a comment thread. */
+  labelOf(elementId: string): string | null;
+  /** Selects a shape and shows it. */
+  focus(elementId: string): void;
+  /** The board's elements, to save a version. */
+  elements(): readonly ExcalidrawElement[];
+  /** Puts a saved version back (synced to everyone like any edit). */
+  restore(elements: ExcalidrawElement[]): void;
 }
+
+
+/** Someone presenting (3.4). */
+export interface Presenting { name: string; mine: boolean }
+type View = { cx: number; cy: number; zoom: number };
 
 type RoomFile = { id: string; mimeType: string; url: string; created: number };
 type ServerMessage =
-  | { type: 'init'; me: BoardPeer; elements: ExcalidrawElement[]; files: RoomFile[]; peers: BoardPeer[] }
+  | { type: 'init'; me: BoardPeer; elements: ExcalidrawElement[]; files: RoomFile[]; peers: BoardPeer[]; present?: { sid: string; name: string; view: View } | null; timer?: { endsAt: number; by: string } | null }
+  | { type: 'present'; sid: string; name: string; view: View | null }
+  | { type: 'timer'; endsAt: number | null; by: string }
   | { type: 'update'; elements: ExcalidrawElement[] }
   | { type: 'file'; file: RoomFile }
   | { type: 'peers'; peers: BoardPeer[] }
@@ -105,6 +142,9 @@ export default function BoardCanvas({
   onRole,
   onGone,
   onError,
+  onPresent,
+  onTimer,
+  onVotes,
 }: {
   boardId: string;
   title: string;
@@ -119,6 +159,12 @@ export default function BoardCanvas({
   onRole: (role: 'OWNER' | 'EDITOR' | 'VIEWER') => void;
   onGone: (why: BoardGone) => void;
   onError: (message: string) => void;
+  /** Someone started or stopped presenting (3.4). */
+  onPresent?: (p: Presenting | null) => void;
+  /** The workshop timer (3.4). */
+  onTimer?: (t: { endsAt: number; by: string } | null) => void;
+  /** The notes with votes, most first (3.4). */
+  onVotes?: (votes: Voted[]) => void;
 }) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const ws = useRef<WebSocket | null>(null);
@@ -135,11 +181,17 @@ export default function BoardCanvas({
   const thumbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCursor = useRef(0);
   const lastPos = useRef<{ x: number; y: number; button: string }>({ x: NaN, y: NaN, button: 'up' });
-  const callbacks = useRef({ onPeers, onStatus, onRole, onGone, onError, onBackground });
+  const callbacks = useRef({ onPeers, onStatus, onRole, onGone, onError, onBackground, onPresent, onTimer, onVotes });
   useLayoutEffect(() => {
     editable.current = canEdit;
-    callbacks.current = { onPeers, onStatus, onRole, onGone, onError, onBackground };
+    callbacks.current = { onPeers, onStatus, onRole, onGone, onError, onBackground, onPresent, onTimer, onVotes };
   });
+  const lastVotes = useRef('');
+  // Presenting (3.4): am I presenting, do I follow, and the presenter's last view.
+  const presenting = useRef(false);
+  const following = useRef(true);
+  const presenter = useRef<{ sid: string; view: View } | null>(null);
+  const lastView = useRef(0);
 
   const send = useCallback((msg: unknown) => {
     const socket = ws.current;
@@ -277,6 +329,28 @@ export default function BoardCanvas({
     [api],
   );
 
+  // Presenting (3.4). A view is the centre of the screen (in board coordinates) and the zoom, so
+  // followers see the same place whatever their screen size.
+  const applyView = useCallback((v: View) => {
+    if (!api) return;
+    const { width, height } = api.getAppState();
+    api.updateScene({ appState: { scrollX: width / 2 / v.zoom - v.cx, scrollY: height / 2 / v.zoom - v.cy, zoom: { value: v.zoom as AppState['zoom']['value'] } } });
+  }, [api]);
+  const myView = useCallback((): View | null => {
+    if (!api) return null;
+    const a = api.getAppState();
+    return { cx: a.width / 2 / a.zoom.value - a.scrollX, cy: a.height / 2 / a.zoom.value - a.scrollY, zoom: a.zoom.value };
+  }, [api]);
+  /** The presenter's screen moved: followers move too (at most ~7 times a second). */
+  const onScrollChange = useCallback(() => {
+    if (!presenting.current) return;
+    const now = Date.now();
+    if (now - lastView.current < 140) return;
+    lastView.current = now;
+    const v = myView();
+    if (v) send({ type: 'present', view: v });
+  }, [myView, send]);
+
   // The connection to the room, reconnecting after drops.
   useEffect(() => {
     if (!api) return;
@@ -312,6 +386,19 @@ export default function BoardCanvas({
           return;
         }
         switch (msg.type) {
+          case 'present':
+            if (msg.view) {
+              presenter.current = { sid: msg.sid, view: msg.view };
+              callbacks.current.onPresent?.({ name: msg.name, mine: false });
+              if (following.current) applyView(msg.view);
+            } else if (presenter.current?.sid === msg.sid) {
+              presenter.current = null;
+              callbacks.current.onPresent?.(presenting.current ? { name: me.current?.name ?? '', mine: true } : null);
+            }
+            break;
+          case 'timer':
+            callbacks.current.onTimer?.(msg.endsAt ? { endsAt: msg.endsAt, by: msg.by } : null);
+            break;
           case 'init':
             openedAt = Date.now();
             me.current = msg.me;
@@ -323,6 +410,11 @@ export default function BoardCanvas({
             showPeers(msg.peers);
             void loadRoomFiles(msg.files).then(() => uploadFiles(api.getFiles()));
             flush(); // anything drawn while offline
+            callbacks.current.onTimer?.(msg.timer ?? null);
+            if (msg.present) {
+              presenter.current = { sid: msg.present.sid, view: msg.present.view };
+              callbacks.current.onPresent?.({ name: msg.present.name, mine: false });
+            }
             // Open on the drawing, whatever the screen size (not on an empty corner of the canvas).
             if (!framed.current) {
               framed.current = true;
@@ -331,6 +423,7 @@ export default function BoardCanvas({
               }
               if (api.getSceneElements().length) api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
             }
+            if (presenter.current && following.current) applyView(presenter.current.view);
             break;
           case 'update':
             merge(msg.elements);
@@ -414,7 +507,7 @@ export default function BoardCanvas({
         void saveThumbnail(); // leaving right after an edit
       }
     };
-  }, [api, boardId, merge, showPeers, loadRoomFiles, uploadFiles, flush, saveThumbnail, template]);
+  }, [api, boardId, merge, showPeers, loadRoomFiles, uploadFiles, flush, saveThumbnail, template, applyView]);
 
   const onChange = useCallback(
     (elements: readonly OrderedExcalidrawElement[], _state: AppState, files: BinaryFiles) => {
@@ -422,6 +515,22 @@ export default function BoardCanvas({
       if (bg !== hasBackground.current) {
         hasBackground.current = bg;
         callbacks.current.onBackground(bg);
+      }
+      // Votes (3.4) live on the notes themselves, so they arrive with everyone's edits.
+      if (callbacks.current.onVotes) {
+        const voted = elements.filter((e) => !e.isDeleted && ((e.customData as { votes?: string[] } | undefined)?.votes?.length ?? 0) > 0);
+        const key = voted.map((e) => `${e.id}:${(e.customData as { votes: string[] }).votes.join(',')}`).join('|');
+        if (key !== lastVotes.current) {
+          lastVotes.current = key;
+          const textOf = (e: OrderedExcalidrawElement) => {
+            const own = (e as unknown as { text?: string }).text;
+            if (own) return own;
+            const label = elements.find((t) => t.type === 'text' && (t as unknown as { containerId?: string }).containerId === e.id) as unknown as { text?: string } | undefined;
+            return label?.text ?? 'A shape';
+          };
+          const mine = me.current?.userId;
+          callbacks.current.onVotes(voted.map((e) => { const v = (e.customData as { votes: string[] }).votes; return { id: e.id, label: textOf(e).replace(/\s+/g, ' ').slice(0, 80), count: v.length, mine: !!mine && v.includes(mine) }; }).sort((a, b) => b.count - a.count));
+        }
       }
       if (!ready.current || !editable.current) return;
       if (!sendTimer.current) sendTimer.current = setTimeout(flush, SEND_EVERY_MS);
@@ -484,6 +593,107 @@ export default function BoardCanvas({
     onControls({
       setBackground: (file) => place(file, true),
       addPhoto: (file) => place(file, false),
+      texts: () => api.getSceneElements()
+        .filter((e) => e.type === 'text')
+        .map((e) => (e as unknown as { text: string }).text.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .slice(0, 150),
+      addElements: (build) => {
+        const current = api.getSceneElements().filter((e) => !isBackground(e));
+        const right = current.length ? Math.max(...current.map((e) => e.x + e.width)) + 160 : 0;
+        const top = current.length ? Math.min(...current.map((e) => e.y)) : 0;
+        const added = convertToExcalidrawElements(build({ x: right, y: top }), { regenerateIds: false });
+        api.updateScene({ elements: [...api.getSceneElementsIncludingDeleted(), ...added], captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+        api.scrollToContent(added, { fitToContent: true, animate: true });
+      },
+      present: (on) => {
+        presenting.current = on;
+        if (on) { following.current = false; const v = myView(); if (v) send({ type: 'present', view: v }); }
+        else send({ type: 'present', view: null });
+        callbacks.current.onPresent?.(on ? { name: me.current?.name ?? '', mine: true } : presenter.current ? { name: '', mine: false } : null);
+      },
+      follow: (on) => {
+        following.current = on;
+        if (on && presenter.current) applyView(presenter.current.view);
+      },
+      frames: () => api.getSceneElements()
+        .filter((e) => e.type === 'frame' || e.type === 'magicframe')
+        .sort((a, b) => (Math.abs(a.y - b.y) > 200 ? a.y - b.y : a.x - b.x))
+        .map((e, i) => ({ id: e.id, name: (e as unknown as { name?: string | null }).name || `Slide ${i + 1}` })),
+      showFrame: (frameId) => {
+        const frame = api.getSceneElements().find((e) => e.id === frameId);
+        if (!frame) return;
+        api.scrollToContent(frame, { fitToContent: true, animate: true, duration: 300 });
+        // After the move: followers get the slide's view.
+        setTimeout(() => { if (presenting.current) { const v = myView(); if (v) send({ type: 'present', view: v }); } }, 380);
+      },
+      setTimer: (minutes) => send({ type: 'timer', endsAt: minutes ? Date.now() + minutes * 60_000 : null }),
+      vote: () => {
+        const mine = me.current?.userId;
+        if (!mine) return 'Not connected yet.';
+        const picked = new Set(Object.keys(api.getAppState().selectedElementIds));
+        const all = api.getSceneElementsIncludingDeleted();
+        // A label's note is voted, not the label itself.
+        const targets = new Set([...picked].map((id) => { const e = all.find((x) => x.id === id); return (e as unknown as { containerId?: string } | undefined)?.containerId ?? id; }));
+        if (!targets.size) return 'Select a note to vote for it.';
+        const votesOf = (e: ExcalidrawElement) => (e.customData as { votes?: string[] } | undefined)?.votes ?? [];
+        let used = all.filter((e) => !e.isDeleted && votesOf(e).includes(mine)).length;
+        let refused = false;
+        const next = all.map((e) => {
+          if (!targets.has(e.id) || e.isDeleted) return e;
+          const v = votesOf(e);
+          if (v.includes(mine)) { used -= 1; return newElementWith(e, { customData: { ...e.customData, votes: v.filter((x) => x !== mine) } }); }
+          if (used >= MAX_VOTES) { refused = true; return e; }
+          used += 1;
+          return newElementWith(e, { customData: { ...e.customData, votes: [...v, mine] } });
+        });
+        api.updateScene({ elements: next, captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+        return refused ? `You have ${MAX_VOTES} votes. Take one back to vote for something else.` : null;
+      },
+      selected: () => {
+        const ids = Object.keys(api.getAppState().selectedElementIds);
+        if (!ids.length) return null;
+        const e = api.getSceneElements().find((x) => x.id === ids[0]);
+        return (e as unknown as { containerId?: string | null } | undefined)?.containerId ?? ids[0];
+      },
+      labelOf: (elementId) => {
+        const all = api.getSceneElements();
+        const e = all.find((x) => x.id === elementId);
+        if (!e) return null;
+        const own = (e as unknown as { text?: string }).text;
+        const label = all.find((t) => t.type === 'text' && (t as unknown as { containerId?: string }).containerId === elementId) as unknown as { text?: string } | undefined;
+        return (own ?? label?.text ?? e.type).replace(/\s+/g, ' ').slice(0, 60);
+      },
+      focus: (elementId) => {
+        const e = api.getSceneElements().find((x) => x.id === elementId);
+        if (!e) return;
+        api.updateScene({ appState: { selectedElementIds: { [elementId]: true } as AppState['selectedElementIds'] } });
+        api.scrollToContent(e, { fitToContent: false, animate: true });
+      },
+      elements: () => api.getSceneElements(),
+      restore: (saved) => {
+        // The room keeps the newest version of each element, so the restored ones are numbered
+        // above what's there now; elements made since are deleted.
+        const now = api.getSceneElementsIncludingDeleted();
+        const byId = new Map(now.map((e) => [e.id, e]));
+        const keep = new Set(saved.map((e) => e.id));
+        const restored = saved.map((e) => ({ ...e, isDeleted: false, version: Math.max(e.version, byId.get(e.id)?.version ?? 0) + 1, versionNonce: Math.floor(Math.random() * 2 ** 31), updated: Date.now() }));
+        const gone = now.filter((e) => !keep.has(e.id) && !e.isDeleted && !isBackground(e)).map((e) => newElementWith(e, { isDeleted: true }));
+        const bg = now.filter((e) => isBackground(e) && !keep.has(e.id));
+        api.updateScene({ elements: [...bg, ...restored, ...gone] as ExcalidrawElement[], captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+      },
+      exportPages: async () => {
+        const elements = api.getSceneElements();
+        const frames = elements.filter((e) => e.type === 'frame' || e.type === 'magicframe').sort((a, b) => (Math.abs(a.y - b.y) > 200 ? a.y - b.y : a.x - b.x));
+        const appState = { ...api.getAppState(), exportBackground: true };
+        const toUrl = (b: Blob) => new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(b); });
+        const pages: string[] = [];
+        for (const frame of frames.length ? frames : [null]) {
+          const blob = await exportToBlob({ elements, appState, files: api.getFiles(), mimeType: 'image/png', exportPadding: 16, ...(frame ? { exportingFrame: frame as never } : {}) });
+          pages.push(await toUrl(blob));
+        }
+        return pages;
+      },
       removeBackground: () => {
         api.updateScene({
           elements: api.getSceneElementsIncludingDeleted().map((e) => (isBackground(e) ? newElementWith(e, { isDeleted: true }) : e)),
@@ -492,7 +702,7 @@ export default function BoardCanvas({
       },
     });
     return () => onControls(null);
-  }, [api, onControls]);
+  }, [api, onControls, myView, applyView, send]);
 
   return (
     <div className="h-full w-full">
@@ -500,6 +710,7 @@ export default function BoardCanvas({
         excalidrawAPI={setApi}
         onChange={onChange}
         onPointerUpdate={onPointerUpdate}
+        onScrollChange={onScrollChange}
         isCollaborating
         viewModeEnabled={!canEdit}
         theme={theme}

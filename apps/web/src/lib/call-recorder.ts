@@ -121,7 +121,7 @@ export class CallRecorder {
       this.rec.onstop = () => {
         if (this.timer) clearInterval(this.timer);
         for (const node of this.wired.values()) node.disconnect();
-        void this.ctx.close();
+        if (this.ctx.state !== 'closed') void this.ctx.close().catch(() => {});
         resolve({ blob: new Blob(this.chunks, { type: this.type.split(';')[0] }), durationSec });
       };
       if (this.rec.state === 'inactive') this.rec.onstop(new Event('stop'));
@@ -130,7 +130,8 @@ export class CallRecorder {
   }
 }
 
-/** Uploads a finished recording to the class's materials, reporting progress (0–1). */
+/** Uploads a finished recording and saves it where the call happened (class materials, the chat, the
+ *  group, or Calls), reporting progress (0–1). */
 export async function uploadRecording(callId: string, blob: Blob, durationSec: number, authed: <T>(url: string, init?: RequestInit) => Promise<T>, onProgress: (p: number) => void) {
   const contentType = blob.type || 'video/webm';
   const { uploadUrl, url } = await authed<{ uploadUrl: string; url: string }>(`/api/calls/${callId}/recording`, { method: 'POST', body: JSON.stringify({ step: 'upload', contentType, size: blob.size }) });
@@ -143,5 +144,5 @@ export async function uploadRecording(callId: string, blob: Blob, durationSec: n
     xhr.onerror = () => reject(new Error('Upload failed. Check the connection.'));
     xhr.send(blob);
   });
-  return authed<{ id: string; title: string }>(`/api/calls/${callId}/recording`, { method: 'POST', body: JSON.stringify({ step: 'save', url, size: blob.size, durationSec }) });
+  return authed<{ id: string; title: string; message: string }>(`/api/calls/${callId}/recording`, { method: 'POST', body: JSON.stringify({ step: 'save', url, size: blob.size, durationSec, contentType }) });
 }

@@ -24,6 +24,7 @@ const KIND: Record<string, { label: string; icon: typeof Target; cls: string }> 
   QUIZ: { label: 'Quiz prep', icon: ListChecks, cls: 'from-sky-500/15 to-sky-500/5 border-sky-500/25 text-sky-700 dark:text-sky-300' },
   EXAM: { label: 'Exam prep', icon: Target, cls: 'from-rose-500/15 to-rose-500/5 border-rose-500/25 text-rose-700 dark:text-rose-300' },
   FLASHCARDS: { label: 'Flashcards', icon: Layers, cls: 'from-amber-500/15 to-amber-500/5 border-amber-500/25 text-amber-700 dark:text-amber-300' },
+  TASK: { label: 'Task', icon: ListChecks, cls: 'from-fuchsia-500/15 to-fuchsia-500/5 border-fuchsia-500/25 text-fuchsia-700 dark:text-fuchsia-300' },
   REVIEW: { label: 'Review', icon: NotebookPen, cls: 'from-emerald-500/15 to-emerald-500/5 border-emerald-500/25 text-emerald-700 dark:text-emerald-300' },
 };
 const dayLabel = (d: string, today: string) => (d === today ? 'Today' : format(new Date(`${d}T12:00:00`), 'EEE d'));

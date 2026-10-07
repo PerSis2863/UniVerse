@@ -25,19 +25,21 @@ export const SUPPORT_TABS: SectionTab[] = [
 export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/ngo-marketplace', label: 'NGO projects' },
   { href: '/student/impact/shifts', label: 'Volunteer shifts' },
+  { href: '/impact-rooms', label: 'Impact rooms' },
   { href: '/student/impact/startups', label: 'Startups' },
   { href: '/student/impact/companies', label: 'Companies' },
 ];
 
 export const STUDENT_BOARD_TABS: SectionTab[] = [
   { href: '/student/blackboard', label: 'Course board' },
-  { href: '/student/tutor', label: 'AI tutor', also: ['/student/voice-tutor'] },
+  { href: '/student/tutor', label: 'AI tutor', also: ['/student/voice-tutor', '/student/semester'] },
 ];
 
 /** Inside the AI tutor tab: type to it, or talk to it (the voice tutor). */
 export const STUDENT_TUTOR_MODES: SectionTab[] = [
   { href: '/student/tutor', label: 'Type' },
   { href: '/student/voice-tutor', label: 'Talk' },
+  { href: '/student/semester', label: 'My semester' },
 ];
 
 export const TEACHER_BOARD_TABS: SectionTab[] = [
@@ -66,8 +68,11 @@ export const PROGRESS_TABS: SectionTab[] = [
 
 /** Whiteboards and shared code editors: one "Collaborate" entry in every portal. */
 export const COLLAB_TABS: SectionTab[] = [
+  { href: '/spaces', label: 'Spaces' },
   { href: '/boards', label: 'Whiteboards' },
+  { href: '/docs', label: 'Docs' },
   { href: '/code', label: 'Code together' },
+  { href: '/tasks', label: 'Tasks' },
 ];
 
 export const STUDENT_COURSE_TABS: SectionTab[] = [
@@ -85,6 +90,12 @@ export const TEACHER_STUDENT_TABS: SectionTab[] = [
   { href: '/teacher/students', label: 'Students' },
   { href: '/teacher/early-warning', label: 'Early warning' },
   { href: '/teacher/analytics', label: 'Course analytics' },
+];
+
+export const SAFETY_TABS: SectionTab[] = [
+  { href: '/admin/safety', label: 'BeeSafe reports' },
+  { href: '/admin/safety/chats', label: 'Chat safety' },
+  { href: '/admin/safety/policy', label: 'Policy' },
 ];
 
 export const ADMIN_INSIGHT_TABS: SectionTab[] = [
@@ -120,7 +131,17 @@ export const IMPACT_REPORT_TABS: SectionTab[] = [
   { href: '/admin/impact-reports', label: 'Signed reports' },
   { href: '/admin/impact-reports/shifts', label: 'Volunteer shifts' },
   { href: '/admin/impact-reports/volunteering', label: 'Yearly volunteering' },
+  { href: '/impact-rooms', label: 'Impact rooms' },
 ];
+
+// NGO work (teacher): mentoring NGO projects, and their impact rooms (Stage 4 · 4.12)
+export const TEACHER_IMPACT_TABS: SectionTab[] = [
+  { href: '/teacher/collaborations/projects', label: 'NGO mentorship' },
+  { href: '/impact-rooms', label: 'Impact rooms' },
+];
+
+/** Impact rooms sit in a different menu for each role. */
+export const impactTabs = (role: string | undefined) => (role === 'ADMIN' ? IMPACT_REPORT_TABS : role === 'TEACHER' ? TEACHER_IMPACT_TABS : OPPORTUNITY_TABS);
 
 // Campus Monitoring (admin): rooms, clubs, and the campus super-app's events and lost & found (upgrade 7)
 export const MONITORING_TABS: SectionTab[] = [

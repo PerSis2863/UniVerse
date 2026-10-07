@@ -60,7 +60,7 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
   // Searches, threads and community channels (roles, slow mode) are left to the Next.js route.
   if (url.searchParams.get('q')?.trim() || url.searchParams.get('thread')) return null;
   const mine = await db
-    .prepare('SELECT p.id, p.role, p.lastReadAt, p.markedUnread, p.pinnedAt, p.mutedUntil, p.archivedAt, p.translateTo, c.communityId FROM conversation_participants p JOIN conversations c ON c.id = p.conversationId WHERE p.conversationId = ? AND p.userId = ?')
+    .prepare('SELECT p.id, p.role, p.lastReadAt, p.markedUnread, p.pinnedAt, p.mutedUntil, p.archivedAt, p.translateTo, p.draft, p.draftAt, c.communityId FROM conversation_participants p JOIN conversations c ON c.id = p.conversationId WHERE p.conversationId = ? AND p.userId = ?')
     .bind(conversationId, me.id)
     .first<Row>();
   if (!mine) return json({ error: 'Conversation not found.' }, 404);
@@ -72,7 +72,7 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
   const beforeMs = Date.parse(url.searchParams.get('before') ?? '');
   const before = Number.isNaN(beforeMs) ? null : dbDate(beforeMs);
 
-  const [rowsRes, convoRes, membersRes, pinnedRes] = await db.batch<Row>([
+  const [rowsRes, convoRes, membersRes, pinnedRes, scheduledRes] = await db.batch<Row>([
     db
       .prepare(
         `SELECT m.id, m.pinnedAt, m.conversationId, m.senderId, m.body, m.type, m.attachmentUrl, m.attachmentName, m.attachmentSize, m.attachmentMime,
@@ -100,6 +100,8 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
          ORDER BY m.pinnedAt DESC LIMIT 3`,
       )
       .bind(conversationId, now, me.id),
+    // My messages scheduled to send later here (src/server/scheduled-messages.ts).
+    db.prepare('SELECT id, body, sendAt, replyToId FROM scheduled_messages WHERE conversationId = ? AND senderId = ? ORDER BY sendAt LIMIT 20').bind(conversationId, me.id),
   ]);
   const convo = convoRes.results[0];
   if (!convo) return json({ error: 'Conversation not found.' }, 404);
@@ -199,8 +201,11 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
         disappearingSec: convo.disappearingSec,
         pinned: !!mine.pinnedAt,
         muted: !!mine.mutedUntil && at(mine.mutedUntil) > nowMs,
+        mutedUntil: mine.mutedUntil && at(mine.mutedUntil) > nowMs ? new Date(at(mine.mutedUntil)).toISOString() : null,
         archived: !!mine.archivedAt,
         translateTo: null,
+        draft: mine.draft ?? null,
+        draftAt: isoDate(mine.draftAt as string | null),
         channel: null,
         members: members.map((p) => ({
           id: p.userId,
@@ -224,6 +229,7 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
         pinnedAt: isoDate(p.pinnedAt as string),
         sender: { id: p.senderId, name: p.senderName },
       })),
+      scheduled: scheduledRes.results.map((s) => ({ id: s.id, body: s.body, sendAt: isoDate(s.sendAt as string), replyToId: s.replyToId })),
       translations: {},
       messages,
       hasMore,
@@ -257,7 +263,8 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
     db.prepare(`SELECT id, isGroup, name, avatarUrl, updatedAt FROM conversations WHERE id IN (${mineIds}) ORDER BY updatedAt DESC`).bind(me.id),
     db
       .prepare(
-        `SELECT p.conversationId, p.userId, p.typingUntil, p.pinnedAt, p.mutedUntil, p.archivedAt, p.markedUnread, u.name, u.avatar, u.lastSeenAt, u.presence, u.statusText, u.statusEmoji, u.statusUntil
+        `SELECT p.conversationId, p.userId, p.typingUntil, p.pinnedAt, p.mutedUntil, p.archivedAt, p.markedUnread, u.name, u.avatar, u.lastSeenAt, u.presence, u.statusText, u.statusEmoji, u.statusUntil,
+           CASE WHEN p.userId = ?1 THEN p.draft END AS draft, CASE WHEN p.userId = ?1 THEN p.draftAt END AS draftAt
          FROM conversation_participants p JOIN users u ON u.id = p.userId WHERE p.conversationId IN (${mineIds})`,
       )
       .bind(me.id),
@@ -335,7 +342,10 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
         pinned: !!pinnedAt,
         pinnedAt,
         muted: !!mine?.mutedUntil && at(mine.mutedUntil) > nowMs,
+        mutedUntil: mine?.mutedUntil && at(mine.mutedUntil) > nowMs ? new Date(at(mine.mutedUntil)).toISOString() : null,
         archived: !!mine?.archivedAt,
+        draft: (mine?.draft as string | null) ?? null,
+        draftAt: isoDate((mine?.draftAt as string | null) ?? null),
         activityAt: isoDate((m?.createdAt as string) ?? (c.updatedAt as string)),
       };
     })

@@ -123,8 +123,8 @@ export default function VoiceTutorPage() {
         capture.port.onmessage = null;
         source.disconnect();
         mic?.getTracks().forEach((tr) => tr.stop());
-        void input.close();
-        void output.close();
+        void input.close().catch(() => {});
+        void output.close().catch(() => {});
         live.current = null;
         setSpeaking(false);
         setSecondsLeft(null);

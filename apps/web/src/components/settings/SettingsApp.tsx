@@ -15,6 +15,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { AccountSecurity } from '@/components/settings/AccountSecurity';
 import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { LowDataToggle } from '@/components/settings/LowDataToggle';
+import { QuietHoursSetting } from '@/components/settings/QuietHoursSetting';
 import { ConsentsPanel } from '@/components/settings/ConsentsPanel';
 import { DownloadMyData } from '@/components/settings/DownloadMyData';
 import { NetworkVisibility } from '@/components/settings/NetworkVisibility';
@@ -44,7 +45,7 @@ interface Section { id: string; label: string; icon: typeof User; tile: string; 
 const SECTIONS: Section[] = [
   { id: 'profile', label: 'Profile', icon: User, tile: '#8e8e93', keywords: 'name photo phone email account picture avatar' },
   { id: 'appearance', label: 'Appearance', icon: Palette, tile: '#5856d6', keywords: 'theme dark light mode text size bigger font motion animation vibration haptics' },
-  { id: 'language', label: 'Language & data', icon: Globe, tile: '#007aff', keywords: 'language translate english french hindi spanish low data saver' },
+  { id: 'language', label: 'Language & data', icon: Globe, tile: '#007aff', keywords: 'language translate english french hindi spanish low data saver 2g weak connection voice only calls' },
   { id: 'notifications', label: 'Notifications', icon: Bell, tile: '#ff3b30', keywords: 'push email alerts notify' },
   { id: 'privacy', label: 'Privacy & security', icon: Shield, tile: '#0a84ff', keywords: 'password two-step 2fa sign in devices visibility network privacy security' },
   { id: 'family', label: 'Parent or guardian', icon: Users, tile: '#34c759', keywords: 'parent guardian family share progress', roles: ['STUDENT'] },
@@ -358,6 +359,7 @@ function Notifications({ role }: { role: Role }) {
       <Row icon={Bell} title="Email notifications" desc={role === 'ADMIN' ? 'New teacher and NGO applications, and messages you miss.' : role === 'TEACHER' ? 'Submissions to grade, messages you miss and reminders.' : 'New grades, credential decisions, messages you miss and quizzes due tomorrow.'}>
         {on === null ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : <Switch checked={on} label="Email notifications" onChange={(v) => void toggle(v)} />}
       </Row>
+      <QuietHoursSetting />
     </Card>
   );
 }

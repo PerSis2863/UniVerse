@@ -87,7 +87,7 @@ export async function aiUsageToday() {
   return {
     limits,
     used: Number(site?.calls ?? 0),
-    top: rows.filter((r) => r.userId !== '*').slice(0, 5).map((r) => ({ id: r.userId, name: r.name ?? 'Unknown', role: r.role, calls: Number(r.calls) })),
+    top: rows.filter((r) => r.userId !== '*').slice(0, 5).map((r) => ({ id: r.userId, name: r.name ?? (r.userId.startsWith('cc:') ? 'Live captions in a call' : 'Unknown'), role: r.role, calls: Number(r.calls) })),
   };
 }
 

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
-import { getSystemUser } from '@/lib/chat';
+import { getSystemUser, isOwnBlobUrl } from '@/lib/chat';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
@@ -22,17 +22,45 @@ const code = () => randomBytes(6).toString('base64url');
 const cleanName = (v: unknown, max = 60) => String(v ?? '').trim().replace(/\s+/g, ' ').slice(0, max);
 const channelName = (v: unknown) => cleanName(v, 40).toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s+/g, '-') || 'channel';
 
-async function myRole(communityId: string, userId: string): Promise<Role | null> {
+export async function myRole(communityId: string, userId: string): Promise<Role | null> {
   const m = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId, userId } }, select: { role: true } });
   return (m?.role as Role | undefined) ?? null;
 }
 
-async function requireRole(communityId: string, user: SessionUser, min: 'MEMBER' | 'MOD' | 'OWNER') {
+export async function requireRole(communityId: string, user: SessionUser, min: 'MEMBER' | 'MOD' | 'OWNER') {
   const role = await myRole(communityId, user.id);
   if (!role) throw new NotFoundException('This community isn’t one of yours.');
   const rank = { MEMBER: 0, MOD: 1, OWNER: 2 };
   if (rank[role] < rank[min]) throw new ForbiddenException(min === 'OWNER' ? 'Only the community’s owner can do that.' : 'Only the community’s moderators can do that.');
   return role;
+}
+
+// ── Custom emoji (Stage 4 · 1.2): a community's own, used as :name: in its channels and reactions ──
+
+const EMOJI_NAME = /^[a-z0-9_]{2,32}$/;
+export const MAX_COMMUNITY_EMOJI = 50;
+
+export async function listEmoji(user: SessionUser, id: string) {
+  await requireRole(id, user, 'MEMBER');
+  return prisma.communityEmoji.findMany({ where: { communityId: id }, orderBy: { name: 'asc' }, select: { name: true, url: true } });
+}
+
+/** A moderator adds an emoji: a name (letters, numbers, _) and an uploaded picture. */
+export async function addEmoji(user: SessionUser, id: string, body: Record<string, unknown>) {
+  await requireRole(id, user, 'MOD');
+  const name = String(body.name ?? '').trim().toLowerCase().replace(/^:+|:+$/g, '');
+  if (!EMOJI_NAME.test(name)) throw new BadRequestException('Use 2–32 lowercase letters, numbers or _ for the name.');
+  if (!isOwnBlobUrl(body.url)) throw new BadRequestException('Upload a picture for the emoji.');
+  if ((await prisma.communityEmoji.count({ where: { communityId: id } })) >= MAX_COMMUNITY_EMOJI) throw new BadRequestException(`A community can have up to ${MAX_COMMUNITY_EMOJI} emoji.`);
+  if (await prisma.communityEmoji.findUnique({ where: { communityId_name: { communityId: id, name } }, select: { id: true } })) throw new BadRequestException(`:${name}: is already one of this community’s emoji.`);
+  await prisma.communityEmoji.create({ data: { communityId: id, name, url: String(body.url), createdById: user.id } });
+  return listEmoji(user, id);
+}
+
+export async function removeEmoji(user: SessionUser, id: string, name: unknown) {
+  await requireRole(id, user, 'MOD');
+  await prisma.communityEmoji.deleteMany({ where: { communityId: id, name: String(name ?? '') } });
+  return listEmoji(user, id);
 }
 
 /** Tells members' open tabs to refresh their communities (capped: each live push is a subrequest). */
@@ -197,11 +225,13 @@ export async function manageMember(user: SessionUser, id: string, body: Record<s
   if (body.remove === true) {
     if (theirs === 'OWNER' || (theirs === 'MOD' && mine !== 'OWNER')) throw new ForbiddenException('You can’t remove them.');
     await removeFromCommunity(id, target);
+    await prisma.communityModLog.create({ data: { communityId: id, actorId: user.id, action: 'remove_member', targetId: target } }).catch(() => null);
     return { ok: true };
   }
   if (mine !== 'OWNER') throw new ForbiddenException('Only the owner can change roles.');
   const role = body.role === 'MOD' || body.role === 'OWNER' ? body.role : 'MEMBER';
   await prisma.communityMember.update({ where: { communityId_userId: { communityId: id, userId: target } }, data: { role } });
+  await prisma.communityModLog.create({ data: { communityId: id, actorId: user.id, action: 'role', targetId: target, detail: role } }).catch(() => null);
   await refreshMembers(id);
   return { ok: true };
 }
@@ -264,13 +294,17 @@ export async function updateCommunity(user: SessionUser, id: string, body: Recor
  * The rules a channel adds when sending a message (src/app/api/chat/conversations/[id]/messages):
  * announcements are for moderators, and slow mode spaces out one person's messages.
  */
-export async function channelSendCheck(conversationId: string, userId: string): Promise<string | null> {
+export async function channelSendCheck(conversationId: string, userId: string, opts: { slowMode?: boolean } = {}): Promise<string | null> {
   const ch = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { communityId: true, channelKind: true, slowModeSec: true } });
   if (!ch?.communityId) return null;
-  const role = await myRole(ch.communityId, userId);
+  const member = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: ch.communityId, userId } }, select: { role: true, timeoutUntil: true } });
+  const role = (member?.role as Role | undefined) ?? null;
   if (ch.channelKind === 'VOICE') return 'This is a voice room: join the call to talk.';
+  // Timed out by a moderator (Stage 4 · 1.13): can read, can't post.
+  if (member?.timeoutUntil && member.timeoutUntil > new Date()) return `A moderator timed you out: you can post again in ${Math.max(1, Math.ceil((member.timeoutUntil.getTime() - Date.now()) / 60_000))} min.`;
   if (ch.channelKind === 'ANNOUNCE' && role === 'MEMBER') return 'Only moderators can post in announcements.';
-  if (ch.slowModeSec > 0 && role === 'MEMBER') {
+  // Scheduled messages are spaced out when they're scheduled instead (src/server/scheduled-messages.ts).
+  if (opts.slowMode !== false && ch.slowModeSec > 0 && role === 'MEMBER') {
     const last = await prisma.message.findFirst({ where: { conversationId, senderId: userId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
     const wait = last ? Math.ceil((last.createdAt.getTime() + ch.slowModeSec * 1000 - Date.now()) / 1000) : 0;
     if (wait > 0) return `Slow mode is on: you can send another message in ${wait} s.`;

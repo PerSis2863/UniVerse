@@ -7,6 +7,7 @@ import { emailDue, parseEmailSchedule } from '@/lib/feature-switches';
 import { assessCourses } from '@/server/early-warning';
 import { sendWeeklyDigests } from '@/server/guardians';
 import { purgeLostFound } from '@/server/campus-life';
+import { pruneCallRecordings } from '@/server/call-recordings';
 
 // Daily job, run by the Worker's cron trigger (cloudflare/worker.ts → wrangler.jsonc "triggers").
 // It isn't reachable from outside: the scheduled handler calls it in-process with a random
@@ -61,6 +62,10 @@ async function enforceRetention() {
   await purgeLostFound(now).catch(() => 0);
   // Class notes transcripts (upgrade 1) after 90 days; the study pack itself stays with the course.
   await prisma.classSession.updateMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) }, transcript: { not: null } }, data: { transcript: null } });
+  // Meeting notes transcripts (Stage 4 · 2.8) after 90 days too; the notes themselves stay.
+  await prisma.callNote.updateMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) }, transcript: { not: null } }, data: { transcript: null } });
+  // Call recordings (Stage 4 · 2.9) after 90 days: the file goes, and its chat message says so.
+  await pruneCallRecordings().catch((e) => console.error('call recordings cleanup failed:', e));
   // Voice tutor conversations (kept as text for the owner console) after 90 days.
   await prisma.voiceSession.deleteMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) } } });
   // Disappearing chat messages that have expired (chats hide them already; this removes them).

@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       name: true,
       avatarUrl: true,
       updatedAt: true,
-      participants: { select: { userId: true, role: true, typingUntil: true, pinnedAt: true, mutedUntil: true, archivedAt: true, markedUnread: true, user: userCard } },
+      participants: { select: { userId: true, role: true, typingUntil: true, pinnedAt: true, mutedUntil: true, archivedAt: true, markedUnread: true, draft: true, draftAt: true, user: userCard } },
       messages: {
         where: visibleTo(user.id),
         orderBy: { createdAt: 'desc' },
@@ -73,7 +73,11 @@ export async function GET(req: Request) {
         pinned: !!mine?.pinnedAt,
         pinnedAt: mine?.pinnedAt ?? null,
         muted: !!mine?.mutedUntil && mine.mutedUntil.getTime() > now,
+        mutedUntil: mine?.mutedUntil && mine.mutedUntil.getTime() > now ? mine.mutedUntil.toISOString() : null,
         archived: !!mine?.archivedAt,
+        // Only my own draft is sent (Stage 4 · 1.4).
+        draft: mine?.draft ?? null,
+        draftAt: mine?.draftAt ?? null,
         activityAt: last?.createdAt ?? c.updatedAt,
       };
     })

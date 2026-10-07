@@ -1,6 +1,7 @@
 import { buildPushPayload } from '@block65/webcrypto-web-push';
 import prisma from '@/lib/db';
 import { planLimits } from '@/lib/plan-limits';
+import { quietNow } from '../quiet-hours';
 
 // Web Push (VAPID) with Web Crypto, so it runs on Cloudflare Workers (the old API used `web-push`,
 // which needs Node's networking). Push is disabled until VAPID keys are configured.
@@ -36,12 +37,16 @@ export class PushService {
   /**
    * One notification to each of these people's devices: one query for all their subscriptions,
    * then one request per device, at most planLimits().pushes (each is a subrequest; Workers Free
-   * allows 50 per request). Expired subscriptions are removed.
+   * allows 50 per request). Expired subscriptions are removed. People in their quiet hours get
+   * nothing (Stage 4 · 4.10): it's still in the app when they look.
    */
   async sendToMany(userIds: string[], payload: PushPayload) {
     const keys = vapid();
     if (!keys || userIds.length === 0) return 0;
-    const ids = [...new Set(userIds)].slice(0, 90);
+    const all = [...new Set(userIds)].slice(0, 90);
+    const quiet = await quietNow(all).catch(() => new Set<string>());
+    const ids = all.filter((id) => !quiet.has(id));
+    if (!ids.length) return 0;
     const subscriptions = await prisma.pushSubscription.findMany({ where: { userId: { in: ids } }, orderBy: { createdAt: 'desc' }, take: planLimits().pushes });
     if (!subscriptions.length) return 0;
     const data = JSON.stringify({
@@ -71,6 +76,31 @@ export class PushService {
     const failed = results.filter((r) => r.status === 'rejected').length;
     if (failed > expired.length) console.warn(`${failed}/${subscriptions.length} push notifications failed`);
     return subscriptions.length - failed;
+  }
+
+  /**
+   * A different notification for each of these devices (the daily brief's counts differ per person),
+   * all at once: one request per device, so callers keep within planLimits().pushes.
+   */
+  async sendEach(items: { subscription: { userId?: string; endpoint: string; p256dh: string; auth: string }; payload: PushPayload }[]) {
+    const keys = vapid();
+    if (!keys || !items.length) return 0;
+    // Quiet hours (Stage 4 · 4.10): skipped like any other push.
+    const quiet = await quietNow([...new Set(items.map((i) => i.subscription.userId).filter((u): u is string => !!u))]).catch(() => new Set<string>());
+    items = items.filter((i) => !i.subscription.userId || !quiet.has(i.subscription.userId));
+    const expired: string[] = [];
+    const results = await Promise.allSettled(
+      items.map(async ({ subscription: sub, payload }) => {
+        const data = JSON.stringify({ title: payload.title, body: payload.body, icon: payload.icon || '/icon-192x192.png', badge: '/icon-192x192.png', url: payload.url || '/', tag: payload.tag, call: false });
+        // Worth showing for a few hours (a morning brief at night isn't).
+        const request = await buildPushPayload({ data, options: { ttl: 6 * 3600, urgency: 'normal' } }, { endpoint: sub.endpoint, expirationTime: null, keys: { p256dh: sub.p256dh, auth: sub.auth } }, keys);
+        const res = await fetch(sub.endpoint, request);
+        if (res.status === 404 || res.status === 410) expired.push(sub.endpoint);
+        if (!res.ok) throw new Error(`Push failed with ${res.status}`);
+      }),
+    );
+    if (expired.length) await prisma.pushSubscription.deleteMany({ where: { endpoint: { in: expired } } });
+    return results.filter((r) => r.status === 'fulfilled').length;
   }
 
   async sendToAll(payload: { title: string; body: string; icon?: string; url?: string }) {

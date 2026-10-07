@@ -5,16 +5,17 @@ import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronDown, ChevronRight, Compass, Crown, Globe2, Hash, Headphones, Link2, Loader2, LogOut, Megaphone, Plus, Search, Settings2, Shield, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Compass, Crown, Globe2, Hash, Headphones, ImagePlus, Link2, Loader2, LogOut, Megaphone, Plus, Search, Settings2, Shield, Smile, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Avatar } from './MessageBubble';
-import { chatJson } from './chat-client';
+import { chatJson, uploadChatFile } from './chat-client';
 import { Switch } from '@/components/ui/Switch';
 import { useActivePoll } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
+import { CommunityModeration } from './CommunityModeration';
 
 // Communities (Discord server / WhatsApp community), src/server/communities.ts: a list of
 // communities, each opening to its channels. Text channels open in the chat on the right; voice
@@ -301,6 +302,10 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
             </section>
           )}
 
+          {mod && <CustomEmoji communityId={community.id} />}
+
+          {mod && <CommunityModeration communityId={community.id} members={data.members} />}
+
           <section className="space-y-2">
             <div className="flex items-center justify-between"><p className="text-xs font-semibold text-zinc-500">{data.members.length} members</p>{mod && <button type="button" onClick={() => setAdding(!adding)} className="text-xs font-semibold text-indigo-500 inline-flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Add people</button>}</div>
             {adding && (
@@ -330,5 +335,82 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
         </>
       )}
     </Sheet>
+  );
+}
+
+/** Shrinks a picture to a 128 px square PNG (an emoji doesn't need more), on this device. */
+async function emojiImage(file: File): Promise<File> {
+  const img = await createImageBitmap(file);
+  const size = 128, scale = Math.min(size / img.width, size / img.height, 1);
+  const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  canvas.getContext('2d')!.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) throw new Error('Couldn’t read that picture.');
+  return new File([blob], 'emoji.png', { type: 'image/png' });
+}
+
+/** A community's own emoji (Stage 4 · 1.2): moderators add pictures with a name, used as :name:. */
+function CustomEmoji({ communityId }: { communityId: string }) {
+  const { data, mutate } = useSWR<{ name: string; url: string }[]>(`/api/chat/communities/${communityId}/emoji`, authedJson);
+  const [name, setName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const choose = (f: File | null) => {
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(f);
+    setPreview(f ? URL.createObjectURL(f) : null);
+  };
+  const clean = (v: string) => v.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 32);
+  const add = async () => {
+    if (!file || clean(name).length < 2) return;
+    setBusy(true);
+    try {
+      const url = await uploadChatFile(await emojiImage(file));
+      await mutate(await chatJson<{ name: string; url: string }[]>(`/api/chat/communities/${communityId}/emoji`, { method: 'POST', body: JSON.stringify({ name: clean(name), url }) }), { revalidate: false });
+      toast.success(`:${clean(name)}: added`, { description: 'Members can use it in messages and reactions.' });
+      setName(''); choose(null);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async (n: string) => {
+    if (!(await confirmDialog({ title: `Remove :${n}:?`, message: 'Messages that used it show its name instead.', destructive: true }))) return;
+    try { await mutate(await chatJson<{ name: string; url: string }[]>(`/api/chat/communities/${communityId}/emoji?name=${encodeURIComponent(n)}`, { method: 'DELETE' }), { revalidate: false }); }
+    catch (e) { toast.error((e as Error).message); }
+  };
+  return (
+    <section className="space-y-2">
+      <p className="text-xs font-semibold text-zinc-500 flex items-center gap-1.5"><Smile className="w-3.5 h-3.5" />Custom emoji <span className="font-normal">· {data?.length ?? 0} of 50</span></p>
+      {!!data?.length && (
+        <ul className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
+          {data.map((e) => (
+            <li key={e.name} className="group relative flex flex-col items-center gap-1 rounded-xl p-2 bg-zinc-50 dark:bg-white/[0.03]">
+              <img src={e.url} alt={`:${e.name}:`} className="w-8 h-8 object-contain" />
+              <span className="text-[10px] text-zinc-500 truncate max-w-full">:{e.name}:</span>
+              <button type="button" onClick={() => void remove(e.name)} aria-label={`Remove :${e.name}:`} className="absolute top-1 right-1 p-0.5 rounded-full text-zinc-400 hover:text-rose-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"><X className="w-3 h-3" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(data?.length ?? 0) < 50 && (
+        <div className="flex gap-2 items-center">
+          <label className={cn('shrink-0 w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer overflow-hidden', file ? 'bg-white dark:bg-white/10 ring-1 ring-indigo-400/40' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-500 hover:text-indigo-500')} title="Choose a picture">
+            {preview ? <img src={preview} alt="" className="w-8 h-8 object-contain" /> : <ImagePlus className="w-4 h-4" />}
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { choose(f); if (!name) setName(clean(f.name.replace(/\.[^.]+$/, ''))); } }} />
+          </label>
+          <div className="relative flex-1 min-w-0">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">:</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={32} placeholder="name" aria-label="Emoji name" className={cn(input, 'pl-6 pr-6')} />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">:</span>
+          </div>
+          <button type="button" disabled={!file || clean(name).length < 2 || busy} onClick={() => void add()} className="btn-primary shrink-0">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}</button>
+        </div>
+      )}
+    </section>
   );
 }

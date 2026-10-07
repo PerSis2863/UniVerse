@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { verifyGuardianToken } from '@/server/share-tokens';
 import { studentProgress } from '@/server/student-progress';
+import { weekActivity } from '@/server/safety';
 
 // The parent / guardian view behind a student's shared link (no sign-in). Read-only and kept to
 // schoolwork: first name, courses with grade and attendance, what's due, recent achievements.
@@ -13,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const v = verifyGuardianToken((await params).token);
   if ('error' in v) return NextResponse.json({ error: v.error }, { status: v.error === 'expired' ? 410 : 404, headers: HEADERS });
 
-  const [user, progress, certificates, points] = await Promise.all([
+  const [user, progress, certificates, points, activity] = await Promise.all([
     prisma.user.findUnique({ where: { id: v.userId }, select: { name: true, role: true, status: true } }),
     studentProgress(v.userId, 21),
     prisma.impactCertificate.findMany({
@@ -28,6 +29,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       take: 5,
       select: { id: true, reason: true, points: true, awardedAt: true },
     }),
+    // This week in numbers (Stage 4 · 4.10): never what they wrote or who to.
+    weekActivity(v.userId),
   ]);
   // A deleted or suspended account, or one that's no longer a student, reads as a broken link.
   if (!user || user.role !== 'STUDENT' || user.status === 'SUSPENDED') return NextResponse.json({ error: 'invalid' }, { status: 404, headers: HEADERS });
@@ -46,6 +49,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       courses: progress.courses.map(({ id, code, name, color, emoji, grade, attendance }) => ({ id, code, name, color, emoji, grade, attendance })),
       deadlines: progress.deadlines,
       achievements,
+      activity,
     },
     { headers: HEADERS },
   );

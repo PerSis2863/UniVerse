@@ -1,17 +1,24 @@
 'use client';
 
-import { use, useCallback, useRef, useState, useSyncExternalStore } from 'react';
+import { use, useCallback, useEffect, useRef, useState, useSyncExternalStore, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { ArrowLeft, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, PenTool, Share2, Trash2, Wallpaper } from 'lucide-react';
+import { ArrowLeft, BarChart3, FileDown, History, MessageSquare, ThumbsUp, ChevronLeft, ChevronRight, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, MonitorUp, PenTool, Share2, Sparkles, Timer as TimerIcon, Trash2, Wallpaper } from 'lucide-react';
+import { AnimatePresence, m as motion } from 'framer-motion';
+import { spring } from '@/lib/motion';
+import { Sheet } from '@/components/chat/ChatDialogs';
+import { drawMindMap, drawSummary, drawThemes } from '@/components/boards/board-ai-draw';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from '@/components/ui/Link';
+import { useAuthStore } from '@/store/auth';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { Avatar } from '@/components/chat/MessageBubble';
 import { ShareBoardDialog, type BoardMeta } from '@/components/boards/ShareBoardDialog';
-import type { BoardControls, BoardGone, BoardPeer, LiveStatus } from '@/components/boards/BoardCanvas';
+import type { BoardControls, BoardGone, BoardPeer, LiveStatus, Presenting } from '@/components/boards/BoardCanvas';
+import { MAX_VOTES, type Voted } from '@/components/boards/votes';
+import { BoardComments, BoardVersions, useBoardComments, type BoardApi } from '@/components/boards/BoardExtras';
 import type { TemplateId } from '@/components/boards/templates';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +59,94 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [sharing, setSharing] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const controls = useRef<BoardControls | null>(null);
+  // Presenting and the workshop timer (3.4).
+  const [presentState, setPresentState] = useState<Presenting | null>(null);
+  const [follow, setFollow] = useState(true);
+  const [slides, setSlides] = useState<{ id: string; name: string }[]>([]);
+  const [slide, setSlide] = useState(0);
+  const [timer, setTimer] = useState<{ endsAt: number; by: string } | null>(null);
+  const [timerOpen, setTimerOpen] = useState(false);
+  const startPresenting = () => {
+    const c = controls.current;
+    if (!c) return;
+    const frames = c.frames();
+    setSlides(frames);
+    setSlide(0);
+    c.present(true);
+    if (frames.length) c.showFrame(frames[0].id);
+    toast.success(frames.length ? `Presenting ${frames.length} slides: everyone following sees your screen` : 'Presenting: everyone following sees what you see. Add frames to make slides.');
+  };
+  const goSlide = (i: number) => {
+    if (!slides[i]) return;
+    setSlide(i);
+    controls.current?.showFrame(slides[i].id);
+  };
+  // Dot voting and PDF export (3.4).
+  const [votes, setVotes] = useState<Voted[]>([]);
+  const [votesOpen, setVotesOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const vote = () => { const why = controls.current?.vote(); if (why) toast(why); };
+  const exportPdf = async () => {
+    const c = controls.current;
+    if (!c) return;
+    // Opened now (a click), filled when the pictures are ready: pop-up blockers allow it.
+    const win = window.open('', '_blank');
+    if (!win) return toast.error('Allow pop-ups to export the board.');
+    win.document.title = board?.title ?? 'Board';
+    win.document.body.textContent = 'Preparing the PDF…';
+    setExporting(true);
+    try {
+      const pages = await c.exportPages();
+      const doc = win.document;
+      doc.body.textContent = '';
+      const style = doc.createElement('style');
+      style.textContent = '@page { size: landscape; margin: 10mm } body { margin: 0 } img { display: block; max-width: 100%; max-height: 180mm; margin: 0 auto; page-break-after: always } img:last-child { page-break-after: auto }';
+      doc.head.appendChild(style);
+      for (const src of pages) { const img = doc.createElement('img'); img.src = src; doc.body.appendChild(img); }
+      setTimeout(() => win.print(), 400);
+    } catch (e) { win.close(); toast.error((e as Error).message || 'Couldn’t export the board.'); } finally { setExporting(false); }
+  };
+  // Comments on shapes and versions (3.4, part 3).
+  const meId = useAuthStore((st) => st.user?.id ?? null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const { data: commentData } = useBoardComments(id);
+  const openThreads = new Set((commentData?.comments ?? []).filter((c) => !c.resolvedAt).map((c) => c.elementId)).size;
+  // The panels get functions that read the board when they're called (never during render).
+  const boardApi = useMemo<BoardApi>(() => ({
+    selected: () => controls.current?.selected() ?? null,
+    labelOf: (elementId) => controls.current?.labelOf(elementId) ?? null,
+    focus: (elementId) => controls.current?.focus(elementId),
+    elements: () => controls.current?.elements() ?? [],
+    restore: (els) => controls.current?.restore(els),
+  }), []);
+  // AI on boards (3.5): one AI request per action; the result is drawn by this browser.
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
+  const [summary, setSummary] = useState<{ title: string; summary: string; nextSteps: string[] } | null>(null);
+  const runAi = async (action: 'themes' | 'mindmap' | 'summary') => {
+    setAiOpen(false);
+    const c = controls.current;
+    if (!c) return;
+    const texts = c.texts();
+    let topic: string | null = null;
+    if (action === 'mindmap') {
+      topic = (await promptDialog({ title: 'Mind map about…', placeholder: 'e.g. Causes of the French Revolution', confirmLabel: 'Make it', maxLength: 200 }))?.trim() ?? null;
+      if (!topic) return;
+    }
+    setAiBusy(action);
+    try {
+      const r = await authedJson<Record<string, unknown>>(`/api/boards/${id}/ai`, { method: 'POST', body: JSON.stringify({ action, texts, topic }) });
+      if (action === 'themes') {
+        const themes = r.themes as { name: string; notes: number[] }[];
+        c.addElements(drawThemes(themes, texts));
+        toast.success(`Grouped into ${themes.length} themes`);
+      } else if (action === 'mindmap') {
+        c.addElements(drawMindMap(r as unknown as { center: string; branches: { label: string; ideas: string[] }[] }));
+        toast.success('Mind map added');
+      } else setSummary(r as unknown as { title: string; summary: string; nextSteps: string[] });
+    } catch (e) { toast.error((e as Error).message); } finally { setAiBusy(null); }
+  };
   const fileInput = useRef<HTMLInputElement>(null);
   const photoMode = useRef<'background' | 'photo'>('photo');
   const [hasBg, setHasBg] = useState(false);
@@ -60,6 +155,15 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
   const myRole = role ?? board?.myRole ?? 'VIEWER';
   const canEdit = myRole !== 'VIEWER';
+  // While editors draw, a version is saved every 10 minutes (the server skips unchanged boards).
+  useEffect(() => {
+    if (!canEdit || status !== 'live') return;
+    const t = setInterval(() => {
+      const els = controls.current?.elements();
+      if (els?.length) void authedJson(`/api/boards/${id}/versions`, { method: 'POST', body: JSON.stringify({ elements: els, auto: true }) }).catch(() => {});
+    }, 10 * 60_000);
+    return () => clearInterval(t);
+  }, [canEdit, status, id]);
 
   const onPeers = useCallback((list: BoardPeer[]) => setPeers(list), []);
   const onRole = useCallback((r: BoardMeta['myRole']) => {
@@ -186,6 +290,42 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             )}
           </>
         )}
+        {canEdit && (
+          presentState?.mine
+            ? <button onClick={() => { controls.current?.present(false); setPresentState(null); }} className={cn(btn, 'text-rose-600 dark:text-rose-400')} title="Stop presenting"><MonitorUp className="w-4 h-4" /><span className="hidden md:inline">Stop</span></button>
+            : <button onClick={startPresenting} disabled={status !== 'live'} className={btn} title="Present: frames become slides, and everyone following sees your screen"><MonitorUp className="w-4 h-4" /><span className="hidden md:inline">Present</span></button>
+        )}
+        {canEdit && <button onClick={vote} disabled={status !== 'live'} className={btn} title={`Vote for the selected note (${MAX_VOTES} votes each)`}><ThumbsUp className="w-4 h-4" /><span className="hidden lg:inline">Vote</span></button>}
+        {votes.length > 0 && <button onClick={() => setVotesOpen((o) => !o)} className={cn(btn, votesOpen && 'bg-zinc-100 dark:bg-white/[0.06]')} title="Results of the vote"><BarChart3 className="w-4 h-4" /><span className="text-xs tabular-nums">{votes.reduce((t, v) => t + v.count, 0)}</span></button>}
+        <button onClick={() => setCommentsOpen((o) => !o)} className={cn(btn, commentsOpen && 'bg-zinc-100 dark:bg-white/[0.06]')} title="Comments on shapes"><MessageSquare className="w-4 h-4" />{openThreads > 0 && <span className="text-xs tabular-nums">{openThreads}</span>}</button>
+        <button onClick={() => setVersionsOpen(true)} className={cn(btn, 'hidden sm:inline-flex')} title="Versions"><History className="w-4 h-4" /></button>
+        <button onClick={() => void exportPdf()} disabled={exporting || status !== 'live'} className={cn(btn, 'hidden sm:inline-flex')} title="Export to PDF (each frame is a page)">{exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}<span className="hidden lg:inline">PDF</span></button>
+        <div className="relative">
+          <button onClick={() => setTimerOpen((o) => !o)} disabled={status !== 'live' || !canEdit} className={btn} title="Workshop timer for everyone" aria-expanded={timerOpen}><TimerIcon className="w-4 h-4" /></button>
+          <AnimatePresence>
+            {timerOpen && (
+              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy} className="absolute right-0 top-11 z-40 w-44 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+                {[1, 3, 5, 10, 15].map((m) => <button key={m} type="button" onClick={() => { controls.current?.setTimer(m); setTimerOpen(false); }} className="w-full text-left px-3 py-1.5 rounded-xl text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06]">{m} {m === 1 ? 'minute' : 'minutes'}</button>)}
+                {timer && <button type="button" onClick={() => { controls.current?.setTimer(null); setTimerOpen(false); }} className="w-full text-left px-3 py-1.5 rounded-xl text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-500/10">Stop the timer</button>}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="relative">
+          <button onClick={() => setAiOpen((o) => !o)} disabled={!!aiBusy || status !== 'live'} className={btn} title="AI on this board" aria-expanded={aiOpen}>
+            {aiBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}<span className="hidden md:inline">AI</span>
+          </button>
+          <AnimatePresence>
+            {aiOpen && (
+              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
+                className="absolute right-0 top-11 z-40 w-64 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+                {canEdit && <button type="button" onClick={() => void runAi('themes')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Group notes into themes</span><span className="block text-xs text-zinc-500">Adds the sticky notes again, sorted into columns</span></button>}
+                {canEdit && <button type="button" onClick={() => void runAi('mindmap')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Mind map from a topic…</span><span className="block text-xs text-zinc-500">Draws a mind map beside your board</span></button>}
+                <button type="button" onClick={() => void runAi('summary')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Summarise this board</span><span className="block text-xs text-zinc-500">A summary and next steps</span></button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <button onClick={copyBoard} className={cn(btn, 'hidden sm:inline-flex')} title="Make your own copy"><Copy className="w-4 h-4" /><span className="hidden lg:inline">Copy</span></button>
         {myRole === 'OWNER' && <button onClick={remove} className={cn(btn, 'hidden sm:inline-flex text-rose-500 dark:text-rose-400')} title="Delete board"><Trash2 className="w-4 h-4" /></button>}
         <button onClick={() => setSharing(true)} disabled={!board} className="btn-primary btn-sm">
@@ -193,7 +333,54 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         </button>
       </header>
 
+      {summary && (
+        <Sheet title={summary.title || 'Board summary'} onClose={() => setSummary(null)}
+          footer={canEdit ? <button type="button" onClick={() => { controls.current?.addElements(drawSummary(summary)); setSummary(null); toast.success('Summary added to the board'); }} className="btn-primary w-full">Add to the board</button> : undefined}>
+          <p className="text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-line leading-relaxed">{summary.summary}</p>
+          {summary.nextSteps.length > 0 && (
+            <>
+              <p className="mt-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Next steps</p>
+              <ul className="mt-1.5 space-y-1 text-sm text-zinc-700 dark:text-zinc-200 list-disc pl-5">{summary.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </>
+          )}
+          <p className="mt-4 text-[11px] text-zinc-400 inline-flex items-center gap-1"><Sparkles className="w-3 h-3" />Made with AI from the text on the board</p>
+        </Sheet>
+      )}
+      {versionsOpen && <BoardVersions boardId={id} controls={boardApi} canEdit={canEdit} onClose={() => setVersionsOpen(false)} />}
       <main className="flex-1 min-h-0 relative">
+        <AnimatePresence>{commentsOpen && <BoardComments key="comments" boardId={id} controls={boardApi} meId={meId} onClose={() => setCommentsOpen(false)} />}</AnimatePresence>
+        {/* Presenting, following and the timer (3.4), floating over the board. */}
+        <div className="pointer-events-none absolute top-3 inset-x-0 z-30 flex flex-col items-center gap-2 px-3">
+          <AnimatePresence>
+            {timer && <TimerPill key="timer" endsAt={timer.endsAt} by={timer.by} onDone={() => setTimer(null)} />}
+            {presentState?.mine && slides.length > 0 && (
+              <motion.div key="slides" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto flex items-center gap-1 rounded-full bg-zinc-900/90 text-white px-2 py-1 shadow-xl backdrop-blur">
+                <button type="button" aria-label="Previous slide" disabled={slide === 0} onClick={() => goSlide(slide - 1)} className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+                <span className="text-xs font-semibold px-1 tabular-nums">{slides[slide]?.name} · {slide + 1}/{slides.length}</span>
+                <button type="button" aria-label="Next slide" disabled={slide >= slides.length - 1} onClick={() => goSlide(slide + 1)} className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
+              </motion.div>
+            )}
+            {presentState && !presentState.mine && presentState.name && (
+              <motion.div key="following" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto flex items-center gap-2 rounded-full bg-indigo-600/95 text-white pl-3 pr-1 py-1 shadow-xl text-xs font-semibold">
+                <MonitorUp className="w-3.5 h-3.5" />{presentState.name.split(' ')[0]} is presenting
+                <button type="button" onClick={() => { const on = !follow; setFollow(on); controls.current?.follow(on); }} className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25">{follow ? 'Stop following' : 'Follow'}</button>
+              </motion.div>
+            )}
+            {votesOpen && votes.length > 0 && (
+              <motion.div key="votes" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto w-full max-w-sm rounded-2xl bg-white/95 dark:bg-[#121830]/95 border border-zinc-200 dark:border-white/10 shadow-2xl p-3 backdrop-blur">
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Votes</p>
+                <ul className="space-y-1.5 max-h-60 overflow-y-auto">
+                  {votes.map((v) => (
+                    <motion.li key={v.id} layout className="flex items-center gap-2 text-sm">
+                      <span className={cn('min-w-7 h-6 px-1.5 rounded-full text-xs font-bold flex items-center justify-center', v.mine ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.08] text-zinc-700 dark:text-zinc-200')}>{v.count}</span>
+                      <span className="flex-1 min-w-0 truncate text-zinc-800 dark:text-zinc-100">{v.label}</span>
+                    </motion.li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         {board ? (
           <BoardCanvas
             boardId={id}
@@ -208,6 +395,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             onRole={onRole}
             onGone={onGone}
             onError={onError}
+            onPresent={setPresentState}
+            onTimer={setTimer}
+            onVotes={setVotes}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-sm text-zinc-500 gap-2"><ImageIcon className="w-4 h-4" /> Loading board…</div>
@@ -216,5 +406,37 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
       {sharing && board && <ShareBoardDialog board={{ ...board, myRole }} onClose={() => setSharing(false)} onChanged={() => mutate()} />}
     </div>
+  );
+}
+
+/** The workshop timer everyone on the board sees (3.4), with a soft chime at the end. */
+function TimerPill({ endsAt, by, onDone }: { endsAt: number; by: string; onDone: () => void }) {
+  const [now, setNow] = useState(() => Date.now());
+  const done = useRef(false);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, []);
+  const left = Math.max(0, Math.ceil((endsAt - now) / 1000));
+  useEffect(() => {
+    if (left > 0 || done.current) return;
+    done.current = true;
+    try {
+      const ctx = new AudioContext();
+      for (const [i, f] of [660, 880].entries()) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = f; g.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.25); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.25 + 0.5);
+        o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + i * 0.25); o.stop(ctx.currentTime + i * 0.25 + 0.5);
+      }
+    } catch { /* no sound */ }
+    const t = setTimeout(onDone, 4000);
+    return () => clearTimeout(t);
+  }, [left, onDone]);
+  return (
+    <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={spring.smooth}
+      className={cn('pointer-events-auto rounded-full px-4 py-1.5 shadow-xl text-sm font-bold tabular-nums inline-flex items-center gap-2', left === 0 ? 'bg-emerald-600 text-white' : left <= 30 ? 'bg-amber-500 text-white' : 'bg-zinc-900/90 text-white')}
+      title={`Timer started by ${by}`} role="timer" aria-live="polite">
+      <TimerIcon className="w-4 h-4" />{left === 0 ? 'Time’s up!' : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}
+    </motion.div>
   );
 }

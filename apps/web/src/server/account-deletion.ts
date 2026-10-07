@@ -32,6 +32,7 @@ export async function eraseAccount(userId: string) {
   const anon = `deleted-${userId}@deleted.invalid`;
   await prisma.$transaction([
     prisma.loginEvent.deleteMany({ where: { userId } }),
+    prisma.callStat.deleteMany({ where: { userId } }),
     prisma.notification.deleteMany({ where: { userId } }),
     prisma.pushSubscription.deleteMany({ where: { userId } }),
     prisma.skillPassport.deleteMany({ where: { userId } }),

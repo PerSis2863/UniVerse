@@ -3,6 +3,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useState, useMemo, useEffect } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, TEACHER_IMPACT_TABS } from '@/components/layout/SectionTabs';
 import {
   Search, Filter, Briefcase, Globe2, ArrowUpRight, Clock, Users, Building2,
   CheckCircle2, X, Send, ChevronDown, Edit, Trash2, Plus
@@ -115,6 +116,7 @@ export default function NGOMentorshipPage() {
         title="NGO Mentorship Projects"
         subtitle="Manage your student mentorships for global NGO projects."
       />
+      <SectionTabs tabs={TEACHER_IMPACT_TABS} />
 
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">

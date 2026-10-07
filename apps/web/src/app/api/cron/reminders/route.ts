@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { remindDueCalls, sendDueReminders } from '@/server/scheduled-calls';
 import { remindSupportFollowUps } from '@/server/support-plans';
+import { sendDueScheduled } from '@/server/scheduled-messages';
+import { sendMorningBriefs } from '@/server/daily-brief';
 
-// Reminders for scheduled calls, run by the 15-minute cron (cloudflare/worker.ts) only when a
-// call is actually due, so most runs never start the app. Not reachable from outside: only the
+// Reminders for scheduled calls, scheduled chat messages and morning briefs, run by the 15-minute cron
+// (cloudflare/worker.ts) only when something is actually due, so most runs never start the app. Not reachable from outside: only the
 // scheduled handler knows the token.
 
 declare global {
@@ -19,5 +21,9 @@ export async function POST(req: Request) {
   const reminders = await sendDueReminders().catch((e) => (console.error('chat reminders failed:', e), 0));
   // Early help: 7-day follow-ups of study plans (upgrade 3)
   const followUps = await remindSupportFollowUps().catch((e) => (console.error('support plan follow-ups failed:', e), 0));
-  return NextResponse.json({ ...calls, reminders, followUps });
+  // Chat messages scheduled to send now (Stage 4 · 1.4)
+  const scheduled = await sendDueScheduled().catch((e) => (console.error('scheduled messages failed:', e), null));
+  // Morning briefs due now (Stage 4 · 4.9)
+  const briefs = await sendMorningBriefs().catch((e) => (console.error('morning briefs failed:', e), null));
+  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs });
 }

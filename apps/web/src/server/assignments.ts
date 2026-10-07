@@ -1,4 +1,5 @@
 import { evidenceFromGrade, safely } from './skill-evidence';
+import { indexLater, indexWork } from './semester';
 import { styleSignalsFor } from './feedback-studio';
 import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
@@ -362,6 +363,7 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
   });
   // Proof of learning (upgrade 2): 60%+ becomes evidence for the course's skills.
   await safely(evidenceFromGrade({ studentId: sub.studentId, submissionId: sub.id, assignmentTitle: assignment.title, score, maxScore: assignment.maxScore, course, teacher: { id: user.id, name: user.name } }));
+  indexLater(() => indexWork(sub.id)); // the student's "Ask your semester" (Stage 4 · 4.5)
   audit(user, { action: existing ? 'grade.updated' : 'grade.posted', summary: `${existing ? 'Updated' : 'Returned'} “${assignment.title}” grade ${score}/${assignment.maxScore} in ${course.code}`, targetType: 'grade', targetId: grade.id, metadata: { assignmentId: assignment.id, submissionId: sub.id, studentId: sub.studentId } }, req);
   later(() => notify(sub.studentId, {
     type: 'grade',
