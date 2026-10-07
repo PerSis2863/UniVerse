@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
@@ -29,6 +29,7 @@ import { OfficeBar, QueueStatus, turnAlert } from './OfficeHours';
 import { WatchPicker, WatchStage, type WatchState } from './WatchTogether';
 import { WebinarQA, type QaItem } from './WebinarQA';
 import { PipCall, type PipTile } from './PipCall';
+import { CallBoardPanel, boardFromChat, makeCallBoard } from './CallBoard';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -1934,7 +1935,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const compact = count > 9;
   const someoneRecording = recording || list.some((r) => r.recording);
   const talk = useTalkTimes(peopleOpen && phase === 'live');
+  const [boardOpen, setBoardOpen] = useState(false);
   const chat = useCallChat({ chatId: phase === 'live' ? info?.chatId ?? null : null, room: roomChat, sendRoom: (m) => send({ type: 'chat', ...m }) });
+  const callBoard = useMemo(() => boardFromChat(chat.lines), [chat.lines]);
   const unread = chatOpen ? 0 : chat.lines.filter((l) => !l.mine && !l.note && l.at > chatSeenAt).length;
   /** One side panel at a time: people or chat. */
   const openPanel = (which: 'people' | 'chat' | 'rooms' | 'qa' | null) => {
@@ -1996,12 +1999,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   const canBg = backgroundsSupported();
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
     ...(cc ? [{ key: 'cclang' as const, label: ccLang ? `Captions in ${languageName(ccLang)}` : 'Captions as spoken', icon: Languages }] : []),
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
+    ...(!isGuest && phase === 'live' ? [{ key: 'board' as const, label: callBoard ? 'Whiteboard' : 'Start a whiteboard', icon: PenTool, on: boardOpen }] : []),
     { key: '2g', label: twoG ? '2G mode on' : '2G mode', icon: SignalLow, on: twoG },
     ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
@@ -2025,6 +2029,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       if (!webinar) toast('Webinar mode: you and your co-hosts are on stage; everyone else watches and can ask in Q&A or raise a hand. Bring people on stage from People.', { icon: '🎙️', duration: 9000 });
     }
     else if (key === 'devices') void openSettings();
+    else if (key === 'board') {
+      // A whiteboard inside the call (3.4): made once, its link shared in the call's chat.
+      if (callBoard) setBoardOpen(!boardOpen);
+      else void (async () => {
+        try {
+          const id = await makeCallBoard(info?.title ?? 'Call');
+          await chat.send({ text: `📋 Whiteboard for this call: ${window.location.origin}/boards/${id}` });
+          setBoardOpen(true);
+        } catch (e) { toast.error((e as Error).message); }
+      })();
+    }
     else if (key === '2g') {
       useLowData.getState().setTwoG(!twoG);
       toast(twoG ? '2G mode off: turn your camera on whenever you like.' : '2G mode: voice only at 16 kbps. Shared screens still show.', { icon: '📶' });
@@ -2398,6 +2413,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           </>
         )}
       </AnimatePresence>
+      <AnimatePresence>{boardOpen && callBoard && phase === 'live' && <CallBoardPanel key="board" boardId={callBoard} onClose={() => setBoardOpen(false)} />}</AnimatePresence>
       <CallChatPanel open={chatOpen && phase === 'live'} onClose={() => openPanel(null)} lines={chat.lines} onSend={chat.send} linked={chat.linked} title={info?.title ?? 'the chat'} />
       <BreakoutPanel open={boOpen && phase === 'live' && canModerate} onClose={() => setBoOpen(false)} bo={bo} room={roomN}
         people={list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host || r.peer.cohost }))}
