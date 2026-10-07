@@ -84,7 +84,7 @@ export default function TeacherCourses() {
           <div className="card text-center py-12">
             <BookOpen className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">No courses yet</h2>
-            <p className="text-zinc-600 dark:text-zinc-400">You haven't created any courses.</p>
+            <p className="text-zinc-600 dark:text-zinc-400">You haven’t created any courses.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

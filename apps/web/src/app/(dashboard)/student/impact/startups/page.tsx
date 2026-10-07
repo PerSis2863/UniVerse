@@ -230,7 +230,7 @@ export default function StartupIncubatorPage() {
               )}
               {selected.websiteUrl && <a href={safeHref(selected.websiteUrl)} target="_blank" rel="noopener noreferrer" className="inline-block text-sm font-semibold text-indigo-500 hover:underline">Visit website →</a>}
               <div>
-                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">The role you'd like</h4>
+                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">The role you’d like</h4>
                 <input value={role} onChange={(e) => setRole(e.target.value)} maxLength={120} placeholder="e.g. Developer, Designer, Marketing"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
               </div>

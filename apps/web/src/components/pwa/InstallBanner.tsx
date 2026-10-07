@@ -85,7 +85,7 @@ export function InstallBanner() {
             {isIOS ? (
               <div className="mt-3 flex items-center gap-1.5 text-xs text-indigo-400 font-medium">
                 <Share className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Tap Share, then "Add to Home Screen"</span>
+                <span>Tap Share, then “Add to Home Screen”</span>
               </div>
             ) : (
               <button

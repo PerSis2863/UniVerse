@@ -138,7 +138,7 @@ export default function StudentProfile() {
                   </div>
                 ) : sharedResources.length === 0 ? (
                   <div className="p-12 text-center text-zinc-500">
-                    This user hasn't shared any resources yet.
+                    This user hasn’t shared any resources yet.
                   </div>
                 ) : (
                   sharedResources.map((resource) => (

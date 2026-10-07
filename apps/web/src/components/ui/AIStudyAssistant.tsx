@@ -103,12 +103,12 @@ export function AIStudyAssistant() {
   }, [messages, isTyping]);
 
   const reply = (m: Omit<Message, 'id' | 'role'>) =>
-    setMessages((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, role: 'assistant', ...m }]);
+    setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'assistant', ...m }]);
 
   const handleSend = async (text: string = inputValue) => {
     if (!text.trim()) return;
 
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text };
+    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
 
@@ -138,7 +138,7 @@ export function AIStudyAssistant() {
     setIsTyping(true);
 
     // Add a placeholder for streaming
-    const aiMsgId = (Date.now() + 1).toString();
+    const aiMsgId = crypto.randomUUID();
     setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: '' }]);
 
     try {
@@ -169,7 +169,8 @@ export function AIStudyAssistant() {
         const { done, value } = await reader.read();
         if (done) break;
         accumulated += decoder.decode(value, { stream: true });
-        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: accumulated } : m));
+        const sofar = accumulated;
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: sofar } : m));
       }
 
       if (!accumulated.trim()) {

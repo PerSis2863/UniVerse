@@ -305,7 +305,7 @@ export default function StudentSupport() {
               <div className="p-8 overflow-y-auto space-y-8 bg-zinc-950">
                 <div className="space-y-4">
                   <h3 className="text-xl font-semibold text-white">Step 1: Select the Network</h3>
-                  <p className="text-zinc-400">Open your device's Wi-Fi settings and select the network named <strong>eduroam</strong> from the list of available networks.</p>
+                  <p className="text-zinc-400">Open your device’s Wi-Fi settings and select the network named <strong>eduroam</strong> from the list of available networks.</p>
                 </div>
                 
                 <div className="space-y-4">

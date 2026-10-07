@@ -176,7 +176,7 @@ export default function NGOMentorshipPage() {
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Showing <strong className="text-zinc-900 dark:text-white">{filtered.length}</strong> project{filtered.length !== 1 ? 's' : ''}
               {statusFilter !== 'All' && <> with status <span className="text-indigo-400">{statusFilter}</span></>}
-              {search && <> matching "<span className="text-indigo-400">{search}</span>"</>}
+              {search && <> matching “<span className="text-indigo-400">{search}</span>”</>}
             </p>
           )}
 

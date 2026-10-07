@@ -1,6 +1,6 @@
 'use client';
 import { MiniPlayer } from '@/components/chat/MiniPlayer';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
@@ -107,9 +107,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const unread = Array.isArray(notes) ? notes.filter((n) => !n.read).length : 0;
 
   // Close the navigation sheet as soon as a page in it is tapped (and on any route change).
-  useEffect(() => {
+  const [sheetPath, setSheetPath] = useState(openingPath);
+  if (sheetPath !== openingPath) {
+    setSheetPath(openingPath);
     setSidebarOpen(false);
-  }, [openingPath]);
+  }
 
   const openSearch = () => {
     openCommandPalette();

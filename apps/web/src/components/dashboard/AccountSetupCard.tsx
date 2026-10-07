@@ -18,7 +18,7 @@ const HIDE_KEY = 'universe-setup-card-hidden';
 export function AccountSetupCard() {
   const { data, mutate } = useSWR<Me>('/api/me', authedJson);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
-  const [hidden, setHidden] = useState(true);
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(HIDE_KEY) === '1'; } catch { return false; } });
   const [open, setOpen] = useState<'phone' | 'department' | null>(null);
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
@@ -26,7 +26,6 @@ export function AccountSetupCard() {
   const [checked, setChecked] = useState(false); // email check finished (the card appears once, complete)
 
   useEffect(() => {
-    try { setHidden(localStorage.getItem(HIDE_KEY) === '1'); } catch { setHidden(false); }
     (async () => {
       try {
         // Demo and LMS sessions have no Firebase account: nothing to verify, and no need to load it.

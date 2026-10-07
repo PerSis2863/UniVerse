@@ -203,7 +203,7 @@ export default function AIMatchPage() {
               <div className="flex-1">
                 <h2 className="text-white font-bold text-base mb-1">Your Personalized Top 5 Projects</h2>
                 <p className="text-zinc-400 text-xs leading-relaxed mb-3">
-                  Our AI analyzed your skills profile, enrolled courses, and interests to surface the 5 projects where you'll have the highest impact and best chance of acceptance.
+                  Our AI analyzed your skills profile, enrolled courses, and interests to surface the 5 projects where you’ll have the highest impact and best chance of acceptance.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {['Skill matching', 'Course alignment', 'Acceptance rate', 'Impact potential'].map(tag => (

@@ -122,7 +122,7 @@ export default function Scholarships() {
             <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Your Applications & Awards</h3>
             
             {myApplications.length === 0 ? (
-              <div className="text-zinc-500 text-sm">You haven't applied for any scholarships yet.</div>
+              <div className="text-zinc-500 text-sm">You haven’t applied for any scholarships yet.</div>
             ) : (
               <div className="space-y-4">
                 {myApplications.map((app) => (

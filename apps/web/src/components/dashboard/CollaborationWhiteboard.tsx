@@ -60,12 +60,16 @@ function hits(s: Shape, p: Pt, r: number, ctx: CanvasRenderingContext2D | null) 
   return inside && !deep; // only the outline, so erasing inside a box doesn't remove it
 }
 
+function loadShapes(key: string): Shape[] {
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : []; } catch { return []; }
+}
+
 /** A personal whiteboard: drawings are saved on this device (per board) and can be exported or shared as an image. */
 export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboard' }: { boardId?: string; title?: string }) {
   const storageKey = `universe:whiteboard:${boardId}`;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [shapes, setShapes] = useState<Shape[]>([]);
+  const [shapes, setShapes] = useState<Shape[]>(() => loadShapes(storageKey));
   const [redo, setRedo] = useState<Shape[][]>([]);
   const [undoStack, setUndoStack] = useState<Shape[][]>([]);
   const [draft, setDraft] = useState<Shape | null>(null);
@@ -78,10 +82,11 @@ export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboa
   const erasing = useRef<{ before: Shape[] } | null>(null);
 
   // Load/save per board.
-  useEffect(() => {
-    try { const raw = localStorage.getItem(storageKey); setShapes(raw ? JSON.parse(raw) : []); } catch { setShapes([]); }
-    setUndoStack([]); setRedo([]);
-  }, [storageKey]);
+  const [loadedKey, setLoadedKey] = useState(storageKey);
+  if (loadedKey !== storageKey) {
+    setLoadedKey(storageKey);
+    setShapes(loadShapes(storageKey)); setUndoStack([]); setRedo([]);
+  }
   useEffect(() => {
     try { localStorage.setItem(storageKey, JSON.stringify(shapes)); } catch { /* storage full or blocked — board still works in memory */ }
   }, [shapes, storageKey]);

@@ -5,7 +5,7 @@ import { m as motion, AnimatePresence } from 'framer-motion';
 import { Clock, MapPin, Calendar as CalendarIcon, BookOpen, ExternalLink, Bell, FileText, Video, Users, X, ChevronRight as ChevronR } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export interface ClassData {
   id?: string;
@@ -26,14 +26,12 @@ interface ClassDetailModalProps {
   onClose: () => void;
 }
 
+const noSubscribe = () => () => {};
+
 export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalProps) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
+  // false during server rendering and hydration, true afterwards (the modal portals into <body>)
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
   if (!mounted) return null;
 
   const formatTimeRange = (startTime: string, durationHours: number) => {
@@ -42,7 +40,8 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
     // Handle 12-hour format like "09:00 AM" or 24-hour format like "09:00"
     if (startTime.includes('AM') || startTime.includes('PM')) {
       const [timeMatch, period] = startTime.split(' ');
-      let [h, m] = timeMatch.split(':').map(Number);
+      const [h0, m] = timeMatch.split(':').map(Number);
+      let h = h0;
       if (period === 'PM' && h !== 12) h += 12;
       if (period === 'AM' && h === 12) h = 0;
       hours = h;

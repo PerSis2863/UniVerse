@@ -20,6 +20,8 @@ import { spring } from '@/lib/motion';
 type Item = { id: string; label: string; hint?: string; icon: LucideIcon; group: string; keywords?: string; run: () => void | Promise<void> };
 type Person = { id: string; name: string; role: string; online?: boolean };
 type SearchResult = { type: 'course' | 'group' | 'project' | 'internship' | 'resource'; id: string; title: string; subtitle?: string; href: string };
+/** /courses/my: a teacher's own courses, or a student's enrolments (each holds its course). */
+type MyCourse = { id: string; name: string; code?: string; course?: MyCourse };
 
 // How platform search results (/api/search) are shown.
 const RESULT_KIND: Record<SearchResult['type'], { group: string; icon: LucideIcon }> = {
@@ -52,11 +54,12 @@ function score(text: string, q: string) {
 export { openCommandPalette } from '@/lib/palette';
 
 export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
-  const [open, setOpen] = useState(false);
+  // Opened (Ctrl+K / search button) before this component had loaded?
+  const [open, setOpen] = useState(() => !!window.__universePalettePending);
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [index, setIndex] = useState(0);
-  const [recents, setRecents] = useState<string[]>([]);
+  const [recents, setRecents] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(RECENTS_KEY) ?? '[]'); } catch { return []; } });
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -64,14 +67,13 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const base = ROLE_BASE[role] ?? '/student';
 
   // Live data only while open.
-  const { data: myCourses } = useSWR<any[]>(open && role !== 'ADMIN' ? '/courses/my' : null, fetcher);
+  const { data: myCourses } = useSWR<MyCourse[]>(open && role !== 'ADMIN' ? '/courses/my' : null, fetcher);
   const peopleKey = open && debounced.length >= 2 ? `/api/chat/users?q=${encodeURIComponent(debounced)}` : null;
   const { data: people, isLoading: peopleLoading } = useSWR<Person[]>(peopleKey, authedJson);
   const searchKey = open && debounced.length >= 2 ? `/api/search?q=${encodeURIComponent(debounced)}` : null;
   const { data: found, isLoading: searchLoading } = useSWR<{ results: SearchResult[] }>(searchKey, authedJson, { keepPreviousData: true });
   const busy = peopleLoading || searchLoading;
 
-  useEffect(() => { try { setRecents(JSON.parse(localStorage.getItem(RECENTS_KEY) ?? '[]')); } catch { /* ignore */ } }, []);
   useEffect(() => { const id = setTimeout(() => setDebounced(query.trim()), 220); return () => clearTimeout(id); }, [query]);
 
   useEffect(() => {
@@ -80,16 +82,20 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       else if (e.key === 'Escape') setOpen(false);
     };
     const onOpen = () => setOpen(true);
-    // Opened (Ctrl+K / search button) before this component had loaded.
-    if (window.__universePalettePending) { window.__universePalettePending = false; setOpen(true); }
+    window.__universePalettePending = false; // taken care of by the initial state
     document.addEventListener('keydown', onKey);
     window.addEventListener('universe:open-palette', onOpen);
     return () => { document.removeEventListener('keydown', onKey); window.removeEventListener('universe:open-palette', onOpen); };
   }, []);
 
+  // Every opening starts with an empty search.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) { setQuery(''); setDebounced(''); setIndex(0); }
+  }
   useEffect(() => {
     if (!open) return;
-    setQuery(''); setDebounced(''); setIndex(0);
     const id = setTimeout(() => inputRef.current?.focus(), 40);
     return () => clearTimeout(id);
   }, [open]);
@@ -132,8 +138,8 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   }, [base, go, open, role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const courses: Item[] = useMemo(() => {
-    const list = Array.isArray(myCourses) ? myCourses.map((c) => (role === 'STUDENT' ? c.course : c)).filter(Boolean) : [];
-    return list.map((c: any) => ({
+    const list = Array.isArray(myCourses) ? myCourses.map((c) => (role === 'STUDENT' ? c.course : c)).filter((c): c is MyCourse => !!c) : [];
+    return list.map((c) => ({
       id: `course:${c.id}`, label: c.name, hint: c.code, icon: BookOpen, group: 'Courses', keywords: c.code,
       run: go(`${base}/blackboard?course=${c.id}`),
     }));
@@ -181,7 +187,9 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     return [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
   }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, role]);
 
-  useEffect(() => { setIndex(0); }, [debounced]);
+  // A new search starts at the top.
+  const [indexedFor, setIndexedFor] = useState(debounced);
+  if (indexedFor !== debounced) { setIndexedFor(debounced); setIndex(0); }
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>(`[data-idx="${index}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [index]);

@@ -269,7 +269,7 @@ export default function QuizzesPage() {
                   <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Submit Quiz?</h3>
                   <p className="text-sm text-zinc-500 mb-6">
-                    You've answered {Object.keys(answers).length + (selected !== null && !answers[activeQuiz.questions[currentQ].id] ? 1 : 0)} of {activeQuiz.questions.length} questions.
+                    You’ve answered {Object.keys(answers).length + (selected !== null && !answers[activeQuiz.questions[currentQ].id] ? 1 : 0)} of {activeQuiz.questions.length} questions.
                     Are you sure you want to submit?
                   </p>
                   <div className="flex gap-3">

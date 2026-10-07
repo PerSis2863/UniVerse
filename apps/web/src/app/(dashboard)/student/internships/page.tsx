@@ -362,7 +362,7 @@ export default function StudentInternships() {
                       <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800/50">
                         <p><span className="font-semibold text-zinc-900 dark:text-white">Applied:</span> {new Date(app.appliedAt).toLocaleDateString()}</p>
                         {app.coverLetter && (
-                          <p className="mt-2 line-clamp-2"><span className="font-semibold text-zinc-900 dark:text-white">Cover Letter:</span> "{app.coverLetter}"</p>
+                          <p className="mt-2 line-clamp-2"><span className="font-semibold text-zinc-900 dark:text-white">Cover Letter:</span> “{app.coverLetter}”</p>
                         )}
                       </div>
                       
