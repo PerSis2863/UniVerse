@@ -5,39 +5,28 @@ import { CheckCircle2, XCircle, Clock, Users, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 
 export default function TeacherAttendance() {
-  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [pickedCourse, setSelectedCourse] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-  const { data: coursesData } = useSWR('/courses/my', async (url) => {
-    const res = await api.get(url);
-    return res.data;
-  });
-
+  const { data: coursesData } = useSWR<{ id: string; name: string; code?: string }[]>('/courses/my', fetcher);
   const courses = coursesData || [];
+  // The picked course, or the first one.
+  const selectedCourse = pickedCourse || courses[0]?.id || '';
 
-  // Default to first course if none selected
-  if (courses.length > 0 && !selectedCourse) {
-    setSelectedCourse(courses[0].id);
-  }
+  const { data: attendanceData, mutate } = useSWR<{
+    enrollments: { student: { id: string; name: string; email: string } }[];
+    attendance: { studentId: string; status: string }[];
+  }>(selectedCourse ? `/attendance/course/${selectedCourse}?date=${currentDate}` : null, fetcher);
 
-  const { data: attendanceData, mutate } = useSWR(
-    selectedCourse ? `/attendance/course/${selectedCourse}?date=${currentDate}` : null,
-    async (url) => {
-      const res = await api.get(url);
-      return res.data;
-    }
-  );
+  const currentStudents = attendanceData?.enrollments?.map((e) => e.student) || [];
 
-  const currentStudents = attendanceData?.enrollments?.map((e: any) => e.student) || [];
-  
-  // Transform attendance array into a map for easy lookup
-  const currentCourseAttendance = (attendanceData?.attendance || []).reduce((acc: any, curr: any) => {
-    acc[curr.studentId] = curr.status;
-    return acc;
-  }, {});
+  // Each student's status today, by student id.
+  const currentCourseAttendance: Record<string, string> = {};
+  for (const a of attendanceData?.attendance ?? []) currentCourseAttendance[a.studentId] = a.status;
 
   const handleMarkAttendance = async (studentId: string, status: string) => {
     try {
@@ -53,9 +42,9 @@ export default function TeacherAttendance() {
     }
   };
 
-  const presentCount = Object.values(currentCourseAttendance).filter((s: any) => s === 'PRESENT').length;
-  const lateCount = Object.values(currentCourseAttendance).filter((s: any) => s === 'LATE').length;
-  const absentCount = Object.values(currentCourseAttendance).filter((s: any) => s === 'ABSENT').length;
+  const presentCount = Object.values(currentCourseAttendance).filter((s) => s === 'PRESENT').length;
+  const lateCount = Object.values(currentCourseAttendance).filter((s) => s === 'LATE').length;
+  const absentCount = Object.values(currentCourseAttendance).filter((s) => s === 'ABSENT').length;
   const totalStudents = currentStudents.length;
 
   return (
@@ -73,7 +62,7 @@ export default function TeacherAttendance() {
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
               >
-                {courses.map((c: any) => (
+                {courses.map((c) => (
                   <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                 ))}
               </select>
@@ -114,7 +103,7 @@ export default function TeacherAttendance() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.05]">
-                {currentStudents.map((student: any) => {
+                {currentStudents.map((student) => {
                   
                   return (
                     <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">

@@ -9,6 +9,8 @@ import { Rocket, Users, DollarSign, Globe2, Sparkles, Heart, CheckCircle2, X, Se
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { safeHref } from '@/lib/safe-href';
 import { TabPill } from '@/components/ui/Glide';
 
@@ -19,37 +21,27 @@ const STAGE_COLORS: Record<string, string> = {
   'Seed': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
 };
 
+interface Startup {
+  id: string; name: string; tagline?: string | null; description?: string | null; sector?: string | null; stage: string;
+  impactPoints?: number; websiteUrl?: string | null; openRoles?: string[] | null; foundedBy?: { name: string } | null; _count?: { applications?: number };
+}
+
 export default function StartupIncubatorPage() {
   const [search, setSearch] = useState('');
   const [selectedStage, setSelectedStage] = useState('ALL');
-  const [selected, setSelected] = useState<any | null>(null);
+  const [selected, setSelected] = useState<Startup | null>(null);
   const [joined, setJoined] = useState<string[]>([]);
   const [role, setRole] = useState('');
   const [pitching, setPitching] = useState(false);
   const { t } = useLanguageStore();
 
-  const [startups, setStartups] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: startupsData, isLoading: loading } = useSWR<Startup[]>('/impact/startups', fetcher, {
+    onError: () => toast.error('Failed to load startups'),
+  });
+  const startups = startupsData ?? [];
   const [applying, setApplying] = useState(false);
 
-  useEffect(() => {
-    fetchStartups();
-  }, []);
-
-  const fetchStartups = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/impact/startups');
-      setStartups(res.data);
-    } catch (error) {
-      console.error('Failed to fetch startups:', error);
-      toast.error('Failed to load startups');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleJoin = async (s: any) => {
+  const handleJoin = async (s: Startup) => {
     setApplying(true);
     try {
       await api.post(`/impact/startups/${s.id}/apply`, {
@@ -105,8 +97,8 @@ export default function StartupIncubatorPage() {
               <div className="grid grid-cols-3 gap-3 flex-shrink-0">
                 {[
                   { v: String(startups.length), l: 'Active startups' },
-                  { v: String(startups.reduce((n: number, x: any) => n + (x._count?.applications ?? 0), 0)), l: 'Applications', c: 'text-emerald-400' },
-                  { v: String(new Set(startups.map((x: any) => x.sector).filter(Boolean)).size), l: 'Sectors' },
+                  { v: String(startups.reduce((n, x) => n + (x._count?.applications ?? 0), 0)), l: 'Applications', c: 'text-emerald-400' },
+                  { v: String(new Set(startups.map((x) => x.sector).filter(Boolean)).size), l: 'Sectors' },
                 ].map(s => (
                   <div key={s.l} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 text-center">
                     <div className={cn("text-xl font-black text-white", s.c)}>{s.v}</div>

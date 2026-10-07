@@ -9,33 +9,36 @@ import { fetcher, api } from '@/lib/fetcher';
 
 const TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
 
+interface Room { id: string; name: string; type: string; capacity: number; amenities?: string[] | string | null; reservations?: { time: string }[] }
+interface Booking { id: string; date: string; time: string; duration?: string | null; room?: { name: string } | null }
+
 export default function TeacherRoomReservationPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [duration, setDuration] = useState('1 Hour');
   const [roomType, setRoomType] = useState('lecture');
   const [searched, setSearched] = useState(false);
-  const [confirmBooking, setConfirmBooking] = useState<{ room: any; time: string } | null>(null);
+  const [confirmBooking, setConfirmBooking] = useState<{ room: Room; time: string } | null>(null);
   const [purpose, setPurpose] = useState('');
 
-  const { data: rooms = [], isLoading: loadingRooms, mutate: mutateRooms } = useSWR(
+  const { data: rooms = [], isLoading: loadingRooms, mutate: mutateRooms } = useSWR<Room[]>(
     searched && date ? `/rooms?date=${date}` : null,
     fetcher
   );
 
-  const { data: myBookings = [], isLoading: loadingBookings, mutate: mutateBookings } = useSWR(
+  const { data: myBookings = [], isLoading: loadingBookings, mutate: mutateBookings } = useSWR<Booking[]>(
     '/rooms/my-bookings',
     fetcher
   );
 
   const filteredRooms = useMemo(() => {
     if (!searched) return [];
-    return rooms.filter((r: any) => r.type === roomType);
+    return rooms.filter((r) => r.type === roomType);
   }, [searched, roomType, rooms]);
 
   const isBooked = (roomId: string, time: string) => {
-    const room = rooms.find((r: any) => r.id === roomId);
+    const room = rooms.find((r) => r.id === roomId);
     if (!room) return false;
-    return room.reservations?.some((r: any) => r.time === time);
+    return room.reservations?.some((r) => r.time === time);
   };
 
   const handleBook = async () => {
@@ -114,7 +117,7 @@ export default function TeacherRoomReservationPage() {
                 {loadingRooms && <Loader2 className="w-4 h-4 animate-spin" />}
                 {!loadingRooms && <span className="text-zinc-500 dark:text-zinc-500 font-normal text-sm ml-2">({filteredRooms.length} found)</span>}
               </h3>
-              {!loadingRooms && filteredRooms.map((room: any) => (
+              {!loadingRooms && filteredRooms.map((room) => (
                 <div key={room.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -155,7 +158,7 @@ export default function TeacherRoomReservationPage() {
                 My Reservations
                 {loadingBookings && <Loader2 className="w-4 h-4 animate-spin" />}
               </h3>
-              {myBookings.map((b: any) => {
+              {myBookings.map((b) => {
                 const room = b.room;
                 return (
                   <div key={b.id} className="flex items-center justify-between p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">

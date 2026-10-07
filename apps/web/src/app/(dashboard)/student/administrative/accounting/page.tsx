@@ -22,10 +22,13 @@ const quickActions = [
   { id: 'tax', title: 'Tax documents', subtitle: 'From your institution', icon: Download, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'hover:border-orange-500/50' },
 ];
 
+/** A payment row (Prisma Payment; dates may arrive as Date objects from the server action). */
+interface Txn { id: string; amount: number; currency: string | null; status: string; description: string; createdAt: string | Date }
+
 function AccountingContent() {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Txn[]>([]);
   const searchParams = useSearchParams();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   
@@ -93,16 +96,16 @@ function AccountingContent() {
     }
   };
 
-  const completedPayments = transactions.filter((t: any) => t.status === 'COMPLETED' && t.amount > 0);
+  const completedPayments = transactions.filter((t) => t.status === 'COMPLETED' && t.amount > 0);
   const totalPaidThisYear = completedPayments
-    .filter((t: any) => new Date(t.createdAt).getFullYear() === new Date().getFullYear())
-    .reduce((n: number, t: any) => n + t.amount, 0);
+    .filter((t) => new Date(t.createdAt).getFullYear() === new Date().getFullYear())
+    .reduce((n, t) => n + t.amount, 0);
 
   const downloadStatement = () => {
     if (transactions.length === 0) return void toast.info('No payments to include yet.');
     const cell = (v: unknown) => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
     const rows = [['Date', 'Description', 'Amount', 'Currency', 'Status', 'Receipt'],
-      ...transactions.map((t: any) => [new Date(t.createdAt).toISOString().slice(0, 10), t.description, t.amount, t.currency || 'USD', t.status,
+      ...transactions.map((t) => [new Date(t.createdAt).toISOString().slice(0, 10), t.description, t.amount, t.currency || 'USD', t.status,
         t.status === 'COMPLETED' ? `${window.location.origin}/receipt/${t.id}` : ''])];
     const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(r => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
     Object.assign(document.createElement('a'), { href: url, download: `payment-statement-${new Date().toISOString().slice(0, 10)}.csv` }).click();
@@ -118,7 +121,7 @@ function AccountingContent() {
               <p className="text-sm text-zinc-400 text-center py-6">You have no payments yet.</p>
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto">
-                {transactions.map((t: any) => (
+                {transactions.map((t) => (
                   <div key={t.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl">
                     <div>
                       <div className="font-bold text-white">{t.description}</div>
