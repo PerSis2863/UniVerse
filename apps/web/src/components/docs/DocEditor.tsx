@@ -16,6 +16,7 @@ import { Bold, Code, Heading1, Heading2, Heading3, ImagePlus, Italic, Link2, Lis
 import { authedJson } from '@/lib/authed-fetch';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { cn } from '@/lib/utils';
+import { createMentionStore, docMention, MentionMenu } from './DocMentions';
 
 // The document editor (Stage 4 · 3.2): Tiptap on a Yjs document synced with the doc's room (the
 // CodeRoom Durable Object, "doc:<id>"; first byte 0 = document update, 1 = cursors, 2 = someone
@@ -39,6 +40,8 @@ export function DocEditor({ docId, me, onStatus, onPeers, onEditor, onPresence }
 }) {
   const [ydoc] = useState(() => new Y.Doc());
   const [awareness] = useState(() => new Awareness(ydoc));
+  // @mentions in the text: the suggestion menu's state (DocMentions.tsx).
+  const [mentions] = useState(() => createMentionStore());
   const callbacks = useRef({ onStatus, onPeers, onEditor, onPresence });
   useEffect(() => { callbacks.current = { onStatus, onPeers, onEditor, onPresence }; });
   const color = COLORS[[...me.id].reduce((t, c) => t + c.charCodeAt(0), 0) % COLORS.length];
@@ -53,7 +56,8 @@ export function DocEditor({ docId, me, onStatus, onPeers, onEditor, onPresence }
       TableKit.configure({ table: { resizable: true } }),
       TaskList, TaskItem.configure({ nested: true }),
       Image,
-      Placeholder.configure({ placeholder: 'Start writing…  Use the toolbar, or type # for a heading, - for a list, [] for a checklist.' }),
+      docMention(docId, mentions),
+      Placeholder.configure({ placeholder: 'Start writing…  Use the toolbar, or type # for a heading, - for a list, [] for a checklist, @ to mention someone.' }),
     ],
     editorProps: { attributes: { class: 'doc-prose focus:outline-none min-h-[60vh] px-6 sm:px-12 py-10' } },
   }, [ydoc]);
@@ -152,7 +156,7 @@ export function DocEditor({ docId, me, onStatus, onPeers, onEditor, onPresence }
     return () => { editor.off('update', onUpdate); window.removeEventListener('pagehide', save); if (t) clearTimeout(t); save(); };
   }, [editor, docId]);
 
-  return <EditorContent editor={editor} />;
+  return <><EditorContent editor={editor} /><MentionMenu store={mentions} /></>;
 }
 
 /** The formatting toolbar. */
