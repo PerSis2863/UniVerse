@@ -19,13 +19,25 @@ async function call(model: string, apiKey: string, body: unknown) {
  * lasts longer.
  */
 export async function geminiJson<T>(system: string, prompt: string, schema: object, maxOutputTokens = 800, lite = false, model?: string): Promise<T | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  const body = {
+  return jsonCall<T>({
     systemInstruction: { parts: [{ text: system }] },
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0.2, maxOutputTokens, responseMimeType: 'application/json', responseSchema: schema },
-  };
+  }, lite, model);
+}
+
+/** Like geminiJson, looking at a picture first (e.g. a whiteboard sketch as a PNG, base64, up to a few MB). */
+export async function geminiJsonImage<T>(system: string, prompt: string, image: { mimeType: string; data: string }, schema: object, maxOutputTokens = 1500): Promise<T | null> {
+  return jsonCall<T>({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: 'user', parts: [{ inlineData: image }, { text: prompt }] }],
+    generationConfig: { temperature: 0.2, maxOutputTokens, responseMimeType: 'application/json', responseSchema: schema },
+  }, false);
+}
+
+async function jsonCall<T>(body: unknown, lite: boolean, model?: string): Promise<T | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
   try {
     // A model the caller picked (e.g. the owner's choice for a diagnosis) goes first; the chain covers it if it's busy.
     let res = model ? await call(model, apiKey, body) : null;

@@ -58,3 +58,41 @@ export function drawSummary(s: { title: string; summary: string; nextSteps: stri
     return [box(uid(), o.x, o.y, 560, Math.max(160, lines * 28 + 40), text, '#f1f3f5', 18)];
   };
 }
+
+export interface Diagram { title: string; nodes: { id: string; label: string; shape: 'box' | 'round' | 'diamond' | 'ellipse'; row: number; col: number }[]; edges: { from: string; to: string; label: string }[] }
+const FILL = { box: '#edf2ff', round: '#e5dbff', diamond: '#fff0f6', ellipse: '#e6fcf5' } as const;
+const STROKE = { box: '#4c6ef5', round: '#7950f2', diamond: '#d6336c', ellipse: '#0ca678' } as const;
+const CLEAN_FONT = 6; // Nunito: a clean font, unlike the hand-drawn sketch
+
+/** A clean diagram from a sketch (3.5): shapes on a grid, smooth lines, arrows bound to the shapes, its title above. */
+export function drawDiagram(d: Diagram) {
+  return (o: Origin): ExcalidrawElementSkeleton[] => {
+    const COL = 300, ROW = 190, W = 220, H = 88;
+    const ids = new Map(d.nodes.map((n) => [n.id, uid()]));
+    const centre = new Map<string, { x: number; y: number }>();
+    const out: ExcalidrawElementSkeleton[] = [];
+    if (d.title) out.push({ type: 'text', x: o.x, y: o.y, text: d.title, fontSize: 28, fontFamily: CLEAN_FONT, strokeColor: '#364fc7' } as ExcalidrawElementSkeleton);
+    const top = o.y + (d.title ? 80 : 0);
+    for (const n of d.nodes) {
+      const w = n.shape === 'diamond' ? 250 : W, h = n.shape === 'diamond' ? 130 : H;
+      const cx = o.x + n.col * COL + W / 2, cy = top + n.row * ROW + 65;
+      centre.set(n.id, { x: cx, y: cy });
+      out.push({
+        id: ids.get(n.id), type: n.shape === 'diamond' ? 'diamond' : n.shape === 'ellipse' ? 'ellipse' : 'rectangle',
+        x: cx - w / 2, y: cy - h / 2, width: w, height: h, backgroundColor: FILL[n.shape], fillStyle: 'solid', strokeColor: STROKE[n.shape], strokeWidth: 2, roughness: 0,
+        ...(n.shape === 'round' || n.shape === 'box' ? { roundness: { type: 3 } } : {}),
+        label: { text: n.label, fontSize: 18, fontFamily: CLEAN_FONT },
+      } as ExcalidrawElementSkeleton);
+    }
+    for (const e of d.edges) {
+      const a = centre.get(e.from), b = centre.get(e.to);
+      if (!a || !b) continue;
+      out.push({
+        type: 'arrow', x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y, strokeColor: '#495057', strokeWidth: 2, roughness: 0,
+        start: { id: ids.get(e.from) }, end: { id: ids.get(e.to) },
+        ...(e.label ? { label: { text: e.label, fontSize: 14, fontFamily: CLEAN_FONT } } : {}),
+      } as unknown as ExcalidrawElementSkeleton);
+    }
+    return out;
+  };
+}
