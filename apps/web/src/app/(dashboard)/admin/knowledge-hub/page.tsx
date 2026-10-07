@@ -51,12 +51,14 @@ export default function AdminKnowledgeHubPage() {
   }, [resources]);
 
   const togglePublic = async (r: Resource) => {
+    // Flips straight away; flips back if saving fails.
+    void mutate((cur) => cur?.map((x) => (x.id === r.id ? { ...x, isPublic: !r.isPublic } : x)), { revalidate: false });
     try {
       await api.patch(`/knowledge-hub/${r.id}`, { isPublic: !r.isPublic });
-      mutate((cur) => cur?.map((x) => (x.id === r.id ? { ...x, isPublic: !r.isPublic } : x)), { revalidate: false });
       toast.success(r.isPublic ? 'Made private' : 'Made public');
     } catch {
       toast.error('Could not change visibility');
+      void mutate();
     }
   };
 
