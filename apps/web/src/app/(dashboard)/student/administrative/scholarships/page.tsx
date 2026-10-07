@@ -1,42 +1,32 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { Award, CheckCircle2, ChevronRight, GraduationCap, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
+
+interface Scholarship { id: string; name: string; description?: string | null; amount?: number | null; provider?: string | null; deadline?: string | null; requirements?: string | null }
+interface Application { id: string; scholarshipId: string; status: string; appliedAt: string; scholarship?: Scholarship | null }
 
 export default function Scholarships() {
-  const [scholarships, setScholarships] = useState<any[]>([]);
-  const [myApplications, setMyApplications] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const onError = () => toast.error('Failed to load scholarships');
+  const { data: scholarshipsData, isLoading: loadingList } = useSWR<Scholarship[]>('/scholarships', fetcher, { onError });
+  const { data: appsData, isLoading: loadingApps, mutate: refreshApplications } = useSWR<Application[]>('/scholarships/my-applications', fetcher, { onError });
+  const scholarships = scholarshipsData ?? [];
+  const myApplications = appsData ?? [];
+  const isLoading = loadingList || loadingApps;
 
-  const [selectedScholarship, setSelectedScholarship] = useState<any>(null);
+  const [selectedScholarship, setSelectedScholarship] = useState<Scholarship | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [applicationStep, setApplicationStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [motivation, setMotivation] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [scholarshipsRes, appsRes] = await Promise.all([
-        api.get('/scholarships'),
-        api.get('/scholarships/my-applications')
-      ]);
-      setScholarships(scholarshipsRes.data);
-      setMyApplications(appsRes.data);
-    } catch (error) {
-      toast.error('Failed to load scholarships');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleApply = () => {
     setApplicationStep(2);
@@ -48,12 +38,12 @@ export default function Scholarships() {
       return;
     }
     
+    if (!selectedScholarship) return;
     setIsSubmitting(true);
     try {
-      await api.post(`/scholarships/${selectedScholarship.id}/apply`, {
-        motivation
-      });
-      await fetchData(); // Refresh data to hide from available list
+      // The server keeps the statement as the application's essay.
+      await api.post(`/scholarships/${selectedScholarship.id}/apply`, { essay: motivation });
+      await refreshApplications(); // hides it from the available list
       setApplicationStep(3);
       toast.success('Application submitted successfully!');
     } catch (error) {
@@ -178,7 +168,7 @@ export default function Scholarships() {
               <div className="text-zinc-500 text-sm">No new scholarships available to apply for at this time.</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {displayedScholarships.map((award: any) => (
+                {displayedScholarships.map((award) => (
                   <div key={award.id} onClick={() => setSelectedScholarship(award)} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group cursor-pointer flex flex-col justify-between">
                     <div>
                       <div className="flex items-start gap-4 mb-4">
