@@ -6,7 +6,6 @@ import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Users, BookOpen, DollarSign, GraduationCap, ArrowRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { formatCurrency } from '@/lib/utils';
-import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
@@ -19,38 +18,40 @@ const statusIcon = {
 };
 
 
+interface PendingUser { id: string; name: string; role: string; dept?: string | null; applied: string }
+interface Department { name: string; color?: string; students: number; teachers: number }
+interface AdminOverview {
+  totalStudents?: number; totalTeachers?: number; totalCourses?: number; revenue?: number;
+  pendingUsers?: PendingUser[]; departments?: Department[];
+  recentPayments?: { id?: string; name: string; type: string; amount: number; status: string }[];
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { t } = useLanguageStore();
-  const { data, isLoading, mutate } = useSWR('/dashboard/admin', fetcher);
+  const { data, isLoading, mutate } = useSWR<AdminOverview>('/dashboard/admin', fetcher);
   
-  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (data?.pendingUsers && pendingUsers.length === 0) {
-      setPendingUsers(data.pendingUsers);
-    }
-  }, [data]);
+  const pendingUsers = data?.pendingUsers ?? [];
 
   const departments = data?.departments || [];
   const recentPayments = data?.recentPayments || [];
 
   const setStatus = async (id: string, name: string, status: 'ACTIVE' | 'SUSPENDED') => {
-    const previous = pendingUsers;
-    setPendingUsers(prev => prev.filter(u => u.id !== id));
+    // Gone from the list straight away; back if saving fails.
+    void mutate((cur) => cur && { ...cur, pendingUsers: (cur.pendingUsers ?? []).filter((u) => u.id !== id) }, { revalidate: false });
     try {
       await api.patch(`/users/${id}/status`, { status });
       if (status === 'ACTIVE') toast.success(`${name} approved`);
       else toast(`${name}'s application rejected`);
       mutate();
     } catch {
-      setPendingUsers(previous);
+      void mutate();
       toast.error(`Couldn't update ${name}. Please try again.`);
     }
   };
   const handleApprove = (id: string, name: string) => setStatus(id, name, 'ACTIVE');
   const handleReject = (id: string, name: string) => setStatus(id, name, 'SUSPENDED');
-  const maxDeptStudents = Math.max(1, ...departments.map((d: any) => d.students || 0));
+  const maxDeptStudents = Math.max(1, ...departments.map((d) => d.students || 0));
 
   const handleSendAnnouncement = () => router.push('/admin/announcements');
 

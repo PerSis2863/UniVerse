@@ -32,7 +32,7 @@ const nf = new Intl.NumberFormat('en-US');
 
 const card = 'rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-6';
 
-function ChartTooltip({ active, payload, label, unit }: any) {
+function ChartTooltip({ active, payload, label, unit }: { active?: boolean; payload?: { value: number }[]; label?: string; unit?: string }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur px-3 py-2 shadow-xl text-xs">

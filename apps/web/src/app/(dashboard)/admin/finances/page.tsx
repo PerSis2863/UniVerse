@@ -11,8 +11,11 @@ import { isSampleMode } from '@/lib/sample-mode';
 import { AdminSearch, PersonCell, matchesQuery, personText } from '@/components/admin/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
 
+/** A payment with its payer (dates may arrive as Date objects from the server action). */
+interface Txn { id: string; amount: number; currency?: string | null; status: string; description?: string | null; createdAt: string | Date; user?: { name: string; email?: string | null; role?: string | null; phone?: string | null } | null }
+
 export default function AdminFinances() {
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Txn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
