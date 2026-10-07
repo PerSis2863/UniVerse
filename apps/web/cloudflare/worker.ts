@@ -187,7 +187,8 @@ export default {
 };
 
 /** Is a scheduled call starting within about 15 minutes, a chat reminder due, a study plan's
- *  7-day follow-up due, or a chat message scheduled for now, not yet sent? */
+ *  7-day follow-up due, a chat message scheduled for now, or someone's morning brief (Stage 4 · 4.9),
+ *  not yet sent? */
 async function callsDue(env: Env): Promise<boolean> {
   if (!env.DB) return false;
   const now = Date.now();
@@ -197,7 +198,8 @@ async function callsDue(env: Env): Promise<boolean> {
       `SELECT 1 FROM scheduled_calls WHERE "remindedAt" IS NULL AND "startAt" > ?1 AND "startAt" <= ?2
        UNION ALL SELECT 1 FROM chat_reminders WHERE "sentAt" IS NULL AND "dueAt" <= ?3
        UNION ALL SELECT 1 FROM support_plans WHERE "status" = 'ACTIVE' AND "followUpNotifiedAt" IS NULL AND "followUpAt" <= ?3
-       UNION ALL SELECT 1 FROM scheduled_messages WHERE "sendAt" <= ?4 LIMIT 1`,
+       UNION ALL SELECT 1 FROM scheduled_messages WHERE "sendAt" <= ?4
+       UNION ALL SELECT 1 FROM daily_briefs WHERE "push" = 1 AND "nextAt" <= ?4 LIMIT 1`,
     )
       .bind(dbDate(now - 5 * 60_000), dbDate(now + 16 * 60_000), dbDate(now + 5 * 60_000), dbDate(now + 2 * 60_000))
       .first();

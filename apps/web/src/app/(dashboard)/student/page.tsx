@@ -10,6 +10,7 @@ import {
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, HOME_TABS } from '@/components/layout/SectionTabs';
+import { DailyBrief } from '@/components/dashboard/DailyBrief';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { useAuthStore } from '@/store/auth';
 import { useLanguageStore } from '@/store/language';
@@ -139,6 +140,7 @@ export default function StudentDashboard() {
       <Topbar title={t('nav.dashboard')} subtitle={`${t(greeting)}, ${user?.name?.split(' ')[0] ?? 'Student'}! 👋`} />
       <SectionTabs tabs={HOME_TABS} />
       <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
+        <DailyBrief />
 
         {/* Impact network banner */}
         <div className="relative rounded-2xl bg-gradient-to-r from-indigo-50 via-purple-50 to-amber-50 dark:from-indigo-950/60 dark:via-purple-950/40 dark:to-amber-950/30 border border-[var(--separator)] dark:border-white/10 p-4 md:p-6 overflow-hidden shadow-xl shadow-indigo-500/5 dark:shadow-black/20">

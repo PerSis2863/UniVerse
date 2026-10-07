@@ -260,6 +260,7 @@ model User {
   ratingsGiven         PeerRating[]       @relation("RatingsGiven")
   ratingsReceived      PeerRating[]       @relation("RatingsReceived")
   officeHours          OfficeHours?       @relation("OfficeHours")
+  dailyBrief           DailyBrief?        @relation("DailyBrief")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
   presence             String            @default("auto")
@@ -2628,6 +2629,24 @@ model OfficeHours {
 
   @@index([open, until])
   @@map("office_hours")
+}
+
+/// Daily brief (Stage 4 · 4.9): the morning push (on, time zone, hour, next due in UTC) and today's
+/// AI brief, one per person per day (src/server/daily-brief.ts).
+model DailyBrief {
+  userId    String    @id
+  user      User      @relation("DailyBrief", fields: [userId], references: [id], onDelete: Cascade)
+  push      Boolean   @default(true)
+  timeZone  String    @default("UTC")
+  hour      Int       @default(7)
+  nextAt    DateTime?
+  sentAt    DateTime?
+  aiDay     String?
+  ai        String?
+  updatedAt DateTime  @default(now())
+
+  @@index([push, nextAt])
+  @@map("daily_briefs")
 }
 
 /// A teacher's private note about a student's office hours visit.

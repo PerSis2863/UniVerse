@@ -376,6 +376,13 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/meeting-notes\/([^/]+)$/, () => fail('These notes aren’t available in the sample.', 404)],
   // Smart replay search (Stage 4 · 4.6): the sample's classes have no transcript.
   [/^\/api\/class-sessions\/([^/]+)\/replay$/, () => ok({ results: [] })],
+  // Daily brief (Stage 4 · 4.9): the sample's day, from its timetable; no AI brief.
+  [/^\/api\/brief$/, ({ db: d }) => {
+    const wd = (new Date().getDay() + 6) % 7;
+    const classes = (d.slots as { courseId: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; room?: { name?: string } }[]).filter((x) => x.dayOfWeek === wd)
+      .map((x) => { const c = d.courses.find((y) => y.id === x.courseId); return { courseId: x.courseId, code: c?.code ?? '', name: c?.name ?? '', start: x.startTime, end: x.endTime, type: x.type ?? 'LECTURE', room: x.room?.name ?? null }; });
+    return ok({ day: new Date().toISOString().slice(0, 10), classes, due: [], calls: [], waiting: [], toGrade: 0, ai: null, aiOn: false, push: false, hour: 7 });
+  }],
   // Watch together (Stage 4 · 4.8): the sample's courses have no videos (YouTube links still work).
   [/^\/api\/calls\/([^/]+)\/videos$/, () => ok({ videos: [] })],
   // Office hours (Stage 4 · 4.7): nobody in the sample keeps office hours right now.
