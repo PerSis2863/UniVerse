@@ -21,7 +21,6 @@ interface Room {
 }
 
 const ROLE_LABEL: Record<string, string> = { VOLUNTEER: 'Volunteer', SPONSOR: 'Sponsor', SUPPORTER: 'Supporter' };
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 
 export default function ImpactRoomsPage() {
   const role = useAuthStore((s) => s.user?.role);
@@ -35,7 +34,7 @@ export default function ImpactRoomsPage() {
           {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
             : !data ? <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-44 rounded-2xl skeleton" />)}</div>
             : data.rooms.length === 0 ? (
-              <div className={`${card} p-8 text-center`}>
+              <div className={`panel p-8 text-center`}>
                 <Globe2 className="w-8 h-8 mx-auto text-indigo-500" />
                 <p className="mt-3 font-semibold text-zinc-900 dark:text-white">No NGO projects yet</p>
                 <p className="text-sm text-zinc-500 mt-1">Each active NGO project gets a room here.</p>
@@ -44,14 +43,14 @@ export default function ImpactRoomsPage() {
               <motion.ul variants={list} initial="hidden" animate="show" className="grid md:grid-cols-2 gap-4">
                 {data.rooms.map((r) => (
                   <motion.li key={r.id} variants={fadeUp}>
-                    <Link href={`/impact-rooms/${r.id}`} className={`${card} p-4 flex flex-col gap-3 h-full hover:border-indigo-400/60 transition-colors`}>
+                    <Link href={`/impact-rooms/${r.id}`} className={`panel p-4 flex flex-col gap-3 h-full hover:border-indigo-400/60 transition-colors`}>
                       <div className="flex items-start gap-3">
                         <span className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-indigo-500 text-white flex items-center justify-center shrink-0 overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element -- an NGO's logo link; next/image can't optimise on Workers */}
                           {r.ngo.logoUrl ? <img src={r.ngo.logoUrl} alt="" className="w-full h-full object-cover" /> : <HandHeart className="w-5 h-5" />}
                         </span>
                         <span className="flex-1 min-w-0">
-                          <span className="block font-semibold text-zinc-900 dark:text-white truncate">{r.name}</span>
+                          <span data-shared={`impact-room:${r.id}`} className="block font-semibold text-zinc-900 dark:text-white truncate">{r.name}</span>
                           <span className="flex items-center gap-1 text-xs text-zinc-500 truncate">{r.ngo.name}{r.ngo.isVerified && <BadgeCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}{r.location && <><MapPin className="w-3 h-3 ml-1 shrink-0" />{r.location}</>}</span>
                         </span>
                         {r.following && <span className="text-[10px] font-bold uppercase rounded-full px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">{ROLE_LABEL[r.following] ?? 'Following'}</span>}

@@ -297,7 +297,7 @@ export class ChainAnchorService {
           reason: !fromOk ? 'Sent by an unknown wallet' : !hashOk ? 'Hash on chain does not match' : !statusOk ? 'Transaction failed' : undefined,
         };
       }
-    } catch (e) {
+    } catch {
       result = { checked: false, matches: false, reason: 'Blockchain temporarily unreachable' };
     }
     // Only cache definitive answers.

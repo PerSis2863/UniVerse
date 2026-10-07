@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { format, formatDistanceToNowStrict, isToday, isTomorrow } from 'date-fns';
 import { CalendarClock, Check, ClipboardCheck, GraduationCap, ListChecks, Loader2, MessageCircle, Phone, Plus, Sparkles, Sun } from 'lucide-react';
 import Link from '@/components/ui/Link';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { Switch } from '@/components/ui/Switch';
 import { authedJson } from '@/lib/authed-fetch';
 import { fadeUp, spring } from '@/lib/motion';

@@ -1,11 +1,12 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useEffect, useMemo, useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   Search, Filter, MoreVertical, UserCheck, UserX, Shield, Clock,
-  GraduationCap, User, ChevronDown, X, Mail, Calendar, Trash2, Phone, BookOpen, Loader2, LogIn, ClipboardCheck,
+  GraduationCap, User, ChevronDown, X, Mail, Calendar, Trash2, Phone, BookOpen,  LogIn, ClipboardCheck,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api';
@@ -263,7 +264,7 @@ export default function AdminUsers() {
         {/* People */}
         <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl min-h-[300px]">
           {loading ? (
-            <div className="flex items-center justify-center h-64 text-zinc-500">Loading users…</div>
+            <ContentSkeleton variant="table" />
           ) : filteredUsers.length === 0 ? (
             <div className="p-12 text-center text-zinc-500">{filtersOn ? 'No users match these filters.' : 'No users yet.'}</div>
           ) : (
@@ -398,7 +399,7 @@ function UserDetail({ user, onClose, onDelete, onStatus }: { user: Person; onClo
           </div>
 
           {isLoading ? (
-            <div className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
+            <div className="space-y-2"><div className="h-16 rounded-xl skeleton" /><div className="h-24 rounded-xl skeleton" /></div>
           ) : error || !o ? (
             <p className="text-sm text-rose-500">Could not load this person’s courses and activity.</p>
           ) : (

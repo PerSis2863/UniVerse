@@ -1,29 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Bell, BellOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { subscribePush } from '@/lib/push-subscribe';
 
 const isIOS = () => typeof navigator !== 'undefined' &&
-  /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
 
 export function NotificationPermissionPrompt() {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'denied' | 'blocked'>('idle');
-  const [permission, setPermission] = useState<NotificationPermission | null>(null);
-  const [isSupported, setIsSupported] = useState(false);
-
-  useEffect(() => {
-    const supported = !isIOS() && 'serviceWorker' in navigator && 'Notification' in window;
-    setIsSupported(supported);
-    if (supported) {
-      setPermission(Notification.permission);
-      if (Notification.permission === 'granted' && localStorage.getItem('pushSubscribed') === 'true') {
-        setStatus('success');
-      } else if (Notification.permission === 'denied') {
-        setStatus('blocked');
-      }
-    }
-  }, []);
+  // Settings render only in the browser, so the device can be asked straight away.
+  const [isSupported] = useState(() => !isIOS() && 'serviceWorker' in navigator && 'Notification' in window);
+  const [permission, setPermission] = useState<NotificationPermission | null>(() => (isSupported ? Notification.permission : null));
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'denied' | 'blocked'>(() => {
+    if (!isSupported) return 'idle';
+    if (Notification.permission === 'granted' && localStorage.getItem('pushSubscribed') === 'true') return 'success';
+    return Notification.permission === 'denied' ? 'blocked' : 'idle';
+  });
 
   const handleEnable = async () => {
     if (status === 'loading') return;
@@ -94,7 +86,7 @@ export function NotificationPermissionPrompt() {
         <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
         <div>
           <p className="text-sm text-emerald-400 font-medium">Notifications enabled ✓</p>
-          <p className="text-xs text-zinc-500 mt-0.5">You'll receive alerts for grades, messages & announcements.</p>
+          <p className="text-xs text-zinc-500 mt-0.5">You’ll receive alerts for grades, messages & announcements.</p>
         </div>
       </div>
     );

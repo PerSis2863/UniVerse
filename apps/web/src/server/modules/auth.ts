@@ -8,6 +8,7 @@ import { audit } from '../audit';
 import { recordLogin } from '../logins';
 import { sendEmail } from '../email';
 import { authTimeOf, codeFor, codeMatches, hasPass, needsTwoStep, passFor, twoStepEnabled } from '../two-step';
+import { oneOf, str } from '../body';
 
 const codeFails = new Map<string, { n: number; until: number }>();
 const maskEmail = (e: string) => e.replace(/^(.{2})[^@]*(@.*)$/, '$1•••$2');
@@ -79,8 +80,9 @@ export default function auth(router: Router) {
   );
 
   r.post('login', { public: true }, async ({ body }) => {
-    if (isDemoLoginEnabled() && isDemoAccount(body?.email)) {
-      const user = await prisma.user.findUnique({ where: { email: body.email.trim().toLowerCase() }, select: userSelect });
+    const email = str(body.email);
+    if (isDemoLoginEnabled() && email && isDemoAccount(email)) {
+      const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() }, select: userSelect });
       if (user) return { accessToken: `mock-token-${user.id}`, refreshToken: `mock-token-${user.id}`, user };
     }
     throw new UnauthorizedException('Invalid credentials');
@@ -124,8 +126,8 @@ export default function auth(router: Router) {
       } else {
         await startSignupApplication({ ...user, name: name ?? user.name }, 'STUDENT');
       }
-    } else if ((REQUESTABLE_ROLES as readonly string[]).includes(wanted) && wanted !== 'STUDENT' && user.role === 'STUDENT') {
-      const role = wanted as (typeof REQUESTABLE_ROLES)[number];
+    } else if (oneOf(REQUESTABLE_ROLES, wanted) && wanted !== 'STUDENT' && user.role === 'STUDENT') {
+      const role = wanted;
       const invitation = await prisma.invitation.findUnique({ where: { email: user.email.toLowerCase() } });
       const invited = invitation && invitation.role === role && invitation.status === 'PENDING' && invitation.expiresAt > new Date();
       if (invited && (await emailVerified(req))) {

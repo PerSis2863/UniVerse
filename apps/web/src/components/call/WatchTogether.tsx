@@ -362,7 +362,7 @@ export function WatchPicker({ open, callId, onClose, onStart }: { open: boolean;
                   )}
                 </AnimatePresence>
                 {link.trim() && !id && <p className="text-xs text-amber-300">That doesn’t look like a YouTube link.</p>}
-                <button type="submit" disabled={!id} className="w-full h-11 rounded-2xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-sm font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-40">
+                <button type="submit" disabled={!id} className="btn-primary w-full">
                   <Play className="w-4 h-4" />Play for everyone
                 </button>
               </form>

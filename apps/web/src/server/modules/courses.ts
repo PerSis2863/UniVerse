@@ -1,20 +1,21 @@
 import type { Router } from '../router';
 import { CoursesService } from '../services/courses.service';
 import { audit } from '../audit';
+import { first, str } from '../body';
 
 const courses = new CoursesService();
 
 export default function coursesModule(router: Router) {
   const r = router.controller('courses');
 
-  r.get('', ({ query, user }) => courses.findAll(query, user));
+  r.get('', ({ query, user }) => courses.findAll({ search: first(query.search), department: first(query.department) }, user));
   r.get('admin/all', { roles: ['ADMIN'] }, () => courses.findAllForAdmin());
   r.get('my', ({ user }) => (user.role === 'TEACHER' ? courses.findForTeacher(user.id) : courses.findForStudent(user.id)));
   r.get('my-students', ({ user }) => (user.role === 'TEACHER' ? courses.findMyStudents(user.id) : []));
   r.get<{ id: string }>(':id', ({ params, user }) => courses.findOne(params.id, user));
 
   r.post('', { roles: ['TEACHER', 'ADMIN'] }, async ({ user, body, req }) => {
-    const teacherId = user.role === 'ADMIN' && body.teacherId ? body.teacherId : user.id;
+    const teacherId = (user.role === 'ADMIN' && str(body.teacherId)) || user.id;
     const course = await courses.create(teacherId, body);
     audit(user, { action: 'course.created', summary: `Created course ${course.code} · ${course.name}`, targetType: 'course', targetId: course.id }, req);
     return course;

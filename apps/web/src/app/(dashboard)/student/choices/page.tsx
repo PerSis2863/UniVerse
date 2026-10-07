@@ -2,63 +2,49 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { BookmarkPlus, GraduationCap, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { BookmarkPlus, GraduationCap, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { TabPill } from '@/components/ui/Glide';
 
+interface ElectiveCourse { id: string; code?: string; name?: string; credits?: number | null }
+interface MyElective { id: string; courseId: string; status: string; course?: ElectiveCourse | null }
+interface MajorRequest { id: string; requestType: string; requestedProgram: string; status: string; createdAt: string }
+
 export default function StudentChoices() {
   const [activeTab, setActiveTab] = useState('electives');
-  
-  const [loading, setLoading] = useState(true);
-  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
-  const [myElectives, setMyElectives] = useState<any[]>([]);
-  const [majorRequests, setMajorRequests] = useState<any[]>([]);
+
+  const onError = () => toast.error('Couldn’t load electives right now. Please try again shortly.');
+  const available = useSWR<ElectiveCourse[]>('/electives/available', fetcher, { onError });
+  const mine = useSWR<MyElective[]>('/electives/my', fetcher, { onError });
+  const majors = useSWR<MajorRequest[]>('/electives/major-requests', fetcher, { onError });
+  const loading = available.isLoading || mine.isLoading || majors.isLoading;
+  const availableCourses = Array.isArray(available.data) ? available.data : [];
+  const myElectives = Array.isArray(mine.data) ? mine.data : [];
+  const majorRequests = majors.data ?? [];
 
   // Current academic term, e.g. "2026_FALL" (Jan–Jun = spring, Jul–Dec = fall).
   const now = new Date();
   const currentTerm = `${now.getFullYear()}_${now.getMonth() < 6 ? 'SPRING' : 'FALL'}`;
 
-  const fetchElectives = async () => {
-    try {
-      const [availableRes, myRes, majorRes] = await Promise.all([
-        api.get('/electives/available'),
-        api.get('/electives/my'),
-        api.get('/electives/major-requests')
-      ]);
-      const available = Array.isArray(availableRes.data) ? availableRes.data : [];
-      const my = Array.isArray(myRes.data) ? myRes.data : [];
-      setAvailableCourses(available);
-      setMyElectives(my);
-      setMajorRequests(majorRes.data || []);
-    } catch (error) {
-      setAvailableCourses([]);
-      setMyElectives([]);
-      setMajorRequests([]);
-      toast.error('Couldn’t load electives right now. Please try again shortly.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchElectives();
-  }, []);
+  const fetchElectives = () => Promise.all([available.mutate(), mine.mutate(), majors.mutate()]);
 
   const displayElectives = [
     ...myElectives.map(e => ({
       id: e.courseId || e.id,
-      code: e.course?.code || e.code || '',
-      title: e.course?.name || e.title || '',
-      credits: e.course?.credits ?? e.credits ?? 0,
+      code: e.course?.code || '',
+      title: e.course?.name || '',
+      credits: e.course?.credits ?? 0,
       status: e.status === 'PENDING' ? 'Waitlisted' : e.status === 'APPROVED' ? 'Selected' : (e.status || 'Selected'),
       requestId: e.id,
     })),
     ...availableCourses.map(c => ({
       id: c.id,
       code: c.code || '',
-      title: c.name || c.title || '',
+      title: c.name || '',
       credits: c.credits ?? 0,
       status: 'Available',
     }))
@@ -96,14 +82,14 @@ export default function StudentChoices() {
     try {
       await api.post('/electives/major-requests', {
         requestType,
-        newMajor: newProgram,
+        requestedProgram: newProgram,
         reason,
         currentMajor: 'B.S. Computer Science'
       });
       toast.success('Request submitted for advisor approval!');
       e.currentTarget.reset();
       await fetchElectives();
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit request.');
     }
   };
@@ -221,7 +207,7 @@ export default function StudentChoices() {
                         <div key={idx} className="flex justify-between items-center p-4 bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-700/50 rounded-lg">
                           <div>
                             <div className="font-medium text-zinc-900 dark:text-white">{req.requestType}</div>
-                            <div className="text-sm text-zinc-500">To: {req.newMajor}</div>
+                            <div className="text-sm text-zinc-500">To: {req.requestedProgram}</div>
                           </div>
                           <div className="text-amber-600 dark:text-amber-400 text-sm font-medium px-3 py-1 bg-amber-500/10 rounded-full">
                             Pending Review

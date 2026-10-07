@@ -1,12 +1,14 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, STUDENT_LEARN_TABS } from '@/components/layout/SectionTabs';
 import { uploadChatFile } from '@/components/chat/chat-client';
-import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, Copy } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, FolderOpen } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { EmptyState } from '@/components/ui/EmptyState';
+import useSWR from 'swr';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
+import { api, errorMessage } from '@/lib/api';
 import { TabPill } from '@/components/ui/Glide';
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
@@ -25,44 +27,27 @@ type Resource = {
 export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'admin' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const [resources, setResources] = useState<Resource[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareSearchTerm, setShareSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({ title: '', type: 'Document', category: 'General', url: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { user } = useAuthStore();
 
-  const fetchResources = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/knowledge-hub');
-      // The backend returns an array of KnowledgeHubResource objects.
-      // We map them to our frontend Resource type.
-      const mapped = res.data.map((r: any) => ({
-        id: r.id,
-        title: r.title,
-        type: r.url ? 'Link' : 'Document',
-        category: r.category || 'General',
-        url: r.url,
-        date: new Date(r.createdAt).toISOString().split('T')[0],
-        isPublic: r.isPublic,
-      }));
-      setResources(mapped);
-    } catch (error) {
-      console.error('Failed to load resources', error);
-      toast.error('Failed to load resources');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchResources();
-  }, [fetchResources]);
+  // KnowledgeHubResource rows, shaped for this page.
+  const { data: resources = [], isLoading: loading, mutate: fetchResources } = useSWR<Resource[]>('/knowledge-hub', async (url: string) => {
+    const res = await api.get<{ id: string; title: string; url: string | null; category: string | null; createdAt: string; isPublic: boolean }[]>(url);
+    return res.data.map((r) => ({
+      id: r.id,
+      title: r.title,
+      type: r.url ? 'Link' : 'Document',
+      category: r.category || 'General',
+      url: r.url ?? undefined,
+      date: new Date(r.createdAt).toISOString().split('T')[0],
+      isPublic: r.isPublic,
+    }));
+  }, { onError: () => toast.error('Failed to load resources') });
 
   const filteredResources = resources.filter(r => {
     const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -108,16 +93,16 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
       setSelectedFile(null);
       toast.success('Resource added successfully!');
       fetchResources();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      toast.error(error?.response?.data?.message || error?.message || 'Failed to add resource');
+      toast.error(errorMessage(error, (error as Error)?.message || 'Failed to add resource'));
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await api.delete(`/knowledge-hub/${id}`);
-      setResources(resources.filter(r => r.id !== id));
+      void fetchResources(resources.filter((r) => r.id !== id), { revalidate: false });
       toast.success('Resource deleted successfully.');
     } catch (error) {
       console.error(error);
@@ -248,10 +233,10 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                   <span className="text-sm text-zinc-400">{filteredResources.length} items</span>
                 </div>
                 <div className="divide-y divide-zinc-800/50">
-                  {filteredResources.length === 0 ? (
-                    <div className="p-12 text-center text-zinc-500">
-                      No resources found in this category.
-                    </div>
+                  {loading ? (
+                    <ContentSkeleton variant="list" className="p-4" />
+                  ) : filteredResources.length === 0 ? (
+                    <EmptyState compact icon={FolderOpen} title="No resources here yet" hint="Share notes, slides or links and they’ll appear in this category." />
                   ) : (
                     filteredResources.map((resource) => (
                       <div key={resource.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">

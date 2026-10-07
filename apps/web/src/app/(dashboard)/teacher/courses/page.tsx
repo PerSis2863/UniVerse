@@ -1,21 +1,24 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
-import { BookOpen, Users, FileText, ChevronRight, Edit, Trash2, Plus, X, Upload, Loader2 } from 'lucide-react';
+import { BookOpen, Users, FileText, ChevronRight, Edit, Trash2, Plus, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { courseColor } from '@/lib/course-color';
 
+interface TeacherCourse { id: string; name: string; code: string; description?: string | null; color?: string | null; emoji?: string | null; _count?: { enrollments?: number; materials?: number } }
+
 export default function TeacherCourses() {
   const router = useRouter();
-  const { data: courses = [], isLoading, mutate } = useSWR('/courses/my', fetcher);
+  const { data: courses = [], isLoading, mutate } = useSWR<TeacherCourse[]>('/courses/my', fetcher);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState<any>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState<TeacherCourse | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState<TeacherCourse | null>(null);
   
   const [formData, setFormData] = useState({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
 
@@ -30,8 +33,8 @@ export default function TeacherCourses() {
       setShowCreateModal(false);
       setFormData({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
       toast.success('Course created successfully!');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to create course');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to create course'));
     }
   };
 
@@ -41,12 +44,12 @@ export default function TeacherCourses() {
       await mutate();
       setShowEditModal(null);
       toast.success('Course updated successfully!');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to update course');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to update course'));
     }
   };
 
-  const openEdit = (course: any) => {
+  const openEdit = (course: TeacherCourse) => {
     setFormData({ code: course.code, name: course.name, description: course.description, emoji: course.emoji, color: course.color });
     setShowEditModal(course);
   };
@@ -57,8 +60,8 @@ export default function TeacherCourses() {
       await api.delete(`/courses/${id}`);
       await mutate();
       toast.success('Course deleted.');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to delete course');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to delete course'));
     }
   };
 
@@ -83,11 +86,11 @@ export default function TeacherCourses() {
           <div className="card text-center py-12">
             <BookOpen className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">No courses yet</h2>
-            <p className="text-zinc-600 dark:text-zinc-400">You haven't created any courses.</p>
+            <p className="text-zinc-600 dark:text-zinc-400">You haven’t created any courses.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course: any) => (
+            {courses.map((course) => (
               <div key={course.id} className="card p-0 overflow-hidden group border border-white/[0.05] hover:border-indigo-500/50 transition-all flex flex-col h-full relative cursor-pointer" onClick={() => setShowDetailsModal(course)}>
                 
                 {/* Actions Overlay */}

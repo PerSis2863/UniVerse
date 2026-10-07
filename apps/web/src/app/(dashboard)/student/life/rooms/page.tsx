@@ -1,4 +1,6 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { errorMessage } from '@/lib/api';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { Map, Calendar as CalendarIcon, Clock, Users, Search, X, CheckCircle2 } from 'lucide-react';
@@ -26,7 +28,7 @@ export default function RoomReservationPage() {
   const [bookingStatus, setBookingStatus] = useState<'confirm' | 'loading' | 'success'>('confirm');
   const [bookingId, setBookingId] = useState('');
 
-  const { data: allRooms } = useSWR('/rooms', fetcher);
+  const { data: allRooms } = useSWR<{ id: string; name: string; capacity: number; type: string; amenities?: string | null }[]>('/rooms', fetcher);
   // "Free now / Free at 14:00" (upgrade 7), from today's bookings and the class timetable, in this
   // device's local time.
   const [nowKey] = useState(() => {
@@ -75,8 +77,8 @@ export default function RoomReservationPage() {
       });
       setBookingId(res.data.id || Math.random().toString(36).substring(2, 10).toUpperCase());
       setBookingStatus('success');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Booking failed');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Booking failed'));
       setBookingStatus('confirm');
     }
   };
@@ -228,12 +230,13 @@ export default function RoomReservationPage() {
               className="space-y-4"
             >
               <h3 className="text-lg font-bold text-white mb-4">Available Rooms</h3>
-              {(allRooms || []).map((r: any) => ({
+              {!allRooms && <ContentSkeleton variant="list" />}
+              {(allRooms || []).map((r) => ({
                 id: r.id,
                 name: r.name,
                 capacity: r.capacity,
                 type: r.type,
-                features: r.amenities ? r.amenities.split(',').map((s: string) => s.trim()) : []
+                features: r.amenities ? r.amenities.split(',').map((s) => s.trim()) : []
               })).map((room: Room, i: number) => (
                 <div key={i} className="bg-[#121830] border border-white/[0.08] rounded-2xl p-6 flex flex-col sm:flex-row gap-6 justify-between items-center hover:bg-white/[0.02] transition-colors shadow-lg">
                   <div>

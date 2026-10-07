@@ -3,16 +3,25 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
 import { fetcher } from '@/lib/fetcher';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
+import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { m as motion } from 'framer-motion';
+
+type Status = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+interface AttendanceData {
+  records: { date: string; status: Status; course?: { name: string } | null }[];
+  /** Counts per status (Prisma groupBy). */
+  summary: { status: Status; _count: { status: number } }[];
+}
+const LABEL: Record<Status, string> = { PRESENT: 'Present', ABSENT: 'Absent', LATE: 'Late', EXCUSED: 'Excused' };
 
 export default function AttendancePage() {
   const [selectedCourse, setSelectedCourse] = useState('All Courses');
-  const { data, isLoading, error } = useSWR('/attendance/student', fetcher);
+  const { data, isLoading, error, mutate } = useSWR<AttendanceData>('/attendance/student', fetcher);
 
   if (isLoading) {
     return (
@@ -25,28 +34,38 @@ export default function AttendancePage() {
       </>
     );
   }
+  if (error && !data) {
+    return (
+      <>
+        <Topbar title="Attendance" subtitle="Track your class presence and absences." />
+        <SectionTabs tabs={PROGRESS_TABS} />
+        <div className="flex-1 p-4 md:p-8"><LoadError onRetry={() => mutate()} message="Couldn’t load your attendance." /></div>
+      </>
+    );
+  }
 
 
 
   const records = data?.records || [];
   const summary = data?.summary || [];
 
-  const totalClasses = summary.reduce((acc: number, item: any) => acc + item._count.status, 0);
-  const totalPresent = summary.filter((i: any) => i.status === 'PRESENT').reduce((acc: number, item: any) => acc + item._count.status, 0);
-  const totalAbsences = summary.filter((i: any) => i.status === 'ABSENT').reduce((acc: number, item: any) => acc + item._count.status, 0);
-  const totalExcused = summary.filter((i: any) => i.status === 'EXCUSED').reduce((acc: number, item: any) => acc + item._count.status, 0);
+  const count = (status?: Status) => summary.filter((i) => !status || i.status === status).reduce((acc, item) => acc + item._count.status, 0);
+  const totalClasses = count();
+  const totalPresent = count('PRESENT');
+  const totalAbsences = count('ABSENT');
+  const totalExcused = count('EXCUSED');
   const attendancePercentage = totalClasses === 0 ? 100 : Math.round((totalPresent / totalClasses) * 1000) / 10;
 
-  const attendanceData = records.map((r: any) => ({
+  const attendanceData = records.map((r) => ({
     course: r.course?.name || 'Unknown Course',
     date: new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     time: new Date(r.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-    status: r.status === 'PRESENT' ? 'Present' : r.status === 'ABSENT' ? 'Absent' : 'Excused',
+    status: LABEL[r.status] ?? 'Present',
   }));
 
-  const filteredData = selectedCourse === 'All Courses' ? attendanceData : attendanceData.filter((r: any) => r.course === selectedCourse);
+  const filteredData = selectedCourse === 'All Courses' ? attendanceData : attendanceData.filter((r) => r.course === selectedCourse);
 
-  const uniqueCourses = Array.from(new Set(attendanceData.map((r: any) => r.course))) as string[];
+  const uniqueCourses = Array.from(new Set(attendanceData.map((r) => r.course)));
 
   return (
     <>
@@ -94,7 +113,7 @@ export default function AttendancePage() {
                     </td>
                   </tr>
                 )}
-                {filteredData.map((record: any, i: number) => (
+                {filteredData.map((record, i) => (
                   <motion.tr 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -120,9 +139,9 @@ export default function AttendancePage() {
                           <XCircle className="w-3.5 h-3.5" /> Absent
                         </div>
                       )}
-                      {record.status === 'Excused' && (
+                      {(record.status === 'Excused' || record.status === 'Late') && (
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold border border-amber-500/20">
-                          <Clock className="w-3.5 h-3.5" /> Excused
+                          <Clock className="w-3.5 h-3.5" /> {record.status}
                         </div>
                       )}
                     </td>

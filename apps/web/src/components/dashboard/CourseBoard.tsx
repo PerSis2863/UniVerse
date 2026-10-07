@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
@@ -65,8 +65,6 @@ const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'whiteboard', label: 'Whiteboard', icon: PenTool },
 ];
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 const pct = (s: number | null, m: number | null) => (s != null && m ? Math.round((s / m) * 100) : null);
@@ -77,25 +75,19 @@ const absolute = (url: string) => (url.startsWith('/') ? `${window.location.orig
 /** `tabs` (e.g. Course board / AI tutor) show under the page title. */
 export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   const router = useRouter();
-  const { data: mine, isLoading: loadingCourses } = useSWR<any[]>('/courses/my', fetcher);
+  // Teachers get their courses; students their enrolments, each holding its course.
+  const { data: mine, isLoading: loadingCourses } = useSWR<(Course | { course?: Course | null })[]>('/courses/my', fetcher);
   const courses: Course[] = useMemo(
-    () => (Array.isArray(mine) ? (role === 'student' ? mine.map((e) => e.course).filter(Boolean) : mine) : []),
+    () => (Array.isArray(mine) ? (role === 'student' ? mine.map((e) => (e as { course?: Course | null }).course).filter((c): c is Course => !!c) : (mine as Course[])) : []),
     [mine, role],
   );
-  const [courseId, setCourseId] = useState<string | null>(null);
-  const [tab, setTab] = useState('board');
-  const [sessionId, setSessionId] = useState<string | null>(null);
-
-  // Deep links: ?course=<id>&tab=<tab>
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    if (sp.get('tab') && TABS.some((t) => t.id === sp.get('tab'))) setTab(sp.get('tab')!);
-    if (sp.get('course')) setCourseId(sp.get('course'));
-    if (sp.get('session')) setSessionId(sp.get('session'));
-  }, []);
-  useEffect(() => {
-    if (courses.length && (!courseId || !courses.some((c) => c.id === courseId))) setCourseId(courses[0].id);
-  }, [courses, courseId]);
+  // Deep links: ?course=<id>&tab=<tab>&session=<id> (dashboard pages render only in the browser).
+  const [link] = useState(() => new URLSearchParams(window.location.search));
+  const [pickedId, setCourseId] = useState<string | null>(() => link.get('course'));
+  const [tab, setTab] = useState(() => (TABS.some((t) => t.id === link.get('tab')) ? link.get('tab')! : 'board'));
+  const [sessionId, setSessionId] = useState<string | null>(() => link.get('session'));
+  // The picked course, or the first one when it isn't among yours (once your courses have loaded).
+  const courseId = !courses.length || courses.some((c) => c.id === pickedId) ? pickedId : courses[0].id;
 
   const { data: board, error, isLoading, mutate } = useSWR<Board>(courseId ? `/api/courses/${courseId}/board` : null, authedJson);
 
@@ -134,7 +126,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
     try {
       const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: teacherId }) });
       router.push(`/student/inbox?c=${id}`);
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   return (
@@ -251,7 +243,7 @@ function CourseSkills({ board, canManage, refresh }: { board: Board; canManage: 
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
   };
   return (
-    <motion.div layout transition={spring.smooth} className={cn(card, 'mb-5 p-4')}>
+    <motion.div layout transition={spring.smooth} className={cn('panel', 'mb-5 p-4')}>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5"><BadgeCheck className="w-4 h-4 text-emerald-500" /> {canManage ? 'Skills this course builds' : 'Skills you build in this course'}</p>
         {canManage && !editing && <button onClick={start} className="text-xs font-semibold text-indigo-500 hover:underline">{saved.length ? 'Edit' : 'Choose skills'}</button>}
@@ -312,8 +304,8 @@ function useRemove(courseId: string, refresh: KeyedMutator<Board>) {
       settled = true;
       try {
         await authedJson(`/api/courses/${courseId}/board?kind=${kind}&itemId=${itemId}`, { method: 'DELETE' });
-      } catch (e: any) {
-        toast.error(e.message || 'Could not remove it');
+      } catch (e) {
+        toast.error((e as Error).message || 'Could not remove it');
         refresh();
       }
     };
@@ -335,7 +327,7 @@ function usePost(courseId: string, refresh: () => void) {
       refresh();
       toast.success(ok);
       return true;
-    } catch (e: any) { toast.error(e.message); return false; } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); return false; } finally { setBusy(false); }
   };
   return { post, busy };
 }
@@ -363,7 +355,7 @@ function FormShell({ title, onClose, children }: { title: string; onClose: () =>
 }
 
 function Empty({ text }: { text: string }) {
-  return <div className={`${card} p-8 text-center text-sm text-zinc-500`}>{text}</div>;
+  return <div className={`panel p-8 text-center text-sm text-zinc-500`}>{text}</div>;
 }
 
 function RemoveBtn({ onClick }: { onClick: () => void }) {
@@ -381,15 +373,15 @@ function Announcements({ board, canManage, refresh }: SectionProps) {
       <SectionHead icon={Bell} title="Announcements" count={board.announcements.length} action={canManage && !form && <AddButton label="Post" onClick={() => setForm({ title: '', body: '' })} />} />
       {form && (
         <FormShell title="New announcement — enrolled students get a notification" onClose={() => setForm(null)}>
-          <input className={input} placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea className={`${input} min-h-[100px]`} placeholder="What do students need to know?" maxLength={5000} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+          <input className="input" placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <textarea className={`input min-h-[100px]`} placeholder="What do students need to know?" maxLength={5000} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
           <button disabled={busy || !form.title.trim() || !form.body.trim()} onClick={async () => (await post({ kind: 'announcement', ...form }, 'Announcement posted')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Post announcement</button>
         </FormShell>
       )}
       {board.announcements.length === 0 && !form ? <Empty text={canManage ? 'No announcements yet. Post a welcome message to get your class started.' : 'No announcements yet. Your instructor’s updates will appear here.'} /> : (
         <div className="space-y-3">
           {board.announcements.map((a) => (
-            <div key={a.id} className={`${card} p-5`}>
+            <div key={a.id} className={`panel p-5`}>
               <div className="flex items-start justify-between gap-3">
                 <h4 className="font-bold text-zinc-900 dark:text-white">{a.title}</h4>
                 <div className="flex items-center gap-1 shrink-0"><span className="text-xs text-zinc-400">{when(a.createdAt)}</span>{canManage && <RemoveBtn onClick={() => remove('announcement', a.id, a.title)} />}</div>
@@ -419,7 +411,7 @@ function Materials({ board, canManage, refresh }: SectionProps) {
       const url = await uploadChatFile(file, (p) => setUploading(Math.max(1, p)));
       const size = file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`;
       setForm((f) => f && { ...f, url, fileName: file.name, size, title: f.title || file.name.replace(/\.[^.]+$/, '') });
-    } catch (e: any) { toast.error(e.message); } finally { setUploading(0); }
+    } catch (e) { toast.error((e as Error).message); } finally { setUploading(0); }
   };
 
   return (
@@ -427,12 +419,12 @@ function Materials({ board, canManage, refresh }: SectionProps) {
       <SectionHead icon={FileText} title="Course materials" count={board.materials.length} action={canManage && !form && <AddButton label="Add material" onClick={() => setForm({ title: '', url: '', fileName: '', size: '' })} />} />
       {form && (
         <FormShell title="Add a file or a link" onClose={() => setForm(null)}>
-          <input className={input} placeholder="Title, e.g. Week 3 slides" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="input" placeholder="Title, e.g. Week 3 slides" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <label className={cn('flex items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed text-sm cursor-pointer transition-colors', form.fileName ? 'border-emerald-400/50 text-emerald-600 dark:text-emerald-400' : 'border-zinc-300 dark:border-white/15 text-zinc-500 hover:border-indigo-400/60')}>
             <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.mp4,.mov" onChange={(e) => pickFile(e.target.files?.[0])} />
             {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading… {uploading}%</> : form.fileName ? <><CheckCircle2 className="w-4 h-4" /> {form.fileName} · {form.size}</> : <><Paperclip className="w-4 h-4" /> Choose a file (up to 4 MB)</>}
           </label>
-          {!form.fileName && <input className={input} placeholder="…or paste a link (Google Drive, YouTube, website)" maxLength={1000} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />}
+          {!form.fileName && <input className="input" placeholder="…or paste a link (Google Drive, YouTube, website)" maxLength={1000} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />}
           <button disabled={busy || !!uploading || !form.title.trim() || !form.url.trim()} onClick={async () => (await post({ kind: 'material', ...form }, 'Material shared with the class')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Share with class</button>
         </FormShell>
       )}
@@ -442,7 +434,7 @@ function Materials({ board, canManage, refresh }: SectionProps) {
             const Icon = TYPE_ICON[m.type] ?? Paperclip;
             const external = !isUploadedFileUrl(m.fileUrl);
             return (
-              <div key={m.id} className={`${card} p-4 flex items-center gap-3 hover:border-indigo-500/40 transition-colors`}>
+              <div key={m.id} className={`panel p-4 flex items-center gap-3 hover:border-indigo-500/40 transition-colors`}>
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-indigo-500" /></div>
                 <a href={absolute(m.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 group">
                   <p className="font-medium text-sm text-zinc-900 dark:text-white truncate group-hover:text-indigo-500">{m.title}</p>
@@ -472,19 +464,19 @@ function Readings({ board, canManage, refresh }: SectionProps) {
       <SectionHead icon={BookOpen} title="Reading list" count={board.readings.length} action={canManage && !form && <AddButton label="Add reading" onClick={() => setForm({ title: '', url: '', description: '', category: 'Paper' })} />} />
       {form && (
         <FormShell title="Recommend a paper, article or book" onClose={() => setForm(null)}>
-          <input className={input} placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="input" placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div className="grid sm:grid-cols-2 gap-3">
-            <input className={input} placeholder="https://… (optional)" maxLength={1000} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
-            <select className={input} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{['Paper', 'Article', 'Book', 'Video', 'Website'].map((c) => <option key={c}>{c}</option>)}</select>
+            <input className="input" placeholder="https://… (optional)" maxLength={1000} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
+            <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{['Paper', 'Article', 'Book', 'Video', 'Website'].map((c) => <option key={c}>{c}</option>)}</select>
           </div>
-          <textarea className={`${input} min-h-[70px]`} placeholder="Why should students read this? (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <textarea className={`input min-h-[70px]`} placeholder="Why should students read this? (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <button disabled={busy || !form.title.trim()} onClick={async () => (await post({ kind: 'reading', ...form }, 'Added to the reading list')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add</button>
         </FormShell>
       )}
       {board.readings.length === 0 && !form ? <Empty text={canManage ? 'Nothing on the reading list yet. Add papers, articles or books for this course.' : 'No readings yet. Papers and articles your instructor recommends will appear here.'} /> : (
         <div className="space-y-3">
           {board.readings.map((r) => (
-            <div key={r.id} className={`${card} p-5 flex items-start gap-3`}>
+            <div key={r.id} className={`panel p-5 flex items-start gap-3`}>
               <div className="flex-1 min-w-0">
                 {r.url ? <a href={safeHref(r.url)} target="_blank" rel="noopener noreferrer" className="font-bold text-sm text-zinc-900 dark:text-white hover:text-indigo-500 inline-flex items-center gap-1.5">{r.title} <ExternalLink className="w-3.5 h-3.5" /></a>
                   : <p className="font-bold text-sm text-zinc-900 dark:text-white">{r.title}</p>}
@@ -510,7 +502,7 @@ function MyGrades({ board }: { board: Board }) {
       <SectionHead icon={Star} title="My grades in this course" count={grades.length} action={<Link href="/student/grades" className="text-xs font-semibold text-indigo-500 hover:underline">Full report →</Link>} />
       {grades.length === 0 ? <Empty text="No grades yet. Marks your instructor records for this course will appear here." /> : (
         <>
-          <div className={`${card} p-5 mb-3 flex items-center justify-between`}>
+          <div className={`panel p-5 mb-3 flex items-center justify-between`}>
             <span className="text-sm text-zinc-500">Course average across {grades.length} graded item{grades.length === 1 ? '' : 's'}</span>
             <span className="text-2xl font-black text-zinc-900 dark:text-white">{avg}%</span>
           </div>
@@ -518,7 +510,7 @@ function MyGrades({ board }: { board: Board }) {
             {grades.map((g) => {
               const p = pct(g.score, g.maxScore) ?? 0;
               return (
-                <div key={g.id} className={`${card} p-4`}>
+                <div key={g.id} className={`panel p-4`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0"><p className="font-medium text-sm text-zinc-900 dark:text-white truncate">{g.assignmentName}</p><p className="text-xs text-zinc-500">{day(g.gradedAt)}</p></div>
                     <span className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums">{g.score}/{g.maxScore} <span className="text-xs text-zinc-500 font-medium">({p}%)</span></span>
@@ -541,7 +533,7 @@ function Roster({ board }: { board: Board }) {
     <>
       <SectionHead icon={Users} title="Class roster" count={roster.length} action={<Link href="/teacher/grades" className="text-xs font-semibold text-indigo-500 hover:underline">Enter grades →</Link>} />
       {roster.length === 0 ? <Empty text="No students enrolled yet. Ask your campus admin to enroll students in this course." /> : (
-        <div className={`${card} divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
+        <div className={`panel divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
           {roster.map((s) => (
             <div key={s.id} className="p-4 flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{s.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</div>
@@ -568,7 +560,7 @@ function MyQuizzes({ board }: { board: Board }) {
           {results.map((r) => {
             const p = pct(r.score, r.maxScore);
             return (
-              <div key={r.id} className={`${card} p-4 flex items-center gap-4`}>
+              <div key={r.id} className={`panel p-4 flex items-center gap-4`}>
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0"><span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{p ?? '—'}{p != null && '%'}</span></div>
                 <div className="flex-1 min-w-0"><p className="font-medium text-sm text-zinc-900 dark:text-white truncate">{r.quiz.title}</p><p className="text-xs text-zinc-500">{r.score ?? 0}/{r.maxScore ?? 0} points · {day(r.submittedAt)}</p></div>
                 <button onClick={() => setReview(r.quiz.id)} className="btn-secondary text-xs py-1.5 px-3">Review</button>
@@ -633,7 +625,7 @@ function TeacherQuizzes({ board, refresh }: { board: Board; refresh: () => void 
       {quizzes.length === 0 ? <Empty text="No quizzes for this course yet. Create one on the Quizzes page, add questions, then publish it." /> : (
         <div className="space-y-2">
           {quizzes.map((q) => (
-            <div key={q.id} className={`${card} p-4 flex items-center gap-3`}>
+            <div key={q.id} className={`panel p-4 flex items-center gap-3`}>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm text-zinc-900 dark:text-white truncate">{q.title}</p>
                 <p className="text-xs text-zinc-500">{q.status === 'PUBLISHED' ? 'Published' : q.status === 'CLOSED' ? 'Closed' : 'Draft'} · {q._count.questions} questions · {q._count.submissions} submissions{q.dueDate ? ` · due ${day(q.dueDate)}` : ''}</p>
@@ -685,20 +677,20 @@ function Events({ board, canManage, refresh }: SectionProps) {
       } />
       {form && (
         <FormShell title="Schedule a session, exam or deadline" onClose={() => setForm(null)}>
-          <input className={input} placeholder="Title, e.g. Midterm exam" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="input" placeholder="Title, e.g. Midterm exam" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div className="grid sm:grid-cols-3 gap-3">
-            <input className={input} type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
-            <select className={input} value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}>{[30, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m} min</option>)}</select>
-            <select className={input} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+            <input className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
+            <select className="input" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}>{[30, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m} min</option>)}</select>
+            <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
           </div>
-          <input className={input} placeholder="Room or notes (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input className="input" placeholder="Room or notes (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <button disabled={busy || !form.title.trim() || !form.startAt} onClick={async () => (await post({ kind: 'event', ...form, startAt: new Date(form.startAt).toISOString() }, 'Added to the course calendar')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add event</button>
         </FormShell>
       )}
       {board.events.length === 0 && !form ? <Empty text={canManage ? 'Nothing scheduled. Add exams, deadlines or extra sessions so students can plan ahead.' : 'Nothing scheduled yet. Exams, deadlines and sessions for this course will appear here.'} /> : (
         <div className="grid sm:grid-cols-2 gap-3">
           {board.events.map((e) => (
-            <div key={e.id} className={`${card} p-4 flex items-start gap-3`}>
+            <div key={e.id} className={`panel p-4 flex items-start gap-3`}>
               <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white', e.type === 'EXAM' ? 'bg-rose-500' : e.type === 'DEADLINE' ? 'bg-amber-500' : 'bg-indigo-500')}><Calendar className="w-5 h-5" /></div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm text-zinc-900 dark:text-white">{e.title}</p>

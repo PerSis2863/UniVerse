@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import { m as motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { api, errorMessage } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
+import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  Sparkles, Loader2, ArrowRight, CheckCircle2, Clock,
-  Users, Globe2, Zap, Star, TrendingUp, RefreshCw,
-  ChevronRight, BookOpen, Award, Target, Brain
+   Loader2, ArrowRight, CheckCircle2, Clock,
+  Users, Globe2,  Star,  RefreshCw,
+  ChevronRight,   Target, Brain
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { cn } from '@/lib/utils';
@@ -71,9 +73,8 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
       await api.post(`/impact/ngo-projects/${match.project.id}/apply`, { motivation: 'AI-matched application' });
       setApplied(true);
       toast.success('Applied successfully!', { description: 'The NGO will review your profile.' });
-    } catch (e: any) {
-      const msg = e?.response?.data?.message;
-      toast.error(typeof msg === 'string' ? msg : 'Could not apply right now. Please try again.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not apply right now. Please try again.'));
     } finally {
       setApplying(false);
     }
@@ -160,34 +161,17 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
 }
 
 export default function AIMatchPage() {
-  const [matches, setMatches] = useState<MatchedProject[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-
-  const fetchMatches = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true); else setLoading(true);
-    try {
-      const res = await api.get('/impact/ai-match');
-      setMatches(res.data?.length ? res.data.map((m: any, i: number) => ({
-        rank: i + 1,
-        score: m.score || 80,
-        matchPercentage: m.matchPercentage || 80,
-        matchReasons: m.matchReasons || ['Recommended for you'],
-        skillMatches: m.skillMatches || [],
-        project: m.project,
-      })) : []);
-      setLoadError(false);
-    } catch {
-      setMatches([]);
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => { fetchMatches(); }, []);
+  const { data, isLoading: loading, isValidating, error, mutate } = useSWR<Partial<MatchedProject>[]>('/impact/ai-match', fetcher);
+  const matches: MatchedProject[] = (data ?? []).map((m, i) => ({
+    rank: i + 1,
+    score: m.score || 80,
+    matchPercentage: m.matchPercentage || 80,
+    matchReasons: m.matchReasons || ['Recommended for you'],
+    skillMatches: m.skillMatches || [],
+    project: m.project as MatchedProject['project'],
+  }));
+  const loadError = !!error;
+  const refreshing = isValidating && !loading;
 
   return (
     <>
@@ -204,7 +188,7 @@ export default function AIMatchPage() {
               <div className="flex-1">
                 <h2 className="text-white font-bold text-base mb-1">Your Personalized Top 5 Projects</h2>
                 <p className="text-zinc-400 text-xs leading-relaxed mb-3">
-                  Our AI analyzed your skills profile, enrolled courses, and interests to surface the 5 projects where you'll have the highest impact and best chance of acceptance.
+                  Our AI analyzed your skills profile, enrolled courses, and interests to surface the 5 projects where you’ll have the highest impact and best chance of acceptance.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {['Skill matching', 'Course alignment', 'Acceptance rate', 'Impact potential'].map(tag => (
@@ -214,7 +198,7 @@ export default function AIMatchPage() {
                   ))}
                 </div>
               </div>
-              <button onClick={() => fetchMatches(true)} disabled={refreshing}
+              <button onClick={() => void mutate()} disabled={refreshing}
                 className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all flex-shrink-0">
                 <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
               </button>

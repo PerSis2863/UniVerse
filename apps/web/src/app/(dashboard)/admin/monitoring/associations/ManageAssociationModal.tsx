@@ -1,10 +1,11 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ManageAssociationModalProps {
-  association: any;
+  association: { id: string; name?: string | null; category?: string | null; description?: string | null; budget?: number | null };
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -13,7 +14,7 @@ export function ManageAssociationModal({ association, onClose, onSuccess }: Mana
   const [name, setName] = useState(association?.name || '');
   const [category, setCategory] = useState(association?.category || '');
   const [description, setDescription] = useState(association?.description || '');
-  const [budget, setBudget] = useState(association?.budget || 0);
+  const [budget, setBudget] = useState<number | string>(association?.budget || 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,8 +30,8 @@ export function ManageAssociationModal({ association, onClose, onSuccess }: Mana
       });
       toast.success('Association updated successfully!');
       onSuccess();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Failed to update association.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Failed to update association.'));
     } finally {
       setIsSubmitting(false);
     }

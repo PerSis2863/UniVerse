@@ -1,7 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { DollarSign, ArrowUpRight, ArrowDownRight, CreditCard, Activity, Download, Settings, Plus, X, BarChart3, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
+import { DollarSign,   CreditCard, Activity, Download, Settings, Plus, X, BarChart3, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 
@@ -11,8 +11,11 @@ import { isSampleMode } from '@/lib/sample-mode';
 import { AdminSearch, PersonCell, matchesQuery, personText } from '@/components/admin/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
 
+/** A payment with its payer (dates may arrive as Date objects from the server action). */
+interface Txn { id: string; amount: number; currency?: string | null; status: string; description?: string | null; createdAt: string | Date; user?: { name: string; email?: string | null; role?: string | null; phone?: string | null } | null }
+
 export default function AdminFinances() {
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Txn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -125,8 +128,8 @@ export default function AdminFinances() {
       // Refresh list
       const data = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken()));
       setTransactions(data);
-    } catch (e: any) {
-      toast.error(`Error: ${e.message}`);
+    } catch (e) {
+      toast.error(`Error: ${(e as Error).message}`);
     }
   };
 

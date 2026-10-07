@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useState } from 'react';
+import { useTick } from '@/lib/use-now';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowLeft, Clock, DoorOpen, LifeBuoy, Megaphone, Minus, Plus, Send, Shuffle, Users, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
@@ -37,16 +38,6 @@ export type BreakoutMsg =
 
 /** Breakout room n of a call. */
 export const roomId = (callId: string, n: number) => `${callId}~b${n}`;
-
-// The time now, to the second, while something counts down.
-const everySecond = (cb: () => void) => { const t = setInterval(cb, 500); return () => clearInterval(t); };
-const never = () => () => {};
-// Rounded up, so a fresh 15-minute timer reads 15:00, not 15:01.
-const thisSecond = () => Math.ceil(Date.now() / 1000) * 1000;
-/** The time now, updated every second while `on` (countdowns). */
-export function useTick(on: boolean) {
-  return useSyncExternalStore(on ? everySecond : never, thisSecond, thisSecond);
-}
 
 export const mmss = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));

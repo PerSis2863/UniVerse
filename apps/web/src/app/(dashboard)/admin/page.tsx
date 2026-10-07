@@ -1,4 +1,6 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { LoadError } from '@/components/ui/LoadError';
 import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
 import { Topbar } from '@/components/layout/Topbar';
@@ -6,7 +8,6 @@ import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Users, BookOpen, DollarSign, GraduationCap, ArrowRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { formatCurrency } from '@/lib/utils';
-import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
@@ -19,40 +20,51 @@ const statusIcon = {
 };
 
 
+interface PendingUser { id: string; name: string; role: string; dept?: string | null; applied: string }
+interface Department { name: string; color?: string; students: number; teachers: number }
+interface AdminOverview {
+  totalStudents?: number; totalTeachers?: number; totalCourses?: number; revenue?: number;
+  pendingUsers?: PendingUser[]; departments?: Department[];
+  recentPayments?: { id?: string; name: string; type: string; amount: number; status: string }[];
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { t } = useLanguageStore();
-  const { data, isLoading, mutate } = useSWR('/dashboard/admin', fetcher);
+  const { data, error, mutate } = useSWR<AdminOverview>('/dashboard/admin', fetcher);
   
-  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (data?.pendingUsers && pendingUsers.length === 0) {
-      setPendingUsers(data.pendingUsers);
-    }
-  }, [data]);
+  const pendingUsers = data?.pendingUsers ?? [];
 
   const departments = data?.departments || [];
   const recentPayments = data?.recentPayments || [];
 
   const setStatus = async (id: string, name: string, status: 'ACTIVE' | 'SUSPENDED') => {
-    const previous = pendingUsers;
-    setPendingUsers(prev => prev.filter(u => u.id !== id));
+    // Gone from the list straight away; back if saving fails.
+    void mutate((cur) => cur && { ...cur, pendingUsers: (cur.pendingUsers ?? []).filter((u) => u.id !== id) }, { revalidate: false });
     try {
       await api.patch(`/users/${id}/status`, { status });
       if (status === 'ACTIVE') toast.success(`${name} approved`);
       else toast(`${name}'s application rejected`);
       mutate();
     } catch {
-      setPendingUsers(previous);
+      void mutate();
       toast.error(`Couldn't update ${name}. Please try again.`);
     }
   };
   const handleApprove = (id: string, name: string) => setStatus(id, name, 'ACTIVE');
   const handleReject = (id: string, name: string) => setStatus(id, name, 'SUSPENDED');
-  const maxDeptStudents = Math.max(1, ...departments.map((d: any) => d.students || 0));
+  const maxDeptStudents = Math.max(1, ...departments.map((d) => d.students || 0));
 
   const handleSendAnnouncement = () => router.push('/admin/announcements');
+
+  if (!data) {
+    return (
+      <>
+        <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} action={{ label: t('admin.send_announcement'), onClick: handleSendAnnouncement }} />
+        <div className="flex-1 p-8">{error ? <LoadError onRetry={() => mutate()} message="Couldn’t load the dashboard." /> : <ContentSkeleton variant="dashboard" />}</div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -136,7 +148,7 @@ export default function AdminDashboard() {
             {pendingUsers.length === 0 ? (
               <div className="text-sm text-zinc-500 dark:text-zinc-500 py-4 text-center">No pending approvals.</div>
             ) : (
-              pendingUsers.map((u, i) => (
+              pendingUsers.map((u) => (
                 <div key={u.id} className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
                   <div className="w-9 h-9 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
                     {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}

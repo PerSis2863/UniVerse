@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { openCommandPalette } from '@/lib/palette';
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Plus, CheckCircle2, X, Archive, AlertCircle } from 'lucide-react';
+import { Bell, Search, Plus,  X, Archive, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
@@ -29,9 +29,11 @@ interface TopbarProps {
   leftNode?: React.ReactNode;
   /** Hide the large mobile title (for full-screen pages like Messages that have their own header). */
   hideMobileTitle?: boolean;
+  /** Pairs this title with a list card's (data-shared) so it glides in from the card (src/lib/shared-element.ts). */
+  sharedId?: string;
 }
 
-export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobileTitle }: TopbarProps) {
+export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobileTitle, sharedId }: TopbarProps) {
   const router = useRouter();
   const { user } = useAuthStore();
   const hour = new Date().getHours();
@@ -98,7 +100,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           <div className="flex items-start gap-3 min-w-0 flex-1 basis-[60%]">
             {leftNode}
             <div className="min-w-0">
-              <h1 className="large-title text-zinc-900 dark:text-white break-words">{title}</h1>
+              <h1 data-shared={sharedId} className="large-title text-zinc-900 dark:text-white break-words">{title}</h1>
               {subtitle && <p className="text-[15px] text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">{subtitle}</p>}
             </div>
           </div>
@@ -117,7 +119,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
         <div className="flex items-center gap-4 min-w-0">
           {leftNode}
           <div className="min-w-0">
-            <h1 className="font-bold text-[22px] leading-tight tracking-tight text-zinc-900 dark:text-white truncate max-w-md">{title}</h1>
+            <h1 data-shared={sharedId} className="font-bold text-[22px] leading-tight tracking-tight text-zinc-900 dark:text-white truncate max-w-md">{title}</h1>
             {subtitle && <p className="text-[13px] text-zinc-500 dark:text-zinc-400 line-clamp-1 max-w-xl">{subtitle ?? `${t('common.greeting')}, ${user?.name?.split(' ')[0]}!`}</p>}
           </div>
         </div>

@@ -2,12 +2,15 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, TEACHER_STUDENT_TABS } from '@/components/layout/SectionTabs';
-import { Search, Filter, MoreVertical, Mail, GraduationCap, X, Loader2 } from 'lucide-react';
+import { Search, Filter, MoreVertical, Mail, GraduationCap, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { TabPill } from '@/components/ui/Glide';
+
+/** One row per student per course you teach (/courses/my-students). */
+interface MyStudent { id: string; enrollmentId?: string; name: string; email: string; course?: string; grade: string; attendance: string }
 
 export default function TeacherStudents() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,14 +21,14 @@ export default function TeacherStudents() {
   const [emailBody, setEmailBody] = useState('');
   
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
-  const [activeModal, setActiveModal] = useState<{type: 'profile' | 'message' | 'warning', student: any} | null>(null);
+  const [activeModal, setActiveModal] = useState<{type: 'profile' | 'message' | 'warning', student: MyStudent} | null>(null);
   const [modalText, setModalText] = useState('');
 
-  const { data: students = [], isLoading } = useSWR('/courses/my-students', fetcher);
+  const { data: students = [], isLoading } = useSWR<MyStudent[]>('/courses/my-students', fetcher);
 
-  const uniqueCourses: string[] = ['All', ...Array.from(new Set<string>(students.map((s: any) => String(s.course ?? ''))))];
+  const uniqueCourses: string[] = ['All', ...Array.from(new Set<string>(students.map((s) => String(s.course ?? ''))))];
 
-  const filteredStudents = students.filter((s: any) => {
+  const filteredStudents = students.filter((s) => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCourse = courseFilter === 'All' || s.course === courseFilter;
     return matchesSearch && matchesCourse;
@@ -34,7 +37,7 @@ export default function TeacherStudents() {
   // A student in two of your courses has a row for each (with that course's grade and attendance).
   const rowKey = (s: { id: string; course?: string; enrollmentId?: string }) => s.enrollmentId ?? `${s.id}:${s.course}`;
 
-  const handleAction = (type: 'profile' | 'message' | 'warning', student: any) => {
+  const handleAction = (type: 'profile' | 'message' | 'warning', student: MyStudent) => {
     setActionMenuOpen(null);
     setActiveModal({ type, student });
     setModalText('');
@@ -208,7 +211,7 @@ export default function TeacherStudents() {
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
               <button onClick={() => {
-                const to = filteredStudents.map((st: any) => st.email).filter(Boolean).join(',');
+                const to = filteredStudents.map((st) => st.email).filter(Boolean).join(',');
                 if (!to) return void toast.error('None of these students have an email address.');
                 window.location.href = `mailto:?bcc=${encodeURIComponent(to)}&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
                 setShowEmailModal(false);
@@ -272,7 +275,7 @@ export default function TeacherStudents() {
             {activeModal.type !== 'profile' && (
               <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex justify-end gap-3">
                 <button onClick={() => setActiveModal(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
-                <button onClick={submitModal} className={`px-5 py-2 rounded-xl text-sm font-bold text-zinc-900 dark:text-white shadow-lg transition-all ${activeModal.type === 'warning' ? 'bg-red-600 hover:bg-red-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
+                <button onClick={submitModal} className={activeModal.type === 'warning' ? 'btn-danger' : 'btn-primary'}>
                   {activeModal.type === 'warning' ? 'Send Warning' : 'Send Message'}
                 </button>
               </div>

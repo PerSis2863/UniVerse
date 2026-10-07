@@ -23,7 +23,7 @@ interface Recording {
 const clock = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 
 export function CallRecordingSheet({ id, onClose }: { id: string; onClose: () => void }) {
-  const { data, error } = useSWR<Recording>(`/api/call-recordings/${id}`, (url: string) => authedJson(url));
+  const { data, error } = useSWR<Recording>(`/api/call-recordings/${id}`, (url: string) => authedJson<Recording>(url));
   const media = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const [q, setQ] = useState('');
   const [deleting, setDeleting] = useState(false);

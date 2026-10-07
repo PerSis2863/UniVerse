@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 import { getStripe, syncSubscription } from '@/lib/billing';
 
 // Checking the signature needs no API key; a placeholder keeps this working if the key is missing.
-const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as any, httpClient: Stripe.createFetchHttpClient() });
+const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as unknown as Stripe.LatestApiVersion, httpClient: Stripe.createFetchHttpClient() });
 
 export async function POST(req: Request) {
   const payload = await req.text();
@@ -16,9 +16,9 @@ export async function POST(req: Request) {
     // The async variant uses Web Crypto, which is what Cloudflare Workers provide.
     // Trimmed: a pasted secret often carries a trailing space or line break.
     event = await stripeClient().webhooks.constructEventAsync(payload, signature, (process.env.STRIPE_WEBHOOK_SECRET ?? '').trim());
-  } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
-    return NextResponse.json({ error: err.message }, { status: 400 });
+  } catch (err) {
+    console.error(`Webhook Error: ${(err as Error).message}`);
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }
 
   // Organization subscriptions (see /api/billing/checkout)

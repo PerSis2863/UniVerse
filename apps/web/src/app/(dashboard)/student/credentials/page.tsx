@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
@@ -398,7 +399,7 @@ export default function VerifiedCredentialsPage() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-emerald-500" /></div>
+            <ContentSkeleton variant="grid" />
           ) : loadError ? (
             <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-2xl flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />

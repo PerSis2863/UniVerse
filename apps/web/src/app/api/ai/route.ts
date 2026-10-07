@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   const history = Array.isArray(payload.history) ? payload.history.slice(-MAX_HISTORY) : [];
   const contents = [
     ...history
-      .filter((m): m is { role: string; content: string } => !!m && typeof (m as any).content === 'string' && (m as any).content.trim() !== '')
+      .filter((m): m is { role: string; content: string } => !!m && typeof (m as { content?: unknown }).content === 'string' && ((m as { content: string }).content).trim() !== '')
       .map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content.slice(0, MAX_MESSAGE_CHARS) }],

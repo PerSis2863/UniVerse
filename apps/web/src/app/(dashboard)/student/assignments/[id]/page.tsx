@@ -31,7 +31,6 @@ interface Detail {
   } | null;
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const MAX = 20_000;
 
 export default function StudentAssignmentPage({ params }: { params: Promise<{ id: string }> }) {
@@ -81,7 +80,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
 
   return (
     <>
-      <Topbar title={data?.title ?? 'Assignment'} subtitle={data ? `${data.course.code} · ${data.course.name}` : undefined} />
+      <Topbar title={data?.title ?? 'Assignment'} sharedId={data ? `assignment:${id}` : undefined} subtitle={data ? `${data.course.code} · ${data.course.name}` : undefined} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-3xl mx-auto space-y-5 stagger">
           <Link href="/student/assignments" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"><ArrowLeft className="w-4 h-4" /> All assignments</Link>
@@ -89,7 +88,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
             <div className="h-64 rounded-2xl skeleton" />
           ) : (
             <>
-              <section className={`${card} p-5 space-y-4`}>
+              <section className={`panel p-5 space-y-4`}>
                 {data.dueDate && <p className="text-sm text-zinc-500">Due {new Date(data.dueDate).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}{data.status === 'CLOSED' ? ' · closed' : ''}</p>}
                 <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{data.instructions}</p>
                 <div>
@@ -127,7 +126,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
                 </section>
               )}
 
-              <section className={`${card} p-5 space-y-3`}>
+              <section className={`panel p-5 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <label htmlFor="answer" className="font-semibold text-zinc-900 dark:text-white">Your answer</label>
                   {data.mine && !returned && <span className="text-xs text-indigo-600 dark:text-indigo-300">Handed in {new Date(data.mine.submittedAt).toLocaleString()}</span>}

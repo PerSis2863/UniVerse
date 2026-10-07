@@ -44,16 +44,6 @@ export default function CalendarPage() {
       <Topbar title="My Timetable" subtitle="Your classes and events" />
       <SectionTabs tabs={HOME_TABS} />
       <div className="flex-1 p-4 sm:p-8">
-        {!loading && timetableSlots.length === 0 && calendarEvents.length === 0 && (
-          <FeatureGuide
-            className="mb-6"
-            icon={CalendarIcon}
-            title="Your weekly timetable lives here"
-            description="Once you're enrolled in courses and your campus publishes the timetable, every lecture, lab and tutorial appears on this calendar automatically."
-            steps={['Enroll in your courses', 'Your admin schedules classes in Timetable Management', 'Your week fills in here — tap a class for details']}
-            example={<div><ExampleRow title="Operating Systems · Lecture" meta="Monday 09:00–10:30 · Room B-204" right="CS301" /><ExampleRow title="Data Science · Lab" meta="Wednesday 14:00–16:00 · Lab 3" right="DS220" accent="from-fuchsia-500 to-pink-500" /></div>}
-          />
-        )}
         <div className="max-w-7xl mx-auto space-y-6">
           <TimeGrid
             label="Your timetable"
@@ -62,6 +52,17 @@ export default function CalendarPage() {
             onOpen={(e, day) => setSelectedClass({ ...e.data, dateObj: day })}
           />
           <CalendarFeedCard who="student" />
+          {/* Below the grid: shown once loading ends, so it never pushes the calendar down. */}
+        {!loading && timetableSlots.length === 0 && calendarEvents.length === 0 && (
+            <FeatureGuide
+              className=""
+              icon={CalendarIcon}
+              title="Your weekly timetable lives here"
+              description="Once you're enrolled in courses and your campus publishes the timetable, every lecture, lab and tutorial appears on this calendar automatically."
+              steps={['Enroll in your courses', 'Your admin schedules classes in Timetable Management', 'Your week fills in here — tap a class for details']}
+              example={<div><ExampleRow title="Operating Systems · Lecture" meta="Monday 09:00–10:30 · Room B-204" right="CS301" /><ExampleRow title="Data Science · Lab" meta="Wednesday 14:00–16:00 · Lab 3" right="DS220" accent="from-fuchsia-500 to-pink-500" /></div>}
+            />
+          )}
         </div>
       </div>
       {/* ─── Class Detail Panel ─────────────────────────────── */}

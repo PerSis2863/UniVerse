@@ -1,15 +1,18 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, TEACHER_IMPACT_TABS } from '@/components/layout/SectionTabs';
 import {
   Search, Filter, Briefcase, Globe2, ArrowUpRight, Clock, Users, Building2,
-  CheckCircle2, X, Send, ChevronDown, Edit, Trash2, Plus
+  CheckCircle2, X, Send, ChevronDown,  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { TabPill } from '@/components/ui/Glide';
 
 const STATUSES = ['All', 'Active', 'Recruiting', 'Completed'];
@@ -35,13 +38,15 @@ type CollaborationProject = {
 };
 
 export default function NGOMentorshipPage() {
-  const [projects, setProjects] = useState<CollaborationProject[]>([]);
+  const { data: projectsData, isLoading: loading, mutate: fetchProjects } = useSWR<CollaborationProject[]>('/collaborations/projects', fetcher, {
+    onError: () => toast.error('Failed to load projects'),
+  });
+  const projects = projectsData ?? [];
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectedProject, setSelectedProject] = useState<CollaborationProject | null>(null);
   const [showProposeModal, setShowProposeModal] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   // Propose form state
   const [proposeTitle, setProposeTitle] = useState('');
@@ -49,20 +54,7 @@ export default function NGOMentorshipPage() {
   const [proposeDesc, setProposeDesc] = useState('');
   const [proposeTags, setProposeTags] = useState('');
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
 
-  const fetchProjects = async () => {
-    try {
-      const res = await api.get('/collaborations/projects');
-      setProjects(res.data);
-    } catch (error) {
-      toast.error('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filtered = useMemo(() => {
     return projects.filter(p => {
@@ -96,7 +88,7 @@ export default function NGOMentorshipPage() {
       setProposeDesc('');
       setProposeTags('');
       fetchProjects();
-    } catch (error) {
+    } catch {
       toast.error('Failed to create project');
     }
   };
@@ -105,7 +97,7 @@ export default function NGOMentorshipPage() {
     try {
       const res = await api.get(`/collaborations/projects/${id}`);
       setSelectedProject(res.data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load details');
     }
   };
@@ -176,15 +168,13 @@ export default function NGOMentorshipPage() {
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Showing <strong className="text-zinc-900 dark:text-white">{filtered.length}</strong> project{filtered.length !== 1 ? 's' : ''}
               {statusFilter !== 'All' && <> with status <span className="text-indigo-400">{statusFilter}</span></>}
-              {search && <> matching "<span className="text-indigo-400">{search}</span>"</>}
+              {search && <> matching “<span className="text-indigo-400">{search}</span>”</>}
             </p>
           )}
 
           {/* Projects Grid */}
           {loading ? (
-             <div className="flex items-center justify-center py-16">
-               <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-             </div>
+             <ContentSkeleton variant="grid" />
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 text-zinc-500 dark:text-zinc-500">
               <Globe2 className="w-12 h-12 mx-auto mb-4 opacity-30" />
@@ -319,11 +309,11 @@ export default function NGOMentorshipPage() {
                   if (!(await confirmDialog({ title: `Remove "${selectedProject.title}"?`, message: 'Its members and milestones will be removed too.', confirmLabel: 'Remove', destructive: true }))) return;
                   try {
                     await api.delete(`/collaborations/projects/${selectedProject.id}`);
-                    setProjects((ps) => ps.filter((p) => p.id !== selectedProject.id));
+                    void fetchProjects(projects.filter((p) => p.id !== selectedProject.id), { revalidate: false });
                     setSelectedProject(null);
                     toast.success('Project removed');
-                  } catch (e: any) {
-                    toast.error(e.response?.data?.message || 'Could not remove the project');
+                  } catch (e) {
+                    toast.error(errorMessage(e, 'Could not remove the project'));
                   }
                 }}
                 className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"

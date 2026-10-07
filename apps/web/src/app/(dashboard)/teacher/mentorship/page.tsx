@@ -1,12 +1,15 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { m as motion } from 'framer-motion';
 import { Users, Mail, CheckCircle2, Shield, HeartHandshake, Briefcase, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import Image from 'next/image';
 
 type Mentor = {
@@ -25,23 +28,10 @@ type Mentor = {
 };
 
 export default function MentorshipPage() {
-  const [mentors, setMentors] = useState<Mentor[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchMentors();
-  }, []);
-
-  const fetchMentors = async () => {
-    try {
-      const res = await api.get('/mentorship/mentors');
-      setMentors(res.data);
-    } catch (error) {
-      toast.error('Failed to load mentors');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: mentorsData, isLoading: loading } = useSWR<Mentor[]>('/mentorship/mentors', fetcher, {
+    onError: () => toast.error('Failed to load mentors'),
+  });
+  const mentors = mentorsData ?? [];
 
   const requestMatch = async (mentorId: string) => {
     try {
@@ -51,7 +41,7 @@ export default function MentorshipPage() {
         topic: 'Initial Discussion'
       });
       toast.success('Match request sent!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to send request');
     }
   };
@@ -131,9 +121,7 @@ export default function MentorshipPage() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            </div>
+            <ContentSkeleton variant="grid" />
           ) : mentors.length === 0 ? (
             <div className="text-center py-10 text-zinc-500">No mentors available at the moment.</div>
           ) : (

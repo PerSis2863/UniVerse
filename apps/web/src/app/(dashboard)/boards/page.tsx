@@ -12,7 +12,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { NewBoardDialog } from '@/components/boards/NewBoardDialog';
 import type { TemplateId } from '@/components/boards/templates';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 

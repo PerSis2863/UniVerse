@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useNow } from '@/lib/use-now';
+import { Avatar } from '@/components/ui/Avatar';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
@@ -21,34 +23,6 @@ import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
-const AVATAR_GRADIENTS = [
-  'from-indigo-500 to-violet-500', 'from-sky-500 to-cyan-500', 'from-emerald-500 to-teal-500', 'from-amber-500 to-orange-500',
-  'from-rose-500 to-pink-500', 'from-fuchsia-500 to-purple-500', 'from-blue-500 to-indigo-500', 'from-lime-500 to-emerald-500',
-];
-function avatarGradient(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
-}
-
-export function Avatar({ name, src, size = 40, online }: { name: string; src?: string | null; size?: number; online?: boolean }) {
-  const letters = name.split(/\s+/).filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-  // A photo that fails to load (deleted, blocked, offline) falls back to the initials.
-  const [failed, setFailed] = useState<string | null>(null);
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      {src && failed !== src ? (
-        <img loading="lazy" decoding="async" src={src} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
-      ) : (
-        <div className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold', avatarGradient(name))} style={{ fontSize: size * 0.36 }}>
-          {letters}
-        </div>
-      )}
-      {online && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121830]" />}
-    </div>
-  );
-}
-
 /**
  * Voice-note player (Stage 4 · 1.7): one player for the whole app (src/lib/voice-player.ts), so it
  * keeps playing when you open another chat or page (MiniPlayer). Tap or drag along the waveform to
@@ -172,21 +146,24 @@ export type TranslationState = { status: 'pending' } | { status: 'error'; messag
 
 const FORWARDABLE = new Set(['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'LOCATION', 'CONTACT']);
 
+const noSubscribe = () => () => {};
+const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
+
 export function MessageBubble(p: Props) {
   const { m, mine, me, showSender, readState, canModerate, highlight } = p;
   const [menu, setMenu] = useState(false);
   const [picker, setPicker] = useState(false);
   const [fullPicker, setFullPicker] = useState(false);
   const [history, setHistory] = useState(false);
-  const [touch, setTouch] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const x = useMotionValue(0);
   const replyHint = useTransform(x, [0, 60], [0, 1]);
-  useEffect(() => { setTouch(window.matchMedia('(pointer: coarse)').matches); }, []);
+  const touch = useSyncExternalStore(noSubscribe, isTouch, () => false);
+  const now = useNow();
 
   const time = new Date(m.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const deleted = m.type === 'DELETED';
-  const age = Date.now() - new Date(m.createdAt).getTime();
+  const age = now - new Date(m.createdAt).getTime();
   const canEdit = mine && m.type === 'TEXT' && !deleted && age < 86_400_000;
   // Delete for everyone: your own for 48 hours; admins and moderators any time.
   const canDeleteForAll = canModerate || (mine && age < 48 * 3_600_000);
@@ -279,7 +256,7 @@ export function MessageBubble(p: Props) {
     // or declined. Calls from before UniVerse had its own (Jitsi links) show as ended.
     const meta = m.metadata ?? {};
     const video = meta.kind === 'video';
-    const live = !!meta.inApp && !meta.endedAt && Date.now() - new Date(m.createdAt).getTime() < 4 * 3600_000;
+    const live = !!meta.inApp && !meta.endedAt && now - new Date(m.createdAt).getTime() < 4 * 3600_000;
     const dur = meta.durationSec ? `${Math.floor(meta.durationSec / 60)}:${String(meta.durationSec % 60).padStart(2, '0')}` : null;
     const missed = !live && !mine && !meta.answered;
     const title = live ? (video ? 'Video call' : 'Voice call')
@@ -524,7 +501,7 @@ export function MessageBubble(p: Props) {
 
 /** An edited message's earlier versions (Stage 4 · 1.3), newest first. */
 function EditHistory({ id, onClose, emoji }: { id: string; onClose: () => void; emoji?: Record<string, string> }) {
-  const { data } = useSWR<{ versions: { body: string; at: string; current: boolean }[] }>(`/api/chat/messages/${id}/edits`, (url: string) => authedJson(url));
+  const { data } = useSWR<{ versions: { body: string; at: string; current: boolean }[] }>(`/api/chat/messages/${id}/edits`, authedJson);
   const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   return createPortal(
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>

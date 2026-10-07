@@ -272,6 +272,23 @@
     box-shadow: var(--card-shadow);
   }
 
+  /* Panels: the frosted-glass card used across the app's pages (sections, lists, forms). No
+     padding of its own, so lists can run edge to edge; add p-4 / p-5 for content. */
+  .panel {
+    border-radius: 1rem;
+    border: 1px solid rgb(228 228 231 / 0.8);
+    background-color: rgb(255 255 255 / 0.7);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+  }
+  .dark .panel {
+    border-color: rgb(255 255 255 / 0.07);
+    background-color: rgb(255 255 255 / 0.03);
+  }
+  @media print {
+    .panel { background-color: #fff; border-color: rgb(212 212 216); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+
   .card-hover {
     background-color: var(--card-bg);
     border: 1px solid var(--card-border);
@@ -1358,3 +1375,10 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 /* Other people's carets and selections */
 .collaboration-carets__caret { position: relative; margin: 0 -1px; border-left: 2px solid; border-right: 0; word-break: normal; pointer-events: none; }
 .collaboration-carets__label { position: absolute; top: -1.35em; left: -2px; font-size: 11px; font-weight: 600; line-height: 1; padding: 0.15em 0.4em; border-radius: 0.4em 0.4em 0.4em 0; color: white; white-space: nowrap; user-select: none; }
+
+/* Reduce Motion for the CSS animations (framer-motion ones calm down in src/lib/motion.ts). As
+   there, nothing freezes: decorative loops stop, and things that slide or rise in just fade in. */
+@media (prefers-reduced-motion: reduce) {
+  .universe-u-beam, .universe-n-beam, .universe-node-pulse, .empty-icon { animation: none; }
+  .bubble-glass.received, .bubble-glass.sent, .sheet-in, .fade-up, .alert-in { animation-name: backdrop-in; }
+}

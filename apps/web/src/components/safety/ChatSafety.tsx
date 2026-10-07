@@ -6,7 +6,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Check, ChevronDown, Loader2, MessageSquareWarning, PauseCircle, PlayCircle, ShieldCheck, X } from 'lucide-react';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { Segmented } from '@/components/ui/Segmented';
 import { authedJson } from '@/lib/authed-fetch';
 import { fadeUp, list, spring } from '@/lib/motion';
@@ -25,7 +25,6 @@ interface Line { id: string; name: string; role: string; at: string; flagged: bo
 
 const KIND: Record<string, string> = { bullying: 'Bullying', threat: 'Threat', self_harm: 'May be at risk', sexual: 'Sexual or grooming', personal_info: 'Personal details', hate: 'Hate' };
 const SEVERITY = { high: 'bg-rose-600 text-white', medium: 'bg-amber-500/15 text-amber-700 dark:text-amber-300', low: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300' } as const;
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 
 function Context({ id }: { id: string }) {
   const { data } = useSWR<{ messages: Line[] }>(`/api/safety/flags/${id}`, authedJson);
@@ -77,7 +76,7 @@ export function ChatSafety() {
         ) : !data ? (
           <div className="space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>
         ) : data.flags.length === 0 ? (
-          <motion.div variants={fadeUp} initial="hidden" animate="show" className={`${card} p-10 text-center`}>
+          <motion.div variants={fadeUp} initial="hidden" animate="show" className={`panel p-10 text-center`}>
             <ShieldCheck className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
             <p className="font-semibold text-zinc-900 dark:text-white">{status === 'OPEN' ? 'Nothing to review' : 'Nothing here'}</p>
             <p className="text-sm text-zinc-500 mt-1">{status === 'OPEN' ? 'When a chat message may need a look, it shows up here and every admin gets a notification.' : 'Flags you handle show up here.'}</p>
@@ -87,7 +86,7 @@ export function ChatSafety() {
             {data.flags.map((f) => {
               const open = openId === f.id;
               return (
-                <motion.li key={f.id} variants={fadeUp} layout className={cn(card, 'p-4', f.severity === 'high' && status === 'OPEN' && 'ring-1 ring-rose-500/40')}>
+                <motion.li key={f.id} variants={fadeUp} layout className={cn('panel', 'p-4', f.severity === 'high' && status === 'OPEN' && 'ring-1 ring-rose-500/40')}>
                   <button type="button" onClick={() => setOpenId(open ? null : f.id)} aria-expanded={open} className="w-full flex items-start gap-3 text-left">
                     <Avatar name={f.sender.name} src={f.sender.avatar} size={40} />
                     <span className="flex-1 min-w-0">

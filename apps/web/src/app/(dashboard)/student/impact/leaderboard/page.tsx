@@ -2,18 +2,20 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { useAuthStore } from '@/store/auth';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Trophy, Medal, Star, TrendingUp, Users, ArrowUp, ArrowDown, Minus, Search, Loader2, Zap, Shield, Share2, Copy } from 'lucide-react';
+import { Trophy, Medal, Star,  Users, ArrowUp, ArrowDown, Minus, Search,  Zap,   Copy } from 'lucide-react';
 
 const TwitterIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.631 5.905-5.631zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
-import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
+import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
 
@@ -121,54 +123,30 @@ function MyScoreCard({ entry, levelInfo }: { entry: LeaderboardEntry | null; lev
 export default function LeaderboardPage() {
   const [search, setSearch] = useState('');
   const [timeframe, setTimeframe] = useState('All Time');
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [myEntry, setMyEntry] = useState<LeaderboardEntry | null>(null);
-  const [myLevelInfo, setMyLevelInfo] = useState<LevelInfo | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showLevels, setShowLevels] = useState(false);
 
   const timeframes = ['This Week', 'This Month', 'This Semester', 'All Time'];
   const PERIOD: Record<string, string> = { 'This Week': 'week', 'This Month': 'month', 'This Semester': 'semester', 'All Time': 'all' };
 
   // The time buttons choose whose points count: earned this week, month, semester, or ever.
-  useEffect(() => { fetchAll(); }, [timeframe]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      const [lbRes, levelRes] = await Promise.allSettled([
-        api.get(`/impact/leaderboard?period=${PERIOD[timeframe] ?? 'all'}`),
-        api.get('/impact/my-level'),
-      ]);
-
-      let lb: LeaderboardEntry[] = [];
-      if (lbRes.status === 'fulfilled' && lbRes.value.data?.length) {
-        lb = lbRes.value.data.map((user: any, index: number) => {
-          const initials = user.name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || 'U';
-          return {
-            rank: index + 1,
-            id: user.id,
-            name: user.name || 'Anonymous',
-            initials,
-            totalPoints: user.totalPoints || 0,
-            trend: 'same' as const,
-            gradient: LEVEL_GRADIENTS[user.levelInfo?.current?.level || 1],
-            isCurrentUser: user.id === useAuthStore.getState().user?.id,
-            levelInfo: user.levelInfo,
-          };
-        });
-      }
-      setLeaderboard(lb);
-      setMyEntry(lb.find(e => e.isCurrentUser) || null);
-
-      if (levelRes.status === 'fulfilled') setMyLevelInfo(levelRes.value.data);
-    } catch {
-      setLeaderboard([]);
-      setMyEntry(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  type ApiEntry = { id: string; name?: string | null; totalPoints?: number; levelInfo?: LevelInfo };
+  const { data: board, isLoading: loadingBoard, error: boardError, mutate: retryBoard } = useSWR<ApiEntry[]>(`/impact/leaderboard?period=${PERIOD[timeframe] ?? 'all'}`, fetcher, { keepPreviousData: true });
+  const { data: myLevelInfo = null } = useSWR<LevelInfo>('/impact/my-level', fetcher);
+  const loading = loadingBoard && !board;
+  const meId = useAuthStore((st) => st.user?.id);
+  const leaderboard: LeaderboardEntry[] = (board ?? []).map((user, index) => ({
+    rank: index + 1,
+    id: user.id,
+    name: user.name || 'Anonymous',
+    initials: user.name?.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() || 'U',
+    totalPoints: user.totalPoints || 0,
+    trend: 'same' as const,
+    gradient: LEVEL_GRADIENTS[user.levelInfo?.current?.level || 1],
+    isCurrentUser: user.id === meId,
+    levelInfo: user.levelInfo,
+  }));
+  const myEntry = leaderboard.find((e) => e.isCurrentUser) || null;
 
   const filtered = leaderboard.filter(u => u.name.toLowerCase().includes(search.toLowerCase()));
   const top3 = leaderboard.slice(0, 3);
@@ -226,7 +204,7 @@ export default function LeaderboardPage() {
               {showLevels && (
                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                   <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-0 border-t border-zinc-200 dark:border-zinc-800">
-                    {LEVELS.map((lv, i) => {
+                    {LEVELS.map((lv) => {
                       const isCurrentLevel = (myLevelInfo?.current?.level || 1) === lv.level;
                       return (
                         <div key={lv.level} className={cn('p-4 text-center border-r last:border-0 border-zinc-200 dark:border-zinc-800', isCurrentLevel ? 'bg-indigo-500/5' : '')}>
@@ -256,7 +234,9 @@ export default function LeaderboardPage() {
           )}
 
           {/* Podium */}
-          {loading ? (
+          {boardError && !board ? (
+            <LoadError onRetry={() => retryBoard()} message="Couldn’t load the leaderboard." />
+          ) : loading ? (
             <div className="flex justify-center py-20"><ContentSkeleton variant="list" /></div>
           ) : search === '' && top3.length >= 3 && (
             <div className="flex items-end justify-center gap-2 sm:gap-6 pt-10 pb-6 px-4">

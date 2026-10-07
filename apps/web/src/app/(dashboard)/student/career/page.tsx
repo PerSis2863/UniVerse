@@ -1,16 +1,24 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import { Briefcase, Calendar, MapPin, Building, ChevronRight, Loader2 } from 'lucide-react';
+import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
+import { fetcher } from '@/lib/fetcher';
+import { Briefcase, Calendar, MapPin, Building, ChevronRight } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Image from 'next/image';
 
+interface Opportunity { id: string; title: string; company: string; logo: string; type: string; location: string; deadline: string }
+interface CareerEvent { id: string; title: string; date: string; location?: string | null }
+
 export default function CareerPage() {
-  const [opportunities, setOpportunities] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const opps = useSWR<Opportunity[]>('/career/opportunities', fetcher);
+  const evts = useSWR<CareerEvent[]>('/career/events', fetcher);
+  const opportunities = opps.data ?? [];
+  const events = evts.data ?? [];
+  const loading = opps.isLoading || evts.isLoading;
   const router = useRouter();
   // Bookmarked opportunities, kept on this device.
   const [saved, setSaved] = useState<string[]>(() => {
@@ -31,23 +39,6 @@ export default function CareerPage() {
       return next;
     });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [opps, evts] = await Promise.all([
-          api.get('/career/opportunities'),
-          api.get('/career/events')
-        ]);
-        setOpportunities(opps.data);
-        setEvents(evts.data);
-      } catch (error) {
-        console.error('Failed to fetch career data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
 
   return (
     <>
@@ -55,9 +46,9 @@ export default function CareerPage() {
       
       <div className="flex-1 p-8 overflow-y-auto">
         {loading ? (
-          <div className="flex h-40 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-          </div>
+          <ContentSkeleton variant="grid" />
+        ) : (opps.error && !opps.data) || (evts.error && !evts.data) ? (
+          <LoadError onRetry={() => Promise.all([opps.mutate(), evts.mutate()])} message="Couldn’t load the career hub." />
         ) : (
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
@@ -113,7 +104,7 @@ export default function CareerPage() {
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-indigo-400" /> Upcoming Events
                   </h2>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Don't miss these career events.</p>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Don’t miss these career events.</p>
                 </div>
                 <div className="space-y-4">
                   {events.map((event) => (

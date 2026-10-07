@@ -30,6 +30,13 @@ export class ApiError extends Error {
   get status() { return this.response.status; }
 }
 
+/** The server's message for a failed request (a string, or a list joined), else `fallback`. */
+export function errorMessage(err: unknown, fallback: string): string {
+  const msg = (err as { response?: { data?: { message?: unknown } } } | null)?.response?.data?.message;
+  if (Array.isArray(msg)) return msg.join(', ');
+  return typeof msg === 'string' && msg ? msg : fallback;
+}
+
 const errorFrom = (status: number, data: any) =>
   new ApiError((data && typeof data === 'object' && (data.message || data.error)) || `Request failed with status code ${status}`, { status, data });
 

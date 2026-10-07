@@ -1,30 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { applyTheme, getSavedTheme, watchSystemTheme, type Theme } from '@/lib/theme';
 
+// The saved theme, re-read whenever something changes it (this menu, the command palette).
+const onThemeChange = (cb: () => void) => {
+  window.addEventListener('universe:theme', cb);
+  return () => window.removeEventListener('universe:theme', cb);
+};
+const noSubscribe = () => () => {};
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const theme = useSyncExternalStore<Theme>(onThemeChange, getSavedTheme, () => 'dark');
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // false during server rendering and hydration, true afterwards
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
 
   useEffect(() => {
-    // On mount, read saved preference or default to dark
-    const saved = getSavedTheme();
-    setTheme(saved);
-    applyTheme(saved, { animate: false });
+    applyTheme(getSavedTheme(), { animate: false });
     watchSystemTheme();
-    setMounted(true);
-    const sync = () => setTheme(getSavedTheme());
-    window.addEventListener('universe:theme', sync);
-    return () => window.removeEventListener('universe:theme', sync);
   }, []);
 
   const handleSet = (t: Theme, e?: React.MouseEvent) => {
-    setTheme(t);
     applyTheme(t, e ? { from: { x: e.clientX, y: e.clientY } } : undefined);
+    window.dispatchEvent(new Event('universe:theme'));
     setIsOpen(false);
   };
 

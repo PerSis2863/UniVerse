@@ -1,11 +1,12 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { usePathname, useRouter } from 'next/navigation';
 import { Mail, Book, MapPin, Building2, Download, ExternalLink, FileText } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { authedJson } from '@/lib/authed-fetch';
 
 type Resource = {
@@ -25,38 +26,21 @@ export default function StudentProfile() {
   const id = pathname.split('/').pop() || 'Unknown User';
   const userName = decodeURIComponent(id);
 
-  const [sharedResources, setSharedResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchSharedResources = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get('/knowledge-hub/public');
-        
-        // Filter by the author name. (In a real app, this would be done on the backend by ID)
-        const userResources = res.data.filter((r: any) => r.author?.name === userName);
-        
-        const mapped = userResources.map((r: any) => ({
-          id: r.id,
-          title: r.title,
-          type: r.url ? 'Link' : 'Document',
-          category: r.category || 'General',
-          url: r.url || r.fileUrl,
-          date: new Date(r.createdAt).toISOString().split('T')[0],
-        }));
-        
-        setSharedResources(mapped);
-      } catch (error) {
-        console.error('Failed to load shared resources', error);
-        toast.error('Failed to load shared resources');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSharedResources();
-  }, [userName]);
+  // Public resources this person shared (matched by author name until the API filters by id).
+  type PublicResource = { id: string; title: string; url?: string | null; fileUrl?: string | null; category?: string | null; createdAt: string; author?: { name: string } | null };
+  const { data: publicResources, isLoading: loading } = useSWR<PublicResource[]>('/knowledge-hub/public', fetcher, {
+    onError: () => toast.error('Failed to load shared resources'),
+  });
+  const sharedResources: Resource[] = (publicResources ?? [])
+    .filter((r) => r.author?.name === userName)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      type: r.url ? 'Link' : 'Document',
+      category: r.category || 'General',
+      url: r.url || r.fileUrl || undefined,
+      date: new Date(r.createdAt).toISOString().split('T')[0],
+    }));
 
   const handleDownload = (resource: Resource) => {
     if (resource.type === 'Link' && resource.url) {
@@ -74,8 +58,8 @@ export default function StudentProfile() {
       if (!person) return void toast.error(`Couldn't find ${userName} to message.`);
       const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: person.id }) });
       router.push(`/student/inbox?c=${id}`);
-    } catch (e: any) {
-      toast.error(e.message || 'Could not start the chat.');
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not start the chat.');
     }
   };
 
@@ -133,12 +117,10 @@ export default function StudentProfile() {
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
               <div className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
                 {loading ? (
-                  <div className="p-12 text-center text-zinc-500">
-                    Loading shared resources...
-                  </div>
+                  <ContentSkeleton variant="list" />
                 ) : sharedResources.length === 0 ? (
                   <div className="p-12 text-center text-zinc-500">
-                    This user hasn't shared any resources yet.
+                    This user hasn’t shared any resources yet.
                   </div>
                 ) : (
                   sharedResources.map((resource) => (

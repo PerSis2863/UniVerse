@@ -77,7 +77,7 @@ export default function CodeRoomPage({ params }: { params: Promise<{ id: string 
 
   return (
     <>
-      <Topbar title={room?.title ?? 'Code room'} subtitle={room ? `${room.course.code} · ${room.course.name}` : undefined} />
+      <Topbar title={room?.title ?? 'Code room'} sharedId={room ? `code-room:${id}` : undefined} subtitle={room ? `${room.course.code} · ${room.course.name}` : undefined} />
       <div className="flex-1 p-3 md:p-6 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">

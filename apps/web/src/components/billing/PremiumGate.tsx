@@ -17,7 +17,7 @@ export function PremiumGate({ feature, children }: { feature: PremiumFeature; ch
       </div>
     );
   }
-  if (error && (error as any).status !== 402) {
+  if (error && (error as { status?: number }).status !== 402) {
     return <div className="flex-1 p-8 text-sm text-zinc-500">Couldn&apos;t load your subscription: {(error as Error).message}</div>;
   }
   if (can(feature)) return <>{children}</>;

@@ -15,7 +15,6 @@ import { TabPill } from '@/components/ui/Glide';
 
 interface Poll { id: string; question: string; options: string[]; status: 'OPEN' | 'CLOSED'; course: { code: string; name: string }; myVote: number | null; results: number[] | null; total: number | null }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 
 /** Live polls from your teachers during class. */
 export default function StudentLivePage() {
@@ -60,7 +59,7 @@ export default function StudentLivePage() {
             />
           ) : (
             data.map((p) => (
-              <section key={p.id} className={`${card} p-5 space-y-4`} aria-label={p.question}>
+              <section key={p.id} className={`panel p-5 space-y-4`} aria-label={p.question}>
                 <div>
                   <p className={`text-[11px] font-bold uppercase tracking-wider ${p.status === 'OPEN' ? 'text-rose-500' : 'text-zinc-500'}`}>{p.status === 'OPEN' ? '● Live' : 'Closed'} · {p.course.code}</p>
                   <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{p.question}</h2>

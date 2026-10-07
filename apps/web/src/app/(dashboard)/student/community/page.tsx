@@ -1,18 +1,21 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { MessageSquare, Heart, Share2, Search, Filter, TrendingUp, Users } from 'lucide-react';
+import {   Share2, Search,  TrendingUp, Users } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 
+interface Post { id: string; title?: string | null; content?: string | null; body?: string | null; createdAt?: string | null; author?: { name: string } | null }
+
 export default function StudentCommunity() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: posts, isLoading, mutate } = useSWR('/announcements', fetcher);
+  const { data: posts, isLoading, mutate } = useSWR<Post[]>('/announcements', fetcher);
   const role = useAuthStore((st) => st.user?.role);
   const canPost = role === 'TEACHER' || role === 'ADMIN';
   const [draftTitle, setDraftTitle] = useState('');
@@ -45,7 +48,7 @@ export default function StudentCommunity() {
     .slice(0, 3)
     .map(([name, n], i) => ({ name, posts: n, color: COLORS[i] }));
 
-  const filteredPosts = (posts || []).filter((p: any) => p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || p.content?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredPosts = (posts || []).filter((p) => p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || p.content?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <>
@@ -80,10 +83,10 @@ export default function StudentCommunity() {
             {/* Posts */}
             <div className="space-y-4">
               {isLoading ? (
-                <div className="text-center py-8 text-zinc-500">Loading posts...</div>
+                <ContentSkeleton variant="list" />
               ) : filteredPosts.length === 0 ? (
                 <div className="text-center py-8 text-zinc-500">No posts found.</div>
-              ) : filteredPosts.map((post: any) => (
+              ) : filteredPosts.map((post) => (
                 <div key={post.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-colors">
                   
                   {/* Author Row */}
@@ -97,7 +100,7 @@ export default function StudentCommunity() {
                           <span className="font-medium text-zinc-900 dark:text-white">{post.author?.name || 'Campus team'}</span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400`}>Announcement</span>
                         </div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-500">{new Date(post.createdAt || Date.now()).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-500">{post.createdAt && new Date(post.createdAt).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     </div>
                   </div>

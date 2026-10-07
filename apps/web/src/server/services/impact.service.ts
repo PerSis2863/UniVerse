@@ -1,5 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import prisma from '@/lib/db';
+import type { ImpactCertificate } from '@prisma/client';
+import { first, type Body, type Query } from '../body';
 import { getCertificateHtml } from './certificate-template';
 import { createHash, randomBytes } from 'node:crypto';
 import { CredentialSigner, verifyUrlFor } from './credential-signer';
@@ -150,17 +152,18 @@ export class ImpactService {
   }
 
   // ── NGOs & Projects ──────────────────────────────────────────────────────
-  async getNGOs(query: any) {
-    return prisma.nGO.findMany({ where: { ...(query.search && { name: { contains: query.search } }) }, include: { _count: { select: { projects: true } } } });
+  async getNGOs(query: Query) {
+    const search = first(query.search);
+    return prisma.nGO.findMany({ where: { ...(search && { name: { contains: search } }) }, include: { _count: { select: { projects: true } } } });
   }
 
-  async getNGOProjects(query: any) {
+  async getNGOProjects() {
     return prisma.nGOProject.findMany({ where: { isActive: true }, include: { ngo: true, _count: { select: { applications: true } } } });
   }
 
-  async applyToNGOProject(projectId: string, studentId: string, data: any) {
+  async applyToNGOProject(projectId: string, studentId: string, data: Body) {
     // Only the student's motivation comes from the request; status is decided by reviewers.
-    const motivation = typeof data?.motivation === 'string' ? data.motivation.slice(0, 2000) : undefined;
+    const motivation = typeof data.motivation === 'string' ? data.motivation.slice(0, 2000) : undefined;
     return prisma.nGOProjectApplication.upsert({
       where: { projectId_studentId: { projectId, studentId } },
       create: { projectId, studentId, motivation },
@@ -173,9 +176,9 @@ export class ImpactService {
     return prisma.startup.findMany({ where: { isActive: true }, include: { foundedBy: { select: { id: true, name: true } }, _count: { select: { applications: true } } } });
   }
 
-  async applyToStartup(startupId: string, userId: string, data: any) {
-    const role = typeof data?.role === 'string' ? data.role.slice(0, 120) : undefined;
-    const motivation = typeof data?.motivation === 'string' ? data.motivation.slice(0, 2000) : undefined;
+  async applyToStartup(startupId: string, userId: string, data: Body) {
+    const role = typeof data.role === 'string' ? data.role.slice(0, 120) : undefined;
+    const motivation = typeof data.motivation === 'string' ? data.motivation.slice(0, 2000) : undefined;
     return prisma.startupApplication.upsert({ where: { startupId_userId: { startupId, userId } }, create: { startupId, userId, role, motivation }, update: { role, motivation } });
   }
 
@@ -196,7 +199,7 @@ export class ImpactService {
   // Flow: student requests (DRAFT) → admin verifies → credential is signed (ISSUED).
   // Admins can also issue directly, and revoke. Anyone can verify via the public endpoint.
 
-  private toClientCredential(cert: any) {
+  private toClientCredential(cert: ImpactCertificate) {
     const signed = !!cert.signature;
     return {
       id: cert.id,
@@ -485,7 +488,7 @@ export class ImpactService {
       take: 50,
     });
 
-    const studentSkillNames = skills.map(s => (s as any).name?.toLowerCase() || '');
+    const studentSkillNames = skills.map((s) => s.name?.toLowerCase() || '');
     const courseTopics = enrollments.map(e => e.course?.name?.toLowerCase() || '').join(' ');
 
     // Score each project

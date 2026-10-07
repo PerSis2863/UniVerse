@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
@@ -21,8 +22,10 @@ import { useLanguageStore } from '@/store/language';
 
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
-import { Loader2 } from 'lucide-react';
 import { courseColor } from '@/lib/course-color';
+
+interface TeacherCourse { id?: string; name: string; code: string; color?: string | null; students: number; completion: number }
+interface RecentStudent { name: string; course: string; score: number; status: string }
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -50,8 +53,8 @@ export default function TeacherDashboard() {
       setCourseName(''); setCourseCode(''); setCourseCapacity('3'); setCourseDesc('');
       toast.success(`Course "${courseName}" created`, { description: 'It starts as a draft. Your admin can enroll students, and you can post materials on Blackboard.' });
       router.push('/teacher/blackboard');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Could not create the course');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not create the course'));
     } finally {
       setCreating(false);
     }
@@ -138,7 +141,7 @@ export default function TeacherDashboard() {
               </button>
             </div>
             <div className="space-y-4">
-              {myCourses.map((c: any, i: number) => (
+              {myCourses.map((c: TeacherCourse, i: number) => (
                 <motion.div
                   whileHover={{ scale: 1.01 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -180,7 +183,7 @@ export default function TeacherDashboard() {
               <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium" onClick={() => router.push('/teacher/students')}>{t('dashboard.view_all')}</button>
             </div>
             <div className="space-y-3">
-              {recentStudents.map((s: any, i: number) => (
+              {recentStudents.map((s: RecentStudent, i: number) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => router.push('/teacher/grades')}>
                   <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400">
                     {s.name[0]}

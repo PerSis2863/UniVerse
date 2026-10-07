@@ -39,21 +39,13 @@ function useOutbox() {
 
 export function OfflineBar() {
   const { isOnline, wasOffline } = useNetworkStatus();
-  const [visible, setVisible] = useState(false);
   const waiting = useOutbox();
+  // Offline, or back online for a moment ("Back online" shows for 3 s).
+  const visible = !isOnline || wasOffline;
 
+  // Back online: refetch whatever is on screen.
   useEffect(() => {
-    if (!isOnline) {
-      setVisible(true);
-    } else if (wasOffline) {
-      // Show the "back online" message briefly, and refetch whatever is on screen.
-      setVisible(true);
-      void mutate(() => true);
-      const t = setTimeout(() => setVisible(false), 3000);
-      return () => clearTimeout(t);
-    } else {
-      setVisible(false);
-    }
+    if (isOnline && wasOffline) void mutate(() => true);
   }, [isOnline, wasOffline]);
 
   if (!visible) return null;

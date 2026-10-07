@@ -45,8 +45,6 @@ interface Detail {
   submissions: Submission[];
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 const STATUS: Record<Submission['status'], { label: string; style: string }> = {
   SUBMITTED: { label: 'To grade', style: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
   DRAFTED: { label: 'AI draft ready', style: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' },
@@ -131,12 +129,12 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
           {isLoading || !data ? (
             <div className="h-64 rounded-2xl skeleton" />
           ) : subs.length === 0 ? (
-            <div className={`${card} p-10 text-center text-sm text-zinc-500`}>
+            <div className={`panel p-10 text-center text-sm text-zinc-500`}>
               No answers yet. Students in {data.course.code} see this assignment under Assignments{data.dueDate ? `, due ${new Date(data.dueDate).toLocaleString()}` : ''}.
             </div>
           ) : (
             <div className="grid lg:grid-cols-[18rem_1fr] gap-5 items-start">
-              <nav aria-label="Submissions" className={`${card} p-2 max-h-[70vh] overflow-y-auto stagger`}>
+              <nav aria-label="Submissions" className={`panel p-2 max-h-[70vh] overflow-y-auto stagger`}>
                 {subs.map((s) => (
                   <button
                     key={s.id}
@@ -219,7 +217,7 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
 
   return (
     <section className="space-y-4 stagger" aria-label={`Answer by ${sub.student.name}`}>
-      <div className={`${card} p-5`}>
+      <div className={`panel p-5`}>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-semibold text-zinc-900 dark:text-white">{sub.student.name}</h3>
           <span className="text-xs text-zinc-500">{sub.text.trim().split(/\s+/).length} words · {sub.offlineAt ? <>written offline, handed in on the device {new Date(sub.offlineAt).toLocaleString()} · arrived {new Date(sub.submittedAt).toLocaleString()}</> : <>handed in {new Date(sub.submittedAt).toLocaleString()}</>}</span>
@@ -253,7 +251,7 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
         </div>
       ) : null}
 
-      <div className={`${card} p-5 space-y-4`}>
+      <div className={`panel p-5 space-y-4`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-semibold text-zinc-900 dark:text-white">Grade · {total}/{detail.maxScore}</h3>
           {sub.status !== 'RETURNED' && (
@@ -281,7 +279,7 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
                 value={scores[r.id]?.comment ?? ''}
                 onChange={(e) => setScores((s) => ({ ...s, [r.id]: { ...s[r.id], comment: e.target.value } }))}
                 placeholder="Comment for the student (optional)"
-                className={`${field} mt-1.5`}
+                className={`input mt-1.5`}
               />
             </div>
             <div className="flex sm:flex-col items-center sm:items-stretch gap-2">
@@ -293,7 +291,7 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
                 step={0.5}
                 value={scores[r.id]?.score ?? ''}
                 onChange={(e) => setScores((s) => ({ ...s, [r.id]: { ...s[r.id], score: e.target.value } }))}
-                className={field}
+                className="input"
               />
               <span className="text-xs text-zinc-500 sm:text-center">out of {r.points}</span>
               {aiFor(r.id) && String(aiFor(r.id)!.score) !== scores[r.id]?.score && (
@@ -307,7 +305,7 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
 
         <label className="block space-y-1">
           <span className="text-sm font-medium text-zinc-900 dark:text-white">Overall feedback</span>
-          <textarea rows={4} maxLength={2000} value={feedback} onChange={(e) => setFeedback(e.target.value)} className={field} placeholder="What went well, what to improve next time" />
+          <textarea rows={4} maxLength={2000} value={feedback} onChange={(e) => setFeedback(e.target.value)} className="input" placeholder="What went well, what to improve next time" />
         </label>
 
         <div className="flex items-center justify-between gap-3">

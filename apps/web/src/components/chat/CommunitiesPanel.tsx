@@ -10,7 +10,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { Avatar } from './MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { chatJson, uploadChatFile } from './chat-client';
 import { Switch } from '@/components/ui/Switch';
 import { useActivePoll } from '@/lib/realtime-client';
@@ -26,7 +26,6 @@ type Kind = 'TEXT' | 'ANNOUNCE' | 'VOICE';
 interface Channel { id: string; name: string; kind: Kind; slowModeSec: number; unread: number }
 interface Community { id: string; name: string; description: string | null; color: string; members: number; role: 'OWNER' | 'MOD' | 'MEMBER'; channels: Channel[] }
 const COLORS = ['#4f46e5', '#7c3aed', '#db2777', '#e11d48', '#ea580c', '#059669', '#0891b2', '#334155'];
-const input = 'w-full px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 
 export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null; onOpen: (channelId: string) => void }) {
   const { data, isLoading, mutate } = useSWR<Community[]>('/api/chat/communities', authedJson, { revalidateOnFocus: true });
@@ -161,8 +160,8 @@ function CreateCommunity({ onClose, onDone }: { onClose: () => void; onDone: () 
   };
   return (
     <Sheet title="New community" onClose={onClose}>
-      <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Name (e.g. CS Department, Chess Club)" className={input} />
-      <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} placeholder="What it's for (optional)" className={input} />
+      <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Name (e.g. CS Department, Chess Club)" className="input" />
+      <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} placeholder="What it's for (optional)" className="input" />
       <div className="flex gap-2" role="radiogroup" aria-label="Colour">{COLORS.map((c) => (
         <button key={c} type="button" role="radio" aria-checked={color === c} onClick={() => setColor(c)} className={cn('w-8 h-8 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#121830]', color === c ? 'ring-indigo-500' : 'ring-transparent')} style={{ background: c }} />
       ))}</div>
@@ -186,7 +185,7 @@ function JoinCommunity({ onClose, onDone }: { onClose: () => void; onDone: () =>
   };
   return (
     <Sheet title="Join a community" onClose={onClose}>
-      <input autoFocus value={link} onChange={(e) => setLink(e.target.value)} placeholder="Paste the invite link or code" className={input} />
+      <input autoFocus value={link} onChange={(e) => setLink(e.target.value)} placeholder="Paste the invite link or code" className="input" />
       <button type="button" onClick={() => void join()} disabled={busy || !link.trim()} className="btn-primary w-full py-3">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />} Join</button>
     </Sheet>
   );
@@ -256,7 +255,7 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
             <section className="space-y-2">
               <p className="text-xs font-semibold text-zinc-500">Invite link</p>
               <div className="flex gap-2">
-                <input readOnly value={invite} className={cn(input, 'text-xs')} onFocus={(e) => e.target.select()} />
+                <input readOnly value={invite} className={cn('input', 'text-xs')} onFocus={(e) => e.target.select()} />
                 <button type="button" onClick={() => { void navigator.clipboard.writeText(invite).then(() => toast.success('Invite link copied')); }} className="btn-secondary shrink-0">Copy</button>
               </div>
               <button type="button" onClick={async () => { await chatJson(`/api/chat/communities/${community.id}`, { method: 'PATCH', body: JSON.stringify({ newInvite: true }) }); await mutate(); toast.success('New link made; the old one stopped working'); }} className="text-xs font-semibold text-indigo-500">Make a new link</button>
@@ -295,7 +294,7 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
                 </li>
               ))}</ul>
               <div className="flex gap-2">
-                <input value={channelName} onChange={(e) => setChannelName(e.target.value)} maxLength={40} placeholder="New channel name" className={input} />
+                <input value={channelName} onChange={(e) => setChannelName(e.target.value)} maxLength={40} placeholder="New channel name" className="input" />
                 <select value={channelKind} onChange={(e) => setChannelKind(e.target.value as Kind)} aria-label="Channel type" className="rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm px-2 text-zinc-800 dark:text-zinc-200"><option value="TEXT">Text</option><option value="ANNOUNCE">Announcements</option><option value="VOICE">Voice</option></select>
                 <button type="button" disabled={!channelName.trim()} onClick={async () => { if (await post({ action: 'channel', name: channelName, kind: channelKind }, 'Channel added')) { setChannelName(''); onClose(); } }} className="btn-primary shrink-0"><Plus className="w-4 h-4" /></button>
               </div>
@@ -310,7 +309,7 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
             <div className="flex items-center justify-between"><p className="text-xs font-semibold text-zinc-500">{data.members.length} members</p>{mod && <button type="button" onClick={() => setAdding(!adding)} className="text-xs font-semibold text-indigo-500 inline-flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Add people</button>}</div>
             {adding && (
               <div className="rounded-2xl border border-zinc-200 dark:border-white/10 p-2 space-y-1">
-                <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" className={cn(input, 'pl-9')} /></div>
+                <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" className={cn('input', 'pl-9')} /></div>
                 {people?.filter((p) => !data.members.some((m) => m.id === p.id)).slice(0, 8).map((p) => (
                   <button key={p.id} type="button" onClick={() => void post({ action: 'add', userIds: [p.id] }, `${p.name.split(' ')[0]} added`)} className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-left"><Avatar name={p.name} src={p.avatar} size={30} /><span className="flex-1 text-sm text-zinc-800 dark:text-zinc-200 truncate">{p.name}</span><Plus className="w-4 h-4 text-indigo-500" /></button>
                 ))}
@@ -405,7 +404,7 @@ function CustomEmoji({ communityId }: { communityId: string }) {
           </label>
           <div className="relative flex-1 min-w-0">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">:</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={32} placeholder="name" aria-label="Emoji name" className={cn(input, 'pl-6 pr-6')} />
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={32} placeholder="name" aria-label="Emoji name" className={cn('input', 'pl-6 pr-6')} />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">:</span>
           </div>
           <button type="button" disabled={!file || clean(name).length < 2 || busy} onClick={() => void add()} className="btn-primary shrink-0">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}</button>

@@ -10,7 +10,7 @@ import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
-import { Sheet } from '@/components/chat/ChatDialogs';
+import { Sheet } from '@/components/ui/Sheet';
 import { PdfViewer, TextViewer } from '@/components/chat/FilePreview';
 import { ImageViewer } from '@/components/chat/ImageViewer';
 import { formatBytes, uploadChatFile } from '@/components/chat/chat-client';
@@ -30,7 +30,6 @@ interface Detail {
   usedIn: ({ kind: 'chat'; label: string; chatId: string; messageId: string; at: string } | { kind: 'task'; label: string; href: string })[];
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const ago = (d: string) => formatDistanceToNowStrict(new Date(d), { addSuffix: true });
 
 export default function SpaceFilesPage({ params }: { params: Promise<{ kind: string; id: string }> }) {
@@ -103,13 +102,13 @@ export default function SpaceFilesPage({ params }: { params: Promise<{ kind: str
           )}
 
           {!data ? <div className="h-64 rounded-2xl skeleton" /> : data.folders.length === 0 && data.files.length === 0 ? (
-            <div className={`${card} p-10 text-center`}>
+            <div className={`panel p-10 text-center`}>
               <Folder className="w-8 h-8 mx-auto text-indigo-500" />
               <p className="mt-3 font-semibold text-zinc-900 dark:text-white">Nothing here yet</p>
               <p className="text-sm text-zinc-500 mt-1">Upload slides, notes and handouts for everyone in this space.</p>
             </div>
           ) : (
-            <motion.ul variants={list} initial="hidden" animate="show" className={`${card} divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
+            <motion.ul variants={list} initial="hidden" animate="show" className={`panel divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
               {data.folders.map((f) => (
                 <motion.li key={f.id} variants={fadeUp} className="flex items-center gap-3 px-4 py-3">
                   <button type="button" onClick={() => setFolder(f.id)} className="flex-1 min-w-0 flex items-center gap-3 text-left">

@@ -1,4 +1,5 @@
 'use client';
+import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';
@@ -223,6 +224,9 @@ function getLetter(percentage: number) {
   return 'F';
 }
 
+/** A grade from /grades/student. */
+interface ApiGrade { courseId: string; course?: { id: string; name: string; code: string; credits?: number | null } | null; assignmentName: string; score: number; maxScore: number; gradedAt?: string | null; createdAt: string }
+
 export default function GradesPage() {
   const [semester, setSemester] = useState('All courses');
   const [showModal, setShowModal] = useState(false);
@@ -270,7 +274,7 @@ export default function GradesPage() {
     );
   }
   
-  const mappedGrades = apiGrades.map((g: any) => {
+  const mappedGrades = apiGrades.map((g: ApiGrade) => {
     const percentage = g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0;
     return {
       courseId: g.course?.id || g.courseId,
@@ -289,13 +293,13 @@ export default function GradesPage() {
   for (const r of mappedGrades) (allGradesData[r.course] ??= []).push(r);
 
   const gradesData = allGradesData[semester] ?? [];
-  const avg = gradesData.length ? gradesData.reduce((a: number, r: any) => a + r.percentage, 0) / gradesData.length : 0;
+  const avg = gradesData.length ? gradesData.reduce((a, r) => a + r.percentage, 0) / gradesData.length : 0;
   const semGPA = ((avg / 100) * 4).toFixed(2);
 
   // Per-course averages drive the insight and the transcript summary.
   type CourseAvg = { course: string; code: string; credits: number; sum: number; n: number };
   const courseMap = new Map<string, CourseAvg>();
-  for (const r of gradesData as any[]) {
+  for (const r of gradesData) {
     const cur = courseMap.get(r.code + r.course) ?? { course: r.course, code: r.code, credits: r.credits, sum: 0, n: 0 };
     cur.sum += r.percentage;
     cur.n += 1;
@@ -309,7 +313,7 @@ export default function GradesPage() {
     const esc = (v: unknown) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
     const rows = transcriptType === 'summary'
       ? byCourse.slice().sort((a, b) => a.code.localeCompare(b.code)).map((c) => `<tr><td>${esc(c.code)}</td><td>${esc(c.course)}</td><td>${c.credits}</td><td>${c.n}</td><td>${c.avg}%</td><td>${getLetter(c.avg)}</td></tr>`).join('')
-      : gradesData.map((r: any) => `<tr><td>${esc(r.code)}</td><td>${esc(r.course)}</td><td>${esc(r.assignment)}</td><td>${r.percentage}%</td><td>${esc(r.grade)}</td></tr>`).join('');
+      : gradesData.map((r) => `<tr><td>${esc(r.code)}</td><td>${esc(r.course)}</td><td>${esc(r.assignment)}</td><td>${r.percentage}%</td><td>${esc(r.grade)}</td></tr>`).join('');
     const head = transcriptType === 'summary'
       ? '<tr><th>Code</th><th>Course</th><th>Credits</th><th>Graded items</th><th>Average</th><th>Grade</th></tr>'
       : '<tr><th>Code</th><th>Course</th><th>Assessment</th><th>Score</th><th>Grade</th></tr>';
@@ -340,8 +344,8 @@ export default function GradesPage() {
         description: `${me?.name ?? 'A student'} (${me?.email ?? ''}) is requesting an official transcript. Current record: ${gradesData.length} graded items, average ${Math.round(avg)}%.`,
       });
       toast.success('Request sent to your campus admin', { description: 'Track it under Support.' });
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Could not send the request. Please try again.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not send the request. Please try again.'));
     } finally {
       setRequesting(false);
     }
@@ -458,7 +462,7 @@ export default function GradesPage() {
                     </td>
                   </tr>
                 )}
-                {gradesData.map((record: any, i: number) => (
+                {gradesData.map((record, i) => (
                   <motion.tr
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}

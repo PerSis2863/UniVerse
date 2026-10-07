@@ -30,7 +30,6 @@ const typeLabel = (t?: string) => TYPES.find((x) => x.value === t)?.label ?? t ?
 const APP_STATUSES = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'] as const;
 const humanize = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
 const fmtDate = (v?: string | null) => (v ? format(new Date(v), 'd MMM yyyy') : 'N/A');
-const field = 'w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors';
 const label = 'text-sm font-medium text-zinc-600 dark:text-zinc-400';
 
 const EMPTY_FORM = { title: '', company: '', description: '', location: '', type: 'FULL_TIME', duration: '', salary: '', deadline: '', status: 'Active' };
@@ -170,41 +169,41 @@ export default function AdminInternshipsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2 md:col-span-2">
                   <label className={label}>Job Title</label>
-                  <input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} type="text" className={field} placeholder="e.g. Software Engineering Intern" />
+                  <input required value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} type="text" className="input" placeholder="e.g. Software Engineering Intern" />
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Company</label>
-                  <input required value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} type="text" className={field} placeholder="e.g. Google" />
+                  <input required value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} type="text" className="input" placeholder="e.g. Google" />
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Location</label>
-                  <input value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} type="text" className={field} placeholder="e.g. Remote or Mountain View, CA" />
+                  <input value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} type="text" className="input" placeholder="e.g. Remote or Mountain View, CA" />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className={label}>Description</label>
-                  <textarea required value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={`${field} min-h-[80px]`} placeholder="What the intern will do" />
+                  <textarea required value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={`input min-h-[80px]`} placeholder="What the intern will do" />
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Type</label>
-                  <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className={field}>
+                  <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="input">
                     {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Duration</label>
-                  <input value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} type="text" className={field} placeholder="e.g. 12 weeks" />
+                  <input value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} type="text" className="input" placeholder="e.g. 12 weeks" />
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Stipend / Pay</label>
-                  <input value={formData.salary} onChange={(e) => setFormData({ ...formData, salary: e.target.value })} type="text" className={field} placeholder="e.g. $8,000/mo or Unpaid" />
+                  <input value={formData.salary} onChange={(e) => setFormData({ ...formData, salary: e.target.value })} type="text" className="input" placeholder="e.g. $8,000/mo or Unpaid" />
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Deadline</label>
-                  <input value={formData.deadline} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} type="date" className={field} />
+                  <input value={formData.deadline} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} type="date" className="input" />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className={label}>Status</label>
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className={field}>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input">
                     <option value="Active">Active</option>
                     <option value="Closed">Closed</option>
                   </select>

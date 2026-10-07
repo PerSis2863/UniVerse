@@ -4,14 +4,15 @@ import { AttachmentInline } from './AttachmentInline';
 import { haptic } from '@/lib/haptics';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
-import { Avatar, MessageBubble } from './MessageBubble';
+import { MessageBubble } from './MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { ImageViewer } from './ImageViewer';
 import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
 import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
@@ -40,6 +41,11 @@ function byDay<T extends { createdAt: string }>(list: T[]) {
   });
   return days;
 }
+
+const subscribeWallpaper = (cb: () => void) => {
+  window.addEventListener('universe:wallpaper', cb);
+  return () => window.removeEventListener('universe:wallpaper', cb);
+};
 
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const router = useRouter();
@@ -98,23 +104,20 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [resultIdx, setResultIdx] = useState(0);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [wallpaper, setWallpaperId] = useState('dots');
   const [translateOpen, setTranslateOpen] = useState(false);
   const [editScheduled, setEditScheduled] = useState<{ item: ScheduledItem; at: number } | null>(null);
   const appLanguage = useLanguageStore((s) => s.language);
-  useEffect(() => {
-    const sync = () => setWallpaperId(getWallpaper());
-    sync();
-    window.addEventListener('universe:wallpaper', sync);
-    return () => window.removeEventListener('universe:wallpaper', sync);
-  }, []);
+  const wallpaper = useSyncExternalStore(subscribeWallpaper, getWallpaper, () => 'dots');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
 
   // Reset local state when switching conversations.
-  useEffect(() => {
-    setOlder([]); setHasMoreOlder(null); setPending([]); setReplyTo(null); setEditing(null); setInfoOpen(false); lastCount.current = 0;
-  }, [conversationId]);
+  const [shownConvo, setShownConvo] = useState(conversationId);
+  if (shownConvo !== conversationId) {
+    setShownConvo(conversationId);
+    setOlder([]); setHasMoreOlder(null); setPending([]); setReplyTo(null); setEditing(null); setInfoOpen(false);
+  }
+  useEffect(() => { lastCount.current = 0; }, [conversationId]);
 
   // Messages written offline wait in the outbox (src/lib/outbox.ts) as pending bubbles, and turn
   // into real messages when they're sent.
@@ -191,8 +194,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       setOlder((cur) => [...res.messages, ...cur]);
       setHasMoreOlder(res.hasMore);
       requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - prevHeight; });
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setLoadingOlder(false);
     }
@@ -207,7 +210,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const next = !m.starred;
     patchMsg(m.id, (x) => ({ ...x, starred: next }));
     try { await chatJson(`/api/chat/messages/${m.id}/state`, { method: 'POST', body: JSON.stringify({ starred: next }) }); if (next) toast('Starred', { description: 'Find it under Starred messages.' }); }
-    catch (e: any) { toast.error(e.message); patchMsg(m.id, (x) => ({ ...x, starred: !next })); }
+    catch (e) { toast.error((e as Error).message); patchMsg(m.id, (x) => ({ ...x, starred: !next })); }
   };
 
   const [pinIndex, setPinIndex] = useState(0);
@@ -218,8 +221,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       await chatJson(`/api/chat/messages/${m.id}/pin`, { method: 'POST', body: JSON.stringify({ pinned: next }) });
       toast(next ? 'Pinned to the top of the chat' : 'Unpinned');
       mutate();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
       patchMsg(m.id, (x) => ({ ...x, pinnedAt: next ? null : m.pinnedAt ?? null }));
     }
   };
@@ -246,14 +249,14 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       return { ...x, poll: { counts, mine: nextMine, voters: Math.max(x.poll?.voters ?? 0, nextMine.length ? 1 : 0) } };
     });
     try { await chatJson(`/api/chat/messages/${m.id}/vote`, { method: 'POST', body: JSON.stringify({ option }) }); mutate(); }
-    catch (e: any) { toast.error(e.message); mutate(); }
+    catch (e) { toast.error((e as Error).message); mutate(); }
   };
 
   const openContact = async (userId: string) => {
     try {
       const { id } = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId }) });
       onOpenChat?.(id);
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   const sendSpecial = async (body: Record<string, unknown>) => {
@@ -261,7 +264,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify(body) });
       appendSent(msg, '');
       haptic('success');
-    } catch (e: any) { toast.error(e.message); throw e; }
+    } catch (e) { toast.error((e as Error).message); throw e; }
   };
 
   const onExtra = (kind: ComposerExtra) => {
@@ -286,7 +289,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       const r = await chatJson<{ results: { id: string; body: string; createdAt: string; sender: { name: string } }[] }>(`${key}?q=${encodeURIComponent(q.trim())}`);
       setResults(r.results); setResultIdx(0);
       if (r.results[0]) jump(r.results[0].id);
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error((e as Error).message); }
   };
   const jump = async (messageId: string) => {
     let guard = 0;
@@ -316,7 +319,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const send = async ({ text, file: picked, voice, viewOnce, album, videoNote }: SendPayload) => {
     const file = picked ?? videoNote?.file;
     haptic('tap');
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `temp-${crypto.randomUUID()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
     const replyToId = replyTo?.id;
     setReplyTo(null);
@@ -338,7 +341,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         appendSent(msg, tempId);
         if (text) await send({ text });
       } else if (file || voice) {
-        const upload = file ?? new File([voice!.blob], `voice-${Date.now()}.${voice!.blob.type.includes('mp4') ? 'm4a' : voice!.blob.type.includes('ogg') ? 'ogg' : 'webm'}`, { type: voice!.blob.type });
+        const upload = file ?? new File([voice!.blob], `voice-${tempId.slice(5, 13)}.${voice!.blob.type.includes('mp4') ? 'm4a' : voice!.blob.type.includes('ogg') ? 'ogg' : 'webm'}`, { type: voice!.blob.type });
         const type = voice ? 'AUDIO' : messageTypeFor(upload.type);
         setPending((p) => [...p, { ...base, type, body: '', attachmentUrl: null, attachmentName: upload.name, attachmentSize: upload.size, attachmentMime: upload.type, metadata: viewOnce ? { viewOnce: true } : null } as ChatMessage]);
         setUploadProgress(0);
@@ -363,10 +366,10 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           await enqueue({ id: clientId, kind: 'message', method: 'POST', url: key, ref: conversationId, label: `Message: ${text.slice(0, 40)}${text.length > 40 ? '…' : ''}`, body: { body: text, replyToId, clientId } });
         }
       }
-    } catch (e: any) {
+    } catch (e) {
       setPending((p) => p.filter((x) => x.id !== tempId));
       setUploadProgress(null);
-      toast.error(e.message || 'Message not sent.');
+      toast.error((e as Error).message || 'Message not sent.');
       throw e;
     }
   };
@@ -404,8 +407,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       const msg = await chatJson<ChatMessage>(`/api/chat/messages/${editing.id}`, { method: 'PATCH', body: JSON.stringify({ body: text }) });
       patchMsg(msg.id, (x) => ({ ...x, ...msg, starred: x.starred, poll: x.poll }));
       setEditing(null);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
       throw e;
     }
   };
@@ -418,8 +421,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       mutate();
       setOlder((cur) => cur.map((x) => (x.id === m.id ? { ...x, type: 'DELETED', body: '', attachmentUrl: null } : x)));
       onChanged();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   };
 
@@ -444,8 +447,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     setOlder((cur) => cur.map(toggle));
     try {
       await chatJson(`/api/chat/messages/${m.id}/reactions`, { method: 'POST', body: JSON.stringify({ emoji }) });
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
       mutate();
     }
   };
@@ -508,8 +511,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       appendSent(msg, '');
       // UniVerse's own call screen; everyone in the chat gets a ringing card with Join.
       router.push(`/call/${msg.id}`);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   };
 
@@ -874,11 +877,11 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
 
   const setPref = async (body: Record<string, unknown>, ok: string) => {
     try { await chatJson(`/api/chat/conversations/${convo.id}/prefs`, { method: 'PATCH', body: JSON.stringify(body) }); toast.success(ok); onChanged(); }
-    catch (e: any) { toast.error(e.message); }
+    catch (e) { toast.error((e as Error).message); }
   };
   const setTimer = async (sec: number) => {
     try { await chatJson(`/api/chat/conversations/${convo.id}/settings`, { method: 'PATCH', body: JSON.stringify({ disappearingSec: sec }) }); onChanged(); }
-    catch (e: any) { toast.error(e.message); }
+    catch (e) { toast.error((e as Error).message); }
   };
   const files = messages.filter((m) => (m.type === 'FILE' || m.type === 'VIDEO' || m.type === 'AUDIO') && m.attachmentUrl).slice(-10).reverse();
   const links = messages
@@ -891,7 +894,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
     try {
       await chatJson(`/api/chat/conversations/${convo.id}/members`, { method: 'PATCH', body: JSON.stringify({ name }) });
       onChanged();
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error((e as Error).message); }
   };
   const leave = async () => {
     if (!(await confirmDialog({ title: `Leave "${convo.title}"?`, message: 'You won’t get new messages from this group.', confirmLabel: 'Leave', destructive: true }))) return;
@@ -899,7 +902,7 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
       await chatJson(`/api/chat/conversations/${convo.id}/members`, { method: 'DELETE' });
       toast.success(`You left ${convo.title}`);
       onLeft();
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   return (
@@ -1050,7 +1053,7 @@ function AddMembers({ conversationId, existing, onClose, onDone }: { conversatio
       await chatJson(`/api/chat/conversations/${conversationId}/members`, { method: 'POST', body: JSON.stringify({ userIds: [id] }) });
       toast.success('Member added');
       onDone();
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
   return (
     <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>

@@ -1,27 +1,26 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { Topbar } from '@/components/layout/Topbar';
 import { MessagesTabs } from '@/components/layout/SectionTabs';
-import { api } from '@/lib/api';
-import { Megaphone, Edit, Trash2, Plus, Calendar, User, X, Send } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { Megaphone, Edit, Trash2, Plus, Calendar, User, X, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
+interface Announcement { id: string; title: string; body?: string | null; content?: string | null; createdAt: string; author?: { name: string } | null; course?: { name: string } | null }
+
 export default function AdminAnnouncements() {
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading, mutate } = useSWR<Announcement[]>('/announcements', fetcher);
+  const announcements = data ?? [];
   const [showModal, setShowModal] = useState(false);
-  const [editTarget, setEditTarget] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [editTarget, setEditTarget] = useState<Announcement | null>(null);
   const [formTitle, setFormTitle] = useState('');
   const [formBody, setFormBody] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.get('/announcements')
-      .then(res => setAnnouncements(res.data))
-      .catch(() => setAnnouncements([]))
-      .finally(() => setLoading(false));
-  }, []);
 
   const openCreate = () => {
     setEditTarget(null);
@@ -30,37 +29,45 @@ export default function AdminAnnouncements() {
     setShowModal(true);
   };
 
-  const openEdit = (ann: any) => {
+  const openEdit = (ann: Announcement) => {
     setEditTarget(ann);
     setFormTitle(ann.title);
     setFormBody(ann.content || ann.body || '');
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    if (!formTitle) { toast.error('Title is required.'); return; }
-    if (editTarget) {
-      setAnnouncements(prev => prev.map(a => a.id === editTarget.id ? { ...a, title: formTitle, content: formBody } : a));
-      toast.success('Announcement updated!');
-    } else {
-      const newAnn = {
-        id: `ann-${Date.now()}`,
-        title: formTitle,
-        content: formBody,
-        author: { name: 'Admin' },
-        createdAt: new Date().toISOString(),
-        course: null,
-      };
-      setAnnouncements(prev => [newAnn, ...prev]);
-      toast.success('Announcement published!');
+  // Saved on the server (this page used to change only its own list, so nothing was published).
+  const handleSave = async () => {
+    if (!formTitle.trim()) { toast.error('Title is required.'); return; }
+    if (!formBody.trim()) { toast.error('Write the announcement.'); return; }
+    setSaving(true);
+    try {
+      if (editTarget) {
+        await api.patch(`/announcements/${editTarget.id}`, { title: formTitle.trim(), body: formBody.trim() });
+        toast.success('Announcement updated!');
+      } else {
+        await api.post('/announcements', { title: formTitle.trim(), body: formBody.trim() });
+        toast.success('Announcement published!');
+      }
+      setShowModal(false);
+      await mutate();
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not save the announcement.'));
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
-    setAnnouncements(prev => prev.filter(a => a.id !== id));
+  const handleDelete = async (id: string) => {
     setConfirmDelete(null);
-    toast.success('Announcement deleted.');
+    void mutate(announcements.filter((a) => a.id !== id), { revalidate: false });
+    try {
+      await api.delete(`/announcements/${id}`);
+      toast.success('Announcement deleted.');
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not delete the announcement.'));
+      void mutate();
+    }
   };
 
   return (
@@ -164,8 +171,8 @@ export default function AdminAnnouncements() {
             </div>
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleSave} className="btn-primary">
-                <Send className="w-4 h-4" /> {editTarget ? 'Save Changes' : 'Publish'}
+              <button onClick={() => void handleSave()} disabled={saving} className="btn-primary">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {editTarget ? 'Save Changes' : 'Publish'}
               </button>
             </div>
           </div>
@@ -183,7 +190,7 @@ export default function AdminAnnouncements() {
             <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center">This action cannot be undone. The announcement will be permanently removed.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmDelete(null)} className="flex-1 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors">Cancel</button>
-              <button onClick={() => handleDelete(confirmDelete)} className="btn-danger flex-1">Delete</button>
+              <button onClick={() => void handleDelete(confirmDelete)} className="btn-danger flex-1">Delete</button>
             </div>
           </div>
         </div>

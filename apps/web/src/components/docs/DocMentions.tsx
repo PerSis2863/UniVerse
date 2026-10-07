@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import Mention from '@tiptap/extension-mention';
 import type { Editor } from '@tiptap/react';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { authedJson } from '@/lib/authed-fetch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';

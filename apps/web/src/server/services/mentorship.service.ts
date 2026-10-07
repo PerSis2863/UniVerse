@@ -1,5 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
+import type { Prisma } from '@prisma/client';
 import { pick } from '../pick';
+import { oneOf, type Body } from '../body';
 
 type Actor = { id: string; role: string };
 import prisma from '@/lib/db';
@@ -10,7 +12,10 @@ export class MentorshipService {
     return prisma.mentorshipRequest.findMany({ where, include: { student: { select: { id: true, name: true, avatar: true } }, teacher: { select: { id: true, name: true, avatar: true } }, sessions: true } });
   }
 
-  create(studentId: string, data: any) { return prisma.mentorshipRequest.create({ data: { ...(pick(data, ['teacherId', 'topic', 'message'] as const) as any), studentId } }); }
+  create(studentId: string, data: Body) {
+    type New = Prisma.MentorshipRequestUncheckedCreateInput;
+    return prisma.mentorshipRequest.create({ data: { ...pick<New>(data, ['teacherId', 'topic', 'message']), studentId } as New });
+  }
 
   private async requestFor(id: string, actor: Actor) {
     const req = await prisma.mentorshipRequest.findUnique({ where: { id }, select: { studentId: true, teacherId: true } });
@@ -21,19 +26,20 @@ export class MentorshipService {
     return { isTeacher: isTeacher || actor.role === 'ADMIN', isStudent };
   }
 
-  async updateStatus(id: string, actor: Actor, data: any) {
+  async updateStatus(id: string, actor: Actor, data: Body) {
     const { isTeacher, isStudent } = await this.requestFor(id, actor);
-    const status = data?.status;
+    const status = data.status;
     // Teachers accept/decline/complete; students can only cancel their own request.
-    const allowed = isTeacher ? ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED'] : isStudent ? ['CANCELLED'] : [];
-    if (!allowed.includes(status)) throw new BadRequestException('Invalid status');
+    const allowed = isTeacher ? (['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED'] as const) : isStudent ? (['CANCELLED'] as const) : [];
+    if (!oneOf(allowed, status)) throw new BadRequestException('Invalid status');
     return prisma.mentorshipRequest.update({ where: { id }, data: { status } });
   }
 
-  async addSession(requestId: string, actor: Actor, data: any) {
+  async addSession(requestId: string, actor: Actor, data: Body) {
     const { isTeacher } = await this.requestFor(requestId, actor);
     if (!isTeacher) throw new ForbiddenException('Only the mentor can schedule sessions.');
-    return prisma.mentorshipSession.create({ data: { ...(pick(data, ['scheduledAt', 'duration', 'meetingUrl', 'notes', 'isCompleted'] as const) as any), requestId } });
+    type New = Prisma.MentorshipSessionUncheckedCreateInput;
+    return prisma.mentorshipSession.create({ data: { ...pick<New>(data, ['scheduledAt', 'duration', 'meetingUrl', 'notes', 'isCompleted']), requestId } as New });
   }
 
   async getSessions(requestId: string, actor: Actor) {
@@ -51,11 +57,12 @@ export class MentorshipService {
     });
   }
 
-  createMentorProfile(userId: string, data: any) {
+  createMentorProfile(userId: string, data: Body) {
+    const fields = pick<Prisma.MentorProfileUncheckedCreateInput>(data, ['company', 'jobTitle', 'hoursCommitted', 'isAvailable']);
     return prisma.mentorProfile.upsert({
       where: { userId },
-      update: pick(data, ['company', 'jobTitle', 'hoursCommitted', 'isAvailable'] as const),
-      create: { ...pick(data, ['company', 'jobTitle', 'hoursCommitted', 'isAvailable'] as const), userId },
+      update: fields,
+      create: { ...fields, userId },
     });
   }
 
@@ -77,14 +84,15 @@ export class MentorshipService {
     });
   }
 
-  createBooking(studentId: string, mentorId: string, data: any) {
+  createBooking(studentId: string, mentorId: string, data: Body) {
+    type New = Prisma.MentorshipBookingUncheckedCreateInput;
     return prisma.mentorshipBooking.create({
       data: {
-        ...(pick(data, ['date', 'time', 'topic'] as const) as any),
+        ...pick<New>(data, ['date', 'time', 'topic']),
         studentId,
         mentorId,
         status: 'PENDING',
-      },
+      } as New,
     });
   }
 

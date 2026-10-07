@@ -1,33 +1,35 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, RESEARCH_TABS } from '@/components/layout/SectionTabs';
 import {
-  Globe2, Building2, Users, PlusCircle, CheckCircle2, ArrowUpRight,
-  BookOpen, HeartHandshake, Sparkles, FileText, Send, X, User, MessageSquare
+  Globe2,   PlusCircle, CheckCircle2, ArrowUpRight,
+      Send, X,  MessageSquare
 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
 
+interface ApiProject { id: string; title: string; status: string; partner?: string | null; ngo?: string | null; _count?: { members?: number } }
+type Proposal = { id: string; title: string; status: string; partner: string; ngo: string; studentsAssigned: number; funding: string; nextMilestone: string };
+
 export default function TeacherCollaborationsPage() {
   const [showNewProposalModal, setShowNewProposalModal] = useState(false);
-  const [squadModal, setSquadModal] = useState<any | null>(null);
+  const [squadModal, setSquadModal] = useState<Proposal | null>(null);
   const [proposalTitle, setProposalTitle] = useState('');
   const [partnerUni, setPartnerUni] = useState('');
   const [leadNgo, setLeadNgo] = useState('');
 
-  const { data: realProposals, mutate } = useSWR('/collaborations/projects', async (url) => {
-    const res = await api.get(url);
-    return res.data;
-  });
+  const { data: realProposals, mutate } = useSWR<ApiProject[]>('/collaborations/projects', fetcher);
 
   const { data: squadDetail, isLoading: squadLoading } = useSWR(squadModal ? `/collaborations/projects/${squadModal.id}` : null, async (url: string) => (await api.get(url)).data);
 
-  const displayProposals = realProposals ? realProposals.map((p: any) => ({
+  const displayProposals: Proposal[] = realProposals ? realProposals.map((p) => ({
     id: p.id,
     title: p.title,
     status: p.status === 'PendingReview' ? 'Awaiting admin review' : p.status,
@@ -54,7 +56,7 @@ export default function TeacherCollaborationsPage() {
       setShowNewProposalModal(false);
       setProposalTitle('');
       toast.success('Proposal submitted for admin review');
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit proposal');
     }
   };
@@ -112,7 +114,8 @@ export default function TeacherCollaborationsPage() {
             </div>
 
             <div className="divide-y divide-zinc-800/60">
-              {displayProposals.map((prop: any) => (
+              {!realProposals && <ContentSkeleton variant="grid" className="col-span-full" />}
+              {displayProposals.map((prop) => (
                 <div key={prop.id} className="p-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors space-y-4">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                     <div>

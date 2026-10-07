@@ -17,7 +17,6 @@ interface Insights {
   teachers: { id: string; name: string; email: string; lastSeenAt: string | null; courses: number; students: number; toGrade: number; graded30: number; flagged: number }[];
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const th = 'text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 pb-2';
 
 /** One measure, one hue: a thin bar for a percentage, with the number as text beside it. */
@@ -51,7 +50,7 @@ function Level({ level }: { level: string }) {
 
 function Tile({ label, value, sub, icon: Icon }: { label: string; value: string; sub?: string; icon: typeof Users }) {
   return (
-    <div className={`${card} p-4`}>
+    <div className={`panel p-4`}>
       <p className="text-xs text-zinc-500 flex items-center gap-1.5"><Icon className="w-3.5 h-3.5" aria-hidden />{label}</p>
       <p className="text-2xl font-black text-zinc-900 dark:text-white mt-1 tabular-nums">{value}</p>
       {sub && <p className="text-xs text-zinc-500 mt-0.5">{sub}</p>}
@@ -90,9 +89,9 @@ export default function AdminInsightsPage() {
                   <Link href="/admin/early-warning" className="text-sm font-medium text-indigo-500 hover:text-indigo-400">Early warning →</Link>
                 </div>
                 {data.atRisk.length === 0 ? (
-                  <p className={`${card} p-5 text-sm text-zinc-500`}>No open flags. Early warning checks every course daily from grades and attendance.</p>
+                  <p className={`panel p-5 text-sm text-zinc-500`}>No open flags. Early warning checks every course daily from grades and attendance.</p>
                 ) : (
-                  <div className={`${card} divide-y divide-zinc-200 dark:divide-white/[0.06]`}>
+                  <div className={`panel divide-y divide-zinc-200 dark:divide-white/[0.06]`}>
                     {data.atRisk.map((s) => (
                       <div key={s.id} className="p-4 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
                         <div className="sm:w-56 shrink-0">
@@ -117,9 +116,9 @@ export default function AdminInsightsPage() {
               <section className="space-y-3">
                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Departments</h2>
                 {data.departments.length === 0 ? (
-                  <p className={`${card} p-5 text-sm text-zinc-500`}>No grades or attendance in the last 60 days yet.</p>
+                  <p className={`panel p-5 text-sm text-zinc-500`}>No grades or attendance in the last 60 days yet.</p>
                 ) : (
-                  <div className={`${card} p-4 overflow-x-auto`}>
+                  <div className={`panel p-4 overflow-x-auto`}>
                     <table className="w-full text-sm min-w-[32rem]">
                       <thead><tr><th className={th}>Department</th><th className={th}>Average grade</th><th className={th}>vs previous 30 days</th><th className={th}>Attendance</th><th className={`${th} text-right`}>Grades given</th></tr></thead>
                       <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
@@ -141,9 +140,9 @@ export default function AdminInsightsPage() {
               <section className="space-y-3">
                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Teacher workload</h2>
                 {data.teachers.length === 0 ? (
-                  <p className={`${card} p-5 text-sm text-zinc-500`}>No active teachers yet.</p>
+                  <p className={`panel p-5 text-sm text-zinc-500`}>No active teachers yet.</p>
                 ) : (
-                  <div className={`${card} p-4 overflow-x-auto`}>
+                  <div className={`panel p-4 overflow-x-auto`}>
                     <table className="w-full text-sm min-w-[36rem]">
                       <thead><tr><th className={th}>Teacher</th><th className={`${th} text-right`}>Courses</th><th className={`${th} text-right`}>Students</th><th className={`${th} text-right`}>Answers to grade</th><th className={`${th} text-right`}>Grades (30 days)</th><th className={`${th} text-right`}>At-risk students</th><th className={`${th} text-right`}>Last seen</th></tr></thead>
                       <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">

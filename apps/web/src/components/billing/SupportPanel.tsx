@@ -25,8 +25,8 @@ export function SupportPanel({ plan }: { plan: PlanId }) {
         description: res.emailed ? undefined : `You can also reach us at ${res.supportEmail}.`,
       });
       if (kind === 'support') { setSubject(''); setMessage(''); }
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setSending(null);
     }

@@ -25,7 +25,8 @@ const subscribe = (l: () => void) => { listeners.add(l); return () => { listener
 
 function open(p: Pending) {
   // A new dialog replaces any open one (the old one resolves as cancelled).
-  if (current) current.kind === 'confirm' ? current.resolve(false) : current.resolve(null);
+  if (current?.kind === 'confirm') current.resolve(false);
+  else if (current) current.resolve(null);
   current = p;
   emit();
 }
@@ -46,10 +47,16 @@ export function DialogHost() {
   const confirmRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // A new prompt starts from its default text.
+  const [shown, setShown] = useState(pending);
+  if (shown !== pending) {
+    setShown(pending);
+    if (pending?.kind === 'prompt') setValue(pending.defaultValue ?? '');
+  }
   useEffect(() => {
     if (!pending) return;
-    if (pending.kind === 'prompt') { setValue(pending.defaultValue ?? ''); setTimeout(() => inputRef.current?.select(), 30); }
-    else setTimeout(() => confirmRef.current?.focus(), 30);
+    const t = setTimeout(() => (pending.kind === 'prompt' ? inputRef.current?.select() : confirmRef.current?.focus()), 30);
+    return () => clearTimeout(t);
   }, [pending]);
 
   if (!pending) return null;

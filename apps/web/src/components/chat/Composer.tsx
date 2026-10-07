@@ -134,12 +134,24 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const lastTyping = useRef(0);
 
-  useEffect(() => {
-    if (editing) {
-      setText(editing.body);
-      areaRef.current?.focus();
-    }
-  }, [editing]);
+  // Editing a message puts its text in the box.
+  const [editingShown, setEditingShown] = useState(editing);
+  if (editingShown !== editing) {
+    setEditingShown(editing);
+    if (editing) setText(editing.body);
+  }
+  useEffect(() => { if (editing) areaRef.current?.focus(); }, [editing]);
+
+  /** Writes the picked @mention in place of what's being typed. */
+  const pickMention = (u: { name: string; hint?: string }) => {
+    const el = areaRef.current;
+    if (!el) return;
+    const pos = el.selectionStart ?? text.length;
+    const before = text.slice(0, pos).replace(/@[\w.-]*$/, `@${u.hint ? u.name : u.name.split(' ')[0]} `);
+    setText(before + text.slice(pos));
+    setMentionQuery(null);
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(before.length, before.length); });
+  };
   useEffect(() => { if (replyTo) areaRef.current?.focus(); }, [replyTo]);
 
   // Drafts: every change is kept on this device; my account gets it 2 s after typing stops.
@@ -376,6 +388,12 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   const slashSnips = slashTyped ? (snipData?.snippets ?? []).filter((x) => x.shortcut?.startsWith(text.slice(1).toLowerCase())).slice(0, 5) : [];
   const insertSnippet = (body: string) => { setText(body); setSuggestions(null); requestAnimationFrame(() => areaRef.current?.focus()); };
 
+  // @here (online members) and @channel (everyone) for groups, for those allowed.
+  const mentionList: { id: string; name: string; hint?: string }[] = mentionQuery === null ? [] : [
+    ...(canMentionAll ? [{ id: '@here', name: 'here', hint: 'Online members' }, { id: '@channel', name: 'channel', hint: 'Everyone in this chat' }].filter((x) => x.name.startsWith(mentionQuery)) : []),
+    ...mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6),
+  ];
+
   return (
     <div className="border-t border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl px-3 md:px-4 py-3">
       {(replyTo || editing) && (
@@ -527,29 +545,15 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               ))}
             </div>
           )}
-          {mentionQuery !== null && (() => {
-            // @here (online members) and @channel (everyone) for groups, for those allowed.
-            const everyone = canMentionAll ? [{ id: '@here', name: 'here', hint: 'Online members' }, { id: '@channel', name: 'channel', hint: 'Everyone in this chat' }].filter((x) => x.name.startsWith(mentionQuery)) : [];
-            const list = [...everyone, ...mentionables.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6)] as { id: string; name: string; hint?: string }[];
-            if (!list.length) return null;
-            return (
-              <div className="absolute bottom-full mb-2 left-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
-                {list.map((u) => (
-                  <button key={u.id} onMouseDown={(e) => {
-                    e.preventDefault();
-                    const el = areaRef.current!;
-                    const pos = el.selectionStart ?? text.length;
-                    const before = text.slice(0, pos).replace(/@[\w.-]*$/, `@${u.hint ? u.name : u.name.split(' ')[0]} `);
-                    setText(before + text.slice(pos));
-                    setMentionQuery(null);
-                    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(before.length, before.length); });
-                  }} className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
-                    @{u.name}{u.hint && <span className="ml-2 text-xs text-zinc-500">{u.hint}</span>}
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
+          {mentionList.length > 0 && (
+            <div className="absolute bottom-full mb-2 left-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
+              {mentionList.map((u) => (
+                <button key={u.id} onMouseDown={(e) => { e.preventDefault(); pickMention(u); }} className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
+                  @{u.name}{u.hint && <span className="ml-2 text-xs text-zinc-500">{u.hint}</span>}
+                </button>
+              ))}
+            </div>
+          )}
           <textarea
             ref={areaRef}
             rows={1}

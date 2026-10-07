@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { Check, Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Avatar } from './MessageBubble';
-import { Sheet } from './ChatDialogs';
+import { Avatar } from '@/components/ui/Avatar';
+import { Sheet } from '@/components/ui/Sheet';
 import type { ConversationSummary } from './chat-client';
 
 // Chat folders (Stage 4 · 1.6): your own groupings of chats, shown as chips above the chat list and

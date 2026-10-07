@@ -18,7 +18,7 @@ export async function authedFetch(input: string, init: RequestInit = {}): Promis
   return fetch(input, { ...init, headers });
 }
 
-export async function authedJson<T = any>(input: string, init?: RequestInit): Promise<T> {
+export async function authedJson<T = unknown>(input: string, init?: RequestInit): Promise<T> {
   // Answered by the startup bundle already (see lib/bootstrap.ts)?
   if ((!init?.method || init.method === 'GET') && inBootstrap(input)) {
     const hit = await fromBootstrap<T>(input);

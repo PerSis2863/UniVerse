@@ -14,7 +14,6 @@ import { TabPill } from '@/components/ui/Glide';
 
 type Reservation = { id: string; date: string; time: string; duration: string; createdAt?: string; user: PersonInfo };
 type Room = { id: string; name: string; capacity: number; type: string; amenities: string; reservations: Reservation[] };
-const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 
 export default function RoomBookingsPage() {
   const { data, isLoading, error, mutate } = useSWR<Room[]>('/api/admin/rooms', authedJson);
@@ -51,11 +50,11 @@ export default function RoomBookingsPage() {
       toast.success('Room added');
       setForm(null);
       mutate();
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
   const cancel = async (id: string) => {
     if (!(await confirmDialog({ title: 'Cancel this booking?', message: 'The room becomes free for others to book.', confirmLabel: 'Cancel booking', cancelLabel: 'Keep', destructive: true }))) return;
-    try { await authedJson(`/api/admin/rooms?reservationId=${id}`, { method: 'DELETE' }); mutate(); } catch (e: any) { toast.error(e.message); }
+    try { await authedJson(`/api/admin/rooms?reservationId=${id}`, { method: 'DELETE' }); mutate(); } catch (e) { toast.error((e as Error).message); }
   };
 
   return (
@@ -69,10 +68,10 @@ export default function RoomBookingsPage() {
           {form && (
             <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 grid sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2 flex justify-between"><p className="font-bold text-zinc-900 dark:text-white">New room</p><button onClick={() => setForm(null)} aria-label="Cancel"><X className="w-4 h-4 text-zinc-500" /></button></div>
-              <input className={input} placeholder="Room name, e.g. B-204" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              <input className={input} type="number" min={1} placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
-              <select className={input} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['Classroom', 'Lab', 'Study room', 'Auditorium', 'Meeting room'].map((t) => <option key={t}>{t}</option>)}</select>
-              <input className={input} placeholder="Amenities, e.g. Projector, Whiteboard" value={form.amenities} onChange={(e) => setForm({ ...form, amenities: e.target.value })} />
+              <input className="input" placeholder="Room name, e.g. B-204" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <input className="input" type="number" min={1} placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+              <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['Classroom', 'Lab', 'Study room', 'Auditorium', 'Meeting room'].map((t) => <option key={t}>{t}</option>)}</select>
+              <input className="input" placeholder="Amenities, e.g. Projector, Whiteboard" value={form.amenities} onChange={(e) => setForm({ ...form, amenities: e.target.value })} />
               <button onClick={addRoom} disabled={busy || !form.name.trim() || !form.capacity} className="btn-primary sm:col-span-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save room</button>
             </div>
           )}

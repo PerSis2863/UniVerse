@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { Bell, BellOff, CheckCircle, X } from 'lucide-react';
+import { Bell,   X } from 'lucide-react';
 import { subscribePush } from '@/lib/push-subscribe';
 import { useAuthStore } from '@/store/auth';
 import { LogoMark } from '@/components/ui/LogoMark';
@@ -10,12 +10,25 @@ import { LogoMark } from '@/components/ui/LogoMark';
 // Detect iOS (Safari on iPhone/iPad) — no push support there
 function isIOS() {
   return typeof navigator !== 'undefined' &&
-    /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
 }
 
 // Detect Brave browser
 function isBrave() {
-  return typeof navigator !== 'undefined' && (navigator as any).brave !== undefined;
+  return typeof navigator !== 'undefined' && 'brave' in navigator;
+}
+
+/** Signs this device up for push without asking (permission is already granted). */
+async function subscribeQuietly(): Promise<boolean> {
+  try {
+    const result = await subscribePush(await navigator.serviceWorker.ready);
+    if (result !== 'ok') return false;
+    localStorage.setItem('pushSubscribed', 'true');
+    return true;
+  } catch (err) {
+    console.error('Push notification error:', err);
+    return false;
+  }
 }
 
 export function PushNotificationManager() {
@@ -32,32 +45,22 @@ export function PushNotificationManager() {
 
   useEffect(() => {
     if (!user || !isSupported) return;
+    // Already granted: sign this device up again quietly (keeps the subscription fresh).
+    if (Notification.permission === 'granted') {
+      void subscribeQuietly().then((ok) => { if (ok) setStatus('success'); });
+      return;
+    }
+    if (Notification.permission === 'denied') return; // blocked, don't ask
 
-    const checkSubscription = async () => {
-      const permission = Notification.permission;
+    // Dismissed recently (7 days cooldown), or already signed up?
+    const dismissedAt = localStorage.getItem('pushPromptDismissedAt');
+    if (dismissedAt && Date.now() - parseInt(dismissedAt) < 7 * 24 * 60 * 60 * 1000) return;
+    if (localStorage.getItem('pushSubscribed') === 'true') return;
 
-      if (permission === 'granted') {
-        // Already granted — subscribe silently in background
-        subscribeUser(true);
-        return;
-      }
-
-      if (permission === 'denied') return; // blocked, don't ask
-
-      // Check if user dismissed recently (7 days cooldown)
-      const dismissedAt = localStorage.getItem('pushPromptDismissedAt');
-      if (dismissedAt && Date.now() - parseInt(dismissedAt) < 7 * 24 * 60 * 60 * 1000) return;
-
-      // Check if already successfully subscribed
-      if (localStorage.getItem('pushSubscribed') === 'true') return;
-
-      // Show prompt after 2.5s delay
-      const timer = setTimeout(() => setShowPrompt(true), 2500);
-      return () => clearTimeout(timer);
-    };
-
-    checkSubscription();
-  }, [user]);
+    // Ask after a short delay.
+    const timer = setTimeout(() => setShowPrompt(true), 2500);
+    return () => clearTimeout(timer);
+  }, [user, isSupported]);
 
   const subscribeUser = async (silent = false) => {
     if (status === 'requesting') return;

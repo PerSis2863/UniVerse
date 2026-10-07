@@ -1,14 +1,16 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Rocket, Users, DollarSign, Globe2, Sparkles, Heart, CheckCircle2, X, Send, TrendingUp, Lightbulb, Building2, Award, ArrowUpRight, Search, Loader2 } from 'lucide-react';
+import { Rocket, Users,   Sparkles,  CheckCircle2, X, Send,  Lightbulb, Building2,  ArrowUpRight, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguageStore } from '@/store/language';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { safeHref } from '@/lib/safe-href';
 import { TabPill } from '@/components/ui/Glide';
 
@@ -19,37 +21,27 @@ const STAGE_COLORS: Record<string, string> = {
   'Seed': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
 };
 
+interface Startup {
+  id: string; name: string; tagline?: string | null; description?: string | null; sector?: string | null; stage: string;
+  impactPoints?: number; websiteUrl?: string | null; openRoles?: string[] | null; foundedBy?: { name: string } | null; _count?: { applications?: number };
+}
+
 export default function StartupIncubatorPage() {
   const [search, setSearch] = useState('');
   const [selectedStage, setSelectedStage] = useState('ALL');
-  const [selected, setSelected] = useState<any | null>(null);
+  const [selected, setSelected] = useState<Startup | null>(null);
   const [joined, setJoined] = useState<string[]>([]);
   const [role, setRole] = useState('');
   const [pitching, setPitching] = useState(false);
   const { t } = useLanguageStore();
 
-  const [startups, setStartups] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: startupsData, isLoading: loading } = useSWR<Startup[]>('/impact/startups', fetcher, {
+    onError: () => toast.error('Failed to load startups'),
+  });
+  const startups = startupsData ?? [];
   const [applying, setApplying] = useState(false);
 
-  useEffect(() => {
-    fetchStartups();
-  }, []);
-
-  const fetchStartups = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/impact/startups');
-      setStartups(res.data);
-    } catch (error) {
-      console.error('Failed to fetch startups:', error);
-      toast.error('Failed to load startups');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleJoin = async (s: any) => {
+  const handleJoin = async (s: Startup) => {
     setApplying(true);
     try {
       await api.post(`/impact/startups/${s.id}/apply`, {
@@ -105,8 +97,8 @@ export default function StartupIncubatorPage() {
               <div className="grid grid-cols-3 gap-3 flex-shrink-0">
                 {[
                   { v: String(startups.length), l: 'Active startups' },
-                  { v: String(startups.reduce((n: number, x: any) => n + (x._count?.applications ?? 0), 0)), l: 'Applications', c: 'text-emerald-400' },
-                  { v: String(new Set(startups.map((x: any) => x.sector).filter(Boolean)).size), l: 'Sectors' },
+                  { v: String(startups.reduce((n, x) => n + (x._count?.applications ?? 0), 0)), l: 'Applications', c: 'text-emerald-400' },
+                  { v: String(new Set(startups.map((x) => x.sector).filter(Boolean)).size), l: 'Sectors' },
                 ].map(s => (
                   <div key={s.l} className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-3 text-center">
                     <div className={cn("text-xl font-black text-white", s.c)}>{s.v}</div>
@@ -230,7 +222,7 @@ export default function StartupIncubatorPage() {
               )}
               {selected.websiteUrl && <a href={safeHref(selected.websiteUrl)} target="_blank" rel="noopener noreferrer" className="inline-block text-sm font-semibold text-indigo-500 hover:underline">Visit website →</a>}
               <div>
-                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">The role you'd like</h4>
+                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">The role you’d like</h4>
                 <input value={role} onChange={(e) => setRole(e.target.value)} maxLength={120} placeholder="e.g. Developer, Designer, Marketing"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
               </div>

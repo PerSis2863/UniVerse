@@ -17,6 +17,7 @@ import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import { courseColor } from '@/lib/course-color';
+import { useNow } from '@/lib/use-now';
 
 interface Overview {
   name: string;
@@ -122,6 +123,7 @@ const QUICK_ACTIONS = [
 
 export default function StudentDashboard() {
   const { user } = useAuthStore();
+  const now = useNow();
   const { t } = useLanguageStore();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'dashboard.greeting_morning' : hour < 18 ? 'dashboard.greeting_afternoon' : 'dashboard.greeting_evening';
@@ -334,7 +336,7 @@ export default function StudentDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {data.upcoming.map((q) => {
-                      const soon = new Date(q.dueDate).getTime() - Date.now() < 48 * 3600 * 1000;
+                      const soon = new Date(q.dueDate).getTime() - now < 48 * 3600 * 1000;
                       return (
                         <Link key={q.id} href="/student/quizzes" className="flex items-center gap-3 p-3 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors group">
                           <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', soon ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-500')}>

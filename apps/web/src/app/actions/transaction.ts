@@ -46,7 +46,7 @@ export async function createTransaction(
 
     revalidatePath('/admin/finances');
     return { id: payment.id };
-  } catch (e: any) {
+  } catch (e) {
     console.error('Error creating transaction:', e);
     return { error: 'Could not save the payment. Please try again.' };
   }

@@ -1,5 +1,12 @@
+import { BadRequestException } from '../http';
 
 import prisma from '@/lib/db';
+import type { Prisma } from '@prisma/client';
+import { pick } from '../pick';
+import { oneOf, type Body } from '../body';
+
+type NewScholarship = Prisma.ScholarshipCreateInput;
+const SCHOLARSHIP_FIELDS = ['name', 'description', 'amount', 'currency', 'provider', 'deadline', 'requirements', 'isActive'] as const satisfies readonly (keyof NewScholarship)[];
 
 export class ScholarshipsService {
   findAll() { return prisma.scholarship.findMany({ where: { isActive: true }, include: { _count: { select: { applications: true } } } }); }
@@ -26,10 +33,16 @@ export class ScholarshipsService {
       },
     });
   }
-  apply(scholarshipId: string, studentId: string, data: any) {
-    return prisma.scholarshipApplication.upsert({ where: { scholarshipId_studentId: { scholarshipId, studentId } }, create: { essay: typeof data?.essay === 'string' ? data.essay.slice(0, 5000) : undefined, scholarshipId, studentId }, update: { essay: typeof data?.essay === 'string' ? data.essay.slice(0, 5000) : undefined } });
+  apply(scholarshipId: string, studentId: string, data: Body) {
+    const essay = typeof data.essay === 'string' ? data.essay.slice(0, 5000) : undefined;
+    return prisma.scholarshipApplication.upsert({ where: { scholarshipId_studentId: { scholarshipId, studentId } }, create: { essay, scholarshipId, studentId }, update: { essay } });
   }
   getMyApplications(studentId: string) { return prisma.scholarshipApplication.findMany({ where: { studentId }, include: { scholarship: true } }); }
-  create(data: any) { return prisma.scholarship.create({ data }); }
-  updateApplication(id: string, data: any) { return prisma.scholarshipApplication.update({ where: { id }, data }); }
+  /** Only the scholarship's own fields (this used to pass the whole request body to the database). */
+  create(data: Body) { return prisma.scholarship.create({ data: pick<NewScholarship>(data, SCHOLARSHIP_FIELDS) as NewScholarship }); }
+  /** Admins decide an application: its status is the only thing they set. */
+  updateApplication(id: string, data: Body) {
+    if (!oneOf(['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'] as const, data.status)) throw new BadRequestException('Invalid status');
+    return prisma.scholarshipApplication.update({ where: { id }, data: { status: data.status } });
+  }
 }

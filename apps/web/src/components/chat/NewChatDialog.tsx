@@ -8,7 +8,7 @@ import { Check, Loader2, Megaphone, Search, Users, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
-import { Avatar } from './MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { chatJson } from './chat-client';
 import { TabPill } from '@/components/ui/Glide';
 
@@ -41,8 +41,8 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
     try {
       const { id } = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id }) });
       onOpen(id);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -57,8 +57,8 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
       });
       toast.success(`"${groupName.trim()}" created`);
       onOpen(id);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }

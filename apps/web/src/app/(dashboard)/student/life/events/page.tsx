@@ -23,7 +23,6 @@ interface Event {
   mine: { status: 'GOING' | 'WAITLIST'; checkedInAt: string | null } | null;
 }
 
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export default function EventsPage() {
@@ -89,7 +88,7 @@ export default function EventsPage() {
             <p className="text-sm text-rose-500">{(error as Error).message}</p>
           ) : !list.length ? (
             filter === 'mine'
-              ? <p className={`${card} p-6 text-sm text-zinc-500 text-center`}>No tickets yet. Pick an event under Upcoming.</p>
+              ? <p className={`panel p-6 text-sm text-zinc-500 text-center`}>No tickets yet. Pick an event under Upcoming.</p>
               : <FeatureGuide icon={CalendarDays} title="Campus events will appear here" description="Career fairs, festivals, workshops and talks on your campus, added by your campus admin." steps={['Tap Going to save a seat', 'If it’s full you join the waiting list and get a seat when one frees up', 'Scan the QR code at the door to check in']} example={<div><ExampleRow title="Career Fair 2026" meta="Fri, 14 Nov · 10:00 · Main Hall" right="42/100" /></div>} />
           ) : (
             <ul className="grid gap-3">
@@ -97,7 +96,7 @@ export default function EventsPage() {
                 const full = !!ev.capacity && ev.going >= ev.capacity;
                 const pct = ev.capacity ? Math.min(100, Math.round((ev.going / ev.capacity) * 100)) : null;
                 return (
-                  <motion.li key={ev.id} layout transition={spring.smooth} className={`${card} p-4 sm:p-5 space-y-3`}>
+                  <motion.li key={ev.id} layout transition={spring.smooth} className={`panel p-4 sm:p-5 space-y-3`}>
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-zinc-900 dark:text-white">{ev.title}</p>

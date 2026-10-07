@@ -106,7 +106,7 @@ export function SemesterSearch() {
               className="flex-1 min-w-0 bg-transparent outline-none text-[15px] text-zinc-900 dark:text-white placeholder:text-zinc-400" />
             {searching && <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />}
           </label>
-          <button type="submit" disabled={asking || q.trim().length < 3} className="h-12 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50">
+          <button type="submit" disabled={asking || q.trim().length < 3} className="btn-primary btn-lg">
             {asking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}Ask AI
           </button>
         </form>

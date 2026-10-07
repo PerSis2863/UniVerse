@@ -20,7 +20,6 @@ type Slot = {
 };
 const minutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
 type Data = { slots: Slot[]; courses: { id: string; code: string; name: string }[]; rooms: { id: string; name: string }[] };
-const input = 'w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40';
 
 export default function TimetableManagementPage() {
   const { data, isLoading, error, mutate } = useSWR<Data>('/api/admin/timetable', authedJson);
@@ -36,11 +35,11 @@ export default function TimetableManagementPage() {
       toast.success('Class added to the timetable');
       setForm(null);
       mutate();
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
   const remove = async (id: string) => {
     if (!(await confirmDialog({ title: 'Remove this class?', message: 'It will be taken off the timetable for everyone.', confirmLabel: 'Remove', destructive: true }))) return;
-    try { await authedJson(`/api/admin/timetable?id=${id}`, { method: 'DELETE' }); mutate(); } catch (e: any) { toast.error(e.message); }
+    try { await authedJson(`/api/admin/timetable?id=${id}`, { method: 'DELETE' }); mutate(); } catch (e) { toast.error((e as Error).message); }
   };
 
   const [q, setQ] = useState('');
@@ -71,12 +70,12 @@ export default function TimetableManagementPage() {
           {form && (
             <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 grid sm:grid-cols-3 gap-3">
               <div className="sm:col-span-3 flex justify-between"><p className="font-bold text-zinc-900 dark:text-white">New class</p><button onClick={() => setForm(null)} aria-label="Cancel"><X className="w-4 h-4 text-zinc-500" /></button></div>
-              <select className={input} value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>{data!.courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}</select>
-              <select className={input} value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select>
-              <select className={input} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['LECTURE', 'LAB', 'TUTORIAL'].map((t) => <option key={t} value={t}>{t.toLowerCase()}</option>)}</select>
-              <input className={input} type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
-              <input className={input} type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
-              <select className={input} value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })}><option value="">No room</option>{data!.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
+              <select className="input" value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>{data!.courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}</select>
+              <select className="input" value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select>
+              <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['LECTURE', 'LAB', 'TUTORIAL'].map((t) => <option key={t} value={t}>{t.toLowerCase()}</option>)}</select>
+              <input className="input" type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+              <input className="input" type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+              <select className="input" value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })}><option value="">No room</option>{data!.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
               <button onClick={save} aria-busy={busy || undefined} disabled={busy} className="btn-primary sm:col-span-3">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add to timetable</button>
             </div>
           )}

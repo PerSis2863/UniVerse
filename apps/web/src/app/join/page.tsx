@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { GraduationCap, Building2, Globe, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import Link from '@/components/ui/Link';
 
@@ -36,18 +36,14 @@ const ROLE_DETAILS: Record<string, {
 };
 
 function JoinContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const code = searchParams.get('code');
 
-  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>('loading');
+  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>(code ? 'loading' : 'invalid');
   const [role, setRole] = useState<string>('');
 
   useEffect(() => {
-    if (!code) {
-      setStatus('invalid');
-      return;
-    }
+    if (!code) return;
 
     // Resolve the invite code
     fetch(`/api/invite?code=${code}`)
@@ -104,7 +100,7 @@ function JoinContent() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-4">
             <Sparkles className="w-3 h-3" />
-            You're invited!
+            You’re invited!
           </div>
         </div>
 

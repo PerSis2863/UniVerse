@@ -17,40 +17,35 @@ interface UsePWAInstall {
 
 export function usePWAInstall(): UsePWAInstall {
   const [canInstall, setCanInstall] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  // Used only on dashboard pages, which render in the browser: the device can be read straight away.
+  const [isIOS] = useState(() => /iphone|ipad|ipod/i.test(navigator.userAgent));
+  // Already installed (standalone mode)?
+  const [isInstalled, setIsInstalled] = useState(() =>
+    window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    // Detect iOS
-    const iosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    setIsIOS(iosDevice);
-
-    // Detect already installed (standalone mode)
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-    setIsInstalled(standalone);
-
-    if (standalone) return;
+    if (isInstalled) return;
 
     const handler = (e: Event) => {
       e.preventDefault();
       deferredPrompt.current = e as BeforeInstallPromptEvent;
       setCanInstall(true);
     };
-
-    window.addEventListener('beforeinstallprompt', handler);
-
-    window.addEventListener('appinstalled', () => {
+    const installed = () => {
       setIsInstalled(true);
       setCanInstall(false);
       deferredPrompt.current = null;
-      localStorage.setItem('pwa-installed', 'true');
-    });
+      try { localStorage.setItem('pwa-installed', 'true'); } catch { /* private mode */ }
+    };
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installed);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installed);
+    };
+  }, [isInstalled]);
 
   const install = async (): Promise<boolean> => {
     if (!deferredPrompt.current) return false;

@@ -3,7 +3,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { Users, MessageSquare, Search, Plus, MoreHorizontal, X, ChevronRight, Upload, Video, Mic, Trash2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef, useEffect } from 'react';
+import { useState,  useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -85,7 +85,7 @@ const TABS = ['All', 'Study', 'Project', 'Impact', 'Research'];
 
 export default function GroupsPage() {
   const router = useRouter();
-  const [groupsList, setGroupsList] = useState<any[]>([]);
+  const [groupsList, setGroupsList] = useState<GroupItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
@@ -104,32 +104,33 @@ export default function GroupsPage() {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
+        type ApiGroup = { id: string; name: string; category?: string | null; createdAt: string; _count?: { members?: number; posts?: number }; members?: { user?: { name?: string; avatar?: string | null } | null }[] };
         const [res, myRes] = await Promise.all([
-          api.get('/groups'),
-          api.get('/groups/my').catch(() => ({ data: [] }))
+          api.get<ApiGroup[]>('/groups'),
+          api.get<{ groupId: string }[]>('/groups/my').catch(() => ({ data: [] as { groupId: string }[] })),
         ]);
-        
-        const myGroupIds = new Set(myRes.data.map((m: any) => m.groupId));
-        
-        const formatted = res.data.map((g: any) => ({
+
+        const myGroupIds = new Set(myRes.data.map((m) => m.groupId));
+
+        const formatted: GroupItem[] = res.data.map((g) => ({
           id: g.id,
           name: g.name,
           type: g.category || 'Study',
           members: g._count?.members || 1,
-          latestActivity: g._count?.posts > 0 ? 'New posts available' : 'Group created',
+          latestActivity: (g._count?.posts ?? 0) > 0 ? 'New posts available' : 'Group created',
           time: new Date(g.createdAt).toLocaleDateString(),
           unread: 0,
           color: gradientColors[g.category || 'Study'] || 'from-indigo-500 to-purple-600',
           initials: g.name.substring(0, 2).toUpperCase(),
           completion: 0,
-          avatars: g.members?.map((m: any) => m.user?.avatarUrl ? m.user.avatarUrl : m.user?.name?.substring(0, 2).toUpperCase() || 'U') || ['U'],
+          avatars: g.members?.map((m) => m.user?.avatar || m.user?.name?.substring(0, 2).toUpperCase() || 'U') || ['U'],
           isMeetingActive: false,
           isJoined: myGroupIds.has(g.id)
         }));
         setGroupsList(formatted);
         // Open a group shared via link (?group=<id>)
         const linked = new URLSearchParams(window.location.search).get('group');
-        const target = linked ? formatted.find((g: any) => g.id === linked) : null;
+        const target = linked ? formatted.find((g) => g.id === linked) : null;
         if (target) setSelectedGroup(target);
       } catch (error) {
         console.error('Failed to fetch groups', error);
@@ -386,7 +387,7 @@ export default function GroupsPage() {
                           const updatedGroup = { ...selectedGroup, isJoined: true, members: selectedGroup.members + 1 };
                           setSelectedGroup(updatedGroup);
                           setGroupsList(groupsList.map(g => g.id === selectedGroup.id ? updatedGroup : g));
-                        } catch (e) {
+                        } catch {
                           toast.error('Failed to join group');
                         }
                       }}
@@ -599,7 +600,7 @@ export default function GroupsPage() {
                     try {
                       await api.post(`/groups/${inviteGroup.id}/invite`, { emails: inviteMembers });
                       toast.success(`Invited ${inviteMembers.length} members to ${inviteGroup.name}`);
-                    } catch (e) {
+                    } catch {
                       toast.error('Failed to invite members');
                     }
                   }

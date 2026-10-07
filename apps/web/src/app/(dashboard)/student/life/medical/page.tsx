@@ -3,11 +3,13 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
-import { HeartPulse, Stethoscope, Activity, X, CheckCircle2, Loader2, Save } from 'lucide-react';
+import { HeartPulse, Stethoscope, X, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 type MedicalRecord = {
   bloodType: string;
@@ -20,52 +22,32 @@ type MedicalRecord = {
   emergencyPhone: string;
 };
 
+/** The edit form: the lists are typed as comma-separated text. */
+type MedicalForm = Omit<MedicalRecord, 'allergies' | 'conditions' | 'medications'> & { allergies: string; conditions: string; medications: string };
+const list = (text: string) => text.split(',').map((s) => s.trim()).filter(Boolean);
+
 export default function MedicalPage() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [record, setRecord] = useState<MedicalRecord>({
-    bloodType: '',
-    allergies: [],
-    conditions: [],
-    medications: [],
-    doctorName: '',
-    doctorPhone: '',
-    emergencyContact: '',
-    emergencyPhone: ''
+  const { data, isLoading, mutate } = useSWR<Partial<MedicalRecord> | null>('/medical/my', fetcher, {
+    onError: () => toast.error('Failed to load medical record'),
   });
-
-  // Local state for the form inputs
-  const [formData, setFormData] = useState<MedicalRecord>(record);
-
-  useEffect(() => {
-    fetchRecord();
-  }, []);
-
-  const fetchRecord = async () => {
-    try {
-      const res = await api.get('/medical/my');
-      if (res.data) {
-        setRecord({
-          bloodType: res.data.bloodType || '',
-          allergies: res.data.allergies || [],
-          conditions: res.data.conditions || [],
-          medications: res.data.medications || [],
-          doctorName: res.data.doctorName || '',
-          doctorPhone: res.data.doctorPhone || '',
-          emergencyContact: res.data.emergencyContact || '',
-          emergencyPhone: res.data.emergencyPhone || ''
-        });
-      }
-    } catch (error) {
-      toast.error('Failed to load medical record');
-    } finally {
-      setIsLoading(false);
-    }
+  const record: MedicalRecord = {
+    bloodType: data?.bloodType || '',
+    allergies: data?.allergies || [],
+    conditions: data?.conditions || [],
+    medications: data?.medications || [],
+    doctorName: data?.doctorName || '',
+    doctorPhone: data?.doctorPhone || '',
+    emergencyContact: data?.emergencyContact || '',
+    emergencyPhone: data?.emergencyPhone || '',
   };
 
+  // Local state for the form inputs
+  const [formData, setFormData] = useState<MedicalForm>({ ...record, allergies: '', conditions: '', medications: '' });
+
   const openModal = () => {
-    setFormData(record);
+    setFormData({ ...record, allergies: record.allergies.join(', '), conditions: record.conditions.join(', '), medications: record.medications.join(', ') });
     setActiveModal('profile');
   };
 
@@ -76,29 +58,23 @@ export default function MedicalPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const payload = {
-        ...formData,
-        allergies: typeof formData.allergies === 'string' ? (formData.allergies as string).split(',').map(s => s.trim()).filter(Boolean) : formData.allergies,
-        conditions: typeof formData.conditions === 'string' ? (formData.conditions as string).split(',').map(s => s.trim()).filter(Boolean) : formData.conditions,
-        medications: typeof formData.medications === 'string' ? (formData.medications as string).split(',').map(s => s.trim()).filter(Boolean) : formData.medications,
-      };
+      const payload: MedicalRecord = { ...formData, allergies: list(formData.allergies), conditions: list(formData.conditions), medications: list(formData.medications) };
       await api.post('/medical/my', payload);
-      setRecord(payload);
+      await mutate(payload, { revalidate: false });
       toast.success('Medical profile updated successfully');
       handleClose();
-    } catch (error) {
+    } catch {
       toast.error('Failed to update medical profile');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const renderArray = (arr: string[] | string) => {
-    const list = Array.isArray(arr) ? arr : (arr as string).split(',').map(s => s.trim()).filter(Boolean);
-    if (!list || list.length === 0) return <span className="text-zinc-500 italic">None reported</span>;
+  const renderArray = (items: string[]) => {
+    if (items.length === 0) return <span className="text-zinc-500 italic">None reported</span>;
     return (
       <div className="flex flex-wrap gap-2">
-        {list.map((item, i) => (
+        {items.map((item, i) => (
           <span key={i} className="px-2 py-1 bg-white/[0.05] border border-white/[0.1] rounded text-sm text-zinc-300">
             {item}
           </span>
@@ -238,8 +214,8 @@ export default function MedicalPage() {
                     <label className="block text-sm text-zinc-400 mb-1">Allergies (comma separated)</label>
                     <input 
                       type="text" 
-                      value={Array.isArray(formData.allergies) ? formData.allergies.join(', ') : formData.allergies}
-                      onChange={e => setFormData({...formData, allergies: e.target.value as any})}
+                      value={formData.allergies}
+                      onChange={e => setFormData({...formData, allergies: e.target.value})}
                       placeholder="e.g. Peanuts, Penicillin"
                       className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
                     />
@@ -249,8 +225,8 @@ export default function MedicalPage() {
                     <label className="block text-sm text-zinc-400 mb-1">Medical Conditions (comma separated)</label>
                     <input 
                       type="text" 
-                      value={Array.isArray(formData.conditions) ? formData.conditions.join(', ') : formData.conditions}
-                      onChange={e => setFormData({...formData, conditions: e.target.value as any})}
+                      value={formData.conditions}
+                      onChange={e => setFormData({...formData, conditions: e.target.value})}
                       placeholder="e.g. Asthma, Type 1 Diabetes"
                       className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
                     />
@@ -260,8 +236,8 @@ export default function MedicalPage() {
                     <label className="block text-sm text-zinc-400 mb-1">Current Medications (comma separated)</label>
                     <input 
                       type="text" 
-                      value={Array.isArray(formData.medications) ? formData.medications.join(', ') : formData.medications}
-                      onChange={e => setFormData({...formData, medications: e.target.value as any})}
+                      value={formData.medications}
+                      onChange={e => setFormData({...formData, medications: e.target.value})}
                       placeholder="e.g. Albuterol, Insulin"
                       className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500"
                     />

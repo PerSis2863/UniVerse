@@ -1,13 +1,16 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, SUPPORT_TABS } from '@/components/layout/SectionTabs';
-import { LifeBuoy, FileText, MessageCircle, ChevronRight, Search, Send, Book, Wifi, Laptop, X, HelpCircle, Clock, CheckCircle2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { LifeBuoy, FileText, MessageCircle, ChevronRight, Search, Send, Book, Wifi, Laptop, X, HelpCircle, Clock } from 'lucide-react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 const FAQS = [
   { q: "How do I access my course materials?", a: "Navigate to the 'My Courses' tab, select your course, and click on the 'Materials' section." },
@@ -32,8 +35,10 @@ export default function StudentSupport() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // Ticket list state
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+  const { data: ticketsData, isLoading: isLoadingTickets, mutate: mutateTickets } = useSWR<Ticket[]>('/tickets', fetcher, {
+    onError: () => toast.error('Failed to load tickets.'),
+  });
+  const tickets = ticketsData ?? [];
 
   // Ticket form state
   const [ticketCategory, setTicketCategory] = useState('Technical Issue');
@@ -41,22 +46,7 @@ export default function StudentSupport() {
   const [ticketDescription, setTicketDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchTickets();
-  }, []);
 
-  const fetchTickets = async () => {
-    try {
-      setIsLoadingTickets(true);
-      const res = await api.get('/tickets');
-      setTickets(res.data);
-    } catch (error) {
-      console.error('Failed to fetch tickets:', error);
-      toast.error('Failed to load tickets.');
-    } finally {
-      setIsLoadingTickets(false);
-    }
-  };
 
   const handleSubmitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +68,7 @@ export default function StudentSupport() {
       setTicketDescription('');
       
       // Add to list
-      setTickets([res.data, ...tickets]);
+      void mutateTickets([res.data, ...tickets], { revalidate: false });
     } catch (error) {
       console.error('Failed to submit ticket:', error);
       toast.error('Failed to submit ticket. Please try again.');
@@ -189,7 +179,7 @@ export default function StudentSupport() {
                   <Clock className="w-5 h-5 text-indigo-400" /> My Recent Tickets
                 </h3>
                 {isLoadingTickets ? (
-                  <div className="text-zinc-500 text-sm">Loading tickets...</div>
+                  <ContentSkeleton variant="list" />
                 ) : tickets.length === 0 ? (
                   <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-lg p-5 text-center text-zinc-500">
                     You have no active or past tickets.
@@ -305,7 +295,7 @@ export default function StudentSupport() {
               <div className="p-8 overflow-y-auto space-y-8 bg-zinc-950">
                 <div className="space-y-4">
                   <h3 className="text-xl font-semibold text-white">Step 1: Select the Network</h3>
-                  <p className="text-zinc-400">Open your device's Wi-Fi settings and select the network named <strong>eduroam</strong> from the list of available networks.</p>
+                  <p className="text-zinc-400">Open your device’s Wi-Fi settings and select the network named <strong>eduroam</strong> from the list of available networks.</p>
                 </div>
                 
                 <div className="space-y-4">

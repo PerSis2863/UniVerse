@@ -1,4 +1,5 @@
-import type { Role, UserStatus } from '@prisma/client';
+import { Role, UserStatus, type Prisma } from '@prisma/client';
+import { oneOf } from '../body';
 import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { pick } from '../pick';
@@ -55,9 +56,9 @@ export default function users(router: Router) {
   // teach / are enrolled in (counted in the same query). Capped (default 1,000, ?limit up to 5,000);
   // ?search= (or ?q=) narrows by name or email on the server.
   r.get('', { roles: ['ADMIN'] }, ({ query }) => {
-    const where: any = {};
-    if (query.role) where.role = query.role as Role;
-    if (query.status) where.status = query.status as UserStatus;
+    const where: Prisma.UserWhereInput = {};
+    if (oneOf(Object.values(Role), query.role)) where.role = query.role;
+    if (oneOf(Object.values(UserStatus), query.status)) where.status = query.status;
     const search = typeof query.search === 'string' && query.search ? query.search : typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
     if (search) where.OR = [{ name: { contains: search } }, { email: { contains: search } }];
     const take = Math.min(Math.max(Number(query.limit) || 1000, 1), 5000);
@@ -108,7 +109,7 @@ export default function users(router: Router) {
   });
 
   r.get('directory', ({ query }) => {
-    const where: any = { role: 'STUDENT', status: 'ACTIVE' };
+    const where: Prisma.UserWhereInput = { role: 'STUDENT', status: 'ACTIVE' };
     if (typeof query.search === 'string' && query.search.trim()) where.name = { contains: query.search.trim().slice(0, 100) };
     // Any signed-in user can open this: names and departments only, never email addresses.
     return prisma.user.findMany({

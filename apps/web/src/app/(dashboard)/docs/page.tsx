@@ -20,8 +20,6 @@ interface List {
   groups?: { id: string; name: string }[];
   docs: { id: string; title: string; preview: string | null; course: string | null; mine: boolean; updatedAt: string }[];
 }
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
-const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 
 export default function DocsPage() {
   const router = useRouter();
@@ -43,12 +41,12 @@ export default function DocsPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex justify-end">{!creating && <button type="button" className="btn-primary" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> New document</button>}</div>
           {creating && (
-            <motion.form initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} onSubmit={create} className={`${card} p-5 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
+            <motion.form initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} onSubmit={create} className={`panel p-5 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
               <label className="text-sm space-y-1"><span className="text-zinc-600 dark:text-zinc-400">Name</span>
-                <input autoFocus maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Lab report" className={field} />
+                <input autoFocus maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Lab report" className="input" />
               </label>
               <label className="text-sm space-y-1"><span className="text-zinc-600 dark:text-zinc-400">For</span>
-                <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className={field}>
+                <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="input">
                   <option value="">Me and people I share it with</option>
                   {data?.courses.map((c) => <option key={c.id} value={`c:${c.id}`}>Everyone in {c.code} · {c.name}</option>)}
                   {data?.groups?.map((g) => <option key={g.id} value={`g:${g.id}`}>Everyone in {g.name}</option>)}
@@ -65,10 +63,10 @@ export default function DocsPage() {
           ) : (
             <div className="grid sm:grid-cols-2 gap-3 stagger">
               {data.docs.map((d) => (
-                <Link key={d.id} href={`/docs/${d.id}`} className={`${card} lift p-4 flex gap-3 hover:border-indigo-400/50`}>
+                <Link key={d.id} href={`/docs/${d.id}`} className={`panel lift p-4 flex gap-3 hover:border-indigo-400/50`}>
                   <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></span>
                   <span className="flex-1 min-w-0">
-                    <span className="block font-medium text-zinc-900 dark:text-white truncate">{d.title}</span>
+                    <span data-shared={`doc:${d.id}`} className="block font-medium text-zinc-900 dark:text-white truncate">{d.title}</span>
                     <span className="block text-xs text-zinc-500 truncate">{d.course ? `${d.course} · ` : d.mine ? '' : 'Shared with you · '}{new Date(d.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
                     {d.preview && <span className="block text-xs text-zinc-400 line-clamp-2 mt-1">{d.preview}</span>}
                   </span>

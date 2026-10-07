@@ -2,23 +2,29 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { Briefcase, Building, MapPin, DollarSign, Search, Filter, Bookmark, ExternalLink, X, FileText, Check, Edit2, Trash2, Loader2 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { Briefcase, Building, MapPin, DollarSign, Search, Filter, Bookmark, ExternalLink, X, FileText, Check, Edit2, Trash2 } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import Image from 'next/image';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
+
+interface Company { name: string; logoUrl?: string | null }
+interface Internship { id: string; title: string; description?: string | null; type?: string | null; location?: string | null; salary?: string | null; isPaid?: boolean; isActive?: boolean; company?: Company | null }
+interface Application { id: string; internshipId: string; status: string; appliedAt: string; coverLetter?: string | null; cvUrl?: string | null; internship?: Internship | null }
 
 export default function StudentInternships() {
   const [searchTerm, setSearchTerm] = useState('');
   useInitialSearch(setSearchTerm);
-  const [bookmarkedIds, setBookmarkedIds] = useState<number[]>([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
   
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [selectedType, setSelectedType] = useState('All');
   
-  const [activeApplication, setActiveApplication] = useState<any>(null);
+  const [activeApplication, setActiveApplication] = useState<Internship | null>(null);
   const [formData, setFormData] = useState({ resume: '', coverLetter: '' });
   
   const [showMyApplications, setShowMyApplications] = useState(false);
@@ -26,35 +32,16 @@ export default function StudentInternships() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Data fetching
-  const [internships, setInternships] = useState<any[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const list = useSWR<Internship[]>('/internships', fetcher);
+  const mine = useSWR<Application[]>('/internships/my-applications', fetcher);
+  const internships = Array.isArray(list.data) ? list.data : [];
+  const applications = Array.isArray(mine.data) ? mine.data : [];
+  const isLoading = list.isLoading || mine.isLoading;
+  const loadError = !!(list.error || mine.error);
+  const fetchInternships = () => Promise.all([list.mutate(), mine.mutate()]);
 
 
-  const fetchInternships = async () => {
-    try {
-      const [internshipsRes, appsRes] = await Promise.all([
-        api.get('/internships'),
-        api.get('/internships/my-applications')
-      ]);
-      setInternships(Array.isArray(internshipsRes.data) ? internshipsRes.data : []);
-      setApplications(Array.isArray(appsRes.data) ? appsRes.data : []);
-    } catch (error) {
-      setLoadError(true);
-      setInternships([]);
-      setApplications([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchInternships();
-  }, []);
-
-
-  const toggleBookmark = (id: number) => {
+  const toggleBookmark = (id: string) => {
     setBookmarkedIds(prev => prev.includes(id) ? prev.filter(bId => bId !== id) : [...prev, id]);
   };
 
@@ -362,7 +349,7 @@ export default function StudentInternships() {
                       <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800/50">
                         <p><span className="font-semibold text-zinc-900 dark:text-white">Applied:</span> {new Date(app.appliedAt).toLocaleDateString()}</p>
                         {app.coverLetter && (
-                          <p className="mt-2 line-clamp-2"><span className="font-semibold text-zinc-900 dark:text-white">Cover Letter:</span> "{app.coverLetter}"</p>
+                          <p className="mt-2 line-clamp-2"><span className="font-semibold text-zinc-900 dark:text-white">Cover Letter:</span> “{app.coverLetter}”</p>
                         )}
                       </div>
                       

@@ -2,50 +2,40 @@
 import Link from '@/components/ui/Link';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useSWR from 'swr';
 import { Topbar } from '@/components/layout/Topbar';
-import {
-  Calendar, MapPin, Users, Globe2, Sparkles, Trophy,
-  ArrowUpRight, CheckCircle2, Clock, ExternalLink, Loader2
-} from 'lucide-react';
+import { Calendar, Users, Trophy, ArrowUpRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { api } from '@/lib/api';
+import { fetcher } from '@/lib/fetcher';
+import { useNow } from '@/lib/use-now';
 import { toast } from 'sonner';
 
+interface Summit {
+  id: string; title: string; description?: string | null; location?: string | null; isVirtual: boolean;
+  impactPoints: number; capacity?: number | null; startDate: string; endDate: string;
+  _count?: { registrations?: number };
+}
+
 export default function GlobalSummitsPage() {
-  const [summits, setSummits] = useState<any[]>([]);
-  const [registeredSummits, setRegisteredSummits] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: summitsData, isLoading: loadingSummits } = useSWR<Summit[]>('/impact/summits', fetcher, {
+    onError: () => toast.error('Failed to load summits'),
+  });
+  const { data: regs, isLoading: loadingRegs, mutate: mutateRegs } = useSWR<{ summitId: string }[]>('/impact/summits/my-registrations', fetcher);
+  const summits = summitsData ?? [];
+  const registeredSummits = (regs ?? []).map((r) => r.summitId);
+  const loading = loadingSummits || loadingRegs;
   const [applying, setApplying] = useState(false);
-
-  useEffect(() => {
-    fetchSummits();
-  }, []);
-
-  const fetchSummits = async () => {
-    try {
-      setLoading(true);
-      const [summitsRes, regRes] = await Promise.all([
-        api.get('/impact/summits'),
-        api.get('/impact/summits/my-registrations')
-      ]);
-      setSummits(summitsRes.data);
-      setRegisteredSummits(regRes.data.map((r: any) => r.summitId));
-    } catch (error) {
-      console.error('Failed to load summits:', error);
-      toast.error('Failed to load summits');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const now = useNow();
 
   const handleRegister = async (id: string) => {
     if (registeredSummits.includes(id)) return;
-    
+
     setApplying(true);
     try {
       await api.post(`/impact/summits/${id}/register`);
-      setRegisteredSummits(prev => [...prev, id]);
+      await mutateRegs((cur) => [...(cur ?? []), { summitId: id }], { revalidate: false });
       toast.success('Successfully registered for summit!');
     } catch (error) {
       console.error('Failed to register:', error);
@@ -104,7 +94,7 @@ export default function GlobalSummitsPage() {
                 const isRegistered = registeredSummits.includes(summit.id);
                 const format = summit.isVirtual ? 'Online Worldwide' : (summit.location || 'Hybrid');
                 const prizePool = `+${summit.impactPoints} XP`;
-                const daysRemaining = Math.max(0, Math.ceil((new Date(summit.startDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+                const daysRemaining = Math.max(0, Math.ceil((new Date(summit.startDate).getTime() - now) / (1000 * 60 * 60 * 24)));
                 const teamsRegistered = summit._count?.registrations || 0;
                 
                 const gradients = [

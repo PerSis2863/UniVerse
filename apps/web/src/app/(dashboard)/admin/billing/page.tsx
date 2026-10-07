@@ -64,10 +64,10 @@ function BillingContent() {
         method: 'POST',
         body: JSON.stringify({ plan: id, interval, payBy }),
       });
-      window.location.href = url;
-    } catch (e: any) {
-      if (e.body?.manage) return openPortal();
-      toast.error(e.message);
+      window.location.assign(url);
+    } catch (e) {
+      if ((e as Error & { body?: { manage?: boolean } }).body?.manage) return openPortal();
+      toast.error((e as Error).message);
     } finally {
       setLoadingPlan(null);
     }
@@ -77,9 +77,9 @@ function BillingContent() {
     setPortalLoading(true);
     try {
       const { url } = await authedJson<{ url: string }>('/api/billing/portal', { method: 'POST' });
-      window.location.href = url;
-    } catch (e: any) {
-      toast.error(e.message);
+      window.location.assign(url);
+    } catch (e) {
+      toast.error((e as Error).message);
       setPortalLoading(false);
     }
   };

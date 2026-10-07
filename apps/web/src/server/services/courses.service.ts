@@ -1,10 +1,11 @@
 import { BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '../http';
 import prisma from '@/lib/db';
-import { Role, CourseStatus } from '@prisma/client';
+import { Role,  type Prisma } from '@prisma/client';
+import type { Body } from '../body';
 import { pick } from '../pick';
 import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-network';
 
-const COURSE_FIELDS = ['code', 'name', 'description', 'credits', 'department', 'color', 'emoji'] as const;
+const COURSE_FIELDS = ['code', 'name', 'description', 'credits', 'department', 'color', 'emoji'] as const satisfies readonly (keyof Prisma.CourseUncheckedCreateInput)[];
 
 export class CoursesService {
   /** Published courses; a student in a campus network sees their campus's and partner courses only. */
@@ -137,24 +138,24 @@ export class CoursesService {
     return { ...info, teacher: course.teacher && { id: course.teacher.id, name: course.teacher.name, avatar: course.teacher.avatar }, _count: { enrollments: enrollments.length, materials: materials.length } };
   }
 
-  async create(teacherId: string, data: any) {
-    const fields = pick(data, COURSE_FIELDS);
+  async create(teacherId: string, data: Body) {
+    const fields = pick<Prisma.CourseUncheckedCreateInput>(data, COURSE_FIELDS);
     if (typeof fields.code !== 'string' || !fields.code.trim() || typeof fields.name !== 'string' || !fields.name.trim()) {
       throw new BadRequestException('Course name and code are required');
     }
     if (await prisma.course.findUnique({ where: { code: fields.code.trim() } })) throw new ConflictException('A course with this code already exists');
     return prisma.course.create({
-      data: { ...(fields as any), code: fields.code.trim(), name: fields.name.trim(), teacherId, status: 'DRAFT' },
+      data: { ...fields, code: fields.code.trim(), name: fields.name.trim(), teacherId, status: 'DRAFT' },
     });
   }
 
-  async update(id: string, teacherId: string, role: Role, data: any) {
+  async update(id: string, teacherId: string, role: Role, data: Body) {
     const course = await prisma.course.findUnique({ where: { id } });
     if (!course) throw new NotFoundException('Course not found');
     if (role !== Role.ADMIN && course.teacherId !== teacherId) throw new ForbiddenException();
     // Only admins may reassign a course to another teacher.
-    const fields = pick(data, role === Role.ADMIN ? [...COURSE_FIELDS, 'status', 'teacherId'] as const : [...COURSE_FIELDS, 'status'] as const);
-    return prisma.course.update({ where: { id }, data: fields as any });
+    const fields = pick<Prisma.CourseUncheckedUpdateInput>(data, role === Role.ADMIN ? [...COURSE_FIELDS, 'status', 'teacherId'] : [...COURSE_FIELDS, 'status']);
+    return prisma.course.update({ where: { id }, data: fields });
   }
 
   async remove(id: string, teacherId: string, role: Role) {

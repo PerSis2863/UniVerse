@@ -13,8 +13,8 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { Sheet } from '@/components/chat/ChatDialogs';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Sheet } from '@/components/ui/Sheet';
+import { Avatar } from '@/components/ui/Avatar';
 import { TabPill } from '@/components/ui/Glide';
 import { MentionInput } from '@/components/ui/MentionInput';
 
@@ -31,7 +31,6 @@ interface Board {
   tasks: Card[];
 }
 
-const field = 'w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 const call = (url: string, method: string, body?: unknown) => authedJson(url, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 export default function TaskBoardPage({ params }: { params: Promise<{ id: string }> }) {
@@ -98,7 +97,7 @@ export default function TaskBoardPage({ params }: { params: Promise<{ id: string
 
   return (
     <>
-      <Topbar title={data.title} subtitle={data.course ? `${data.course.code} · everyone in ${data.course.name}` : 'Task board'} />
+      <Topbar title={data.title} sharedId={`task-board:${id}`} subtitle={data.course ? `${data.course.code} · everyone in ${data.course.name}` : 'Task board'} />
       <div className="px-4 md:px-8 pt-3 flex flex-wrap items-center gap-2">
         <Link href="/tasks" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-indigo-500"><ArrowLeft className="w-4 h-4" />Tasks</Link>
         <span className="flex-1" />
@@ -212,21 +211,21 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
         </div>
         <div className="grid grid-cols-2 gap-2">
           <label className="text-xs space-y-1"><span className="text-zinc-500">List</span>
-            <select disabled={ro} value={card.listId} onChange={(e) => void onPatch({ listId: e.target.value, position: Date.now() / 1e9 })} className={field}>
+            <select disabled={ro} value={card.listId} onChange={(e) => void onPatch({ listId: e.target.value, position: Date.now() / 1e9 })} className="input">
               {board.lists.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
             </select>
           </label>
           <label className="text-xs space-y-1"><span className="text-zinc-500">Given to</span>
-            <select disabled={ro} value={card.assigneeId ?? ''} onChange={(e) => void onPatch({ assigneeId: e.target.value || null })} className={field}>
+            <select disabled={ro} value={card.assigneeId ?? ''} onChange={(e) => void onPatch({ assigneeId: e.target.value || null })} className="input">
               <option value="">Nobody</option>
               {board.people.map((p) => <option key={p.id} value={p.id}>{p.id === board.me ? `${p.name} (me)` : p.name}</option>)}
             </select>
           </label>
           <label className="text-xs space-y-1 col-span-2"><span className="text-zinc-500">Due</span>
-            <input type="date" disabled={ro} value={dateValue} onChange={(e) => void onPatch({ dueAt: e.target.value ? new Date(`${e.target.value}T17:00:00`).toISOString() : null })} className={field} />
+            <input type="date" disabled={ro} value={dateValue} onChange={(e) => void onPatch({ dueAt: e.target.value ? new Date(`${e.target.value}T17:00:00`).toISOString() : null })} className="input" />
           </label>
         </div>
-        <textarea value={notes} readOnly={ro} rows={3} maxLength={5000} placeholder="Notes" onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== (card.notes ?? '') && void onPatch({ notes })} className={cn(field, 'resize-y')} />
+        <textarea value={notes} readOnly={ro} rows={3} maxLength={5000} placeholder="Notes" onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== (card.notes ?? '') && void onPatch({ notes })} className={cn('input', 'resize-y')} />
         <section className="space-y-1.5">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Checklist {card.checklist.length > 0 && `· ${card.checklist.filter((c) => c.done).length}/${card.checklist.length}`}</p>
           {card.checklist.map((c, i) => (
@@ -254,7 +253,7 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
             </div>
           ))}
           <form onSubmit={async (e) => { e.preventDefault(); const t = comment.trim(); if (!t) return; setComment(''); try { await call(ckey, 'POST', { body: t }); void mutate(); } catch (err) { setComment(t); toast.error((err as Error).message); } }} className="flex gap-2">
-            <MentionInput kind="tasks" id={board.id} value={comment} onChange={setComment} maxLength={2000} placeholder="Write a comment (@name to notify someone)" aria-label="Comment" className={field} />
+            <MentionInput kind="tasks" id={board.id} value={comment} onChange={setComment} maxLength={2000} placeholder="Write a comment (@name to notify someone)" aria-label="Comment" className="input" />
             <button type="submit" aria-label="Send" className="w-10 shrink-0 rounded-xl btn-primary flex items-center justify-center"><Send className="w-4 h-4" /></button>
           </form>
         </section>
@@ -271,8 +270,8 @@ function ShareSheet({ board, onClose, onChanged }: { board: Board; onClose: () =
   return (
     <Sheet title="Share board" onClose={onClose}>
       <form onSubmit={async (e) => { e.preventDefault(); setBusy(true); try { await call(`/api/tasks/${board.id}/members`, 'POST', { email, role }); setEmail(''); toast.success('Shared'); onChanged(); } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); } }} className="flex gap-2 mb-4">
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their email" className={field} />
-        <select value={role} onChange={(e) => setRole(e.target.value as 'EDITOR' | 'VIEWER')} className={cn(field, 'w-28')}><option value="EDITOR">Can edit</option><option value="VIEWER">Can view</option></select>
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their email" className="input" />
+        <select value={role} onChange={(e) => setRole(e.target.value as 'EDITOR' | 'VIEWER')} className={cn('input', 'w-28')}><option value="EDITOR">Can edit</option><option value="VIEWER">Can view</option></select>
         <button type="submit" disabled={busy} className="btn-primary shrink-0">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}</button>
       </form>
       <div className="space-y-1">

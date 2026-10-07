@@ -8,7 +8,7 @@ import { ArrowLeft, Code2, Coffee, FileText, FolderOpen, KanbanSquare, Loader2, 
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
-import { Avatar } from '@/components/chat/MessageBubble';
+import { Avatar } from '@/components/ui/Avatar';
 import { Contributions } from '@/components/spaces/Contributions';
 
 // One space (Stage 4 · 3.1): a class or a study group, with its call, documents, task boards,
@@ -21,7 +21,6 @@ interface Space {
   boards: { id: string; title: string; updatedAt: string; tasks: number }[];
   code: { id: string; title: string; language: string; updatedAt: string }[];
 }
-const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const when = (d: string) => new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 export default function SpacePage({ params }: { params: Promise<{ kind: string; id: string }> }) {
@@ -42,7 +41,7 @@ export default function SpacePage({ params }: { params: Promise<{ kind: string; 
     } catch (e) { toast.error((e as Error).message); setBusy(null); }
   };
   const section = (title: string, Icon: typeof FileText, items: { href: string; title: string; meta: string }[], add?: () => void, addBusy?: boolean, empty?: string) => (
-    <section className={`${card} p-4 space-y-2`}>
+    <section className={`panel p-4 space-y-2`}>
       <div className="flex items-center gap-2">
         <Icon className="w-4 h-4 text-indigo-500" />
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white flex-1">{title}</h2>

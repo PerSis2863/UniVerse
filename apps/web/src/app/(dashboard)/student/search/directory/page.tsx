@@ -1,19 +1,24 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
-import { Search, Mail, Filter, Building2, MapPin, X, User } from 'lucide-react';
+import { Search, Mail, Filter, Building2, X, User, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import useSWR from 'swr';
+import { LoadError } from '@/components/ui/LoadError';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { api } from '@/lib/api';
+
+interface DirectoryStudent { id: string; name: string; avatar?: string | null; studentProfile?: { department?: string | null; year?: number | null } | null }
 
 export default function StudentDirectory() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeModal, setActiveModal] = useState<'filter' | null>(null);
 
-  const { data: directoryData } = useSWR('/users/directory', async (url) => {
+  const { data: directoryData, error, mutate } = useSWR<DirectoryStudent[]>('/users/directory', async (url: string) => {
     const res = await api.get(url);
     return res.data;
   });
@@ -24,7 +29,7 @@ export default function StudentDirectory() {
   const [filterYear, setFilterYear] = useState('');
   const [filterLocation, setFilterLocation] = useState('');
 
-  const filteredStudents = students.filter((s: any) => {
+  const filteredStudents = students.filter((s) => {
     const sDept = s.studentProfile?.department || '';
     const sYear = s.studentProfile?.year || '';
 
@@ -58,7 +63,7 @@ export default function StudentDirectory() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredStudents.map((student: any) => (
+            {filteredStudents.map((student) => (
               <div key={student.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors group">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-xl font-bold text-indigo-400 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
@@ -93,9 +98,10 @@ export default function StudentDirectory() {
             ))}
           </div>
           
-          {filteredStudents.length === 0 && (
-            <div className="p-12 text-center bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-              <div className="text-zinc-600 dark:text-zinc-400 text-lg">No students found matching your search.</div>
+          {error && !directoryData ? <LoadError onRetry={() => mutate()} message="Couldn’t load the student directory." /> : !directoryData && <ContentSkeleton variant="grid" />}
+          {directoryData && filteredStudents.length === 0 && (
+            <div className="panel">
+              <EmptyState icon={Users} title="No students found" hint="Try another name, or clear the year filter." />
             </div>
           )}
 

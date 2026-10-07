@@ -12,7 +12,9 @@
 
 /** tab: between pages of one tab bar (Overview ↔ Timetable, Chats ↔ Calls): the title and tabs stay
  *  still, the highlight glides, and only the content under them changes. */
-export type PageMotion = 'push' | 'pop' | 'fade' | 'tab';
+export type PageMotion = 'push' | 'pop' | 'fade' | 'tab' | 'shared';
+// shared: list → detail with a title that glides into place (src/lib/shared-element.ts): the page
+// only fades, so the gliding title lands where the page will stay.
 
 let nextMotion: PageMotion = 'fade';
 
@@ -47,12 +49,14 @@ export const EASE_IOS = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
 /** The old page as a tap leaves it: dims and drifts the way the new one will come from. */
 export function leaveFrames(m: PageMotion): Keyframe[] {
+  if (m === 'shared') return [{ opacity: 1 }, { opacity: 0.4 }];
   const to = m === 'push' ? 'translate3d(-18px, 0, 0)' : m === 'pop' ? 'translate3d(18px, 0, 0)' : m === 'tab' ? 'translate3d(0, 4px, 0)' : 'translate3d(0, 6px, 0) scale(0.996)';
   return [{ opacity: 1, transform: 'none' }, { opacity: m === 'tab' ? 0.35 : 0.4, transform: to }];
 }
 
 /** The new page coming in. */
 export function enterFrames(m: PageMotion): Keyframe[] {
+  if (m === 'shared') return [{ opacity: 0 }, { opacity: 1 }];
   const from = m === 'push' ? 'translate3d(36px, 0, 0)' : m === 'pop' ? 'translate3d(-36px, 0, 0)' : m === 'tab' ? 'translate3d(0, 8px, 0)' : 'translate3d(0, 10px, 0) scale(0.996)';
   return [{ opacity: 0, transform: from }, { opacity: 1, transform: 'none' }];
 }

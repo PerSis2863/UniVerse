@@ -1,4 +1,5 @@
 'use client';
+import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { format } from 'date-fns';
@@ -18,7 +19,6 @@ interface Resource {
 }
 
 const CATEGORIES = ['Computer Science', 'Business', 'Finance', 'General'];
-const field = 'w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500';
 const card = 'rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50';
 
 export default function AdminKnowledgeHubPage() {
@@ -51,12 +51,14 @@ export default function AdminKnowledgeHubPage() {
   }, [resources]);
 
   const togglePublic = async (r: Resource) => {
+    // Flips straight away; flips back if saving fails.
+    void mutate((cur) => cur?.map((x) => (x.id === r.id ? { ...x, isPublic: !r.isPublic } : x)), { revalidate: false });
     try {
       await api.patch(`/knowledge-hub/${r.id}`, { isPublic: !r.isPublic });
-      mutate((cur) => cur?.map((x) => (x.id === r.id ? { ...x, isPublic: !r.isPublic } : x)), { revalidate: false });
       toast.success(r.isPublic ? 'Made private' : 'Made public');
     } catch {
       toast.error('Could not change visibility');
+      void mutate();
     }
   };
 
@@ -123,7 +125,7 @@ export default function AdminKnowledgeHubPage() {
                 <span className="text-xs text-zinc-500">{shown.length} item{shown.length === 1 ? '' : 's'}</span>
               </div>
               {error ? <p className="p-10 text-center text-sm text-rose-500">Could not load resources.</p>
-                : isLoading ? <div className="p-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
+                : isLoading ? <ContentSkeleton variant="list" className="p-4" />
                 : resources.length === 0 ? <p className="p-10 text-center text-sm text-zinc-500">No one has added a resource yet.</p>
                 : shown.length === 0 ? <p className="p-10 text-center text-sm text-zinc-500">No resources match your search.</p>
                 : (
@@ -238,13 +240,13 @@ function AddResourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: 
           <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Add resource</h2>
           <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"><X className="w-5 h-5" /></button>
         </div>
-        <select className={field} value={form.kind} onChange={(e) => { setForm({ ...form, kind: e.target.value }); setFile(null); }}>
+        <select className="input" value={form.kind} onChange={(e) => { setForm({ ...form, kind: e.target.value }); setFile(null); }}>
           <option value="Link">Web link</option>
           <option value="File">File upload</option>
         </select>
-        <input className={field} placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+        <input className="input" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         {form.kind === 'Link' ? (
-          <input className={field} type="url" placeholder="https://…" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
+          <input className="input" type="url" placeholder="https://…" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
         ) : (
           <button type="button" onClick={() => fileRef.current?.click()} className="w-full border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-indigo-500 rounded-xl p-5 flex flex-col items-center gap-1 text-sm text-zinc-600 dark:text-zinc-300">
             <input ref={fileRef} type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
@@ -252,8 +254,8 @@ function AddResourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: 
             {file ? file.name : 'Choose a file (up to 25 MB)'}
           </button>
         )}
-        <textarea className={`${field} min-h-[70px]`} placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <select className={field} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+        <textarea className={`input min-h-[70px]`} placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
           {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
         </select>
         <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
