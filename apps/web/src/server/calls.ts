@@ -352,6 +352,16 @@ export async function callPeople(callId: string): Promise<{ ids: string[]; creat
   return { ids: Array.isArray(out?.ids) ? out.ids : [], creator: out?.creator ?? null };
 }
 
+/** Watch together (4.8): the videos a call can watch from its course (class calls: the course's videos,
+ *  recordings of classes included). YouTube links work in any call. */
+export async function callVideos(callId: string, user: SessionUser) {
+  await callAccess(callId, user);
+  const base = breakoutOf(callId)?.parent ?? callId;
+  if (!base.startsWith('c_')) return { videos: [] };
+  const rows = await prisma.material.findMany({ where: { courseId: base.slice(2), type: 'VIDEO' }, orderBy: { createdAt: 'desc' }, take: 40, select: { id: true, title: true, fileUrl: true, createdAt: true } });
+  return { videos: rows.map((v) => ({ id: v.id, title: v.title, url: v.fileUrl, createdAt: v.createdAt })) };
+}
+
 /** Who is in a room call right now (names), for "3 in the room" on voice channels. */
 export async function roomPeers(callId: string, user: SessionUser) {
   await callAccess(callId, user);

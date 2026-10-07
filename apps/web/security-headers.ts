@@ -19,12 +19,14 @@ const FILES_ORIGIN = (() => {
 //   - Google scripts only for sign-in (apis.google.com) and phone sign-in's reCAPTCHA, by path.
 //     No Tag Manager: it would let anyone's container run here (Analytics was removed).
 //   - 'unsafe-eval' only in `next dev` (its hot reload evaluates code); never in production.
+// Frames: sign-in, maps and, for watching a video together in a call (Stage 4 · 4.8), YouTube's
+// privacy-enhanced player (driven by messages, so no YouTube script runs here; thumbnails from i.ytimg.com).
 const csp = `
     default-src 'self';
     script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"} https://static.cloudflareinsights.com https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;
     script-src-attr 'none';
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' blob: data: ${FILES_ORIGIN} https://images.unsplash.com https://ui-avatars.com https://lh3.googleusercontent.com https://*.googleusercontent.com;
+    img-src 'self' blob: data: ${FILES_ORIGIN} https://i.ytimg.com https://images.unsplash.com https://ui-avatars.com https://lh3.googleusercontent.com https://*.googleusercontent.com;
     font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
     connect-src 'self' ${FILES_ORIGIN} https://*.r2.cloudflarestorage.com https://cloudflareinsights.com ${process.env.NODE_ENV === 'production' ? '' : 'http://localhost:* ws://localhost:*'} https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com wss://generativelanguage.googleapis.com;
     media-src 'self' blob: ${FILES_ORIGIN};
@@ -33,7 +35,7 @@ const csp = `
     manifest-src 'self';
     base-uri 'self';
     form-action 'self';
-    frame-src 'self' https://universe-71e68.firebaseapp.com https://accounts.google.com https://appleid.apple.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.openstreetmap.org;
+    frame-src 'self' https://universe-71e68.firebaseapp.com https://accounts.google.com https://appleid.apple.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.openstreetmap.org https://www.youtube-nocookie.com;
     frame-ancestors 'none';
     upgrade-insecure-requests;
 `;

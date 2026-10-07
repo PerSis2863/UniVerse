@@ -457,6 +457,64 @@ if (process.env.TIMER) {
   B.ws.close(); H.ws.close();
 }
 
+// ── Watch together (Stage 4 · 4.8) ──
+{
+  const id = 'c_course9';
+  const last = (p, type) => [...p.msgs].reverse().find((m) => m.type === type);
+  const T = await joinRoom(id, teacher, true);
+  const S1 = await joinRoom(id, ana), S2 = await joinRoom(id, ben);
+  send(S1, { type: 'watch', op: 'start', src: { kind: 'youtube', id: 'dQw4w9WgXcQ' } });
+  await sleep(200);
+  check(!last(S2, 'watch'), 'watch: in a class call, students can’t start a video');
+  send(T, { type: 'watch', op: 'start', src: { kind: 'youtube', id: 'not an id!' } });
+  await sleep(150);
+  check(!last(S2, 'watch'), 'watch: something that isn’t a video is refused');
+  send(T, { type: 'watch', op: 'start', src: { kind: 'youtube', id: 'dQw4w9WgXcQ' } });
+  await sleep(200);
+  const w1 = last(S2, 'watch');
+  check(w1?.watch?.src?.id === 'dQw4w9WgXcQ' && w1.watch.playing && w1.watch.lock === true && w1.watch.at > w1.now, 'watch: the teacher starts a video for everyone (a moment from now, locked)');
+  send(S1, { type: 'watch', op: 'pause', t: 5 });
+  await sleep(150);
+  check(last(S2, 'watch').watch.playing === true, 'watch: while locked, students can’t pause it for everyone');
+  send(T, { type: 'watch', op: 'pause', t: 12.5 });
+  await sleep(150);
+  const w2 = last(S1, 'watch');
+  check(w2.watch.playing === false && w2.watch.pos === 12.5 && w2.by === 'Ms Teacher', 'watch: pause for everyone');
+  send(T, { type: 'watch', op: 'lock', on: false });
+  await sleep(100);
+  send(S1, { type: 'watch', op: 'seek', t: 30 });
+  await sleep(150);
+  check(last(S2, 'watch').watch.pos === 30, 'watch: unlocked, anyone moves it for everyone');
+  send(S2, { type: 'react', emoji: '👏' });
+  send(S1, { type: 'watch', op: 'note', text: 'Good point here' });
+  await sleep(200);
+  const marks = T.msgs.filter((m) => m.type === 'watch-mark').map((m) => m.mark);
+  check(marks.length === 2 && marks[0].emoji === '👏' && marks[0].t === 30 && marks[1].text === 'Good point here', 'watch: reactions and comments land on the timeline where the video is');
+  const late = await joinRoom(id, cai);
+  check(late.welcome?.watch?.pos === 30 && late.welcome.watch.marks.length === 2 && typeof late.welcome.now === 'number', 'watch: someone joining late gets the video where it is, with its timeline');
+  send(S1, { type: 'watch', op: 'stop' });
+  await sleep(150);
+  check(!!last(late, 'watch') === false && late.welcome.watch !== null, 'watch: only the hosts or whoever started it can stop it');
+  send(T, { type: 'watch', op: 'stop' });
+  await sleep(150);
+  check(last(late, 'watch')?.watch === null, 'watch: stopping ends it for everyone');
+  for (const p of [T, S1, S2, late]) await leave(p);
+  // A study group: anyone starts one, but not over someone else's.
+  const g = 'g_group9';
+  const GA = await joinRoom(g, ana), GB = await joinRoom(g, ben);
+  send(GA, { type: 'watch', op: 'start', src: { kind: 'file', url: '/api/files/abcdefghijklmnop1234', title: 'Lecture 3' } });
+  await sleep(150);
+  check(last(GB, 'watch')?.watch?.src?.kind === 'file' && last(GB, 'watch').watch.lock === false, 'watch: in a study group anyone starts one, unlocked');
+  check(last(GA, 'watch').watch.mine === true && last(GB, 'watch').watch.mine === false, 'watch: each app knows whose video it is');
+  send(GB, { type: 'watch', op: 'start', src: { kind: 'youtube', id: 'dQw4w9WgXcQ' } });
+  await sleep(150);
+  check(last(GA, 'watch').watch.src.kind === 'file', 'watch: but not over someone else’s video');
+  await leave(GA); await leave(GB);
+  const again = await joinRoom(g, cai);
+  check(again.welcome?.watch === null, 'watch: when the call empties, the video ends');
+  await leave(again);
+}
+
 // An ordinary call (no breakouts) still works as before.
 const X = await joinRoom('l_somecalllink123', { id: 'x1', name: 'Xi' });
 check(X.welcome?.bo === null && X.welcome?.room === null, 'ordinary calls: no breakout state');

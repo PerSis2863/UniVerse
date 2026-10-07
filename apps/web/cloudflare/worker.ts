@@ -828,6 +828,29 @@ const OFFICE_DEFAULT_MIN = 5;
 const OFFICE_PLACE_MS = 3 * 60_000;
 const isOffice = (id: string | null) => !!id && id.startsWith('o_');
 
+/**
+ * Watch together (Stage 4 · 4.8): one video at a time plays in step for everyone in the call. Each
+ * browser plays it itself (YouTube, or a video from this site's storage); the room keeps where it is
+ * (`pos` seconds at the room's time `at`, playing or not) and every message carries the room's clock,
+ * so all players follow the same time. Hosts, co-hosts and whoever started it control it, and so does
+ * everyone unless they lock it (class calls start locked); anyone can pause just for themselves in the
+ * app. Reactions and comments are kept on the video's timeline. Ends when the call empties.
+ */
+type WatchSrc = { kind: 'youtube'; id: string } | { kind: 'file'; url: string; title: string };
+interface WatchMark { id: string; t: number; emoji?: string; text?: string; name: string; uid: string }
+interface Watch { id: string; src: WatchSrc; playing: boolean; pos: number; at: number; by: string; byName: string; lock: boolean; marks: WatchMark[] }
+const WATCH_MARKS = 300, WATCH_NOTE_CHARS = 200, WATCH_MAX_S = 12 * 3600, WATCH_LEAD_MS = 3000;
+const watchSrc = (v: unknown): WatchSrc | null => {
+  const x = v as { kind?: unknown; id?: unknown; url?: unknown; title?: unknown } | null;
+  if (x?.kind === 'youtube' && typeof x.id === 'string' && /^[A-Za-z0-9_-]{11}$/.test(x.id)) return { kind: 'youtube', id: x.id };
+  if (x?.kind === 'file' && typeof x.url === 'string' && x.url.length <= 600 && (/^\/api\/files\/[A-Za-z0-9_-]{16,}/.test(x.url) || /^https:\/\/[^/]+\//.test(x.url))) {
+    return { kind: 'file', url: x.url, title: String(x.title ?? 'Video').slice(0, 120) };
+  }
+  return null;
+};
+/** Where the video is now, in seconds (negative while it's about to start). */
+const watchAt = (w: Watch, now = Date.now()) => w.pos + (w.playing ? (now - w.at) / 1000 : 0);
+
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -844,6 +867,8 @@ export class CallRoom extends DurableObject<Env> {
   /** Recent reactions and chat messages per person (burst limits; forgotten when the room sleeps). */
   private reacted = new Map<string, number[]>();
   private chatted = new Map<string, number[]>();
+  /** Watch together (kept in storage too; undefined until read after waking). */
+  private watchMem: Watch | null | undefined = undefined;
   /** This room's call id, and when each person last asked the hosts for help (breakout rooms). */
   private self: string | null = null;
   private helped = new Map<string, number>();
@@ -911,6 +936,7 @@ export class CallRoom extends DurableObject<Env> {
       peers: current.filter(({ peer }) => this.canSee(me, peer, w)).map(({ peer }) => publicPeer(peer)),
       webinar: this.webinarView(w), qa: w.on ? this.qaView((await this.ctx.storage.get<QaItem[]>('qa')) ?? [], me) : [],
       hallTimer: (await this.ctx.storage.get<HallTimer>('hall-timer')) ?? null,
+      watch: this.watchView(await this.watchLoad(), me.userId, true), now: Date.now(),
       spotlight: (await this.ctx.storage.get<string>('spotlight')) ?? null,
       lobbyOn, lobby: mod ? this.waitingRoom().map(({ peer }) => ({ peerId: peer.peerId, name: peer.name })) : [],
       // Guests don't see what was said before they came in (2.11).
@@ -1019,6 +1045,83 @@ export class CallRoom extends DurableObject<Env> {
     } else return;
     await this.ctx.storage.put('qa', items);
     this.qaTell();
+  }
+
+  private async watchLoad() {
+    if (this.watchMem === undefined) this.watchMem = (await this.ctx.storage.get<Watch>('watch')) ?? null;
+    return this.watchMem;
+  }
+
+  private async watchSave(w: Watch | null) {
+    this.watchMem = w;
+    if (w) await this.ctx.storage.put('watch', w);
+    else await this.ctx.storage.delete('watch');
+  }
+
+  /** What someone's app is told (`mine`: they started it); the timeline marks only when asked (joining, a new video). */
+  private watchView(w: Watch | null, uid: string, marks = false) {
+    if (!w) return null;
+    const { marks: all, ...rest } = w;
+    return { ...rest, mine: w.by === uid, ...(marks ? { marks: all } : {}) };
+  }
+
+  private watchTell(w: Watch | null, by: string, op: string, marks = false) {
+    const now = Date.now();
+    for (const { ws, peer } of this.peers()) this.send(ws, { type: 'watch', watch: this.watchView(w, peer.userId, marks), now, by, op });
+  }
+
+  /** Adds a reaction or comment to the video's timeline, where the video is now. */
+  private async watchMark(me: CallPeer, add: { emoji?: string; text?: string }) {
+    const w = await this.watchLoad();
+    if (!w) return;
+    const mark: WatchMark = { id: crypto.randomUUID().slice(0, 8), t: Math.max(0, Math.round(watchAt(w) * 10) / 10), ...add, name: me.name, uid: me.userId };
+    w.marks = [...w.marks, mark].slice(-WATCH_MARKS);
+    await this.watchSave(w);
+    for (const { ws } of this.peers()) this.send(ws, { type: 'watch-mark', id: w.id, mark });
+  }
+
+  /** Watch together: start a video, play, pause, seek, lock the controls, stop, or comment. */
+  private async watchOp(me: CallPeer, op: unknown, msg: { src?: unknown; t?: unknown; on?: unknown; text?: unknown }) {
+    const now = Date.now();
+    const mod = me.host === true || me.cohost === true;
+    let w = await this.watchLoad();
+    if (op === 'start') {
+      const src = watchSrc(msg.src);
+      if (!src) return;
+      // Class calls and webinars: the hosts choose; elsewhere anyone, without replacing someone else's video.
+      const cls = (await this.selfId())?.startsWith('c_') ?? false;
+      if (!mod && (cls || (await this.webinar()).on || (w && w.by !== me.userId))) return;
+      w = { id: crypto.randomUUID().slice(0, 8), src, playing: true, pos: 0, at: now + WATCH_LEAD_MS, by: me.userId, byName: me.name, lock: cls, marks: [] };
+      await this.watchSave(w);
+      this.watchTell(w, me.name, 'start', true);
+      return;
+    }
+    if (!w) return;
+    const owner = mod || w.by === me.userId;
+    if (op === 'play' || op === 'pause' || op === 'seek') {
+      if (!owner && w.lock) return;
+      const t = typeof msg.t === 'number' && Number.isFinite(msg.t) ? msg.t : watchAt(w, now);
+      w.pos = Math.max(0, Math.min(WATCH_MAX_S, t));
+      w.at = now;
+      if (op !== 'seek') w.playing = op === 'play';
+    } else if (op === 'lock') {
+      if (!owner) return;
+      w.lock = msg.on === true;
+    } else if (op === 'stop') {
+      if (!owner) return;
+      await this.watchSave(null);
+      this.watchTell(null, me.name, 'stop');
+      return;
+    } else if (op === 'note') {
+      const text = typeof msg.text === 'string' ? msg.text.trim().slice(0, WATCH_NOTE_CHARS) : '';
+      const recent = (this.chatted.get(me.peerId) ?? []).filter((x) => now - x < CHAT_WINDOW_MS);
+      if (!text || recent.length >= CHAT_BURST) return;
+      this.chatted.set(me.peerId, [...recent, now]);
+      await this.watchMark(me, { text });
+      return;
+    } else return;
+    await this.watchSave(w);
+    this.watchTell(w, me.name, op);
   }
 
   /** Office hours: each person waiting hears their place in line and about how long it'll be. */
@@ -1506,7 +1609,7 @@ export class CallRoom extends DurableObject<Env> {
     const me = ws.deserializeAttachment() as CallPeer | null;
     // In the waiting room nothing goes to the call.
     if (!me || me.waiting) return;
-    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; anon?: unknown; x?: unknown; y?: unknown; t?: unknown; focus?: unknown; brk?: unknown; id?: unknown; op?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
+    let msg: { type?: string; to?: string; data?: unknown; muted?: unknown; camera?: unknown; sharing?: unknown; cc?: unknown; recording?: unknown; notes?: unknown; lowData?: unknown; text?: unknown; final?: unknown; lang?: unknown; device?: unknown; v?: unknown; anon?: unknown; x?: unknown; y?: unknown; t?: unknown; focus?: unknown; brk?: unknown; id?: unknown; op?: unknown; src?: unknown; sdp?: unknown; tracks?: unknown; mids?: unknown; action?: unknown; target?: unknown; on?: unknown; up?: unknown; emoji?: unknown; file?: unknown; n?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
     if (msg.type === 'signal' && typeof msg.to === 'string') {
       const target = this.peers().find(({ peer }) => peer.peerId === msg.to);
@@ -1556,6 +1659,10 @@ export class CallRoom extends DurableObject<Env> {
       }, POS_PUSH_MS);
       return;
     }
+    if (msg.type === 'watch') {
+      await this.watchOp(me, msg.op, msg as { src?: unknown; t?: unknown; on?: unknown; text?: unknown });
+      return;
+    }
     if (msg.type === 'hall-timer') {
       // Study Hall: anyone starts or stops the hall's focus timer (minutes of focus, then of break).
       const m = msg as { on?: unknown; focus?: unknown; brk?: unknown };
@@ -1595,6 +1702,8 @@ export class CallRoom extends DurableObject<Env> {
       if (recent.length >= REACTION_BURST) return;
       this.reacted.set(me.peerId, [...recent, now]);
       this.others(ws, { type: 'react', from: me.peerId, emoji: msg.emoji });
+      // Watching a video together: the reaction goes on its timeline too.
+      await this.watchMark(me, { emoji: msg.emoji });
       return;
     }
     if (msg.type === 'chat') {
@@ -1887,6 +1996,8 @@ export class CallRoom extends DurableObject<Env> {
     if (w.on) this.audienceTell();
     // The last one out ends the webinar (the next call starts as an ordinary one).
     if (!rest.length && w.on) await this.ctx.storage.delete(['webinar', 'qa']);
+    // ...and stops the video everyone was watching.
+    if (!rest.length && (await this.watchLoad())) await this.watchSave(null);
     await this.reportRoom(ws);
     // The last one out: the call's chat goes with the call.
     if (!rest.length) await this.clearChat();

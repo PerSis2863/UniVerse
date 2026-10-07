@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { authedJson } from '@/lib/authed-fetch';
@@ -25,6 +25,7 @@ import { BreakoutBar, BreakoutPanel, RoomPicker, roomId, type BreakoutView } fro
 import { PollCard, PollComposer, type PollView } from './CallPoll';
 import { PULSE_MS, PulseButtons, PulseMeter, type PulseCounts, type PulseValue } from './ClassPulse';
 import { OfficeBar, QueueStatus, turnAlert } from './OfficeHours';
+import { WatchPicker, WatchStage, type WatchState } from './WatchTogether';
 import { WebinarQA, type QaItem } from './WebinarQA';
 import { PipCall, type PipTile } from './PipCall';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
@@ -457,6 +458,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [line, setLine] = useState<{ pos: number; waiting: number; etaMin: number } | null>(null);
   const queued = useRef(false);
   const [officeLine, setOfficeLine] = useState<{ waiting: number; avgMin: number } | null>(null);
+  // Watch together (4.8): the video everyone watches, the call room's clock minus mine (ms), who did
+  // what last, and the sheet to start one.
+  const [watch, setWatch] = useState<WatchState | null>(null);
+  const skew = useRef(0);
+  const [watchStatus, setWatchStatus] = useState<string | null>(null);
+  const [watchPick, setWatchPick] = useState(false);
+  const echoTip = useRef(false);
   // Breakout rooms (BreakoutPanel): the room I'm in (the call itself, or one of its rooms: my camera,
   // microphone and screen carry on when I move), the plan, the host's panel and the room picker.
   const [room, setRoom] = useState(callId);
@@ -914,6 +922,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setPickOpen(false);
     setPoll(null);
     pollId.current = null;
+    setWatch(null);
     setPhase('starting');
     setRoom(target);
   }, [setR, setSpotlight]);
@@ -1162,6 +1171,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setBo(msg.bo ?? null);
           pollId.current = msg.poll?.id ?? null;
           setPoll(msg.poll ?? null);
+          if (typeof msg.now === 'number') skew.current = msg.now - Date.now();
+          setWatch(msg.watch ? { ...msg.watch, marks: msg.watch.marks ?? [] } : null);
           if (msg.pulse) gotPulse(msg.pulse);
           setWebinar(msg.webinar?.on ? { on: true, stage: msg.webinar.stage ?? [], audience: msg.webinar.audience ?? 0 } : null);
           setQa(Array.isArray(msg.qa) ? msg.qa : []);
@@ -1326,6 +1337,19 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setLobbyOn(msg.on === true);
         } else if (msg.type === 'denied') {
           finish('The host didn’t let you in');
+        } else if (msg.type === 'watch') {
+          if (typeof msg.now === 'number') skew.current = msg.now - Date.now();
+          const w = msg.watch as WatchState | null;
+          setWatch((prev) => (w ? { ...w, marks: w.marks ?? (prev?.id === w.id ? prev.marks : []) } : null));
+          const verb = ({ play: 'pressed play', pause: 'paused for everyone', seek: 'moved the video', lock: w?.lock ? 'locked the controls' : 'let everyone control it' } as Record<string, string>)[msg.op];
+          setWatchStatus(msg.op === 'start' ? null : verb ? `${msg.by} ${verb}` : null);
+          if (msg.op === 'start' && w) {
+            if (!w.mine) toast(`${msg.by} started a video for everyone`, { icon: '🎬' });
+            if (!echoTip.current) { echoTip.current = true; toast('Headphones keep the video from echoing back to everyone.', { icon: '🎧', duration: 6000 }); }
+          }
+          if (msg.op === 'stop' && msg.by !== myName) toast(`${msg.by} stopped the video`, { icon: '⏹️' });
+        } else if (msg.type === 'watch-mark') {
+          setWatch((w) => (w && w.id === msg.id && msg.mark ? { ...w, marks: [...w.marks, msg.mark].slice(-300) } : w));
         } else if (msg.type === 'queue') {
           queued.current = true;
           setLine({ pos: Number(msg.pos) || 1, waiting: Number(msg.waiting) || 1, etaMin: Number(msg.etaMin) || 1 });
@@ -1889,7 +1913,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setChatOpen(which === 'chat');
   };
   // The host's spotlight: that person large, everyone else in the strip (a shared screen comes first).
-  const lit: Remote | 'me' | null = presenter || !spotlight ? null : spotlight === myPeerId ? 'me' : list.find((r) => r.peer.peerId === spotlight) ?? null;
+  // A video watched together takes the stage (a shared screen comes first).
+  const watching = !!watch && !presenter;
+  const lit: Remote | 'me' | null = presenter || watching || !spotlight ? null : spotlight === myPeerId ? 'me' : list.find((r) => r.peer.peerId === spotlight) ?? null;
   const canModerate = meHost || meCohost;
   /** Class calls (and their breakout rooms) have the classroom pulse. */
   const isClassCall = callId.startsWith('c_');
@@ -1934,7 +1960,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   const canBg = backgroundsSupported();
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
@@ -1945,6 +1971,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
     ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : info?.type === 'class' ? 'Class notes' : 'Meeting notes', icon: NotebookPen, on: notes }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'poll' as const, label: 'Poll or quiz', icon: BarChart3, on: !!poll?.open }] : []),
+    ...(!watch && !audienceMe && (canModerate || (!isClassCall && !webinar)) ? [{ key: 'watch' as const, label: 'Watch together', icon: ListVideo }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'rooms' as const, label: 'Breakout rooms', icon: DoorOpen, on: !!bo }] : []),
     ...(canModerate && info?.sfu && !info.oneToOne && room === callId ? [{ key: 'webinar' as const, label: webinar ? 'End webinar mode' : 'Webinar mode', icon: Presentation, on: !!webinar }] : []),
     ...(canPip ? [{ key: 'pip' as const, label: documentPip() ? (pipWin ? 'Close floating window' : 'Pop out the call') : 'Picture in picture', icon: PictureInPicture2, on: !!pipWin }] : []),
@@ -1967,6 +1994,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'notes') toggleNotes();
     else if (key === 'rooms') openPanel('rooms');
     else if (key === 'poll') setPollCompose(true);
+    else if (key === 'watch') setWatchPick(true);
     else void pip();
   };
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
@@ -2106,7 +2134,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           </div>
         </motion.main>
       ) : (
-        presenter || lit ? (
+        presenter || watching || lit ? (
           <main className="flex-1 min-h-0 flex flex-col gap-3 p-3 sm:p-4">
             <motion.div layout transition={spring.smooth} className="relative flex-1 min-h-0 rounded-3xl overflow-hidden bg-black ring-1 ring-white/10">
               {presenter === 'me' ? (
@@ -2118,6 +2146,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 </div>
               ) : presenter ? (
                 <ScreenStage stream={presenter.screen} name={presenter.peer.name} />
+              ) : watching && watch ? (
+                <WatchStage watch={watch} skew={skew} mod={canModerate} status={watchStatus} held={held} onSend={send} />
               ) : lit === 'me' ? (
                 <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
               ) : lit ? (
@@ -2316,6 +2346,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           <PollCard key={poll.id} poll={poll} mod={canModerate} onVote={(n) => send({ type: 'vote', id: poll.id, n })} onSend={(m) => send({ type: 'control', ...m })} />
         )}
       </AnimatePresence>
+      <WatchPicker open={watchPick && phase === 'live'} callId={room} onClose={() => setWatchPick(false)} onStart={(src) => send({ type: 'watch', op: 'start', src })} />
       <PollComposer open={pollCompose && phase === 'live' && canModerate} onClose={() => setPollCompose(false)} onStart={(m) => send({ type: 'control', ...m })} questionsFor={info?.type === 'class' ? room : null} />
       <RoomPicker open={pickOpen && phase === 'live'} onClose={() => setPickOpen(false)} bo={bo} onPick={(n) => send({ type: 'bo-pick', n })} />
       {pipWin && createPortal(
