@@ -4,7 +4,11 @@ import { use, useCallback, useRef, useState, useSyncExternalStore } from 'react'
 import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { ArrowLeft, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, PenTool, Share2, Trash2, Wallpaper } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, ImageIcon, ImageOff, ImagePlus, Loader2, PenTool, Share2, Sparkles, Trash2, Wallpaper } from 'lucide-react';
+import { AnimatePresence, m as motion } from 'framer-motion';
+import { spring } from '@/lib/motion';
+import { Sheet } from '@/components/chat/ChatDialogs';
+import { drawMindMap, drawSummary, drawThemes } from '@/components/boards/board-ai-draw';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
@@ -52,6 +56,33 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [sharing, setSharing] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const controls = useRef<BoardControls | null>(null);
+  // AI on boards (3.5): one AI request per action; the result is drawn by this browser.
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
+  const [summary, setSummary] = useState<{ title: string; summary: string; nextSteps: string[] } | null>(null);
+  const runAi = async (action: 'themes' | 'mindmap' | 'summary') => {
+    setAiOpen(false);
+    const c = controls.current;
+    if (!c) return;
+    const texts = c.texts();
+    let topic: string | null = null;
+    if (action === 'mindmap') {
+      topic = (await promptDialog({ title: 'Mind map about…', placeholder: 'e.g. Causes of the French Revolution', confirmLabel: 'Make it', maxLength: 200 }))?.trim() ?? null;
+      if (!topic) return;
+    }
+    setAiBusy(action);
+    try {
+      const r = await authedJson<Record<string, unknown>>(`/api/boards/${id}/ai`, { method: 'POST', body: JSON.stringify({ action, texts, topic }) });
+      if (action === 'themes') {
+        const themes = r.themes as { name: string; notes: number[] }[];
+        c.addElements(drawThemes(themes, texts));
+        toast.success(`Grouped into ${themes.length} themes`);
+      } else if (action === 'mindmap') {
+        c.addElements(drawMindMap(r as unknown as { center: string; branches: { label: string; ideas: string[] }[] }));
+        toast.success('Mind map added');
+      } else setSummary(r as unknown as { title: string; summary: string; nextSteps: string[] });
+    } catch (e) { toast.error((e as Error).message); } finally { setAiBusy(null); }
+  };
   const fileInput = useRef<HTMLInputElement>(null);
   const photoMode = useRef<'background' | 'photo'>('photo');
   const [hasBg, setHasBg] = useState(false);
@@ -186,6 +217,21 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
             )}
           </>
         )}
+        <div className="relative">
+          <button onClick={() => setAiOpen((o) => !o)} disabled={!!aiBusy || status !== 'live'} className={btn} title="AI on this board" aria-expanded={aiOpen}>
+            {aiBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}<span className="hidden md:inline">AI</span>
+          </button>
+          <AnimatePresence>
+            {aiOpen && (
+              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
+                className="absolute right-0 top-11 z-40 w-64 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+                {canEdit && <button type="button" onClick={() => void runAi('themes')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Group notes into themes</span><span className="block text-xs text-zinc-500">Adds the sticky notes again, sorted into columns</span></button>}
+                {canEdit && <button type="button" onClick={() => void runAi('mindmap')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Mind map from a topic…</span><span className="block text-xs text-zinc-500">Draws a mind map beside your board</span></button>}
+                <button type="button" onClick={() => void runAi('summary')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Summarise this board</span><span className="block text-xs text-zinc-500">A summary and next steps</span></button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <button onClick={copyBoard} className={cn(btn, 'hidden sm:inline-flex')} title="Make your own copy"><Copy className="w-4 h-4" /><span className="hidden lg:inline">Copy</span></button>
         {myRole === 'OWNER' && <button onClick={remove} className={cn(btn, 'hidden sm:inline-flex text-rose-500 dark:text-rose-400')} title="Delete board"><Trash2 className="w-4 h-4" /></button>}
         <button onClick={() => setSharing(true)} disabled={!board} className="btn-primary btn-sm">
@@ -193,6 +239,19 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         </button>
       </header>
 
+      {summary && (
+        <Sheet title={summary.title || 'Board summary'} onClose={() => setSummary(null)}
+          footer={canEdit ? <button type="button" onClick={() => { controls.current?.addElements(drawSummary(summary)); setSummary(null); toast.success('Summary added to the board'); }} className="btn-primary w-full">Add to the board</button> : undefined}>
+          <p className="text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-line leading-relaxed">{summary.summary}</p>
+          {summary.nextSteps.length > 0 && (
+            <>
+              <p className="mt-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Next steps</p>
+              <ul className="mt-1.5 space-y-1 text-sm text-zinc-700 dark:text-zinc-200 list-disc pl-5">{summary.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </>
+          )}
+          <p className="mt-4 text-[11px] text-zinc-400 inline-flex items-center gap-1"><Sparkles className="w-3 h-3" />Made with AI from the text on the board</p>
+        </Sheet>
+      )}
       <main className="flex-1 min-h-0 relative">
         {board ? (
           <BoardCanvas

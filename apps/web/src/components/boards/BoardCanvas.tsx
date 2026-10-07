@@ -14,6 +14,7 @@ import {
   WelcomeScreen,
 } from '@excalidraw/excalidraw';
 import type { AppState, BinaryFileData, BinaryFiles, Collaborator, DataURL, ExcalidrawImperativeAPI, SocketId } from '@excalidraw/excalidraw/types';
+import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform';
 import type { ExcalidrawElement, FileId, OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
@@ -32,6 +33,10 @@ export interface BoardControls {
   setBackground(file: File): Promise<void>;
   removeBackground(): void;
   addPhoto(file: File): Promise<void>;
+  /** The text on the board: sticky notes, labels, text boxes (AI on boards, 3.5). */
+  texts(): string[];
+  /** Adds elements to the right of what's on the board, and shows them. */
+  addElements(build: (origin: { x: number; y: number }) => ExcalidrawElementSkeleton[]): void;
 }
 
 type RoomFile = { id: string; mimeType: string; url: string; created: number };
@@ -484,6 +489,19 @@ export default function BoardCanvas({
     onControls({
       setBackground: (file) => place(file, true),
       addPhoto: (file) => place(file, false),
+      texts: () => api.getSceneElements()
+        .filter((e) => e.type === 'text')
+        .map((e) => (e as unknown as { text: string }).text.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .slice(0, 150),
+      addElements: (build) => {
+        const current = api.getSceneElements().filter((e) => !isBackground(e));
+        const right = current.length ? Math.max(...current.map((e) => e.x + e.width)) + 160 : 0;
+        const top = current.length ? Math.min(...current.map((e) => e.y)) : 0;
+        const added = convertToExcalidrawElements(build({ x: right, y: top }), { regenerateIds: false });
+        api.updateScene({ elements: [...api.getSceneElementsIncludingDeleted(), ...added], captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+        api.scrollToContent(added, { fitToContent: true, animate: true });
+      },
       removeBackground: () => {
         api.updateScene({
           elements: api.getSceneElementsIncludingDeleted().map((e) => (isBackground(e) ? newElementWith(e, { isDeleted: true }) : e)),
