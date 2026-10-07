@@ -48,14 +48,14 @@ export function docMention(docId: string, store: MentionStore) {
       char: '@',
       items: async ({ query }) => (await load()).filter((p) => matches(p, query.toLowerCase())).slice(0, 6),
       render: () => {
-        let editor: Editor | null = null;
         const place = (r: DOMRect | null | undefined) => (r ? { left: r.left, top: r.top, bottom: r.bottom } : null);
         type Props = { editor: Editor; items: Person[]; clientRect?: (() => DOMRect | null) | null; command: (attrs: { id: string; label: string }) => void };
         const open = (props: Props) => {
-          editor = props.editor;
+          // The editor is kept here: inserting the mention ends the suggestion (onExit) before we notify.
+          const editor = props.editor;
           store.set({
             open: true, items: props.items, index: Math.min(store.get().index, Math.max(0, props.items.length - 1)), rect: place(props.clientRect?.()),
-            pick: (p) => { props.command({ id: p.id, label: p.name }); if (editor) notifyPicked(editor, p); store.set(CLOSED); },
+            pick: (p) => { props.command({ id: p.id, label: p.name }); notifyPicked(editor, p); store.set(CLOSED); },
           });
         };
         return {
@@ -70,7 +70,7 @@ export function docMention(docId: string, store: MentionStore) {
             if (event.key === 'Escape') { store.set(CLOSED); return true; }
             return false;
           },
-          onExit: () => { store.set(CLOSED); editor = null; },
+          onExit: () => store.set(CLOSED),
         };
       },
     },
