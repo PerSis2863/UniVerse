@@ -64,7 +64,7 @@ function BillingContent() {
         method: 'POST',
         body: JSON.stringify({ plan: id, interval, payBy }),
       });
-      window.location.href = url;
+      window.location.assign(url);
     } catch (e) {
       if ((e as Error & { body?: { manage?: boolean } }).body?.manage) return openPortal();
       toast.error((e as Error).message);
@@ -77,7 +77,7 @@ function BillingContent() {
     setPortalLoading(true);
     try {
       const { url } = await authedJson<{ url: string }>('/api/billing/portal', { method: 'POST' });
-      window.location.href = url;
+      window.location.assign(url);
     } catch (e) {
       toast.error((e as Error).message);
       setPortalLoading(false);

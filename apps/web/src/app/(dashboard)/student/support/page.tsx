@@ -3,11 +3,13 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, SUPPORT_TABS } from '@/components/layout/SectionTabs';
 import { LifeBuoy, FileText, MessageCircle, ChevronRight, Search, Send, Book, Wifi, Laptop, X, HelpCircle, Clock, CheckCircle2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 
 const FAQS = [
   { q: "How do I access my course materials?", a: "Navigate to the 'My Courses' tab, select your course, and click on the 'Materials' section." },
@@ -32,8 +34,10 @@ export default function StudentSupport() {
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // Ticket list state
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+  const { data: ticketsData, isLoading: isLoadingTickets, mutate: mutateTickets } = useSWR<Ticket[]>('/tickets', fetcher, {
+    onError: () => toast.error('Failed to load tickets.'),
+  });
+  const tickets = ticketsData ?? [];
 
   // Ticket form state
   const [ticketCategory, setTicketCategory] = useState('Technical Issue');
@@ -41,22 +45,7 @@ export default function StudentSupport() {
   const [ticketDescription, setTicketDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchTickets();
-  }, []);
 
-  const fetchTickets = async () => {
-    try {
-      setIsLoadingTickets(true);
-      const res = await api.get('/tickets');
-      setTickets(res.data);
-    } catch (error) {
-      console.error('Failed to fetch tickets:', error);
-      toast.error('Failed to load tickets.');
-    } finally {
-      setIsLoadingTickets(false);
-    }
-  };
 
   const handleSubmitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +67,7 @@ export default function StudentSupport() {
       setTicketDescription('');
       
       // Add to list
-      setTickets([res.data, ...tickets]);
+      void mutateTickets([res.data, ...tickets], { revalidate: false });
     } catch (error) {
       console.error('Failed to submit ticket:', error);
       toast.error('Failed to submit ticket. Please try again.');

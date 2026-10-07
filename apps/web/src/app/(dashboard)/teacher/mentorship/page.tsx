@@ -5,8 +5,10 @@ import { m as motion } from 'framer-motion';
 import { Users, Mail, CheckCircle2, Shield, HeartHandshake, Briefcase, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { api } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import Image from 'next/image';
 
 type Mentor = {
@@ -25,23 +27,10 @@ type Mentor = {
 };
 
 export default function MentorshipPage() {
-  const [mentors, setMentors] = useState<Mentor[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchMentors();
-  }, []);
-
-  const fetchMentors = async () => {
-    try {
-      const res = await api.get('/mentorship/mentors');
-      setMentors(res.data);
-    } catch (error) {
-      toast.error('Failed to load mentors');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: mentorsData, isLoading: loading } = useSWR<Mentor[]>('/mentorship/mentors', fetcher, {
+    onError: () => toast.error('Failed to load mentors'),
+  });
+  const mentors = mentorsData ?? [];
 
   const requestMatch = async (mentorId: string) => {
     try {

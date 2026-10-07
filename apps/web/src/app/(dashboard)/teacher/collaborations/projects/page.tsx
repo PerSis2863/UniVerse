@@ -1,7 +1,7 @@
 'use client';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, TEACHER_IMPACT_TABS } from '@/components/layout/SectionTabs';
 import {
@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/lib/api';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { TabPill } from '@/components/ui/Glide';
 
 const STATUSES = ['All', 'Active', 'Recruiting', 'Completed'];
@@ -35,13 +37,15 @@ type CollaborationProject = {
 };
 
 export default function NGOMentorshipPage() {
-  const [projects, setProjects] = useState<CollaborationProject[]>([]);
+  const { data: projectsData, isLoading: loading, mutate: fetchProjects } = useSWR<CollaborationProject[]>('/collaborations/projects', fetcher, {
+    onError: () => toast.error('Failed to load projects'),
+  });
+  const projects = projectsData ?? [];
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectedProject, setSelectedProject] = useState<CollaborationProject | null>(null);
   const [showProposeModal, setShowProposeModal] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   // Propose form state
   const [proposeTitle, setProposeTitle] = useState('');
@@ -49,20 +53,7 @@ export default function NGOMentorshipPage() {
   const [proposeDesc, setProposeDesc] = useState('');
   const [proposeTags, setProposeTags] = useState('');
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
 
-  const fetchProjects = async () => {
-    try {
-      const res = await api.get('/collaborations/projects');
-      setProjects(res.data);
-    } catch (error) {
-      toast.error('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filtered = useMemo(() => {
     return projects.filter(p => {
@@ -319,7 +310,7 @@ export default function NGOMentorshipPage() {
                   if (!(await confirmDialog({ title: `Remove "${selectedProject.title}"?`, message: 'Its members and milestones will be removed too.', confirmLabel: 'Remove', destructive: true }))) return;
                   try {
                     await api.delete(`/collaborations/projects/${selectedProject.id}`);
-                    setProjects((ps) => ps.filter((p) => p.id !== selectedProject.id));
+                    void fetchProjects(projects.filter((p) => p.id !== selectedProject.id), { revalidate: false });
                     setSelectedProject(null);
                     toast.success('Project removed');
                   } catch (e) {

@@ -3,7 +3,9 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { FileText, Download, UploadCloud, Eye, Plus, FileBadge2, X, FileSearch, Loader2 } from 'lucide-react';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 
@@ -22,25 +24,12 @@ export default function DocumentsPage() {
   const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   
-  const [documents, setDocuments] = useState<Doc[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: documentsData, isLoading, mutate: fetchDocuments } = useSWR<Doc[]>('/documents/my', fetcher, {
+    onError: () => toast.error('Failed to load documents'),
+  });
+  const documents = documentsData ?? [];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
-
-  const fetchDocuments = async () => {
-    try {
-      const res = await api.get('/documents/my');
-      setDocuments(res.data);
-    } catch (error) {
-      toast.error('Failed to load documents');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const filteredDocs = category === 'All Categories' ? documents : documents.filter(d => d.type === category.toUpperCase() || (category === 'Other' && d.type === 'OTHER'));
 
