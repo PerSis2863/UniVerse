@@ -30,6 +30,7 @@ export interface ChatMessage {
     broadcast?: boolean;
     ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`
     recording?: { id: string; durationSec: number }; // VIDEO / AUDIO: a call's recording (Stage 4 · 2.9)
+    huddle?: { callId: string }; // someone started a huddle, a drop-in voice room in this chat (Stage 4 · 1.11)
     meetingNotes?: { id: string; title: string; summary: string | null; decisions: string[]; actions: { text: string; who: string; due: string }[]; durationSec?: number }; // a call's meeting notes (Stage 4 · 2.8)
   } | null;
   createdAt: string;

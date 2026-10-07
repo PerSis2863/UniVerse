@@ -129,13 +129,14 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
       where: { id: callId.slice(2) },
       select: { isGroup: true, name: true, communityId: true, community: { select: { name: true } }, participants: { where: { userId: user.id }, select: { role: true } } },
     });
-    if (!convo?.isGroup || !convo.participants.length) throw new NotFoundException('This voice room isn’t in one of your groups.');
-    let host = convo.participants[0].role === 'ADMIN';
+    // Group voice rooms, and huddles in direct chats too (Stage 4 · 1.11).
+    if (!convo || !convo.participants.length) throw new NotFoundException('This voice room isn’t in one of your chats.');
+    let host = !convo.isGroup || convo.participants[0].role === 'ADMIN';
     if (convo.communityId) {
       const m = await prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: convo.communityId, userId: user.id } }, select: { role: true } });
       host = m?.role === 'OWNER' || m?.role === 'MOD';
     }
-    const title = convo.communityId ? `${convo.name ?? 'Voice room'} · ${convo.community?.name ?? ''}` : `${convo.name ?? 'Group'} · voice room`;
+    const title = convo.communityId ? `${convo.name ?? 'Voice room'} · ${convo.community?.name ?? ''}` : convo.isGroup ? `${convo.name ?? 'Group'} · huddle` : 'Huddle';
     return { kind: wantKind === 'video' ? 'video' : 'audio', type: 'group', title, conversationId: null, chatId: callId.slice(2), oneToOne: false, startedBy: null, ended: false, host };
   }
   if (callId.startsWith('l_')) {

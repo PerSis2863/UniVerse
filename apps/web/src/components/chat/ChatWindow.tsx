@@ -14,6 +14,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { Avatar, MessageBubble } from './MessageBubble';
 import { ImageViewer } from './ImageViewer';
 import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
+import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
@@ -43,6 +44,7 @@ function byDay<T extends { createdAt: string }>(list: T[]) {
 export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jumpTo }: { conversationId: string; onBack: () => void; onChanged: () => void; onOpenChat?: (id: string) => void; jumpTo?: string | null }) {
   const router = useRouter();
   const locked = useChatLocked(conversationId);
+  const startHuddle = useStartHuddle(conversationId);
   const key = `/api/chat/conversations/${conversationId}/messages`;
   // Live updates refresh the thread on every change, so it only polls without them.
   const refreshInterval = useLiveInterval(5000, 0);
@@ -136,6 +138,10 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   }, [older, data?.messages, pending]);
   const others = convo?.members.filter((m) => m.id !== me) ?? [];
   const other = !convo?.isGroup ? others[0] : undefined;
+  // A huddle that may be going (1.11): its latest "started a huddle" message is under 4 hours old.
+  const [openedAt] = useState(() => Date.now());
+  const lastHuddle = useMemo(() => [...messages].reverse().find((m) => m.metadata?.huddle && !m.deletedAt), [messages]);
+  const { data: huddlePeers } = useHuddlePeers(lastHuddle && huddleMayBeLive(lastHuddle.createdAt, openedAt) ? lastHuddle.metadata!.huddle!.callId : null);
   const canModerate = convo?.isGroup && convo.myRole === 'ADMIN';
   const canPin = !!convo && !convo.isOfficial && (!convo.isGroup || convo.myRole === 'ADMIN');
   const pins = data?.pinned ?? [];
@@ -560,8 +566,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {convo.isGroup && !convo.isOfficial && (
             <button onClick={() => void runCatchup()} aria-label="Catch up with AI" title="Catch up: what you missed (AI)" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/10 hidden sm:block"><Sparkles className="w-5 h-5" /></button>
           )}
-          {convo.isGroup && !channel && !convo.isOfficial && (
-            <button onClick={() => router.push(`/call/r_${conversationId}?kind=audio`)} aria-label="Join the voice room" title="Voice room: drop in, nobody is rung" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
+          {!channel && !convo.isOfficial && (
+            huddlePeers?.count ? (
+              <button onClick={() => void startHuddle()} aria-label={`Join the huddle (${huddlePeers.count} in it)`} title={huddlePeers.names.join(', ')} className="px-3 h-9 rounded-full bg-emerald-500 text-white text-xs font-bold inline-flex items-center gap-1.5 animate-pulse"><Headphones className="w-4 h-4" />Huddle · {huddlePeers.count}</button>
+            ) : (
+              <button onClick={() => void startHuddle()} aria-label="Start a huddle" title="Huddle: a drop-in voice room in this chat, nobody is rung" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
+            )
           )}
           {!convo.isOfficial && !channel && (
             <>

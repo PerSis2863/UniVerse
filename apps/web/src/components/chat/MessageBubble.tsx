@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { fallbackBars, useVoice, voice } from '@/lib/voice-player';
 import { VideoNoteBubble } from './VideoNote';
 import { FileBubble } from './FilePreview';
+import { HuddleCard } from './Huddle';
 import { haptic } from '@/lib/haptics';
 import { type ChatMessage, REACTIONS, formatBytes, plainText } from './chat-client';
 import { RichText } from './RichText';
@@ -230,6 +231,8 @@ export function MessageBubble(p: Props) {
     content = m.metadata?.moderated === 'removed'
       ? <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Removed by UniVerse</p>
       : <p className="px-3.5 py-2.5 italic opacity-70 flex items-center gap-1.5"><Ban className="w-3.5 h-3.5" /> This message was deleted</p>;
+  } else if (m.metadata?.huddle && m.type === 'TEXT') {
+    content = <HuddleCard callId={m.metadata.huddle.callId} by={m.sender?.name ?? 'Someone'} mine={mine} live={age < 4 * 3600_000} />;
   } else if (m.metadata?.viewOnce && (m.type === 'IMAGE' || m.type === 'VIDEO' || m.type === 'AUDIO')) {
     content = <ViewOnce m={m} mine={mine} />;
   } else if (m.type === 'IMAGE' && (m.metadata?.album?.length ?? 0) > 1) {
