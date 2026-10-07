@@ -21,7 +21,7 @@ export interface Person {
   /** In a webinar: on stage (may talk), or watching (Stage 4 · 2.10). Undefined when it isn't one. */ stage?: boolean;
 }
 
-export type ControlAction = 'mute' | 'ask-unmute' | 'stop-video' | 'mute-all' | 'spotlight' | 'cohost' | 'remove' | 'lower-hand' | 'lower-all' | 'admit' | 'admit-all' | 'deny' | 'lobby' | 'stage' | 'webinar' | 'qa-answer' | 'qa-hide';
+export type ControlAction = 'mute' | 'ask-unmute' | 'stop-video' | 'mute-all' | 'spotlight' | 'cohost' | 'remove' | 'lower-hand' | 'lower-all' | 'admit' | 'admit-all' | 'deny' | 'lobby' | 'stage' | 'webinar' | 'qa-answer' | 'qa-hide' | 'office-next';
 
 const talkClock = (ms: number) => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
 

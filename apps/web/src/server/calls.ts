@@ -23,6 +23,8 @@ import { publishChat } from './realtime';
 //                  a while; the call's room keeps who goes where (cloudflare/worker.ts CallRoom).
 //   hc_<course id> / hg_<group id>   a class's or study group's Study Hall (4.2): a 2D campus where
 //                  voice gets louder as you walk closer (src/components/hall/HallView.tsx).
+//   o_<teacher id> a teacher's office hours (4.7): their students queue in the waiting room while
+//                  they're open (src/server/office-hours.ts); "Next student" lets the next one in.
 // STUN finds a direct route on most networks; strict ones (some campus and office Wi-Fi) need a
 // TURN relay, used when TURN_KEY_ID and TURN_KEY_API_TOKEN (Cloudflare Realtime TURN) are set.
 // Bigger calls: with CALLS_APP_ID and CALLS_APP_SECRET (Cloudflare Realtime SFU, 1,000 GB a month
@@ -95,6 +97,19 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
     const info = await callAccess(room.parent, user, wantKind);
     if (info.oneToOne) throw new NotFoundException('Breakout rooms are for group calls.');
     return { ...info, chatId: null };
+  }
+  if (callId.startsWith('o_')) {
+    // Office hours: the teacher (host, any time) and, while they're open, their students.
+    const teacher = await prisma.user.findUnique({ where: { id: callId.slice(2) }, select: { id: true, name: true, role: true, officeHours: { select: { open: true, until: true, topic: true } } } });
+    if (!teacher || (teacher.role !== 'TEACHER' && teacher.role !== 'ADMIN')) throw new NotFoundException('These office hours don’t exist.');
+    const host = teacher.id === user.id;
+    const oh = teacher.officeHours;
+    if (!host) {
+      const theirs = user.role === 'ADMIN' || !!(await prisma.enrollment.findFirst({ where: { studentId: user.id, course: { teacherId: teacher.id } }, select: { id: true } }));
+      if (!theirs) throw new NotFoundException('These office hours are for this teacher’s students.');
+      if (!oh?.open || (oh.until && oh.until < new Date())) throw new HttpException(`${teacher.name}’s office hours are closed right now.`, 410);
+    }
+    return { kind, type: 'group', title: `Office hours · ${teacher.name}${oh?.topic ? ` · ${oh.topic}` : ''}`, conversationId: null, oneToOne: false, startedBy: null, ended: false, host };
   }
   if (/^h[cg]_/.test(callId)) {
     // A Study Hall: whoever may join the class's or group's call; voice only; chat in the hall itself.
@@ -323,6 +338,13 @@ export async function guestTicket(callId: string, token: unknown, name: unknown,
   };
 }
 
+/** Office hours (4.7): how many wait and are in a turn now, or closing the line (those waiting are told). */
+export async function officeRoom(teacherId: string, close = false): Promise<{ waiting: number; inTurn: number; avgMin: number }> {
+  const res = await roomFetch(`o_${teacherId}`, '/office', close ? { method: 'POST', body: '{}' } : undefined);
+  const out = (await res?.json().catch(() => null)) as { waiting?: number; inTurn?: number; avgMin?: number } | null;
+  return { waiting: out?.waiting ?? 0, inTurn: out?.inTurn ?? 0, avgMin: out?.avgMin ?? 5 };
+}
+
 /** Who is in the call now (account ids), and who made it if it's a call link: for meeting notes and recordings. */
 export async function callPeople(callId: string): Promise<{ ids: string[]; creator: string | null }> {
   const res = await roomFetch(callId, '/people');
@@ -333,13 +355,15 @@ export async function callPeople(callId: string): Promise<{ ids: string[]; creat
 /** Who is in a room call right now (names), for "3 in the room" on voice channels. */
 export async function roomPeers(callId: string, user: SessionUser) {
   await callAccess(callId, user);
+  // Office hours: who's with the teacher is between them.
+  if (callId.startsWith('o_') && callId.slice(2) !== user.id) return { count: 0, names: [] as string[] };
   const res = await roomFetch(callId, '/peers');
   if (!res?.ok) return { count: 0, names: [] as string[] };
   return (await res.json()) as { count: number; names: string[] };
 }
 
 async function chatCall(callId: string, user: SessionUser) {
-  if (/^(h[cg]|[gcrl])_/.test(callId) || breakoutOf(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
+  if (/^(h[cg]|[gcrlo])_/.test(callId) || breakoutOf(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
   await callAccess(callId, user);
   const msg = await prisma.message.findUnique({ where: { id: callId }, select: { metadata: true, conversationId: true } });
   return { meta: (msg?.metadata ?? {}) as CallMeta, conversationId: msg!.conversationId };
@@ -370,8 +394,8 @@ export async function endCall(callId: string, user: SessionUser, body: Record<st
   return { ok: true };
 }
 
-export type CallKind = 'chat' | 'class' | 'group' | 'room' | 'link' | 'hall';
-const kindOfCall = (id: string): CallKind => (/^h[cg]_/.test(id) ? 'hall' : id.startsWith('c_') ? 'class' : id.startsWith('g_') ? 'group' : id.startsWith('r_') ? 'room' : id.startsWith('l_') ? 'link' : 'chat');
+export type CallKind = 'chat' | 'class' | 'group' | 'room' | 'link' | 'hall' | 'office';
+const kindOfCall = (id: string): CallKind => (id.startsWith('o_') ? 'office' : /^h[cg]_/.test(id) ? 'hall' : id.startsWith('c_') ? 'class' : id.startsWith('g_') ? 'group' : id.startsWith('r_') ? 'room' : id.startsWith('l_') ? 'link' : 'chat');
 
 /** One call in my history (Calls, Stage 4 · 2.13). */
 export interface CallHistoryRow {
@@ -443,6 +467,7 @@ export async function recentCalls(user: SessionUser): Promise<CallHistoryRow[]> 
   const courseIds = [...new Set(ids.filter((i) => /^h?c_/.test(i)).map((i) => i.slice(i.indexOf('_') + 1)))];
   const groupIds = [...new Set(ids.filter((i) => /^h?g_/.test(i)).map((i) => i.slice(i.indexOf('_') + 1)))];
   const roomIds = ids.filter((i) => i.startsWith('r_')).map((i) => i.slice(2));
+  const officeIds = ids.filter((i) => i.startsWith('o_')).map((i) => i.slice(2));
   const [others, notes, recordings, sessions, courses, groups, rooms] = await Promise.all([
     Promise.all(chunks(ids, 40).map((c) => prisma.callStat.findMany({
       where: { createdAt: { gte: since }, userId: { not: user.id }, OR: c.flatMap((id) => [{ callId: id }, { callId: { startsWith: `${id}~b` } }]) },
@@ -455,7 +480,7 @@ export async function recentCalls(user: SessionUser): Promise<CallHistoryRow[]> 
     Promise.all(chunks(groupIds).map((c) => prisma.group.findMany({ where: { id: { in: c } }, select: { id: true, name: true } }))).then((x) => x.flat()),
     Promise.all(chunks(roomIds).map((c) => prisma.conversation.findMany({ where: { id: { in: c } }, select: { id: true, name: true, community: { select: { name: true } } } }))).then((x) => x.flat()),
   ]);
-  const names = new Map((await Promise.all(chunks([...new Set(others.map((o) => o.userId))]).map((c) => prisma.user.findMany({ where: { id: { in: c } }, select: { id: true, name: true } })))).flat().map((u) => [u.id, u.name]));
+  const names = new Map((await Promise.all(chunks([...new Set([...others.map((o) => o.userId), ...officeIds])]).map((c) => prisma.user.findMany({ where: { id: { in: c } }, select: { id: true, name: true } })))).flat().map((u) => [u.id, u.name]));
 
   const near = (t: number, m: { start: number; end: number }, before: number, after: number) => t >= m.start - before && t <= m.end + after;
   const extras = (m: { callId: string; start: number; end: number }) => {
@@ -496,7 +521,7 @@ export async function recentCalls(user: SessionUser): Promise<CallHistoryRow[]> 
     const group = groups.find((g) => `g_${g.id}` === space);
     const voice = rooms.find((x) => `r_${x.id}` === m.callId);
     const base = course ? `${course.code} · ${course.name}` : group ? group.name : voice ? `${voice.name ?? 'Voice room'}${voice.community ? ` · ${voice.community.name}` : ''}` : type === 'link' ? 'Call link' : 'Call';
-    const title = type === 'hall' ? `Study Hall · ${base}` : base;
+    const title = type === 'hall' ? `Study Hall · ${base}` : type === 'office' ? `Office hours · ${names.get(m.callId.slice(2)) ?? 'a teacher'}` : base;
     rows.push({ key: `${m.callId}@${m.start}`, callId: m.callId, type, at: new Date(m.start), kind: null, title, isGroup: true, durationSec: m.seconds, ...blank, ...extras(m) });
   }
   return rows.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 100);

@@ -408,6 +408,55 @@ if (process.env.TIMER) {
   check(b1.boardId === 'board-a' && b2.boardId === 'board-a', 'hall: a table keeps its first whiteboard');
 }
 
+// ── Office hours (Stage 4 · 4.7) ──
+{
+  const id = 'o_teacher1';
+  const enter = async (user) => {
+    const t = await room(id).fetch('https://call/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host: false, max: 50 }) });
+    const { ticket } = await t.json();
+    const p = { user, msgs: [] };
+    p.ws = new WebSocket(`${BASE.replace('http', 'ws')}/__do/${encodeURIComponent(id)}/call-live?call=${encodeURIComponent(id)}&ticket=${ticket}`);
+    p.ws.addEventListener('message', (e) => p.msgs.push(JSON.parse(e.data)));
+    await sleep(250);
+    return p;
+  };
+  const last = (p, type) => [...p.msgs].reverse().find((m) => m.type === type);
+  const A = await enter(ana), B = await enter(ben), C = await enter(cai);
+  check(A.msgs.some((m) => m.type === 'lobby') && !A.msgs.some((m) => m.type === 'welcome'), 'office hours: students wait in line, even with the waiting room off');
+  await sleep(200);
+  check(last(A, 'queue')?.pos === 1 && last(B, 'queue')?.pos === 2 && last(C, 'queue')?.pos === 3, 'office hours: everyone hears their place in line');
+  check(last(C, 'queue')?.etaMin === 10, 'office hours: and a guess of the wait (5 min a turn to start with)');
+  check(last(A, 'lobby')?.hostHere === false, 'office hours: before the teacher comes, those waiting are told they aren’t in yet');
+  const H = await joinRoom(id, teacher, true);
+  await sleep(200);
+  check(last(H, 'queue-size')?.waiting === 3, 'office hours: the teacher sees how many wait as they come in');
+  check(last(A, 'lobby')?.hostHere === true, 'office hours: and those waiting hear the teacher is in');
+  send(H, { type: 'control', action: 'office-next' });
+  await sleep(400);
+  check(A.msgs.some((m) => m.type === 'welcome'), 'office hours: Next lets the first in line in');
+  check(last(B, 'queue')?.pos === 1 && last(C, 'queue')?.pos === 2, 'office hours: the others move up');
+  // Cai's connection drops; Dev joins the line; Cai comes back a moment later and is still ahead of Dev.
+  C.ws.close();
+  await sleep(300);
+  const D = await enter({ id: 's4', name: 'Dev' });
+  await sleep(200);
+  check(last(D, 'queue')?.pos === 2, 'office hours: someone who drops out leaves the line for now');
+  const C2 = await enter(cai);
+  await sleep(200);
+  check(last(C2, 'queue')?.pos === 2 && last(D, 'queue')?.pos === 3, 'office hours: back within a few minutes, the same place in line');
+  send(H, { type: 'control', action: 'office-next' });
+  await sleep(400);
+  check(last(A, 'office-done')?.by === 'Ms Teacher', 'office hours: Next thanks the student whose turn it was (their app ends the call)');
+  check(B.msgs.some((m) => m.type === 'welcome') && last(C2, 'queue')?.pos === 1, 'office hours: and the next one comes in');
+  const state = await (await room(id).fetch('https://call/office')).json();
+  check(state.waiting === 2 && state.inTurn === 1, 'office hours: the app can see who waits and who is in a turn');
+  await room(id).fetch('https://call/office', { method: 'POST', body: '{}' });
+  await sleep(300);
+  const after = await (await room(id).fetch('https://call/office')).json();
+  check(!!last(C2, 'office-closed') && !!last(D, 'office-closed') && after.waiting === 0, 'office hours: closing tells whoever is still waiting, and the line empties');
+  B.ws.close(); H.ws.close();
+}
+
 // An ordinary call (no breakouts) still works as before.
 const X = await joinRoom('l_somecalllink123', { id: 'x1', name: 'Xi' });
 check(X.welcome?.bo === null && X.welcome?.room === null, 'ordinary calls: no breakout state');

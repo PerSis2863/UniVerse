@@ -51,3 +51,22 @@ export const ringtone = (waiting = false) => (waiting
   // Call waiting: two short soft beeps every few seconds, so the current call isn't drowned out.
   ? pattern({ freq: [440], on: 180, off: 2800 }, 0.03)
   : pattern({ freq: [660, 880], on: 900, off: 1400 }, 0.05));
+
+/** A soft two-note chime, once (office hours: it's your turn). */
+export function chime() {
+  let ctx: AudioContext;
+  try { ctx = new AudioContext(); } catch { return; }
+  const t = ctx.currentTime;
+  [[880, 0], [1320, 0.18]].forEach(([f, at]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t + at);
+    g.gain.exponentialRampToValueAtTime(0.07, t + at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.7);
+    o.connect(g).connect(ctx.destination);
+    o.start(t + at);
+    o.stop(t + at + 0.75);
+  });
+  void ctx.resume().catch(() => {});
+  setTimeout(() => void ctx.close().catch(() => {}), 1200);
+}

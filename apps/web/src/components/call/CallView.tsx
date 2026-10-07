@@ -24,6 +24,7 @@ import { BackgroundSheet } from './BackgroundSheet';
 import { BreakoutBar, BreakoutPanel, RoomPicker, roomId, type BreakoutView } from './BreakoutPanel';
 import { PollCard, PollComposer, type PollView } from './CallPoll';
 import { PULSE_MS, PulseButtons, PulseMeter, type PulseCounts, type PulseValue } from './ClassPulse';
+import { OfficeBar, QueueStatus, turnAlert } from './OfficeHours';
 import { WebinarQA, type QaItem } from './WebinarQA';
 import { PipCall, type PipTile } from './PipCall';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
@@ -452,6 +453,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [hostHere, setHostHere] = useState(false);
   const [lobby, setLobby] = useState<{ id: string; name: string }[]>([]);
   const [lobbyOn, setLobbyOn] = useState(false);
+  // Office hours (4.7): my place in the line while I wait; for the teacher, how long the line is.
+  const [line, setLine] = useState<{ pos: number; waiting: number; etaMin: number } | null>(null);
+  const queued = useRef(false);
+  const [officeLine, setOfficeLine] = useState<{ waiting: number; avgMin: number } | null>(null);
   // Breakout rooms (BreakoutPanel): the room I'm in (the call itself, or one of its rooms: my camera,
   // microphone and screen carry on when I move), the plan, the host's panel and the room picker.
   const [room, setRoom] = useState(callId);
@@ -1150,6 +1155,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         } else if (msg.type === 'welcome') {
           retry = 0;
           stat.current.joinAt ||= Date.now();
+          if (queued.current) { queued.current = false; setLine(null); turnAlert(t.title); }
           setLobby(Array.isArray(msg.lobby) ? msg.lobby.map((w: { peerId: string; name: string }) => ({ id: w.peerId, name: w.name })) : []);
           setLobbyOn(msg.lobbyOn === true);
           if (Array.isArray(msg.chat)) setRoomChat(msg.chat);
@@ -1312,13 +1318,26 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           // Someone in the waiting room (only hosts and co-hosts hear this).
           const w = { id: String(msg.peer?.peerId), name: String(msg.peer?.name ?? 'Someone') };
           setLobby((l) => (l.some((x) => x.id === w.id) ? l : [...l, w]));
-          toast(`${w.name} is waiting to join`, { icon: '🚪', duration: 15_000, action: { label: 'Let in', onClick: () => send({ type: 'control', action: 'admit', target: w.id }) } });
+          // Office hours have their own line (OfficeBar), so no knock for each student.
+          if (!callId.startsWith('o_')) toast(`${w.name} is waiting to join`, { icon: '🚪', duration: 15_000, action: { label: 'Let in', onClick: () => send({ type: 'control', action: 'admit', target: w.id }) } });
         } else if (msg.type === 'lobby-left') {
           setLobby((l) => l.filter((x) => x.id !== msg.peerId));
         } else if (msg.type === 'lobby-setting') {
           setLobbyOn(msg.on === true);
         } else if (msg.type === 'denied') {
           finish('The host didn’t let you in');
+        } else if (msg.type === 'queue') {
+          queued.current = true;
+          setLine({ pos: Number(msg.pos) || 1, waiting: Number(msg.waiting) || 1, etaMin: Number(msg.etaMin) || 1 });
+        } else if (msg.type === 'queue-size') {
+          setOfficeLine({ waiting: Number(msg.waiting) || 0, avgMin: Number(msg.avgMin) || 5 });
+        } else if (msg.type === 'office-done') {
+          // The call screen closes soon after, so the thanks stays as a toast too.
+          toast(`Thanks for coming! ${msg.by || 'Your teacher'} ended your turn.`, { icon: '👋' });
+          finish('Thanks for coming! Your turn has ended.');
+        } else if (msg.type === 'office-closed') {
+          toast('Office hours have closed for now.', { icon: '🚪' });
+          finish('Office hours have closed for now.');
         } else if (msg.type === 'hand') {
           const at = typeof msg.at === 'number' ? msg.at : null;
           if (msg.peerId === myId.current) setMyHand(at);
@@ -1353,6 +1372,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         if (current) ws.current = null;
         if (ev.code === 4001) finish('The host removed you from the call');
         if (ev.code === 4003) finish('The host didn’t let you in');
+        if (ev.code === 4005) finish('Thanks for coming! Your turn has ended.');
+        if (ev.code === 4006) finish('Office hours have closed for now.');
         if (current) {
           for (const w of rpcWait.current.values()) w.reject(new Error('Disconnected'));
           rpcWait.current.clear();
@@ -2027,7 +2048,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <div>
                 <p className="text-2xl font-bold">{info?.title ?? 'Call'}</p>
                 <p className="text-sm text-zinc-400 mt-1">
-                  {inRoom === null ? 'Checking who’s here…' : inRoom.length === 0 ? 'Nobody else is here yet.' : `${inRoom.slice(0, 3).join(', ')}${inRoom.length > 3 ? ` and ${inRoom.length - 3} more` : ''} ${inRoom.length === 1 ? 'is' : 'are'} in the call.`}
+                  {callId.startsWith('o_') && !info?.host ? 'You’ll wait in line, and the call starts by itself when it’s your turn.'
+                    : inRoom === null ? 'Checking who’s here…' : inRoom.length === 0 ? 'Nobody else is here yet.' : `${inRoom.slice(0, 3).join(', ')}${inRoom.length > 3 ? ` and ${inRoom.length - 3} more` : ''} ${inRoom.length === 1 ? 'is' : 'are'} in the call.`}
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -2051,7 +2073,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               })()}
               <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={() => { haptic('tap'); resumeJoin.current?.(); }}
                 className="w-full py-3.5 rounded-2xl font-bold text-base bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/30">
-                Join now
+                {callId.startsWith('o_') && !info?.host ? 'Join the line' : 'Join now'}
               </motion.button>
             </div>
           </div>
@@ -2065,6 +2087,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 animate-ping opacity-25" />
                 <span className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-fuchsia-500/30"><DoorOpen className="w-7 h-7" /></span>
               </div>
+              {callId.startsWith('o_') ? <QueueStatus queue={line} hostHere={hostHere} /> : (
               <div>
                 <p className="text-2xl font-bold">You’re in the waiting room</p>
                 <AnimatePresence mode="wait">
@@ -2073,6 +2096,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                   </motion.p>
                 </AnimatePresence>
               </div>
+              )}
               <p className="text-xs text-zinc-500">Nobody sees or hears you until you’re let in.</p>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                 <button type="button" onClick={() => void openSettings()} className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-sm font-medium inline-flex items-center gap-1.5"><SlidersHorizontal className="w-4 h-4" /> Devices & noise</button>
@@ -2141,6 +2165,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         )}
         <AnimatePresence>
           {phase === 'live' && isClassCall && canModerate && pulse && pulse.lost + pulse.got > 0 && <PulseMeter key="pulse" counts={pulse} />}
+          {phase === 'live' && callId.startsWith('o_') && canModerate && (
+            <OfficeBar key="office" line={officeLine} onNext={() => { haptic('tap'); control('office-next'); }}
+              students={Object.values(remotes).filter((x) => !x.peer.host && !x.peer.cohost).map((x) => ({ userId: x.peer.userId, name: x.peer.name }))} />
+          )}
           {phase === 'live' && webinar && (
             <motion.p key="webinar" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.smooth}
               className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-black/55 backdrop-blur-xl border border-white/10 px-3 py-1.5 text-xs font-semibold" role="status">

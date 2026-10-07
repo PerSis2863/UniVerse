@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Clapperboard, Coffee, GraduationCap, Headphones, Link2, Loader2, NotebookPen, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Users, Video } from 'lucide-react';
+import { Clapperboard, Coffee, DoorOpen, GraduationCap, Headphones, Link2, Loader2, NotebookPen, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Users, Video } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { ScheduledCalls } from '@/components/call/ScheduledCalls';
 import { Favorites } from '@/components/call/Favorites';
@@ -19,17 +19,18 @@ import { cn } from '@/lib/utils';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
 import { MeetingNotesSheet } from '@/components/call/MeetingNotes';
 import { CallRecordingSheet } from '@/components/call/CallRecordingSheet';
+import { OfficeHoursCard } from '@/components/call/OfficeHours';
 
 /** One call (src/server/calls.ts recentCalls, Stage 4 · 2.13). */
 interface CallRow {
-  key: string; callId: string; type: 'chat' | 'class' | 'group' | 'room' | 'link' | 'hall'; at: string; kind: 'audio' | 'video' | null;
+  key: string; callId: string; type: 'chat' | 'class' | 'group' | 'room' | 'link' | 'hall' | 'office'; at: string; kind: 'audio' | 'video' | null;
   title: string; avatar: string | null; isGroup: boolean;
   conversationId: string | null; outgoing: boolean; answered: boolean; declined: boolean; live: boolean; missed: boolean;
   durationSec: number | null; people: string[]; more: number;
   noteId: string | null; recordingId: string | null; study: { courseId: string; sessionId: string } | null;
 }
-const TYPE_LABEL: Record<CallRow['type'], string> = { chat: '', class: 'Class', group: 'Study group', room: 'Voice room', link: 'Call link', hall: 'Study Hall' };
-const TYPE_ICON = { class: GraduationCap, group: Users, room: Headphones, link: Link2, hall: Coffee } as const;
+const TYPE_LABEL: Record<CallRow['type'], string> = { chat: '', class: 'Class', group: 'Study group', room: 'Voice room', link: 'Call link', hall: 'Study Hall', office: 'Office hours' };
+const TYPE_ICON = { class: GraduationCap, group: Users, room: Headphones, link: Link2, hall: Coffee, office: DoorOpen } as const;
 const withWho = (names: string[], more: number) => (names.length ? `With ${names.join(', ')}${more ? ` and ${more} more` : ''}` : '');
 
 const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
@@ -78,6 +79,7 @@ export default function CallsPage() {
       <MessagesTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-5">
+          <OfficeHoursCard role={role} />
           <Favorites />
           <ScheduledCalls role={role} />
           <div className="flex gap-2" role="tablist">

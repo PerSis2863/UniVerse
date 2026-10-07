@@ -259,6 +259,9 @@ model User {
   callRecordings       CallRecording[]    @relation("CallRecordings")
   ratingsGiven         PeerRating[]       @relation("RatingsGiven")
   ratingsReceived      PeerRating[]       @relation("RatingsReceived")
+  officeHours          OfficeHours?       @relation("OfficeHours")
+  officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
+  officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
   presence             String            @default("auto")
   statusText           String?
   statusEmoji          String?
@@ -2611,6 +2614,37 @@ model VoiceSession {
 /// "Class notes" in a class call; everyone's captions are collected by the teacher's browser and
 /// sent here once, when notes stop. One AI request makes the pack. The transcript (text only,
 /// never audio) is deleted after 90 days by the daily job; the pack itself stays with the course.
+/// A teacher's office hours (Stage 4 · 4.7; src/server/office-hours.ts): open until when, about what.
+/// Students queue in the call room o_<teacherId>.
+model OfficeHours {
+  teacherId  String    @id
+  teacher    User      @relation("OfficeHours", fields: [teacherId], references: [id], onDelete: Cascade)
+  open       Boolean   @default(false)
+  until      DateTime?
+  topic      String?
+  /// When the teacher's students were last told office hours opened (at most every few hours).
+  notifiedAt DateTime?
+  updatedAt  DateTime  @default(now())
+
+  @@index([open, until])
+  @@map("office_hours")
+}
+
+/// A teacher's private note about a student's office hours visit.
+model OfficeNote {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation("OfficeNotesWritten", fields: [teacherId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation("OfficeNotesAbout", fields: [studentId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([teacherId, createdAt])
+  @@index([teacherId, studentId])
+  @@map("office_notes")
+}
+
 /// "Ask your semester" (Stage 4 · 4.5; src/server/semester.ts): a searchable passage from a class,
 /// study pack, material, document, graded work or meeting notes. The full-text index (memory_fts,
 /// FTS5) lives beside it in the migration; Prisma doesn't model it.

@@ -376,6 +376,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/meeting-notes\/([^/]+)$/, () => fail('These notes aren’t available in the sample.', 404)],
   // Smart replay search (Stage 4 · 4.6): the sample's classes have no transcript.
   [/^\/api\/class-sessions\/([^/]+)\/replay$/, () => ok({ results: [] })],
+  // Office hours (Stage 4 · 4.7): nobody in the sample keeps office hours right now.
+  [/^\/api\/office-hours$/, ({ db: d }) => ok(d.me.role === 'TEACHER' || d.me.role === 'ADMIN' ? { role: 'teacher', open: false, until: null, topic: null, callId: 'o_sample', waiting: 0, inTurn: 0, avgMin: 5, notes: [] } : { role: 'student', open: [] })],
+  [/^\/api\/office-hours\/notes$/, () => ok([])],
   [/^\/api\/billing\/subscription$/, () => ok({ organization: { id: 'sample-org', name: 'Sample University' }, plan: 'ENTERPRISE', subscribedPlan: 'ENTERPRISE', status: 'active', interval: 'year', currentPeriodEnd: at(200), cancelAtPeriodEnd: false, hasBillingAccount: false })],
   [/^\/api\/admin\/impact$/, ({ db: d }) => ok(d.adminImpact)],
   [/^\/documents$/, ({ db: d }) => ok(d.documents.map((doc) => ({ ...doc, issuedAt: doc.createdAt, user: { name: d.people.aarav.name } })))],

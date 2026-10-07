@@ -709,7 +709,7 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null] }
+interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null]; since?: number; turnAt?: number }
 interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean }
 /**
  * Guest links (Stage 4 · 2.11): a call link's creator invites people without an account. A guest
@@ -818,6 +818,16 @@ const WEBINAR_MAX = 300, QA_MAX = 100, QA_CHARS = 300, QA_PUSH_MS = 700, AUDIENC
 interface HallTimer { startedAt: number; focus: number; brk: number; by: string }
 const HALL_W = 1200, HALL_H = 800, HALL_TABLES = 12, POS_PUSH_MS = 120;
 
+/**
+ * Office hours (Stage 4 · 4.7): a teacher's room o_<teacher>. Every student waits in line (the
+ * waiting room, in the order they came), every visit; each hears their place and a guess of the
+ * wait (from how long turns have taken). "Next student" ends the current turn and lets the next in.
+ */
+const OFFICE_DEFAULT_MIN = 5;
+/** A student whose connection drops keeps their place in line if they're back within this long. */
+const OFFICE_PLACE_MS = 3 * 60_000;
+const isOffice = (id: string | null) => !!id && id.startsWith('o_');
+
 const SFU_API = 'https://rtc.live.cloudflare.com/v1/apps';
 /** Simulcast camera layers: a 720p, b 360p, c 180p (src/lib/sfu-client.ts). */
 const isLayer = (rid: unknown): rid is 'a' | 'b' | 'c' => rid === 'a' || rid === 'b' || rid === 'c';
@@ -913,6 +923,8 @@ export class CallRoom extends DurableObject<Env> {
     this.pulseTell();
     if (w.on) this.audienceTell();
     if (mod) this.tellWaiting();
+    // Office hours: the teacher sees the line as they come in; those waiting hear the new wait.
+    await this.queueTell();
     if (child) await this.reportRoom();
   }
 
@@ -1007,6 +1019,16 @@ export class CallRoom extends DurableObject<Env> {
     } else return;
     await this.ctx.storage.put('qa', items);
     this.qaTell();
+  }
+
+  /** Office hours: each person waiting hears their place in line and about how long it'll be. */
+  private async queueTell(except?: WebSocket) {
+    if (!isOffice(await this.selfId())) return;
+    const line = this.waitingRoom().sort((a, b) => (a.peer.since ?? 0) - (b.peer.since ?? 0));
+    const avg = (await this.ctx.storage.get<number>('office-avg')) ?? OFFICE_DEFAULT_MIN;
+    const busy = this.peers().some(({ ws, peer }) => ws !== except && !peer.host && !peer.cohost);
+    line.forEach(({ ws }, i) => this.send(ws, { type: 'queue', pos: i + 1, waiting: line.length, etaMin: Math.max(1, Math.round(avg * (i + (busy ? 1 : 0)))) }));
+    for (const { ws } of this.mods(except)) this.send(ws, { type: 'queue-size', waiting: line.length, avgMin: avg });
   }
 
   /** How many students are lost or follow right now, of how many (hosts and co-hosts don't count). */
@@ -1351,6 +1373,18 @@ export class CallRoom extends DurableObject<Env> {
       const audience = w.on && !who.host && !(await this.ctx.storage.get(`cohost:${who.userId}`)) && !w.stage.includes(who.userId);
       return Response.json({ ticket, audience });
     }
+    // From the app: office hours, how many wait and are in a turn; or closing them (everyone waiting is told).
+    if (url.pathname === '/office') {
+      if (request.method === 'POST') {
+        for (const { ws } of this.waitingRoom()) {
+          this.send(ws, { type: 'office-closed' });
+          ws.serializeAttachment(null);
+          try { ws.close(4006, 'Office hours closed'); } catch { /* closed */ }
+        }
+        return Response.json({ ok: true });
+      }
+      return Response.json({ waiting: this.waitingRoom().length, inTurn: this.peers().filter(({ peer }) => !peer.host && !peer.cohost).length, avgMin: (await this.ctx.storage.get<number>('office-avg')) ?? OFFICE_DEFAULT_MIN });
+    }
     // From the app (Study Hall, access checked there): the whiteboard of table n; the first one kept.
     if (url.pathname === '/hall-board') {
       const n = Number(url.searchParams.get('n'));
@@ -1436,17 +1470,28 @@ export class CallRoom extends DurableObject<Env> {
       // unless their host turned it off; a host can turn it on for any call. Hosts, co-hosts and
       // anyone let in during the last few hours go straight in.
       const lobbyOn = (await this.ctx.storage.get<boolean>('lobby')) ?? ((url.searchParams.get('call') ?? '').startsWith('l_') && !!(await this.ctx.storage.get('creator')));
-      const admitted = !me.guest && (me.host || me.cohost || ((await this.ctx.storage.get<{ until: number }>(`admitted:${who.userId}`))?.until ?? 0) > Date.now());
-      // Guests always wait for a host (2.11), whatever the waiting room setting.
-      const waits = (lobbyOn || me.guest === true) && !admitted;
+      const office = isOffice(url.searchParams.get('call'));
+      const admitted = !me.guest && (me.host || me.cohost || (!office && ((await this.ctx.storage.get<{ until: number }>(`admitted:${who.userId}`))?.until ?? 0) > Date.now()));
+      // Guests always wait for a host (2.11), and students in office hours queue every time (4.7).
+      const waits = (lobbyOn || me.guest === true || office) && !admitted;
       if (waits && this.waitingRoom().length >= MAX_WAITING) return new Response('The waiting room is full', { status: 429 });
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
       if (waits) {
         me.waiting = true;
+        me.since = Date.now();
+        if (office) {
+          // Back after a dropped connection (or in a second tab): the same place in line.
+          const place = await this.ctx.storage.get<{ since: number; leftAt: number }>(`queue-place:${who.userId}`);
+          const there = this.waitingRoom().find(({ peer }) => peer.userId === who.userId)?.peer.since;
+          if (there) me.since = there;
+          else if (place && Date.now() - place.leftAt < OFFICE_PLACE_MS) me.since = place.since;
+          if (place) await this.ctx.storage.delete(`queue-place:${who.userId}`);
+        }
         server.serializeAttachment(me);
         this.send(server, { type: 'lobby', hostHere: this.mods().length > 0 });
         for (const { ws } of this.mods()) this.send(ws, { type: 'knock', peer: { peerId: me.peerId, name: me.name, guest: me.guest === true } });
+        if (office) await this.queueTell();
         return new Response(null, { status: 101, webSocket: client });
       }
       server.serializeAttachment(me);
@@ -1661,13 +1706,15 @@ export class CallRoom extends DurableObject<Env> {
           try { w.ws.close(4003, 'Not let in'); } catch { /* already closed */ }
         } else {
           w.peer.waiting = false;
+          w.peer.turnAt = Date.now();
           w.ws.serializeAttachment(w.peer);
-          // Guests are let in each time (their id is new every time anyway).
-          if (!w.peer.guest) await this.ctx.storage.put(`admitted:${w.peer.userId}`, { until: Date.now() + REMOVED_MS });
+          // Guests are let in each time (their id is new every time anyway), and so is everyone in office hours.
+          if (!w.peer.guest && !isOffice(await this.selfId())) await this.ctx.storage.put(`admitted:${w.peer.userId}`, { until: Date.now() + REMOVED_MS });
           await this.join(w.ws, w.peer, true);
         }
         for (const m of this.mods()) this.send(m.ws, { type: 'lobby-left', peerId: w.peer.peerId, admitted: action !== 'deny', name: w.peer.name, by });
       }
+      await this.queueTell();
     } else if (action === 'lobby') {
       // Waiting room on or off; off lets everyone waiting in.
       await this.ctx.storage.put('lobby', on);
@@ -1695,6 +1742,21 @@ export class CallRoom extends DurableObject<Env> {
       if (on) await this.ctx.storage.put(`cohost:${them.peer.userId}`, true);
       else await this.ctx.storage.delete(`cohost:${them.peer.userId}`);
       for (const p of all) this.send(p.ws, { type: 'role', peerId: them.peer.peerId, cohost: on, by });
+    } else if (action === 'office-next') {
+      // Office hours: thanks to whoever is in their turn, then the next in line comes in.
+      const now = Date.now();
+      let avg = (await this.ctx.storage.get<number>('office-avg')) ?? OFFICE_DEFAULT_MIN;
+      for (const p of all.filter(({ peer }) => !peer.host && !peer.cohost)) {
+        if (p.peer.turnAt) avg = avg * 0.7 + Math.max(1, (now - p.peer.turnAt) / 60_000) * 0.3;
+        this.send(p.ws, { type: 'office-done', by });
+        p.ws.serializeAttachment(null);
+        try { p.ws.close(4005, 'Your turn has ended'); } catch { /* closed */ }
+        for (const o of all) if (o.ws !== p.ws) this.send(o.ws, { type: 'left', peerId: p.peer.peerId });
+      }
+      await this.ctx.storage.put('office-avg', Math.round(avg * 10) / 10);
+      const next = this.waitingRoom().sort((a, b) => (a.peer.since ?? 0) - (b.peer.since ?? 0))[0];
+      if (next) await this.control(ws, me, 'admit', next.peer.peerId, false);
+      else await this.queueTell();
     } else if (action === 'webinar') {
       // Webinar mode on or off (bigger calls only: the audience watches through the SFU).
       if (on && !(this.env.CALLS_APP_ID && this.env.CALLS_APP_SECRET)) { this.send(ws, { type: 'note', name: 'Webinar mode needs bigger calls (the SFU), which aren’t set up.' }); return; }
@@ -1809,14 +1871,19 @@ export class CallRoom extends DurableObject<Env> {
     try { ws.close(code === 1005 || code === 1006 ? 1000 : code); } catch { /* already closed */ }
     if (!me) return;
     if (me.waiting) {
-      // Gave up waiting.
+      // Gave up waiting (or lost the connection: office hours keep their place for a few minutes).
+      ws.serializeAttachment(null);
+      if (me.since && isOffice(await this.selfId()) && !this.waitingRoom().some(({ peer }) => peer.userId === me.userId)) {
+        await this.ctx.storage.put(`queue-place:${me.userId}`, { since: me.since, leftAt: Date.now() });
+      }
       for (const { ws: m } of this.mods(ws)) this.send(m, { type: 'lobby-left', peerId: me.peerId });
+      await this.queueTell();
       return;
     }
     const rest = this.peers().filter(({ ws: other }) => other !== ws);
     const w = await this.webinar();
     for (const { ws: other, peer } of rest) if (this.canSee(peer, me, w)) this.send(other, { type: 'left', peerId: me.peerId });
-    if (!me.host && !me.cohost) this.pulseTell(false, ws);
+    if (!me.host && !me.cohost) { this.pulseTell(false, ws); await this.queueTell(ws); }
     if (w.on) this.audienceTell();
     // The last one out ends the webinar (the next call starts as an ordinary one).
     if (!rest.length && w.on) await this.ctx.storage.delete(['webinar', 'qa']);
