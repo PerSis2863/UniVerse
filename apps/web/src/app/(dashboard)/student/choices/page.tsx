@@ -222,7 +222,7 @@ export default function StudentChoices() {
                 <form className="space-y-4" onSubmit={handleSubmitRequest}>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-400">Request Type</label>
-                    <select name="requestType" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none">
+                    <select aria-label="Request Type" name="requestType" className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none">
                       <option value="Change Primary Major">Change Primary Major</option>
                       <option value="Add a Second Major">Add a Second Major</option>
                       <option value="Add a Minor">Add a Minor</option>
@@ -232,7 +232,7 @@ export default function StudentChoices() {
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-400">New Program Selection</label>
-                    <select name="newProgram" required className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none">
+                    <select aria-label="New Program Selection" name="newProgram" required className="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none">
                       <option value="">Select a program...</option>
                       <option value="B.S. Business Administration">B.S. Business Administration</option>
                       <option value="B.S. Finance">B.S. Finance</option>

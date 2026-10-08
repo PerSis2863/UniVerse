@@ -105,19 +105,19 @@ function RequestCredentialModal({ onClose, onRequested, initial }: { onClose: ()
     }
   };
 
-  const inputCls = 'w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:border-emerald-500/50 focus:outline-none transition-colors';
+  const inputCls = 'dark w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:border-emerald-500/50 focus:outline-none transition-colors';
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        className="dark bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-white font-bold text-lg flex items-center gap-2"><Shield className="w-5 h-5 text-emerald-400" /> Request a Credential</h2>
+            <h2 className="text-zinc-900 dark:text-white font-bold text-lg flex items-center gap-2"><Shield className="w-5 h-5 text-emerald-400" /> Request a Credential</h2>
             <p className="text-zinc-500 text-xs mt-1">An administrator verifies your work, then the credential is cryptographically signed.</p>
           </div>
-          <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} aria-label="Close" className="dark w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
@@ -183,7 +183,7 @@ function CredentialCard({ cred }: { cred: Credential }) {
   const certInfo = { title: cred.title, holderName, organization: cred.organization, projectName: cred.projectName, issuedAt: cred.issuedAt, certificateCode: cred.certificateCode };
 
   return (
-    <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all">
+    <div className="bg-white/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
       <div className="p-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
@@ -195,17 +195,17 @@ function CredentialCard({ cred }: { cred: Credential }) {
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <h3 className="text-white font-bold text-sm">{cred.title}</h3>
+                  <h3 className="text-zinc-900 dark:text-white font-bold text-sm">{cred.title}</h3>
                   <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full border font-semibold ${status.bg} ${status.color}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
                     {status.label}
                   </span>
                 </div>
-                <p className="text-xs text-emerald-400 font-medium">{cred.organization}</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{cred.organization}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">{cred.projectName}</p>
               </div>
               <div className="flex items-start gap-3 flex-shrink-0">
-                <span className="text-xs text-zinc-600">
+                <span className="text-xs text-zinc-500">
                   {new Date(dateLabel).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
                 {/* Scannable straight from the card: opens the public verification page */}
@@ -217,16 +217,16 @@ function CredentialCard({ cred }: { cred: Credential }) {
               </div>
             </div>
             <div className="flex gap-4 mt-3 flex-wrap">
-              <div className="text-xs"><span className="text-zinc-500">Hours </span><span className="text-white font-bold">{cred.hoursCompleted}</span></div>
-              <div className="text-xs"><span className="text-zinc-500">Impacted </span><span className="text-white font-bold">{cred.peopleImpacted.toLocaleString()}</span></div>
+              <div className="text-xs"><span className="text-zinc-500">Hours </span><span className="text-zinc-900 dark:text-white font-bold">{cred.hoursCompleted}</span></div>
+              <div className="text-xs"><span className="text-zinc-500">Impacted </span><span className="text-zinc-900 dark:text-white font-bold">{cred.peopleImpacted.toLocaleString()}</span></div>
               {cred.verifiedByName && isVerified && (
-                <div className="text-xs"><span className="text-zinc-500">Verified by </span><span className="text-white font-semibold">{cred.verifiedByName}</span></div>
+                <div className="text-xs"><span className="text-zinc-500">Verified by </span><span className="text-zinc-900 dark:text-white font-semibold">{cred.verifiedByName}</span></div>
               )}
               {cred.blockchain?.status === 'CONFIRMED' && (
-                <div className="text-xs text-emerald-400 font-semibold">⛓ On-chain</div>
+                <div className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">⛓ On-chain</div>
               )}
               {cred.blockchainHash && (
-                <div className="text-xs font-mono text-zinc-600 truncate max-w-[140px]" title={cred.blockchainHash}>
+                <div className="text-xs font-mono text-zinc-500 truncate max-w-[140px]" title={cred.blockchainHash}>
                   <Hash className="w-3 h-3 inline mr-1 text-emerald-600" />{cred.blockchainHash.slice(0, 10)}…
                 </div>
               )}
@@ -246,28 +246,28 @@ function CredentialCard({ cred }: { cred: Credential }) {
         {isVerified && (
           <div className="flex flex-wrap gap-2 mt-4">
             <button onClick={shareLinkedIn}
-              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <LinkedinIcon className="w-3 h-3" /> LinkedIn
             </button>
             <button onClick={shareTwitter}
-              className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-sky-700 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <TwitterIcon className="w-3 h-3" /> Twitter / X
             </button>
             <CopyLinkButton url={cred.verifyUrl!}
-              className="text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all" />
+              className="dark text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all" />
             <CertificateQrButton url={cred.verifyUrl!} cert={certInfo} label="QR certificate"
               className="text-fuchsia-300 hover:text-fuchsia-200 bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/15 hover:from-indigo-500/25 hover:to-fuchsia-500/25 border border-fuchsia-500/25 px-3 py-1.5 rounded-lg transition-all" />
             <button onClick={() => downloadFile(`/api/passport/badge/${cred.id}`, 'open-badge.jwt').then(() => toast.success('Open Badge downloaded')).catch((e) => toast.error(e.message))}
               title="Signed Open Badges 3.0 credential for digital wallets and badge platforms"
-              className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-violet-700 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <Download className="w-3 h-3" /> Open Badge
             </button>
             <a href={`/verify/${cred.id}`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <ExternalLink className="w-3 h-3" /> Public Page
             </a>
             <button onClick={() => setExpanded(v => !v)}
-              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all ml-auto">
+              className="dark flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all ml-auto">
               {expanded ? <><ChevronUp className="w-3 h-3" /> Hide Proof</> : <><ChevronDown className="w-3 h-3" /> Show Proof</>}
             </button>
           </div>
@@ -277,26 +277,26 @@ function CredentialCard({ cred }: { cred: Credential }) {
       <AnimatePresence>
         {expanded && isVerified && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-zinc-800">
+            className="overflow-hidden border-t border-zinc-200 dark:border-zinc-800">
             <div className="p-5 bg-zinc-950/50">
               <div className="flex items-center gap-2 mb-3">
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Cryptographic Proof</span>
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Cryptographic Proof</span>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Certificate ID</span><span className="font-mono text-zinc-300">{cred.certificateCode}</span></div>
-                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">SHA-256 Hash</span><span className="font-mono text-emerald-400 text-[10px] break-all text-right">{cred.blockchainHash}</span></div>
-                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">Ed25519 Signature</span><span className="font-mono text-zinc-300 text-[10px] break-all text-right">{cred.signature}</span></div>
-                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Signing Key ID</span><span className="font-mono text-zinc-300">{cred.signingKeyId}</span></div>
-                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Format</span><span className="text-zinc-300">W3C Verifiable Credential</span></div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Certificate ID</span><span className="font-mono text-zinc-600 dark:text-zinc-300">{cred.certificateCode}</span></div>
+                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">SHA-256 Hash</span><span className="font-mono text-emerald-700 dark:text-emerald-400 text-[10px] break-all text-right">{cred.blockchainHash}</span></div>
+                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">Ed25519 Signature</span><span className="font-mono text-zinc-600 dark:text-zinc-300 text-[10px] break-all text-right">{cred.signature}</span></div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Signing Key ID</span><span className="font-mono text-zinc-600 dark:text-zinc-300">{cred.signingKeyId}</span></div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Format</span><span className="text-zinc-600 dark:text-zinc-300">W3C Verifiable Credential</span></div>
                 <div className="flex items-start justify-between text-xs gap-4">
                   <span className="text-zinc-500 flex-shrink-0">Blockchain</span>
                   {cred.blockchain?.status === 'CONFIRMED' && cred.blockchain.explorerUrl ? (
-                    <a href={safeHref(cred.blockchain.explorerUrl)} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 text-right inline-flex items-center gap-1">
+                    <a href={safeHref(cred.blockchain.explorerUrl)} target="_blank" rel="noopener noreferrer" className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 text-right inline-flex items-center gap-1">
                       Anchored on {cred.blockchain.network} <ExternalLink className="w-3 h-3" />
                     </a>
                   ) : cred.blockchain?.status === 'PENDING' ? (
-                    <span className="text-amber-400 text-right">Being recorded on {cred.blockchain.network}…</span>
+                    <span className="text-amber-800 dark:text-amber-400 text-right">Being recorded on {cred.blockchain.network}…</span>
                   ) : (
                     <span className="text-zinc-500 text-right">Not anchored yet</span>
                   )}
@@ -304,7 +304,7 @@ function CredentialCard({ cred }: { cred: Credential }) {
               </div>
               <div className="mt-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <p className="text-xs text-emerald-400">Signed by UniVerse after admin verification{cred.blockchain?.status === 'CONFIRMED' ? `, and its fingerprint is recorded on ${cred.blockchain.network}` : ''}. Any change to this credential breaks the signature, so anyone with the link can check it is genuine.</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-400">Signed by UniVerse after admin verification{cred.blockchain?.status === 'CONFIRMED' ? `, and its fingerprint is recorded on ${cred.blockchain.network}` : ''}. Any change to this credential breaks the signature, so anyone with the link can check it is genuine.</p>
               </div>
             </div>
           </motion.div>
@@ -367,7 +367,7 @@ export default function VerifiedCredentialsPage() {
             {stats.map(({ label, val, icon: Icon, box, ic }) => (
               <div key={label} className={`${box} border rounded-2xl p-4`}>
                 <Icon className={`w-5 h-5 ${ic} mb-2`} />
-                <div className="text-2xl font-black text-white">{val}</div>
+                <div className="text-2xl font-black text-zinc-900 dark:text-white">{val}</div>
                 <div className="text-xs text-zinc-500 mt-1">{label}</div>
               </div>
             ))}
@@ -379,7 +379,7 @@ export default function VerifiedCredentialsPage() {
                 <Sparkles className="w-5 h-5 text-indigo-400" />
               </div>
               <div>
-                <h3 className="text-white font-bold text-sm mb-1">How verified credentials work</h3>
+                <h3 className="text-zinc-900 dark:text-white font-bold text-sm mb-1">How verified credentials work</h3>
                 <p className="text-zinc-400 text-xs leading-relaxed">
                   1. You request a credential for work you completed. 2. An administrator checks it with the partner organization.
                   3. UniVerse signs it with its private key and gives it a public verification page. Employers can open the link and see instantly whether it is genuine, unaltered and not revoked.
@@ -389,11 +389,11 @@ export default function VerifiedCredentialsPage() {
           </div>
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <h2 className="text-white font-bold text-base">
-              Your Credentials <span className="text-zinc-600 font-normal text-sm">({credentials.length}{pendingCount > 0 ? `, ${pendingCount} pending` : ''})</span>
+            <h2 className="text-zinc-900 dark:text-white font-bold text-base">
+              Your Credentials <span className="text-zinc-500 font-normal text-sm">({credentials.length}{pendingCount > 0 ? `, ${pendingCount} pending` : ''})</span>
             </h2>
             <button onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
+              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
               <Plus className="w-4 h-4" /> Request Credential
             </button>
           </div>
@@ -404,14 +404,14 @@ export default function VerifiedCredentialsPage() {
             <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-2xl flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm text-red-300">{loadError}</p>
-                <button onClick={() => { setLoading(true); setLoadError(null); setAttempt((n) => n + 1); }} className="mt-2 text-xs text-red-300 underline">Try again</button>
+                <p className="text-sm text-red-700 dark:text-red-300">{loadError}</p>
+                <button onClick={() => { setLoading(true); setLoadError(null); setAttempt((n) => n + 1); }} className="mt-2 text-xs text-red-700 dark:text-red-300 underline">Try again</button>
               </div>
             </div>
           ) : credentials.length === 0 ? (
-            <div className="text-center p-10 bg-zinc-900/40 border border-dashed border-zinc-800 rounded-2xl">
-              <Shield className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-              <p className="text-sm text-white font-semibold">No credentials yet</p>
+            <div className="text-center p-10 bg-white/80 dark:bg-zinc-900/40 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+              <Shield className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
+              <p className="text-sm text-zinc-900 dark:text-white font-semibold">No credentials yet</p>
               <p className="text-xs text-zinc-500 mt-1">Finished a project with a partner organization? Request your first verified credential.</p>
             </div>
           ) : (

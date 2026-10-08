@@ -267,7 +267,7 @@ export function AIStudyAssistant() {
                   </p>
                 </div>
               </div>
-              <button 
+              <button aria-label="Minimize" 
                 onClick={() => setIsOpen(false)}
                 className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
               >
@@ -369,7 +369,7 @@ export function AIStudyAssistant() {
                   aria-label="Message the assistant"
                   className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full px-4 py-2.5 text-sm outline-none focus:border-indigo-500 text-zinc-900 dark:text-white placeholder:text-zinc-400"
                 />
-                <button 
+                <button aria-label="Send" 
                   type="submit"
                   disabled={!inputValue.trim() || isTyping}
                   className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-600 transition-colors"

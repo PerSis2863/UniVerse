@@ -124,7 +124,7 @@ export default function AdminCoursesPage() {
           <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">{editingId ? 'Edit Course' : 'Create New Course'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setIsModalOpen(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -141,7 +141,7 @@ export default function AdminCoursesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Primary Instructor</label>
-                  <select required value={formData.teacherId} onChange={e => setFormData({...formData, teacherId: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
+                  <select aria-label="Primary Instructor" required value={formData.teacherId} onChange={e => setFormData({...formData, teacherId: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors">
                     <option value="" disabled>Select an instructor</option>
                     {teachers.map((t) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
@@ -165,7 +165,7 @@ export default function AdminCoursesPage() {
               </div>
               
               <div className="pt-4 flex justify-end gap-3 border-t border-zinc-200 dark:border-zinc-800 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors">
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary">
@@ -277,7 +277,7 @@ export default function AdminCoursesPage() {
                   </button>
                   <button 
                     onClick={() => handleDelete(course.id)}
-                    className="p-2 text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors inline-flex items-center justify-center"
+                    className="p-2 text-red-700 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors inline-flex items-center justify-center"
                     title="Delete" aria-label={`Delete ${course.name}`}
                   >
                     <Trash2 className="w-4 h-4" />

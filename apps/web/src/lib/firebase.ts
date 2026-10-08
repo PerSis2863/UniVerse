@@ -22,4 +22,18 @@ const auth = getAuth(app);
 
 // No Google Analytics: the Privacy Policy promises no third-party analytics or tracking.
 
+type PopupResolver = { _initialize?: (a: typeof auth) => Promise<unknown> };
+
+/**
+ * Loads Google's sign-in helper (a script and a hidden frame) now. Firebase otherwise loads it
+ * after the tap on "Google"/"Apple" on desktop Chrome, Edge and Firefox, and only then opens the
+ * window: on a slow connection that's past the moment the browser allows a pop-up, so it's
+ * blocked. Call it when a page with those buttons opens. (Safari and phones already load it early.)
+ */
+export function warmUpPopupSignIn() {
+  // Firebase's own resolver (set by getAuth); _initialize is cached, so calling it again is free.
+  const resolver = (auth as unknown as { _popupRedirectResolver?: PopupResolver })._popupRedirectResolver;
+  resolver?._initialize?.(auth).catch(() => {});
+}
+
 export { app, auth };

@@ -71,7 +71,7 @@ export default function MySocialImpactPage() {
             
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 relative z-10">
               <div className="space-y-4 max-w-xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/30 text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                   {level?.current?.emoji} Level {level?.current?.level ?? 1} · {level?.current?.title ?? 'Changemaker Seed'}
                 </div>
@@ -81,7 +81,7 @@ export default function MySocialImpactPage() {
                     {(level?.xp ?? data?.totalPoints ?? 0).toLocaleString()} XP
                   </span>
                 </h1>
-                <p className="text-zinc-300 text-sm leading-relaxed">
+                <p className="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed">
                   {(data?.totalPoints || 0) > 0
                     ? 'Every NGO project, summit and venture you contribute to adds verified impact to your record.'
                     : 'Apply to an NGO project to start building your verified impact record.'}
@@ -133,7 +133,7 @@ export default function MySocialImpactPage() {
                   Earned for each accepted NGO project linked to a UN Sustainable Development Goal.
                 </p>
               </div>
-              <span className="text-xs text-indigo-400 font-medium bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+              <span className="text-xs text-indigo-700 dark:text-indigo-400 font-medium bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
                 {sdgBadges.length} Badges Unlocked
               </span>
             </div>
@@ -177,7 +177,7 @@ export default function MySocialImpactPage() {
               {impactActivities.map((act, i) => (
                 <div key={i} className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-700 dark:text-indigo-400 flex-shrink-0">
                       <FileCheck className="w-4 h-4" />
                     </div>
                     <div>
@@ -189,7 +189,7 @@ export default function MySocialImpactPage() {
                   </div>
 
                   <div className="flex items-center gap-4 text-xs">
-                    <span className="font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
                       {act.hours}
                     </span>
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />

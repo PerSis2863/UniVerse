@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Sparkles, Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
-import { auth } from '@/lib/firebase';
+import { auth, warmUpPopupSignIn } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { awaitingApproval } from '@/types';
@@ -68,6 +68,9 @@ export default function RegisterPage() {
   const [agreed, setAgreed] = useState(false); // Terms and Privacy Policy, required to create the account
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);
+
+  // Ready the Google/Apple window now, so a tap opens it straight away (not blocked).
+  useEffect(() => { warmUpPopupSignIn(); }, []);
 
   useEffect(() => {
     if (!new URLSearchParams(location.search).has('continue')) return;

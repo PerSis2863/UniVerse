@@ -171,7 +171,7 @@ function AccountingContent() {
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-2">Amount to Pay</label>
               <div className="relative flex gap-3">
-                <select
+                <select aria-label="Currency"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
                   className="bg-[#121830] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
@@ -261,23 +261,24 @@ function AccountingContent() {
 
         {/* Quick Actions */}
         <div>
-          <h2 className="font-bold text-lg text-white mb-4">Quick Actions</h2>
+          <h2 className="font-bold text-lg text-zinc-900 dark:text-white mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {quickActions.map((action, i) => (
-              <motion.div 
+              <motion.button
+                type="button"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: Math.min(i, 6) * 0.03 }}
                 key={i}
                 onClick={() => setActiveModal(action.id)}
-                className={`bg-[#121830] border border-white/[0.08] rounded-2xl p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition-all cursor-pointer group ${action.border}`}
+                className={`panel text-left p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition-all cursor-pointer group ${action.border}`}
               >
                 <div className={`w-12 h-12 rounded-xl ${action.bg} ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                   <action.icon className="w-6 h-6" />
                 </div>
-                <h3 className="font-bold text-white mb-1 text-sm">{action.title}</h3>
-                <p className="text-xs text-zinc-400">{action.subtitle}</p>
-              </motion.div>
+                <h3 className="font-bold text-zinc-900 dark:text-white mb-1 text-sm">{action.title}</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{action.subtitle}</p>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -289,7 +290,7 @@ function AccountingContent() {
               <FileText className="w-5 h-5 text-indigo-500" /> Transaction History
             </h2>
             <div className="flex gap-2">
-              <select className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50 font-medium [color-scheme:dark]">
+              <select aria-label="Show" className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50 font-medium [color-scheme:dark]">
                 <option>All Transactions</option>
                 <option>Payments</option>
                 <option>Charges</option>
@@ -397,7 +398,7 @@ function AccountingContent() {
                     <p className="text-sm text-zinc-400">{getModalConfig()?.subtitle}</p>
                   </div>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
+                <button aria-label="Close" onClick={() => setActiveModal(null)} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>

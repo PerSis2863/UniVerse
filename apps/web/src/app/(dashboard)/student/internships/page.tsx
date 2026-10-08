@@ -147,7 +147,7 @@ export default function StudentInternships() {
                           </div>
                         </div>
                       </div>
-                      <button onClick={() => toggleBookmark(job.id)} className={`transition-colors ${bookmarkedIds.includes(job.id) ? 'text-indigo-500' : 'text-zinc-400 hover:text-indigo-400'} shrink-0`}>
+                      <button aria-label={bookmarkedIds.includes(job.id) ? 'Remove from saved' : 'Save'} onClick={() => toggleBookmark(job.id)} className={`transition-colors ${bookmarkedIds.includes(job.id) ? 'text-indigo-500' : 'text-zinc-400 hover:text-indigo-400'} shrink-0`}>
                         <Bookmark className={`w-5 h-5 ${bookmarkedIds.includes(job.id) ? 'fill-current' : ''}`} />
                       </button>
                     </div>
@@ -210,7 +210,7 @@ export default function StudentInternships() {
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed right-0 top-0 h-[100dvh] w-full sm:w-80 glass-sidebar sheet-safe-top border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Filter className="w-5 h-5 text-indigo-500" /> Filters</h2>
-                <button onClick={() => setShowFilterDrawer(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
+                <button aria-label="Close" onClick={() => setShowFilterDrawer(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-6 space-y-6">
                 <div>
@@ -243,7 +243,7 @@ export default function StudentInternships() {
                   <h3 className="font-bold text-zinc-900 dark:text-white text-xl">{editingAppId ? 'Edit Application' : 'Apply Now'}</h3>
                   <p className="text-sm text-zinc-500">{activeApplication.title} at {activeApplication.company?.name}</p>
                 </div>
-                <button onClick={() => setActiveApplication(null)} className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
+                <button aria-label="Close" onClick={() => setActiveApplication(null)} className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <form onSubmit={handleApply} className="p-6 space-y-5">
                 <div>
@@ -305,7 +305,7 @@ export default function StudentInternships() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                   <Briefcase className="w-6 h-6 text-indigo-500" /> My Applications
                 </h2>
-                <button onClick={() => setShowMyApplications(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
+                <button aria-label="Close" onClick={() => setShowMyApplications(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
               </div>
               
               <div className="p-6 flex-1 overflow-y-auto space-y-4 bg-zinc-50 dark:bg-black/20">

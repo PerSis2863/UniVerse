@@ -122,6 +122,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   return (
     <div className="shell-in flex min-h-[100dvh]">
+      <a href="#main" className="skip-link">Skip to content</a>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
@@ -146,15 +147,15 @@ export function DashboardShell({ children }: DashboardShellProps) {
             <button type="button" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
               <Search className="w-[21px] h-[21px]" strokeWidth={2.1} />
             </button>
-            <button type="button" onClick={openNotifications} aria-label={unread ? `Notifications (${unread} unread)` : 'Notifications'} className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
+            <button type="button" onClick={openNotifications} aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'} className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
               <Bell className="w-[21px] h-[21px]" strokeWidth={2.1} />
-              {unread > 0 && <span className="absolute top-[9px] right-[8px] min-w-[16px] h-4 px-1 rounded-full bg-[var(--ios-red)] text-white text-[10px] font-bold leading-4 text-center">{unread > 9 ? '9+' : unread}</span>}
+              {unread > 0 && <span aria-hidden className="absolute top-[9px] right-[8px] min-w-[16px] h-4 px-1 rounded-full badge-count text-white text-[10px] font-bold leading-4 text-center">{unread > 9 ? '9+' : unread}</span>}
             </button>
           </div>
         </header>
 
         <SwipeBack enabled={canGoBack} pathname={pathname} onBack={back} />
-        <main className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip">
+        <main id="main" tabIndex={-1} className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip outline-none">
           <SampleModeBar />
           {/* Re-mount pages when switching between sample and real data so they reload from the right source */}
           <Fragment key={sampleMode ? 'sample' : 'real'}><PendingPage>{children}</PendingPage></Fragment>

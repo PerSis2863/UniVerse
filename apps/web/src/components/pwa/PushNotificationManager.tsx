@@ -124,7 +124,7 @@ export function PushNotificationManager() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">now</span>
-                <button
+                <button aria-label="Dismiss"
                   onClick={handleDismiss}
                   className="w-5 h-5 flex items-center justify-center rounded-full bg-zinc-200/50 dark:bg-zinc-700/50 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
                 >

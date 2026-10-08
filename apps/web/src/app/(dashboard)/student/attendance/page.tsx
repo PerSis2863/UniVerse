@@ -84,7 +84,7 @@ export default function AttendancePage() {
         <div className="card">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold text-zinc-900 dark:text-white">Recent Classes</h2>
-            <select 
+            <select aria-label="Course"
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
               className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50"
@@ -126,7 +126,7 @@ export default function AttendancePage() {
                     </td>
                     <td className="py-4 px-4 text-sm text-zinc-600 dark:text-zinc-400">
                       <div>{record.date}</div>
-                      <div className="text-xs opacity-70 mt-0.5">{record.time}</div>
+                      <div className="text-xs text-zinc-500 mt-0.5">{record.time}</div>
                     </td>
                     <td className="py-4 px-4">
                       {record.status === 'Present' && (

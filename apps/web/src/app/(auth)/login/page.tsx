@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
-import { auth } from '@/lib/firebase';
+import { auth, warmUpPopupSignIn } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { api } from '@/lib/api';
@@ -28,6 +28,9 @@ export default function LoginPage() {
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null); // password account whose email isn't confirmed yet
   // Admin or owner account that still has to type the emailed sign-in code: how it signed in.
   const [twoStep, setTwoStep] = useState<{ token: string; method?: 'google' | 'password' | 'phone' | 'apple' } | null>(null);
+
+  // Ready the Google/Apple window now, so a tap opens it straight away (not blocked).
+  useEffect(() => { warmUpPopupSignIn(); }, []);
 
   // Sent here by the app (?step=code) when an admin's session still needs the emailed code.
   useEffect(() => {

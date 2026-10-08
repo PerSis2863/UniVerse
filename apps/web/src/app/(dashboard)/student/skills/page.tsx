@@ -92,7 +92,7 @@ export default function StudentSkills() {
           {/* Header Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <div className="w-14 h-14 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-700 dark:text-indigo-400">
                 <Target className="w-6 h-6" />
               </div>
               <div>
@@ -101,7 +101,7 @@ export default function StudentSkills() {
               </div>
             </div>
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <div className="w-14 h-14 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
                 <Award className="w-6 h-6" />
               </div>
               <div>
@@ -126,7 +126,7 @@ export default function StudentSkills() {
             <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 md:p-8">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Technical Skills</h3>
-                <button onClick={() => setEditor({ name: '', category: 'Technical', level: 'BEGINNER' })} className="text-sm font-medium text-indigo-400 hover:text-indigo-300">+ Add technical skill</button>
+                <button onClick={() => setEditor({ name: '', category: 'Technical', level: 'BEGINNER' })} className="text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">+ Add technical skill</button>
               </div>
               
               <div className="space-y-6">
@@ -199,7 +199,7 @@ export default function StudentSkills() {
               <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center justify-between">
                   Achievements
-                  <Link href="/student/credentials" className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View all</Link>
+                  <Link href="/student/credentials" className="text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">View all</Link>
                 </h3>
                 <div className="grid gap-4">
                   {achievements.length === 0 && <p className="text-sm text-zinc-500">Verified credentials you earn appear here. <Link href="/student/credentials" className="text-indigo-500 font-semibold">Request one</Link></p>}
@@ -220,7 +220,7 @@ export default function StudentSkills() {
               <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center justify-between">
                   Social Impact Badges
-                  <Link href="/student/impact/dashboard" className="text-sm font-medium text-indigo-400 hover:text-indigo-300">View all</Link>
+                  <Link href="/student/impact/dashboard" className="text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">View all</Link>
                 </h3>
                 <div className="grid gap-4">
                   {impactBadges.length === 0 && <p className="text-sm text-zinc-500">Complete an NGO project linked to a UN SDG to earn your first badge.</p>}
@@ -249,10 +249,10 @@ export default function StudentSkills() {
             <input autoFocus disabled={!!editor.id} value={editor.name} onChange={(e) => setEditor({ ...editor, name: e.target.value })} maxLength={60} placeholder="e.g. Python, Public speaking"
               className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white outline-none disabled:opacity-60" />
             <div className="grid grid-cols-2 gap-3">
-              <select value={editor.category} onChange={(e) => setEditor({ ...editor, category: e.target.value })} className="px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white">
+              <select aria-label="Category" value={editor.category} onChange={(e) => setEditor({ ...editor, category: e.target.value })} className="px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white">
                 <option>Technical</option><option>Soft skill</option>
               </select>
-              <select value={editor.level} onChange={(e) => setEditor({ ...editor, level: e.target.value })} className="px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white">
+              <select aria-label="Level" value={editor.level} onChange={(e) => setEditor({ ...editor, level: e.target.value })} className="px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white">
                 {['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'].map((l) => <option key={l} value={l}>{l.charAt(0) + l.slice(1).toLowerCase()}</option>)}
               </select>
             </div>

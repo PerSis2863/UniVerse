@@ -271,7 +271,7 @@ function ShareSheet({ board, onClose, onChanged }: { board: Board; onClose: () =
     <Sheet title="Share board" onClose={onClose}>
       <form onSubmit={async (e) => { e.preventDefault(); setBusy(true); try { await call(`/api/tasks/${board.id}/members`, 'POST', { email, role }); setEmail(''); toast.success('Shared'); onChanged(); } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); } }} className="flex gap-2 mb-4">
         <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their email" className="input" />
-        <select value={role} onChange={(e) => setRole(e.target.value as 'EDITOR' | 'VIEWER')} className={cn('input', 'w-28')}><option value="EDITOR">Can edit</option><option value="VIEWER">Can view</option></select>
+        <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as 'EDITOR' | 'VIEWER')} className={cn('input', 'w-28')}><option value="EDITOR">Can edit</option><option value="VIEWER">Can view</option></select>
         <button type="submit" disabled={busy} className="btn-primary shrink-0">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}</button>
       </form>
       <div className="space-y-1">

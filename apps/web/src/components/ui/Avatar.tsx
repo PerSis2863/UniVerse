@@ -27,9 +27,8 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
         // eslint-disable-next-line @next/next/no-img-element -- user photos from R2 / Google, any size
         <img loading="lazy" decoding="async" src={src} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
       ) : (
-        <div className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold', avatarGradient(name))} style={{ fontSize: size * 0.36 }}>
-          {letters}
-        </div>
+        // Initials drawn by CSS: decoration, so they don't become a button's or link's name.
+        <div aria-hidden data-initials={letters} className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold before:content-[attr(data-initials)]', avatarGradient(name))} style={{ fontSize: size * 0.36 }} />
       )}
       {online && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121830]" />}
     </div>

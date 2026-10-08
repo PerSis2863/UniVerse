@@ -57,7 +57,7 @@ export default function StudentDirectory() {
                 className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all shadow-sm"
               />
             </div>
-            <button onClick={() => setActiveModal('filter')} className="flex items-center gap-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-300 px-6 py-3 rounded-xl transition-colors whitespace-nowrap font-medium">
+            <button onClick={() => setActiveModal('filter')} className="flex items-center gap-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-6 py-3 rounded-xl transition-colors whitespace-nowrap font-medium">
               <Filter className="w-4 h-4" /> Filters
             </button>
           </div>
@@ -75,7 +75,7 @@ export default function StudentDirectory() {
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-white truncate">{student.name}</h3>
-                    <div className="text-sm font-medium text-indigo-400 truncate">{student.studentProfile?.department || 'Undeclared'}</div>
+                    <div className="text-sm font-medium text-indigo-700 dark:text-indigo-400 truncate">{student.studentProfile?.department || 'Undeclared'}</div>
                   </div>
                 </div>
 
@@ -90,7 +90,7 @@ export default function StudentDirectory() {
                   <button onClick={() => router.push(`/student/inbox?chatWith=${encodeURIComponent(student.name)}`)} className="flex-1 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
                     <Mail className="w-4 h-4" /> Message
                   </button>
-                  <button onClick={() => router.push(`/student/profile/${encodeURIComponent(student.name)}`)} className="flex-1 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                  <button onClick={() => router.push(`/student/profile/${encodeURIComponent(student.name)}`)} className="flex-1 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
                     <User className="w-4 h-4" /> Profile
                   </button>
                 </div>
@@ -119,20 +119,20 @@ export default function StudentDirectory() {
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md bg-[#121830] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="dark relative w-full max-w-md bg-[#121830] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
-              <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-white/[0.02]">
-                <h2 className="text-xl font-bold text-white">Filter Directory</h2>
-                <button onClick={() => setActiveModal(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-zinc-400">
+              <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white/[0.02]">
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Filter Directory</h2>
+                <button aria-label="Close" onClick={() => setActiveModal(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-zinc-400">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="p-6 space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-zinc-400">Year</label>
-                  <select 
+                  <select aria-label="Year" 
                     value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 [color-scheme:dark]"
                   >
                     <option value="">Any Year</option>
                     <option value="1">1</option>

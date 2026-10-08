@@ -119,7 +119,7 @@ export default function AdminDashboard() {
             <div className="space-y-3">
               {recentPayments.map((p, i) => (
                 <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
-                  <div className="w-8 h-8 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 flex-shrink-0">
                     {p.name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
             ) : (
               pendingUsers.map((u) => (
                 <div key={u.id} className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] transition-colors">
-                  <div className="w-9 h-9 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-300 flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 flex-shrink-0">
                     {u.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
                   <div className="flex-1">

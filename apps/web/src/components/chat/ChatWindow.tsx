@@ -702,7 +702,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f && !convo.isOfficial) send({ file: f }).catch(() => {}); }}
           ref={scrollRef}
           onScroll={(e) => { const el = e.currentTarget; setShowJump(el.scrollHeight - el.scrollTop - el.clientHeight > 400); }}
-          className="relative flex-1 overflow-y-auto px-3 md:px-6 py-4 space-y-1.5"
+          role="log" aria-label="Messages" aria-relevant="additions" tabIndex={0}
+          className="relative flex-1 overflow-y-auto px-3 md:px-6 py-4 space-y-1.5 outline-none"
           style={WALLPAPERS.find((w) => w.id === wallpaper)?.style}
         >
           {dragOver && (

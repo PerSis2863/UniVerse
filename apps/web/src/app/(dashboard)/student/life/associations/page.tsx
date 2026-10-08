@@ -91,7 +91,7 @@ export default function AssociationsPage() {
           <div className="flex justify-end">
             <button 
               onClick={() => setIsRequestModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl font-medium bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/30 transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl font-medium bg-indigo-600/20 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/30 transition-colors flex items-center gap-2"
             >
               <ExternalLink className="w-4 h-4" />
               Request New Association
@@ -134,7 +134,7 @@ export default function AssociationsPage() {
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg`}>
                     ✨
                   </div>
-                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/[0.05] text-zinc-300 border border-white/[0.05]">
+                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/[0.05] text-zinc-600 dark:text-zinc-300 border border-white/[0.05]">
                     {club.category}
                   </span>
                 </div>
@@ -154,13 +154,13 @@ export default function AssociationsPage() {
                     <span>{club.members ?? club._count?.memberships ?? 0}</span>
                   </div>
                   {mine(club.id)?.association?.communityId ? (
-                    <button type="button" onClick={() => router.push('/student/inbox?space=communities')} className="text-sm font-semibold text-fuchsia-400 hover:text-fuchsia-300 inline-flex items-center gap-1"><MessagesSquare className="w-4 h-4" /> Club space</button>
+                    <button type="button" onClick={() => router.push('/student/inbox?space=communities')} className="text-sm font-semibold text-fuchsia-700 dark:text-fuchsia-400 hover:text-fuchsia-500 dark:hover:text-fuchsia-300 inline-flex items-center gap-1"><MessagesSquare className="w-4 h-4" /> Club space</button>
                   ) : mine(club.id)?.role === 'FOUNDER' && club.status === 'ACTIVE' ? (
-                    <button type="button" disabled={making === club.id} onClick={() => void clubSpace(club.id)} className="text-sm font-semibold text-fuchsia-400 hover:text-fuchsia-300 inline-flex items-center gap-1 disabled:opacity-50"><MessagesSquare className="w-4 h-4" /> Create club space</button>
+                    <button type="button" disabled={making === club.id} onClick={() => void clubSpace(club.id)} className="text-sm font-semibold text-fuchsia-700 dark:text-fuchsia-400 hover:text-fuchsia-500 dark:hover:text-fuchsia-300 inline-flex items-center gap-1 disabled:opacity-50"><MessagesSquare className="w-4 h-4" /> Create club space</button>
                   ) : null}
                   <button 
                     onClick={() => handleJoin(club.id, club.name)}
-                    className="flex items-center gap-1.5 text-indigo-400 text-sm font-semibold hover:text-indigo-300 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400 text-sm font-semibold hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
                     disabled={membershipsSet.has(club.id)}
                   >
                     {membershipsSet.has(club.id) ? 'Joined' : <>Join <ExternalLink className="w-3.5 h-3.5" /></>}

@@ -113,7 +113,7 @@ export default function BeeSafeReporting() {
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed mb-4">
                   The BeeSafe Reporting system is designed to provide a secure and confidential way for students, faculty, and staff to report concerns.
                 </p>
-                <div className="flex items-start gap-2 bg-indigo-500/10 text-indigo-400 p-3 rounded-lg text-xs leading-relaxed">
+                <div className="flex items-start gap-2 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 p-3 rounded-lg text-xs leading-relaxed">
                   <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   Reports go only to your school’s administrators. An anonymous report carries no name or contact details.
                 </div>

@@ -164,25 +164,25 @@ export default function TeacherCalendarPage() {
                   <h3 className="font-bold text-zinc-900 dark:text-white text-lg flex items-center gap-2">
                     <Clock className="w-5 h-5 text-indigo-500" /> Add Office Hours
                   </h3>
-                  <button onClick={() => setShowOfficeModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
+                  <button aria-label="Close" onClick={() => setShowOfficeModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Day</label>
-                    <select value={officeDay} onChange={e => setOfficeDay(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
+                    <select aria-label="Day" value={officeDay} onChange={e => setOfficeDay(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
                       {['Monday','Tuesday','Wednesday','Thursday','Friday'].map(d => <option key={d}>{d}</option>)}
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Start Time</label>
-                      <input type="time" value={officeTime} onChange={e => setOfficeTime(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 [color-scheme:dark]" />
+                      <input aria-label="Start Time" type="time" value={officeTime} onChange={e => setOfficeTime(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 [color-scheme:dark]" />
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Duration (mins)</label>
-                      <select value={officeDuration} onChange={e => setOfficeDuration(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
+                      <select aria-label="Duration (mins)" value={officeDuration} onChange={e => setOfficeDuration(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
                         {['30','60','90','120'].map(d => <option key={d}>{d}</option>)}
                       </select>
                     </div>

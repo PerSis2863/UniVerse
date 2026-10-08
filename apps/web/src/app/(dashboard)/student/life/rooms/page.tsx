@@ -40,8 +40,8 @@ export default function RoomReservationPage() {
   const badge = (id: string) => {
     const st = status?.[id];
     if (!status) return null;
-    if (!st || st.free) return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">Free now{st?.nextBusy ? ` · until ${st.nextBusy}` : ''}</span>;
-    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">{st.freeAt ? `Free at ${st.freeAt}` : 'Busy for the rest of today'}</span>;
+    if (!st || st.free) return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">Free now{st?.nextBusy ? ` · until ${st.nextBusy}` : ''}</span>;
+    return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-400">{st.freeAt ? `Free at ${st.freeAt}` : 'Busy for the rest of today'}</span>;
   };
 
   const handleSearch = () => {
@@ -107,7 +107,7 @@ export default function RoomReservationPage() {
             animate={{ opacity: 1, y: 0 }}
             className="p-6 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex gap-6 items-center"
           >
-            <div className="w-14 h-14 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+            <div className="w-14 h-14 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-700 dark:text-indigo-400 shrink-0">
               <Map className="w-7 h-7" />
             </div>
             <div>
@@ -134,7 +134,7 @@ export default function RoomReservationPage() {
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
                     <CalendarIcon className="w-4 h-4" />
                   </div>
-                  <input 
+                  <input aria-label="Date" 
                     type="date" 
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -149,7 +149,7 @@ export default function RoomReservationPage() {
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
                     <Clock className="w-4 h-4" />
                   </div>
-                  <select 
+                  <select aria-label="Time" 
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
                     className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]"
@@ -170,7 +170,7 @@ export default function RoomReservationPage() {
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
                     <Clock className="w-4 h-4" />
                   </div>
-                  <select 
+                  <select aria-label="Duration" 
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
                     className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]"
@@ -188,7 +188,7 @@ export default function RoomReservationPage() {
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
                     <Users className="w-4 h-4" />
                   </div>
-                  <select className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]">
+                  <select aria-label="Group Size" className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]">
                     <option value="individual">Individual (1)</option>
                     <option value="small">Small Group (2-4)</option>
                     <option value="large">Large Group (5-10)</option>
@@ -210,7 +210,7 @@ export default function RoomReservationPage() {
           {/* Right now: which rooms are free */}
           {!!allRooms?.length && status && (
             <section aria-label="Rooms right now" className="space-y-2">
-              <h3 className="text-sm font-bold text-zinc-300">Right now</h3>
+              <h3 className="text-sm font-bold text-zinc-600 dark:text-zinc-300">Right now</h3>
               <div className="flex flex-wrap gap-2">
                 {(allRooms as { id: string; name: string }[]).slice(0, 30).map((r) => (
                   <motion.button key={r.id} type="button" layout onClick={() => handleBookClick({ id: r.id, name: r.name, capacity: (r as { capacity?: number }).capacity ?? 0, type: (r as { type?: string }).type ?? '', features: [] })}
@@ -247,13 +247,13 @@ export default function RoomReservationPage() {
                     </div>
                     <div className="flex flex-wrap gap-2 mt-3">
                       {room.features.map(f => (
-                        <span key={f} className="px-2.5 py-1 rounded-md bg-white/[0.05] text-xs font-medium text-zinc-300">{f}</span>
+                        <span key={f} className="px-2.5 py-1 rounded-md bg-white/[0.05] text-xs font-medium text-zinc-600 dark:text-zinc-300">{f}</span>
                       ))}
                     </div>
                   </div>
                   <button 
                     onClick={() => handleBookClick(room)} 
-                    className="px-6 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold transition-colors shrink-0 border border-indigo-500/20 hover:border-indigo-500/40 w-full sm:w-auto"
+                    className="px-6 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 font-bold transition-colors shrink-0 border border-indigo-500/20 hover:border-indigo-500/40 w-full sm:w-auto"
                   >
                     Book Now
                   </button>
@@ -276,7 +276,7 @@ export default function RoomReservationPage() {
             >
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
                 <h2 className="text-xl font-bold text-white">Booking Confirmation</h2>
-                <button onClick={closeBookingModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
+                <button aria-label="Close" onClick={closeBookingModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -318,7 +318,7 @@ export default function RoomReservationPage() {
                   </motion.div>
                 ) : (
                   <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
-                    <p className="text-zinc-300 mb-6 text-center">Are you sure you want to book this room?</p>
+                    <p className="text-zinc-600 dark:text-zinc-300 mb-6 text-center">Are you sure you want to book this room?</p>
                     
                     <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-5 mb-8">
                       <h4 className="font-bold text-lg text-white mb-4">{selectedRoom.name}</h4>

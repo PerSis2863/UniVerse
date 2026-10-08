@@ -76,7 +76,7 @@ export function MuteUntilSheet({ title, onMute, onClose }: { title: string; onMu
       </button>
     }>
       <p className="text-sm text-zinc-500 mb-3">No notifications from this chat until then. Messages still arrive.</p>
-      <input type="datetime-local" value={value} min={local(new Date(openedAt))} onChange={(e) => setValue(e.target.value)}
+      <input aria-label="Mute until" type="datetime-local" value={value} min={local(new Date(openedAt))} onChange={(e) => setValue(e.target.value)}
         className="w-full px-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
     </Sheet>
   );

@@ -70,7 +70,7 @@ export default function RoomBookingsPage() {
               <div className="sm:col-span-2 flex justify-between"><p className="font-bold text-zinc-900 dark:text-white">New room</p><button onClick={() => setForm(null)} aria-label="Cancel"><X className="w-4 h-4 text-zinc-500" /></button></div>
               <input className="input" placeholder="Room name, e.g. B-204" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               <input className="input" type="number" min={1} placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
-              <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['Classroom', 'Lab', 'Study room', 'Auditorium', 'Meeting room'].map((t) => <option key={t}>{t}</option>)}</select>
+              <select aria-label="Type" className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['Classroom', 'Lab', 'Study room', 'Auditorium', 'Meeting room'].map((t) => <option key={t}>{t}</option>)}</select>
               <input className="input" placeholder="Amenities, e.g. Projector, Whiteboard" value={form.amenities} onChange={(e) => setForm({ ...form, amenities: e.target.value })} />
               <button onClick={addRoom} disabled={busy || !form.name.trim() || !form.capacity} className="btn-primary sm:col-span-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save room</button>
             </div>

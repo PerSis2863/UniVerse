@@ -296,7 +296,7 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
               <div className="flex gap-2">
                 <input value={channelName} onChange={(e) => setChannelName(e.target.value)} maxLength={40} placeholder="New channel name" className="input" />
                 <select value={channelKind} onChange={(e) => setChannelKind(e.target.value as Kind)} aria-label="Channel type" className="rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm px-2 text-zinc-800 dark:text-zinc-200"><option value="TEXT">Text</option><option value="ANNOUNCE">Announcements</option><option value="VOICE">Voice</option></select>
-                <button type="button" disabled={!channelName.trim()} onClick={async () => { if (await post({ action: 'channel', name: channelName, kind: channelKind }, 'Channel added')) { setChannelName(''); onClose(); } }} className="btn-primary shrink-0"><Plus className="w-4 h-4" /></button>
+                <button aria-label="Add" type="button" disabled={!channelName.trim()} onClick={async () => { if (await post({ action: 'channel', name: channelName, kind: channelKind }, 'Channel added')) { setChannelName(''); onClose(); } }} className="btn-primary shrink-0"><Plus className="w-4 h-4" /></button>
               </div>
             </section>
           )}

@@ -71,7 +71,7 @@ export default function SponsorPortalPage() {
                 <p className="text-sm text-zinc-500">Add a partner organization first on <Link href="/admin/partnerships" className="text-indigo-500 font-semibold">Partner Institutions</Link>.</p>
               ) : (
                 <>
-                  <select className="input" value={form.partnerId} onChange={(e) => setForm({ ...form, partnerId: e.target.value })}>
+                  <select aria-label="Partner" className="input" value={form.partnerId} onChange={(e) => setForm({ ...form, partnerId: e.target.value })}>
                     {partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                   <input className="input" placeholder="Title, e.g. 2026 Scholarship Sponsorship" value={form.title} maxLength={120} onChange={(e) => setForm({ ...form, title: e.target.value })} />

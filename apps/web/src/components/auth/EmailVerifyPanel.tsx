@@ -66,7 +66,7 @@ export function EmailVerifyPanel({ email, sendOnMount, onVerified, onCancel }: {
 
   return (
     <div className="text-center">
-      <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center"><MailCheck className="w-7 h-7" /></div>
+      <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 flex items-center justify-center"><MailCheck className="w-7 h-7" /></div>
       <h2 className="mt-4 text-xl font-bold text-white">Verify your email</h2>
       <p className="mt-2 text-sm text-zinc-400">We sent a link to <span className="text-white font-medium">{email}</span>. Open it to confirm the address is yours, then come back here.</p>
       {message && <p role="status" className={`mt-4 text-sm ${message.kind === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>{message.text}</p>}
@@ -74,7 +74,7 @@ export function EmailVerifyPanel({ email, sendOnMount, onVerified, onCancel }: {
         {busy === 'check' ? <Loader2 className="w-4 h-4 animate-spin" /> : null} I’ve verified my email
       </button>
       <div className="mt-3 flex items-center justify-center gap-4 text-sm">
-        <button onClick={send} disabled={!!busy || cooldown > 0} className="text-indigo-400 hover:text-indigo-300 disabled:text-zinc-600 inline-flex items-center gap-1.5">
+        <button onClick={send} disabled={!!busy || cooldown > 0} className="text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 disabled:text-zinc-600 inline-flex items-center gap-1.5">
           <RefreshCw className="w-3.5 h-3.5" /> {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend email'}
         </button>
         <button onClick={onCancel} className="text-zinc-500 hover:text-zinc-300">Use another account</button>

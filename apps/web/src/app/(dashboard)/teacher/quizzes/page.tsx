@@ -60,8 +60,8 @@ export default function TeacherQuizzes() {
 
   const getStatusStyle = (status: string) => {
     switch(status) {
-      case 'PUBLISHED': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'DRAFT': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'PUBLISHED': return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20';
+      case 'DRAFT': return 'bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-500/20';
       case 'CLOSED': return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20';
       default: return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20';
     }
@@ -86,7 +86,7 @@ export default function TeacherQuizzes() {
                 className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500"
               />
             </div>
-            <select 
+            <select aria-label="Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 hidden sm:block"
@@ -123,7 +123,7 @@ export default function TeacherQuizzes() {
                     <button onClick={() => setManaging(quiz.id)} aria-label="Edit quiz" className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeleteQuiz(quiz.id)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-red-400 rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                    <button aria-label="Delete" onClick={() => handleDeleteQuiz(quiz.id)} className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-red-400 rounded transition-colors bg-zinc-100 dark:bg-zinc-800/0 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -133,16 +133,16 @@ export default function TeacherQuizzes() {
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">{quiz.course}</p>
                 
                 <div className="grid grid-cols-2 gap-4 mb-2">
-                  <div className="flex items-center gap-2 text-sm text-zinc-300">
+                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
                     <FileText className="w-4 h-4 text-indigo-400" /> {quiz.questions} Qs
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-zinc-300">
+                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
                     <Clock className="w-4 h-4 text-amber-400" /> {quiz.timeLimit}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-zinc-300">
+                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {quiz.submissions} Subs
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-zinc-300">
+                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
                     <PlayCircle className="w-4 h-4 text-purple-400" /> Due: {quiz.dueDate}
                   </div>
                 </div>
@@ -178,14 +178,14 @@ export default function TeacherQuizzes() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Create New Quiz</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Set up a new assessment for your students.</p>
               </div>
-              <button onClick={() => setShowCreateModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setShowCreateModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             <div className="p-6 space-y-4">
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Quiz Title</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Quiz Title</label>
                 <input 
                   type="text" 
                   value={newQuiz.title}
@@ -195,8 +195,8 @@ export default function TeacherQuizzes() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Select Course</label>
-                <select 
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Select Course</label>
+                <select aria-label="Course"
                   value={newQuiz.courseId}
                   onChange={e => setNewQuiz({...newQuiz, courseId: e.target.value})}
                   className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -210,8 +210,8 @@ export default function TeacherQuizzes() {
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="text-xs font-medium text-zinc-300 block mb-1">Time Limit</label>
-                  <select 
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Time Limit</label>
+                  <select aria-label="Time limit"
                     value={newQuiz.timeLimit}
                     onChange={e => setNewQuiz({...newQuiz, timeLimit: parseInt(e.target.value)})}
                     className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"

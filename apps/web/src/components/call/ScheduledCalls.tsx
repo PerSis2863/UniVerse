@@ -30,7 +30,7 @@ function when(d: Date) {
   return `${day} · ${format(d, 'HH:mm')}`;
 }
 
-/** Local date-time for <input type="datetime-local">, rounded up to the next quarter hour. */
+/** Local date-time for <input aria-label="Date and time" type="datetime-local">, rounded up to the next quarter hour. */
 function nextQuarter() {
   const d = new Date(Date.now() + 15 * 60_000);
   d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);

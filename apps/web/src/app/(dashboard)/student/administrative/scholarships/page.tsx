@@ -97,7 +97,7 @@ export default function Scholarships() {
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-1">Active Scholarships</h2>
-                <div className="text-zinc-300">
+                <div className="text-zinc-600 dark:text-zinc-300">
                   You currently have {activeAwardsCount} active scholarship{activeAwardsCount !== 1 && 's'} for the academic year.
                 </div>
               </div>
@@ -121,7 +121,7 @@ export default function Scholarships() {
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <h4 className="text-lg font-medium text-zinc-900 dark:text-white">{app.scholarship?.name}</h4>
-                          <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${app.status === 'APPROVED' ? 'bg-green-500/10 text-green-400' : app.status === 'REJECTED' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                          <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${app.status === 'APPROVED' ? 'bg-green-500/10 text-green-700 dark:text-green-400' : app.status === 'REJECTED' ? 'bg-red-500/10 text-red-700 dark:text-red-400' : 'bg-yellow-500/10 text-yellow-800 dark:text-yellow-400'}`}>
                             {app.status === 'APPROVED' && <CheckCircle2 className="w-3 h-3" />}
                             {app.status}
                           </span>
@@ -158,7 +158,7 @@ export default function Scholarships() {
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Available to Apply</h3>
               {availableScholarships.length > 2 && (
-                <button onClick={() => setShowAll(!showAll)} className="text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
+                <button onClick={() => setShowAll(!showAll)} className="text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
                   {showAll ? 'Show Less' : 'View All'} <ChevronRight className={`w-4 h-4 transition-transform ${showAll ? 'rotate-90' : ''}`} />
                 </button>
               )}
@@ -185,7 +185,7 @@ export default function Scholarships() {
                     <div className="flex justify-between items-end border-t border-zinc-800 pt-4">
                       <div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-500 mb-1">Deadline</div>
-                        <div className="text-sm font-medium text-zinc-300">{award.deadline ? new Date(award.deadline).toLocaleDateString() : 'Rolling'}</div>
+                        <div className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{award.deadline ? new Date(award.deadline).toLocaleDateString() : 'Rolling'}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-bold text-zinc-900 dark:text-white">${award.amount?.toLocaleString()}</div>
@@ -220,7 +220,7 @@ export default function Scholarships() {
                     <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Step {applicationStep} of 3</div>
                   </div>
                 </div>
-                <button 
+                <button aria-label="Close" 
                   onClick={handleClose}
                   className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-white/5 transition-colors"
                   aria-busy={isSubmitting || undefined} disabled={isSubmitting}
@@ -294,7 +294,7 @@ export default function Scholarships() {
 
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-zinc-300 mb-2">Why are you a good fit for this scholarship?</label>
+                          <label className="block text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2">Why are you a good fit for this scholarship?</label>
                           <textarea 
                             rows={4} 
                             value={motivation}
@@ -304,8 +304,8 @@ export default function Scholarships() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-zinc-300 mb-2">Are you currently receiving other financial aid?</label>
-                          <select className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" style={{ colorScheme: 'dark' }}>
+                          <label className="block text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2">Are you currently receiving other financial aid?</label>
+                          <select aria-label="Other financial aid" className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50" style={{ colorScheme: 'dark' }}>
                             <option>Yes</option>
                             <option>No</option>
                           </select>

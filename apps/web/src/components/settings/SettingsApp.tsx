@@ -4,10 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import {
-  Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, Loader2, LogOut, Moon,
-  Palette, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X,
-} from 'lucide-react';
+import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, Loader2, LogOut, Moon, Palette, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, type LucideIcon } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -30,7 +27,7 @@ import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
-import { appReduceMotion, hapticsOn, setAppReduceMotion, setHaptics, setTextSize, textSize, type TextSize } from '@/lib/display-prefs';
+import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, setAppReduceMotion, setCaptionsByDefault, setHaptics, setReadingAid, setTextSize, textSize, type ReadingAid, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
@@ -300,11 +297,21 @@ return (
 );
 }
 
+// Reading aids in Settings → Appearance (src/lib/display-prefs.ts; styles in globals.css).
+const AIDS: [ReadingAid, LucideIcon, string, string][] = [
+  ['bold', Bold, 'Bold text', 'Everyday text is heavier and easier to read.'],
+  ['contrast', Contrast, 'More contrast', 'Hints, dates and borders are darker (or brighter in dark mode).'],
+  ['dyslexic', Type, 'Dyslexia-friendly font', 'Uses OpenDyslexic, with a little more space between letters and lines.'],
+  ['underline', Underline, 'Underline links', 'Links in text are underlined, not only coloured.'],
+];
+
 function Appearance() {
   const [theme, setTheme] = useState<Theme>(() => (typeof window === 'undefined' ? 'dark' : getSavedTheme()));
   const [size, setSize] = useState<TextSize>(() => (typeof window === 'undefined' ? 'default' : textSize()));
   const [reduce, setReduce] = useState(() => typeof window !== 'undefined' && appReduceMotion());
   const [haptics, setHap] = useState(() => typeof window === 'undefined' || hapticsOn());
+  const [aids, setAids] = useState<Record<ReadingAid, boolean>>(() => ({ bold: readingAid('bold'), contrast: readingAid('contrast'), dyslexic: readingAid('dyslexic'), underline: readingAid('underline') }));
+  const [cc, setCc] = useState(captionsByDefault);
   const pickTheme = (v: Theme, e: React.MouseEvent) => { setTheme(v); applyTheme(v, { from: { x: e.clientX, y: e.clientY } }); };
   return (
     <Card title="Appearance" subtitle="How UniVerse looks and feels on this device">
@@ -312,13 +319,21 @@ function Appearance() {
         <Choice id="theme" value={theme} onPick={pickTheme} options={[['light', 'Light', Sun], ['dark', 'Dark', Moon], ['system', 'Automatic', SunMoon]]} />
       </div>
       <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Text size</p>
-        <Choice id="text" value={size} onPick={(v) => { setSize(v); setTextSize(v); }} options={[['default', 'Default'], ['large', 'Large'], ['larger', 'Larger']]} />
+        <Choice id="text" value={size} onPick={(v) => { setSize(v); setTextSize(v); }} options={[['default', 'Default'], ['large', 'Large'], ['larger', 'Larger'], ['largest', 'Largest']]} />
       </div>
       <Row icon={Accessibility} title="Reduce motion" desc="Pages and buttons change without moving or sliding (your device’s own setting is followed too).">
         <Switch checked={reduce} label="Reduce motion" onChange={(on) => { setReduce(on); setAppReduceMotion(on); }} />
       </Row>
       <Row icon={Vibrate} title="Vibration" desc="A light tap when you press buttons and switch tabs (phones).">
         <Switch checked={haptics} label="Vibration" onChange={(on) => { setHap(on); setHaptics(on); }} />
+      </Row>
+      {AIDS.map(([aid, Icon, title, desc]) => (
+        <Row key={aid} icon={Icon} title={title} desc={desc}>
+          <Switch checked={aids[aid]} label={title} onChange={(on) => { setAids((a) => ({ ...a, [aid]: on })); setReadingAid(aid, on); }} />
+        </Row>
+      ))}
+      <Row icon={Captions} title="Captions on in calls" desc="Calls start with live captions showing (you can still turn them off in a call).">
+        <Switch checked={cc} label="Captions on in calls" onChange={(on) => { setCc(on); setCaptionsByDefault(on); }} />
       </Row>
     </Card>
   );

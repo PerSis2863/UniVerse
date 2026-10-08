@@ -10,7 +10,7 @@ export default function AccessibilityPage() {
       eyebrow="Trust"
       title="Accessibility"
       intro={<>Education should be open to everyone. We want every student, teacher and partner to be able to use UniVerse, whatever device, ability or assistive technology they rely on.</>}
-      updated="29 September 2026"
+      updated="8 October 2026"
     >
       <Section title="Our goal">
         <p>
@@ -19,15 +19,40 @@ export default function AccessibilityPage() {
         </p>
       </Section>
 
+      <Section title="Conformance status">
+        <p>
+          UniVerse is <strong>partially conformant</strong> with WCAG 2.2 level AA: most of it meets the standard, and the parts that don’t yet
+          are listed under “Known limitations” below.
+        </p>
+        <p>
+          How we check: an automated audit (axe-core, WCAG 2.2 AA rules) of the main student, teacher and admin screens in both light and dark
+          themes found no serious or critical issues on 8 October 2026. Automated tools catch only part of the problems, so we also fix every
+          barrier people report to us.
+        </p>
+      </Section>
+
       <Section title="What we do">
         <Bullets items={[
           'Works on phones, tablets and computers, and can be installed as an app on iOS, Android and desktop.',
-          'Light and dark themes, with text and controls checked for colour contrast.',
-          'Respects your device’s “reduce motion” setting and switches off animations.',
-          'Buttons, menus and dialogs have text labels for screen readers, and can be used with a keyboard.',
+          'Light and dark themes, with text and controls checked for colour contrast (4.5:1 for text).',
+          'Everything can be used with a keyboard: a visible focus ring, a “Skip to content” link, and dialogs that keep focus inside and close with Escape.',
+          'Buttons, menus, fields and dialogs have names for screen readers; new chat messages and pop-up messages are announced.',
+          'Respects your device’s “reduce motion” setting: looping animations stop and slides become gentle fades.',
           'Text can be enlarged with browser or phone zoom without losing content.',
           'Available in English, French, Spanish and Hindi (Settings → Language).',
           'Our Terms and Privacy Policy are tagged PDFs that screen readers can read, and can be downloaded.',
+        ]} />
+      </Section>
+
+      <Section title="Settings that help">
+        <p>In the app, open Settings → Appearance:</p>
+        <Bullets items={[
+          'Text size: four steps, from default to largest.',
+          'Bold text, for text that is easier to read.',
+          'More contrast: darker hints, dates and borders (brighter in dark mode).',
+          'Dyslexia-friendly font (OpenDyslexic).',
+          'Underline links, so links don’t rely on colour.',
+          'Captions on in calls by default.',
         ]} />
       </Section>
 
@@ -37,7 +62,7 @@ export default function AccessibilityPage() {
           'Whiteboards are drawing canvases. Screen readers can’t describe what is drawn; export a board as an image or add text notes to share it.',
           'Some older pages and charts don’t yet have full text alternatives.',
           'Files that users upload (documents, images, videos) may not be accessible; we can’t control their content.',
-          'In calls, captions aren’t available yet; each person’s name is always shown on their tile.',
+          'Live captions in calls are generated automatically and can contain mistakes.',
         ]} />
       </Section>
 

@@ -8,26 +8,11 @@
 // caused by input (the Web Vitals CLS definition, without session windows: stricter). Target: < 0.05.
 // Needs Playwright (globally installed, or `pnpm add -D playwright`); uses PLAYWRIGHT_BROWSERS_PATH.
 
-import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { PAGES, baseUrl, launch, signedIn } from './browser-session.mjs';
 
-const require = createRequire(import.meta.url);
-function loadPlaywright() {
-  try { return require('playwright'); } catch { /* not local */ }
-  const globalRoot = execSync('npm root -g').toString().trim();
-  return require(`${globalRoot}/playwright`);
-}
-const { chromium } = loadPlaywright();
-
-const base = process.argv.find((a) => a.startsWith('http')) ?? 'http://localhost:3100';
+const base = baseUrl();
 const jsonOut = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
-
-const PAGES = {
-  'demo@student.com': ['/student', '/student/courses', '/student/assignments', '/student/quizzes', '/student/grades', '/student/attendance', '/student/inbox', '/student/calendar', '/student/skills', '/student/internships', '/student/planner', '/tasks', '/docs'],
-  'demo@teacher.com': ['/teacher', '/teacher/courses', '/teacher/grades', '/teacher/attendance', '/teacher/students', '/teacher/quizzes'],
-  'demo@admin.com': ['/admin', '/admin/users', '/admin/finances', '/admin/announcements', '/admin/analytics'],
-};
 const VIEWPORTS = { phone: { width: 390, height: 844 }, desktop: { width: 1366, height: 900 } };
 
 // Sum of layout shifts not caused by input, from the start of the page load.
@@ -43,17 +28,11 @@ const OBSERVE = () => {
   }).observe({ type: 'layout-shift', buffered: true });
 };
 
-const browser = await chromium.launch(process.env.PLAYWRIGHT_BROWSERS_PATH ? {} : { executablePath: '/opt/pw-browsers/chromium' });
+const browser = await launch();
 const results = [];
 for (const [email, pages] of Object.entries(PAGES)) {
-  const token = `mock-token-${email}`;
-  const me = await fetch(`${base}/api/core/auth/me`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
   for (const [vp, size] of Object.entries(VIEWPORTS)) {
-    const ctx = await browser.newContext({ viewport: size, deviceScaleFactor: 1 });
-    await ctx.addInitScript(([t, user]) => {
-      localStorage.setItem('accessToken', t);
-      localStorage.setItem('universe-auth', JSON.stringify({ state: { user }, version: 0 }));
-    }, [token, me]);
+    const ctx = await signedIn(browser, base, email, size);
     await ctx.addInitScript(OBSERVE);
     for (const path of pages) {
       const page = await ctx.newPage();

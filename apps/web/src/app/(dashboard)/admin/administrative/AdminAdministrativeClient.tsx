@@ -227,18 +227,18 @@ export default function AdminAdministrativeClient() {
                   <p className="text-xs text-zinc-500">Documents you add here are stored under your own account.</p>
                   <div className="space-y-2">
                     <label className={label}>Document Title</label>
-                    <input required value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} type="text" className="input" />
+                    <input aria-label="Document Title" required value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} type="text" className="input" />
                   </div>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className={label}>Type</label>
-                      <select value={docForm.type} onChange={(e) => setDocForm({ ...docForm, type: e.target.value })} className="input">
+                      <select aria-label="Type" value={docForm.type} onChange={(e) => setDocForm({ ...docForm, type: e.target.value })} className="input">
                         {DOC_TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
                       </select>
                     </div>
                     <div className="space-y-2">
                       <label className={label}>Issued on</label>
-                      <input value={docForm.issuedAt} onChange={(e) => setDocForm({ ...docForm, issuedAt: e.target.value })} type="date" className="input" />
+                      <input aria-label="Issued on" value={docForm.issuedAt} onChange={(e) => setDocForm({ ...docForm, issuedAt: e.target.value })} type="date" className="input" />
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -252,16 +252,16 @@ export default function AdminAdministrativeClient() {
                 <>
                   <div className="space-y-2">
                     <label className={label}>Scholarship Name</label>
-                    <input required value={schForm.name} onChange={(e) => setSchForm({ ...schForm, name: e.target.value })} type="text" className="input" />
+                    <input aria-label="Scholarship Name" required value={schForm.name} onChange={(e) => setSchForm({ ...schForm, name: e.target.value })} type="text" className="input" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className={label}>Amount ($)</label>
-                      <input value={schForm.amount} onChange={(e) => setSchForm({ ...schForm, amount: e.target.value })} type="number" min="0" className="input" />
+                      <input aria-label="Amount ($)" value={schForm.amount} onChange={(e) => setSchForm({ ...schForm, amount: e.target.value })} type="number" min="0" className="input" />
                     </div>
                     <div className="space-y-2">
                       <label className={label}>Deadline</label>
-                      <input value={schForm.deadline} onChange={(e) => setSchForm({ ...schForm, deadline: e.target.value })} type="date" className="input" />
+                      <input aria-label="Deadline" value={schForm.deadline} onChange={(e) => setSchForm({ ...schForm, deadline: e.target.value })} type="date" className="input" />
                     </div>
                   </div>
                   <div className="space-y-2">

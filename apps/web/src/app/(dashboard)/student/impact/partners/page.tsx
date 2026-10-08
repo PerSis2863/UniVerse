@@ -63,7 +63,7 @@ export default function GlobalPartnersPage() {
                 transition={{ delay: Math.min(i, 6) * 0.03 }}
                 className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl flex items-center gap-4"
               >
-                <div className="w-11 h-11 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 flex items-center justify-center shrink-0">
                   <s.icon className="w-5 h-5" />
                 </div>
                 <div>
@@ -144,7 +144,7 @@ export default function GlobalPartnersPage() {
                         )}
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 whitespace-nowrap">
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border border-indigo-500/30 whitespace-nowrap">
                       {TYPE_LABEL[p.type] ?? p.type}
                     </span>
                   </div>

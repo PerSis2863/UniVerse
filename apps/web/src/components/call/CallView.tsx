@@ -8,6 +8,7 @@ import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersH
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
+import { captionsByDefault } from '@/lib/display-prefs';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
@@ -417,7 +418,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [talked, setTalked] = useState(false); // someone has connected at least once
   const [sfuQuality, setSfuQuality] = useState<Quality>(null);
   const sfuQualityRef = useRef<Quality>(null);
-  const [cc, setCc] = useState(false);
+  // Settings → Appearance → Captions on: calls start with captions showing.
+  const [cc, setCc] = useState(captionsByDefault);
   const [captions, setCaptions] = useState<Record<string, Caption>>({});
   // Translated captions (Stage 4 · 4.1): I read everyone's captions in my language (the app's,
   // unless I picked another or "as spoken"). `trs`: translations by caption id.
@@ -534,7 +536,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const joinConfirmed = useRef(false);
   const resumeJoin = useRef<(() => void) | null>(null);
   const [inRoom, setInRoom] = useState<string[] | null>(null);
-  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false, lowData: false, lite: false });
+  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc, recording: false, notes: false, lowData: false, lite: false });
   // Audio-only fallback: a poor connection for 10 s pauses incoming video (people's screens stay).
   const [audioOnly, setAudioOnly] = useState(false);
   const audioOnlyRef = useRef(false);
@@ -2078,7 +2080,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </motion.button>
       )}
     </AnimatePresence>
-    <motion.div ref={rootRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className={cn('fixed inset-0 z-[300] text-white flex flex-col bg-[radial-gradient(ellipse_at_top,#1e1b4b_0%,#0b0e1a_55%)]', (minimized || held) && 'hidden')}>
+    <motion.div ref={rootRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className={cn('on-dark fixed inset-0 z-[300] text-white flex flex-col bg-[radial-gradient(ellipse_at_top,#1e1b4b_0%,#0b0e1a_55%)]', (minimized || held) && 'hidden')}>
       <motion.header initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={spring.smooth} className="px-5 pt-[calc(env(safe-area-inset-top)+0.9rem)] pb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold truncate text-lg flex items-center gap-2">

@@ -26,9 +26,10 @@
   --color-zinc-100: #f2f2f7;
   --color-zinc-200: #e5e5ea;
   --color-zinc-300: #d1d1d6;
-  --color-zinc-400: #aeaeb2;
-  --color-zinc-500: #737378;
-  --color-zinc-600: #636366;
+  /* 400–600 are text greys: dark enough for 4.5:1 on the light backgrounds (WCAG AA). */
+  --color-zinc-400: #6e6e73;
+  --color-zinc-500: #5c5c61;
+  --color-zinc-600: #48484a;
   --color-zinc-700: #353d5c;
   --color-zinc-800: #212843;
   --color-zinc-900: #141a30;
@@ -46,6 +47,38 @@
   --default-transition-duration: 220ms;
   --default-transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }
+
+/* Light mode: coloured *text* uses the deeper tints Apple uses for text, so it reads at 4.5:1;
+   backgrounds, icons and dark mode keep the bright system colours. Not inside always-dark areas
+   (the landing and sign-in pages set .dark on a wrapper; calls are .on-dark). */
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-emerald-500, .text-emerald-600, .text-green-500, .text-green-600, .text-teal-500, .text-teal-600) { color: #1a6b30; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-amber-500, .text-amber-600, .text-orange-500, .text-orange-600, .text-yellow-500, .text-yellow-600) { color: #9a4a00; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-rose-500, .text-rose-600, .text-red-500, .text-red-600) { color: #c10007; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-500, .text-indigo-600) { color: #4338ca; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-blue-500, .text-blue-600) { color: #1447e6; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-sky-500, .text-sky-600, .text-cyan-500, .text-cyan-600) { color: #0369a1; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #6d28d9; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-fuchsia-500, .text-fuchsia-600, .text-pink-500, .text-pink-600) { color: #a21caf; }
+/* Dark mode keeps the lighter text greys (the darker light-mode ones would dim text on navy). */
+.dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366; }
+/* Dark mode: indigo text without its own dark: colour is lifted so it reads on navy. */
+.dark .text-indigo-500:not([class*="dark:text-"]) { color: #8e8cff; }
+/* Keyboard focus is always visible: unlayered, so a utility's outline-none can't hide it. Not on
+   things focused only by code (tabindex -1: sheets, the page itself after "Skip to content"). */
+:where(a, button, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid rgb(var(--tint-rgb) / 0.8);
+  outline-offset: 2px;
+}
+.skip-link {
+  position: fixed; top: 0.5rem; left: 0.5rem; z-index: 400;
+  padding: 0.625rem 1rem; border-radius: 0.75rem;
+  background: var(--surface, #fff); color: var(--tint-text, #4338ca); font-weight: 600;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  transform: translateY(-150%);
+}
+.skip-link:focus-visible { transform: none; }
+/* Unread counts on bells and tabs: white on red at 4.5:1 in both themes. */
+.badge-count { background-color: #d70015; }
 
 /* ─── Color tokens (light defaults, dark overrides) ─ */
 /* iOS semantic colours: grouped background, secondary background for cards, separators, labels
@@ -1334,6 +1367,29 @@ button, [role="tab"], [role="button"], [role="switch"], nav, .ios-tabbar, .mobil
 /* ─── Settings → Appearance: text size, and the app's own Reduce motion ─── */
 html[data-text="large"] { font-size: 106.25%; }
 html[data-text="larger"] { font-size: 115%; }
+html[data-text="largest"] { font-size: 125%; }
+
+/* Reading aids (Settings → Appearance; src/lib/display-prefs.ts). */
+/* Bold text: everyday text gets heavier; headings keep their own weight. */
+html.bold-text body, html.bold-text .font-normal, html.bold-text .font-medium { font-weight: 600; }
+/* More contrast: the greys used for secondary text and hairlines get much darker (light) or
+   lighter (dark), so hints, timestamps and borders are easy to read. Tailwind reads these. */
+html.high-contrast {
+  --color-zinc-300: #71717a; --color-zinc-400: #52525b; --color-zinc-500: #3f3f46; --color-zinc-600: #27272a;
+  --text-secondary: #3a3a3c; --input-placeholder: #636366; --separator: rgba(60, 60, 67, 0.4);
+}
+html.high-contrast.dark {
+  --color-zinc-300: #f4f4f5; --color-zinc-400: #e4e4e7; --color-zinc-500: #d4d4d8; --color-zinc-600: #a1a1aa;
+  --text-secondary: #e5e7f2; --input-placeholder: #a3acc9; --separator: rgba(200, 205, 235, 0.45);
+}
+html.high-contrast .panel, html.high-contrast .card { border-color: var(--separator); }
+/* A dyslexia-friendly font (OpenDyslexic, self-hosted under SIL OFL 1.1; downloaded only when on). */
+@font-face { font-family: 'OpenDyslexic'; src: url('/fonts/opendyslexic/opendyslexic-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'OpenDyslexic'; src: url('/fonts/opendyslexic/opendyslexic-latin-700-normal.woff2') format('woff2'); font-weight: 600 900; font-display: swap; }
+html.dyslexic-font body, html.dyslexic-font :is(input, textarea, select, button) { font-family: 'OpenDyslexic', var(--font-sans, system-ui), sans-serif; letter-spacing: 0.02em; word-spacing: 0.08em; }
+html.dyslexic-font :is(p, li) { line-height: 1.7; }
+/* Underline links: every link in text is underlined, not only shown by colour. */
+html.underline-links :is(p, li, td, span, label) a, html.underline-links a.text-indigo-500, html.underline-links a.text-indigo-600 { text-decoration: underline; text-underline-offset: 0.18em; }
 html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
   animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important;
 }

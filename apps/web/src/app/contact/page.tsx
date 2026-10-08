@@ -23,7 +23,7 @@ export default function ContactPage() {
             <c.icon className="w-5 h-5 text-indigo-400" />
             <p className="mt-3 font-semibold text-white">{c.title}</p>
             <p className="mt-1 text-sm text-zinc-400 flex-1">{c.text}</p>
-            <a href={`mailto:${c.email}${c.subject ? `?subject=${encodeURIComponent(c.subject)}` : ''}`} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-400 hover:text-indigo-300 break-all">
+            <a href={`mailto:${c.email}${c.subject ? `?subject=${encodeURIComponent(c.subject)}` : ''}`} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 break-all">
               <MailIcon className="w-4 h-4 shrink-0" /> {c.email}
             </a>
           </div>

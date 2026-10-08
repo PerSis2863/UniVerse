@@ -198,7 +198,7 @@ function GradeDonut({ grades, avg }: { grades: { grade: string; percentage: numb
               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: slice.color }} />
               <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{slice.label}</span>
             </div>
-            <span className="text-xs font-bold" style={{ color: slice.color }}>{slice.count} · {Math.round(slice.pct)}%</span>
+            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{slice.count} · {Math.round(slice.pct)}%</span>
           </div>
         ))}
         <div className="pt-1 border-t border-zinc-200 dark:border-zinc-800">
@@ -492,7 +492,7 @@ export default function GradesPage() {
                       <div className={cn(
                         "inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-black border",
                         record.grade.startsWith('A') ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
-                        record.grade.startsWith('B') ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" :
+                        record.grade.startsWith('B') ? "bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-500/20" :
                         record.grade.startsWith('C') ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
                         "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
                       )}>
