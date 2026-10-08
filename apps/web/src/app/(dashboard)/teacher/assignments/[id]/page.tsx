@@ -1,8 +1,8 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Copy, Loader2, Lock, PenLine, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
@@ -61,6 +61,30 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
   const subs = useMemo(() => data?.submissions ?? [], [data]);
   const current = subs.find((s) => s.id === selected) ?? subs.find((s) => s.status !== 'RETURNED') ?? subs[0];
   const waiting = subs.filter((s) => s.status === 'SUBMITTED');
+  const returned = subs.filter((s) => s.status === 'RETURNED').length;
+
+  // Grading at speed: J / K move to the next / previous student (not while typing), and returning a
+  // grade moves on to the next answer still to grade.
+  const go = (dir: 1 | -1) => {
+    const i = subs.findIndex((s) => s.id === current?.id);
+    const next = subs[i + dir];
+    if (next) setSelected(next.id);
+  };
+  const nextToGrade = () => {
+    const i = subs.findIndex((s) => s.id === current?.id);
+    const after = [...subs.slice(i + 1), ...subs.slice(0, i)].find((s) => s.status !== 'RETURNED');
+    if (after) setSelected(after.id);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || t?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
+      if (e.key === 'j' || e.key === 'J') { e.preventDefault(); go(1); }
+      else if (e.key === 'k' || e.key === 'K') { e.preventDefault(); go(-1); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   const toggleOpen = async () => {
     if (!data) return;
@@ -134,6 +158,13 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
             </div>
           ) : (
             <div className="grid lg:grid-cols-[18rem_1fr] gap-5 items-start">
+              <div className="space-y-2">
+              <div className="panel p-3">
+                <div className="flex items-baseline justify-between text-xs text-zinc-500 mb-1.5"><span><b className="text-zinc-900 dark:text-white tabular-nums">{returned}</b> of {subs.length} returned</span><span className="hidden lg:inline">J / K: next / previous</span></div>
+                <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" role="progressbar" aria-label="Grades returned" aria-valuemin={0} aria-valuemax={subs.length} aria-valuenow={returned}>
+                  <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${subs.length ? (returned / subs.length) * 100 : 0}%` }} />
+                </div>
+              </div>
               <nav aria-label="Submissions" className={`panel p-2 max-h-[70vh] overflow-y-auto stagger`}>
                 {subs.map((s) => (
                   <button
@@ -152,7 +183,8 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
                   </button>
                 ))}
               </nav>
-              {current && <Grader key={`${current.id}:${current.status}:${current.aiDraft ? 1 : 0}`} detail={data} sub={current} onChange={() => mutate()} />}
+              </div>
+              {current && <Grader key={`${current.id}:${current.status}:${current.aiDraft ? 1 : 0}`} detail={data} sub={current} onChange={() => mutate()} onReturned={nextToGrade} />}
             </div>
           )}
         </div>
@@ -161,7 +193,7 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
   );
 }
 
-function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; onChange: () => void }) {
+function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Submission; onChange: () => void; onReturned: () => void }) {
   // Start from the returned grade, else the AI draft, else blank.
   const start = sub.criteriaScores ?? sub.aiDraft?.criteria ?? [];
   const [scores, setScores] = useState<Record<string, { score: string; comment: string }>>(() =>
@@ -208,6 +240,7 @@ function Grader({ detail, sub, onChange }: { detail: Detail; sub: Submission; on
       });
       toast.success(`${sub.status === 'RETURNED' ? 'Grade updated' : 'Grade returned'} to ${sub.student.name}`);
       onChange();
+      if (sub.status !== 'RETURNED') onReturned();
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
