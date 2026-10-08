@@ -1,7 +1,7 @@
 // Visits every page of the app as each demo role and reports what's broken.
 //
 //   NEXT_PUBLIC_DEMO_LOGIN=true pnpm dev -p 3100        (in another terminal)
-//   node scripts/crawl.mjs [http://localhost:3100] [--only student|teacher|admin] [--json out.json]
+//   node scripts/crawl.mjs [http://localhost:3100] [--only student|teacher|admin] [--paths /a,/b] [--json out.json]
 //
 // The page list comes from the app folder (every page.tsx without a [param] in its path). Each
 // portal's pages are opened as its demo account (shared pages as the student). For each page it
@@ -17,6 +17,7 @@ const base = baseUrl();
 const arg = (name) => (process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : null);
 const only = arg('--only');
 const jsonOut = arg('--json');
+const paths = arg('--paths')?.split(',');
 
 /** Every static page route under src/app (route groups dropped, dynamic routes skipped). */
 function routes(dir = new URL('../src/app', import.meta.url).pathname, root = dir, out = []) {
@@ -41,7 +42,7 @@ const SKIP = [/^\/console/, /^\/(login|register|forgot-password|reset-password)$
 const IGNORE = [/\/api\/realtime\/ticket$/];
 const ignored = (url) => { try { return IGNORE.some((re) => re.test(new URL(url).pathname)); } catch { return false; } };
 
-const all = routes().filter((r) => !SKIP.some((re) => re.test(r)));
+const all = routes().filter((r) => !SKIP.some((re) => re.test(r)) && (!paths || paths.includes(r)));
 const byRole = Object.groupBy(all, ROLE_OF);
 const browser = await launch();
 const results = [];
