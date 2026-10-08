@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { CheckCircle2, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Plus, Trash2, X } from 'lucide-react';
+import type { ItemResult } from '@/lib/item-analysis';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
@@ -14,6 +15,7 @@ type Submission = { id: string; score: number | null; maxScore: number | null; s
 type Quiz = {
   id: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
+  analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
 
 const toLocalInput = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
@@ -123,6 +125,8 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
               </div>
             </section>
 
+            {quiz.analysis && quiz.analysis.students >= 2 && <ItemAnalysis questions={quiz.questions} analysis={quiz.analysis} />}
+
             {/* Results */}
             <section className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Results ({quiz.submissions.length})</p>
@@ -137,5 +141,49 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
         )}
       </div>
     </div>
+  );
+}
+
+/** How each question worked (Stage 5 · B4.6, src/lib/item-analysis.ts), questions to fix first. */
+function ItemAnalysis({ questions, analysis }: { questions: Question[]; analysis: NonNullable<Quiz['analysis']> }) {
+  const byId = new Map(analysis.items.map((i) => [i.id, i]));
+  const ordered = [...questions].sort((a, b) => Number(byId.get(b.id)?.fix ?? false) - Number(byId.get(a.id)?.fix ?? false));
+  const separation = (d: number | null) => (d == null ? null : d >= 0.3 ? 'separates well' : d >= 0.15 ? 'separates a little' : d >= 0 ? 'doesn’t separate' : 'reversed');
+  return (
+    <section className="space-y-2" aria-labelledby="item-analysis">
+      <p id="item-analysis" className="text-xs font-bold uppercase tracking-widest text-zinc-500">How the questions worked</p>
+      <p className="text-sm text-zinc-600 dark:text-zinc-300">
+        From {analysis.students} students. {analysis.toFix ? <b className="text-amber-700 dark:text-amber-300">{analysis.toFix} question{analysis.toFix === 1 ? '' : 's'} to check.</b> : 'No question looks broken.'}
+        {analysis.consistency != null && <> Consistency {analysis.consistency.toFixed(2)} ({analysis.consistency >= 0.7 ? 'good for a test' : analysis.consistency >= 0.5 ? 'fair' : 'low: questions may test different things'}).</>}
+      </p>
+      {ordered.map((q) => {
+        const a = byId.get(q.id);
+        if (!a) return null;
+        const most = Math.max(1, ...a.counts.map((c) => c.n));
+        return (
+          <div key={q.id} className={cn('p-3 rounded-2xl border', a.fix ? 'border-amber-500/40 bg-amber-500/[0.06]' : 'border-zinc-200/70 dark:border-white/[0.07]')}>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium text-zinc-900 dark:text-white min-w-0">{q.question}</p>
+              <span className="text-xs text-zinc-500 shrink-0 text-right">{a.right != null && <b className="text-zinc-900 dark:text-white">{Math.round(a.right * 100)}% right</b>}{separation(a.separates) && <><br />{separation(a.separates)}</>}</span>
+            </div>
+            <ul className="mt-2 space-y-1">
+              {a.counts.map((c) => (
+                <li key={c.option} className="grid grid-cols-[minmax(0,1fr)_6rem_2rem] items-center gap-2 text-xs">
+                  <span className={cn('truncate', c.correct ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-zinc-600 dark:text-zinc-300')}>{c.correct && <CheckCircle2 className="w-3 h-3 inline mr-1" aria-label="Right answer" />}{c.option}</span>
+                  <span className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><span className={cn('block h-full rounded-full', c.correct ? 'bg-emerald-500' : 'bg-zinc-400 dark:bg-zinc-500')} style={{ width: `${(c.n / most) * 100}%` }} /></span>
+                  <span className="tabular-nums text-zinc-500 text-right">{c.n}</span>
+                </li>
+              ))}
+              {a.blank > 0 && <li className="text-[11px] text-zinc-500">{a.blank} left it blank</li>}
+            </ul>
+            {a.flags.length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {a.flags.map((f) => <li key={f} className="text-xs text-amber-800 dark:text-amber-300 flex gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden />{f}</li>)}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </section>
   );
 }
