@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
+import dynamic from 'next/dynamic';
 import { m as motion } from 'framer-motion';
 import { Users, UserCheck, BookOpen, Sparkles, Trophy, GraduationCap, ShieldCheck, Presentation } from 'lucide-react';
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { PremiumGate } from '@/components/billing/PremiumGate';
@@ -30,21 +30,13 @@ type Person = PersonInfo & { id: string; createdAt?: string };
 const ROLE_LABEL: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', INDUSTRY_MENTOR: 'Industry mentors' };
 const nf = new Intl.NumberFormat('en-US');
 
-const card = 'rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-6';
+// Charts load on their own (recharts is large); the box keeps its height meanwhile.
+const TrendChartBody = dynamic(() => import('./TrendChartBody'), { ssr: false, loading: () => <div className="h-full rounded-2xl skeleton" /> });
 
-function ChartTooltip({ active, payload, label, unit }: { active?: boolean; payload?: { value: number }[]; label?: string; unit?: string }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur px-3 py-2 shadow-xl text-xs">
-      <div className="text-zinc-500 mb-0.5">{label}</div>
-      <div className="font-bold text-zinc-900 dark:text-white">{nf.format(payload[0].value)} {unit}</div>
-    </div>
-  );
-}
+const card = 'rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-6';
 
 function TrendChart({ title, data, unit, kind }: { title: string; data: { month: string; value: number }[]; unit: string; kind: 'area' | 'bar' }) {
   const total = data.reduce((n, d) => n + d.value, 0);
-  const axis = { stroke: 'currentColor', tick: { fontSize: 11, fill: 'currentColor' }, tickLine: false, axisLine: false };
   return (
     <div className={card}>
       <div className="flex items-baseline justify-between mb-6">
@@ -52,31 +44,7 @@ function TrendChart({ title, data, unit, kind }: { title: string; data: { month:
         <span className="text-xs text-zinc-500">{nf.format(total)} {unit} · last 12 months</span>
       </div>
       <div className="h-64 text-zinc-400 dark:text-zinc-500">
-        <ResponsiveContainer width="100%" height="100%">
-          {kind === 'area' ? (
-            <AreaChart data={data} margin={{ left: -20, right: 8, top: 4 }}>
-              <defs>
-                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.12} />
-              <XAxis dataKey="month" {...axis} />
-              <YAxis allowDecimals={false} {...axis} />
-              <Tooltip content={<ChartTooltip unit={unit} />} cursor={{ stroke: '#6366f1', strokeOpacity: 0.4 }} />
-              <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} fill="url(#areaFill)" activeDot={{ r: 5, strokeWidth: 2, stroke: 'var(--background, #fff)' }} animationDuration={900} />
-            </AreaChart>
-          ) : (
-            <BarChart data={data} margin={{ left: -20, right: 8, top: 4 }}>
-              <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.12} />
-              <XAxis dataKey="month" {...axis} />
-              <YAxis allowDecimals={false} {...axis} />
-              <Tooltip content={<ChartTooltip unit={unit} />} cursor={{ fill: 'currentColor', fillOpacity: 0.06 }} />
-              <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={900} />
-            </BarChart>
-          )}
-        </ResponsiveContainer>
+        <TrendChartBody data={data} unit={unit} kind={kind} />
       </div>
     </div>
   );
