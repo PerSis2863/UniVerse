@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
-import { QuizManager } from '@/components/quizzes/QuizManager';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
@@ -25,12 +24,16 @@ import { isUploadedFileUrl } from '@/lib/file-urls';
 import { safeHref } from '@/lib/safe-href';
 import { courseColor } from '@/lib/course-color';
 import { SaveOfflineButton } from '@/components/offline/SaveOfflineButton';
-import { ClassSessions, type ClassSession } from '@/components/dashboard/ClassSessions';
+import type { ClassSession } from '@/components/dashboard/ClassSessions';
 import { Combobox } from '@/components/ui/Combobox';
 import { SUBJECTS } from '@/lib/options/academic';
 import { QuizReview } from '@/components/quizzes/QuizReview';
 import { downloadIcs } from '@/lib/ics';
 
+// Class recordings and study packs (their own tab) and quiz management (after "Manage") load when
+// opened, so the board itself shows sooner.
+const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
   loading: () => <div className="h-[600px] rounded-2xl skeleton" />,
