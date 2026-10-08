@@ -154,6 +154,36 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       closing: 'Reply to me in Messages any time if you want to talk it through.',
     },
   }] })],
+  // Course modules (Stage 5 · B2): three units made from the course's sample materials and quiz.
+  [/^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    const canManage = d.teacherView && c.teacher.id === d.me.id;
+    const b = d.board[c.id];
+    const mats = (b?.materials ?? []) as { id: string; title: string; type: string; fileUrl: string }[];
+    const quiz = d.quizzes.find((x) => x.courseId === c.id);
+    const done = (d as SampleDb & { moduleDone?: Set<string> }).moduleDone ??= new Set(['sm-i1']);
+    const item = (id: string, kind: string, title: string, extra: Record<string, unknown> = {}) => ({ id, kind, refId: null, title, body: null, url: null, href: null, meta: null, missing: false, done: done.has(id), doneCount: canManage ? 2 : undefined, ...extra });
+    const mods = [
+      { id: 'sm-1', title: 'Getting started', summary: 'How the course works and what you need.', items: [
+        item('sm-i1', 'PAGE', 'Welcome and course plan', { body: `Welcome to ${c.name}!\n\nEach week has a module: read the slides, try the practice, then take the short quiz.` }),
+        ...(mats[0] ? [item('sm-i2', 'FILE', mats[0].title, { refId: mats[0].id, href: mats[0].fileUrl, meta: mats[0].type })] : []),
+      ] },
+      { id: 'sm-2', title: 'Week 2', summary: null, items: [
+        ...mats.slice(1, 3).map((x, i) => item(`sm-i${3 + i}`, 'FILE', x.title, { refId: x.id, href: x.fileUrl, meta: x.type })),
+        item('sm-i5', 'VIDEO', 'Lecture recording', { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', href: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }),
+        ...(quiz ? [item('sm-i6', 'QUIZ', quiz.title, { refId: quiz.id, href: canManage ? '/teacher/quizzes' : '/student/quizzes', meta: 'Due soon', done: !!d.submissions[quiz.id] })] : []),
+      ] },
+      { id: 'sm-3', title: 'Week 3', summary: 'Opens next week.', releaseAt: at(7, 8, 0), items: [item('sm-i7', 'PAGE', 'Reading for week 3', { body: 'Chapter 5, sections 1–3.' })] },
+    ].map((x, i) => {
+      const locked = !canManage && i === 2;
+      const items = x.items.map((it) => (locked ? { ...it, href: null, body: null, url: null } : it));
+      return { published: true, releaseAt: null, requireQuizId: null, requireScore: null, requireQuizTitle: null, summary: null, ...x, position: i, locked, lockReason: locked ? 'Opens next week' : null, items, doneItems: items.filter((it) => it.done).length };
+    });
+    const next = canManage ? null : mods.filter((x) => !x.locked).flatMap((x) => x.items.map((it) => ({ moduleId: x.id, itemId: it.id, done: it.done }))).find((x) => !x.done) ?? null;
+    const choices = canManage ? { FILE: mats.map(({ id, title, type }) => ({ id, title, type })), QUIZ: d.quizzes.filter((x) => x.courseId === c.id).map(({ id, title, status }) => ({ id, title, status })), ASSIGNMENT: [], LIVE: [] } : null;
+    return ok({ canManage, students: canManage ? d.classmates.length : 0, modules: mods, next: next && { moduleId: next.moduleId, itemId: next.itemId }, choices });
+  }],
   [/^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
     if (!c) return fail('Course not found.', 404);
@@ -427,6 +457,12 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, body }) => {
+    const done = (d as SampleDb & { moduleDone?: Set<string> }).moduleDone ??= new Set();
+    if (body?.action === 'done') { if (body.done === false) done.delete(body.itemId); else done.add(body.itemId); return ok({ ok: true }); }
+    notice();
+    return ok({ ok: true });
+  }],
   ['POST', /^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m, body }) => {
     const b = d.board[m[1]]; if (!b) return fail('Course not found.', 404);
     const id = sid('b');

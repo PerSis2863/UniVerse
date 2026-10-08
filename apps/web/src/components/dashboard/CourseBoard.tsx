@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, X, type LucideIcon,
+  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, X, type LucideIcon,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
@@ -22,7 +22,7 @@ import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 import { safeHref } from '@/lib/safe-href';
-import { courseColor } from '@/lib/course-color';
+import { courseShade } from '@/lib/course-color';
 import { SaveOfflineButton } from '@/components/offline/SaveOfflineButton';
 import type { ClassSession } from '@/components/dashboard/ClassSessions';
 import { Combobox } from '@/components/ui/Combobox';
@@ -32,6 +32,8 @@ import { downloadIcs } from '@/lib/ics';
 
 // Class recordings and study packs (their own tab) and quiz management (after "Manage") load when
 // opened, so the board itself shows sooner.
+// Modules (Stage 5 · B2): its own tab, loaded when opened.
+const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
@@ -60,6 +62,7 @@ interface Board {
 
 const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'board', label: 'Announcements', icon: Bell },
+  { id: 'modules', label: 'Modules', icon: Layers },
   { id: 'sessions', label: 'Class sessions', icon: NotebookPen },
   { id: 'materials', label: 'Materials', icon: FileText },
   { id: 'readings', label: 'Reading list', icon: BookOpen },
@@ -143,7 +146,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
             <button key={c.id} onClick={() => setCourseId(c.id)}
               className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm whitespace-nowrap border transition-all',
                 courseId === c.id ? 'text-white border-transparent shadow-lg' : 'bg-white/60 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-indigo-400/40')}
-              style={courseId === c.id ? { background: courseColor(c.color, c.code) } : undefined}>
+              style={courseId === c.id ? { background: courseShade(c.color, c.code) } : undefined}>
               <span className="font-bold">{c.code}</span>
               <span className="hidden sm:inline opacity-80">{c.name.split(' ').slice(0, 3).join(' ')}</span>
             </button>
@@ -153,7 +156,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
         {/* Header */}
         <div className="px-4 sm:px-8 py-4 border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: courseColor(course?.color, course?.code), viewTransitionName: course ? vtName('course', course.id) : undefined }}>{course?.code?.slice(-2)}</div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: courseShade(course?.color, course?.code), viewTransitionName: course ? vtName('course', course.id) : undefined }}>{course?.code?.slice(-2)}</div>
             <div className="min-w-0">
               <h2 className="font-bold text-zinc-900 dark:text-white truncate" style={{ viewTransitionName: course ? vtName('course-title', course.id) : undefined }}>{course?.name}</h2>
               <p className="text-xs text-zinc-500">{course?.teacher?.name ?? 'Instructor'}{board ? ` · ${board.course._count.enrollments} student${board.course._count.enrollments === 1 ? '' : 's'}` : ''}</p>
@@ -195,6 +198,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'board' && <CourseSkills board={board} canManage={canManage} refresh={() => void mutate()} />}
                 {tab === 'board' && <LatestPack board={board} onOpen={(id) => { setSessionId(id); setTab('sessions'); }} />}
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}
+                {tab === 'modules' && course && <CourseModules courseId={course.id} />}
                 {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}

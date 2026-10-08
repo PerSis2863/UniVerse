@@ -194,6 +194,7 @@ model User {
   careerProfile           CareerProfile?
   skills                  StudentSkill[]
   skillEvidence           SkillEvidence[]
+  itemProgress            ItemProgress[] // course modules: items done (Stage 5 · B2)
   supportPlans            SupportPlan[]
   planBlocks              PlanBlock[]
   shiftCheckins           ShiftCheckin[]
@@ -393,6 +394,7 @@ model Course {
 
   scheduledCalls ScheduledCall[]
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
+  modules        CourseModule[] // ordered units of items (Stage 5 · B2)
 
   @@index([teacherId])
   @@index([status])
@@ -2101,6 +2103,60 @@ model ImpactCertificate {
   @@index([status])
   @@index([anchorStatus])
   @@map("impact_certificates")
+}
+
+/// Course modules (Stage 5 · B2): a course's ordered units, each a list of items. Students see a
+/// module from its release date and, when it needs a quiz, once they score enough on it.
+model CourseModule {
+  id            String       @id @default(cuid())
+  courseId      String
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title         String
+  summary       String?
+  position      Int
+  published     Boolean      @default(true) // false: only the teacher sees it
+  releaseAt     DateTime? // students see it from then
+  requireQuizId String? // unlocks once the student scores requireScore% or more on this quiz
+  requireScore  Int?
+  items         ModuleItem[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([courseId, position])
+  @@map("course_modules")
+}
+
+/// One thing to do in a module: a page to read, a file (material), a link or video, a quiz, an
+/// assignment or a live class (calendar event). refId points at the material/quiz/assignment/event.
+model ModuleItem {
+  id        String         @id @default(cuid())
+  moduleId  String
+  module    CourseModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  kind      String // PAGE, FILE, LINK, VIDEO, QUIZ, ASSIGNMENT, LIVE
+  refId     String?
+  title     String
+  body      String? // PAGE: the text
+  url       String? // LINK, VIDEO
+  position  Int
+  createdAt DateTime       @default(now())
+  progress  ItemProgress[]
+
+  @@index([moduleId, position])
+  @@map("module_items")
+}
+
+/// A student finished an item (quizzes and assignments count as done once handed in, without a row).
+model ItemProgress {
+  id     String     @id @default(cuid())
+  itemId String
+  item   ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId String
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doneAt DateTime   @default(now())
+
+  @@unique([itemId, userId])
+  @@index([userId])
+  @@map("item_progress")
 }
 
 /// How fast pages are for real people (Core Web Vitals) from 10% of page loads (Stage 5 · A4).
