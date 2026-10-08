@@ -9,10 +9,16 @@ import { auth, warmUpPopupSignIn } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { api } from '@/lib/api';
-import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { reportSession } from '@/lib/sign-in-history';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
+import dynamic from 'next/dynamic';
+
+// Phone sign-in carries a phone-number library (about 50 KB): it loads when someone chooses it
+// (or points at the button), not with the page.
+const loadPhoneFlow = () => import('@/components/auth/PhoneAuthFlow');
+const preloadPhoneFlow = () => { loadPhoneFlow().catch(() => {}); };
+const PhoneAuthFlow = dynamic(() => loadPhoneFlow().then((m) => m.PhoneAuthFlow), { ssr: false, loading: () => <div className="h-56 rounded-2xl skeleton" /> });
 
 export default function LoginPage() {
   const router = useRouter();
@@ -233,6 +239,7 @@ export default function LoginPage() {
 
               <button
                 type="button"
+                onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
                 onClick={() => setShowPhoneFlow(true)}
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50 mb-6"

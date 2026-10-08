@@ -9,18 +9,9 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
 import { confirmDialog } from '@/components/ui/Dialogs';
-import { AccountSecurity } from '@/components/settings/AccountSecurity';
-import { DeleteAccount } from '@/components/settings/DeleteAccount';
 import { LowDataToggle } from '@/components/settings/LowDataToggle';
 import { QuietHoursSetting } from '@/components/settings/QuietHoursSetting';
-import { ConsentsPanel } from '@/components/settings/ConsentsPanel';
-import { DownloadMyData } from '@/components/settings/DownloadMyData';
-import { NetworkVisibility } from '@/components/settings/NetworkVisibility';
-import { GuardianShareCard } from '@/components/settings/GuardianShareCard';
-import { GuardianContactsCard } from '@/components/settings/GuardianContactsCard';
-import { OrganizationSettings } from '@/components/settings/OrganizationSettings';
 import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermissionPrompt';
-import { RecentSignIns } from '@/components/security/RecentSignIns';
 import { api } from '@/lib/api';
 import { applyTheme, getSavedTheme, type Theme } from '@/lib/theme';
 import { LANGUAGES, type Language } from '@/lib/i18n';
@@ -30,6 +21,20 @@ import { useAuthStore } from '@/store/auth';
 import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, setAppReduceMotion, setCaptionsByDefault, setHaptics, setReadingAid, setTextSize, textSize, type ReadingAid, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+// Sections show one at a time: their heavier parts (sign-in security, account deletion, school
+// settings, consents, family) load when their section opens.
+const sectionLoading = () => <div className="h-28 rounded-2xl skeleton" />;
+const AccountSecurity = dynamic(() => import('@/components/settings/AccountSecurity').then((m) => m.AccountSecurity), { ssr: false, loading: sectionLoading });
+const DeleteAccount = dynamic(() => import('@/components/settings/DeleteAccount').then((m) => m.DeleteAccount), { ssr: false, loading: sectionLoading });
+const OrganizationSettings = dynamic(() => import('@/components/settings/OrganizationSettings').then((m) => m.OrganizationSettings), { ssr: false, loading: sectionLoading });
+const ConsentsPanel = dynamic(() => import('@/components/settings/ConsentsPanel').then((m) => m.ConsentsPanel), { ssr: false, loading: sectionLoading });
+const DownloadMyData = dynamic(() => import('@/components/settings/DownloadMyData').then((m) => m.DownloadMyData), { ssr: false, loading: sectionLoading });
+const NetworkVisibility = dynamic(() => import('@/components/settings/NetworkVisibility').then((m) => m.NetworkVisibility), { ssr: false, loading: sectionLoading });
+const GuardianShareCard = dynamic(() => import('@/components/settings/GuardianShareCard').then((m) => m.GuardianShareCard), { ssr: false, loading: sectionLoading });
+const GuardianContactsCard = dynamic(() => import('@/components/settings/GuardianContactsCard').then((m) => m.GuardianContactsCard), { ssr: false, loading: sectionLoading });
+const RecentSignIns = dynamic(() => import('@/components/security/RecentSignIns').then((m) => m.RecentSignIns), { ssr: false, loading: sectionLoading });
 
 // Settings for every portal, like the Settings app on a phone: a searchable list of sections; on
 // phones a section slides in over the list (Back, or swipe from the left edge, slides it away), on
