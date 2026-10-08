@@ -37,6 +37,9 @@ const ROLE_OF = (path) => (path.startsWith('/teacher') ? 'teacher' : path.starts
 const EMAIL = { student: 'demo@student.com', teacher: 'demo@teacher.com', admin: 'demo@admin.com' };
 // The owner console needs the owner account; sign-in and sign-up pages redirect when signed in.
 const SKIP = [/^\/console/, /^\/(login|register|forgot-password|reset-password)$/];
+// Expected under `next dev`: live updates need the Durable Objects, which only run in wrangler.
+const IGNORE = [/\/api\/realtime\/ticket$/];
+const ignored = (url) => { try { return IGNORE.some((re) => re.test(new URL(url).pathname)); } catch { return false; } };
 
 const all = routes().filter((r) => !SKIP.some((re) => re.test(r)));
 const byRole = Object.groupBy(all, ROLE_OF);
@@ -49,15 +52,17 @@ for (const [role, pages] of Object.entries(byRole)) {
     const page = await ctx.newPage();
     const problems = [];
     page.on('pageerror', (e) => problems.push(`error: ${String(e.message).slice(0, 140)}`));
-    page.on('console', (m) => { if (m.type() === 'error' && !/favicon|Download the React DevTools|\[HMR\]|net::ERR_ABORTED/.test(m.text())) problems.push(`console: ${m.text().slice(0, 140)}`); });
-    page.on('response', (r) => { if (r.status() >= 500) problems.push(`HTTP ${r.status()} ${new URL(r.url()).pathname}`); });
+    page.on('console', (m) => { if (m.type() === 'error' && !ignored(m.location().url ?? '') && !/favicon|Download the React DevTools|\[HMR\]|net::ERR_ABORTED/.test(m.text())) problems.push(`console: ${m.text().slice(0, 140)}`); });
+    page.on('response', (r) => { if (r.status() >= 500 && !ignored(r.url())) problems.push(`HTTP ${r.status()} ${new URL(r.url()).pathname}`); });
     page.on('requestfailed', (r) => { const f = r.failure()?.errorText ?? ''; if (!/ERR_ABORTED|NS_BINDING_ABORTED/.test(f) && !r.url().includes('/_next/webpack-hmr')) problems.push(`failed: ${new URL(r.url()).pathname} ${f}`); });
     try {
-      await page.goto(base + path, { waitUntil: 'load', timeout: 60_000 });
+      // Generous: the dev server compiles a page on its first visit (20 s or more).
+      await page.goto(base + path, { waitUntil: 'load', timeout: 120_000 });
       await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
       await page.waitForTimeout(1200);
       const state = await page.evaluate(() => ({
-        overlay: !!document.querySelector('nextjs-portal'),
+        // Next's dev badge is always there; it's red (data-error) when the page has an error.
+        overlay: (() => { const root = document.querySelector('nextjs-portal')?.shadowRoot; return !!root && (root.querySelector('[data-next-badge]')?.getAttribute('data-error') === 'true' || !!root.querySelector('[data-nextjs-dialog]')); })(),
         errorScreen: /We’ve been told about it automatically|Something went wrong on our side/.test(document.body.innerText),
         onlySkeleton: !!document.querySelector('main .skeleton') && (document.querySelector('main')?.innerText.trim().length ?? 0) < 20,
       }));
