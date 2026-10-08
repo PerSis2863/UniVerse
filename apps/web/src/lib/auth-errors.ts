@@ -9,7 +9,7 @@ const MESSAGES: Record<string, string> = {
   'auth/network-request-failed': 'You seem to be offline. Check your connection and try again.',
   'auth/popup-closed-by-user': 'The sign-in window was closed before finishing.',
   'auth/cancelled-popup-request': 'The sign-in window was closed before finishing.',
-  'auth/popup-blocked': 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.',
+  'auth/popup-blocked': 'Your browser blocked the sign-in window. Tap the button again; if it’s still blocked, allow pop-ups for this site (the icon at the right of the address bar).',
   'auth/account-exists-with-different-credential': 'This email already uses another sign-in method. Sign in the way you did before.',
   'auth/email-already-in-use': 'An account with this email already exists. Sign in instead.',
   'auth/weak-password': 'Choose a stronger password: at least 8 characters, ideally with numbers and symbols.',
