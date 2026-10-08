@@ -16,6 +16,7 @@ import { api as nestApi } from '@/lib/fetcher';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { TabPill } from '@/components/ui/Glide';
+import { finalGrade, type Category } from '@/lib/gradebook';
 
 // GPA per term (Jan–Jun = Spring, Jul–Dec = Fall), from real grades on a 4.0 scale.
 function gpaByTerm(grades: { score: number; maxScore: number; gradedAt?: string; createdAt?: string }[]) {
@@ -297,15 +298,24 @@ export default function GradesPage() {
   const semGPA = ((avg / 100) * 4).toFixed(2);
 
   // Per-course averages drive the insight and the transcript summary.
-  type CourseAvg = { course: string; code: string; credits: number; sum: number; n: number };
+  // A course with gradebook categories (Stage 5 · B3.4) uses its weighted final, as the teacher sees it.
+  type CourseAvg = { courseId: string; course: string; code: string; credits: number; sum: number; n: number; items: { assessment: string; score: number; maxScore: number }[] };
   const courseMap = new Map<string, CourseAvg>();
   for (const r of gradesData) {
-    const cur = courseMap.get(r.code + r.course) ?? { course: r.course, code: r.code, credits: r.credits, sum: 0, n: 0 };
+    const cur = courseMap.get(r.code + r.course) ?? { courseId: r.courseId, course: r.course, code: r.code, credits: r.credits, sum: 0, n: 0, items: [] };
     cur.sum += r.percentage;
     cur.n += 1;
+    cur.items.push({ assessment: r.assignment, score: r.percentage, maxScore: 100 });
     courseMap.set(r.code + r.course, cur);
   }
-  const byCourse = [...courseMap.values()].map((c) => ({ ...c, avg: Math.round(c.sum / c.n) })).sort((a, b) => a.avg - b.avg);
+  const categories: (Category & { courseId: string })[] = data?.categories ?? [];
+  const assessments: { courseId: string; name: string; categoryId: string }[] = data?.assessments ?? [];
+  const byCourse = [...courseMap.values()].map((c) => {
+    const mine = categories.filter((x) => x.courseId === c.courseId);
+    const of = new Map(assessments.filter((a) => a.courseId === c.courseId).map((a) => [a.name, a.categoryId]));
+    const weighted = mine.length ? finalGrade(c.items, mine, (n) => of.get(n) ?? null).final : null;
+    return { ...c, avg: Math.round(weighted ?? c.sum / c.n), weighted: weighted != null };
+  }).sort((a, b) => a.avg - b.avg);
   const weakest = byCourse.length > 1 ? byCourse[0] : null;
   const trend = avg >= 70 ? 1 : -1;
 
