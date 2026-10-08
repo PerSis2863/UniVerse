@@ -54,6 +54,8 @@ async function enforceRetention() {
   // Pages opened and buttons clicked (technical / usage logs), and error groups nobody has seen
   // for 90 days.
   await prisma.uiEvent.deleteMany({ where: { createdAt: { lt: new Date(now - 90 * DAY) } } });
+  // Page-speed measures (owner console → Analytics → Speed) are kept 30 days.
+  await prisma.webVital.deleteMany({ where: { createdAt: { lt: new Date(now - 30 * DAY) } } });
   // Status updates are visible for 24 hours; remove them (and their photos) after that.
   const oldStatuses = await prisma.chatStatus.findMany({ where: { expiresAt: { lt: new Date(now) } }, select: { id: true, mediaUrl: true }, take: 300 });
   for (const st of oldStatuses) if (st.mediaUrl) await deleteFile(st.mediaUrl).catch(() => {});

@@ -280,6 +280,76 @@ export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void })
         <Ranked title="Most pressed buttons" empty="No button presses yet." rows={data.buttons.map((b) => ({ key: `${b.label}${b.path}`, label: `“${b.label}”`, sub: b.path, value: b.clicks }))} />
         <Ranked title="Most active people" empty="Nobody yet." onClick={onPerson} rows={data.busiest.map((b) => ({ key: b.id, label: b.name, sub: b.role.toLowerCase(), value: b.events }))} />
       </div>
+      <SpeedPanel />
+    </div>
+  );
+}
+
+// ─── Speed (Core Web Vitals from real visits, src/lib/web-vitals.ts) ──────────────────────────
+
+type VitalStat = { p75: number; n: number };
+interface VitalsData { days: number; devices: Record<string, Record<string, VitalStat>>; pages: { page: string; n: number; metrics: Record<string, VitalStat> }[] }
+
+// Google's thresholds: good up to the first number, poor from the second.
+const VITAL_INFO: Record<string, { name: string; good: number; poor: number; ms: boolean }> = {
+  LCP: { name: 'Main content shown', good: 2500, poor: 4000, ms: true },
+  INP: { name: 'Response to taps', good: 200, poor: 500, ms: true },
+  CLS: { name: 'Layout jumps', good: 0.1, poor: 0.25, ms: false },
+  FCP: { name: 'First content', good: 1800, poor: 3000, ms: true },
+  TTFB: { name: 'Server answer', good: 800, poor: 1800, ms: true },
+};
+const vitalText = (k: string, v: number) => (!VITAL_INFO[k].ms ? v.toFixed(2) : v >= 1000 ? `${(v / 1000).toFixed(1)} s` : `${Math.round(v)} ms`);
+const vitalTone = (k: string, v: number) => (v <= VITAL_INFO[k].good ? 'text-emerald-600 dark:text-emerald-400' : v < VITAL_INFO[k].poor ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400');
+
+function SpeedPanel() {
+  const [days, setDays] = useState(7);
+  const { data } = useSWR<VitalsData>(`/owner/vitals?days=${days}`, fetcher, { keepPreviousData: true, refreshInterval: useActivePoll(300_000) });
+  const cell = (k: string, s?: VitalStat) => (s ? <span className={cn('tabular-nums font-semibold', vitalTone(k, s.p75))}>{vitalText(k, s.p75)}</span> : <span className="text-zinc-400">—</span>);
+  return (
+    <div className={cn(card, 'p-5')}>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+        <h2 className="font-semibold text-zinc-900 dark:text-white">Speed for real people</h2>
+        <div className="flex gap-1">
+          {[7, 30].map((d) => (
+            <button key={d} onClick={() => setDays(d)} className={cn('relative isolate px-3 py-1.5 rounded-full text-xs font-semibold', days === d ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{days === d && <TabPill id="p-dashboard-console-speed" />}{d} days</button>
+          ))}
+        </div>
+      </div>
+      <p className="text-sm text-zinc-500 mb-4">From 10% of page loads, anonymous. 3 in 4 visits were at least this fast (75th percentile). Green is good, amber needs work, red is poor. Targets: main content under 2.5 s, response to taps under 200 ms.</p>
+      {!data ? <div className="h-24 rounded-xl skeleton" /> : !data.pages.length ? <p className="text-sm text-zinc-500">No measurements yet. They arrive as people use the app.</p> : (
+        <>
+          <div className="grid sm:grid-cols-2 gap-3 mb-5">
+            {(['phone', 'desktop'] as const).map((dev) => (
+              <div key={dev} className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] p-3">
+                <p className="text-xs font-semibold text-zinc-500 mb-2">{dev === 'phone' ? 'Phones and tablets' : 'Computers'}</p>
+                <dl className="grid grid-cols-3 gap-2 text-sm">
+                  {(['LCP', 'INP', 'CLS'] as const).map((k) => (
+                    <div key={k}><dt className="text-[11px] text-zinc-500">{VITAL_INFO[k].name}</dt><dd>{cell(k, data.devices[dev]?.[k])}</dd></div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </div>
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-xs text-zinc-500">
+                <th className="py-1.5 px-1 font-medium">Page</th>
+                {(['LCP', 'INP', 'CLS', 'TTFB'] as const).map((k) => <th key={k} className="py-1.5 px-1 font-medium text-right">{VITAL_INFO[k].name}</th>)}
+                <th className="py-1.5 px-1 font-medium text-right">Visits</th>
+              </tr></thead>
+              <tbody>
+                {data.pages.map((p) => (
+                  <tr key={p.page} className="border-t border-zinc-100 dark:border-white/[0.06]">
+                    <td className="py-1.5 px-1 font-mono text-xs text-zinc-700 dark:text-zinc-300 truncate max-w-[220px]">{p.page}</td>
+                    {(['LCP', 'INP', 'CLS', 'TTFB'] as const).map((k) => <td key={k} className="py-1.5 px-1 text-right">{cell(k, p.metrics[k])}</td>)}
+                    <td className="py-1.5 px-1 text-right tabular-nums text-zinc-500">{p.n}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }

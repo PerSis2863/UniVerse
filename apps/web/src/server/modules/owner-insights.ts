@@ -85,6 +85,31 @@ export default function ownerInsightsModule(router: Router) {
     return { people: people.map((p) => ({ ...p, owner: isOwnerEmail(p.email) })), chats, messages, errors, changes };
   });
 
+  // Page speed for real people (Stage 5 · A4, src/lib/web-vitals.ts): the 75th percentile of each
+  // measure, by device and for the pages with the most measurements. One query each, in SQL.
+  r.get('vitals', async ({ query }) => {
+    const days = [7, 30].includes(Number(query.days)) ? Number(query.days) : 7;
+    const since = iso(Date.now() - days * DAY);
+    // Row ceil(0.75 n) of each group, in value order, is its p75.
+    const p75 = (group: 'device' | 'page') => prisma.$queryRawUnsafe<{ k: string; metric: string; value: number; n: bigint }[]>(
+      `WITH r AS (SELECT ${group} AS k, metric, value, ROW_NUMBER() OVER (PARTITION BY ${group}, metric ORDER BY value) AS rn, COUNT(*) OVER (PARTITION BY ${group}, metric) AS n FROM web_vitals WHERE createdAt > ?) SELECT k, metric, value, n FROM r WHERE rn = (3 * n + 3) / 4`,
+      since,
+    );
+    const [byDevice, byPage] = await Promise.all([p75('device'), p75('page')]);
+    const fold = (rows: typeof byDevice) => {
+      const out = new Map<string, Record<string, { p75: number; n: number }>>();
+      for (const r of rows) {
+        const m = out.get(r.k) ?? {};
+        m[r.metric] = { p75: Number(r.value), n: num(r.n) };
+        out.set(r.k, m);
+      }
+      return out;
+    };
+    const pages = [...fold(byPage)].map(([page, m]) => ({ page, n: Math.max(0, ...Object.values(m).map((x) => x.n)), metrics: m }))
+      .sort((a, b) => b.n - a.n).slice(0, 15);
+    return { days, devices: Object.fromEntries(fold(byDevice)), pages };
+  });
+
   r.get('analytics', async ({ query }) => {
     const days = [7, 30, 90].includes(Number(query.days)) ? Number(query.days) : 30;
     const now = Date.now();

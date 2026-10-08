@@ -2103,6 +2103,20 @@ model ImpactCertificate {
   @@map("impact_certificates")
 }
 
+/// How fast pages are for real people (Core Web Vitals) from 10% of page loads (Stage 5 · A4).
+/// Anonymous; kept 30 days. Owner console → Analytics → Speed.
+model WebVital {
+  id        Int      @id @default(autoincrement())
+  page      String // the path with ids replaced by :id
+  metric    String // LCP, INP, CLS, FCP or TTFB
+  value     Float // milliseconds (CLS: a score)
+  device    String // phone or desktop
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("web_vitals")
+}
+
 /// Errors seen in browsers and on the server, grouped: the same problem is one row with a count.
 /// Diagnosed by AI (the daily job or the owner console) and shown to the owner at /console.
 model ErrorReport {
