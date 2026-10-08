@@ -119,6 +119,7 @@ export class QuizzesService {
     return quizzes.map(q => ({
       id: q.id,
       title: q.title,
+      courseId: q.courseId,
       course: q.course?.name || 'Unknown Course',
       questions: q._count.questions,
       timeLimit: q.timeLimit ? `${q.timeLimit} mins` : 'No limit',

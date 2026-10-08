@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { AlertTriangle, CheckCircle2, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Library, Plus, Trash2, X } from 'lucide-react';
 import type { ItemResult } from '@/lib/item-analysis';
 import { Switch } from '@/components/ui/Switch';
 import { authedJson } from '@/lib/authed-fetch';
@@ -15,7 +15,7 @@ type Question = { id: string; question: string; options: string[]; correctAnswer
 type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean };
 type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; integrity?: Integrity | null; student: { name: string } };
 type Quiz = {
-  id: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean;
+  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
   analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
@@ -27,6 +27,15 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
   const { data: quiz, isLoading, error, mutate } = useSWR<Quiz>(`/api/quizzes/${quizId}`, authedJson);
   const [draft, setDraft] = useState({ question: '', options: ['', '', '', ''], correct: 0, points: 1 });
   const [busy, setBusy] = useState(false);
+
+  // Copies a question into the course's question bank (Stage 5 · B4.1) to reuse in other quizzes.
+  const saveToBank = async (questionId: string) => {
+    if (!quiz?.courseId) return;
+    try {
+      await authedJson(`/api/courses/${quiz.courseId}/question-bank`, { method: 'POST', body: JSON.stringify({ action: 'save-from-quiz', questionId }) });
+      toast.success('Saved to the question bank');
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
   const patch = async (body: object, ok: string) => {
     setBusy(true);
@@ -109,6 +118,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                 <div key={q.id} className="p-4 rounded-2xl bg-white/60 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                   <div className="flex items-start gap-3">
                     <p className="flex-1 text-sm font-semibold text-zinc-900 dark:text-white">{i + 1}. {q.question} <span className="text-xs font-normal text-zinc-500">· {q.points} pt{q.points === 1 ? '' : 's'}</span></p>
+                    {quiz.courseId && <button onClick={() => void saveToBank(q.id)} aria-label="Save to the question bank" title="Save to the question bank" className="p-1.5 rounded-lg text-zinc-400 hover:text-indigo-500"><Library className="w-4 h-4" /></button>}
                     <button onClick={() => removeQuestion(q.id)} aria-label="Delete question" className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
                   </div>
                   <ul className="mt-2 grid sm:grid-cols-2 gap-1.5">

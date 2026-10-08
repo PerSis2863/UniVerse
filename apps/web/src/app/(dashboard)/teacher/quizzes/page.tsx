@@ -10,9 +10,13 @@ import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { QuizManager } from '@/components/quizzes/QuizManager';
 import { OfflineQuizReview } from '@/components/quizzes/OfflineQuizReview';
+import { Segmented } from '@/components/ui/Segmented';
+import dynamic from 'next/dynamic';
+
+const QuestionBank = dynamic(() => import('@/components/quizzes/QuestionBank').then((m) => m.QuestionBank), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 
 /** /quizzes/teacher/my-quizzes: one row per quiz, ready to show. */
-interface TeacherQuiz { id: string; title: string; course: string; status: string; dueDate?: string | null; timeLimit?: number | null; questions: number; submissions: number }
+interface TeacherQuiz { id: string; title: string; courseId?: string; course: string; status: string; dueDate?: string | null; timeLimit?: number | null; questions: number; submissions: number }
 
 export default function TeacherQuizzes() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,6 +27,8 @@ export default function TeacherQuizzes() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newQuiz, setNewQuiz] = useState({ title: '', courseId: '', timeLimit: 30 });
   const [managing, setManaging] = useState<string | null>(null);
+  // Quizzes, or the course question banks (Stage 5 · B4.1).
+  const [view, setView] = useState<'quizzes' | 'bank'>('quizzes');
 
   const filteredQuizzes = quizzes.filter((q) => {
     const matchesSearch = q.title.toLowerCase().includes(searchTerm.toLowerCase()) || q.course.toLowerCase().includes(searchTerm.toLowerCase());
@@ -71,6 +77,11 @@ export default function TeacherQuizzes() {
     <>
       <Topbar title="Quizzes & Assessments" subtitle="Manage course evaluations" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
+        <Segmented<'quizzes' | 'bank'> label="Show" value={view} onChange={setView} segments={[{ value: 'quizzes', label: 'Quizzes' }, { value: 'bank', label: 'Question bank' }]} className="max-w-xs" />
+        {view === 'bank' ? (
+          <QuestionBank courses={courses} quizzes={quizzes} onAdded={() => void mutateQuizzes()} />
+        ) : (
+        <>
         <OfflineQuizReview />
 
         {/* Actions */}
@@ -164,6 +175,8 @@ export default function TeacherQuizzes() {
             </div>
           )}
         </div>
+        )}
+        </>
         )}
       </div>
 

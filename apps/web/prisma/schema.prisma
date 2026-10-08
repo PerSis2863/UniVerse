@@ -398,6 +398,7 @@ model Course {
   modules        CourseModule[] // ordered units of items (Stage 5 · B2)
   gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
   gradeAssessments GradeAssessment[]
+  questionBank     BankQuestion[] // reusable quiz questions (Stage 5 · B4.1)
 
   @@index([teacherId])
   @@index([status])
@@ -2113,6 +2114,25 @@ model ImpactCertificate {
   @@index([status])
   @@index([anchorStatus])
   @@map("impact_certificates")
+}
+
+/// A course's question bank (Stage 5 · B4.1): reusable multiple-choice questions. tags is a
+/// comma-separated lower-case list; difficulty EASY, MEDIUM or HARD.
+model BankQuestion {
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  question      String
+  options       Json // string[]
+  correctAnswer String
+  points        Float    @default(1)
+  tags          String   @default("")
+  difficulty    String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  @@index([courseId])
+  @@map("question_bank")
 }
 
 /// When a student started a quiz in exam mode: the time limit counts from here (Stage 5 · B4.4).
