@@ -82,9 +82,9 @@ export function SmartWeek({ today, tz }: { today: string; tz: string }) {
               </label>
               <label className="space-y-1"><span className="block text-xs font-semibold text-zinc-500">Study between</span>
                 <span className="flex items-center gap-2">
-                  <input type="time" value={data.prefs.start} disabled={saving} onChange={(e) => e.target.value && void savePrefs({ start: e.target.value })} className="w-full rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 px-2 py-2" />
+                  <input aria-label="Start" type="time" value={data.prefs.start} disabled={saving} onChange={(e) => e.target.value && void savePrefs({ start: e.target.value })} className="w-full rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 px-2 py-2" />
                   <span className="text-zinc-400">–</span>
-                  <input type="time" value={data.prefs.end} disabled={saving} onChange={(e) => e.target.value && void savePrefs({ end: e.target.value })} className="w-full rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 px-2 py-2" />
+                  <input aria-label="End" type="time" value={data.prefs.end} disabled={saving} onChange={(e) => e.target.value && void savePrefs({ end: e.target.value })} className="w-full rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 px-2 py-2" />
                 </span>
               </label>
               <label className="flex items-start gap-2 sm:pt-5 cursor-pointer">

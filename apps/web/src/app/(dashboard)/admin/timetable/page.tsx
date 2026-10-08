@@ -73,8 +73,8 @@ export default function TimetableManagementPage() {
               <select aria-label="Course" className="input" value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>{data!.courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}</select>
               <select aria-label="Day of week" className="input" value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select>
               <select aria-label="Type" className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{['LECTURE', 'LAB', 'TUTORIAL'].map((t) => <option key={t} value={t}>{t.toLowerCase()}</option>)}</select>
-              <input className="input" type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
-              <input className="input" type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+              <input aria-label="Start time" className="input" type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+              <input aria-label="End time" className="input" type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
               <select aria-label="Room" className="input" value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })}><option value="">No room</option>{data!.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
               <button onClick={save} aria-busy={busy || undefined} disabled={busy} className="btn-primary sm:col-span-3">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add to timetable</button>
             </div>

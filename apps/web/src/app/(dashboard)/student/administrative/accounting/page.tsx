@@ -261,23 +261,24 @@ function AccountingContent() {
 
         {/* Quick Actions */}
         <div>
-          <h2 className="font-bold text-lg text-white mb-4">Quick Actions</h2>
+          <h2 className="font-bold text-lg text-zinc-900 dark:text-white mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {quickActions.map((action, i) => (
-              <motion.div 
+              <motion.button
+                type="button"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: Math.min(i, 6) * 0.03 }}
                 key={i}
                 onClick={() => setActiveModal(action.id)}
-                className={`bg-[#121830] border border-white/[0.08] rounded-2xl p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition-all cursor-pointer group ${action.border}`}
+                className={`panel text-left p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition-all cursor-pointer group ${action.border}`}
               >
                 <div className={`w-12 h-12 rounded-xl ${action.bg} ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                   <action.icon className="w-6 h-6" />
                 </div>
-                <h3 className="font-bold text-white mb-1 text-sm">{action.title}</h3>
-                <p className="text-xs text-zinc-400">{action.subtitle}</p>
-              </motion.div>
+                <h3 className="font-bold text-zinc-900 dark:text-white mb-1 text-sm">{action.title}</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{action.subtitle}</p>
+              </motion.button>
             ))}
           </div>
         </div>

@@ -122,6 +122,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   return (
     <div className="shell-in flex min-h-[100dvh]">
+      <a href="#main" className="skip-link">Skip to content</a>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
@@ -154,7 +155,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </header>
 
         <SwipeBack enabled={canGoBack} pathname={pathname} onBack={back} />
-        <main className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip">
+        <main id="main" tabIndex={-1} className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip outline-none">
           <SampleModeBar />
           {/* Re-mount pages when switching between sample and real data so they reload from the right source */}
           <Fragment key={sampleMode ? 'sample' : 'real'}><PendingPage>{children}</PendingPage></Fragment>

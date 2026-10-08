@@ -181,7 +181,7 @@ export default function GroupsPage() {
                   className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors text-zinc-900 dark:text-white placeholder:text-zinc-400"
                 />
               </div>
-              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] p-1 rounded-xl overflow-x-auto scrollbar-none">
+              <div role="tablist" aria-label="Show" className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] p-1 rounded-xl overflow-x-auto scrollbar-none">
                 {TABS.map(t => (
                   <button key={t} role="tab" aria-selected={filter === t} onClick={() => setFilter(t)} className={`relative isolate px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === t ? 'text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}>{filter === t && <TabPill id="ashboard-student-groups-page-0" />}
                     {t}

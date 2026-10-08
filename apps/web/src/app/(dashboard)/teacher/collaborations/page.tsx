@@ -85,20 +85,20 @@ export default function TeacherCollaborationsPage() {
             <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl">
               <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">Active Joint Consortia</div>
               <div className="text-3xl font-black text-zinc-900 dark:text-white">{displayProposals.length} Initiatives</div>
-              <div className="text-[11px] text-indigo-400 mt-2 flex items-center gap-1">
+              <div className="text-[11px] text-indigo-700 dark:text-indigo-400 mt-2 flex items-center gap-1">
                 <Globe2 className="w-3.5 h-3.5" /> 5 Partner Institutions
               </div>
             </div>
 
             <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl">
               <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">Students Under Mentorship</div>
-              <div className="text-3xl font-black text-emerald-400">14 Scholars</div>
+              <div className="text-3xl font-black text-emerald-700 dark:text-emerald-400">14 Scholars</div>
               <div className="text-[11px] text-zinc-500 dark:text-zinc-500 mt-2">Across 4 academic disciplines</div>
             </div>
 
             <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl">
               <div className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mb-1">Co-Authored Publications</div>
-              <div className="text-3xl font-black text-amber-400">3 Papers</div>
+              <div className="text-3xl font-black text-amber-800 dark:text-amber-400">3 Papers</div>
               <div className="text-[11px] text-zinc-500 dark:text-zinc-500 mt-2">Targeting Nature & Lancet Global</div>
             </div>
           </div>
@@ -132,15 +132,15 @@ export default function TeacherCollaborationsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-zinc-600 dark:text-zinc-400 p-3 bg-zinc-50 dark:bg-zinc-950/60 rounded-xl border border-zinc-200 dark:border-zinc-800/60">
                     <div>
                       <span className="text-zinc-500 dark:text-zinc-500 block mb-0.5">Partner University:</span>
-                      <span className="text-zinc-200 font-medium">{prop.partner}</span>
+                      <span className="text-zinc-800 dark:text-zinc-200 font-medium">{prop.partner}</span>
                     </div>
                     <div>
                       <span className="text-zinc-500 dark:text-zinc-500 block mb-0.5">NGO Collaborator:</span>
-                      <span className="text-zinc-200 font-medium">{prop.ngo}</span>
+                      <span className="text-zinc-800 dark:text-zinc-200 font-medium">{prop.ngo}</span>
                     </div>
                     <div>
                       <span className="text-zinc-500 dark:text-zinc-500 block mb-0.5">Next Milestone:</span>
-                      <span className="text-indigo-300 font-medium">{prop.nextMilestone}</span>
+                      <span className="text-indigo-700 dark:text-indigo-300 font-medium">{prop.nextMilestone}</span>
                     </div>
                   </div>
 

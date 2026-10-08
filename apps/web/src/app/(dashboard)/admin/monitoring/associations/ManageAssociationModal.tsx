@@ -51,7 +51,7 @@ export function ManageAssociationModal({ association, onClose, onSuccess }: Mana
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1.5">Association Name</label>
-              <input 
+              <input aria-label="Association Name" 
                 required
                 type="text"
                 value={name}
@@ -79,7 +79,7 @@ export function ManageAssociationModal({ association, onClose, onSuccess }: Mana
               
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-1.5">Allocated Budget ($)</label>
-                <input 
+                <input aria-label="Allocated Budget ($)" 
                   required
                   type="number"
                   min="0"

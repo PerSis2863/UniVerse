@@ -132,7 +132,7 @@ export default function StudentSupport() {
               <p className="text-sm text-zinc-600 dark:text-zinc-400">Chat directly with a support representative.</p>
               <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">Or email us at:</p>
-                <a href="mailto:myuniverseimpact@gmail.com" className="text-sm font-medium text-indigo-500 hover:text-indigo-400" onClick={(e) => e.stopPropagation()}>myuniverseimpact@gmail.com</a>
+                <a href="mailto:myuniverseimpact@gmail.com" className="text-sm font-medium text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-400" onClick={(e) => e.stopPropagation()}>myuniverseimpact@gmail.com</a>
               </div>
             </div>
 
@@ -164,7 +164,7 @@ export default function StudentSupport() {
                 <div className="space-y-4">
                   {FAQS.map((faq, i) => (
                     <div key={i} className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-lg p-5">
-                      <h4 className="font-medium text-zinc-200 mb-2">{faq.q}</h4>
+                      <h4 className="font-medium text-zinc-800 dark:text-zinc-200 mb-2">{faq.q}</h4>
                       <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{faq.a}</p>
                     </div>
                   ))}
@@ -189,7 +189,7 @@ export default function StudentSupport() {
                     {tickets.map(ticket => (
                       <div key={ticket.id} className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 rounded-lg p-5 hover:border-indigo-500/30 transition-colors">
                         <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-zinc-200">{ticket.subject}</h4>
+                          <h4 className="font-medium text-zinc-800 dark:text-zinc-200">{ticket.subject}</h4>
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(ticket.status)}`}>
                             {ticket.status}
                           </span>
@@ -278,42 +278,42 @@ export default function StudentSupport() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#121830] border border-zinc-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[70vh]"
+              className="dark bg-[#121830] border border-zinc-800 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[70vh]"
             >
-              <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30 shrink-0">
+              <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-white/80 dark:bg-zinc-900/30 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg">
                     <FileText className="w-5 h-5" />
                   </div>
-                  <h2 className="text-xl font-bold text-white">Connecting to eduroam Wi-Fi</h2>
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Connecting to eduroam Wi-Fi</h2>
                 </div>
                 <button aria-label="Close" onClick={handleCloseModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div className="p-8 overflow-y-auto space-y-8 bg-zinc-950">
+              <div className="dark p-8 overflow-y-auto space-y-8 bg-zinc-950">
                 <div className="space-y-4">
-                  <h3 className="text-xl font-semibold text-white">Step 1: Select the Network</h3>
+                  <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Step 1: Select the Network</h3>
                   <p className="text-zinc-400">Open your device’s Wi-Fi settings and select the network named <strong>eduroam</strong> from the list of available networks.</p>
                 </div>
                 
                 <div className="space-y-4">
-                  <h3 className="text-xl font-semibold text-white">Step 2: Enter Credentials</h3>
+                  <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Step 2: Enter Credentials</h3>
                   <p className="text-zinc-400">When prompted, enter your full university email address and your password.</p>
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-zinc-300">
+                  <div className="dark bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-zinc-300">
                     <div>Username: your.name@university.edu</div>
                     <div>Password: [Your University Password]</div>
                   </div>
                 </div>
                 
                 <div className="space-y-4">
-                  <h3 className="text-xl font-semibold text-white">Step 3: Accept the Certificate</h3>
+                  <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Step 3: Accept the Certificate</h3>
                   <p className="text-zinc-400">If your device prompts you to accept or trust a certificate (usually named <code>radius.university.edu</code>), please accept it to proceed.</p>
                 </div>
                 
                 <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
-                  <p className="text-indigo-300 text-sm">
+                  <p className="text-indigo-700 dark:text-indigo-300 text-sm">
                     <strong>Need Help?</strong> If you are still unable to connect after following these steps, please use the Live Chat or Submit a Ticket from the main services page.
                   </p>
                 </div>
@@ -328,21 +328,21 @@ export default function StudentSupport() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#121830] border border-zinc-800 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[80vh]"
+              className="dark bg-[#121830] border border-zinc-800 w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[80vh]"
             >
-              <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30 shrink-0">
+              <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-white/80 dark:bg-zinc-900/30 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg">
                     <Book className="w-5 h-5" />
                   </div>
-                  <h2 className="text-xl font-bold text-white">Library Portal</h2>
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Library Portal</h2>
                 </div>
                 <button aria-label="Close" onClick={handleCloseModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div className="p-8 overflow-y-auto space-y-8 bg-zinc-950 flex-1">
+              <div className="dark p-8 overflow-y-auto space-y-8 bg-zinc-950 flex-1">
                 {/* Search Bar */}
                 <div className="relative max-w-2xl mx-auto mt-4">
                   <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -350,7 +350,7 @@ export default function StudentSupport() {
                   </div>
                   <input 
                     type="text" 
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 text-lg shadow-lg"
+                    className="dark w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 text-lg shadow-lg"
                     placeholder="Your campus library catalogue and databases are in Apps & Links"
                     readOnly
                     onFocus={() => { handleCloseModal(); router.push('/student/links'); }}
@@ -363,22 +363,22 @@ export default function StudentSupport() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8">
-                  <div onClick={() => { handleCloseModal(); router.push('/student/links'); }} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
+                  <div onClick={() => { handleCloseModal(); router.push('/student/links'); }} className="dark bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
                     <Book className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-                    <h3 className="font-semibold text-white mb-1">My Loans</h3>
+                    <h3 className="font-semibold text-zinc-900 dark:text-white mb-1">My Loans</h3>
                     <p className="text-sm text-zinc-400">Via your library portal in Apps & Links.</p>
                   </div>
-                  <div onClick={() => { handleCloseModal(); router.push('/student/links'); }} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
+                  <div onClick={() => { handleCloseModal(); router.push('/student/links'); }} className="dark bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
                     <Laptop className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-                    <h3 className="font-semibold text-white mb-1">Databases</h3>
+                    <h3 className="font-semibold text-zinc-900 dark:text-white mb-1">Databases</h3>
                     <p className="text-sm text-zinc-400">Research databases your campus subscribes to.</p>
                   </div>
                   <div onClick={() => {
                     handleCloseModal();
                     router.push('/student/inbox?chatWith=Librarian');
-                  }} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
+                  }} className="dark bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-indigo-500/50 cursor-pointer transition-colors text-center">
                     <HelpCircle className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-                    <h3 className="font-semibold text-white mb-1">Ask a Librarian</h3>
+                    <h3 className="font-semibold text-zinc-900 dark:text-white mb-1">Ask a Librarian</h3>
                     <p className="text-sm text-zinc-400">Get research help from library staff.</p>
                   </div>
                 </div>

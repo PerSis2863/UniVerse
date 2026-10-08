@@ -168,7 +168,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
           )}
           <textarea className={`input min-h-[70px]`} placeholder={kind === 'MENU' ? 'One dish per line, e.g. Lentil curry (vegan)' : 'Description (optional)'} value={form.description} maxLength={1000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <div className="grid sm:grid-cols-2 gap-3">
-            {kind === 'EVENT' && <input className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
+            {kind === 'EVENT' && <input aria-label="Date and time" className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
             {kind === 'EVENT' && <input className="input" type="number" min={1} placeholder="Seats (empty: no limit)" aria-label="Seats" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />}
             {kind === 'MENU' && <input className="input" type="date" aria-label="Day" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
             {kind === 'SERVICE' && <input className="input" placeholder="Opening hours, e.g. Mon–Fri 8am–8pm" value={form.hours} maxLength={120} onChange={(e) => setForm({ ...form, hours: e.target.value })} />}

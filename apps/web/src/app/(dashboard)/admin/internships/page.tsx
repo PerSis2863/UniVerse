@@ -199,7 +199,7 @@ export default function AdminInternshipsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Deadline</label>
-                  <input value={formData.deadline} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} type="date" className="input" />
+                  <input aria-label="Deadline" value={formData.deadline} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} type="date" className="input" />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className={label}>Status</label>

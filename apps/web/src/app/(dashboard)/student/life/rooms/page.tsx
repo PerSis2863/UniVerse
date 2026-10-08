@@ -134,7 +134,7 @@ export default function RoomReservationPage() {
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
                     <CalendarIcon className="w-4 h-4" />
                   </div>
-                  <input 
+                  <input aria-label="Date" 
                     type="date" 
                     value={date}
                     onChange={(e) => setDate(e.target.value)}

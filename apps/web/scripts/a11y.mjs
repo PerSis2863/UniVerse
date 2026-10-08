@@ -1,24 +1,27 @@
 // Accessibility check (axe-core, WCAG 2.2 AA rules) on the main pages, in a real browser.
 //
 //   NEXT_PUBLIC_DEMO_LOGIN=true pnpm dev -p 3100        (in another terminal)
-//   node scripts/a11y.mjs [http://localhost:3100] [--all] [--theme dark]
+//   node scripts/a11y.mjs [http://localhost:3100] [--all] [--theme dark] [--quick] [--only /a,/b]
 //
 // Reports serious and critical issues (--all: every impact) per page, grouped by rule, with a few
 // example elements. Exits 1 when there are serious/critical issues. Target: none on the main pages.
+// 40 pages (ALL_PAGES); --quick checks the 25 in PAGES.
 
 import { createRequire } from 'node:module';
-import { PAGES, baseUrl, launch, signedIn } from './browser-session.mjs';
+import { ALL_PAGES, PAGES, baseUrl, launch, signedIn } from './browser-session.mjs';
 
 const require = createRequire(import.meta.url);
 const AXE = require.resolve('axe-core/axe.min.js');
 const base = baseUrl();
 const all = process.argv.includes('--all');
+const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1].split(',') : null;
+const pagesBy = Object.fromEntries(Object.entries(process.argv.includes('--quick') ? PAGES : ALL_PAGES).map(([email, pages]) => [email, only ? pages.filter((p) => only.includes(p)) : pages]));
 const dark = process.argv.includes('--theme') && process.argv[process.argv.indexOf('--theme') + 1] === 'dark';
 
 const browser = await launch();
 const byRule = new Map();
 let pagesChecked = 0;
-for (const [email, pages] of Object.entries(PAGES)) {
+for (const [email, pages] of Object.entries(pagesBy)) {
   const ctx = await signedIn(browser, base, email);
   await ctx.addInitScript((d) => localStorage.setItem('theme', d ? 'dark' : 'light'), dark);
   for (const path of pages) {
@@ -26,6 +29,9 @@ for (const [email, pages] of Object.entries(PAGES)) {
     try {
       await page.goto(base + path, { waitUntil: 'networkidle', timeout: 60_000 });
       await page.waitForTimeout(1200);
+      // Let entrance animations finish (rows mid-fade read as low contrast). Loops are ignored.
+      await page.waitForFunction(() => !document.getAnimations().some((a) => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity), null, { timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(300);
       // A page that redirects (or swaps its URL) right after load: wait for it, then inject.
       await page.addScriptTag({ path: AXE }).catch(async () => {
         await page.waitForLoadState('networkidle');

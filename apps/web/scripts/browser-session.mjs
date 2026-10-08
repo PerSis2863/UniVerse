@@ -21,6 +21,16 @@ export const PAGES = {
   'demo@admin.com': ['/admin', '/admin/users', '/admin/finances', '/admin/announcements', '/admin/analytics'],
 };
 
+/** 15 more, for the accessibility audit (40 pages in all). */
+export const MORE_PAGES = {
+  'demo@student.com': ['/student/groups', '/student/impact/dashboard', '/student/life/medical', '/student/administrative/accounting', '/student/support', '/student/credentials', '/student/search/directory', '/student/passport', '/boards', '/code'],
+  'demo@teacher.com': ['/teacher/calendar', '/teacher/services/rooms', '/teacher/collaborations'],
+  'demo@admin.com': ['/admin/courses', '/admin/timetable'],
+};
+
+/** PAGES and MORE_PAGES together. */
+export const ALL_PAGES = Object.fromEntries(Object.entries(PAGES).map(([email, pages]) => [email, [...pages, ...(MORE_PAGES[email] ?? [])]]));
+
 /** A browser context signed in as a demo account (mock token, only with demo login on). */
 export async function signedIn(browser, base, email, viewport = { width: 1366, height: 900 }) {
   const token = `mock-token-${email}`;

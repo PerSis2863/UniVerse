@@ -82,7 +82,7 @@ export default function TeacherRoomReservationPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="space-y-2">
                 <label className="text-sm text-zinc-600 dark:text-zinc-400">Date</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white [color-scheme:dark] focus:outline-none focus:border-indigo-500 transition-colors" />
+                <input aria-label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white [color-scheme:dark] focus:outline-none focus:border-indigo-500 transition-colors" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-zinc-600 dark:text-zinc-400">Duration</label>

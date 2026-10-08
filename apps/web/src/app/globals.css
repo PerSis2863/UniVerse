@@ -63,6 +63,20 @@
 .dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366; }
 /* Dark mode: indigo text without its own dark: colour is lifted so it reads on navy. */
 .dark .text-indigo-500:not([class*="dark:text-"]) { color: #8e8cff; }
+/* Keyboard focus is always visible: unlayered, so a utility's outline-none can't hide it. Not on
+   things focused only by code (tabindex -1: sheets, the page itself after "Skip to content"). */
+:where(a, button, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid rgb(var(--tint-rgb) / 0.8);
+  outline-offset: 2px;
+}
+.skip-link {
+  position: fixed; top: 0.5rem; left: 0.5rem; z-index: 400;
+  padding: 0.625rem 1rem; border-radius: 0.75rem;
+  background: var(--surface, #fff); color: var(--tint-text, #4338ca); font-weight: 600;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  transform: translateY(-150%);
+}
+.skip-link:focus-visible { transform: none; }
 /* Unread counts on bells and tabs: white on red at 4.5:1 in both themes. */
 .badge-count { background-color: #d70015; }
 
