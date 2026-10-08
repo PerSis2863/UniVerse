@@ -19,10 +19,10 @@ const withPWA = withPWAInit({
   // OfflineBar refetches the data on screen instead.
   reloadOnOnline: false,
   // The whiteboard's fonts (14 MB, mostly Chinese/Japanese glyphs) and the call-background engine
-  // (12 MB) load on demand, not at install.
+  // (12 MB) load on demand, not at install, like the dyslexia-friendly font (only for those who pick it).
   // `_headers` is Cloudflare's config file and is never served: listing it made every install fail
   // (a 404), so from 29 Sep no device got a working service worker. Lookup data loads when needed.
-  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!mediapipe/**/*', '!pdfjs/**/*', '!pyodide/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!voice-worklet.js', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*'],
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!mediapipe/**/*', '!pdfjs/**/*', '!pyodide/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!voice-worklet.js', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*', '!fonts/**/*'],
   // Shown for pages not saved on the device when offline: a plain static page (public/offline.html,
   // served at /offline by Cloudflare's free static files, not the Worker).
   fallbacks: {

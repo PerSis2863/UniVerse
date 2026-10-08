@@ -1334,6 +1334,29 @@ button, [role="tab"], [role="button"], [role="switch"], nav, .ios-tabbar, .mobil
 /* ─── Settings → Appearance: text size, and the app's own Reduce motion ─── */
 html[data-text="large"] { font-size: 106.25%; }
 html[data-text="larger"] { font-size: 115%; }
+html[data-text="largest"] { font-size: 125%; }
+
+/* Reading aids (Settings → Appearance; src/lib/display-prefs.ts). */
+/* Bold text: everyday text gets heavier; headings keep their own weight. */
+html.bold-text body, html.bold-text .font-normal, html.bold-text .font-medium { font-weight: 600; }
+/* More contrast: the greys used for secondary text and hairlines get much darker (light) or
+   lighter (dark), so hints, timestamps and borders are easy to read. Tailwind reads these. */
+html.high-contrast {
+  --color-zinc-300: #71717a; --color-zinc-400: #52525b; --color-zinc-500: #3f3f46; --color-zinc-600: #27272a;
+  --text-secondary: #3a3a3c; --input-placeholder: #636366; --separator: rgba(60, 60, 67, 0.4);
+}
+html.high-contrast.dark {
+  --color-zinc-300: #f4f4f5; --color-zinc-400: #e4e4e7; --color-zinc-500: #d4d4d8; --color-zinc-600: #a1a1aa;
+  --text-secondary: #e5e7f2; --input-placeholder: #a3acc9; --separator: rgba(200, 205, 235, 0.45);
+}
+html.high-contrast .panel, html.high-contrast .card { border-color: var(--separator); }
+/* A dyslexia-friendly font (OpenDyslexic, self-hosted under SIL OFL 1.1; downloaded only when on). */
+@font-face { font-family: 'OpenDyslexic'; src: url('/fonts/opendyslexic/opendyslexic-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'OpenDyslexic'; src: url('/fonts/opendyslexic/opendyslexic-latin-700-normal.woff2') format('woff2'); font-weight: 600 900; font-display: swap; }
+html.dyslexic-font body, html.dyslexic-font :is(input, textarea, select, button) { font-family: 'OpenDyslexic', var(--font-sans, system-ui), sans-serif; letter-spacing: 0.02em; word-spacing: 0.08em; }
+html.dyslexic-font :is(p, li) { line-height: 1.7; }
+/* Underline links: every link in text is underlined, not only shown by colour. */
+html.underline-links :is(p, li, td, span, label) a, html.underline-links a.text-indigo-500, html.underline-links a.text-indigo-600 { text-decoration: underline; text-underline-offset: 0.18em; }
 html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
   animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important;
 }

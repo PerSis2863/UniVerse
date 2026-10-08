@@ -8,6 +8,7 @@ import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersH
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
+import { captionsByDefault } from '@/lib/display-prefs';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
@@ -417,7 +418,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [talked, setTalked] = useState(false); // someone has connected at least once
   const [sfuQuality, setSfuQuality] = useState<Quality>(null);
   const sfuQualityRef = useRef<Quality>(null);
-  const [cc, setCc] = useState(false);
+  // Settings → Appearance → Captions on: calls start with captions showing.
+  const [cc, setCc] = useState(captionsByDefault);
   const [captions, setCaptions] = useState<Record<string, Caption>>({});
   // Translated captions (Stage 4 · 4.1): I read everyone's captions in my language (the app's,
   // unless I picked another or "as spoken"). `trs`: translations by caption id.
@@ -534,7 +536,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const joinConfirmed = useRef(false);
   const resumeJoin = useRef<(() => void) | null>(null);
   const [inRoom, setInRoom] = useState<string[] | null>(null);
-  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc: false, recording: false, notes: false, lowData: false, lite: false });
+  const stateRef = useRef({ muted: false, camera: true, sharing: false, cc, recording: false, notes: false, lowData: false, lite: false });
   // Audio-only fallback: a poor connection for 10 s pauses incoming video (people's screens stay).
   const [audioOnly, setAudioOnly] = useState(false);
   const audioOnlyRef = useRef(false);
