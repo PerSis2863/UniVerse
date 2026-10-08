@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import useSWR, { mutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
-import { QuizReview } from '@/components/dashboard/CourseBoard';
+import { QuizReview } from '@/components/quizzes/QuizReview';
 import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
 import { getPack, type PackQuiz } from '@/lib/offline-packs';
 import { TabPill } from '@/components/ui/Glide';

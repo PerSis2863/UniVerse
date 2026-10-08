@@ -7,7 +7,7 @@ import { m as motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { downloadIcs } from '@/components/dashboard/CourseBoard';
+import { downloadIcs } from '@/lib/ics';
 import { CalendarFeedCard } from '@/components/dashboard/CalendarFeedCard';
 import { TimeGrid, timeRange, type GridEntry } from '@/components/calendar/TimeGrid';
 import { toEntries, type Slot, type CalEvent } from '@/components/calendar/entries';
