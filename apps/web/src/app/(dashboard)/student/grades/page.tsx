@@ -17,6 +17,7 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { TabPill } from '@/components/ui/Glide';
 import { finalGrade, type Category } from '@/lib/gradebook';
+import { MyReportCards } from '@/components/dashboard/MyReportCards';
 
 // GPA per term (Jan–Jun = Spring, Jul–Dec = Fall), from real grades on a 4.0 scale.
 function gpaByTerm(grades: { score: number; maxScore: number; gradedAt?: string; createdAt?: string }[]) {
@@ -261,7 +262,8 @@ export default function GradesPage() {
       <>
         <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
         <SectionTabs tabs={PROGRESS_TABS} />
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
+          <MyReportCards />
           <FeatureGuide
             icon={GraduationCap}
             title="Your grades will appear here"
@@ -385,6 +387,8 @@ export default function GradesPage() {
           <KpiCard title="Average Score" value={`${Math.round(avg)}%`} icon={BookOpen} change={0} color="fuchsia" />
         </div>
 
+        <MyReportCards />
+
         {/* Performance Insight Banner */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -454,7 +458,7 @@ export default function GradesPage() {
             </select>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" role="region" aria-label="Transcript" tabIndex={0}>
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/[0.06] text-sm text-zinc-500 dark:text-zinc-400">

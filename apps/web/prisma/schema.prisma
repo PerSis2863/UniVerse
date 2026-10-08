@@ -196,6 +196,7 @@ model User {
   skillEvidence           SkillEvidence[]
   itemProgress            ItemProgress[] // course modules: items done (Stage 5 · B2)
   quizAttempts            QuizAttempt[] // exam mode start times (Stage 5 · B4.4)
+  reportCards             ReportCard[] // report cards (Stage 5 · B15.3)
   supportPlans            SupportPlan[]
   planBlocks              PlanBlock[]
   shiftCheckins           ShiftCheckin[]
@@ -2114,6 +2115,40 @@ model ImpactCertificate {
   @@index([status])
   @@index([anchorStatus])
   @@map("impact_certificates")
+}
+
+/// A round of report cards (Stage 5 · B15.3): a term's date range; drafts until published.
+model ReportCardRun {
+  id          String       @id @default(cuid())
+  title       String
+  fromDate    DateTime
+  toDate      DateTime
+  school      String
+  total       Int          @default(0) // students to make cards for
+  createdById String?
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  cards       ReportCard[]
+
+  @@map("report_card_runs")
+}
+
+/// One student's card in a round: data is src/lib/report-card.ts ReportCardData.
+model ReportCard {
+  id        String        @id @default(cuid())
+  runId     String
+  run       ReportCardRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  data      Json
+  comment   String?
+  average   Int?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([runId, studentId])
+  @@index([studentId])
+  @@map("report_cards")
 }
 
 /// A course's question bank (Stage 5 · B4.1): reusable multiple-choice questions. tags is a

@@ -154,6 +154,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       closing: 'Reply to me in Messages any time if you want to talk it through.',
     },
   }] })],
+  // Report cards (Stage 5 · B15.3): none in the sample.
+  [/^\/api\/report-cards\/mine$/, () => ok({ cards: [] })],
+  [/^\/api\/admin\/report-cards$/, () => ok({ runs: [], school: 'Sample University' })],
   // Question bank (Stage 5 · B4.1): empty in the sample.
   [/^\/api\/courses\/([^/]+)\/question-bank$/, () => ok({ questions: [], difficulties: ['EASY', 'MEDIUM', 'HARD'] })],
   // Gradebook categories (Stage 5 · B3.4): none in the sample, so finals are plain averages.
@@ -461,6 +464,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
+  ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/grade-categories$/, () => { notice(); return ok({ categories: [], assessments: [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, body }) => {

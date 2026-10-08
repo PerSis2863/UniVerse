@@ -43,7 +43,7 @@ export async function requireAdmin(req: Request): Promise<Authorized | NextRespo
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   if (user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Only organization admins can manage billing.' }, { status: 403 });
+    return NextResponse.json({ error: 'Only organization admins can do this.' }, { status: 403 });
   }
   const org = await getOrCreateOrganization(user);
   // The owner has every paid feature without a subscription.
