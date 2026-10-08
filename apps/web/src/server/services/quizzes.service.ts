@@ -6,6 +6,7 @@ import type { Prisma } from '@prisma/client';
 import { clientIdOf, offlineTime, tellTeacher } from '../offline';
 import { publish } from '../realtime';
 import { pushService } from './push.service';
+import { shuffled } from '@/lib/seeded-shuffle';
 
 export class QuizzesService {
   /** Teachers may only manage quizzes for their own courses; admins may manage any. */
@@ -56,7 +57,7 @@ export class QuizzesService {
     });
   }
 
-  async findOne(id: string, user?: { role: string }) {
+  async findOne(id: string, user?: { id?: string; role: string }) {
     const quiz = await prisma.quiz.findUnique({
       where: { id },
       include: { questions: { orderBy: { order: 'asc' } } },
@@ -64,9 +65,27 @@ export class QuizzesService {
     if (!quiz) throw new NotFoundException('Quiz not found');
     // Students must never receive the answer key; grading happens server-side in submitQuiz.
     if (user?.role !== 'TEACHER' && user?.role !== 'ADMIN') {
-      return { ...quiz, questions: quiz.questions.map(({ correctAnswer: _hidden, ...q }) => q) };
+      const questions = quiz.questions.map(({ correctAnswer: _hidden, ...q }) => q);
+      // Shuffled per student (B4.3): their own order, the same again on reload. Grading compares
+      // the answer text, so the order doesn't matter to it.
+      if (!quiz.shuffle || !user?.id) return { ...quiz, questions };
+      const me = user.id;
+      return { ...quiz, questions: shuffled(questions, `${me}:${quiz.id}`).map((q) => ({ ...q, options: Array.isArray(q.options) ? shuffled(q.options as string[], `${me}:${q.id}`) : q.options })) };
     }
     return quiz;
+  }
+
+  /** Exam mode (B4.4): starts the student's clock on the server (once) and says when it ends. */
+  async start(quizId: string, studentId: string) {
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { id: true, courseId: true, status: true, examMode: true, timeLimit: true } });
+    if (!quiz) throw new NotFoundException('Quiz not found');
+    if (quiz.status !== 'PUBLISHED') throw new BadRequestException('This quiz is not open');
+    const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId: quiz.courseId } } });
+    if (!enrolled) throw new ForbiddenException('You are not enrolled in this course');
+    if (await prisma.quizSubmission.findUnique({ where: { quizId_studentId: { quizId, studentId } }, select: { id: true } })) throw new ConflictException('You have already submitted this quiz');
+    if (!quiz.examMode) return { startedAt: null, endsAt: null };
+    const attempt = await prisma.quizAttempt.upsert({ where: { quizId_studentId: { quizId, studentId } }, update: {}, create: { quizId, studentId } });
+    return { startedAt: attempt.startedAt, endsAt: quiz.timeLimit ? new Date(attempt.startedAt.getTime() + quiz.timeLimit * 60_000) : null };
   }
 
   async update(id: string, updateQuizDto: UpdateQuizDto, user: { id: string; role: string }) {
@@ -140,7 +159,7 @@ export class QuizzesService {
    * outbox. A retry with the same clientId gets the saved result back. Finished before the due date
    * it counts as on time; finished after it, it's kept but waits for the teacher to accept it.
    */
-  async submitQuiz(studentId: string, quizId: string, answers: Prisma.InputJsonObject, offline?: { clientId?: unknown; startedAt?: unknown; finishedAt?: unknown }) {
+  async submitQuiz(studentId: string, quizId: string, answers: Prisma.InputJsonObject, offline?: { clientId?: unknown; startedAt?: unknown; finishedAt?: unknown }, integrityIn?: unknown) {
     const clientId = clientIdOf(offline?.clientId);
     const finishedAt = offlineTime(offline?.finishedAt);
     const startedAt = offlineTime(offline?.startedAt);
@@ -173,6 +192,19 @@ export class QuizzesService {
       }
     });
 
+    // Exam mode (B4.4): what the browser noticed, and how late it arrived against the server clock.
+    let integrity: Prisma.InputJsonObject | undefined;
+    if (quiz.examMode) {
+      const seen = (integrityIn && typeof integrityIn === 'object' ? integrityIn : {}) as Record<string, unknown>;
+      const count = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? Math.min(v as number, 999) : 0);
+      const attempt = await prisma.quizAttempt.findUnique({ where: { quizId_studentId: { quizId, studentId } } });
+      const ends = attempt && quiz.timeLimit ? attempt.startedAt.getTime() + quiz.timeLimit * 60_000 : null;
+      const arrived = finishedAt ? finishedAt.getTime() : Date.now();
+      // Two minutes' grace for slow connections and the auto-submit at zero.
+      const overtimeSeconds = ends ? Math.max(0, Math.round((arrived - ends) / 1000) - 120) : 0;
+      integrity = { left: count(seen.left), pasted: count(seen.pasted), fullscreenExits: count(seen.fullscreenExits), overtimeSeconds, noStart: !attempt };
+    }
+
     const submission = await prisma.quizSubmission.create({
       data: {
         studentId,
@@ -180,6 +212,7 @@ export class QuizzesService {
         answers,
         score,
         maxScore,
+        ...(integrity ? { integrity } : {}),
         ...(finishedAt ? { clientId, offlineAt: finishedAt, offlineStartedAt: startedAt && startedAt <= finishedAt ? startedAt : null, offlineStatus } : clientId ? { clientId } : {}),
       }
     });

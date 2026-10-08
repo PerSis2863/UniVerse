@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: Ctx) {
     prisma.quizSubmission.findMany({
       where: { quizId: id },
       orderBy: { submittedAt: 'desc' },
-      select: { id: true, score: true, maxScore: true, submittedAt: true, answers: true, student: { select: { name: true } } },
+      select: { id: true, score: true, maxScore: true, submittedAt: true, answers: true, integrity: true, student: { select: { name: true } } },
     }),
   ]);
   // How each question worked (item analysis, Stage 5 · B4.6); the answers themselves stay here.
@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: Ctx) {
     questions.map((q) => ({ id: q.id, options: Array.isArray(q.options) ? (q.options as string[]) : [], correctAnswer: q.correctAnswer })),
     submissions.map((sub) => ({ answers: (sub.answers && typeof sub.answers === 'object' ? sub.answers : {}) as Record<string, string> })),
   );
-  return NextResponse.json({ ...quiz, questions, submissions: submissions.map((x) => ({ id: x.id, score: x.score, maxScore: x.maxScore, submittedAt: x.submittedAt, student: x.student })), analysis }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ ...quiz, questions, submissions: submissions.map((x) => ({ id: x.id, score: x.score, maxScore: x.maxScore, submittedAt: x.submittedAt, integrity: x.integrity, student: x.student })), analysis }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
@@ -37,7 +37,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!quiz) return NextResponse.json({ error: 'Quiz not found.' }, { status: 404 });
 
   const b = await req.json().catch(() => ({}));
-  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null } = {};
+  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean } = {};
+  if (typeof b.shuffle === 'boolean') data.shuffle = b.shuffle;
+  if (typeof b.examMode === 'boolean') data.examMode = b.examMode;
   if (['DRAFT', 'PUBLISHED', 'CLOSED'].includes(b.status)) {
     if (b.status === 'PUBLISHED' && (await prisma.quizQuestion.count({ where: { quizId: id } })) === 0) {
       return NextResponse.json({ error: 'Add at least one question before publishing.' }, { status: 400 });

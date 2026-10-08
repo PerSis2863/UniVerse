@@ -5,15 +5,17 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle2, Plus, Trash2, X } from 'lucide-react';
 import type { ItemResult } from '@/lib/item-analysis';
+import { Switch } from '@/components/ui/Switch';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number };
-type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; student: { name: string } };
+type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean };
+type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; integrity?: Integrity | null; student: { name: string } };
 type Quiz = {
-  id: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null;
+  id: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
   analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
@@ -87,6 +89,16 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                   <input type="number" min={1} max={600} className="input" defaultValue={quiz.timeLimit ?? ''} onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== quiz.timeLimit) patch({ timeLimit: v }, 'Time limit saved'); }} />
                 </label>
               </div>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Shuffle questions and answers</p><p className="text-xs text-zinc-500">Each student gets their own order (the same if they reload).</p></div>
+                  <Switch checked={!!quiz.shuffle} disabled={busy} onChange={(v) => void patch({ shuffle: v }, v ? 'Questions and answers are shuffled for each student' : 'Same order for everyone')} label="Shuffle questions and answers" />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Exam mode</p><p className="text-xs text-zinc-500">The time limit counts from when each student starts, on the server. You see how often they left the quiz, pasted or left full screen. No webcam, nothing recorded.</p></div>
+                  <Switch checked={!!quiz.examMode} disabled={busy} onChange={(v) => void patch({ examMode: v }, v ? 'Exam mode on' : 'Exam mode off')} label="Exam mode" />
+                </div>
+              </div>
             </section>
 
             {/* Questions */}
@@ -132,7 +144,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Results ({quiz.submissions.length})</p>
               {quiz.submissions.length === 0 ? <p className="text-sm text-zinc-500">No submissions yet.</p> : quiz.submissions.map((s) => (
                 <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-white/[0.03] text-sm">
-                  <span className="text-zinc-800 dark:text-zinc-200">{s.student.name}</span>
+                  <span className="min-w-0"><span className="text-zinc-800 dark:text-zinc-200">{s.student.name}</span>{s.integrity && <IntegrityNote i={s.integrity} />}</span>
                   <span className="font-bold text-zinc-900 dark:text-white tabular-nums">{s.score ?? 0}/{s.maxScore ?? 0} <span className="text-xs text-zinc-500 font-normal">· {new Date(s.submittedAt).toLocaleDateString()}</span></span>
                 </div>
               ))}
@@ -186,4 +198,16 @@ function ItemAnalysis({ questions, analysis }: { questions: Question[]; analysis
       })}
     </section>
   );
+}
+
+/** Exam mode signals for one submission: worth a conversation, not a verdict. */
+function IntegrityNote({ i }: { i: Integrity }) {
+  const notes = [
+    i.left ? `left the quiz ${i.left}×` : '',
+    i.pasted ? `pasted ${i.pasted}×` : '',
+    i.fullscreenExits ? `left full screen ${i.fullscreenExits}×` : '',
+    i.overtimeSeconds ? `arrived ${Math.ceil(i.overtimeSeconds / 60)} min after the time limit` : '',
+    i.noStart ? 'no start time (taken offline?)' : '',
+  ].filter(Boolean);
+  return <span className={cn('block text-[11px]', notes.length ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-500')}>{notes.length ? notes.join(' · ') : 'Exam mode: nothing to note'}</span>;
 }

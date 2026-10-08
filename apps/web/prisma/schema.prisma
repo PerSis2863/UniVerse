@@ -195,6 +195,7 @@ model User {
   skills                  StudentSkill[]
   skillEvidence           SkillEvidence[]
   itemProgress            ItemProgress[] // course modules: items done (Stage 5 · B2)
+  quizAttempts            QuizAttempt[] // exam mode start times (Stage 5 · B4.4)
   supportPlans            SupportPlan[]
   planBlocks              PlanBlock[]
   shiftCheckins           ShiftCheckin[]
@@ -465,11 +466,16 @@ model Quiz {
   dueDate     DateTime?
   timeLimit   Int? // minutes
   status      QuizStatus @default(DRAFT)
+  /// Each student gets their own order of questions and options (Stage 5 · B4.3)
+  shuffle     Boolean    @default(false)
+  /// Exam mode (B4.4): server-timed from the start, integrity notes for the teacher
+  examMode    Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   questions   QuizQuestion[]
   submissions QuizSubmission[]
+  attempts    QuizAttempt[]
 
   @@index([courseId])
   @@map("quizzes")
@@ -499,6 +505,8 @@ model QuizSubmission {
   score            Float?
   maxScore         Float?
   submittedAt      DateTime  @default(now())
+  /// Exam mode (Stage 5 · B4.4): { left, pasted, fullscreenExits, overtimeSeconds, noStart } for the teacher
+  integrity        Json?
   /// Offline-first (upgrade 4): a quiz taken with no connection. When the student started and
   /// finished it on their device, the outbox id (a retried send is saved once), and LATE when it
   /// was finished after the due date (the teacher accepts or removes it) or ACCEPTED
@@ -2105,6 +2113,19 @@ model ImpactCertificate {
   @@index([status])
   @@index([anchorStatus])
   @@map("impact_certificates")
+}
+
+/// When a student started a quiz in exam mode: the time limit counts from here (Stage 5 · B4.4).
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  startedAt DateTime @default(now())
+
+  @@unique([quizId, studentId])
+  @@map("quiz_attempts")
 }
 
 /// Gradebook categories (Stage 5 · B3.4): weight is the percent of the final grade; each student's
