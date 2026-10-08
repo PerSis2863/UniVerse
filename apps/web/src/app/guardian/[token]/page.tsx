@@ -10,6 +10,7 @@ import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LogoMark } from '@/components/ui/LogoMark';
+import { ReportCardList, type PublishedCard } from '@/components/dashboard/MyReportCards';
 
 // What a parent or guardian sees from a student's shared link: read-only, no sign-in.
 
@@ -23,6 +24,8 @@ interface GuardianView {
   achievements: { id: string; kind: 'certificate' | 'points'; title: string; detail: string; at: string }[];
   /** This week in numbers (Stage 4 · 4.10): never messages or who they talk to. */
   activity?: { daysActive: number; messages: number; calls: number; callMinutes: number; handedIn: number; quiet: { start: string; end: string; bySchool: boolean } | null };
+  /** Report cards the school has published (Stage 5 · B15.3). */
+  reportCards?: PublishedCard[];
 }
 
 const panel = 'rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/80 dark:bg-white/[0.03] p-4 sm:p-6';
@@ -154,6 +157,8 @@ export default function GuardianPage() {
                 </ul>
               )}
             </section>
+
+            <ReportCardList cards={data.reportCards ?? []} hint={`From ${data.firstName}’s school, one per term. Print one or save it as a PDF.`} className={panel} />
 
             {data.activity && (
               <section className={panel} aria-label="This week">

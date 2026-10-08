@@ -41,7 +41,7 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'n
 /** One card as printable HTML (no outer page), to put several on one sheet per student. */
 export function reportCardSection(d: ReportCardData, comment: string | null): string {
   const rows = d.courses.map((c) => `<tr><td><b>${esc(c.code)}</b> ${esc(c.name)}${c.teacher ? `<br><small>${esc(c.teacher)}</small>` : ''}</td><td class="n">${c.final == null ? '—' : `${c.final}%`}</td><td class="n">${esc(c.letter ?? '—')}</td><td class="n">${c.attendanceRate == null ? '—' : `${c.attendanceRate}%`}</td></tr>`).join('');
-  return `<section class="card"><header><p class="school">${esc(d.school)}</p><h1>Report card · ${esc(d.term.title)}</h1><p>${esc(d.student.name)} · ${esc(d.student.email)}</p><p class="muted">${day(d.term.from)} – ${day(d.term.to)}</p></header>
+  return `<section class="card"><header><p class="school">${esc(d.school)}</p><h1>Report card · ${esc(d.term.title)}</h1><p>${esc(d.student.name)}${d.student.email ? ` · ${esc(d.student.email)}` : ''}</p><p class="muted">${day(d.term.from)} – ${day(d.term.to)}</p></header>
 <div class="sum"><div>Average<b>${d.overall.average == null ? '—' : `${d.overall.average}%`}</b></div><div>GPA (4.0)<b>${d.overall.gpa == null ? '—' : d.overall.gpa.toFixed(2)}</b></div><div>Attendance<b>${d.overall.attendanceRate == null ? '—' : `${d.overall.attendanceRate}%`}</b></div></div>
 <table><thead><tr><th>Course</th><th class="n">Final</th><th class="n">Grade</th><th class="n">Attendance</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No courses this term.</td></tr>'}</tbody></table>
 ${comment ? `<div class="comment"><b>Comment</b><p>${esc(comment).replace(/\n/g, '<br>')}</p></div>` : ''}

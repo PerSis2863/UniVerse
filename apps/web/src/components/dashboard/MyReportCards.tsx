@@ -9,28 +9,33 @@ import { fadeUp, list } from '@/lib/motion';
 import { reportCardsPage, type ReportCardData } from '@/lib/report-card';
 import { openPrintable } from '@/lib/open-printable';
 
-// Student Grades → the report cards the school has published (Stage 5 · B15.3). Hidden when none.
+// Published report cards (Stage 5 · B15.3): on the student's Grades page, and on the guardian link
+// page (without the student's email). Hidden when there are none.
 
-type MyCard = { id: string; data: ReportCardData; comment: string | null; run: { title: string; fromDate: string; toDate: string } };
+export type PublishedCard = { id: string; data: ReportCardData; comment: string | null; run: { title: string; fromDate: string; toDate: string } };
 
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const pct = (n: number | null) => (n == null ? '—' : `${n}%`);
 
 export function MyReportCards() {
-  const { data } = useSWR<{ cards: MyCard[] }>('/api/report-cards/mine', authedJson);
-  if (!data?.cards.length) return null;
+  const { data } = useSWR<{ cards: PublishedCard[] }>('/api/report-cards/mine', authedJson);
+  return <ReportCardList cards={data?.cards ?? []} hint="From your school, one per term. Print one or save it as a PDF." className="card" />;
+}
 
-  const print = (c: MyCard) => {
-    if (!openPrintable(reportCardsPage(`Report card · ${c.run.title}`, [{ data: c.data, comment: c.comment }]))) toast.error('Allow pop-ups to print your report card.');
+export function ReportCardList({ cards, hint, className }: { cards: PublishedCard[]; hint: string; className?: string }) {
+  if (!cards.length) return null;
+
+  const print = (c: PublishedCard) => {
+    if (!openPrintable(reportCardsPage(`Report card · ${c.run.title}`, [{ data: c.data, comment: c.comment }]))) toast.error('Allow pop-ups to print the report card.');
     else toast.success('Report card opened', { description: 'Choose “Save as PDF” in the print dialog to keep a copy.' });
   };
 
   return (
-    <motion.section variants={fadeUp} initial="hidden" animate="show" className="card" aria-labelledby="report-cards-title">
+    <motion.section variants={fadeUp} initial="hidden" animate="show" className={className} aria-labelledby="report-cards-title">
       <h2 id="report-cards-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><ClipboardList className="w-5 h-5 text-indigo-500" /> Report cards</h2>
-      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-4">From your school, one per term. Print one or save it as a PDF.</p>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-4">{hint}</p>
       <motion.ul variants={list} initial="hidden" animate="show" className="grid gap-3 md:grid-cols-2">
-        {data.cards.map((c) => (
+        {cards.map((c) => (
           <motion.li key={c.id} variants={fadeUp} className="rounded-2xl border border-zinc-200/70 dark:border-white/[0.07] p-4 flex flex-col">
             <p className="font-semibold text-zinc-900 dark:text-white">{c.run.title}</p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">{day(c.run.fromDate)} – {day(c.run.toDate)}</p>
