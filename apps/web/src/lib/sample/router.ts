@@ -154,6 +154,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       closing: 'Reply to me in Messages any time if you want to talk it through.',
     },
   }] })],
+  // Gradebook categories (Stage 5 · B3.4): none in the sample, so finals are plain averages.
+  [/^\/api\/courses\/([^/]+)\/grade-categories$/, () => ok({ categories: [], assessments: [] })],
   // Course modules (Stage 5 · B2): three units made from the course's sample materials and quiz.
   [/^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
@@ -457,6 +459,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/grade-categories$/, () => { notice(); return ok({ categories: [], assessments: [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, body }) => {
     const done = (d as SampleDb & { moduleDone?: Set<string> }).moduleDone ??= new Set();
     if (body?.action === 'done') { if (body.done === false) done.delete(body.itemId); else done.add(body.itemId); return ok({ ok: true }); }

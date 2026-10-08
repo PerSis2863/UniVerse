@@ -395,6 +395,8 @@ model Course {
   scheduledCalls ScheduledCall[]
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
   modules        CourseModule[] // ordered units of items (Stage 5 · B2)
+  gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
+  gradeAssessments GradeAssessment[]
 
   @@index([teacherId])
   @@index([status])
@@ -2103,6 +2105,36 @@ model ImpactCertificate {
   @@index([status])
   @@index([anchorStatus])
   @@map("impact_certificates")
+}
+
+/// Gradebook categories (Stage 5 · B3.4): weight is the percent of the final grade; each student's
+/// lowest `dropLowest` grades in it don't count. src/lib/gradebook.ts does the maths.
+model GradeCategory {
+  id          String            @id @default(cuid())
+  courseId    String
+  course      Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name        String
+  weight      Float
+  dropLowest  Int               @default(0)
+  position    Int               @default(0)
+  createdAt   DateTime          @default(now())
+  assessments GradeAssessment[]
+
+  @@index([courseId])
+  @@map("grade_categories")
+}
+
+/// Which category an assessment belongs to, by its name in grades (Grade.assignmentName).
+model GradeAssessment {
+  id         String        @id @default(cuid())
+  courseId   String
+  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name       String
+  categoryId String
+  category   GradeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, name])
+  @@map("grade_assessments")
 }
 
 /// Course modules (Stage 5 · B2): a course's ordered units, each a list of items. Students see a
