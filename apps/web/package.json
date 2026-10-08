@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint src cloudflare scripts",
     "typecheck": "tsc --noEmit && tsc -p cloudflare/tsconfig.json",
+    "test": "vitest run",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && wrangler d1 migrations apply universe-db --remote && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
@@ -87,6 +88,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
+    "vitest": "3.2.4",
     "wrangler": "^4.142.0"
   },
   "overrides": {
