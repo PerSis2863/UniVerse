@@ -141,7 +141,7 @@ export default function AdminFinances() {
       {isStripeModalOpen && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
-            <button onClick={() => setIsStripeModalOpen(false)} className="absolute top-4 right-4 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            <button aria-label="Close" onClick={() => setIsStripeModalOpen(false)} className="absolute top-4 right-4 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
             <div className="flex flex-col items-center text-center space-y-4 pt-4">
@@ -169,7 +169,7 @@ export default function AdminFinances() {
           <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Manual Transaction</h2>
-              <button onClick={() => setIsAddTrxModalOpen(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+              <button aria-label="Close" onClick={() => setIsAddTrxModalOpen(false)} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -180,7 +180,7 @@ export default function AdminFinances() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Transaction Type</label>
-                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
+                <select aria-label="Transaction Type" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
                   <option value="Course Purchase">Course Purchase</option>
                   <option value="Subscription">Subscription</option>
                   <option value="Teacher Payout">Teacher Payout</option>
@@ -193,7 +193,7 @@ export default function AdminFinances() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Status</label>
-                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
+                <select aria-label="Status" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white outline-none focus:border-indigo-500">
                   <option value="Completed">Completed</option>
                   <option value="Processing">Processing</option>
                   <option value="Failed">Failed</option>
@@ -224,7 +224,7 @@ export default function AdminFinances() {
               </div>
             </div>
             <div className="flex gap-3 w-full sm:w-auto">
-              <button onClick={() => setIsStripeModalOpen(true)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm">
+              <button onClick={() => setIsStripeModalOpen(true)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm">
                 <Settings className="w-4 h-4" /> Setup Stripe
               </button>
               <button 

@@ -146,7 +146,7 @@ export default function DocumentsPage() {
               <FileBadge2 className="w-5 h-5 text-indigo-500" /> My Documents
             </h2>
             <div className="flex gap-2">
-              <select 
+              <select aria-label="Category" 
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50 text-zinc-900 dark:text-white"
@@ -234,7 +234,7 @@ export default function DocumentsPage() {
                     {activeModal === 'upload' ? 'Select a file to add to your records.' : `${selectedDoc?.type} • Uploaded ${new Date(selectedDoc?.createdAt || '').toLocaleDateString()}`}
                   </div>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
+                <button aria-label="Close" onClick={() => setActiveModal(null)} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>

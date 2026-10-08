@@ -73,7 +73,7 @@ export default function TeacherStudents() {
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <div className="relative" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setShowFilterDropdown(!showFilterDropdown)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap">
+              <button onClick={() => setShowFilterDropdown(!showFilterDropdown)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap">
                 <Filter className="w-4 h-4" /> {courseFilter === 'All' ? 'Filter' : 'Filtered'}
               </button>
               {showFilterDropdown && (
@@ -83,7 +83,7 @@ export default function TeacherStudents() {
                     <button
                       key={course}
                       onClick={() => { setCourseFilter(course); setShowFilterDropdown(false); }}
-                      className={`relative isolate w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${courseFilter === course ? 'text-indigo-400' : 'text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                      className={`relative isolate w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${courseFilter === course ? 'text-indigo-400' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                     >{courseFilter === course && <TabPill id="hboard-teacher-students-page-0" variant="soft" />}
                       {course}
                     </button>
@@ -91,7 +91,7 @@ export default function TeacherStudents() {
                 </div>
               )}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); setShowEmailModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg hover:bg-indigo-500/20 transition-colors whitespace-nowrap">
+            <button onClick={(e) => { e.stopPropagation(); setShowEmailModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20 rounded-lg hover:bg-indigo-500/20 transition-colors whitespace-nowrap">
               <Mail className="w-4 h-4" /> Email All
             </button>
           </div>
@@ -130,17 +130,17 @@ export default function TeacherStudents() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center gap-2 text-zinc-300">
+                      <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300">
                         <GraduationCap className="w-4 h-4 text-zinc-500 dark:text-zinc-500" />
                         {student.course}
                       </div>
                     </td>
                     <td className="p-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        student.grade.startsWith('A') ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                        student.grade.startsWith('B') ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                        student.grade.startsWith('C') ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
-                        'bg-red-500/10 text-red-400 border border-red-500/20'
+                        student.grade.startsWith('A') ? 'bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20' :
+                        student.grade.startsWith('B') ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20' :
+                        student.grade.startsWith('C') ? 'bg-yellow-500/10 text-yellow-800 dark:text-yellow-400 border border-yellow-500/20' :
+                        'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20'
                       }`}>
                         {student.grade}
                       </span>
@@ -161,13 +161,13 @@ export default function TeacherStudents() {
                       </div>
                     </td>
                     <td className="p-4 text-right relative">
-                      <button onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === rowKey(student) ? null : rowKey(student)); }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 border border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50">
+                      <button aria-label="More options" onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === rowKey(student) ? null : rowKey(student)); }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 border border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                       {actionMenuOpen === rowKey(student) && (
                         <div className="absolute right-8 top-10 w-48 bg-white dark:bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1 text-left" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => handleAction('profile', student)} className="px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">View Profile</button>
-                          <button onClick={() => handleAction('message', student)} className="px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Message Student</button>
+                          <button onClick={() => handleAction('profile', student)} className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">View Profile</button>
+                          <button onClick={() => handleAction('message', student)} className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Message Student</button>
                           <button onClick={() => handleAction('warning', student)} className="px-3 py-2 text-sm text-amber-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Issue Warning</button>
                         </div>
                       )}
@@ -194,17 +194,17 @@ export default function TeacherStudents() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Email All Students</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Send a message to {filteredStudents.length} students.</p>
               </div>
-              <button onClick={() => setShowEmailModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setShowEmailModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Subject</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Subject</label>
                 <input type="text" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Subject line..." className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" />
               </div>
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Message</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Message</label>
                 <textarea rows={5} value={emailBody} onChange={e => setEmailBody(e.target.value)} placeholder="Type your message here..." className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none" />
               </div>
             </div>
@@ -234,7 +234,7 @@ export default function TeacherStudents() {
                  </h2>
                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{activeModal.student.name} • {activeModal.student.course}</p>
               </div>
-              <button onClick={() => setActiveModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setActiveModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -264,7 +264,7 @@ export default function TeacherStudents() {
                 </div>
               ) : (
                 <div>
-                   <label className="text-xs font-medium text-zinc-300 block mb-1">
+                   <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">
                      {activeModal.type === 'warning' ? 'Warning Reason' : 'Message'}
                    </label>
                    <textarea rows={4} value={modalText} onChange={e => setModalText(e.target.value)} placeholder="Type here..." className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none" />

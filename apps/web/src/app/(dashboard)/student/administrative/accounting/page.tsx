@@ -171,7 +171,7 @@ function AccountingContent() {
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-2">Amount to Pay</label>
               <div className="relative flex gap-3">
-                <select
+                <select aria-label="Currency"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
                   className="bg-[#121830] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
@@ -289,7 +289,7 @@ function AccountingContent() {
               <FileText className="w-5 h-5 text-indigo-500" /> Transaction History
             </h2>
             <div className="flex gap-2">
-              <select className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50 font-medium [color-scheme:dark]">
+              <select aria-label="Show" className="bg-zinc-100 dark:bg-white/[0.03] border border-zinc-200 dark:border-white/[0.06] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-indigo-500/50 font-medium [color-scheme:dark]">
                 <option>All Transactions</option>
                 <option>Payments</option>
                 <option>Charges</option>
@@ -397,7 +397,7 @@ function AccountingContent() {
                     <p className="text-sm text-zinc-400">{getModalConfig()?.subtitle}</p>
                   </div>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
+                <button aria-label="Close" onClick={() => setActiveModal(null)} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>

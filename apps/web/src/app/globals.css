@@ -26,9 +26,10 @@
   --color-zinc-100: #f2f2f7;
   --color-zinc-200: #e5e5ea;
   --color-zinc-300: #d1d1d6;
-  --color-zinc-400: #aeaeb2;
-  --color-zinc-500: #737378;
-  --color-zinc-600: #636366;
+  /* 400–600 are text greys: dark enough for 4.5:1 on the light backgrounds (WCAG AA). */
+  --color-zinc-400: #6e6e73;
+  --color-zinc-500: #5c5c61;
+  --color-zinc-600: #48484a;
   --color-zinc-700: #353d5c;
   --color-zinc-800: #212843;
   --color-zinc-900: #141a30;
@@ -46,6 +47,24 @@
   --default-transition-duration: 220ms;
   --default-transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }
+
+/* Light mode: coloured *text* uses the deeper tints Apple uses for text, so it reads at 4.5:1;
+   backgrounds, icons and dark mode keep the bright system colours. Not inside always-dark areas
+   (the landing and sign-in pages set .dark on a wrapper; calls are .on-dark). */
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-emerald-500, .text-emerald-600, .text-green-500, .text-green-600, .text-teal-500, .text-teal-600) { color: #1a6b30; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-amber-500, .text-amber-600, .text-orange-500, .text-orange-600, .text-yellow-500, .text-yellow-600) { color: #9a4a00; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-rose-500, .text-rose-600, .text-red-500, .text-red-600) { color: #c10007; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-500, .text-indigo-600) { color: #4338ca; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-blue-500, .text-blue-600) { color: #1447e6; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-sky-500, .text-sky-600, .text-cyan-500, .text-cyan-600) { color: #0369a1; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #6d28d9; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-fuchsia-500, .text-fuchsia-600, .text-pink-500, .text-pink-600) { color: #a21caf; }
+/* Dark mode keeps the lighter text greys (the darker light-mode ones would dim text on navy). */
+.dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366; }
+/* Dark mode: indigo text without its own dark: colour is lifted so it reads on navy. */
+.dark .text-indigo-500:not([class*="dark:text-"]) { color: #8e8cff; }
+/* Unread counts on bells and tabs: white on red at 4.5:1 in both themes. */
+.badge-count { background-color: #d70015; }
 
 /* ─── Color tokens (light defaults, dark overrides) ─ */
 /* iOS semantic colours: grouped background, secondary background for cards, separators, labels

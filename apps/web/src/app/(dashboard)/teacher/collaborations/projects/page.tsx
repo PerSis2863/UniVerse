@@ -131,7 +131,7 @@ export default function NGOMentorshipPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowFilterDropdown(p => !p)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap"
                 >
                   <Filter className="w-4 h-4" />
                   {statusFilter === 'All' ? 'Filter' : statusFilter}
@@ -144,7 +144,7 @@ export default function NGOMentorshipPage() {
                         key={s}
                         onClick={() => { setStatusFilter(s); setShowFilterDropdown(false); }}
                         className={`relative isolate w-full text-left px-4 py-2 text-sm transition-colors ${
-                          statusFilter === s ? 'text-indigo-400' : 'text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                          statusFilter === s ? 'text-indigo-400' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                         }`}
                       >{statusFilter === s && <TabPill id="collaborations-projects-page-0" variant="soft" />}
                         {s}
@@ -185,13 +185,13 @@ export default function NGOMentorshipPage() {
               {filtered.map((project) => (
                 <div key={project.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-colors flex flex-col group">
                   <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
                       <Globe2 className="w-3.5 h-3.5" />
                       Global Impact
                     </div>
                     <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full ${
-                      project.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' :
-                      project.status === 'Recruiting' ? 'bg-amber-500/10 text-amber-400' :
+                      project.status === 'Active' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' :
+                      project.status === 'Recruiting' ? 'bg-amber-500/10 text-amber-800 dark:text-amber-400' :
                       'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400'
                     }`}>
                       {project.status}
@@ -213,7 +213,7 @@ export default function NGOMentorshipPage() {
 
                   <div className="flex flex-wrap gap-1.5 mb-6">
                     {project.tags.map(tag => (
-                      <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-300">
+                      <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                         {tag}
                       </span>
                     ))}
@@ -233,7 +233,7 @@ export default function NGOMentorshipPage() {
 
                     <button
                       onClick={() => loadProjectDetails(project.id)}
-                      className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-sm font-medium transition-colors"
+                      className="text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 flex items-center gap-1 text-sm font-medium transition-colors"
                     >
                       Manage <ArrowUpRight className="w-4 h-4" />
                     </button>
@@ -252,12 +252,12 @@ export default function NGOMentorshipPage() {
             <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-start justify-between">
               <div>
                 <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full mb-2 inline-block ${
-                  selectedProject.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+                  selectedProject.status === 'Active' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-800 dark:text-amber-400'
                 }`}>{selectedProject.status}</span>
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{selectedProject.title}</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{selectedProject.partner || selectedProject.ngoProject?.ngo?.name}</p>
               </div>
-              <button onClick={() => setSelectedProject(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setSelectedProject(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -276,14 +276,14 @@ export default function NGOMentorshipPage() {
 
               <div>
                 <div className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-2">Description</div>
-                <p className="text-sm text-zinc-300 leading-relaxed">{selectedProject.description}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{selectedProject.description}</p>
               </div>
 
               <div>
                 <div className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-2">Milestones</div>
                 <div className="space-y-2">
                   {selectedProject.milestones?.length ? selectedProject.milestones.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2 text-sm text-zinc-300">
+                    <div key={m.id} className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
                       <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${m.status === 'COMPLETED' ? 'text-indigo-400' : 'text-zinc-500'}`} />
                       {m.title}
                     </div>
@@ -296,7 +296,7 @@ export default function NGOMentorshipPage() {
               {selectedProject.contactEmail && (
                 <div className="p-3 bg-zinc-100 dark:bg-zinc-800/40 rounded-xl text-sm flex items-center justify-between">
                   <span className="text-zinc-600 dark:text-zinc-400">Contact:</span>
-                  <a href={`mailto:${selectedProject.contactEmail}`} className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+                  <a href={`mailto:${selectedProject.contactEmail}`} className="text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 font-medium transition-colors">
                     {selectedProject.contactEmail}
                   </a>
                 </div>
@@ -316,7 +316,7 @@ export default function NGOMentorshipPage() {
                     toast.error(errorMessage(e, 'Could not remove the project'));
                   }
                 }}
-                className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+                className="flex items-center gap-2 text-sm text-red-700 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 transition-colors"
               >
                 <Trash2 className="w-4 h-4" /> Remove Project
               </button>
@@ -342,14 +342,14 @@ export default function NGOMentorshipPage() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Propose New NGO Project</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Submit a new mentorship initiative for consortium review.</p>
               </div>
-              <button onClick={() => setShowProposeModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setShowProposeModal(false)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Project Title *</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Project Title *</label>
                 <input
                   type="text"
                   value={proposeTitle}
@@ -360,7 +360,7 @@ export default function NGOMentorshipPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">NGO / Partner Organization</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">NGO / Partner Organization</label>
                 <input
                   value={proposePartner}
                   onChange={e => setProposePartner(e.target.value)}
@@ -371,7 +371,7 @@ export default function NGOMentorshipPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Project Description *</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Project Description *</label>
                 <textarea
                   rows={3}
                   value={proposeDesc}
@@ -382,7 +382,7 @@ export default function NGOMentorshipPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Required Skills <span className="text-zinc-500 dark:text-zinc-500">(comma-separated)</span></label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Required Skills <span className="text-zinc-500 dark:text-zinc-500">(comma-separated)</span></label>
                 <input
                   type="text"
                   value={proposeTags}

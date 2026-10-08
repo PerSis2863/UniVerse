@@ -268,7 +268,7 @@ export default function AdminPartnershipsPage() {
             </div>
             <div className="space-y-3">
               <input className="input" placeholder="Organization name" value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+              <select aria-label="Type" className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
                 {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
               <div className="grid grid-cols-2 gap-3">

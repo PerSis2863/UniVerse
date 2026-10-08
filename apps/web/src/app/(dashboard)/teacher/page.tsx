@@ -222,7 +222,7 @@ export default function TeacherDashboard() {
                 <h3 className="font-bold text-zinc-900 dark:text-white text-lg flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-indigo-500" /> Create New Course
                 </h3>
-                <button onClick={() => setShowCourseModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
+                <button aria-label="Close" onClick={() => setShowCourseModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>

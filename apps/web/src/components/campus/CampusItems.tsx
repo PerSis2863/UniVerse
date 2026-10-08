@@ -160,7 +160,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
           </div>
           <input className="input" placeholder="Title" value={form.title} maxLength={120} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           {categories ? (
-            <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            <select aria-label="Category" className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
               {categories.map((c) => <option key={c}>{c}</option>)}
             </select>
           ) : (

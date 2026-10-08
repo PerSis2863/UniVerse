@@ -16,9 +16,9 @@ import { TabPill } from '@/components/ui/Glide';
 
 const STAGE_COLORS: Record<string, string> = {
   'Idea': 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
-  'MVP': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  'Pre-Seed': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  'Seed': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  'MVP': 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30',
+  'Pre-Seed': 'bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30',
+  'Seed': 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
 };
 
 interface Startup {
@@ -88,7 +88,7 @@ export default function StartupIncubatorPage() {
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-300 text-xs font-semibold">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-700 dark:text-violet-300 text-xs font-semibold">
                   <Sparkles className="w-3.5 h-3.5" /> UniVerse Social Startup Ecosystem
                 </div>
                 <h1 className="text-3xl font-black text-white">Build Ventures That <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">Actually Matter</span></h1>
@@ -168,7 +168,7 @@ export default function StartupIncubatorPage() {
                       {(startup.openRoles && startup.openRoles.length > 0) && (
                         <div className="flex flex-wrap gap-1.5">
                           {startup.openRoles.map((r: string) => (
-                            <span key={r} className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{r}</span>
+                            <span key={r} className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">{r}</span>
                           ))}
                         </div>
                       )}
@@ -178,7 +178,7 @@ export default function StartupIncubatorPage() {
                       <button onClick={() => { if (!isJoined) setSelected(startup); }}
                         disabled={isJoined}
                         className={cn("flex-1 text-xs py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5",
-                          isJoined ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20")}>
+                          isJoined ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20" : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20")}>
                         {isJoined ? <><CheckCircle2 className="w-3.5 h-3.5" /> Applied</> : <>Join Team <ArrowUpRight className="w-3.5 h-3.5" /></>}
                       </button>
                     </div>
@@ -207,7 +207,7 @@ export default function StartupIncubatorPage() {
                   <h2 className="text-2xl font-black text-zinc-900 dark:text-white">{selected.name}</h2>
                   {selected.tagline && <p className="text-sm text-zinc-500 mt-1">{selected.tagline}</p>}
                 </div>
-                <button onClick={() => setSelected(null)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
+                <button aria-label="Close" onClick={() => setSelected(null)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
               </div>
               <div className="grid grid-cols-3 gap-3 p-4 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs">
                 <div><div className="text-zinc-500 mb-1">Founder</div><div className="font-semibold text-zinc-900 dark:text-white">{selected.foundedBy?.name || '—'}</div></div>
@@ -248,7 +248,7 @@ export default function StartupIncubatorPage() {
               className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
               <div className="flex justify-between mb-4">
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Pitch Your Startup 🚀</h3>
-                <button onClick={() => setPitching(false)}><X className="w-5 h-5 text-zinc-500" /></button>
+                <button aria-label="Close" onClick={() => setPitching(false)}><X className="w-5 h-5 text-zinc-500" /></button>
               </div>
               <div className="space-y-3">
                 {[{ l: 'Startup Name', p: 'e.g. AgriSense AI' }, { l: 'One-Line Tagline', p: 'What does it do?' }, { l: 'Your Name & Program', p: 'e.g. Riya Sharma — CS Year 3' }, { l: 'Target SDG', p: 'e.g. SDG 2: Zero Hunger' }].map(f => (

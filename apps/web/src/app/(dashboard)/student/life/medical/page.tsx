@@ -75,7 +75,7 @@ export default function MedicalPage() {
     return (
       <div className="flex flex-wrap gap-2">
         {items.map((item, i) => (
-          <span key={i} className="px-2 py-1 bg-white/[0.05] border border-white/[0.1] rounded text-sm text-zinc-300">
+          <span key={i} className="px-2 py-1 bg-white/[0.05] border border-white/[0.1] rounded text-sm text-zinc-600 dark:text-zinc-300">
             {item}
           </span>
         ))}
@@ -112,7 +112,7 @@ export default function MedicalPage() {
                 <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center">
                   <Stethoscope className="w-6 h-6 text-pink-400" />
                 </div>
-                <button onClick={openModal} className="flex items-center gap-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 px-4 py-2 rounded-lg font-medium transition-colors text-sm">
+                <button onClick={openModal} className="flex items-center gap-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-700 dark:text-pink-400 px-4 py-2 rounded-lg font-medium transition-colors text-sm">
                   Update Profile
                 </button>
               </div>
@@ -151,13 +151,13 @@ export default function MedicalPage() {
                 <div className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl">
                   <h3 className="text-sm text-zinc-400 mb-2 font-medium">Emergency Contact</h3>
                   <div className="font-bold text-white mb-1">{record.emergencyContact || <span className="text-zinc-500 italic">Not specified</span>}</div>
-                  <div className="text-zinc-300 text-sm">{record.emergencyPhone || <span className="text-zinc-500 italic">Not specified</span>}</div>
+                  <div className="text-zinc-600 dark:text-zinc-300 text-sm">{record.emergencyPhone || <span className="text-zinc-500 italic">Not specified</span>}</div>
                 </div>
 
                 <div className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl">
                   <h3 className="text-sm text-zinc-400 mb-2 font-medium">Primary Care Physician</h3>
                   <div className="font-bold text-white mb-1">{record.doctorName || <span className="text-zinc-500 italic">Not specified</span>}</div>
-                  <div className="text-zinc-300 text-sm">{record.doctorPhone || <span className="text-zinc-500 italic">Not specified</span>}</div>
+                  <div className="text-zinc-600 dark:text-zinc-300 text-sm">{record.doctorPhone || <span className="text-zinc-500 italic">Not specified</span>}</div>
                 </div>
               </div>
             </div>
@@ -178,12 +178,12 @@ export default function MedicalPage() {
             >
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-pink-500/20 text-pink-400 rounded-lg">
+                  <div className="p-2 bg-pink-500/20 text-pink-700 dark:text-pink-400 rounded-lg">
                     <Stethoscope className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl font-bold text-white">Update Medical Profile</h2>
                 </div>
-                <button onClick={handleClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
+                <button aria-label="Close" onClick={handleClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -193,7 +193,7 @@ export default function MedicalPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm text-zinc-400 mb-1">Blood Type</label>
-                    <select 
+                    <select aria-label="Blood Type" 
                       value={formData.bloodType}
                       onChange={e => setFormData({...formData, bloodType: e.target.value})}
                       className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-pink-500 [color-scheme:dark]"
@@ -287,7 +287,7 @@ export default function MedicalPage() {
                 </div>
 
                 <div className="pt-6 flex justify-end gap-3">
-                  <button onClick={handleClose} className="px-6 py-2 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors">
+                  <button onClick={handleClose} className="px-6 py-2 rounded-xl border border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-800 transition-colors">
                     Cancel
                   </button>
                   <button onClick={handleSave} aria-busy={isSaving || undefined} disabled={isSaving} className="px-6 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-medium transition-colors flex items-center gap-2">

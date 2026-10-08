@@ -86,7 +86,7 @@ export default function TeacherRoomReservationPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-zinc-600 dark:text-zinc-400">Duration</label>
-                <select value={duration} onChange={e => setDuration(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white appearance-none focus:outline-none focus:border-indigo-500 transition-colors">
+                <select aria-label="Duration" value={duration} onChange={e => setDuration(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white appearance-none focus:outline-none focus:border-indigo-500 transition-colors">
                   <option>1 Hour</option>
                   <option>2 Hours</option>
                   <option>3 Hours</option>
@@ -95,7 +95,7 @@ export default function TeacherRoomReservationPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-zinc-600 dark:text-zinc-400">Room Type</label>
-                <select value={roomType} onChange={e => setRoomType(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white appearance-none focus:outline-none focus:border-indigo-500 transition-colors">
+                <select aria-label="Room Type" value={roomType} onChange={e => setRoomType(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-900 dark:text-white appearance-none focus:outline-none focus:border-indigo-500 transition-colors">
                   <option value="lecture">Lecture Hall (80–120)</option>
                   <option value="seminar">Seminar Room (20–30)</option>
                   <option value="lab">Computer Lab (40)</option>
@@ -122,7 +122,7 @@ export default function TeacherRoomReservationPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-zinc-900 dark:text-white">{room.name}</h4>
-                      <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Available
                       </span>
                     </div>
@@ -139,7 +139,7 @@ export default function TeacherRoomReservationPage() {
                           className={`flex-shrink-0 px-3 py-1.5 border rounded text-sm transition-colors ${
                             booked
                               ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
-                              : 'border-zinc-700 text-zinc-300 hover:bg-indigo-500/20 hover:text-indigo-400 hover:border-indigo-500/50'
+                              : 'border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-indigo-500/20 hover:text-indigo-400 hover:border-indigo-500/50'
                           }`}
                         >
                           {booked ? '✓' : time}
@@ -179,7 +179,7 @@ export default function TeacherRoomReservationPage() {
                           toast.error('Failed to cancel');
                         }
                       }}
-                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                      className="text-xs text-red-700 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 transition-colors"
                     >
                       Cancel
                     </button>
@@ -196,16 +196,16 @@ export default function TeacherRoomReservationPage() {
           <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Confirm Booking</h2>
-              <button onClick={() => setConfirmBooking(null)} className="p-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5" /></button>
+              <button aria-label="Close" onClick={() => setConfirmBooking(null)} className="p-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-zinc-300"><Map className="w-4 h-4 text-indigo-400" />{confirmBooking.room.name}</div>
-              <div className="flex items-center gap-2 text-zinc-300"><Calendar className="w-4 h-4 text-indigo-400" />{date || 'Selected date'} at {confirmBooking.time}</div>
-              <div className="flex items-center gap-2 text-zinc-300"><Clock className="w-4 h-4 text-indigo-400" />{duration}</div>
-              <div className="flex items-center gap-2 text-zinc-300"><Users className="w-4 h-4 text-indigo-400" />Capacity: {confirmBooking.room.capacity}</div>
+              <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><Map className="w-4 h-4 text-indigo-400" />{confirmBooking.room.name}</div>
+              <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><Calendar className="w-4 h-4 text-indigo-400" />{date || 'Selected date'} at {confirmBooking.time}</div>
+              <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><Clock className="w-4 h-4 text-indigo-400" />{duration}</div>
+              <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300"><Users className="w-4 h-4 text-indigo-400" />Capacity: {confirmBooking.room.capacity}</div>
             </div>
             <div>
-              <label className="text-xs font-medium text-zinc-300 block mb-1">Purpose / Session Title</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Purpose / Session Title</label>
               <input type="text" value={purpose} onChange={e => setPurpose(e.target.value)} placeholder="e.g., Midterm Exam CS401" className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" />
             </div>
             <div className="flex gap-3">

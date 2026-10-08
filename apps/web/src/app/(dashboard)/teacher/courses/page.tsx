@@ -95,10 +95,10 @@ export default function TeacherCourses() {
                 
                 {/* Actions Overlay */}
                 <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => openEdit(course)} className="p-2 bg-black/60 hover:bg-black text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
+                  <button aria-label="Edit" onClick={() => openEdit(course)} className="p-2 bg-black/60 hover:bg-black text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(course.id)} className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
+                  <button aria-label="Delete" onClick={() => handleDelete(course.id)} className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -108,10 +108,12 @@ export default function TeacherCourses() {
                     <div className="absolute top-4 left-4 text-4xl opacity-50 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-300">
                       {course.emoji || '📚'}
                     </div>
-                    <div className="bg-black/40 backdrop-blur-sm inline-block px-3 py-1 rounded-full text-xs font-medium text-zinc-900 dark:text-white w-max mb-2">
+                    {/* A shade under the text so white reads on any course colour. */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+                    <div className="relative bg-black/40 backdrop-blur-sm inline-block px-3 py-1 rounded-full text-xs font-medium text-white w-max mb-2">
                       {course.code}
                     </div>
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white drop-shadow-md truncate">{course.name}</h2>
+                    <h2 className="relative text-xl font-bold text-white drop-shadow-md truncate">{course.name}</h2>
                   </div>
                   <div className="p-5 flex-1 flex flex-col">
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 mb-4 flex-1">
@@ -120,7 +122,7 @@ export default function TeacherCourses() {
                     
                     <div className="flex items-center justify-between mt-auto">
                       <div className="flex items-center gap-2">
-                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400">
+                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                           Active
                         </span>
                       </div>
@@ -146,7 +148,7 @@ export default function TeacherCourses() {
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowDetailsModal(null)}>
           <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
             <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: courseColor(showDetailsModal.color, showDetailsModal.code) }}>
-               <button onClick={() => setShowDetailsModal(null)} className="absolute top-4 right-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-zinc-900 dark:text-white transition-colors">
+               <button aria-label="Close" onClick={() => setShowDetailsModal(null)} className="absolute top-4 right-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-zinc-900 dark:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
               <div className="absolute top-4 left-4 text-4xl opacity-50">
@@ -167,7 +169,7 @@ export default function TeacherCourses() {
                    <div className="space-y-3">
                       {[1, 2, 3].map((i) => (
                         <div key={i} className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800/30 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800/50">
-                           <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold">
+                           <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">
                              ST
                            </div>
                            <div>
@@ -182,7 +184,7 @@ export default function TeacherCourses() {
                           router.push('/teacher/students');
                           toast.success('Navigated to student management');
                         }}
-                        className="w-full py-2 text-xs font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-lg transition-colors cursor-pointer"
+                        className="w-full py-2 text-xs font-medium text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-lg transition-colors cursor-pointer"
                       >
                         View All {showDetailsModal._count?.enrollments} Students
                       </button>
@@ -194,7 +196,7 @@ export default function TeacherCourses() {
                       {['Syllabus.pdf', 'Lecture1_Slides.pdf', 'Assignment1.docx'].map((file, i) => (
                         <div key={i} className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800/30 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800/50">
                            <FileText className="w-4 h-4 text-emerald-500" />
-                           <div className="text-sm text-zinc-300 truncate">{file}</div>
+                           <div className="text-sm text-zinc-600 dark:text-zinc-300 truncate">{file}</div>
                         </div>
                       ))}
                       <button 
@@ -203,7 +205,7 @@ export default function TeacherCourses() {
                           router.push('/teacher/knowledge');
                           toast.success('Navigated to knowledge hub');
                         }}
-                        className="w-full py-2 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors cursor-pointer"
+                        className="w-full py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors cursor-pointer"
                       >
                         Manage Materials
                       </button>
@@ -224,7 +226,7 @@ export default function TeacherCourses() {
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{showEditModal ? 'Edit Course' : 'Create New Course'}</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Fill in the details for this course.</p>
               </div>
-              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -232,24 +234,24 @@ export default function TeacherCourses() {
             <div className="space-y-4">
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="text-xs font-medium text-zinc-300 block mb-1">Course Code *</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Course Code *</label>
                   <input type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} placeholder="e.g. CS101" className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-zinc-300 block mb-1">Emoji</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Emoji</label>
                   <input type="text" value={formData.emoji} onChange={e => setFormData({...formData, emoji: e.target.value})} className="w-20 px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 text-center" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Course Name *</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Course Name *</label>
                 <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Introduction to Computer Science" className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" />
               </div>
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Description</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Description</label>
                 <textarea rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="What is this course about?" className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none" />
               </div>
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Theme Color</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Theme Color</label>
                 <input type="color" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full h-10 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none" />
               </div>
             </div>

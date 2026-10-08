@@ -119,12 +119,12 @@ export default function TeacherCollaborationsPage() {
                 <div key={prop.id} className="p-6 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors space-y-4">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                     <div>
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 inline-block mb-1.5">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 inline-block mb-1.5">
                         {prop.status}
                       </span>
                       <h4 className="text-lg font-bold text-zinc-900 dark:text-white">{prop.title}</h4>
                     </div>
-                    <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
                       {prop.funding}
                     </span>
                   </div>
@@ -151,7 +151,7 @@ export default function TeacherCollaborationsPage() {
 
                     <button
                       onClick={() => setSquadModal(prop)}
-                      className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                      className="text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 flex items-center gap-1 transition-colors"
                     >
                       Manage Squad &amp; Milestone Reports <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
@@ -170,11 +170,11 @@ export default function TeacherCollaborationsPage() {
                 <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
                   <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 inline-block mb-2">{squadModal.status}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 inline-block mb-2">{squadModal.status}</span>
                       <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{squadModal.title}</h2>
                       <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{squadModal.partner} · {squadModal.ngo}</p>
                     </div>
-                    <button onClick={() => setSquadModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"><X className="w-5 h-5" /></button>
+                    <button aria-label="Close" onClick={() => setSquadModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"><X className="w-5 h-5" /></button>
                   </div>
 
                   <div className="p-6 space-y-6">
@@ -187,7 +187,7 @@ export default function TeacherCollaborationsPage() {
                         {milestones.map((m) => {
                           const done = m.status === 'COMPLETED';
                           return (
-                            <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border text-sm ${done ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-zinc-100 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'}`}>
+                            <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border text-sm ${done ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-zinc-100 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'}`}>
                               <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${done ? 'text-emerald-400' : 'text-zinc-500'}`} />
                               {m.title}
                               {done && <span className="ml-auto text-[10px] text-emerald-500 font-bold">DONE</span>}
@@ -239,7 +239,7 @@ export default function TeacherCollaborationsPage() {
 
                 <form onSubmit={handleCreateProposal} className="space-y-4">
                   <div>
-                    <label className="text-xs font-medium text-zinc-300 block mb-1">Initiative Title</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Initiative Title</label>
                     <input
                       type="text"
                       required
@@ -252,7 +252,7 @@ export default function TeacherCollaborationsPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-zinc-300 block mb-1">Target University Partner</label>
+                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Target University Partner</label>
                       <input
                         value={partnerUni}
                         onChange={e => setPartnerUni(e.target.value)}
@@ -263,7 +263,7 @@ export default function TeacherCollaborationsPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium text-zinc-300 block mb-1">NGO Co-Sponsor</label>
+                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">NGO Co-Sponsor</label>
                       <input
                         value={leadNgo}
                         onChange={e => setLeadNgo(e.target.value)}

@@ -305,7 +305,7 @@ export default function GroupsPage() {
                 <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 text-sm">
                   <MessageSquare className="w-4 h-4 text-indigo-500" /> Activity Feed
                 </h3>
-                <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors" onClick={() => setShowAllActivity(true)}>
+                <button aria-label="More options" className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors" onClick={() => setShowAllActivity(true)}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               </div>
@@ -342,7 +342,7 @@ export default function GroupsPage() {
             >
               <div className={`h-28 bg-gradient-to-br ${selectedGroup.color} relative flex items-end p-5`}>
                 <div className="absolute top-4 right-14">
-                  <button onClick={() => setActiveMenuId(activeMenuId === 'detail' ? null : 'detail')} className="p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
+                  <button aria-label="More options" onClick={() => setActiveMenuId(activeMenuId === 'detail' ? null : 'detail')} className="p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {activeMenuId === 'detail' && (
@@ -367,7 +367,7 @@ export default function GroupsPage() {
                     </div>
                   )}
                 </div>
-                <button onClick={() => setSelectedGroup(null)} className="absolute top-4 right-4 p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
+                <button aria-label="Close" onClick={() => setSelectedGroup(null)} className="absolute top-4 right-4 p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
                   <X className="w-4 h-4" />
                 </button>
                 <div>
@@ -429,7 +429,7 @@ export default function GroupsPage() {
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Create New Group</h3>
-                <button onClick={() => setShowNewGroup(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-4 h-4" /></button>
+                <button aria-label="Close" onClick={() => setShowNewGroup(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-4 h-4" /></button>
               </div>
               <div className="space-y-4">
                 <div>
@@ -478,7 +478,7 @@ export default function GroupsPage() {
                       {inviteMembers.map((member, i) => (
                         <div key={i} className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
                           <span>{member}</span>
-                          <button onClick={() => setInviteMembers(inviteMembers.filter((_, idx) => idx !== i))} className="hover:text-red-500 transition-colors">
+                          <button aria-label="Remove" onClick={() => setInviteMembers(inviteMembers.filter((_, idx) => idx !== i))} className="hover:text-red-500 transition-colors">
                             <X className="w-3 h-3" />
                           </button>
                         </div>
@@ -540,7 +540,7 @@ export default function GroupsPage() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-md shadow-2xl p-6 relative">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Invite to {inviteGroup.name}</h3>
-                <button onClick={() => { setInviteGroup(null); setInviteInput(''); setInviteMembers([]); }} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-4 h-4" /></button>
+                <button aria-label="Close" onClick={() => { setInviteGroup(null); setInviteInput(''); setInviteMembers([]); }} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-4 h-4" /></button>
               </div>
               <div className="space-y-4">
                 <div>
@@ -575,7 +575,7 @@ export default function GroupsPage() {
                       {inviteMembers.map((member, i) => (
                         <div key={i} className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full text-xs text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
                           <span>{member}</span>
-                          <button onClick={() => setInviteMembers(inviteMembers.filter((_, idx) => idx !== i))} className="hover:text-red-500 transition-colors">
+                          <button aria-label="Remove" onClick={() => setInviteMembers(inviteMembers.filter((_, idx) => idx !== i))} className="hover:text-red-500 transition-colors">
                             <X className="w-3 h-3" />
                           </button>
                         </div>
@@ -621,7 +621,7 @@ export default function GroupsPage() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
               <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900">
                 <h3 className="font-bold text-zinc-900 dark:text-white text-lg">Full Activity Feed</h3>
-                <button onClick={() => setShowAllActivity(false)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
+                <button aria-label="Close" onClick={() => setShowAllActivity(false)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
                 {activity.length === 0 && <p className="text-sm text-zinc-500 text-center py-8">No recent messages in your groups yet.</p>}

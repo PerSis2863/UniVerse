@@ -52,7 +52,7 @@ export default function GlobalSummitsPage() {
         subtitle="Compete, collaborate, and pitch solutions alongside students from universities worldwide."
         rightNode={
           <div className="flex items-center gap-2">
-            <span className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold flex items-center gap-1.5">
+            <span className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 font-semibold flex items-center gap-1.5">
               <Trophy className="w-3.5 h-3.5" /> {summits.length} upcoming event{summits.length === 1 ? '' : 's'}
             </span>
           </div>
@@ -65,7 +65,7 @@ export default function GlobalSummitsPage() {
           {/* Intro Banner */}
           <div className="p-8 rounded-3xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-zinc-900 border border-zinc-200 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
             <div className="space-y-2 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
                 <UniverseLogo size="sm" animated={false} withGlow={false} />
                 Multi-Institution Collaboration Summits
               </div>
@@ -113,15 +113,15 @@ export default function GlobalSummitsPage() {
                     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
                             {format}
                           </span>
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
                             <Trophy className="w-3 h-3" /> {prizePool}
                           </span>
                         </div>
                         <h3 className="text-2xl font-black text-zinc-900 dark:text-white">{summit.title}</h3>
-                        <p className="text-zinc-300 text-xs">{theme}</p>
+                        <p className="text-zinc-600 dark:text-zinc-300 text-xs">{theme}</p>
                       </div>
 
                       {/* Countdown Box */}
@@ -146,7 +146,7 @@ export default function GlobalSummitsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-800/60 text-xs">
                       <div>
                         <span className="text-zinc-500 dark:text-zinc-500 font-medium block mb-1">Impact Points:</span>
-                        <div className="flex flex-wrap gap-2 text-zinc-300 font-medium">
+                        <div className="flex flex-wrap gap-2 text-zinc-600 dark:text-zinc-300 font-medium">
                           +{summit.impactPoints} Global Points
                         </div>
                       </div>
@@ -154,7 +154,7 @@ export default function GlobalSummitsPage() {
                       <div>
                         <span className="text-zinc-500 dark:text-zinc-500 font-medium block mb-1">Details:</span>
                         <div className="flex flex-wrap gap-1.5">
-                          <span className="px-2 py-0.5 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-300">
+                          <span className="px-2 py-0.5 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
                             Capacity: {summit.capacity ? `${summit.capacity} delegates` : 'Unlimited'}
                           </span>
                         </div>
@@ -174,7 +174,7 @@ export default function GlobalSummitsPage() {
                           aria-busy={applying || undefined} disabled={isRegistered || applying}
                           className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                             isRegistered
-                              ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
+                              ? 'bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'
                           }`}
                         >

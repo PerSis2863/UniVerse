@@ -41,7 +41,7 @@ export function RequestAssociationModal({ onClose, onSuccess }: RequestAssociati
       <div className="sheet-in bg-[#121830] border border-white/[0.1] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-white/[0.05]">
           <h2 className="text-xl font-bold text-white">Request New Association</h2>
-          <button onClick={onClose} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors">
+          <button aria-label="Close" onClick={onClose} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -76,7 +76,7 @@ export function RequestAssociationModal({ onClose, onSuccess }: RequestAssociati
 
             <div>
               <label className="block text-sm font-medium text-zinc-400 mb-1.5">Category</label>
-              <select 
+              <select aria-label="Category" 
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-[#1c2340] border border-white/[0.1] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"

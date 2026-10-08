@@ -104,7 +104,7 @@ export function BoardComments({ boardId, controls, onClose, meId }: { boardId: s
                           <p className="text-[11px] text-zinc-500"><span className="font-semibold text-zinc-800 dark:text-zinc-100">{c.user.name.split(' ')[0]}</span> · {ago(c.createdAt)}</p>
                           <p className="text-sm text-zinc-700 dark:text-zinc-200 break-words whitespace-pre-line">{c.body}</p>
                         </div>
-                        {c.user.id === meId && <button type="button" aria-label="Delete comment" onClick={() => void (async () => { if (await confirmDialog({ title: 'Delete this comment?', destructive: true, confirmLabel: 'Delete' })) await change(c, null); })()} className="p-1 text-zinc-300 hover:text-rose-500 self-start"><Trash2 className="w-3.5 h-3.5" /></button>}
+                        {c.user.id === meId && <button type="button" aria-label="Delete comment" onClick={() => void (async () => { if (await confirmDialog({ title: 'Delete this comment?', destructive: true, confirmLabel: 'Delete' })) await change(c, null); })()} className="p-1 text-zinc-600 dark:text-zinc-300 hover:text-rose-500 self-start"><Trash2 className="w-3.5 h-3.5" /></button>}
                       </li>
                     ))}
                   </ul>

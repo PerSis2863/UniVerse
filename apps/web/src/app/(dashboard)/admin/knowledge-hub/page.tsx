@@ -240,7 +240,7 @@ function AddResourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: 
           <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Add resource</h2>
           <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"><X className="w-5 h-5" /></button>
         </div>
-        <select className="input" value={form.kind} onChange={(e) => { setForm({ ...form, kind: e.target.value }); setFile(null); }}>
+        <select aria-label="Kind" className="input" value={form.kind} onChange={(e) => { setForm({ ...form, kind: e.target.value }); setFile(null); }}>
           <option value="Link">Web link</option>
           <option value="File">File upload</option>
         </select>
@@ -255,7 +255,7 @@ function AddResourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: 
           </button>
         )}
         <textarea className={`input min-h-[70px]`} placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+        <select aria-label="Category" className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
           {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
         </select>
         <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">

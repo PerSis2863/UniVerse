@@ -169,7 +169,7 @@ export default function StudentSupport() {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => document.getElementById('support-ticket')?.scrollIntoView({ behavior: 'smooth' })} className="mt-4 text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
+                <button onClick={() => document.getElementById('support-ticket')?.scrollIntoView({ behavior: 'smooth' })} className="mt-4 text-indigo-700 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 text-sm font-medium flex items-center gap-1 transition-colors">
                   Didn&apos;t find your answer? Ask us <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -213,7 +213,7 @@ export default function StudentSupport() {
                 <form className="space-y-4" onSubmit={handleSubmitTicket}>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Issue Category</label>
-                    <select 
+                    <select aria-label="Issue Category" 
                       value={ticketCategory}
                       onChange={(e) => setTicketCategory(e.target.value)}
                       className="w-full bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors appearance-none"
@@ -282,12 +282,12 @@ export default function StudentSupport() {
             >
               <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                  <div className="p-2 bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg">
                     <FileText className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl font-bold text-white">Connecting to eduroam Wi-Fi</h2>
                 </div>
-                <button onClick={handleCloseModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
+                <button aria-label="Close" onClick={handleCloseModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -332,12 +332,12 @@ export default function StudentSupport() {
             >
               <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                  <div className="p-2 bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg">
                     <Book className="w-5 h-5" />
                   </div>
                   <h2 className="text-xl font-bold text-white">Library Portal</h2>
                 </div>
-                <button onClick={handleCloseModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
+                <button aria-label="Close" onClick={handleCloseModal} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>

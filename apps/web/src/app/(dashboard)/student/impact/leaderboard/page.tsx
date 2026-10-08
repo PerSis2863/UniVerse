@@ -85,10 +85,10 @@ function MyScoreCard({ entry, levelInfo }: { entry: LeaderboardEntry | null; lev
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={shareTwitter} className="flex items-center gap-1.5 text-xs bg-sky-500/10 border border-sky-500/20 text-sky-400 hover:bg-sky-500/20 px-3 py-2 rounded-xl transition-all font-semibold">
+          <button onClick={shareTwitter} className="flex items-center gap-1.5 text-xs bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20 px-3 py-2 rounded-xl transition-all font-semibold">
             <TwitterIcon className="w-3.5 h-3.5" /> Share
           </button>
-          <button onClick={() => { navigator.clipboard.writeText(`I'm Level ${info.current.level} "${info.current.title}" on UniVerse Impact! 🌍`); toast.success('Copied!'); }}
+          <button aria-label="Copy link" onClick={() => { navigator.clipboard.writeText(`I'm Level ${info.current.level} "${info.current.title}" on UniVerse Impact! 🌍`); toast.success('Copied!'); }}
             className="flex items-center gap-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white px-3 py-2 rounded-xl transition-all">
             <Copy className="w-3.5 h-3.5" />
           </button>
@@ -212,7 +212,7 @@ export default function LeaderboardPage() {
                           <div className={`text-xs font-bold mb-0.5 ${isCurrentLevel ? 'text-indigo-400' : 'text-zinc-300 dark:text-zinc-300'}`}>Lv.{lv.level}</div>
                           <div className={`text-[9px] leading-tight ${isCurrentLevel ? 'text-indigo-400' : 'text-zinc-500'}`}>{lv.title}</div>
                           <div className="text-[9px] text-zinc-600 mt-1">{lv.minXP.toLocaleString()} XP</div>
-                          {isCurrentLevel && <div className="text-[9px] text-indigo-400 font-bold mt-1 bg-indigo-500/10 rounded-full px-1">YOU</div>}
+                          {isCurrentLevel && <div className="text-[9px] text-indigo-700 dark:text-indigo-400 font-bold mt-1 bg-indigo-500/10 rounded-full px-1">YOU</div>}
                         </div>
                       );
                     })}

@@ -467,7 +467,7 @@ function Readings({ board, canManage, refresh }: SectionProps) {
           <input className="input" placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div className="grid sm:grid-cols-2 gap-3">
             <input className="input" placeholder="https://… (optional)" maxLength={1000} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
-            <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{['Paper', 'Article', 'Book', 'Video', 'Website'].map((c) => <option key={c}>{c}</option>)}</select>
+            <select aria-label="Category" className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{['Paper', 'Article', 'Book', 'Video', 'Website'].map((c) => <option key={c}>{c}</option>)}</select>
           </div>
           <textarea className={`input min-h-[70px]`} placeholder="Why should students read this? (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <button disabled={busy || !form.title.trim()} onClick={async () => (await post({ kind: 'reading', ...form }, 'Added to the reading list')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add</button>
@@ -680,8 +680,8 @@ function Events({ board, canManage, refresh }: SectionProps) {
           <input className="input" placeholder="Title, e.g. Midterm exam" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div className="grid sm:grid-cols-3 gap-3">
             <input className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
-            <select className="input" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}>{[30, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m} min</option>)}</select>
-            <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+            <select aria-label="Duration minutes" className="input" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}>{[30, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m} min</option>)}</select>
+            <select aria-label="Type" className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
           </div>
           <input className="input" placeholder="Room or notes (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <button disabled={busy || !form.title.trim() || !form.startAt} onClick={async () => (await post({ kind: 'event', ...form, startAt: new Date(form.startAt).toISOString() }, 'Added to the course calendar')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add event</button>

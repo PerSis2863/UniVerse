@@ -185,7 +185,7 @@ export default function AdminInternshipsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Type</label>
-                  <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="input">
+                  <select aria-label="Type" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="input">
                     {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
@@ -203,7 +203,7 @@ export default function AdminInternshipsPage() {
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className={label}>Status</label>
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input">
+                  <select aria-label="Status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input">
                     <option value="Active">Active</option>
                     <option value="Closed">Closed</option>
                   </select>

@@ -246,11 +246,11 @@ function CredentialCard({ cred }: { cred: Credential }) {
         {isVerified && (
           <div className="flex flex-wrap gap-2 mt-4">
             <button onClick={shareLinkedIn}
-              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <LinkedinIcon className="w-3 h-3" /> LinkedIn
             </button>
             <button onClick={shareTwitter}
-              className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-sky-700 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <TwitterIcon className="w-3 h-3" /> Twitter / X
             </button>
             <CopyLinkButton url={cred.verifyUrl!}
@@ -259,11 +259,11 @@ function CredentialCard({ cred }: { cred: Credential }) {
               className="text-fuchsia-300 hover:text-fuchsia-200 bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/15 hover:from-indigo-500/25 hover:to-fuchsia-500/25 border border-fuchsia-500/25 px-3 py-1.5 rounded-lg transition-all" />
             <button onClick={() => downloadFile(`/api/passport/badge/${cred.id}`, 'open-badge.jwt').then(() => toast.success('Open Badge downloaded')).catch((e) => toast.error(e.message))}
               title="Signed Open Badges 3.0 credential for digital wallets and badge platforms"
-              className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-violet-700 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <Download className="w-3 h-3" /> Open Badge
             </button>
             <a href={`/verify/${cred.id}`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
               <ExternalLink className="w-3 h-3" /> Public Page
             </a>
             <button onClick={() => setExpanded(v => !v)}
@@ -284,15 +284,15 @@ function CredentialCard({ cred }: { cred: Credential }) {
                 <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Cryptographic Proof</span>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Certificate ID</span><span className="font-mono text-zinc-300">{cred.certificateCode}</span></div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Certificate ID</span><span className="font-mono text-zinc-600 dark:text-zinc-300">{cred.certificateCode}</span></div>
                 <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">SHA-256 Hash</span><span className="font-mono text-emerald-400 text-[10px] break-all text-right">{cred.blockchainHash}</span></div>
-                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">Ed25519 Signature</span><span className="font-mono text-zinc-300 text-[10px] break-all text-right">{cred.signature}</span></div>
-                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Signing Key ID</span><span className="font-mono text-zinc-300">{cred.signingKeyId}</span></div>
-                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Format</span><span className="text-zinc-300">W3C Verifiable Credential</span></div>
+                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">Ed25519 Signature</span><span className="font-mono text-zinc-600 dark:text-zinc-300 text-[10px] break-all text-right">{cred.signature}</span></div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Signing Key ID</span><span className="font-mono text-zinc-600 dark:text-zinc-300">{cred.signingKeyId}</span></div>
+                <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Format</span><span className="text-zinc-600 dark:text-zinc-300">W3C Verifiable Credential</span></div>
                 <div className="flex items-start justify-between text-xs gap-4">
                   <span className="text-zinc-500 flex-shrink-0">Blockchain</span>
                   {cred.blockchain?.status === 'CONFIRMED' && cred.blockchain.explorerUrl ? (
-                    <a href={safeHref(cred.blockchain.explorerUrl)} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 text-right inline-flex items-center gap-1">
+                    <a href={safeHref(cred.blockchain.explorerUrl)} target="_blank" rel="noopener noreferrer" className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 text-right inline-flex items-center gap-1">
                       Anchored on {cred.blockchain.network} <ExternalLink className="w-3 h-3" />
                     </a>
                   ) : cred.blockchain?.status === 'PENDING' ? (

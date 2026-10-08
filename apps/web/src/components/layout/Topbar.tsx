@@ -134,7 +134,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           >
             <Search className="w-4 h-4" />
             <span className="flex-1 text-left">{t('common.search')}</span>
-            <kbd className="text-[11px] font-medium text-zinc-400">⌘K</kbd>
+            <kbd className="text-[11px] font-medium text-zinc-500">⌘K</kbd>
           </button>
 
           <ThemeToggle />
@@ -142,11 +142,11 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           <button
             type="button"
             onClick={() => setShowNotifications(true)}
-            aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
             className={cn('btn-ghost btn-icon relative rounded-full', showNotifications && 'bg-[var(--fill)]')}
           >
             <Bell className="w-[19px] h-[19px]" strokeWidth={2.1} />
-            {unreadCount > 0 && <span className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[var(--ios-red)] text-[10px] text-white font-bold leading-[17px] text-center">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+            {unreadCount > 0 && <span aria-hidden className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full badge-count text-[10px] text-white font-bold leading-[17px] text-center">{unreadCount > 99 ? '99+' : unreadCount}</span>}
           </button>
 
           {action && (

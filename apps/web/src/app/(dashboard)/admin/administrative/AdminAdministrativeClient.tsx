@@ -232,7 +232,7 @@ export default function AdminAdministrativeClient() {
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className={label}>Type</label>
-                      <select value={docForm.type} onChange={(e) => setDocForm({ ...docForm, type: e.target.value })} className="input">
+                      <select aria-label="Type" value={docForm.type} onChange={(e) => setDocForm({ ...docForm, type: e.target.value })} className="input">
                         {DOC_TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
                       </select>
                     </div>

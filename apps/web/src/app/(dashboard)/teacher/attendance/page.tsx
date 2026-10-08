@@ -58,7 +58,7 @@ export default function TeacherAttendance() {
           <div className="flex flex-col md:flex-row gap-6">
             <div className="card flex-1">
               <label className="block text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-2">Select Course</label>
-              <select 
+              <select aria-label="Course"
                 className="w-full bg-white/[0.05] border border-zinc-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
@@ -71,7 +71,7 @@ export default function TeacherAttendance() {
               <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm text-zinc-600 dark:text-zinc-400 gap-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4"/> 
-                  <input type="date" value={currentDate} onChange={(e) => setCurrentDate(e.target.value)} className="bg-transparent border-none outline-none text-zinc-900 dark:text-white cursor-pointer" />
+                  <input type="date" aria-label="Date" value={currentDate} onChange={(e) => setCurrentDate(e.target.value)} className="bg-transparent border-none outline-none text-zinc-900 dark:text-white cursor-pointer" />
                 </div>
                 <div className="flex items-center gap-2"><Users className="w-4 h-4"/> {totalStudents} Students</div>
               </div>
@@ -120,7 +120,7 @@ export default function TeacherAttendance() {
                             onClick={() => handleMarkAttendance(student.id, 'PRESENT')}
                             className={`p-2 rounded-md border transition-all ${
                               status === 'PRESENT' 
-                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-400' 
                                 : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/10'
                             }`}
                             title="Mark Present"
@@ -131,7 +131,7 @@ export default function TeacherAttendance() {
                             onClick={() => handleMarkAttendance(student.id, 'LATE')}
                             className={`p-2 rounded-md border transition-all ${
                               status === 'LATE' 
-                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' 
+                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-800 dark:text-amber-400' 
                                 : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-amber-500/50 hover:text-amber-400 hover:bg-amber-500/10'
                             }`}
                             title="Mark Late"
@@ -142,7 +142,7 @@ export default function TeacherAttendance() {
                             onClick={() => handleMarkAttendance(student.id, 'ABSENT')}
                             className={`p-2 rounded-md border transition-all ${
                               status === 'ABSENT' 
-                                ? 'bg-red-500/20 border-red-500/50 text-red-400' 
+                                ? 'bg-red-500/20 border-red-500/50 text-red-700 dark:text-red-400' 
                                 : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
                             }`}
                             title="Mark Absent"

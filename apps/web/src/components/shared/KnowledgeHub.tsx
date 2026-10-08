@@ -294,15 +294,15 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                 <h2 className="text-xl font-bold text-white">Add New Resource</h2>
                 <p className="text-sm text-zinc-400 mt-1">Upload a file or add a link to your hub.</p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setShowAddModal(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Type</label>
-                <select value={formData.type} onChange={e => {
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Type</label>
+                <select aria-label="Type" value={formData.type} onChange={e => {
                     setFormData({...formData, type: e.target.value});
                     if (e.target.value === 'Link') setSelectedFile(null);
                   }} 
@@ -317,17 +317,17 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
               {formData.type === 'Link' ? (
                 <>
                   <div>
-                    <label className="text-xs font-medium text-zinc-300 block mb-1">Resource Title *</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Resource Title *</label>
                     <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="e.g. Study Guide v2" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-zinc-300 block mb-1">URL *</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">URL *</label>
                     <input type="url" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="https://..." />
                   </div>
                 </>
               ) : (
                 <div>
-                  <label className="text-xs font-medium text-zinc-300 block mb-1">Upload File *</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Upload File *</label>
                   <div 
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full border-2 border-dashed border-zinc-700 hover:border-indigo-500 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-zinc-950/50"
@@ -339,7 +339,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                       onChange={handleFileChange}
                     />
                     <Upload className="w-8 h-8 text-zinc-500 mb-2" />
-                    <p className="text-sm font-medium text-zinc-300 text-center">
+                    <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 text-center">
                       {selectedFile ? selectedFile.name : 'Click to select a file'}
                     </p>
                     <p className="text-xs text-zinc-500 mt-1">
@@ -348,7 +348,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                   </div>
                   {selectedFile && (
                     <div className="mt-3">
-                      <label className="text-xs font-medium text-zinc-300 block mb-1">Rename File (Optional)</label>
+                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Rename File (Optional)</label>
                       <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500" />
                     </div>
                   )}
@@ -356,8 +356,8 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
               )}
 
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Category</label>
-                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Category</label>
+                <select aria-label="Category" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
                   {CATEGORIES.filter(c => c !== 'All').map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -382,14 +382,14 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                 <h2 className="text-xl font-bold text-white">Share Knowledge Hub</h2>
                 <p className="text-sm text-zinc-400 mt-1">Make your resources visible to others.</p>
               </div>
-              <button onClick={() => setShowShareModal(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setShowShareModal(false)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-zinc-300 block mb-1">Share with</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Share with</label>
                 <input 
                   type="text" 
                   value={shareSearchTerm} 

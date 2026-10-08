@@ -112,7 +112,7 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
           {/* Reasons */}
           <div className="flex flex-wrap gap-1.5 mb-3">
             {match.matchReasons.map(r => (
-              <span key={r} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 font-medium">
+              <span key={r} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-400 font-medium">
                 ✓ {r}
               </span>
             ))}
@@ -138,7 +138,7 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
             {match.project.skillsRequired.map(skill => (
               <span key={skill} className={cn('text-[10px] px-2 py-0.5 rounded-md font-medium border',
                 match.skillMatches.some(m => m.toLowerCase() === skill.toLowerCase())
-                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                   : 'bg-zinc-800 border-zinc-700 text-zinc-500')}>
                 {skill}
               </span>
@@ -149,7 +149,7 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
           <button onClick={handleApply} aria-busy={applying || undefined} disabled={applied || applying}
             className={cn('flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl transition-all',
               applied
-                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 cursor-default'
                 : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20')}>
             {applying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : applied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
             {applied ? 'Applied!' : applying ? 'Applying...' : 'Apply Now'}
@@ -192,13 +192,13 @@ export default function AIMatchPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {['Skill matching', 'Course alignment', 'Acceptance rate', 'Impact potential'].map(tag => (
-                    <span key={tag} className="text-[10px] px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 font-medium">
+                    <span key={tag} className="text-[10px] px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-400 font-medium">
                       ✦ {tag}
                     </span>
                   ))}
                 </div>
               </div>
-              <button onClick={() => void mutate()} disabled={refreshing}
+              <button aria-label="Refresh" onClick={() => void mutate()} disabled={refreshing}
                 className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all flex-shrink-0">
                 <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
               </button>

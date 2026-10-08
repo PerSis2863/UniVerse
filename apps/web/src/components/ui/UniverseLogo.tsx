@@ -222,7 +222,7 @@ export function UniverseLogo({
             <span className="font-black tracking-tight text-zinc-900 dark:text-white text-lg">
               Universe
             </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30 mt-0.5">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-500/30 mt-0.5">
               IMPACT
             </span>
           </div>

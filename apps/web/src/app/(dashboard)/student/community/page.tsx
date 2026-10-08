@@ -98,7 +98,7 @@ export default function StudentCommunity() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-zinc-900 dark:text-white">{post.author?.name || 'Campus team'}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-400`}>Announcement</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-700 dark:text-blue-400`}>Announcement</span>
                         </div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-500">{post.createdAt && new Date(post.createdAt).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
@@ -142,7 +142,7 @@ export default function StudentCommunity() {
               <div className="space-y-3">
                 {['#CS101', '#StudyGroup', '#CampusLife', '#Hackathon2026'].map((tag, i) => (
                   <div key={i} className="flex items-center justify-between group cursor-pointer">
-                    <span className="text-zinc-300 group-hover:text-indigo-400 transition-colors text-sm">{tag}</span>
+                    <span className="text-zinc-600 dark:text-zinc-300 group-hover:text-indigo-400 transition-colors text-sm">{tag}</span>
                     <span className="text-xs text-zinc-500 dark:text-zinc-500">{120 - (i * 15)} posts</span>
                   </div>
                 ))}

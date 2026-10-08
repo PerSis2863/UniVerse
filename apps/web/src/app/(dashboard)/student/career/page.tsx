@@ -109,7 +109,7 @@ export default function CareerPage() {
                 <div className="space-y-4">
                   {events.map((event) => (
                     <div key={event.id} className="flex gap-4 border-b border-white/[0.05] last:border-0 pb-4 last:pb-0">
-                      <div className="bg-indigo-500/10 text-indigo-400 rounded-lg p-2 text-center min-w-[50px] shrink-0 h-fit border border-indigo-500/20">
+                      <div className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-lg p-2 text-center min-w-[50px] shrink-0 h-fit border border-indigo-500/20">
                         <div className="text-xs uppercase font-bold">
                           {new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}
                         </div>

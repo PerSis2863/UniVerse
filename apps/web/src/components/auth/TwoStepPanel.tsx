@@ -59,7 +59,7 @@ export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCance
           <p className="text-sm text-zinc-400">{sentTo ? `We sent a 6-digit code to ${sentTo}.` : 'Sending you a 6-digit code…'}</p>
         </div>
       </div>
-      {error && <div role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">{error}</div>}
+      {error && <div role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-700 dark:text-red-400 text-sm">{error}</div>}
       <input
         inputMode="numeric"
         autoComplete="one-time-code"

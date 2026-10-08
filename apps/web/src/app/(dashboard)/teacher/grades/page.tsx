@@ -95,7 +95,7 @@ export default function TeacherGradesPage() {
       <Topbar title="Grade Book" subtitle="Record and review student results" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-5">
         <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
-          <select className={cn('input', 'md:w-80')} value={courseId} onChange={(e) => { setCourseId(e.target.value); setAdding(null); }}>
+          <select aria-label="Course" className={cn('input', 'md:w-80')} value={courseId} onChange={(e) => { setCourseId(e.target.value); setAdding(null); }}>
             {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
           </select>
           <div className="flex gap-2">
@@ -112,7 +112,7 @@ export default function TeacherGradesPage() {
           <div className={`panel p-5 space-y-3`}>
             <div className="flex items-center justify-between"><p className="font-semibold text-zinc-900 dark:text-white">Record a grade</p><button onClick={() => setAdding(null)} aria-label="Close" className="p-1 text-zinc-500"><X className="w-4 h-4" /></button></div>
             <div className="grid sm:grid-cols-2 gap-3">
-              <select className="input" value={adding.studentId} onChange={(e) => setAdding({ ...adding, studentId: e.target.value })}>
+              <select aria-label="Student" className="input" value={adding.studentId} onChange={(e) => setAdding({ ...adding, studentId: e.target.value })}>
                 <option value="">Choose a student…</option>
                 {rows.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
