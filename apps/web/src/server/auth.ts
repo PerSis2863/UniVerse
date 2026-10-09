@@ -71,10 +71,11 @@ export function isDemoAccount(email: string | null | undefined): boolean {
 /**
  * The demo admin account is read-only: anyone can sign in as it when demo login is on, so it
  * must not be able to change real people's roles, accounts, grades or credentials. It can still
- * browse, chat, read notifications, ask school analytics questions (a POST that only reads) and
- * record its own page views (like the demo student and teacher; blocked, every flush failed).
+ * browse, chat, read notifications, ask school analytics questions and preview a bulk import
+ * (POSTs that only read) and record its own page views (like the demo student and teacher;
+ * blocked, every flush failed).
  */
-const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$|core\/activity\/ui$|bootstrap$|boards(\/|$)|admin\/school-analytics$)/;
+const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$|core\/activity\/ui$|bootstrap$|boards(\/|$)|admin\/school-analytics$|admin\/import\/preview$)/;
 export function demoWriteBlocked(req: Request, user: { role: string }, token: string | null): boolean {
   if (!token?.startsWith('mock-token-') || user.role !== 'ADMIN') return false;
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return false;

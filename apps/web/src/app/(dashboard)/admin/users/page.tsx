@@ -15,6 +15,7 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
+import { SectionTabs, ADMIN_PEOPLE_TABS } from '@/components/layout/SectionTabs';
 
 type Role = 'STUDENT' | 'TEACHER' | 'ADMIN';
 type Status = 'PENDING' | 'ACTIVE' | 'SUSPENDED';
@@ -186,6 +187,7 @@ export default function AdminUsers() {
   return (
     <>
       <Topbar title="Users" subtitle="Every student, teacher and administrator, with their courses and activity" />
+      <SectionTabs tabs={ADMIN_PEOPLE_TABS} />
 
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto space-y-6">
 

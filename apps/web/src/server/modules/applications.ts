@@ -7,6 +7,7 @@ import { forgetUser } from '../auth';
 import { audit } from '../audit';
 import { later, notify } from '../email';
 import { oneOf } from '../body';
+import { applyPendingEnrolments } from '../bulk-import';
 
 // Applications to become a teacher or NGO representative.
 //
@@ -61,6 +62,8 @@ export async function approveInvited(user: Actor & { email: string }, role: Requ
   await prisma.user.update({ where: { id: user.id }, data: { role, status: 'ACTIVE', accountType: role === 'STUDENT' ? 'STUDENT' : role === 'TEACHER' ? 'STAFF' : 'ORGANIZATION' } });
   await prisma.invitation.update({ where: { id: invitationId }, data: { status: 'ACTIVE' } });
   if (role === 'STUDENT') await prisma.studentProfile.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
+  // Classes a bulk import put them in before they had an account (Stage 5 · B15.7).
+  if (role === 'STUDENT') await applyPendingEnrolments(user.id, user.email);
   await prisma.roleApplication.create({
     data: {
       userId: user.id, requestedRole: role, source: 'SIGNUP', status: 'APPROVED', submittedAt: new Date(), reviewedAt: new Date(),

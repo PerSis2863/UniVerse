@@ -30,7 +30,7 @@ export function StatusChip({ status, overdue, className }: { status: BillStatus;
 export function downloadCsv(name: string, header: string[], rows: (string | number)[][]) {
   const cell = (v: string | number) => { let x = String(v ?? ''); if (/^[=+\-@]/.test(x)) x = `'${x}`; return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
   const csv = [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
-  const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
   Object.assign(document.createElement('a'), { href: url, download: name }).click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

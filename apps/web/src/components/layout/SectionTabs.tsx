@@ -100,6 +100,12 @@ export const SAFETY_TABS: SectionTab[] = [
   { href: '/admin/safety/policy', label: 'Policy' },
 ];
 
+/** Admin → Users: the people, and bulk import/export from CSV (Stage 5 · B15.7). */
+export const ADMIN_PEOPLE_TABS: SectionTab[] = [
+  { href: '/admin/users', label: 'Users' },
+  { href: '/admin/import', label: 'Import & export' },
+];
+
 /** Admin → Finances: the platform's money, and school fees (Stage 5 · B15.2). */
 export const ADMIN_FINANCE_TABS: SectionTab[] = [
   { href: '/admin/finances', label: 'Overview' },

@@ -284,6 +284,7 @@ model User {
   feePlansMade         FeePlan[]           @relation("FeePlansMade")
   feeInvoices          FeeInvoice[]        @relation("FeeInvoices")
   feePaymentsReceived  FeePayment[]        @relation("FeePaymentsReceived")
+  importBatches        ImportBatch[]       @relation("ImportBatches")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -417,6 +418,7 @@ model Course {
 
   consentForms          ConsentForm[]
   feePlans          FeePlan[]
+  pendingEnrolments PendingEnrolment[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -3123,6 +3125,38 @@ model FeePayment {
   @@index([invoiceId])
   @@index([paidAt])
   @@map("fee_payments")
+}
+
+/// One bulk import from a CSV file (Stage 5 · B15.7): its counts (`summary` JSON) and what undoing it
+/// takes (`undo` JSON: ids it created, and changed rows as they were before), undoable for 7 days.
+model ImportBatch {
+  id          String    @id @default(cuid())
+  kind        String
+  fileName    String?
+  rows        Int       @default(0)
+  summary     String
+  undo        String
+  createdById String
+  createdBy   User      @relation("ImportBatches", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  undoneAt    DateTime?
+  undoneById  String?
+
+  @@index([createdAt])
+  @@map("import_batches")
+}
+
+/// A class someone invited by an import will be put in when they join (Stage 5 · B15.7).
+model PendingEnrolment {
+  id        String   @id @default(cuid())
+  email     String
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  batchId   String?
+  createdAt DateTime @default(now())
+
+  @@unique([email, courseId])
+  @@map("pending_enrolments")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)
