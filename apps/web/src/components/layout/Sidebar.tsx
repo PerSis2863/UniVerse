@@ -100,7 +100,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor'] },
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
-        { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes'] },
+        { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes', '/student/mastery'] },
         { href: '/boards', label: 'Collaborate', also: ['/code', '/tasks', '/docs', '/spaces'] },
         { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub', '/library'] },
       ]
@@ -144,7 +144,7 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/teacher/courses', label: 'nav.my_courses' },
         { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor'] },
-        { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/meetings', '/teacher/forms'] },
+        { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/mastery', '/teacher/meetings', '/teacher/forms'] },
         { href: '/teacher/attendance', label: 'nav.attendance' },
         { href: '/teacher/grades', label: 'nav.grades' },
         { href: '/teacher/quizzes', label: 'nav.quizzes' },

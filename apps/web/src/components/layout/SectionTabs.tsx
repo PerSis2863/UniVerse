@@ -65,6 +65,7 @@ export const PROGRESS_TABS: SectionTab[] = [
   { href: '/student/grades', label: 'Grades' },
   { href: '/student/attendance', label: 'Attendance' },
   { href: '/student/quizzes', label: 'Quizzes' },
+  { href: '/student/mastery', label: 'Mastery' },
 ];
 
 /** Whiteboards and shared code editors: one "Collaborate" entry in every portal. */
@@ -104,6 +105,7 @@ export const TEACHER_STUDENT_TABS: SectionTab[] = [
   { href: '/teacher/students', label: 'Students' },
   { href: '/teacher/early-warning', label: 'Early warning' },
   { href: '/teacher/analytics', label: 'Course analytics' },
+  { href: '/teacher/mastery', label: 'Mastery' },
   { href: '/teacher/meetings', label: 'Parent meetings' },
   { href: '/teacher/forms', label: 'Parent forms' },
 ];

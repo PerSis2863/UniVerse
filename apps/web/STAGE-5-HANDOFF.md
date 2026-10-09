@@ -7,9 +7,9 @@ done, where the code is and what's left for each item. Keep that table up to dat
 
 - Everything up to here is **merged into `main`** (PR #47) and **live**. The owner checked that the
   production database has every migration up to **0081**.
-- **Next migration number: `0092`** (0082 parent messages, 0083 consent forms, 0084 parent meetings, 0085 school fees, 0086 bulk import, 0087 admissions, 0088 staff roles, 0089 staff, 0090 library, 0091 registers, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
+- **Next migration number: `0093`** (0082–0091 block 4, 0092 Learning DNA, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
   applies new migrations first (`DEPLOY-CLOUDFLARE.md`, "Deploy command"). Nothing to run by hand.
-- Tests: `npx vitest run` → **295 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
+- Tests: `npx vitest run` → **303 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
 
 ### Done in Stage 5
 
@@ -52,7 +52,7 @@ The plan's order (section 2) is the guide. Suggested next steps:
    - ~~B15.5 registers~~ **built** (adding and changing entries still to try with real data). **Block 4 is built.**
    - B16.5 fee payment for parents comes with B15.2. Online payment needs the owner (Stripe exists;
      **UPI/Razorpay needs the owner's account**).
-2. **Block 5:** D1 Learning DNA, D10 second chance, D2 Whisper TA.
+2. **Block 5:** ~~D1 Learning DNA~~ **done** (concepts, tags, mastery from quizzes and rubrics; `src/lib/mastery.ts`), D10 second chance (feeds D1), D2 Whisper TA.
 3. **Block 6:** B7–B9 messaging, calls, docs and tasks power features. Then blocks 7–10.
 
 ### Leftovers inside finished items (pick up when nearby)

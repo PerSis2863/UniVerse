@@ -13,7 +13,7 @@ export function tabsForRole(role: string): { base: string; items: TabItem[] } {
       items: [
         { href: '/teacher', label: 'Home', icon: LayoutDashboard },
         { href: '/teacher/courses', label: 'Courses', icon: BookOpen },
-        { href: '/teacher/students', label: 'Students', icon: Users, match: ['/teacher/students', '/teacher/early-warning', '/teacher/analytics', '/teacher/meetings', '/teacher/forms'] },
+        { href: '/teacher/students', label: 'Students', icon: Users, match: ['/teacher/students', '/teacher/early-warning', '/teacher/analytics', '/teacher/mastery', '/teacher/meetings', '/teacher/forms'] },
         { href: '/teacher/inbox', label: 'Messages', icon: MessageSquare, match: ['/teacher/inbox', '/calls'] },
       ],
     };

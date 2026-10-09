@@ -432,6 +432,7 @@ model Course {
   consentForms          ConsentForm[]
   feePlans          FeePlan[]
   pendingEnrolments PendingEnrolment[]
+  concepts          CourseConcept[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -3525,6 +3526,39 @@ model HostelResident {
 
   @@index([roomId])
   @@map("hostel_residents")
+}
+
+/// A concept in a course's Learning DNA (Stage 5 · D1), optionally under a broader one.
+model CourseConcept {
+  id          String          @id @default(cuid())
+  courseId    String
+  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  parentId    String?
+  parent      CourseConcept?  @relation("ConceptParent", fields: [parentId], references: [id])
+  children    CourseConcept[] @relation("ConceptParent")
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now())
+  tags        ConceptTag[]
+
+  @@unique([courseId, name])
+  @@map("course_concepts")
+}
+
+/// What tests a concept: kind QUESTION (a quiz question id), BANK (a question-bank item id) or
+/// CRITERION ("<assignment id>:<rubric criterion id>").
+model ConceptTag {
+  id        String        @id @default(cuid())
+  conceptId String
+  concept   CourseConcept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  kind      String
+  refId     String
+  createdAt DateTime      @default(now())
+
+  @@unique([kind, refId, conceptId])
+  @@index([refId])
+  @@map("concept_tags")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)
