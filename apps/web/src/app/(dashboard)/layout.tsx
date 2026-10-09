@@ -17,7 +17,7 @@ import { adoptEarlyBootstrap, startBootstrap } from '@/lib/bootstrap';
 import { authedJson } from '@/lib/authed-fetch';
 import { isSampleMode } from '@/lib/sample-mode';
 
-type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean; onboardedAt?: string | null };
+type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean; onboardedAt?: string | null; permissions?: string[] };
 
 const toUser = (me: MeResponse, photoURL?: string | null) => ({
   id: me.id,
@@ -29,6 +29,7 @@ const toUser = (me: MeResponse, photoURL?: string | null) => ({
   avatar: me.avatar || photoURL || undefined,
   application: me.application ?? null,
   owner: me.owner === true,
+  permissions: me.permissions,
 });
 
 const RESYNC_MS = 5 * 60 * 1000;

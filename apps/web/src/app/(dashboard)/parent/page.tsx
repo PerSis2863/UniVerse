@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { m as motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +15,11 @@ import { LoadError } from '@/components/ui/LoadError';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { ChildView, type ChildData } from '@/components/guardian/ChildView';
+import { ParentMessages } from '@/components/guardian/ParentMessages';
+import { FORMS_KEY, ParentForms, type ParentFormsData } from '@/components/guardian/ParentForms';
+import { ParentMeetings } from '@/components/guardian/ParentMeetings';
+import { FamilyFees } from '@/components/fees/FamilyFees';
+import { MyRegisters } from '@/components/registers/MyRegisters';
 import { authedJson } from '@/lib/authed-fetch';
 import { api, errorMessage } from '@/lib/api';
 import { fadeUp } from '@/lib/motion';
@@ -29,6 +34,7 @@ type Child = ChildData & { linkId: string; studentId: string; relation: string |
 type Note = { id: string; title: string; body: string; read: boolean; createdAt: string };
 
 const KEY = '/api/parent/children';
+type Tab = 'school' | 'messages' | 'meetings' | 'forms';
 const RELATIONS = ['Mother', 'Father', 'Parent', 'Guardian', 'Grandparent', 'Other'];
 
 export default function ParentPage() {
@@ -37,8 +43,54 @@ export default function ParentPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [sheet, setSheet] = useState<'account' | 'updates' | null>(null);
+  // Schoolwork, messages with the child's teachers (B16.2), meetings (B16.3) or forms to sign
+  // (B16.4); ?chat=<id>, ?tab=meetings or ?tab=forms&form=<id> (from a notification) open them.
+  const [tab, setTab] = useState<Tab>('school');
+  const [chatId, setChatId] = useState<string | null>(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('chat')));
+  const [formId, setFormId] = useState<string | null>(null);
+  const { data: forms } = useSWR<ParentFormsData>(data?.children.length ? FORMS_KEY : null, authedJson);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get('tab') === 'forms') { setTab('forms'); setFormId(q.get('form')); }
+      else if (q.get('tab') === 'meetings') setTab('meetings');
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
   const kids = data?.children ?? [];
   const child = kids.find((k) => k.linkId === selected) ?? kids[0];
+  // A chat from a notification: show the child it's about, on the messages tab.
+  useEffect(() => {
+    if (!chatId || !kids.length) return;
+    let off = false;
+    authedJson<{ studentId: string }>(`/api/parent/chats/${encodeURIComponent(chatId)}`).then((c) => {
+      if (off) return;
+      const k = kids.find((x) => x.studentId === c.studentId);
+      if (k) { setSelected(k.linkId); setTab('messages'); }
+    }).catch(() => { if (!off) setChatId(null); });
+    return () => { off = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the children arrive
+  }, [kids.length]);
+  const openChat = (id: string | null) => {
+    setChatId(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set('chat', id); else url.searchParams.delete('chat');
+    window.history.replaceState(null, '', url);
+  };
+  const openForm = (id: string | null) => {
+    setFormId(id);
+    const url = new URL(window.location.href);
+    if (id) { url.searchParams.set('tab', 'forms'); url.searchParams.set('form', id); } else url.searchParams.delete('form');
+    window.history.replaceState(null, '', url);
+  };
+  const switchTab = (v: Tab) => {
+    setTab(v);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('form');
+    if (v === 'forms' || v === 'meetings') url.searchParams.set('tab', v); else url.searchParams.delete('tab');
+    window.history.replaceState(null, '', url);
+  };
+  const toSign = forms?.waiting ?? 0;
   const unread = notes?.filter((n) => !n.read).length ?? 0;
 
   const linked = (linkId: string) => { setAdding(false); setSelected(linkId); void mutate(); };
@@ -76,17 +128,36 @@ export default function ParentPage() {
           : !child ? <Welcome onLinked={linked} />
           : (
             <>
-              {kids.length > 1 && (
+              {kids.length > 1 && tab !== 'forms' && (
                 kids.length <= 4
                   ? <Segmented<string> label="Child" value={child.linkId} onChange={setSelected} segments={kids.map((k) => ({ value: k.linkId, label: k.firstName }))} className="mb-4 w-full" />
                   : <select aria-label="Child" value={child.linkId} onChange={(e) => setSelected(e.target.value)} className="input mb-4">{kids.map((k) => <option key={k.linkId} value={k.linkId}>{k.firstName}</option>)}</select>
               )}
+              <Segmented<Tab> label="Show" value={tab} onChange={switchTab} className="mb-4 w-full" segments={[
+                // Four tabs fit a phone with the short name.
+                { value: 'school', label: <><span className="sm:hidden">School</span><span className="hidden sm:inline">Schoolwork</span></> },
+                { value: 'messages', label: 'Messages' },
+                { value: 'meetings', label: 'Meetings' },
+                { value: 'forms', label: <span className="inline-flex items-center gap-1.5">Forms{toSign > 0 && <><span aria-hidden className="min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold inline-flex items-center justify-center">{toSign}</span><span className="sr-only">, {toSign} to sign</span></>}</span> },
+              ]} />
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={child.linkId} variants={fadeUp} initial="hidden" animate="show" exit={{ opacity: 0 }}>
-                  <ChildView data={child} eyebrow={child.relation ? `You’re linked as ${child.relation.toLowerCase()}` : 'Linked to your account'} note="Up to date as of now. Grades, attendance and deadlines come straight from the school." />
-                  <div className="mt-6 flex justify-center">
-                    <button type="button" onClick={() => void unlink(child)} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"><UserMinus className="w-4 h-4" /> Remove {child.firstName}</button>
-                  </div>
+                <motion.div key={tab === 'forms' ? 'forms' : `${child.linkId}-${tab}`} variants={fadeUp} initial="hidden" animate="show" exit={{ opacity: 0 }}>
+                  {tab === 'forms' ? (
+                    <><h1 className="sr-only">Forms to sign</h1><ParentForms formId={formId} onForm={openForm} /></>
+                  ) : tab === 'meetings' ? (
+                    <><h1 className="sr-only">Meetings with {child.firstName}’s teachers</h1><ParentMeetings studentId={child.studentId} /></>
+                  ) : tab === 'messages' ? (
+                    <><h1 className="sr-only">Messages with {child.firstName}’s teachers</h1><ParentMessages studentId={child.studentId} chatId={chatId} onChat={openChat} /></>
+                  ) : (
+                    <>
+                      <ChildView data={child} eyebrow={child.relation ? `You’re linked as ${child.relation.toLowerCase()}` : 'Linked to your account'} note="Up to date as of now. Grades, attendance and deadlines come straight from the school." />
+                      <FamilyFees url={`/api/parent/fees?studentId=${encodeURIComponent(child.studentId)}`} who={child.firstName} />
+                      <MyRegisters url={`/api/parent/registers?studentId=${encodeURIComponent(child.studentId)}`} title={`${child.firstName}’s bus, room and equipment`} className="mt-4" />
+                      <div className="mt-6 flex justify-center">
+                        <button type="button" onClick={() => void unlink(child)} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"><UserMinus className="w-4 h-4" /> Remove {child.firstName}</button>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               </AnimatePresence>
             </>

@@ -41,7 +41,7 @@ describe('quickCheck', () => {
 });
 
 describe('isMinor', () => {
-  const p = (studentsMinors = false): Policy => ({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors });
+  const p = (studentsMinors = false): Policy => ({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors, parentMessaging: true });
   const now = new Date('2026-10-08T12:00:00Z');
   it('teachers are never minors', () => expect(isMinor({ role: 'TEACHER', dateOfBirth: new Date('2012-01-01') }, p(), now)).toBe(false));
   it('a 15-year-old student is', () => expect(isMinor({ role: 'STUDENT', dateOfBirth: new Date('2011-03-01') }, p(), now)).toBe(true));

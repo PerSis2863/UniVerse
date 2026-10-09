@@ -9,6 +9,7 @@ import { featureOff } from './moderation';
 import { planLimits } from '@/lib/plan-limits';
 import { publishChat } from './realtime';
 import { impactCallAccess } from './impact-rooms';
+import { meetingCallAccess } from './parent-meetings';
 
 // UniVerse's own voice and video calls. Audio and video go straight between browsers (WebRTC,
 // up to 6 people, each connected to each); the call's Durable Object (cloudflare/worker.ts
@@ -142,6 +143,11 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
   if (callId.startsWith('l_')) {
     if (!/^l_[A-Za-z0-9_-]{10,40}$/.test(callId)) throw new NotFoundException('This call link isn’t valid.');
     return { kind: wantKind === 'audio' ? 'audio' : 'video', type: 'group', title: 'Call link', conversationId: null, oneToOne: false, startedBy: null, ended: false, host: false };
+  }
+  if (callId.startsWith('pm_')) {
+    // A parent–teacher meeting by video (Stage 5 · B16.3): the teacher (host) and the parent who booked it.
+    const a = await meetingCallAccess(callId.slice(3), user);
+    return { kind: wantKind === 'audio' ? 'audio' : 'video', type: 'group', title: a.title, conversationId: null, chatId: null, oneToOne: false, startedBy: null, ended: false, host: a.host };
   }
   if (callId.startsWith('i_')) {
     // An impact room's call (Stage 4 · 4.12): staff run it, the room's followers join.
@@ -385,7 +391,7 @@ export async function roomPeers(callId: string, user: SessionUser) {
 }
 
 async function chatCall(callId: string, user: SessionUser) {
-  if (/^(h[cg]|[gcrlo])_/.test(callId) || breakoutOf(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
+  if (/^(h[cg]|pm|[gcrlo])_/.test(callId) || breakoutOf(callId)) throw new BadRequestException('Only chat calls can be declined or ended.');
   await callAccess(callId, user);
   const msg = await prisma.message.findUnique({ where: { id: callId }, select: { metadata: true, conversationId: true } });
   return { meta: (msg?.metadata ?? {}) as CallMeta, conversationId: msg!.conversationId };
@@ -417,6 +423,7 @@ export async function endCall(callId: string, user: SessionUser, body: Record<st
 }
 
 export type CallKind = 'chat' | 'class' | 'group' | 'room' | 'link' | 'hall' | 'office';
+// Parent meetings (pm_) count as 'chat' here, so they stay out of the Calls history.
 const kindOfCall = (id: string): CallKind => (id.startsWith('o_') ? 'office' : /^h[cg]_/.test(id) ? 'hall' : id.startsWith('c_') ? 'class' : id.startsWith('g_') ? 'group' : id.startsWith('r_') ? 'room' : id.startsWith('l_') ? 'link' : 'chat');
 
 /** One call in my history (Calls, Stage 4 · 2.13). */

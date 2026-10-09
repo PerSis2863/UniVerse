@@ -3,8 +3,9 @@ import { remindDueCalls, sendDueReminders } from '@/server/scheduled-calls';
 import { remindSupportFollowUps } from '@/server/support-plans';
 import { sendDueScheduled } from '@/server/scheduled-messages';
 import { sendMorningBriefs } from '@/server/daily-brief';
+import { remindParentMeetings } from '@/server/parent-meetings';
 
-// Reminders for scheduled calls, scheduled chat messages and morning briefs, run by the 15-minute cron
+// Reminders for scheduled calls, parent meetings, scheduled chat messages and morning briefs, run by the 15-minute cron
 // (cloudflare/worker.ts) only when something is actually due, so most runs never start the app. Not reachable from outside: only the
 // scheduled handler knows the token.
 
@@ -25,5 +26,7 @@ export async function POST(req: Request) {
   const scheduled = await sendDueScheduled().catch((e) => (console.error('scheduled messages failed:', e), null));
   // Morning briefs due now (Stage 4 · 4.9)
   const briefs = await sendMorningBriefs().catch((e) => (console.error('morning briefs failed:', e), null));
-  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs });
+  // Parent–teacher meetings starting soon (Stage 5 · B16.3)
+  const meetings = await remindParentMeetings().catch((e) => (console.error('parent meeting reminders failed:', e), null));
+  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs, meetings });
 }

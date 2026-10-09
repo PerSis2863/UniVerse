@@ -10,12 +10,13 @@ import { isTabRoot } from '@/lib/app-tabs';
 import { setSectionRoot } from '@/lib/chrome';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { userCan, type Permission } from '@/lib/permissions';
 
 // Tabs that join related pages into one menu entry (e.g. Support and BeeSafe reporting): each tab
 // is its own page, so links, bookmarks and notifications to either keep working.
 
 /** `also`: other pages that belong to this tab (it stays highlighted on them). */
-export type SectionTab = { href: string; label: string; also?: string[] };
+export type SectionTab = { href: string; label: string; also?: string[]; /** Shown only to people who may (Stage 5 · B15.6). */ need?: Permission | Permission[] | 'admin' };
 
 export const SUPPORT_TABS: SectionTab[] = [
   { href: '/student/support', label: 'Help & support' },
@@ -64,6 +65,7 @@ export const PROGRESS_TABS: SectionTab[] = [
   { href: '/student/grades', label: 'Grades' },
   { href: '/student/attendance', label: 'Attendance' },
   { href: '/student/quizzes', label: 'Quizzes' },
+  { href: '/student/mastery', label: 'Mastery' },
 ];
 
 /** Whiteboards and shared code editors: one "Collaborate" entry in every portal. */
@@ -84,18 +86,49 @@ export const STUDENT_COURSE_TABS: SectionTab[] = [
 export const STUDENT_LEARN_TABS: SectionTab[] = [
   { href: '/student/skills', label: 'Skills' },
   { href: '/student/knowledge-hub', label: 'Knowledge Hub' },
+  { href: '/library', label: 'Library' },
+];
+
+/** A teacher's reading: the knowledge hub and the school library (Stage 5 · B15.4). */
+export const TEACHER_LEARN_TABS: SectionTab[] = [
+  { href: '/teacher/knowledge', label: 'Knowledge Hub' },
+  { href: '/library', label: 'Library' },
+];
+
+/** A teacher's timetable, and their leave and the classes they cover (Stage 5 · B15.8). */
+export const TEACHER_TIME_TABS: SectionTab[] = [
+  { href: '/teacher/calendar', label: 'Timetable' },
+  { href: '/teacher/staff', label: 'Leave & cover' },
 ];
 
 export const TEACHER_STUDENT_TABS: SectionTab[] = [
   { href: '/teacher/students', label: 'Students' },
   { href: '/teacher/early-warning', label: 'Early warning' },
   { href: '/teacher/analytics', label: 'Course analytics' },
+  { href: '/teacher/mastery', label: 'Mastery' },
+  { href: '/teacher/meetings', label: 'Parent meetings' },
+  { href: '/teacher/forms', label: 'Parent forms' },
 ];
 
 export const SAFETY_TABS: SectionTab[] = [
   { href: '/admin/safety', label: 'BeeSafe reports' },
   { href: '/admin/safety/chats', label: 'Chat safety' },
   { href: '/admin/safety/policy', label: 'Policy' },
+];
+
+/** Admin → Users: the people, staff (B15.8), admissions (B15.1), roles (B15.6) and bulk import/export (B15.7). */
+export const ADMIN_PEOPLE_TABS: SectionTab[] = [
+  { href: '/admin/users', label: 'Users', need: 'admin' },
+  { href: '/admin/staff', label: 'Staff', need: 'staff.manage' },
+  { href: '/admin/admissions', label: 'Admissions', need: 'admissions.review' },
+  { href: '/admin/roles', label: 'Roles', need: 'admin' },
+  { href: '/admin/import', label: 'Import & export', need: ['import.run', 'export.run'] },
+];
+
+/** Admin → Finances: the platform's money, and school fees (Stage 5 · B15.2). */
+export const ADMIN_FINANCE_TABS: SectionTab[] = [
+  { href: '/admin/finances', label: 'Overview', need: 'admin' },
+  { href: '/admin/fees', label: 'School fees', need: 'fees.view' },
 ];
 
 export const ADMIN_INSIGHT_TABS: SectionTab[] = [
@@ -163,15 +196,19 @@ export function SectionTabs({ tabs, small, label = 'Sections' }: { tabs: Section
   // Tabs next to one of the tab bar's pages (Timetable next to Overview…) make this a top-level
   // screen: the phone's top bar shows no back button here. Before paint, so it never flickers.
   const role = useAuthStore((st) => st.user?.role);
+  const user = useAuthStore((st) => st.user);
+  // Tabs for areas this person can't open are left out (admins see them all).
+  const shown = tabs.filter((t) => !t.need || role === 'ADMIN' || (t.need !== 'admin' && (Array.isArray(t.need) ? t.need : [t.need]).some((p) => userCan(user, p))));
   useLayoutEffect(() => {
     if (!role || !tabs.some((t) => isTabRoot(t.href, role))) return;
     setSectionRoot(here);
     return () => setSectionRoot(null);
   }, [role, here, group]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (shown.length < 2) return null;
   return (
     <nav aria-label={label} data-steady className={small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4'}>
       <div className={cn('ios-segmented', !small && 'large')}>
-        {tabs.map((t) => {
+        {shown.map((t) => {
           const on = pathname === t.href || !!t.also?.includes(pathname);
           return (
             <Link key={t.href} href={t.href} data-vt="tab" aria-current={on ? 'page' : undefined} className="ios-segment">

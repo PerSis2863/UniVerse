@@ -15,7 +15,7 @@ export async function GET(req: Request, { params }: Ctx) {
     where: { quizId_studentId: { quizId: id, studentId: user.id } },
     select: {
       score: true, maxScore: true, submittedAt: true, answers: true,
-      quiz: { select: { title: true, status: true, dueDate: true, questions: { orderBy: { order: 'asc' }, select: { id: true, question: true, options: true, correctAnswer: true, points: true } } } },
+      quiz: { select: { courseId: true, title: true, status: true, dueDate: true, questions: { orderBy: { order: 'asc' }, select: { id: true, question: true, options: true, correctAnswer: true, points: true } } } },
     },
   });
   if (!submission) return NextResponse.json({ error: 'You haven’t submitted this quiz.' }, { status: 404 });
@@ -25,6 +25,7 @@ export async function GET(req: Request, { params }: Ctx) {
   const answers = (submission.answers ?? {}) as Record<string, string>;
 
   return NextResponse.json({
+    courseId: quiz.courseId,
     title: quiz.title,
     score: submission.score,
     maxScore: submission.maxScore,

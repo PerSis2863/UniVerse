@@ -7,33 +7,54 @@ done, where the code is and what's left for each item. Keep that table up to dat
 
 - Everything up to here is **merged into `main`** (PR #47) and **live**. The owner checked that the
   production database has every migration up to **0081**.
-- **Next migration number: `0082`.** Merging to `main` makes Cloudflare build and deploy, and the deploy
+- **Next migration number: `0094`** (0082–0091 block 4, 0092 Learning DNA, 0093 second chances, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
   applies new migrations first (`DEPLOY-CLOUDFLARE.md`, "Deploy command"). Nothing to run by hand.
-- Tests: `npx vitest run` → **218 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
+- Tests: `npx vitest run` → **313 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
 
 ### Done in Stage 5
 
 A1 lint debt · A2 design system · A3 motion/loading · A5 accessibility · A6 automated checks ·
 A4 Web Vitals and bundle cuts (partly) · B2.1 course modules · B3.1 grading speed (partly) ·
 B3.4 gradebook categories and final grades · B4.1 question bank · B4.3–4.4 shuffle and exam mode ·
-B4.6 quiz item analysis · B15.3 report cards · B16.1 guardian (parent) accounts.
+B4.6 quiz item analysis · B15.3 report cards · B16.1 guardian (parent) accounts ·
+B16.2 parent–teacher messages · B16.3 parent–teacher meetings · B16.4 consent forms ·
+B15.2 school fees · B15.7 bulk import/export · B15.1 admissions · B15.6 custom roles · B15.8 staff · B15.4 library · B15.5 registers (admin actions in these to be tried with real data: see “Testing the admin parts” below) ·
+D1 Learning DNA · D10 second chances.
+
+### Testing the admin parts (block 4)
+
+The local demo admin can't save (by design), so these were built and checked as far as possible
+but not used with real data: fees, import/undo, admissions (rounds, the filled-in public form,
+offers, enrolment), roles given to staff, leave approval and cover, library lending, registers.
+The owner chose to test them together at the end: on the PR preview with the real admin account
+(make a fee plan and issue it, record a payment and open the receipt; import a small CSV and undo
+it; open a round, apply on its public link, offer, accept, enrol; make a role and give it to a
+teacher; approve a leave and set cover; add a book, lend and return it; add equipment, print a
+label, lend it; add a bus route and a hostel room and put a student in each).
 
 ## What to do next, in order
 
 The plan's order (section 2) is the guide. Suggested next steps:
 
 1. **Finish block 4 (school admin and parents):**
-   - B16.2 parent–teacher messaging (school rules: office hours, quiet hours, translation, moderation).
-     Parent accounts can't use chat today: allow only what you build through the allowlist (see "Parent
-     accounts" below).
-   - B16.4 consent forms with e-signature, per child (school sends, parent signs in `/parent`).
-   - B16.3 parent–teacher meetings (slot booking; the office-hours queue code can help).
-   - B15.2 fees, B15.7 bulk CSV import/export with preview and undo, B15.1 admissions,
-     B15.6 custom roles and permissions, B15.8 staff (leave, substitutions), B15.4 library, B15.5 registers.
+   - ~~B16.2 parent–teacher messaging~~ **done** (see the Progress row). Parents still can't use the chat
+     API itself: they go through `/api/parent/chats` (see "Parent accounts" below).
+   - ~~B16.4 consent forms with e-signature~~ **done** (see the Progress row).
+   - ~~B16.3 parent–teacher meetings~~ **done** (see the Progress row). Video meetings are calls `pm_<id>`;
+     parent accounts may reach only those calls.
+   - ~~B15.2 fees~~ **built** (see the Progress row): **admin actions still need a try with real data** (the local
+     demo admin is read-only; check on the preview with the real admin account).
+   - ~~B15.7 bulk CSV import/export~~ **built** (importing and undo still to try with real data, like fees).
+   - ~~B15.1 admissions~~ **built** (admin actions and the public form still to try with real data).
+   - ~~B15.6 custom roles and permissions~~ **built**: new admin areas should check `can(user, '<area>.<verb>')`
+     (`src/server/permissions.ts`) and add their keys to `src/lib/permissions.ts`.
+   - ~~B15.8 staff (leave, cover, attendance)~~ **built** (approving leave and planning cover still to try with real data).
+   - ~~B15.4 library~~ **built** (lending, returns and adding books still to try with real data).
+   - ~~B15.5 registers~~ **built** (adding and changing entries still to try with real data). **Block 4 is built.**
    - B16.5 fee payment for parents comes with B15.2. Online payment needs the owner (Stripe exists;
      **UPI/Razorpay needs the owner's account**).
-2. **Block 5:** D1 Learning DNA, D10 second chance, D2 Whisper TA.
-3. **Block 6:** B7–B9 messaging, calls, docs and tasks power features. Then blocks 7–10.
+2. **Block 5:** ~~D1 Learning DNA~~ **done** (concepts, tags, mastery from quizzes and rubrics; `src/lib/mastery.ts`), ~~D10 second chance~~ **done** (catch-ups on what was missed; practice feeds D1), D2 Whisper TA.
+3. **Block 6:** B7–B9 messaging, calls, docs and tasks power features (the owner added **B9.14, a file converter for any format**, on 10 Oct 2026: it goes in **Collaborate → Docs**, where all the documents are, so students can convert them; build it in this block, not before). Then blocks 7–10.
 
 ### Leftovers inside finished items (pick up when nearby)
 

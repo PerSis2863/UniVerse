@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/Switch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { LowDataToggle } from '@/components/settings/LowDataToggle';
 import { QuietHoursSetting } from '@/components/settings/QuietHoursSetting';
+import { ParentHoursSetting } from '@/components/settings/ParentHoursSetting';
 import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermissionPrompt';
 import { api } from '@/lib/api';
 import { applyTheme, getSavedTheme, type Theme } from '@/lib/theme';
@@ -381,6 +382,7 @@ function Notifications({ role }: { role: Role }) {
         {on === null ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : <Switch checked={on} label="Email notifications" onChange={(v) => void toggle(v)} />}
       </Row>
       <QuietHoursSetting />
+      {(role === 'TEACHER' || role === 'ADMIN') && <ParentHoursSetting />}
     </Card>
   );
 }

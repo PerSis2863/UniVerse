@@ -6,6 +6,7 @@ import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { CampusItemList } from '@/components/campus/CampusItems';
 import { DiningMenu } from '@/components/campus/DiningMenu';
 import Link from '@/components/ui/Link';
+import { MyRegisters } from '@/components/registers/MyRegisters';
 
 export default function EverydayLifePage() {
   return (
@@ -14,6 +15,8 @@ export default function EverydayLifePage() {
       <SectionTabs tabs={LIFE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-10">
+          {/* My school bus, hostel room and equipment lent to me (Stage 5 · B15.5); nothing when none. */}
+          <MyRegisters url="/api/registers/me" title="Your bus, room and equipment" />
           <section>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-black text-zinc-900 dark:text-white">Dining menu</h2>

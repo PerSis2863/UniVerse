@@ -158,6 +158,8 @@ function handle(event: ServerEvent) {
       void mutate('/api/chat/conversations');
       void mutate('/api/calls'); // a call started or ended (only refetches if the Calls page is open)
       void mutate(startsWith(`/api/chat/conversations/${event.conversationId}/`));
+      // The parent app's chats (Stage 5 · B16.2).
+      void mutate(startsWith('/api/parent/chats'));
       // Only a new call can change the ringing card (other chat events used to refetch it too).
       if (event.call) void mutate('/api/chat/incoming');
       break;
@@ -168,6 +170,8 @@ function handle(event: ServerEvent) {
       void mutate('/api/notifications');
       // Application decisions and new applications arrive as notifications.
       void mutate(startsWith('/applications'));
+      // So do new consent forms for parents (Stage 5 · B16.4).
+      void mutate('/api/parent/forms');
       break;
     case 'refresh':
       for (const k of event.keys) void mutate(k.endsWith('*') ? startsWith(k.slice(0, -1)) : k);

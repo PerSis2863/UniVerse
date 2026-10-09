@@ -10,6 +10,7 @@ import { getAuthToken } from '@/lib/auth-token';
 import { isSampleMode } from '@/lib/sample-mode';
 import { AdminSearch, PersonCell, matchesQuery, personText } from '@/components/admin/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
+import { SectionTabs, ADMIN_FINANCE_TABS } from '@/components/layout/SectionTabs';
 
 /** A payment with its payer (dates may arrive as Date objects from the server action). */
 interface Txn { id: string; amount: number; currency?: string | null; status: string; description?: string | null; createdAt: string | Date; user?: { name: string; email?: string | null; role?: string | null; phone?: string | null } | null }
@@ -136,6 +137,7 @@ export default function AdminFinances() {
   return (
     <>
       <Topbar title="Financial Overview" subtitle="Monitor revenue, platform fees, and payouts" />
+      <SectionTabs tabs={ADMIN_FINANCE_TABS} />
       
       {/* Stripe Setup Modal */}
       {isStripeModalOpen && (

@@ -71,10 +71,11 @@ export function isDemoAccount(email: string | null | undefined): boolean {
 /**
  * The demo admin account is read-only: anyone can sign in as it when demo login is on, so it
  * must not be able to change real people's roles, accounts, grades or credentials. It can still
- * browse, chat, read notifications, ask school analytics questions (a POST that only reads) and
- * record its own page views (like the demo student and teacher; blocked, every flush failed).
+ * browse, chat, read notifications, ask school analytics questions and preview a bulk import
+ * (POSTs that only read) and record its own page views (like the demo student and teacher;
+ * blocked, every flush failed).
  */
-const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$|core\/activity\/ui$|bootstrap$|boards(\/|$)|admin\/school-analytics$)/;
+const DEMO_ADMIN_WRITABLE = /^\/api\/(chat\/|notifications|realtime\/|core\/notifications\/|core\/auth\/session$|core\/users\/me\/terms$|core\/activity\/ui$|bootstrap$|boards(\/|$)|admin\/school-analytics$|admin\/import\/preview$)/;
 export function demoWriteBlocked(req: Request, user: { role: string }, token: string | null): boolean {
   if (!token?.startsWith('mock-token-') || user.role !== 'ADMIN') return false;
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return false;
@@ -83,10 +84,11 @@ export function demoWriteBlocked(req: Request, user: { role: string }, token: st
 
 /**
  * Parent and guardian accounts (Stage 5 · B16.1) reach only the parent app and their own account.
+ * Video parent–teacher meetings (call ids pm_…) are the one kind of call they can join.
  * Everything else (courses, chat, people, files…) is refused here, in one place, so no feature that
  * treats "not a teacher or admin" as a student can ever serve a guardian.
  */
-const GUARDIAN_ALLOWED = /^\/api\/(parent(\/|$)|me$|bootstrap$|notifications(\/|$)|realtime\/|errors$|vitals$|core\/users\/me(\/(terms|deletion|export))?$|core\/auth\/(me|register|session|sessions|sign-out-everywhere)$|core\/notifications\/|core\/activity\/ui$)/;
+const GUARDIAN_ALLOWED = /^\/api\/(parent(\/|$)|calls\/pm_[A-Za-z0-9]+(\/(ticket|stat|peers))?$|fees\/receipts\/[A-Za-z0-9]+$|me$|bootstrap$|notifications(\/|$)|realtime\/|errors$|vitals$|core\/users\/me(\/(terms|deletion|export))?$|core\/auth\/(me|register|session|sessions|sign-out-everywhere)$|core\/notifications\/|core\/activity\/ui$)/;
 export function guardianBlocked(req: Request, user: { role: string }): boolean {
   return user.role === 'GUARDIAN' && !GUARDIAN_ALLOWED.test(new URL(req.url).pathname);
 }

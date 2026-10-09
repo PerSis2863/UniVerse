@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     if (!target) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
     const existing = await prisma.conversation.findFirst({
-      where: { isGroup: false, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: target.id } } }] },
+      where: { isGroup: false, aboutStudentId: null, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: target.id } } }] }, // parent–teacher chats are kept apart (B16.2)
       select: { id: true },
     });
     if (existing) return NextResponse.json({ id: existing.id });

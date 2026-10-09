@@ -23,15 +23,15 @@ import { pushService } from './services/push.service';
 //  - Guardians see a weekly activity summary on the student's shared link, never message contents.
 
 const DAY = 86_400_000;
-export interface Policy { guard: boolean; recordMinors: boolean; quietMinors: boolean; quietStart: string; quietEnd: string; studentsMinors: boolean }
-const DEFAULT_POLICY: Policy = { guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false };
+export interface Policy { guard: boolean; recordMinors: boolean; quietMinors: boolean; quietStart: string; quietEnd: string; studentsMinors: boolean; parentMessaging: boolean }
+const DEFAULT_POLICY: Policy = { guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, parentMessaging: true };
 let cache: { p: Policy; at: number } | null = null;
 
 /** The school's policy (read at most once a minute per instance). */
 export async function schoolPolicy(): Promise<Policy> {
   if (cache && Date.now() - cache.at < 60_000) return cache.p;
   const row = await prisma.schoolPolicy.findUnique({ where: { id: 'main' } }).catch(() => null);
-  const p: Policy = row ? { guard: row.guard, recordMinors: row.recordMinors, quietMinors: row.quietMinors, quietStart: row.quietStart, quietEnd: row.quietEnd, studentsMinors: row.studentsMinors } : DEFAULT_POLICY;
+  const p: Policy = row ? { guard: row.guard, recordMinors: row.recordMinors, quietMinors: row.quietMinors, quietStart: row.quietStart, quietEnd: row.quietEnd, studentsMinors: row.studentsMinors, parentMessaging: row.parentMessaging } : DEFAULT_POLICY;
   cache = { p, at: Date.now() };
   return p;
 }
@@ -44,7 +44,7 @@ export async function setSchoolPolicy(user: SessionUser, b: Record<string, unkno
   const before = await schoolPolicy();
   const bool = (k: keyof Policy) => (typeof b[k] === 'boolean' ? (b[k] as boolean) : (before[k] as boolean));
   const time = (k: 'quietStart' | 'quietEnd') => (typeof b[k] === 'string' && HHMM.test(b[k] as string) ? (b[k] as string) : before[k]);
-  const p: Policy = { guard: bool('guard'), recordMinors: bool('recordMinors'), quietMinors: bool('quietMinors'), quietStart: time('quietStart'), quietEnd: time('quietEnd'), studentsMinors: bool('studentsMinors') };
+  const p: Policy = { guard: bool('guard'), recordMinors: bool('recordMinors'), quietMinors: bool('quietMinors'), quietStart: time('quietStart'), quietEnd: time('quietEnd'), studentsMinors: bool('studentsMinors'), parentMessaging: bool('parentMessaging') };
   if (p.quietStart === p.quietEnd) throw new BadRequestException('Quiet hours need to start and end at different times.');
   await prisma.schoolPolicy.upsert({ where: { id: 'main' }, update: { ...p, updatedAt: new Date(), updatedById: user.id }, create: { id: 'main', ...p, updatedById: user.id } });
   // Students under 18 follow the school's hours: changed hours apply at once; switched off, they're free.
@@ -179,7 +179,8 @@ export async function guardMessage(m: { id: string; conversationId: string; body
     prisma.conversationParticipant.findMany({ where: { conversationId: m.conversationId }, select: { userId: true, user: { select: { role: true } } }, take: 500 }),
     prisma.safetyFlag.findFirst({ where: { conversationId: m.conversationId, senderId: from.id, status: 'OPEN', createdAt: { gt: new Date(Date.now() - 10 * 60_000) } }, select: { id: true } }),
   ]);
-  if (!members.some((x) => x.user.role === 'STUDENT')) return null;
+  // Chats with a student, and parent–teacher chats (Stage 5 · B16.2).
+  if (!members.some((x) => x.user.role === 'STUDENT' || x.user.role === 'GUARDIAN')) return null;
   if (recent) { await prisma.safetyFlag.update({ where: { id: recent.id }, data: { repeats: { increment: 1 } } }); return recent.id; }
 
   let verdict: Verdict | null = null;

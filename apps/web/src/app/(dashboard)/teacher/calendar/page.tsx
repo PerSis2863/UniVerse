@@ -1,5 +1,6 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, TEACHER_TIME_TABS } from '@/components/layout/SectionTabs';
 import { Clock, Download, X, Plus, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
@@ -130,6 +131,7 @@ export default function TeacherCalendarPage() {
           </button>
         }
       />
+      <SectionTabs tabs={TEACHER_TIME_TABS} />
       
       <div className="flex-1 p-4 sm:p-8">
         <div className="max-w-7xl mx-auto space-y-6">

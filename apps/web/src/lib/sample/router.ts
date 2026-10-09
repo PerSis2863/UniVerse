@@ -424,8 +424,50 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Safe by default (Stage 4 · 4.10): no flags in the sample; the default policy; quiet hours off.
   [/^\/api\/safety\/flags$/, () => ok({ open: 0, flags: [] })],
   [/^\/api\/safety\/flags\/([^/]+)$/, () => ok({ messages: [] })],
-  [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, open: 0, ai: false })],
+  [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, parentMessaging: true, open: 0, ai: false })],
   [/^\/api\/me\/quiet$/, () => ok({ on: false, start: '22:00', end: '07:00', locked: false })],
+  // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
+  [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
+  [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
+  // Registers (Stage 5 · B15.5): a school bus and a lent laptop.
+  [/^\/api\/registers\/me$/, () => ok({ bus: { route: 'Route 3 · North', vehicle: 'KA 01 AB 1234', driver: 'Ravi', driverPhone: null, notes: 'Afternoon run leaves at 15:30.', stop: 'City Park', time: '07:42', stops: [{ name: 'Lake Road', time: '07:30' }, { name: 'City Park', time: '07:42' }, { name: 'School', time: '08:05' }] }, room: null, assets: [{ tag: 'A-204517', name: 'Laptop', category: 'IT' }] })],
+  // Library (Stage 5 · B15.4): a few books, one borrowed.
+  [/^\/api\/library$/, () => ok({ books: [
+    { id: 'sample-book-1', isbn: '9780143107552', title: 'Thinking, Fast and Slow', authors: 'Daniel Kahneman', year: 2011, coverUrl: null, shelf: 'P2', copies: 3, available: 1, waiting: 0, myHold: null },
+    { id: 'sample-book-2', isbn: null, title: 'Introduction to Algorithms', authors: 'Cormen, Leiserson, Rivest, Stein', year: 2009, coverUrl: null, shelf: 'C4', copies: 2, available: 0, waiting: 2, myHold: null },
+  ] })],
+  [/^\/api\/library\/me$/, () => ok({ rules: { loanDays: 14, maxRenewals: 2, maxLoans: 4, finePerDay: 500, currency: 'INR' }, out: [{ id: 'sample-loan-1', book: { id: 'sample-book-1', title: 'Thinking, Fast and Slow', authors: 'Daniel Kahneman', coverUrl: null }, issuedAt: at(-10), dueAt: at(4), renewals: 0, canRenew: true }], returned: [], holds: [], owed: 0, currency: 'INR' })],
+  // Admissions (Stage 5 · B15.1): one open round.
+  [/^\/api\/admissions$/, ({ db }) => ok({ school: 'Riverside University', courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), rounds: [
+    { id: 'sample-adm-1', slug: 'admissions-2027-sample', title: 'Admissions 2027–28 · Year 1', opensAt: at(-14), closesAt: at(45), closedAt: null, open: true, phase: 'open', courseIds: [], total: 12, byStage: { RECEIVED: 5, REVIEW: 4, INTERVIEW: 1, OFFERED: 2 } },
+  ] })],
+  // School fees (Stage 5 · B15.2): one plan, partly collected; no student bills in the sample.
+  [/^\/api\/fees\/report$/, () => ok({ totals: [{ currency: 'INR', bills: 4, billed: 9600000, discount: 400000, paid: 6000000, open: 3600000, overdue: 1200000, overdueBills: 1 }], byMethod: [{ currency: 'INR', method: 'UPI', total: 3600000, count: 3 }, { currency: 'INR', method: 'CASH', total: 2400000, count: 2 }], byMonth: [{ currency: 'INR', month: new Date().toISOString().slice(0, 7), total: 6000000 }], byStatus: { PAID: 2, PARTIAL: 1, DUE: 1 } })],
+  [/^\/api\/fees\/plans$/, ({ db }) => ok({ currencies: ['INR', 'USD', 'EUR', 'GBP'], courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), plans: [
+    { id: 'sample-fee-1', name: 'Term 1 2026–27', currency: 'INR', archived: false, createdAt: at(-30), to: 'Every student', courseId: null, items: [{ label: 'Tuition', amount: 2000000 }, { label: 'Transport', amount: 400000 }], instalments: [{ label: 'Instalment 1', dueAt: at(-10), amount: 1200000 }, { label: 'Instalment 2', dueAt: at(20), amount: 1200000 }], bills: 8, billed: 9600000, paid: 6000000, open: 3600000, overdue: 1200000 },
+  ] })],
+  [/^\/api\/fees\/invoices$/, () => ok({ invoices: [], shown: 0, owed: 0, currencies: [] })],
+  [/^\/api\/student\/fees$/, () => ok({ bills: [], owed: {}, next: null, online: false })],
+  // Parent meetings (Stage 5 · B16.3): an evening of times, one booked.
+  [/^\/api\/teacher\/meetings$/, () => ok({ lengths: [10, 15, 20, 30, 45, 60], past: [], upcoming: [
+    { id: 'sample-pm-1', startAt: at(2, 16), durationMin: 15, mode: 'VIDEO', location: null, topic: 'How Aarav is settling in after the move', bookedAt: at(-1), parent: { id: 'sample-parent-1', name: 'Priya Mehta', avatar: null, relation: 'Mother' }, student: { id: 's1', name: 'Aarav Mehta' }, notes: null, summary: null, summarySentAt: null },
+    { id: 'sample-pm-2', startAt: at(2, 16, 15), durationMin: 15, mode: 'VIDEO', location: null, topic: null, bookedAt: null, parent: null, student: null, notes: null, summary: null, summarySentAt: null },
+    { id: 'sample-pm-3', startAt: at(2, 16, 30), durationMin: 15, mode: 'VIDEO', location: null, topic: null, bookedAt: null, parent: null, student: null, notes: null, summary: null, summarySentAt: null },
+  ] })],
+  // Consent forms (Stage 5 · B16.4): one trip form, half answered (the sample has no parent accounts to sign).
+  [/^\/api\/consent-forms$/, ({ db }) => ok({ canSendToSchool: db.me.role === 'ADMIN', courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), forms: [
+    { id: 'sample-form-1', title: 'Science museum trip', dueAt: at(5, 23, 59), closed: false, createdAt: at(-2), from: db.me.name, to: 'Every student', students: 4, yes: 2, no: 0 },
+  ] })],
+  [/^\/api\/consent-forms\/([^/]+)$/, ({ db }) => ok({
+    form: { id: 'sample-form-1', title: 'Science museum trip', body: 'We’re visiting the science museum on Friday, leaving at 9:00 and back by 15:00. Bring a packed lunch and a water bottle. The trip is free.', attachmentUrl: null, attachmentName: null, dueAt: at(5, 23, 59), allowDecline: true, closed: false, remindedAt: null, createdAt: at(-2), from: db.me.name, to: 'Every student' },
+    counts: { students: 4, yes: 2, no: 0, waiting: 1, noParent: 1 },
+    rows: [
+      { studentId: 's1', name: 'Aarav Mehta', status: 'yes', answer: { by: 'Priya Mehta', signedName: 'Priya Mehta', signedAt: at(-1, 19), note: 'Peanut allergy: he has his own lunch.', drawn: true } },
+      { studentId: 's2', name: 'Lena Fischer', status: 'yes', answer: { by: 'Jonas Fischer', signedName: 'Jonas Fischer', signedAt: at(-1, 8), note: null, drawn: false } },
+      { studentId: 's3', name: 'Maya Chen', status: 'waiting', answer: null },
+      { studentId: 's4', name: 'Omar Haddad', status: 'no-parent', answer: null },
+    ],
+  })],
   // Impact rooms (Stage 4 · 4.12): one room, followed, with a planned impact call.
   [/^\/api\/impact-rooms$/, () => ok({ staff: false, rooms: [
     { id: 'sample-p1', name: 'Green City Drive', description: 'Planting trees and caring for them through their first summer.', location: 'Riverside Park', sdgNumber: 13, isPublic: true, ngo: { name: 'Earth Collective', logoUrl: null, isVerified: true }, followers: 18, following: 'VOLUNTEER', hours: 180, volunteers: 31, shifts: 9, nextCall: { startsAt: at(6, 17), title: 'Monthly impact call', open: false }, lastActivity: at(-1) },

@@ -16,6 +16,8 @@ export interface User {
   owner?: boolean;
   /** Latest application to become a teacher / NGO representative, if any. */
   application?: ApplicationSummary | null;
+  /** Staff only: what their custom roles let them do (Stage 5 · B15.6; admins can do everything). */
+  permissions?: string[];
 }
 
 export type ApplicationStatus = 'DRAFT' | 'PENDING' | 'NEEDS_INFO' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';

@@ -31,7 +31,19 @@ export function TutorStudio() {
   const { data, mutate } = useSWR<CoursesResp>('/api/tutor/courses', authedJson);
   const [courseId, setCourseId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('ask');
+  const [topic, setTopic] = useState('');
   const course = data?.courses.find((c) => c.id === courseId);
+  // ?course=<id>&tab=practice|cards&topic=… (from Learning DNA's "study next", Stage 5 · D1) opens straight there.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = new URLSearchParams(window.location.search);
+      const c = q.get('course'), t2 = q.get('tab');
+      if (c) setCourseId(c);
+      if (t2 === 'practice' || t2 === 'cards' || t2 === 'ask') setTab(t2);
+      setTopic((q.get('topic') ?? '').slice(0, 200));
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
 
   if (!data) return <div className="p-10"><ContentSkeleton variant="list" /></div>;
 
@@ -80,8 +92,8 @@ export function TutorStudio() {
         ))}
       </div>
       {tab === 'ask' && <AskPanel courseId={course.id} onNeedSources={() => setTab('sources')} />}
-      {tab === 'practice' && <PracticePanel courseId={course.id} onNeedSources={() => setTab('sources')} />}
-      {tab === 'cards' && <CardsPanel courseId={course.id} onNeedSources={() => setTab('sources')} />}
+      {tab === 'practice' && <PracticePanel key={`p-${topic}`} courseId={course.id} initialTopic={topic} onNeedSources={() => setTab('sources')} />}
+      {tab === 'cards' && <CardsPanel key={`c-${topic}`} courseId={course.id} initialTopic={topic} onNeedSources={() => setTab('sources')} />}
       {tab === 'sources' && <SourcesPanel courseId={course.id} onChanged={() => mutate()} />}
     </div>
   );
@@ -180,8 +192,8 @@ function AskPanel({ courseId, onNeedSources }: { courseId: string; onNeedSources
   );
 }
 
-function PracticePanel({ courseId, onNeedSources }: { courseId: string; onNeedSources: () => void }) {
-  const [topic, setTopic] = useState('');
+function PracticePanel({ courseId, initialTopic = '', onNeedSources }: { courseId: string; initialTopic?: string; onNeedSources: () => void }) {
+  const [topic, setTopic] = useState(initialTopic);
   const [busy, setBusy] = useState(false);
   const [qs, setQs] = useState<Question[] | null>(null);
   const [picked, setPicked] = useState<Record<number, number>>({});
@@ -242,9 +254,9 @@ function PracticePanel({ courseId, onNeedSources }: { courseId: string; onNeedSo
   );
 }
 
-function CardsPanel({ courseId, onNeedSources }: { courseId: string; onNeedSources: () => void }) {
+function CardsPanel({ courseId, initialTopic = '', onNeedSources }: { courseId: string; initialTopic?: string; onNeedSources: () => void }) {
   const { data, mutate } = useSWR<{ cards: Card[]; due: number; total: number }>(`/api/tutor/cards?due=1&courseId=${courseId}`, authedJson);
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(initialTopic);
   const [busy, setBusy] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [done, setDone] = useState(0);

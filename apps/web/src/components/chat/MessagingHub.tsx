@@ -56,6 +56,15 @@ export function MessagingHub() {
   // A link can open a conversation (?c=<id>), e.g. from a call notification. (Dashboard pages
   // render only in the browser, so the URL can be read straight away.)
   const [activeId, setActiveId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('c'));
+  // Arriving from another page in the app (router.push('…/inbox?c=…')), the address changes just
+  // after the first render, so ?c= is read once more then; otherwise the chat didn't open.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const c = new URLSearchParams(window.location.search).get('c');
+      if (c) setActiveId((cur) => cur ?? c);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [dialog, setDialog] = useState<null | 'chat' | 'group'>(null);

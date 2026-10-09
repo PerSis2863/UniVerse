@@ -274,6 +274,31 @@ model User {
   officeHours          OfficeHours?       @relation("OfficeHours")
   dailyBrief           DailyBrief?        @relation("DailyBrief")
   quietHours           QuietHours?        @relation("QuietHours")
+  parentContactHours   ParentContactHours? @relation("ParentContactHours")
+  consentFormsSent     ConsentForm[]       @relation("ConsentFormsSent")
+  consentFor           ConsentResponse[]   @relation("ConsentFor")
+  consentSigned        ConsentResponse[]   @relation("ConsentSigned")
+  parentMeetingsHeld   ParentMeeting[]     @relation("ParentMeetingTeacher")
+  parentMeetingsBooked ParentMeeting[]     @relation("ParentMeetingGuardian")
+  parentMeetingsAbout  ParentMeeting[]     @relation("ParentMeetingStudent")
+  feePlansMade         FeePlan[]           @relation("FeePlansMade")
+  feeInvoices          FeeInvoice[]        @relation("FeeInvoices")
+  feePaymentsReceived  FeePayment[]        @relation("FeePaymentsReceived")
+  importBatches        ImportBatch[]       @relation("ImportBatches")
+  admissionRounds      AdmissionRound[]    @relation("AdmissionRounds")
+  admissionReviews     AdmissionReview[]   @relation("AdmissionReviews")
+  staffRolesMade       StaffRole[]         @relation("StaffRolesMade")
+  staffRoles           StaffRoleMember[]   @relation("StaffRoleMembers")
+  staffLeave           StaffLeave[]        @relation("StaffLeave")
+  coversAbsent         StaffCover[]        @relation("CoverAbsent")
+  coversTaken          StaffCover[]        @relation("CoverTaken")
+  staffAttendance      StaffAttendance[]   @relation("StaffAttendance")
+  libraryLoans         LibraryLoan[]       @relation("LibraryLoans")
+  libraryHolds         LibraryHold[]       @relation("LibraryHolds")
+  assetsHeld           Asset[]             @relation("AssetsHeld")
+  busRide              TransportRider?     @relation("BusRide")
+  hostelRoom           HostelResident?     @relation("HostelRoom")
+  secondChances        SecondChance[]      @relation("SecondChances")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -405,6 +430,11 @@ model Course {
   gradeAssessments GradeAssessment[]
   questionBank     BankQuestion[] // reusable quiz questions (Stage 5 · B4.1)
 
+  consentForms          ConsentForm[]
+  feePlans          FeePlan[]
+  pendingEnrolments PendingEnrolment[]
+  concepts          CourseConcept[]
+  secondChances     SecondChance[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -603,6 +633,8 @@ model Conversation {
   avatarUrl       String?
   createdById     String?
   disappearingSec Int? // new messages expire after this many seconds (null = off)
+  /// A parent–teacher chat (Stage 5 · B16.2): the child it's about (src/server/parent-messages.ts).
+  aboutStudentId  String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   // A channel inside a community (Discord-style): TEXT, ANNOUNCE (only moderators post) or VOICE
@@ -621,6 +653,7 @@ model Conversation {
   safetyFlags       SafetyFlag[]       @relation("SafetyFlags")
 
   @@index([communityId])
+  @@index([aboutStudentId])
   @@map("conversations")
 }
 
@@ -1218,6 +1251,7 @@ model TimetableSlot {
   type      String   @default("LECTURE") // LECTURE, LAB, TUTORIAL
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  covers    StaffCover[]
 
   @@index([courseId])
   @@index([roomId])
@@ -2956,10 +2990,619 @@ model SchoolPolicy {
   quietStart     String   @default("22:00")
   quietEnd       String   @default("07:00")
   studentsMinors Boolean  @default(false)
+  /// Parents can message their children's teachers (Stage 5 · B16.2).
+  parentMessaging Boolean @default(true)
   updatedAt      DateTime @default(now())
   updatedById    String?
 
   @@map("school_policy")
+}
+
+/// A consent form (Stage 5 · B16.4; src/server/consent-forms.ts): sent to the parents of a class's
+/// students (courseId) or of every student (null). Parents answer per child.
+model ConsentForm {
+  id             String            @id @default(cuid())
+  title          String
+  body           String
+  attachmentUrl  String?
+  attachmentName String?
+  courseId       String?
+  course         Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  dueAt          DateTime?
+  allowDecline   Boolean           @default(true)
+  closedAt       DateTime?
+  remindedAt     DateTime?
+  createdById    String
+  createdBy      User              @relation("ConsentFormsSent", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+  responses      ConsentResponse[]
+
+  @@index([courseId])
+  @@index([createdById])
+  @@map("consent_forms")
+}
+
+/// A parent's answer to a consent form for one child: YES or NO, a note, the typed name they signed
+/// with and an optional drawn signature (SVG path data).
+model ConsentResponse {
+  id         String      @id @default(cuid())
+  formId     String
+  form       ConsentForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User        @relation("ConsentFor", fields: [studentId], references: [id], onDelete: Cascade)
+  guardianId String
+  guardian   User        @relation("ConsentSigned", fields: [guardianId], references: [id], onDelete: Cascade)
+  answer     String
+  note       String?
+  signedName String
+  signature  String?
+  signedAt   DateTime    @default(now())
+
+  @@unique([formId, studentId])
+  @@index([guardianId])
+  @@map("consent_responses")
+}
+
+/// A parent–teacher meeting time (Stage 5 · B16.3): opened by a teacher, booked by a parent for one
+/// child. VIDEO meetings use the app's calls (call id "pm_<id>"); IN_PERSON ones say where.
+/// `notes` stay with the teacher; `summary` is shared with the parent.
+model ParentMeeting {
+  id            String    @id @default(cuid())
+  teacherId     String
+  teacher       User      @relation("ParentMeetingTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  startAt       DateTime
+  durationMin   Int       @default(15)
+  mode          String    @default("VIDEO")
+  location      String?
+  teacherTimeZone String?
+  guardianId    String?
+  guardian      User?     @relation("ParentMeetingGuardian", fields: [guardianId], references: [id])
+  studentId     String?
+  student       User?     @relation("ParentMeetingStudent", fields: [studentId], references: [id])
+  topic         String?
+  parentTimeZone String?
+  bookedAt      DateTime?
+  remindedAt    DateTime?
+  notes         String?
+  summary       String?
+  summarySentAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([teacherId, startAt])
+  @@index([guardianId])
+  @@index([startAt, remindedAt])
+  @@map("parent_meetings")
+}
+
+/// A fee plan (Stage 5 · B15.2): what a class (or every student, courseId null) pays: items as JSON
+/// [{label, amount}] and instalments as JSON [{label, dueAt}], amounts in minor units (paise, cents).
+model FeePlan {
+  id          String       @id @default(cuid())
+  name        String
+  courseId    String?
+  course      Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  currency    String       @default("INR")
+  items       String
+  instalments String
+  createdById String
+  createdBy   User         @relation("FeePlansMade", fields: [createdById], references: [id], onDelete: Cascade)
+  archivedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  invoices    FeeInvoice[]
+
+  @@index([createdAt])
+  @@map("fee_plans")
+}
+
+/// One bill for one student (an instalment of a plan). `seq` is its number; amount, discount and
+/// paid are minor units; status DUE, PARTIAL, PAID, WAIVED or CANCELLED.
+model FeeInvoice {
+  id           String       @id @default(cuid())
+  seq          Int          @unique
+  planId       String?
+  plan         FeePlan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  instalment   Int          @default(1)
+  studentId    String
+  student      User         @relation("FeeInvoices", fields: [studentId], references: [id], onDelete: Cascade)
+  label        String
+  currency     String       @default("INR")
+  amount       Int
+  discount     Int          @default(0)
+  discountNote String?
+  paid         Int          @default(0)
+  dueAt        DateTime
+  status       String       @default("DUE")
+  remindedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  payments     FeePayment[]
+
+  @@unique([planId, instalment, studentId])
+  @@index([studentId])
+  @@index([status, dueAt])
+  @@map("fee_invoices")
+}
+
+/// A payment towards a bill, recorded at the office; `seq` is its receipt number. Voided, never deleted.
+model FeePayment {
+  id           String     @id @default(cuid())
+  seq          Int        @unique
+  invoiceId    String
+  invoice      FeeInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount       Int
+  method       String
+  reference    String?
+  note         String?
+  paidAt       DateTime
+  receivedById String
+  receivedBy   User       @relation("FeePaymentsReceived", fields: [receivedById], references: [id], onDelete: Cascade)
+  voidedAt     DateTime?
+  voidReason   String?
+  createdAt    DateTime   @default(now())
+
+  @@index([invoiceId])
+  @@index([paidAt])
+  @@map("fee_payments")
+}
+
+/// One bulk import from a CSV file (Stage 5 · B15.7): its counts (`summary` JSON) and what undoing it
+/// takes (`undo` JSON: ids it created, and changed rows as they were before), undoable for 7 days.
+model ImportBatch {
+  id          String    @id @default(cuid())
+  kind        String
+  fileName    String?
+  rows        Int       @default(0)
+  summary     String
+  undo        String
+  createdById String
+  createdBy   User      @relation("ImportBatches", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  undoneAt    DateTime?
+  undoneById  String?
+
+  @@index([createdAt])
+  @@map("import_batches")
+}
+
+/// A class someone invited by an import will be put in when they join (Stage 5 · B15.7).
+model PendingEnrolment {
+  id        String   @id @default(cuid())
+  email     String
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  batchId   String?
+  createdAt DateTime @default(now())
+
+  @@unique([email, courseId])
+  @@map("pending_enrolments")
+}
+
+/// An admission round (Stage 5 · B15.1): a public application form (`fields` JSON) open between
+/// two dates, the classes admitted students join (`courseIds` JSON) and an offer letter template.
+model AdmissionRound {
+  id            String                 @id @default(cuid())
+  slug          String                 @unique
+  title         String
+  intro         String?
+  courseIds     String                 @default("[]")
+  fields        String                 @default("[]")
+  offerTemplate String?
+  opensAt       DateTime
+  closesAt      DateTime
+  closedAt      DateTime?
+  createdById   String
+  createdBy     User                   @relation("AdmissionRounds", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt     DateTime               @default(now())
+  applications  AdmissionApplication[]
+
+  @@map("admission_rounds")
+}
+
+/// One family's application (no account needed): `ref` is shown to them, `token` is their private
+/// link. `answers` and `files` are JSON; `history` lists every step ([{at, by, type, note}]).
+model AdmissionApplication {
+  id             String            @id @default(cuid())
+  roundId        String
+  round          AdmissionRound    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  ref            String            @unique
+  token          String            @unique
+  studentName    String
+  studentDob     String?
+  studentEmail   String?
+  contactName    String
+  contactEmail   String
+  contactPhone   String?
+  relation       String?
+  answers        String            @default("{}")
+  files          String            @default("[]")
+  stage          String            @default("RECEIVED")
+  message        String?
+  offerLetter    String?
+  offerSentAt    DateTime?
+  offerExpiresAt DateTime?
+  respondedAt    DateTime?
+  enrolledAt     DateTime?
+  history        String            @default("[]")
+  ipHash         String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @default(now())
+  reviews        AdmissionReview[]
+
+  @@index([roundId, stage])
+  @@index([ipHash, createdAt])
+  @@map("admission_applications")
+}
+
+/// One admin's score (1–5) and comment on an application.
+model AdmissionReview {
+  id            String               @id @default(cuid())
+  applicationId String
+  application   AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewerId    String
+  reviewer      User                 @relation("AdmissionReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  score         Int
+  comment       String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @default(now())
+
+  @@unique([applicationId, reviewerId])
+  @@map("admission_reviews")
+}
+
+/// A custom role (Stage 5 · B15.6): a named set of permissions (`permissions` JSON, keys from
+/// src/lib/permissions.ts) given to staff accounts on top of what they can already do.
+model StaffRole {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  description String?
+  permissions String            @default("[]")
+  createdById String
+  createdBy   User              @relation("StaffRolesMade", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @default(now())
+  members     StaffRoleMember[]
+
+  @@map("staff_roles")
+}
+
+/// A staff account in a custom role.
+model StaffRoleMember {
+  id           String    @id @default(cuid())
+  roleId       String
+  role         StaffRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation("StaffRoleMembers", fields: [userId], references: [id], onDelete: Cascade)
+  assignedById String?
+  createdAt    DateTime  @default(now())
+
+  @@unique([roleId, userId])
+  @@index([userId])
+  @@map("staff_role_members")
+}
+
+/// A teacher's leave (Stage 5 · B15.8): calendar days fromDate–toDate (YYYY-MM-DD), a type
+/// (SICK, PERSONAL, TRAINING, OTHER), PENDING → APPROVED / DECLINED, or CANCELLED by them.
+model StaffLeave {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation("StaffLeave", fields: [userId], references: [id], onDelete: Cascade)
+  type         String       @default("PERSONAL")
+  fromDate     String
+  toDate       String
+  reason       String?
+  status       String       @default("PENDING")
+  decidedById  String?
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now())
+  covers       StaffCover[]
+
+  @@index([userId])
+  @@index([status, fromDate])
+  @@map("staff_leave")
+}
+
+/// Who covers a class (a timetable slot) on a date when its teacher is away.
+model StaffCover {
+  id              String        @id @default(cuid())
+  date            String
+  slotId          String
+  slot            TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  absentTeacherId String
+  absentTeacher   User          @relation("CoverAbsent", fields: [absentTeacherId], references: [id], onDelete: Cascade)
+  coverTeacherId  String?
+  coverTeacher    User?         @relation("CoverTaken", fields: [coverTeacherId], references: [id])
+  leaveId         String?
+  leave           StaffLeave?   @relation(fields: [leaveId], references: [id])
+  note            String?
+  createdById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now())
+
+  @@unique([date, slotId])
+  @@index([coverTeacherId, date])
+  @@map("staff_covers")
+}
+
+/// A staff member marking themselves in (and out) on a day.
+model StaffAttendance {
+  id     String    @id @default(cuid())
+  userId String
+  user   User      @relation("StaffAttendance", fields: [userId], references: [id], onDelete: Cascade)
+  date   String
+  inAt   DateTime?
+  outAt  DateTime?
+
+  @@unique([userId, date])
+  @@index([date])
+  @@map("staff_attendance")
+}
+
+/// A book in the library (Stage 5 · B15.4); `authors` and `subjects` are comma-separated.
+model LibraryBook {
+  id        String        @id @default(cuid())
+  isbn      String?
+  title     String
+  authors   String?
+  publisher String?
+  year      Int?
+  subjects  String?
+  coverUrl  String?
+  shelf     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now())
+  copies    LibraryCopy[]
+  holds     LibraryHold[]
+
+  @@index([isbn])
+  @@index([title])
+  @@map("library_books")
+}
+
+/// One physical copy with its own barcode: AVAILABLE, ON_LOAN, HELD (kept for a hold), LOST, REPAIR.
+model LibraryCopy {
+  id        String        @id @default(cuid())
+  bookId    String
+  book      LibraryBook   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  barcode   String        @unique
+  status    String        @default("AVAILABLE")
+  heldForId String?
+  heldUntil DateTime?
+  note      String?
+  createdAt DateTime      @default(now())
+  loans     LibraryLoan[]
+
+  @@index([bookId])
+  @@map("library_copies")
+}
+
+/// A copy lent to someone; `fine` in minor units, `fineStatus` OWED, PAID or WAIVED.
+model LibraryLoan {
+  id         String      @id @default(cuid())
+  copyId     String
+  copy       LibraryCopy @relation(fields: [copyId], references: [id], onDelete: Cascade)
+  borrowerId String
+  borrower   User        @relation("LibraryLoans", fields: [borrowerId], references: [id], onDelete: Cascade)
+  issuedById String
+  issuedAt   DateTime    @default(now())
+  dueAt      DateTime
+  returnedAt DateTime?
+  renewals   Int         @default(0)
+  fine       Int         @default(0)
+  fineStatus String?
+  remindedAt DateTime?
+
+  @@index([borrowerId])
+  @@index([copyId, returnedAt])
+  @@index([returnedAt, dueAt])
+  @@map("library_loans")
+}
+
+/// A place in the queue for a book: WAITING, READY (a copy is kept until readyUntil), FULFILLED, CANCELLED, EXPIRED.
+model LibraryHold {
+  id         String      @id @default(cuid())
+  bookId     String
+  book       LibraryBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User        @relation("LibraryHolds", fields: [userId], references: [id], onDelete: Cascade)
+  status     String      @default("WAITING")
+  copyId     String?
+  readyUntil DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([bookId, status])
+  @@index([userId])
+  @@map("library_holds")
+}
+
+/// The library's rules (one row, id "default"); fines in minor units.
+model LibrarySettings {
+  id          String   @id
+  loanDays    Int      @default(14)
+  maxRenewals Int      @default(2)
+  maxLoans    Int      @default(4)
+  finePerDay  Int      @default(0)
+  fineCap     Int      @default(0)
+  currency    String   @default("INR")
+  holdDays    Int      @default(3)
+  updatedAt   DateTime @default(now())
+
+  @@map("library_settings")
+}
+
+/// A piece of school equipment (Stage 5 · B15.5) with its own tag (printed as a QR label).
+/// status IN_USE, IN_STORE, REPAIR, LOST, RETIRED; `cost` in minor units.
+model Asset {
+  id           String       @id @default(cuid())
+  tag          String       @unique
+  name         String
+  category     String?
+  location     String?
+  status       String       @default("IN_USE")
+  assignedToId String?
+  assignedTo   User?        @relation("AssetsHeld", fields: [assignedToId], references: [id])
+  serial       String?
+  purchasedAt  String?
+  cost         Int?
+  currency     String?
+  notes        String?
+  lastSeenAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now())
+  events       AssetEvent[]
+
+  @@index([assignedToId])
+  @@index([category])
+  @@map("assets")
+}
+
+/// What happened to a piece of equipment: created, moved, lent, returned, status, seen (a stock check).
+model AssetEvent {
+  id      String   @id @default(cuid())
+  assetId String
+  asset   Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  type    String
+  note    String?
+  byId    String?
+  at      DateTime @default(now())
+
+  @@index([assetId, at])
+  @@map("asset_events")
+}
+
+/// A school bus route; `stops` is JSON [{ name, time }] in order.
+model TransportRoute {
+  id          String           @id @default(cuid())
+  name        String
+  vehicle     String?
+  driverName  String?
+  driverPhone String?
+  capacity    Int?
+  stops       String           @default("[]")
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now())
+  riders      TransportRider[]
+
+  @@map("transport_routes")
+}
+
+/// A student on a bus route, getting on at a stop (one route per student).
+model TransportRider {
+  id        String         @id @default(cuid())
+  routeId   String
+  route     TransportRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  studentId String         @unique
+  student   User           @relation("BusRide", fields: [studentId], references: [id], onDelete: Cascade)
+  stop      String?
+  createdAt DateTime       @default(now())
+
+  @@index([routeId])
+  @@map("transport_riders")
+}
+
+/// A hostel room with a number of beds.
+model HostelRoom {
+  id        String           @id @default(cuid())
+  building  String
+  name      String
+  beds      Int              @default(2)
+  notes     String?
+  createdAt DateTime         @default(now())
+  residents HostelResident[]
+
+  @@unique([building, name])
+  @@map("hostel_rooms")
+}
+
+/// A student living in a hostel room (one room per student).
+model HostelResident {
+  id        String     @id @default(cuid())
+  roomId    String
+  room      HostelRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  studentId String     @unique
+  student   User       @relation("HostelRoom", fields: [studentId], references: [id], onDelete: Cascade)
+  bed       String?
+  since     String?
+  createdAt DateTime   @default(now())
+
+  @@index([roomId])
+  @@map("hostel_residents")
+}
+
+/// A concept in a course's Learning DNA (Stage 5 · D1), optionally under a broader one.
+model CourseConcept {
+  id          String          @id @default(cuid())
+  courseId    String
+  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  parentId    String?
+  parent      CourseConcept?  @relation("ConceptParent", fields: [parentId], references: [id])
+  children    CourseConcept[] @relation("ConceptParent")
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now())
+  tags        ConceptTag[]
+
+  @@unique([courseId, name])
+  @@map("course_concepts")
+}
+
+/// What tests a concept: kind QUESTION (a quiz question id), BANK (a question-bank item id) or
+/// CRITERION ("<assignment id>:<rubric criterion id>").
+model ConceptTag {
+  id        String        @id @default(cuid())
+  conceptId String
+  concept   CourseConcept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  kind      String
+  refId     String
+  createdAt DateTime      @default(now())
+
+  @@unique([kind, refId, conceptId])
+  @@index([refId])
+  @@map("concept_tags")
+}
+
+/// A student's catch-up on something they missed (Stage 5 · D10; src/server/second-chance.ts). key is
+/// CONCEPT:<id>, QUESTION:<id> or CRITERION:<assignment id>:<criterion id>. status OPEN | DONE | DISMISSED.
+/// plan: what was built (JSON); results: practice answers [{ at, right, w }], counted towards mastery.
+model SecondChance {
+  id          String    @id @default(cuid())
+  studentId   String
+  student     User      @relation("SecondChances", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  key         String
+  conceptId   String?
+  topic       String
+  status      String    @default("OPEN")
+  plan        String?
+  results     String?
+  watched     Boolean   @default(false)
+  cards       Boolean   @default(false)
+  missedAt    DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@unique([studentId, courseId, key])
+  @@index([courseId, conceptId])
+  @@map("second_chances")
+}
+
+/// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)
+/// and hours in their time zone. Outside them parents' messages arrive without a push.
+model ParentContactHours {
+  teacherId String   @id
+  teacher   User     @relation("ParentContactHours", fields: [teacherId], references: [id], onDelete: Cascade)
+  open      Boolean  @default(true)
+  days      String   @default("1,2,3,4,5")
+  start     String   @default("08:00")
+  end       String   @default("16:00")
+  timeZone  String   @default("UTC")
+  updatedAt DateTime @default(now())
+
+  @@map("parent_contact_hours")
 }
 
 /// Quiet hours (Stage 4 · 4.10): no push notifications between start and end in this time zone.

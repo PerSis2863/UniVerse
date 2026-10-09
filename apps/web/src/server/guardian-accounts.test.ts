@@ -21,12 +21,12 @@ describe('guardian allowlist', () => {
   const req = (path: string) => new Request(`https://x.test${path}`);
   const guardian = { role: 'GUARDIAN' };
   it('lets parent accounts use the parent app and their own account', () => {
-    for (const p of ['/api/parent/children', '/api/parent/children/abc', '/api/me', '/api/bootstrap', '/api/notifications', '/api/realtime/ticket', '/api/core/users/me', '/api/core/users/me/deletion', '/api/core/auth/register', '/api/core/auth/me', '/api/core/notifications/subscribe']) {
+    for (const p of ['/api/parent/children', '/api/parent/children/abc', '/api/parent/chats', '/api/parent/chats/abc', '/api/parent/forms', '/api/parent/forms/abc', '/api/parent/meetings', '/api/parent/meetings/abc', '/api/calls/pm_abc123', '/api/calls/pm_abc123/ticket', '/api/calls/pm_abc123/stat', '/api/parent/fees', '/api/fees/receipts/fpabc123', '/api/me', '/api/bootstrap', '/api/notifications', '/api/realtime/ticket', '/api/core/users/me', '/api/core/users/me/deletion', '/api/core/auth/register', '/api/core/auth/me', '/api/core/notifications/subscribe']) {
       expect(guardianBlocked(req(p), guardian), p).toBe(false);
     }
   });
   it('refuses everything else', () => {
-    for (const p of ['/api/courses', '/api/chat/users', '/api/chat/incoming', '/api/upload', '/api/core/users', '/api/core/users/abc', '/api/core/courses', '/api/me/presence', '/api/parents', '/api/student/overview', '/api/report-cards/mine']) {
+    for (const p of ['/api/courses', '/api/chat/users', '/api/chat/incoming', '/api/upload', '/api/core/users', '/api/core/users/abc', '/api/core/courses', '/api/me/presence', '/api/parents', '/api/student/overview', '/api/report-cards/mine', '/api/chat/conversations', '/api/chat/conversations/abc/messages', '/api/teacher/parents', '/api/teacher/parent-hours', '/api/consent-forms', '/api/consent-forms/abc', '/api/teacher/meetings', '/api/calls/c_abc/ticket', '/api/calls/abc/ticket', '/api/calls/pm_abc/recording', '/api/calls/pm_abc/guests', '/api/calls/pm_a-b/ticket', '/api/calls/links', '/api/fees/plans', '/api/fees/invoices', '/api/fees/invoices/abc', '/api/fees/report', '/api/fees/remind', '/api/student/fees']) {
       expect(guardianBlocked(req(p), guardian), p).toBe(true);
     }
   });

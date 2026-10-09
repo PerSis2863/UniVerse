@@ -71,7 +71,7 @@ export function NotificationPermissionPrompt() {
       <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/20">
         <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
         <div>
-          <p className="text-sm text-red-400 font-medium">Notifications blocked</p>
+          <p className="text-sm text-red-700 dark:text-red-400 font-medium">Notifications blocked</p>
           <p className="text-xs text-zinc-500 mt-0.5">
             Open your browser settings → Site Settings → Notifications → Allow for this site.
           </p>
