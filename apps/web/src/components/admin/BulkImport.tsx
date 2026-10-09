@@ -16,6 +16,7 @@ import { IMPORT_COLUMNS, IMPORT_KINDS, IMPORT_TITLES, MAX_IMPORT_ROWS, type Impo
 import { fadeUp, list } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
+import { useCan } from '@/lib/use-can';
 
 // Bulk import and export (Stage 5 · B15.7; src/server/bulk-import.ts): choose what you're importing,
 // drop a CSV, check the column matching, preview what every row will do, import the good rows,
@@ -62,7 +63,9 @@ export function BulkImport() {
   const [busy, setBusy] = useState<'preview' | 'import' | null>(null);
   const [dragging, setDragging] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
-  const history = useSWR<{ batches: Batch[] }>('/api/admin/import', authedJson);
+  // Staff roles (B15.6) may have only one of importing and exporting.
+  const canImport = useCan('import.run'), canExport = useCan('export.run');
+  const history = useSWR<{ batches: Batch[] }>(canImport ? '/api/admin/import' : null, authedJson);
   const columns = IMPORT_COLUMNS[kind];
   const missing = columns.filter((c) => c.required && (mapping[c.key] ?? -1) < 0);
   const records = useMemo(() => (file ? toRecords(file.rows, mapping) : []), [file, mapping]);
@@ -132,7 +135,7 @@ export function BulkImport() {
 
   return (
     <div className="space-y-4">
-      <section className={`${card} p-4 sm:p-5 space-y-4`} aria-labelledby="import-title">
+      {canImport && <section className={`${card} p-4 sm:p-5 space-y-4`} aria-labelledby="import-title">
         <div className="flex items-center justify-between gap-3">
           <h2 id="import-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Upload className="w-4 h-4 text-indigo-500" aria-hidden /> Import from a spreadsheet</h2>
           {file && <button type="button" onClick={reset} className="btn-ghost btn-sm"><X className="w-4 h-4" /> Start over</button>}
@@ -225,17 +228,17 @@ export function BulkImport() {
             </div>
           </motion.div>
         )}
-      </section>
+      </section>}
 
-      <section className={`${card} p-4 sm:p-5`} aria-labelledby="export-title">
+      {canExport && <section className={`${card} p-4 sm:p-5`} aria-labelledby="export-title">
         <h2 id="export-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Download className="w-4 h-4 text-indigo-500" aria-hidden /> Export</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-300 mt-1">CSV files with the same columns the import reads: export, edit in a spreadsheet, import back.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {EXPORTS.map((x) => <button key={x.kind} type="button" onClick={() => void exportKind(x.kind, x.label)} className="btn-secondary btn-sm"><Download className="w-4 h-4" /> {x.label}</button>)}
         </div>
-      </section>
+      </section>}
 
-      <section className={`${card} p-2 sm:p-3`} aria-labelledby="history-title">
+      {canImport && <section className={`${card} p-2 sm:p-3`} aria-labelledby="history-title">
         <h2 id="history-title" className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">Recent imports</h2>
         {!history.data ? <div className="p-3"><ContentSkeleton variant="list" /></div>
           : history.data.batches.length === 0 ? <p className="px-3 pb-3 text-sm text-zinc-500">None yet.</p>
@@ -257,7 +260,7 @@ export function BulkImport() {
               })}
             </motion.ul>
           )}
-      </section>
+      </section>}
     </div>
   );
 }

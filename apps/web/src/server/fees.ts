@@ -4,6 +4,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
+import { can, need } from './permissions';
 
 // School fees (Stage 5 · B15.2). An admin makes a fee plan for one class or every student (items,
 // currency, instalments with due dates) and issues it: one bill per student per instalment, in one
@@ -25,8 +26,6 @@ const OPEN = ['DUE', 'PARTIAL'];
 export interface FeeItem { label: string; amount: number }
 export interface Instalment { label: string; dueAt: string; amount: number }
 
-const isAdmin = (u: SessionUser) => u.role === 'ADMIN';
-const must = (u: SessionUser) => { if (!isAdmin(u)) throw new ForbiddenException('Only school admins manage fees.'); };
 const dbNow = () => new Date().toISOString().replace('Z', '+00:00');
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 export const money = (minor: number, currency: string) => new Intl.NumberFormat('en', { style: 'currency', currency, maximumFractionDigits: minor % 100 ? 2 : 0 }).format(minor / 100);
@@ -88,7 +87,7 @@ const planShape = (p: { items: string; instalments: string }) => ({ items: JSON.
 
 /** GET /api/fees/plans: every plan with how much it billed and collected; the classes to pick from. */
 export async function feePlans(user: SessionUser) {
-  must(user);
+  await need(user, 'fees.view');
   const [plans, courses, sums] = await Promise.all([
     prisma.feePlan.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, name: true, courseId: true, currency: true, items: true, instalments: true, archivedAt: true, createdAt: true, course: { select: { code: true, name: true } } } }),
     prisma.course.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 300 }),
@@ -114,7 +113,7 @@ export async function feePlans(user: SessionUser) {
 
 /** POST /api/fees/plans { name, courseId?, currency, items: [{label, amount}], instalments: [{label?, dueAt, amount?}] } */
 export async function createFeePlan(user: SessionUser, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'fees.manage');
   const name = typeof b.name === 'string' ? b.name.trim().slice(0, 100) : '';
   if (!name) throw new BadRequestException('Give the plan a name, like “Term 1 2026”.');
   const currency = CURRENCIES.find((c) => c === b.currency);
@@ -138,7 +137,7 @@ const target = (courseId: string | null) => courseId
  * the plan is for who hasn't got its bills yet (so it also catches students who joined later).
  */
 export async function feePlanAction(user: SessionUser, id: string, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'fees.manage');
   const plan = await prisma.feePlan.findUnique({ where: { id }, select: { id: true, name: true, courseId: true, currency: true, items: true, instalments: true, archivedAt: true } });
   if (!plan) throw new NotFoundException('That fee plan doesn’t exist.');
   if (b.action === 'archive' || b.action === 'unarchive') {
@@ -178,7 +177,7 @@ const shapeInvoice = <T extends InvoiceRow>(x: T, now = Date.now()) => ({ ...x, 
 
 /** GET /api/fees/invoices?planId=&status=&overdue=1&q=: up to 300 bills, newest first, with totals for what's shown. */
 export async function feeInvoices(user: SessionUser, q: URLSearchParams) {
-  must(user);
+  await need(user, 'fees.view');
   const planId = q.get('planId') || undefined;
   const status = q.get('status');
   const overdue = q.get('overdue') === '1';
@@ -203,7 +202,7 @@ async function invoiceFor(id: string) {
 
 /** GET /api/fees/invoices/:id: the bill, its payments, and the student's parents (to know who to talk to). */
 export async function feeInvoice(user: SessionUser, id: string) {
-  must(user);
+  await need(user, 'fees.view');
   const inv = await invoiceFor(id);
   const parents = await prisma.guardianLink.findMany({ where: { studentId: inv.student.id }, select: { relation: true, guardian: { select: { name: true, email: true } } }, take: 6 });
   return { invoice: shapeInvoice(inv), parents: parents.map((p) => ({ name: p.guardian.name, email: p.guardian.email, relation: p.relation })) };
@@ -225,7 +224,7 @@ async function sync(id: string) {
  * { dueAt }, 'waive' { note }, 'cancel', 'reopen' change the bill.
  */
 export async function feeInvoiceAction(user: SessionUser, id: string, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'fees.manage');
   const inv = await invoiceFor(id);
   const note = typeof b.note === 'string' ? b.note.trim().slice(0, 300) || null : null;
   switch (b.action) {
@@ -290,7 +289,7 @@ export async function feeInvoiceAction(user: SessionUser, id: string, b: Record<
 
 /** POST /api/fees/payments/:id { reason }: voids a payment recorded by mistake (kept, crossed out, with the reason). */
 export async function voidFeePayment(user: SessionUser, id: string, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'fees.manage');
   const reason = typeof b.reason === 'string' ? b.reason.trim().slice(0, 200) : '';
   if (!reason) throw new BadRequestException('Say why the payment is voided.');
   const p = await prisma.feePayment.findUnique({ where: { id }, select: { invoiceId: true, voidedAt: true } });
@@ -318,7 +317,7 @@ async function tellFamily(studentId: string, n: { title: string; body: string; t
  * hundred notifications: within D1's 50 statements a request). `left`: overdue bills still to remind.
  */
 export async function remindOverdue(user: SessionUser, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'fees.manage');
   const ids = Array.isArray(b.invoiceIds) ? b.invoiceIds.filter((x): x is string => typeof x === 'string').slice(0, 60) : null;
   const remindable = { ...(ids ? { id: { in: ids } } : {}), status: { in: OPEN }, dueAt: { lt: new Date() }, OR: [{ remindedAt: null }, { remindedAt: { lt: new Date(Date.now() - REMIND_EVERY_MS) } }] };
   const due = await prisma.feeInvoice.findMany({
@@ -353,7 +352,7 @@ export async function remindOverdue(user: SessionUser, b: Record<string, unknown
 
 /** GET /api/fees/report: totals by currency, by status, collections by method and by month (12 months). */
 export async function feeReport(user: SessionUser) {
-  must(user);
+  await need(user, 'fees.view');
   const now = dbNow();
   const since = new Date(); since.setUTCMonth(since.getUTCMonth() - 11, 1); since.setUTCHours(0, 0, 0, 0);
   const [totals, byMethod, byMonth, byStatus] = await Promise.all([
@@ -419,7 +418,7 @@ export async function feeReceipt(user: SessionUser, id: string) {
     },
   });
   if (!p) throw new NotFoundException('That receipt doesn’t exist.');
-  const allowed = isAdmin(user) || p.invoice.studentId === user.id
+  const allowed = p.invoice.studentId === user.id || (await can(user, 'fees.view'))
     || (user.role === 'GUARDIAN' && !!(await prisma.guardianLink.findUnique({ where: { guardianId_studentId: { guardianId: user.id, studentId: p.invoice.studentId } }, select: { id: true } })));
   if (!allowed) throw new NotFoundException('That receipt doesn’t exist.');
   const org = await prisma.organization.findFirst({ orderBy: { createdAt: 'asc' }, select: { name: true } });

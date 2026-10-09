@@ -7,7 +7,8 @@ import {
   checkAnswers, cleanFields, type Answers, type FormField, type Stage,
 } from '@/lib/admission-form';
 import { notify } from './email';
-import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
+import { need } from './permissions';
+import { BadRequestException, HttpException, NotFoundException } from './http';
 
 // Admissions (Stage 5 · B15.1). An admin opens a round: dates, the classes admitted students join,
 // an application form (src/lib/admission-form.ts) and an offer letter template. Families apply on
@@ -23,7 +24,6 @@ const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 const REF_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const PER_HOUR = 5;
 const FINAL: Stage[] = ['ENROLLED', 'DECLINED', 'REJECTED', 'WITHDRAWN'];
-const must = (u: SessionUser) => { if (u.role !== 'ADMIN') throw new ForbiddenException('Only school admins run admissions.'); };
 type Event = { at: string; by?: string; byName?: string; type: string; note?: string };
 const events = (h: string) => { try { const x = JSON.parse(h); return Array.isArray(x) ? (x as Event[]) : []; } catch { return []; } };
 const withEvent = (h: string, e: Omit<Event, 'at'>) => JSON.stringify([...events(h), { at: new Date().toISOString(), ...e }].slice(-200));
@@ -49,7 +49,7 @@ const school = async () => (await prisma.organization.findFirst({ orderBy: { cre
 
 /** GET /api/admissions: every round with how many applications are at each stage; the classes to choose from. */
 export async function admissionRounds(user: SessionUser) {
-  must(user);
+  await need(user, 'admissions.review');
   const [rounds, counts, courses] = await Promise.all([
     prisma.admissionRound.findMany({ orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, slug: true, title: true, opensAt: true, closesAt: true, closedAt: true, createdAt: true, courseIds: true } }),
     prisma.admissionApplication.groupBy({ by: ['roundId', 'stage'], _count: { _all: true } }),
@@ -87,7 +87,7 @@ async function checkCourses(ids: string[]) {
 
 /** POST /api/admissions { title, intro?, opensAt, closesAt, fields, courseIds, offerTemplate? }: a new round. */
 export async function createRound(user: SessionUser, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'admissions.manage');
   const r = readRound(b);
   await checkCourses(r.courseIds);
   const base = r.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'apply';
@@ -101,7 +101,7 @@ export async function createRound(user: SessionUser, b: Record<string, unknown>)
 
 /** GET /api/admissions/:id?stage=&q=: the round (with its form) and its applications. */
 export async function roundDetail(user: SessionUser, id: string, q: URLSearchParams) {
-  must(user);
+  await need(user, 'admissions.review');
   const round = await prisma.admissionRound.findUnique({ where: { id } });
   if (!round) throw new NotFoundException('That round doesn’t exist.');
   const stage = STAGES.find((s) => s === q.get('stage'));
@@ -126,7 +126,7 @@ export async function roundDetail(user: SessionUser, id: string, q: URLSearchPar
 
 /** POST /api/admissions/:id { action: 'save', …round } | { action: 'close' | 'reopen' } */
 export async function roundAction(user: SessionUser, id: string, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'admissions.manage');
   const round = await prisma.admissionRound.findUnique({ where: { id }, select: { id: true } });
   if (!round) throw new NotFoundException('That round doesn’t exist.');
   if (b.action === 'close' || b.action === 'reopen') {
@@ -151,7 +151,7 @@ const appSelect = {
 
 /** GET /api/admissions/applications/:id: everything about one application. */
 export async function applicationDetail(user: SessionUser, id: string) {
-  must(user);
+  await need(user, 'admissions.review');
   const a = await prisma.admissionApplication.findUnique({ where: { id }, select: appSelect });
   if (!a) throw new NotFoundException('That application doesn’t exist.');
   const courseIds = parse<string[]>(a.round.courseIds, []);
@@ -170,7 +170,7 @@ export async function applicationDetail(user: SessionUser, id: string) {
  * { answer: 'accept' | 'decline' } (the family told the school directly), 'enrol' { studentEmail }.
  */
 export async function applicationAction(user: SessionUser, id: string, b: Record<string, unknown>) {
-  must(user);
+  await need(user, b.action === 'score' ? 'admissions.review' : 'admissions.manage');
   const a = await prisma.admissionApplication.findUnique({ where: { id }, select: { id: true, stage: true, history: true, studentName: true, studentEmail: true, contactName: true, offerExpiresAt: true, round: { select: { title: true, courseIds: true, offerTemplate: true } } } });
   if (!a) throw new NotFoundException('That application doesn’t exist.');
   const stage = a.stage as Stage;

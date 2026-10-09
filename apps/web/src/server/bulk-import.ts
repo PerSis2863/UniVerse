@@ -2,7 +2,8 @@ import prisma from '@/lib/db';
 import { toCsv } from '@/lib/csv';
 import { IMPORT_COLUMNS, IMPORT_KINDS, MAX_IMPORT_ROWS, type ImportKind } from '@/lib/import-columns';
 import type { SessionUser } from '@/lib/server-auth';
-import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { BadRequestException, NotFoundException } from './http';
+import { need } from './permissions';
 
 // Bulk import from CSV with a preview and undo (Stage 5 · B15.7). The admin's browser reads the file
 // and matches its columns (src/lib/csv.ts); the server checks every row and says what it would do
@@ -24,7 +25,6 @@ const CODE_RE = /^[A-Za-z0-9][A-Za-z0-9 _.\-/]{0,19}$/;
 const INVITE_DAYS = 30, UNDO_DAYS = 7;
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const must = (u: SessionUser) => { if (u.role !== 'ADMIN') throw new ForbiddenException('Only school admins import and export.'); };
 const dbDate = (d = new Date()) => d.toISOString().replace('Z', '+00:00');
 const newId = () => `c${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
 /** Runs a read with a list as one JSON value (read in SQL with json_each(?1)). */
@@ -272,7 +272,7 @@ const countOf = (results: RowResult[]) => {
 
 /** POST /api/admin/import/preview { kind, rows }: what each row would do. Reads only. */
 export async function previewImport(user: SessionUser, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'import.run');
   const { kind, rows } = readRequest(b);
   const plan = await planFor(kind, rows);
   return { kind, counts: countOf(plan.results), results: plan.results };
@@ -287,7 +287,7 @@ interface Undo {
 
 /** POST /api/admin/import { kind, rows, fileName? }: checks again and does it; rows with problems are left out. */
 export async function runImport(user: SessionUser, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'import.run');
   const { kind, rows } = readRequest(b);
   const plan = await planFor(kind, rows);
   const counts = countOf(plan.results);
@@ -329,7 +329,7 @@ export async function runImport(user: SessionUser, b: Record<string, unknown>) {
 
 /** GET /api/admin/import: the last imports, newest first, with whether they can still be undone. */
 export async function importHistory(user: SessionUser) {
-  must(user);
+  await need(user, 'import.run');
   const rows = await prisma.importBatch.findMany({ orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, kind: true, fileName: true, rows: true, summary: true, createdAt: true, undoneAt: true, createdBy: { select: { name: true } } } });
   const now = Date.now();
   return { batches: rows.map((r) => ({ ...r, summary: JSON.parse(r.summary) as Record<Action, number>, by: r.createdBy.name, createdBy: undefined, canUndo: !r.undoneAt && now - r.createdAt.getTime() < UNDO_DAYS * 86_400_000 })) };
@@ -340,7 +340,7 @@ export async function importHistory(user: SessionUser) {
  * join, and courses that have been used since (materials, classes, grades, other students), stay.
  */
 export async function undoImport(user: SessionUser, id: string, b: Record<string, unknown>) {
-  must(user);
+  await need(user, 'import.run');
   if (b.action !== 'undo') throw new BadRequestException('Unknown action.');
   const batch = await prisma.importBatch.findUnique({ where: { id }, select: { undo: true, undoneAt: true, createdAt: true } });
   if (!batch) throw new NotFoundException('That import doesn’t exist.');
@@ -387,7 +387,7 @@ export const EXPORTS = ['students', 'teachers', 'courses', 'enrolments', 'timeta
 
 /** GET /api/admin/import/export?kind=: a CSV with the same headers the import reads. */
 export async function exportCsv(user: SessionUser, kind: string | null) {
-  must(user);
+  await need(user, 'export.run');
   const q = <T,>(sql: string) => prisma.$queryRawUnsafe<T[]>(sql);
   switch (kind) {
     case 'students':

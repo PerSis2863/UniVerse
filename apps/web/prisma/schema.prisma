@@ -287,6 +287,8 @@ model User {
   importBatches        ImportBatch[]       @relation("ImportBatches")
   admissionRounds      AdmissionRound[]    @relation("AdmissionRounds")
   admissionReviews     AdmissionReview[]   @relation("AdmissionReviews")
+  staffRolesMade       StaffRole[]         @relation("StaffRolesMade")
+  staffRoles           StaffRoleMember[]   @relation("StaffRoleMembers")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -3231,6 +3233,37 @@ model AdmissionReview {
 
   @@unique([applicationId, reviewerId])
   @@map("admission_reviews")
+}
+
+/// A custom role (Stage 5 · B15.6): a named set of permissions (`permissions` JSON, keys from
+/// src/lib/permissions.ts) given to staff accounts on top of what they can already do.
+model StaffRole {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  description String?
+  permissions String            @default("[]")
+  createdById String
+  createdBy   User              @relation("StaffRolesMade", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @default(now())
+  members     StaffRoleMember[]
+
+  @@map("staff_roles")
+}
+
+/// A staff account in a custom role.
+model StaffRoleMember {
+  id           String    @id @default(cuid())
+  roleId       String
+  role         StaffRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation("StaffRoleMembers", fields: [userId], references: [id], onDelete: Cascade)
+  assignedById String?
+  createdAt    DateTime  @default(now())
+
+  @@unique([roleId, userId])
+  @@index([userId])
+  @@map("staff_role_members")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

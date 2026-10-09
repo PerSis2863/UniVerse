@@ -7,9 +7,9 @@ done, where the code is and what's left for each item. Keep that table up to dat
 
 - Everything up to here is **merged into `main`** (PR #47) and **live**. The owner checked that the
   production database has every migration up to **0081**.
-- **Next migration number: `0088`** (0082 parent messages, 0083 consent forms, 0084 parent meetings, 0085 school fees, 0086 bulk import, 0087 admissions, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
+- **Next migration number: `0089`** (0082 parent messages, 0083 consent forms, 0084 parent meetings, 0085 school fees, 0086 bulk import, 0087 admissions, 0088 staff roles, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
   applies new migrations first (`DEPLOY-CLOUDFLARE.md`, "Deploy command"). Nothing to run by hand.
-- Tests: `npx vitest run` → **274 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
+- Tests: `npx vitest run` → **279 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
 
 ### Done in Stage 5
 
@@ -18,7 +18,7 @@ A4 Web Vitals and bundle cuts (partly) · B2.1 course modules · B3.1 grading sp
 B3.4 gradebook categories and final grades · B4.1 question bank · B4.3–4.4 shuffle and exam mode ·
 B4.6 quiz item analysis · B15.3 report cards · B16.1 guardian (parent) accounts ·
 B16.2 parent–teacher messages · B16.3 parent–teacher meetings · B16.4 consent forms ·
-B15.2 school fees · B15.7 bulk import/export · B15.1 admissions (admin actions in all three to be tried with real data).
+B15.2 school fees · B15.7 bulk import/export · B15.1 admissions · B15.6 custom roles (admin actions in all four to be tried with real data).
 
 ## What to do next, in order
 
@@ -34,7 +34,9 @@ The plan's order (section 2) is the guide. Suggested next steps:
      demo admin is read-only; check on the preview with the real admin account).
    - ~~B15.7 bulk CSV import/export~~ **built** (importing and undo still to try with real data, like fees).
    - ~~B15.1 admissions~~ **built** (admin actions and the public form still to try with real data).
-   - B15.6 custom roles and permissions, B15.8 staff (leave, substitutions), B15.4 library, B15.5 registers.
+   - ~~B15.6 custom roles and permissions~~ **built**: new admin areas should check `can(user, '<area>.<verb>')`
+     (`src/server/permissions.ts`) and add their keys to `src/lib/permissions.ts`.
+   - B15.8 staff (leave, substitutions), B15.4 library, B15.5 registers.
    - B16.5 fee payment for parents comes with B15.2. Online payment needs the owner (Stripe exists;
      **UPI/Razorpay needs the owner's account**).
 2. **Block 5:** D1 Learning DNA, D10 second chance, D2 Whisper TA.

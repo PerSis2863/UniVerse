@@ -5,6 +5,7 @@ import { notify, notifyMany } from './email';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
+import { can } from './permissions';
 
 // Consent forms with an e-signature (Stage 5 · B16.4). The school (admins: any class, or every
 // student) or a teacher (one of their classes) sends a form: a trip permission, photo consent, a
@@ -66,7 +67,8 @@ async function tellParents(form: { id: string; title: string; dueAt: Date | null
 /** GET /api/consent-forms: the forms I sent (admins: all), with how many answered; and where I can send one. */
 export async function staffForms(user: SessionUser) {
   if (!isStaff(user)) throw new ForbiddenException('Only teachers and school admins send forms.');
-  const admin = user.role === 'ADMIN';
+  // Admins, and staff with the school-wide forms permission, see and send every form.
+  const admin = await can(user, 'forms.school');
   const [forms, courses, allStudents] = await Promise.all([
     prisma.consentForm.findMany({
       where: admin ? {} : { createdById: user.id }, orderBy: { createdAt: 'desc' }, take: 100,
@@ -102,9 +104,10 @@ export async function createConsentForm(user: SessionUser, b: Record<string, unk
   if (!title) throw new BadRequestException('Give the form a title.');
   if (!body) throw new BadRequestException('Say what parents are agreeing to.');
   const courseId = typeof b.courseId === 'string' && b.courseId ? b.courseId : null;
-  if (!courseId && user.role !== 'ADMIN') throw new BadRequestException('Pick one of your classes.');
+  const all = await can(user, 'forms.school');
+  if (!courseId && !all) throw new BadRequestException('Pick one of your classes.');
   const course = courseId ? await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, code: true, teacherId: true } }) : null;
-  if (courseId && (!course || (user.role !== 'ADMIN' && course.teacherId !== user.id))) throw new NotFoundException('That class isn’t one of yours.');
+  if (courseId && (!course || (!all && course.teacherId !== user.id))) throw new NotFoundException('That class isn’t one of yours.');
   const dueAt = dueDate(b.dueAt);
   const attachmentUrl = typeof b.attachmentUrl === 'string' && b.attachmentUrl ? b.attachmentUrl : null;
   if (attachmentUrl && !isOwnBlobUrl(attachmentUrl)) throw new BadRequestException('Attach a file uploaded here.');
@@ -123,7 +126,7 @@ export async function createConsentForm(user: SessionUser, b: Record<string, unk
 async function staffForm(user: SessionUser, id: string) {
   if (!isStaff(user)) throw new ForbiddenException('Only teachers and school admins send forms.');
   const form = await prisma.consentForm.findUnique({ where: { id }, include: { course: { select: { code: true, name: true } }, createdBy: { select: { name: true } } } });
-  if (!form || (user.role !== 'ADMIN' && form.createdById !== user.id)) throw new NotFoundException('That form doesn’t exist.');
+  if (!form || (form.createdById !== user.id && !(await can(user, 'forms.school')))) throw new NotFoundException('That form doesn’t exist.');
   return form;
 }
 

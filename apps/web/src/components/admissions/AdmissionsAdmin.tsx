@@ -15,6 +15,7 @@ import { toCsv } from '@/lib/csv';
 import { fadeUp, list } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
+import { useCan } from '@/lib/use-can';
 import { STAGES, STAGE_LABEL, type FormField, type Stage } from '@/lib/admission-form';
 import { ApplicationSheet } from './ApplicationSheet';
 import { RoundEditor, type RoundInput } from './RoundEditor';
@@ -38,6 +39,7 @@ export function AdmissionsAdmin() {
   const { data, error, mutate } = useSWR<Rounds>('/api/admissions', authedJson);
   const [roundId, setRoundId] = useState<string | null>(null);
   const [editing, setEditing] = useState<RoundInput | 'new' | null>(null);
+  const manage = useCan('admissions.manage');
   useEffect(() => { const t = setTimeout(() => setRoundId(new URLSearchParams(window.location.search).get('round')), 0); return () => clearTimeout(t); }, []);
   const openRound = (id: string | null) => {
     setRoundId(id);
@@ -55,7 +57,7 @@ export function AdmissionsAdmin() {
           <motion.div variants={fadeUp} initial="hidden" animate="show" className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm text-zinc-600 dark:text-zinc-300 max-w-xl">Families apply on a public page, without an account, and follow their application with a private link. You review, offer places and enrol.</p>
-              <button type="button" onClick={() => setEditing('new')} className="btn-primary btn-sm shrink-0"><Plus className="w-4 h-4" /> New round</button>
+              {manage && <button type="button" onClick={() => setEditing('new')} className="btn-primary btn-sm shrink-0"><Plus className="w-4 h-4" /> New round</button>}
             </div>
             {data.rounds.length === 0 ? (
               <section className={`${card} p-8 text-center`}>
@@ -95,6 +97,7 @@ function RoundView({ id, school, onBack, onEdit }: { id: string; school: string;
   const key = `/api/admissions/${id}?${new URLSearchParams({ ...(stage ? { stage } : {}), ...(dq ? { q: dq } : {}) })}`;
   const { data, error, mutate, isLoading } = useSWR<RoundDetail>(key, authedJson, { keepPreviousData: true });
   const [app, setApp] = useState<string | null>(null);
+  const manage = useCan('admissions.manage');
   const total = useMemo(() => Object.values(data?.byStage ?? {}).reduce((a, b) => a + b, 0), [data]);
   if (error && !data) return <LoadError onRetry={() => mutate()} />;
   if (!data) return <ContentSkeleton variant="list" />;
@@ -125,10 +128,10 @@ function RoundView({ id, school, onBack, onEdit }: { id: string; school: string;
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white">{r.title}</h2>
             <p className="text-xs text-zinc-500">{PHASE[r.phase]} · {format(new Date(r.opensAt), 'd MMM')} – {format(new Date(r.closesAt), 'd MMM yyyy')} · {r.fields.length} question{r.fields.length === 1 ? '' : 's'}</p>
           </div>
-          <div className="flex gap-1 shrink-0">
+          {manage && <div className="flex gap-1 shrink-0">
             <button type="button" onClick={() => onEdit({ id, title: r.title, intro: r.intro, opensAt: r.opensAt, closesAt: r.closesAt, courseIds: r.courseIds, fields: r.fields, offerTemplate: r.offerTemplate })} aria-label="Edit the round" className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:bg-black/5 dark:hover:bg-white/10"><Pencil className="w-4 h-4" /></button>
             <button type="button" onClick={() => void toggle()} aria-label={r.closedAt ? 'Reopen the round' : 'Close the round'} className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:bg-black/5 dark:hover:bg-white/10">{r.closedAt ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}</button>
-          </div>
+          </div>}
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <input readOnly aria-label="Public application link" value={publicLink(r.slug)} onFocus={(e) => e.currentTarget.select()} className="input flex-1 font-mono text-xs" />

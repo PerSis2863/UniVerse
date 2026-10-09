@@ -17,6 +17,7 @@ import { fadeUp, list, spring } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useNow } from '@/lib/use-now';
+import { useCan } from '@/lib/use-can';
 import { BillSheet } from './BillSheet';
 import { PlanSheet } from './PlanSheet';
 import { METHOD_LABEL, StatusChip, downloadCsv, money, type BillStatus } from './shared';
@@ -83,6 +84,7 @@ export function FeesAdmin() {
 
 function Overview({ onGo }: { onGo: (v: View) => void }) {
   const { data, error, mutate } = useSWR<Report>('/api/fees/report', authedJson);
+  const manage = useCan('fees.manage');
   if (error && !data) return <LoadError onRetry={() => mutate()} />;
   if (!data) return <ContentSkeleton variant="dashboard" />;
   if (!data.totals.length) {
@@ -91,7 +93,7 @@ function Overview({ onGo }: { onGo: (v: View) => void }) {
         <Wallet className="w-9 h-9 text-zinc-300 dark:text-zinc-600 mx-auto mb-2" />
         <p className="font-semibold text-zinc-900 dark:text-white">No fees yet</p>
         <p className="text-sm text-zinc-500 mt-1">Make a fee plan (what a class pays, in how many instalments), then issue it to bill each student.</p>
-        <button type="button" onClick={() => onGo('plans')} className="btn-primary btn-sm mt-4"><Plus className="w-4 h-4" /> Make a fee plan</button>
+        {manage && <button type="button" onClick={() => onGo('plans')} className="btn-primary btn-sm mt-4"><Plus className="w-4 h-4" /> Make a fee plan</button>}
       </section>
     );
   }
@@ -165,6 +167,7 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const manage = useCan('fees.manage');
   if (error && !data) return <LoadError onRetry={() => mutate()} />;
   if (!data) return <ContentSkeleton variant="list" />;
   const plans = data.plans.filter((p) => showArchived || !p.archived);
@@ -194,7 +197,7 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="w-4 h-4 accent-indigo-600" /> Show archived</label>
-        <button type="button" onClick={() => setCreating(true)} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> New fee plan</button>
+        {manage && <button type="button" onClick={() => setCreating(true)} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> New fee plan</button>}
       </div>
       {plans.length === 0 ? (
         <section className={`${card} p-8 text-center`}>
@@ -214,7 +217,7 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
                     <p className="text-xs text-zinc-500">{p.to} · {money(total, p.currency)} per student · {p.instalments.length === 1 ? `due ${format(new Date(p.instalments[0].dueAt), 'd MMM yyyy')}` : `${p.instalments.length} instalments from ${format(new Date(p.instalments[0].dueAt), 'd MMM')}`}</p>
                     <p className="text-xs text-zinc-500 mt-0.5 truncate">{p.items.map((i) => `${i.label} ${money(i.amount, p.currency)}`).join(' · ')}</p>
                   </div>
-                  <div className="flex gap-1 shrink-0">
+                  {manage && <div className="flex gap-1 shrink-0">
                     {!p.archived && (
                       <button type="button" onClick={() => void act(p, 'issue')} disabled={!!busy} className="btn-secondary btn-sm">
                         {busy === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {p.bills ? 'Issue to new students' : 'Issue bills'}
@@ -223,7 +226,7 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
                     <button type="button" onClick={() => void act(p, p.archived ? 'unarchive' : 'archive')} disabled={!!busy} aria-label={p.archived ? `Unarchive ${p.name}` : `Archive ${p.name}`} className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:bg-black/5 dark:hover:bg-white/10">
                       {p.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
                     </button>
-                  </div>
+                  </div>}
                 </div>
                 {p.bills > 0 && (
                   <div className="mt-3">
@@ -310,6 +313,7 @@ function OverdueView({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, error, mutate } = useSWR<Bills>('/api/fees/invoices?overdue=1', authedJson);
   const [busy, setBusy] = useState(false);
   const now = useNow();
+  const manage = useCan('fees.manage');
   const days = (iso: string) => Math.max(1, Math.round(((now || new Date(iso).getTime()) - new Date(iso).getTime()) / 86_400_000));
   const totals = useMemo(() => {
     const out: Record<string, number> = {};
@@ -341,7 +345,7 @@ function OverdueView({ onOpen }: { onOpen: (id: string) => void }) {
         <span className="text-sm text-zinc-700 dark:text-zinc-200">{data.invoices.length} overdue · {totals.map(([c, v]) => money(v, c)).join(' + ')}</span>
         <span className="flex gap-1">
           <button type="button" onClick={csv} className="btn-ghost btn-sm"><Download className="w-4 h-4" /> CSV</button>
-          <button type="button" onClick={() => void remind()} disabled={busy} className="btn-primary btn-sm">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />} Remind families</button>
+          {manage && <button type="button" onClick={() => void remind()} disabled={busy} className="btn-primary btn-sm">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />} Remind families</button>}
         </span>
       </div>
       <motion.ul variants={list} initial="hidden" animate="show" className="divide-y divide-zinc-200/70 dark:divide-white/[0.06]">

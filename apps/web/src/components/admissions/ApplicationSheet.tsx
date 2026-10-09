@@ -17,6 +17,7 @@ import { safeHref } from '@/lib/safe-href';
 import { fadeUp } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
+import { useCan } from '@/lib/use-can';
 import { MOVABLE, STAGE_LABEL, fillLetter, type Answers, type FormField, type Stage } from '@/lib/admission-form';
 import { StageChip } from './StageChip';
 
@@ -41,6 +42,8 @@ export function ApplicationSheet({ id, school, onClose, onChanged }: { id: strin
   const { data, error, mutate } = useSWR<Detail>(key, authedJson);
   const [panel, setPanel] = useState<'offer' | 'message' | 'note' | 'enrol' | null>(null);
   const [busy, setBusy] = useState(false);
+  // Reviewers (B15.6) read and score; moving, offering and enrolling need the manage permission.
+  const manage = useCan('admissions.manage');
 
   const act = async (body: Record<string, unknown>, done: string) => {
     setBusy(true);
@@ -108,7 +111,7 @@ export function ApplicationSheet({ id, school, onClose, onChanged }: { id: strin
           </section>
         )}
 
-        <section aria-label="Move along" className="space-y-2">
+        {manage && <section aria-label="Move along" className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Stage</p>
           {a.stage !== 'ENROLLED' && (
             <div className="flex flex-wrap gap-1.5">
@@ -128,7 +131,7 @@ export function ApplicationSheet({ id, school, onClose, onChanged }: { id: strin
             <button type="button" onClick={() => setPanel(panel === 'message' ? null : 'message')} className="btn-secondary btn-sm"><MessageSquareText className="w-4 h-4" /> Message the family</button>
             <button type="button" onClick={() => setPanel(panel === 'note' ? null : 'note')} className="btn-ghost btn-sm"><StickyNote className="w-4 h-4" /> Note</button>
           </div>
-        </section>
+        </section>}
 
         {panel === 'offer' && <OfferForm a={a} school={school} busy={busy} onSend={(letter, expiresAt) => act({ action: 'offer', letter, expiresAt }, 'Offer made: the family sees it on their page')} />}
         {panel === 'message' && <TextForm label="Message for the family" hint="Shown on their application page (replaces the last message)." initial={a.message ?? ''} max={2000} submit="Save message" busy={busy} onSubmit={(message) => act({ action: 'message', message }, 'Message saved')} />}

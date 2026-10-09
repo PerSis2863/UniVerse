@@ -15,6 +15,7 @@ const INVITABLE: Role[] = ['STUDENT', 'TEACHER', 'ADMIN'];
 /** Invitations stay valid for 30 days: a class may take a few weeks to sign up. */
 const inviteExpiry = () => new Date(Date.now() + 30 * 24 * 3600 * 1000);
 import { cancelDeletion, requestDeletion } from '../account-deletion';
+import { permissionsOf } from '../permissions';
 
 const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
@@ -131,7 +132,11 @@ export default function users(router: Router) {
   });
 
   // `owner` is only ever present (true) for the platform owner, so the app can open the console.
-  r.get('me', async ({ user }) => ({ ...(await findOne(user.id)), application: await currentApplication(user.id), ...(isOwner(user) ? { owner: true } : {}) }));
+  // Staff with custom roles (Stage 5 · B15.6) get their permissions, so the app shows those areas.
+  r.get('me', async ({ user }) => ({
+    ...(await findOne(user.id)), application: await currentApplication(user.id), ...(isOwner(user) ? { owner: true } : {}),
+    ...(user.role === 'TEACHER' ? { permissions: [...(await permissionsOf(user))] } : {}),
+  }));
 
   // Pending invitations. Registered before ':id', which would otherwise match "invitations".
   r.get('invitations', { roles: ['ADMIN'] }, async () => {

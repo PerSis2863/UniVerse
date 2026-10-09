@@ -2,7 +2,8 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, PenTool, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { BarChart3, Briefcase, PenTool, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { userCan } from '@/lib/permissions';
 import {
   LayoutDashboard, Users,
   MessageSquare, Settings, LogOut,
@@ -27,6 +28,21 @@ export type NavItem = {
   /** Other pages that count as this entry (tabs of the same section). */
   also?: string[];
 };
+
+/**
+ * Staff with custom roles (Stage 5 · B15.6) get an "Office" group with the admin areas their
+ * permissions open, before Messages and Settings.
+ */
+function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[] }): NavItem[] {
+  const subItems = [
+    userCan(user, 'fees.view') && { href: '/admin/fees', label: 'School fees' },
+    userCan(user, 'admissions.review') && { href: '/admin/admissions', label: 'Admissions' },
+    (userCan(user, 'import.run') || userCan(user, 'export.run')) && { href: '/admin/import', label: 'Import & export' },
+  ].filter((x): x is { href: string; label: string } => !!x);
+  if (!subItems.length) return nav;
+  const at = Math.max(0, nav.length - 2);
+  return [...nav.slice(0, at), { label: 'Office', icon: Briefcase, subItems }, ...nav.slice(at)];
+}
 
 /** Whether `pathname` is the page of this entry (its href without a query, or one of `also`). */
 const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
@@ -161,7 +177,7 @@ export const navByRole: Record<string, NavItem[]> = {
     {
       label: 'People', icon: Users,
       subItems: [
-        { href: '/admin/users', label: 'nav.users', also: ['/admin/admissions', '/admin/import'] },
+        { href: '/admin/users', label: 'nav.users', also: ['/admin/admissions', '/admin/roles', '/admin/import'] },
         { href: '/admin/approvals', label: 'Approvals' },
         { href: '/admin/early-warning', label: 'Early warning' },
         { href: '/admin/safety', label: 'Safety reports' },
@@ -313,7 +329,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   if (!user) return null;
 
   // The owner console link exists only for the owner (the console itself answers "not found" to anyone else).
-  const nav = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }, ...(navByRole[user.role] ?? [])] : navByRole[user.role] ?? [];
+  const base = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }, ...(navByRole[user.role] ?? [])] : navByRole[user.role] ?? [];
+  const nav = user.role === 'TEACHER' ? withOffice(base, user) : base;
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = async () => {

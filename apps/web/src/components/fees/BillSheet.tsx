@@ -17,6 +17,7 @@ import { errorMessage } from '@/lib/api';
 import { fadeUp } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
+import { useCan } from '@/lib/use-can';
 import { METHOD_LABEL, StatusChip, major, money, type BillStatus } from './shared';
 
 // One fee bill for admins (Stage 5 · B15.2; src/server/fees.ts): its sums, payments with receipts,
@@ -37,6 +38,8 @@ export function BillSheet({ id, onClose, onChanged }: { id: string; onClose: () 
   const { data, error, mutate } = useSWR<Detail>(key, authedJson);
   const [mode, setMode] = useState<'pay' | 'discount' | 'due' | null>(null);
   const [busy, setBusy] = useState(false);
+  // People who may only see fees (B15.6) get no buttons that change them.
+  const manage = useCan('fees.manage');
   const bill = data?.invoice;
 
   const act = async (body: Record<string, unknown>, done: string) => {
@@ -101,11 +104,11 @@ export function BillSheet({ id, onClose, onChanged }: { id: string; onClose: () 
             </dl>
             {bill.discountNote && <p className="text-xs text-zinc-500">{bill.status === 'WAIVED' ? 'Waived' : 'Discount'}: {bill.discountNote}</p>}
 
-            <div className="flex flex-wrap gap-2">
+            {manage && <div className="flex flex-wrap gap-2">
               {bill.owed > 0 && <button type="button" onClick={() => setMode(mode === 'pay' ? null : 'pay')} className="btn-primary btn-sm"><Wallet className="w-4 h-4" /> Record a payment</button>}
               {['DUE', 'PARTIAL'].includes(bill.status) && <button type="button" onClick={() => setMode(mode === 'discount' ? null : 'discount')} className="btn-secondary btn-sm"><BadgePercent className="w-4 h-4" /> Discount</button>}
               {['DUE', 'PARTIAL'].includes(bill.status) && <button type="button" onClick={() => setMode(mode === 'due' ? null : 'due')} className="btn-secondary btn-sm"><CalendarClock className="w-4 h-4" /> Due date</button>}
-            </div>
+            </div>}
             {mode === 'pay' && <PayForm bill={bill} busy={busy} onSubmit={(b) => act({ action: 'pay', ...b }, 'Payment recorded')} />}
             {mode === 'discount' && <DiscountForm bill={bill} busy={busy} onSubmit={(b) => act({ action: 'discount', ...b }, 'Discount saved')} />}
             {mode === 'due' && <DueForm bill={bill} busy={busy} onSubmit={(b) => act({ action: 'due', ...b }, 'Due date changed')} />}
@@ -122,7 +125,7 @@ export function BillSheet({ id, onClose, onChanged }: { id: string; onClose: () 
                         {p.voidedAt && <span className="block text-xs text-rose-600 dark:text-rose-400">Voided: {p.voidReason}</span>}
                       </span>
                       <a href={`/fee-receipt/${p.id}`} target="_blank" rel="noopener" className="btn-ghost btn-sm shrink-0"><Receipt className="w-4 h-4" /> Receipt</a>
-                      {!p.voidedAt && <button type="button" onClick={() => void voidPayment(p)} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400 shrink-0">Void</button>}
+                      {manage && !p.voidedAt && <button type="button" onClick={() => void voidPayment(p)} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400 shrink-0">Void</button>}
                     </li>
                   ))}
                 </ul>
@@ -138,11 +141,11 @@ export function BillSheet({ id, onClose, onChanged }: { id: string; onClose: () 
               )}
             </section>
 
-            <div className="flex flex-wrap gap-2 pt-1 border-t border-zinc-200/70 dark:border-white/[0.07]">
+            {manage && <div className="flex flex-wrap gap-2 pt-1 border-t border-zinc-200/70 dark:border-white/[0.07]">
               {['DUE', 'PARTIAL'].includes(bill.status) && bill.owed > 0 && <button type="button" onClick={() => void close('waive')} className="btn-ghost btn-sm"><BadgePercent className="w-4 h-4" /> Waive what’s left</button>}
               {bill.status === 'DUE' && !bill.payments.some((p) => !p.voidedAt) && <button type="button" onClick={() => void close('cancel')} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"><Ban className="w-4 h-4" /> Cancel bill</button>}
               {['WAIVED', 'CANCELLED'].includes(bill.status) && <button type="button" onClick={() => void act({ action: 'reopen' }, 'Bill reopened')} className="btn-ghost btn-sm"><RotateCcw className="w-4 h-4" /> Reopen</button>}
-            </div>
+            </div>}
           </div>
         )}
     </Sheet>
