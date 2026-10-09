@@ -170,6 +170,8 @@ function handle(event: ServerEvent) {
       void mutate('/api/notifications');
       // Application decisions and new applications arrive as notifications.
       void mutate(startsWith('/applications'));
+      // So do new consent forms for parents (Stage 5 · B16.4).
+      void mutate('/api/parent/forms');
       break;
     case 'refresh':
       for (const k of event.keys) void mutate(k.endsWith('*') ? startsWith(k.slice(0, -1)) : k);

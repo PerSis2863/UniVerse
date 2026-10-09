@@ -90,6 +90,7 @@ export const TEACHER_STUDENT_TABS: SectionTab[] = [
   { href: '/teacher/students', label: 'Students' },
   { href: '/teacher/early-warning', label: 'Early warning' },
   { href: '/teacher/analytics', label: 'Course analytics' },
+  { href: '/teacher/forms', label: 'Parent forms' },
 ];
 
 export const SAFETY_TABS: SectionTab[] = [

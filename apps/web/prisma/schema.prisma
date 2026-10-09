@@ -275,6 +275,9 @@ model User {
   dailyBrief           DailyBrief?        @relation("DailyBrief")
   quietHours           QuietHours?        @relation("QuietHours")
   parentContactHours   ParentContactHours? @relation("ParentContactHours")
+  consentFormsSent     ConsentForm[]       @relation("ConsentFormsSent")
+  consentFor           ConsentResponse[]   @relation("ConsentFor")
+  consentSigned        ConsentResponse[]   @relation("ConsentSigned")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -406,6 +409,7 @@ model Course {
   gradeAssessments GradeAssessment[]
   questionBank     BankQuestion[] // reusable quiz questions (Stage 5 · B4.1)
 
+  consentForms          ConsentForm[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -2966,6 +2970,51 @@ model SchoolPolicy {
   updatedById    String?
 
   @@map("school_policy")
+}
+
+/// A consent form (Stage 5 · B16.4; src/server/consent-forms.ts): sent to the parents of a class's
+/// students (courseId) or of every student (null). Parents answer per child.
+model ConsentForm {
+  id             String            @id @default(cuid())
+  title          String
+  body           String
+  attachmentUrl  String?
+  attachmentName String?
+  courseId       String?
+  course         Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  dueAt          DateTime?
+  allowDecline   Boolean           @default(true)
+  closedAt       DateTime?
+  remindedAt     DateTime?
+  createdById    String
+  createdBy      User              @relation("ConsentFormsSent", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+  responses      ConsentResponse[]
+
+  @@index([courseId])
+  @@index([createdById])
+  @@map("consent_forms")
+}
+
+/// A parent's answer to a consent form for one child: YES or NO, a note, the typed name they signed
+/// with and an optional drawn signature (SVG path data).
+model ConsentResponse {
+  id         String      @id @default(cuid())
+  formId     String
+  form       ConsentForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User        @relation("ConsentFor", fields: [studentId], references: [id], onDelete: Cascade)
+  guardianId String
+  guardian   User        @relation("ConsentSigned", fields: [guardianId], references: [id], onDelete: Cascade)
+  answer     String
+  note       String?
+  signedName String
+  signature  String?
+  signedAt   DateTime    @default(now())
+
+  @@unique([formId, studentId])
+  @@index([guardianId])
+  @@map("consent_responses")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

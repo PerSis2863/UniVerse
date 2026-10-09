@@ -1,7 +1,7 @@
 'use client';
 import { Topbar } from '@/components/layout/Topbar';
-import { FileText, CreditCard, GraduationCap, Plus, Edit2, Trash2, X, ExternalLink, ChevronDown, Users, Loader2 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { FileText, FileSignature, CreditCard, GraduationCap, Plus, Edit2, Trash2, X, ExternalLink, ChevronDown, Users, Loader2 } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -15,11 +15,13 @@ import { getTransactions } from '@/app/actions/transaction';
 import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { ConsentFormsManager, useFormParam } from '@/components/guardian/ConsentFormsManager';
 
 const TABS = [
   { id: 'documents', label: 'School Documents', icon: FileText },
   { id: 'billing', label: 'Billing & Accounting', icon: CreditCard },
   { id: 'scholarships', label: 'Scholarships', icon: GraduationCap },
+  { id: 'forms', label: 'Consent forms', icon: FileSignature },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -106,7 +108,19 @@ export default function AdminAdministrativeClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const switchTab = (id: TabId) => { setActiveTab(id); setQ(''); };
+  // Consent forms (Stage 5 · B16.4): ?tab=forms&form=<id> from a notification opens them.
+  const [formId, setFormId] = useFormParam();
+  useEffect(() => {
+    const t = setTimeout(() => { if (new URLSearchParams(window.location.search).get('tab') === 'forms') setActiveTab('forms'); }, 0);
+    return () => clearTimeout(t);
+  }, []);
+  const switchTab = (id: TabId) => {
+    setActiveTab(id);
+    setQ('');
+    const url = new URL(window.location.href);
+    if (id === 'forms') url.searchParams.set('tab', 'forms'); else { url.searchParams.delete('tab'); url.searchParams.delete('form'); }
+    window.history.replaceState(window.history.state, '', url);
+  };
 
   const shownDocs = useMemo(
     () => docs.filter((d) => matchesQuery(q, d.title, d.type, humanize(d.type), d.isVerified ? 'verified' : 'pending', personText(d.user), studentFacts(d.user))),
@@ -199,8 +213,8 @@ export default function AdminAdministrativeClient() {
     <div className="flex flex-col lg:h-screen">
       <Topbar
         title="Administrative Management"
-        subtitle="Documents, payments and scholarships, with the people behind each one"
-        rightNode={activeTab === 'billing' ? (
+        subtitle="Documents, payments, scholarships and consent forms, with the people behind each one"
+        rightNode={activeTab === 'forms' ? null : activeTab === 'billing' ? (
           <Link href="/admin/finances" className="btn-secondary btn-sm">Open Finances</Link>
         ) : (
           <button onClick={openNew} className="btn-primary">
@@ -311,9 +325,11 @@ export default function AdminAdministrativeClient() {
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-4">
-          <AdminSearch value={q} onChange={setQ} placeholder={placeholder} shown={shown} total={total} />
+          {activeTab === 'forms' ? (
+            <div className="max-w-4xl"><ConsentFormsManager formId={formId} onForm={setFormId} /></div>
+          ) : <AdminSearch value={q} onChange={setQ} placeholder={placeholder} shown={shown} total={total} />}
 
-          {loading ? (
+          {activeTab === 'forms' ? null : loading ? (
             <ContentSkeleton variant="table" />
           ) : activeTab === 'documents' ? (
             <div className={card}>

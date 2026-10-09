@@ -36,7 +36,7 @@ export function Sheet({ title, onClose, children, footer }: { title: string; onC
     <div className="backdrop-in fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} data-sheet className="sheet-in w-full sm:max-w-md max-h-[85dvh] flex flex-col rounded-t-3xl sm:rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl outline-none">
         <div className="flex items-center justify-between px-5 h-14 shrink-0 border-b border-zinc-200/70 dark:border-white/[0.07]">
-          <h3 id={titleId} className="font-bold text-zinc-900 dark:text-white">{title}</h3>
+          <h2 id={titleId} className="font-bold text-zinc-900 dark:text-white">{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300"><X className="w-4 h-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-5">{children}</div>

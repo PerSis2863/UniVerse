@@ -429,6 +429,20 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
+  // Consent forms (Stage 5 · B16.4): one trip form, half answered (the sample has no parent accounts to sign).
+  [/^\/api\/consent-forms$/, ({ db }) => ok({ canSendToSchool: db.me.role === 'ADMIN', courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), forms: [
+    { id: 'sample-form-1', title: 'Science museum trip', dueAt: at(5, 23, 59), closed: false, createdAt: at(-2), from: db.me.name, to: 'Every student', students: 4, yes: 2, no: 0 },
+  ] })],
+  [/^\/api\/consent-forms\/([^/]+)$/, ({ db }) => ok({
+    form: { id: 'sample-form-1', title: 'Science museum trip', body: 'We’re visiting the science museum on Friday, leaving at 9:00 and back by 15:00. Bring a packed lunch and a water bottle. The trip is free.', attachmentUrl: null, attachmentName: null, dueAt: at(5, 23, 59), allowDecline: true, closed: false, remindedAt: null, createdAt: at(-2), from: db.me.name, to: 'Every student' },
+    counts: { students: 4, yes: 2, no: 0, waiting: 1, noParent: 1 },
+    rows: [
+      { studentId: 's1', name: 'Aarav Mehta', status: 'yes', answer: { by: 'Priya Mehta', signedName: 'Priya Mehta', signedAt: at(-1, 19), note: 'Peanut allergy: he has his own lunch.', drawn: true } },
+      { studentId: 's2', name: 'Lena Fischer', status: 'yes', answer: { by: 'Jonas Fischer', signedName: 'Jonas Fischer', signedAt: at(-1, 8), note: null, drawn: false } },
+      { studentId: 's3', name: 'Maya Chen', status: 'waiting', answer: null },
+      { studentId: 's4', name: 'Omar Haddad', status: 'no-parent', answer: null },
+    ],
+  })],
   // Impact rooms (Stage 4 · 4.12): one room, followed, with a planned impact call.
   [/^\/api\/impact-rooms$/, () => ok({ staff: false, rooms: [
     { id: 'sample-p1', name: 'Green City Drive', description: 'Planting trees and caring for them through their first summer.', location: 'Riverside Park', sdgNumber: 13, isPublic: true, ngo: { name: 'Earth Collective', logoUrl: null, isVerified: true }, followers: 18, following: 'VOLUNTEER', hours: 180, volunteers: 31, shifts: 9, nextCall: { startsAt: at(6, 17), title: 'Monthly impact call', open: false }, lastActivity: at(-1) },
