@@ -37,6 +37,7 @@ function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[
   const subItems = [
     userCan(user, 'fees.view') && { href: '/admin/fees', label: 'School fees' },
     userCan(user, 'staff.manage') && { href: '/admin/staff', label: 'Staff' },
+    userCan(user, 'library.manage') && { href: '/admin/library', label: 'Library desk' },
     userCan(user, 'admissions.review') && { href: '/admin/admissions', label: 'Admissions' },
     (userCan(user, 'import.run') || userCan(user, 'export.run')) && { href: '/admin/import', label: 'Import & export' },
   ].filter((x): x is { href: string; label: string } => !!x);
@@ -100,7 +101,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes'] },
         { href: '/boards', label: 'Collaborate', also: ['/code', '/tasks', '/docs', '/spaces'] },
-        { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub'] },
+        { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub', '/library'] },
       ]
     },
     {
@@ -158,7 +159,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/services/rooms', label: 'nav.room_reservation' },
       ]
     },
-    { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain },
+    { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain, also: ['/library'] },
     { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
@@ -193,6 +194,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/quizzes', label: 'nav.quizzes' },
         { href: '/admin/timetable', label: 'nav.timetable_management' },
         { href: '/admin/knowledge-hub', label: 'nav.knowledge_hub' },
+        { href: '/admin/library', label: 'Library', also: ['/library'] },
       ]
     },
     {

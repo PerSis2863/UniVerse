@@ -85,6 +85,13 @@ export const STUDENT_COURSE_TABS: SectionTab[] = [
 export const STUDENT_LEARN_TABS: SectionTab[] = [
   { href: '/student/skills', label: 'Skills' },
   { href: '/student/knowledge-hub', label: 'Knowledge Hub' },
+  { href: '/library', label: 'Library' },
+];
+
+/** A teacher's reading: the knowledge hub and the school library (Stage 5 · B15.4). */
+export const TEACHER_LEARN_TABS: SectionTab[] = [
+  { href: '/teacher/knowledge', label: 'Knowledge Hub' },
+  { href: '/library', label: 'Library' },
 ];
 
 /** A teacher's timetable, and their leave and the classes they cover (Stage 5 · B15.8). */

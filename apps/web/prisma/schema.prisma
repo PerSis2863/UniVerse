@@ -293,6 +293,8 @@ model User {
   coversAbsent         StaffCover[]        @relation("CoverAbsent")
   coversTaken          StaffCover[]        @relation("CoverTaken")
   staffAttendance      StaffAttendance[]   @relation("StaffAttendance")
+  libraryLoans         LibraryLoan[]       @relation("LibraryLoans")
+  libraryHolds         LibraryHold[]       @relation("LibraryHolds")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -3328,6 +3330,98 @@ model StaffAttendance {
   @@unique([userId, date])
   @@index([date])
   @@map("staff_attendance")
+}
+
+/// A book in the library (Stage 5 · B15.4); `authors` and `subjects` are comma-separated.
+model LibraryBook {
+  id        String        @id @default(cuid())
+  isbn      String?
+  title     String
+  authors   String?
+  publisher String?
+  year      Int?
+  subjects  String?
+  coverUrl  String?
+  shelf     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now())
+  copies    LibraryCopy[]
+  holds     LibraryHold[]
+
+  @@index([isbn])
+  @@index([title])
+  @@map("library_books")
+}
+
+/// One physical copy with its own barcode: AVAILABLE, ON_LOAN, HELD (kept for a hold), LOST, REPAIR.
+model LibraryCopy {
+  id        String        @id @default(cuid())
+  bookId    String
+  book      LibraryBook   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  barcode   String        @unique
+  status    String        @default("AVAILABLE")
+  heldForId String?
+  heldUntil DateTime?
+  note      String?
+  createdAt DateTime      @default(now())
+  loans     LibraryLoan[]
+
+  @@index([bookId])
+  @@map("library_copies")
+}
+
+/// A copy lent to someone; `fine` in minor units, `fineStatus` OWED, PAID or WAIVED.
+model LibraryLoan {
+  id         String      @id @default(cuid())
+  copyId     String
+  copy       LibraryCopy @relation(fields: [copyId], references: [id], onDelete: Cascade)
+  borrowerId String
+  borrower   User        @relation("LibraryLoans", fields: [borrowerId], references: [id], onDelete: Cascade)
+  issuedById String
+  issuedAt   DateTime    @default(now())
+  dueAt      DateTime
+  returnedAt DateTime?
+  renewals   Int         @default(0)
+  fine       Int         @default(0)
+  fineStatus String?
+  remindedAt DateTime?
+
+  @@index([borrowerId])
+  @@index([copyId, returnedAt])
+  @@index([returnedAt, dueAt])
+  @@map("library_loans")
+}
+
+/// A place in the queue for a book: WAITING, READY (a copy is kept until readyUntil), FULFILLED, CANCELLED, EXPIRED.
+model LibraryHold {
+  id         String      @id @default(cuid())
+  bookId     String
+  book       LibraryBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User        @relation("LibraryHolds", fields: [userId], references: [id], onDelete: Cascade)
+  status     String      @default("WAITING")
+  copyId     String?
+  readyUntil DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([bookId, status])
+  @@index([userId])
+  @@map("library_holds")
+}
+
+/// The library's rules (one row, id "default"); fines in minor units.
+model LibrarySettings {
+  id          String   @id
+  loanDays    Int      @default(14)
+  maxRenewals Int      @default(2)
+  maxLoans    Int      @default(4)
+  finePerDay  Int      @default(0)
+  fineCap     Int      @default(0)
+  currency    String   @default("INR")
+  holdDays    Int      @default(3)
+  updatedAt   DateTime @default(now())
+
+  @@map("library_settings")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

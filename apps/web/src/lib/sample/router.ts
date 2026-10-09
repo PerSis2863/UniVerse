@@ -429,6 +429,12 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
+  // Library (Stage 5 · B15.4): a few books, one borrowed.
+  [/^\/api\/library$/, () => ok({ books: [
+    { id: 'sample-book-1', isbn: '9780143107552', title: 'Thinking, Fast and Slow', authors: 'Daniel Kahneman', year: 2011, coverUrl: null, shelf: 'P2', copies: 3, available: 1, waiting: 0, myHold: null },
+    { id: 'sample-book-2', isbn: null, title: 'Introduction to Algorithms', authors: 'Cormen, Leiserson, Rivest, Stein', year: 2009, coverUrl: null, shelf: 'C4', copies: 2, available: 0, waiting: 2, myHold: null },
+  ] })],
+  [/^\/api\/library\/me$/, () => ok({ rules: { loanDays: 14, maxRenewals: 2, maxLoans: 4, finePerDay: 500, currency: 'INR' }, out: [{ id: 'sample-loan-1', book: { id: 'sample-book-1', title: 'Thinking, Fast and Slow', authors: 'Daniel Kahneman', coverUrl: null }, issuedAt: at(-10), dueAt: at(4), renewals: 0, canRenew: true }], returned: [], holds: [], owed: 0, currency: 'INR' })],
   // Admissions (Stage 5 · B15.1): one open round.
   [/^\/api\/admissions$/, ({ db }) => ok({ school: 'Riverside University', courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), rounds: [
     { id: 'sample-adm-1', slug: 'admissions-2027-sample', title: 'Admissions 2027–28 · Year 1', opensAt: at(-14), closesAt: at(45), closedAt: null, open: true, phase: 'open', courseIds: [], total: 12, byStage: { RECEIVED: 5, REVIEW: 4, INTERVIEW: 1, OFFERED: 2 } },
