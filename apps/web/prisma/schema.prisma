@@ -285,6 +285,8 @@ model User {
   feeInvoices          FeeInvoice[]        @relation("FeeInvoices")
   feePaymentsReceived  FeePayment[]        @relation("FeePaymentsReceived")
   importBatches        ImportBatch[]       @relation("ImportBatches")
+  admissionRounds      AdmissionRound[]    @relation("AdmissionRounds")
+  admissionReviews     AdmissionReview[]   @relation("AdmissionReviews")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -3157,6 +3159,78 @@ model PendingEnrolment {
 
   @@unique([email, courseId])
   @@map("pending_enrolments")
+}
+
+/// An admission round (Stage 5 · B15.1): a public application form (`fields` JSON) open between
+/// two dates, the classes admitted students join (`courseIds` JSON) and an offer letter template.
+model AdmissionRound {
+  id            String                 @id @default(cuid())
+  slug          String                 @unique
+  title         String
+  intro         String?
+  courseIds     String                 @default("[]")
+  fields        String                 @default("[]")
+  offerTemplate String?
+  opensAt       DateTime
+  closesAt      DateTime
+  closedAt      DateTime?
+  createdById   String
+  createdBy     User                   @relation("AdmissionRounds", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt     DateTime               @default(now())
+  applications  AdmissionApplication[]
+
+  @@map("admission_rounds")
+}
+
+/// One family's application (no account needed): `ref` is shown to them, `token` is their private
+/// link. `answers` and `files` are JSON; `history` lists every step ([{at, by, type, note}]).
+model AdmissionApplication {
+  id             String            @id @default(cuid())
+  roundId        String
+  round          AdmissionRound    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  ref            String            @unique
+  token          String            @unique
+  studentName    String
+  studentDob     String?
+  studentEmail   String?
+  contactName    String
+  contactEmail   String
+  contactPhone   String?
+  relation       String?
+  answers        String            @default("{}")
+  files          String            @default("[]")
+  stage          String            @default("RECEIVED")
+  message        String?
+  offerLetter    String?
+  offerSentAt    DateTime?
+  offerExpiresAt DateTime?
+  respondedAt    DateTime?
+  enrolledAt     DateTime?
+  history        String            @default("[]")
+  ipHash         String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @default(now())
+  reviews        AdmissionReview[]
+
+  @@index([roundId, stage])
+  @@index([ipHash, createdAt])
+  @@map("admission_applications")
+}
+
+/// One admin's score (1–5) and comment on an application.
+model AdmissionReview {
+  id            String               @id @default(cuid())
+  applicationId String
+  application   AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewerId    String
+  reviewer      User                 @relation("AdmissionReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  score         Int
+  comment       String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @default(now())
+
+  @@unique([applicationId, reviewerId])
+  @@map("admission_reviews")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

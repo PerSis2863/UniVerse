@@ -161,7 +161,7 @@ export const navByRole: Record<string, NavItem[]> = {
     {
       label: 'People', icon: Users,
       subItems: [
-        { href: '/admin/users', label: 'nav.users', also: ['/admin/import'] },
+        { href: '/admin/users', label: 'nav.users', also: ['/admin/admissions', '/admin/import'] },
         { href: '/admin/approvals', label: 'Approvals' },
         { href: '/admin/early-warning', label: 'Early warning' },
         { href: '/admin/safety', label: 'Safety reports' },

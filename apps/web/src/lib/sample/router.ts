@@ -429,6 +429,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
+  // Admissions (Stage 5 · B15.1): one open round.
+  [/^\/api\/admissions$/, ({ db }) => ok({ school: 'Riverside University', courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), rounds: [
+    { id: 'sample-adm-1', slug: 'admissions-2027-sample', title: 'Admissions 2027–28 · Year 1', opensAt: at(-14), closesAt: at(45), closedAt: null, open: true, phase: 'open', courseIds: [], total: 12, byStage: { RECEIVED: 5, REVIEW: 4, INTERVIEW: 1, OFFERED: 2 } },
+  ] })],
   // School fees (Stage 5 · B15.2): one plan, partly collected; no student bills in the sample.
   [/^\/api\/fees\/report$/, () => ok({ totals: [{ currency: 'INR', bills: 4, billed: 9600000, discount: 400000, paid: 6000000, open: 3600000, overdue: 1200000, overdueBills: 1 }], byMethod: [{ currency: 'INR', method: 'UPI', total: 3600000, count: 3 }, { currency: 'INR', method: 'CASH', total: 2400000, count: 2 }], byMonth: [{ currency: 'INR', month: new Date().toISOString().slice(0, 7), total: 6000000 }], byStatus: { PAID: 2, PARTIAL: 1, DUE: 1 } })],
   [/^\/api\/fees\/plans$/, ({ db }) => ok({ currencies: ['INR', 'USD', 'EUR', 'GBP'], courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), plans: [
