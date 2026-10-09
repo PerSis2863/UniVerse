@@ -12,24 +12,30 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, X, type LucideIcon,
+  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, X, type LucideIcon,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
-import { QuizManager } from '@/components/quizzes/QuizManager';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 import { safeHref } from '@/lib/safe-href';
-import { courseColor } from '@/lib/course-color';
+import { courseShade } from '@/lib/course-color';
 import { SaveOfflineButton } from '@/components/offline/SaveOfflineButton';
-import { ClassSessions, type ClassSession } from '@/components/dashboard/ClassSessions';
+import type { ClassSession } from '@/components/dashboard/ClassSessions';
 import { Combobox } from '@/components/ui/Combobox';
 import { SUBJECTS } from '@/lib/options/academic';
-import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { QuizReview } from '@/components/quizzes/QuizReview';
+import { downloadIcs } from '@/lib/ics';
 
+// Class recordings and study packs (their own tab) and quiz management (after "Manage") load when
+// opened, so the board itself shows sooner.
+// Modules (Stage 5 · B2): its own tab, loaded when opened.
+const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
   loading: () => <div className="h-[600px] rounded-2xl skeleton" />,
@@ -56,6 +62,7 @@ interface Board {
 
 const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'board', label: 'Announcements', icon: Bell },
+  { id: 'modules', label: 'Modules', icon: Layers },
   { id: 'sessions', label: 'Class sessions', icon: NotebookPen },
   { id: 'materials', label: 'Materials', icon: FileText },
   { id: 'readings', label: 'Reading list', icon: BookOpen },
@@ -139,7 +146,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
             <button key={c.id} onClick={() => setCourseId(c.id)}
               className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm whitespace-nowrap border transition-all',
                 courseId === c.id ? 'text-white border-transparent shadow-lg' : 'bg-white/60 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-indigo-400/40')}
-              style={courseId === c.id ? { background: courseColor(c.color, c.code) } : undefined}>
+              style={courseId === c.id ? { background: courseShade(c.color, c.code) } : undefined}>
               <span className="font-bold">{c.code}</span>
               <span className="hidden sm:inline opacity-80">{c.name.split(' ').slice(0, 3).join(' ')}</span>
             </button>
@@ -149,7 +156,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
         {/* Header */}
         <div className="px-4 sm:px-8 py-4 border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: courseColor(course?.color, course?.code), viewTransitionName: course ? vtName('course', course.id) : undefined }}>{course?.code?.slice(-2)}</div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: courseShade(course?.color, course?.code), viewTransitionName: course ? vtName('course', course.id) : undefined }}>{course?.code?.slice(-2)}</div>
             <div className="min-w-0">
               <h2 className="font-bold text-zinc-900 dark:text-white truncate" style={{ viewTransitionName: course ? vtName('course-title', course.id) : undefined }}>{course?.name}</h2>
               <p className="text-xs text-zinc-500">{course?.teacher?.name ?? 'Instructor'}{board ? ` · ${board.course._count.enrollments} student${board.course._count.enrollments === 1 ? '' : 's'}` : ''}</p>
@@ -191,6 +198,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'board' && <CourseSkills board={board} canManage={canManage} refresh={() => void mutate()} />}
                 {tab === 'board' && <LatestPack board={board} onOpen={(id) => { setSessionId(id); setTab('sessions'); }} />}
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}
+                {tab === 'modules' && course && <CourseModules courseId={course.id} />}
                 {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
@@ -574,48 +582,6 @@ function MyQuizzes({ board }: { board: Board }) {
   );
 }
 
-export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () => void }) {
-  const { data, error } = useSWR<{
-    title: string; score: number | null; maxScore: number | null; revealed: boolean;
-    questions: { id: string; question: string; options: string[]; points: number; yourAnswer: string | null; correct?: boolean; correctAnswer?: string }[];
-  }>(`/api/quizzes/${quizId}/result`, authedJson);
-  return (
-    <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet-in w-full sm:max-w-2xl max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl">
-        <div className="sticky top-0 flex items-center justify-between gap-3 px-6 py-4 border-b border-zinc-200/70 dark:border-white/[0.07] bg-white/70 dark:bg-[#121830]/80 backdrop-blur-xl">
-          <div className="min-w-0"><h3 className="font-bold text-zinc-900 dark:text-white truncate">{data?.title ?? 'Quiz review'}</h3>{data && <p className="text-xs text-zinc-500">Score {data.score ?? 0}/{data.maxScore ?? 0}</p>}</div>
-          <button onClick={onClose} aria-label="Close" className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="p-6 space-y-4">
-          {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
-          {!data && !error && <div className="py-8"><ContentSkeleton variant="list" /></div>}
-          {data && !data.revealed && <p className="text-xs p-3 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300">Correct answers are shown once the quiz closes or passes its due date.</p>}
-          {data?.questions.map((q, i) => (
-            <div key={q.id} className="p-4 rounded-2xl border border-zinc-200/70 dark:border-white/[0.07]">
-              <p className="font-semibold text-sm text-zinc-900 dark:text-white mb-3">{i + 1}. {q.question} <span className="text-xs text-zinc-500 font-normal">· {q.points} pt{q.points === 1 ? '' : 's'}</span></p>
-              <div className="space-y-1.5">
-                {q.options.map((o) => {
-                  const mine = o === q.yourAnswer, right = data.revealed && o === q.correctAnswer;
-                  return (
-                    <div key={o} className={cn('text-sm px-3 py-2 rounded-lg border flex items-center gap-2',
-                      right ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                        : mine && data.revealed ? 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300'
-                        : mine ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
-                        : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400')}>
-                      {right && <CheckCircle2 className="w-4 h-4" />}{o}{mine && <span className="ml-auto text-[10px] font-bold uppercase">Your answer</span>}
-                    </div>
-                  );
-                })}
-                {!q.yourAnswer && <p className="text-xs text-zinc-500">You didn’t answer this question.</p>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function TeacherQuizzes({ board, refresh }: { board: Board; refresh: () => void }) {
   const quizzes = board.quizzes ?? [];
   const [managing, setManaging] = useState<string | null>(null);
@@ -654,13 +620,6 @@ function icsFor(board: Board) {
   }
   lines.push('END:VCALENDAR');
   return lines.join('\r\n');
-}
-
-export function downloadIcs(content: string, name: string) {
-  const url = URL.createObjectURL(new Blob([content], { type: 'text/calendar;charset=utf-8' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: name });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function Events({ board, canManage, refresh }: SectionProps) {

@@ -4,7 +4,10 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { ChevronRight, Download, GraduationCap, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
+import { ChevronRight, Download, FileSpreadsheet, GraduationCap, Layers, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
+import { Sheet } from '@/components/ui/Sheet';
+import { authedJson } from '@/lib/authed-fetch';
+import { finalGrade, letter, type Category } from '@/lib/gradebook';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { api, fetcher } from '@/lib/fetcher';
@@ -13,6 +16,7 @@ import { cn } from '@/lib/utils';
 type Student = { id: string; name: string; email: string };
 type Grade = { id: string; studentId: string; assignmentName: string; score: number; maxScore: number; feedback: string | null; gradedAt: string };
 type Gradebook = { enrollments: { student: Student }[]; grades: Grade[] };
+type CategoryView = { categories: Category[]; assessments: { name: string; categoryId: string }[] };
 
 
 function band(avg: number | null) {
@@ -34,15 +38,23 @@ export default function TeacherGradesPage() {
   const [detail, setDetail] = useState<string | null>(null);
 
   const { data, isLoading, error, mutate } = useSWR<Gradebook>(courseId ? `/grades/course/${courseId}` : null, fetcher);
+  // Categories and weights (Stage 5 · B3.4): the final grade is their weighted average.
+  const catKey = courseId ? `/api/courses/${courseId}/grade-categories` : null;
+  const { data: cats, mutate: mutateCats } = useSWR<CategoryView>(catKey, authedJson);
+  const [editingCats, setEditingCats] = useState(false);
 
   const rows = useMemo(() => {
     const grades = data?.grades ?? [];
+    const categories = cats?.categories ?? [];
+    const of = new Map((cats?.assessments ?? []).map((a) => [a.name, a.categoryId]));
     return (data?.enrollments ?? []).map(({ student }) => {
       const mine = grades.filter((g) => g.studentId === student.id);
-      const avg = mine.length ? Math.round(mine.reduce((s, g) => s + (g.maxScore ? g.score / g.maxScore : 0), 0) / mine.length * 100) : null;
-      return { ...student, grades: mine, avg, latest: mine[0] ?? null };
+      const r = finalGrade(mine.map((g) => ({ assessment: g.assignmentName, score: g.score, maxScore: g.maxScore })), categories, (a) => of.get(a) ?? null);
+      const avg = r.final == null ? null : Math.round(r.final);
+      return { ...student, grades: mine, avg, letter: letter(r.final)?.letter ?? null, byCategory: r.byCategory, latest: mine[0] ?? null };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [data]);
+  }, [data, cats]);
+  const assessments = useMemo(() => [...new Set((data?.grades ?? []).map((g) => g.assignmentName))].sort((a, b) => a.localeCompare(b)), [data]);
   const filtered = rows.filter((r) => `${r.name} ${r.email}`.toLowerCase().includes(search.toLowerCase()));
   const selected = rows.find((r) => r.id === detail) ?? null;
 
@@ -75,6 +87,19 @@ export default function TeacherGradesPage() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  // One row per student: each category's average, the final grade and its letter.
+  const exportSummary = () => {
+    if (!rows.length) return void toast.info('Nothing to export yet.');
+    const categories = cats?.categories ?? [];
+    const cell = (v: unknown) => { const x = String(v ?? ''); return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+    const head = ['Student', 'Email', ...categories.map((c) => `${c.name} (${c.weight}%)`), 'Final %', 'Letter', 'Grades'];
+    const body = rows.map((r) => [r.name, r.email, ...categories.map((c) => { const x = r.byCategory.find((b) => b.id === c.id)?.average; return x == null ? '' : Math.round(x); }), r.avg ?? '', r.letter ?? '', r.grades.length]);
+    const url = URL.createObjectURL(new Blob(['\ufeff' + [head, ...body].map((x) => x.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    const code = courses.find((c) => c.id === courseId)?.code ?? 'course';
+    Object.assign(document.createElement('a'), { href: url, download: `${code}-final-grades-${new Date().toISOString().slice(0, 10)}.csv` }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   if (!loadingCourses && courses.length === 0) {
     return (
       <>
@@ -103,7 +128,9 @@ export default function TeacherGradesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input className={cn('input', 'pl-9')} placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <button onClick={exportCsv} className="btn-secondary text-sm px-3 flex items-center gap-1.5"><Download className="w-4 h-4" /> <span className="hidden sm:inline">Export</span></button>
+            <button onClick={() => setEditingCats(true)} disabled={!courseId} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Categories and weights"><Layers className="w-4 h-4" /> <span className="hidden lg:inline">Categories</span></button>
+            <button onClick={exportSummary} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Export final grades"><FileSpreadsheet className="w-4 h-4" /> <span className="hidden lg:inline">Final grades</span></button>
+            <button onClick={exportCsv} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Export every grade"><Download className="w-4 h-4" /> <span className="hidden lg:inline">All grades</span></button>
             <button onClick={() => setAdding({ studentId: '', assignmentName: '', score: '', maxScore: '100', feedback: '' })} disabled={!rows.length} className="btn-primary text-sm px-3 flex items-center gap-1.5 disabled:opacity-50"><Plus className="w-4 h-4" /> Add grade</button>
           </div>
         </div>
@@ -133,10 +160,10 @@ export default function TeacherGradesPage() {
           : rows.length === 0 ? <div className={`panel p-10 text-center text-sm text-zinc-500`}>No students are enrolled in this course yet. Ask your campus admin to enroll them.</div>
           : (
             <div className={`panel overflow-hidden`}>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" role="region" aria-label="Gradebook" tabIndex={0}>
                 <table className="w-full text-left">
                   <thead><tr className="border-b border-zinc-200/70 dark:border-white/[0.06] text-xs uppercase tracking-wider text-zinc-500">
-                    <th className="p-4 font-bold">Student</th><th className="p-4 font-bold text-center hidden sm:table-cell">Graded</th><th className="p-4 font-bold hidden md:table-cell">Latest</th><th className="p-4 font-bold text-center">Average</th><th className="p-4 font-bold">Status</th><th className="p-4" />
+                    <th className="p-4 font-bold">Student</th><th className="p-4 font-bold text-center hidden sm:table-cell">Graded</th><th className="p-4 font-bold hidden md:table-cell">Latest</th><th className="p-4 font-bold text-center">{cats?.categories.length ? 'Final' : 'Average'}</th><th className="p-4 font-bold">Status</th><th className="p-4" />
                   </tr></thead>
                   <tbody className="divide-y divide-zinc-200/70 dark:divide-white/[0.05]">
                     {filtered.map((r) => {
@@ -146,7 +173,7 @@ export default function TeacherGradesPage() {
                           <td className="p-4"><p className="text-sm font-medium text-zinc-900 dark:text-white">{r.name}</p><p className="text-xs text-zinc-500">{r.email}</p></td>
                           <td className="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300 hidden sm:table-cell">{r.grades.length}</td>
                           <td className="p-4 text-sm text-zinc-600 dark:text-zinc-300 hidden md:table-cell">{r.latest ? `${r.latest.assignmentName} · ${r.latest.score}/${r.latest.maxScore}` : '—'}</td>
-                          <td className="p-4 text-center text-lg font-bold text-zinc-900 dark:text-white">{r.avg != null ? `${r.avg}%` : '—'}</td>
+                          <td className="p-4 text-center text-lg font-bold text-zinc-900 dark:text-white">{r.avg != null ? <>{r.avg}%{r.letter && <span className="ml-1.5 text-sm font-semibold text-zinc-500">{r.letter}</span>}</> : '—'}</td>
                           <td className="p-4"><span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-medium border ${b.cls}`}>{b.label}</span></td>
                           <td className="p-4 text-right"><ChevronRight className="w-4 h-4 text-zinc-400 inline" /></td>
                         </tr>
@@ -164,10 +191,21 @@ export default function TeacherGradesPage() {
         <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && setDetail(null)}>
           <div className="sheet-in w-full sm:max-w-xl max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl">
             <div className="sticky top-0 flex items-center justify-between gap-3 px-6 py-4 border-b border-zinc-200/70 dark:border-white/[0.07] bg-white/70 dark:bg-[#121830]/80 backdrop-blur-xl">
-              <div className="min-w-0"><h3 className="font-bold text-zinc-900 dark:text-white truncate">{selected.name}</h3><p className="text-xs text-zinc-500">{selected.email} · average {selected.avg != null ? `${selected.avg}%` : '—'}</p></div>
+              <div className="min-w-0"><h3 className="font-bold text-zinc-900 dark:text-white truncate">{selected.name}</h3><p className="text-xs text-zinc-500">{selected.email} · {cats?.categories.length ? 'final' : 'average'} {selected.avg != null ? `${selected.avg}%${selected.letter ? ` (${selected.letter})` : ''}` : '—'}</p></div>
               <button onClick={() => setDetail(null)} aria-label="Close" className="w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-2">
+              {selected.byCategory.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+                  {selected.byCategory.map((c) => (
+                    <div key={c.id || 'other'} className="rounded-2xl bg-zinc-100/70 dark:bg-white/[0.04] p-3">
+                      <p className="text-[11px] text-zinc-500 truncate">{c.name} · {c.weight}%</p>
+                      <p className="font-bold text-zinc-900 dark:text-white">{c.average == null ? '—' : `${Math.round(c.average)}%`}</p>
+                      {c.dropped > 0 && <p className="text-[11px] text-zinc-500">lowest {c.dropped} dropped</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
               {selected.grades.length === 0 && <p className="text-sm text-zinc-500">No grades recorded for this student yet.</p>}
               {selected.grades.map((g) => {
                 const p = Math.round((g.score / g.maxScore) * 100);
@@ -187,6 +225,68 @@ export default function TeacherGradesPage() {
           </div>
         </div>
       )}
+
+      {editingCats && catKey && (
+        <CategoriesSheet catKey={catKey} view={cats ?? { categories: [], assessments: [] }} assessments={assessments} onChanged={(v) => void mutateCats(v, { revalidate: false })} onClose={() => setEditingCats(false)} />
+      )}
     </>
+  );
+}
+
+/** Categories, their weights and lowest-grade drops, and which category each assessment is in. */
+function CategoriesSheet({ catKey, view, assessments, onChanged, onClose }: { catKey: string; view: CategoryView; assessments: string[]; onChanged: (v: CategoryView) => void; onClose: () => void }) {
+  const [draft, setDraft] = useState({ name: '', weight: '', dropLowest: '0' });
+  const [busy, setBusy] = useState(false);
+  const total = view.categories.reduce((s, c) => s + c.weight, 0);
+  const of = new Map(view.assessments.map((a) => [a.name, a.categoryId]));
+  const send = async (body: object) => {
+    setBusy(true);
+    try { onChanged(await authedJson<CategoryView>(catKey, { method: 'POST', body: JSON.stringify(body) })); return true; }
+    catch (e) { toast.error(errorMessage(e, 'Couldn’t save that.')); return false; }
+    finally { setBusy(false); }
+  };
+  return (
+    <Sheet title="Categories and weights" onClose={onClose}>
+      <div className="space-y-5">
+        <p className="text-sm text-zinc-500">The final grade is each category’s average times its weight. You can drop each student’s lowest grades in a category. Without categories, the final grade is the plain average.</p>
+        {view.categories.length > 0 && (
+          <ul className="space-y-2">
+            {view.categories.map((c) => (
+              <li key={c.id} className="rounded-2xl border border-zinc-200/70 dark:border-white/[0.07] p-3 grid grid-cols-[1fr_5rem_5rem_auto] gap-2 items-end">
+                <label className="text-[11px] text-zinc-500">Name<input className="input mt-1" defaultValue={c.name} maxLength={60} onBlur={(e) => e.target.value.trim() !== c.name && void send({ action: 'update', categoryId: c.id, name: e.target.value })} /></label>
+                <label className="text-[11px] text-zinc-500">Weight %<input className="input mt-1" type="number" min={0} max={100} defaultValue={c.weight} onBlur={(e) => Number(e.target.value) !== c.weight && void send({ action: 'update', categoryId: c.id, weight: Number(e.target.value) })} /></label>
+                <label className="text-[11px] text-zinc-500">Drop lowest<input className="input mt-1" type="number" min={0} max={10} defaultValue={c.dropLowest} onBlur={(e) => Number(e.target.value) !== c.dropLowest && void send({ action: 'update', categoryId: c.id, dropLowest: Number(e.target.value) })} /></label>
+                <button type="button" aria-label={`Delete ${c.name}`} disabled={busy} onClick={() => void (async () => { if (await confirmDialog({ title: `Delete “${c.name}”?`, message: 'Its assessments go back to no category. Grades stay.', destructive: true, confirmLabel: 'Delete' })) void send({ action: 'delete', categoryId: c.id }); })()} className="btn-ghost btn-icon text-rose-600 dark:text-rose-400"><Trash2 className="w-4 h-4" /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className={cn('text-sm font-medium', view.categories.length && total !== 100 ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-600 dark:text-zinc-300')}>
+          {!view.categories.length ? 'No categories yet.' : total === 100 ? 'Weights add up to 100%.' : total < 100 ? `Weights add up to ${total}%: grades in no category share the other ${Math.round((100 - total) * 10) / 10}%.` : `Weights add up to ${total}%: they’re scaled to 100%.`}
+        </p>
+        <div className="rounded-2xl bg-zinc-100/70 dark:bg-white/[0.04] p-3 grid grid-cols-[1fr_5rem_5rem_auto] gap-2 items-end">
+          <label className="text-[11px] text-zinc-500">New category<input className="input mt-1" placeholder="e.g. Homework" maxLength={60} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
+          <label className="text-[11px] text-zinc-500">Weight %<input className="input mt-1" type="number" min={0} max={100} value={draft.weight} onChange={(e) => setDraft({ ...draft, weight: e.target.value })} /></label>
+          <label className="text-[11px] text-zinc-500">Drop lowest<input className="input mt-1" type="number" min={0} max={10} value={draft.dropLowest} onChange={(e) => setDraft({ ...draft, dropLowest: e.target.value })} /></label>
+          <button type="button" aria-label="Add category" disabled={busy || !draft.name.trim() || draft.weight === ''} onClick={() => void (async () => { if (await send({ action: 'create', name: draft.name, weight: Number(draft.weight), dropLowest: Number(draft.dropLowest) || 0 })) setDraft({ name: '', weight: '', dropLowest: '0' }); })()} className="btn-primary btn-icon"><Plus className="w-4 h-4" /></button>
+        </div>
+        {view.categories.length > 0 && assessments.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Assessments</h4>
+            <ul className="space-y-1.5">
+              {assessments.map((a) => (
+                <li key={a} className="flex items-center gap-2">
+                  <span className="flex-1 min-w-0 truncate text-sm text-zinc-800 dark:text-zinc-200">{a}</span>
+                  <select aria-label={`Category for ${a}`} className="input w-40" value={of.get(a) ?? ''} disabled={busy} onChange={(e) => void send({ action: 'assign', name: a, categoryId: e.target.value || null })}>
+                    <option value="">No category</option>
+                    {view.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </Sheet>
   );
 }

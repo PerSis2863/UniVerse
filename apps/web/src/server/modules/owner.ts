@@ -453,7 +453,7 @@ export default function ownerModule(router: Router) {
     const userId = typeof query.userId === 'string' && query.userId ? query.userId : undefined;
     const kind = oneOf(['signin', 'action', 'message', 'ui'] as const, query.kind) ? query.kind : '';
     const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
-    const role = (['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR'] as const).find((x) => x === query.role);
+    const role = (['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR', 'GUARDIAN'] as const).find((x) => x === query.role);
     const want = (k: string) => !kind || kind === k;
     const person = { ...(role && { role }), ...(q && { OR: [{ name: { contains: q } }, { email: { contains: q } }] }) };
     const byPerson = role || q ? { user: { is: person } } : {};
@@ -505,7 +505,7 @@ export default function ownerModule(router: Router) {
   r.get('people', async ({ query }) => {
     const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
     const where: Record<string, unknown> = {};
-    if (oneOf(['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR'] as const, query.role)) where.role = query.role;
+    if (oneOf(['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR', 'GUARDIAN'] as const, query.role)) where.role = query.role;
     if (oneOf(['PENDING', 'ACTIVE', 'SUSPENDED'] as const, query.status)) where.status = query.status;
     if (q) where.OR = [{ name: { contains: q } }, { email: { contains: q } }, { phone: { contains: q } }];
     const people = await prisma.user.findMany({

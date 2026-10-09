@@ -3,18 +3,25 @@
 import { useEffect, useState } from 'react';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check } from 'lucide-react';
+import { Sparkles, Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
 import { auth, warmUpPopupSignIn } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { awaitingApproval } from '@/types';
-import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { reportSession } from '@/lib/sign-in-history';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 import { TERMS_VERSION } from '@/lib/terms-version';
 import { TabPill } from '@/components/ui/Glide';
+import dynamic from 'next/dynamic';
+import { homeFor } from '@/lib/role-home';
+
+// Phone sign-in carries a phone-number library (about 50 KB): it loads when someone chooses it
+// (or points at the button), not with the page.
+const loadPhoneFlow = () => import('@/components/auth/PhoneAuthFlow');
+const preloadPhoneFlow = () => { loadPhoneFlow().catch(() => {}); };
+const PhoneAuthFlow = dynamic(() => loadPhoneFlow().then((m) => m.PhoneAuthFlow), { ssr: false, loading: () => <div className="h-56 rounded-2xl skeleton" /> });
 
 const ROLES = [
   {
@@ -26,6 +33,16 @@ const ROLES = [
     gradient: 'from-indigo-500/20 to-purple-500/20',
     border: 'border-indigo-500',
     glow: 'shadow-indigo-500/20',
+  },
+  {
+    id: 'GUARDIAN',
+    label: 'Parent or guardian',
+    description: 'Follow your child’s grades, attendance, deadlines and report cards. Your child gives you a code to link your accounts.',
+    icon: Users,
+    color: 'teal',
+    gradient: 'from-teal-500/20 to-cyan-500/20',
+    border: 'border-teal-500',
+    glow: 'shadow-teal-500/20',
   },
   {
     id: 'TEACHER',
@@ -114,7 +131,7 @@ export default function RegisterPage() {
       reportSession('SIGN_UP', method);
       // Teacher / NGO accounts wait for an admin: they continue on the application form.
       if (awaitingApproval(me)) router.push('/application');
-      else router.push(user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
+      else router.push(homeFor(user));
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Registration successful, but failed to setup profile. Please try logging in.');
@@ -170,7 +187,7 @@ export default function RegisterPage() {
           Join the Network
         </div>
         <h1 className="text-3xl font-black text-white mb-2">Create an account</h1>
-        <p className="text-zinc-400 text-sm">{finishing ? 'You’re signed in — choose how you’ll use UniVerse to finish creating your account.' : 'Join as an individual, a staff member or an organization.'}</p>
+        <p className="text-zinc-400 text-sm">{finishing ? 'You’re signed in — choose how you’ll use UniVerse to finish creating your account.' : 'Join as an individual, a parent, a staff member or an organization.'}</p>
       </div>
 
       {/* Step indicator */}
@@ -326,6 +343,7 @@ export default function RegisterPage() {
                   </button>
                   <button
                     type="button"
+                    onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
                     onClick={() => { if (!needAgreement()) setShowPhoneFlow(true); }}
                     disabled={isLoading}
                     className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50"

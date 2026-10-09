@@ -3,17 +3,21 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { CheckCircle2, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Library, Plus, Trash2, X } from 'lucide-react';
+import type { ItemResult } from '@/lib/item-analysis';
+import { Switch } from '@/components/ui/Switch';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number };
-type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; student: { name: string } };
+type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean };
+type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; integrity?: Integrity | null; student: { name: string } };
 type Quiz = {
-  id: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null;
+  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
+  analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
 
 const toLocalInput = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
@@ -23,6 +27,15 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
   const { data: quiz, isLoading, error, mutate } = useSWR<Quiz>(`/api/quizzes/${quizId}`, authedJson);
   const [draft, setDraft] = useState({ question: '', options: ['', '', '', ''], correct: 0, points: 1 });
   const [busy, setBusy] = useState(false);
+
+  // Copies a question into the course's question bank (Stage 5 · B4.1) to reuse in other quizzes.
+  const saveToBank = async (questionId: string) => {
+    if (!quiz?.courseId) return;
+    try {
+      await authedJson(`/api/courses/${quiz.courseId}/question-bank`, { method: 'POST', body: JSON.stringify({ action: 'save-from-quiz', questionId }) });
+      toast.success('Saved to the question bank');
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
   const patch = async (body: object, ok: string) => {
     setBusy(true);
@@ -85,6 +98,16 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                   <input type="number" min={1} max={600} className="input" defaultValue={quiz.timeLimit ?? ''} onBlur={(e) => { const v = e.target.value ? Number(e.target.value) : null; if (v !== quiz.timeLimit) patch({ timeLimit: v }, 'Time limit saved'); }} />
                 </label>
               </div>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Shuffle questions and answers</p><p className="text-xs text-zinc-500">Each student gets their own order (the same if they reload).</p></div>
+                  <Switch checked={!!quiz.shuffle} disabled={busy} onChange={(v) => void patch({ shuffle: v }, v ? 'Questions and answers are shuffled for each student' : 'Same order for everyone')} label="Shuffle questions and answers" />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Exam mode</p><p className="text-xs text-zinc-500">The time limit counts from when each student starts, on the server. You see how often they left the quiz, pasted or left full screen. No webcam, nothing recorded.</p></div>
+                  <Switch checked={!!quiz.examMode} disabled={busy} onChange={(v) => void patch({ examMode: v }, v ? 'Exam mode on' : 'Exam mode off')} label="Exam mode" />
+                </div>
+              </div>
             </section>
 
             {/* Questions */}
@@ -95,6 +118,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                 <div key={q.id} className="p-4 rounded-2xl bg-white/60 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                   <div className="flex items-start gap-3">
                     <p className="flex-1 text-sm font-semibold text-zinc-900 dark:text-white">{i + 1}. {q.question} <span className="text-xs font-normal text-zinc-500">· {q.points} pt{q.points === 1 ? '' : 's'}</span></p>
+                    {quiz.courseId && <button onClick={() => void saveToBank(q.id)} aria-label="Save to the question bank" title="Save to the question bank" className="p-1.5 rounded-lg text-zinc-400 hover:text-indigo-500"><Library className="w-4 h-4" /></button>}
                     <button onClick={() => removeQuestion(q.id)} aria-label="Delete question" className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
                   </div>
                   <ul className="mt-2 grid sm:grid-cols-2 gap-1.5">
@@ -123,12 +147,14 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
               </div>
             </section>
 
+            {quiz.analysis && quiz.analysis.students >= 2 && <ItemAnalysis questions={quiz.questions} analysis={quiz.analysis} />}
+
             {/* Results */}
             <section className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Results ({quiz.submissions.length})</p>
               {quiz.submissions.length === 0 ? <p className="text-sm text-zinc-500">No submissions yet.</p> : quiz.submissions.map((s) => (
                 <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-white/[0.03] text-sm">
-                  <span className="text-zinc-800 dark:text-zinc-200">{s.student.name}</span>
+                  <span className="min-w-0"><span className="text-zinc-800 dark:text-zinc-200">{s.student.name}</span>{s.integrity && <IntegrityNote i={s.integrity} />}</span>
                   <span className="font-bold text-zinc-900 dark:text-white tabular-nums">{s.score ?? 0}/{s.maxScore ?? 0} <span className="text-xs text-zinc-500 font-normal">· {new Date(s.submittedAt).toLocaleDateString()}</span></span>
                 </div>
               ))}
@@ -138,4 +164,60 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
       </div>
     </div>
   );
+}
+
+/** How each question worked (Stage 5 · B4.6, src/lib/item-analysis.ts), questions to fix first. */
+function ItemAnalysis({ questions, analysis }: { questions: Question[]; analysis: NonNullable<Quiz['analysis']> }) {
+  const byId = new Map(analysis.items.map((i) => [i.id, i]));
+  const ordered = [...questions].sort((a, b) => Number(byId.get(b.id)?.fix ?? false) - Number(byId.get(a.id)?.fix ?? false));
+  const separation = (d: number | null) => (d == null ? null : d >= 0.3 ? 'separates well' : d >= 0.15 ? 'separates a little' : d >= 0 ? 'doesn’t separate' : 'reversed');
+  return (
+    <section className="space-y-2" aria-labelledby="item-analysis">
+      <p id="item-analysis" className="text-xs font-bold uppercase tracking-widest text-zinc-500">How the questions worked</p>
+      <p className="text-sm text-zinc-600 dark:text-zinc-300">
+        From {analysis.students} students. {analysis.toFix ? <b className="text-amber-700 dark:text-amber-300">{analysis.toFix} question{analysis.toFix === 1 ? '' : 's'} to check.</b> : 'No question looks broken.'}
+        {analysis.consistency != null && <> Consistency {analysis.consistency.toFixed(2)} ({analysis.consistency >= 0.7 ? 'good for a test' : analysis.consistency >= 0.5 ? 'fair' : 'low: questions may test different things'}).</>}
+      </p>
+      {ordered.map((q) => {
+        const a = byId.get(q.id);
+        if (!a) return null;
+        const most = Math.max(1, ...a.counts.map((c) => c.n));
+        return (
+          <div key={q.id} className={cn('p-3 rounded-2xl border', a.fix ? 'border-amber-500/40 bg-amber-500/[0.06]' : 'border-zinc-200/70 dark:border-white/[0.07]')}>
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium text-zinc-900 dark:text-white min-w-0">{q.question}</p>
+              <span className="text-xs text-zinc-500 shrink-0 text-right">{a.right != null && <b className="text-zinc-900 dark:text-white">{Math.round(a.right * 100)}% right</b>}{separation(a.separates) && <><br />{separation(a.separates)}</>}</span>
+            </div>
+            <ul className="mt-2 space-y-1">
+              {a.counts.map((c) => (
+                <li key={c.option} className="grid grid-cols-[minmax(0,1fr)_6rem_2rem] items-center gap-2 text-xs">
+                  <span className={cn('truncate', c.correct ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-zinc-600 dark:text-zinc-300')}>{c.correct && <CheckCircle2 className="w-3 h-3 inline mr-1" aria-label="Right answer" />}{c.option}</span>
+                  <span className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><span className={cn('block h-full rounded-full', c.correct ? 'bg-emerald-500' : 'bg-zinc-400 dark:bg-zinc-500')} style={{ width: `${(c.n / most) * 100}%` }} /></span>
+                  <span className="tabular-nums text-zinc-500 text-right">{c.n}</span>
+                </li>
+              ))}
+              {a.blank > 0 && <li className="text-[11px] text-zinc-500">{a.blank} left it blank</li>}
+            </ul>
+            {a.flags.length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {a.flags.map((f) => <li key={f} className="text-xs text-amber-800 dark:text-amber-300 flex gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden />{f}</li>)}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/** Exam mode signals for one submission: worth a conversation, not a verdict. */
+function IntegrityNote({ i }: { i: Integrity }) {
+  const notes = [
+    i.left ? `left the quiz ${i.left}×` : '',
+    i.pasted ? `pasted ${i.pasted}×` : '',
+    i.fullscreenExits ? `left full screen ${i.fullscreenExits}×` : '',
+    i.overtimeSeconds ? `arrived ${Math.ceil(i.overtimeSeconds / 60)} min after the time limit` : '',
+    i.noStart ? 'no start time (taken offline?)' : '',
+  ].filter(Boolean);
+  return <span className={cn('block text-[11px]', notes.length ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-500')}>{notes.length ? notes.join(' · ') : 'Exam mode: nothing to note'}</span>;
 }

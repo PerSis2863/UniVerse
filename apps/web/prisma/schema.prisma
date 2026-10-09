@@ -17,6 +17,7 @@ enum Role {
   TEACHER
   ADMIN
   INDUSTRY_MENTOR
+  GUARDIAN // parent or guardian account (Stage 5 · B16.1): only the parent app
 }
 
 enum UserStatus {
@@ -117,7 +118,7 @@ model User {
   termsAcceptedAt    DateTime?
   tourDoneAt         DateTime? // skipped or finished the welcome tour (src/components/layout/WelcomeTour.tsx)
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
-  accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION (what they chose at sign-up)
+  accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION | GUARDIAN (what they chose at sign-up)
   lastSeenAt         DateTime?
   // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
   streakCurrent      Int       @default(0)
@@ -194,6 +195,12 @@ model User {
   careerProfile           CareerProfile?
   skills                  StudentSkill[]
   skillEvidence           SkillEvidence[]
+  itemProgress            ItemProgress[] // course modules: items done (Stage 5 · B2)
+  quizAttempts            QuizAttempt[] // exam mode start times (Stage 5 · B4.4)
+  reportCards             ReportCard[] // report cards (Stage 5 · B15.3)
+  guardianOf              GuardianLink[]   @relation("GuardianOf") // as a guardian: their children (Stage 5 · B16.1)
+  guardedBy               GuardianLink[]   @relation("GuardedBy") // as a student: linked guardian accounts
+  guardianInvites         GuardianInvite[] // as a student: link codes made for a guardian
   supportPlans            SupportPlan[]
   planBlocks              PlanBlock[]
   shiftCheckins           ShiftCheckin[]
@@ -393,6 +400,10 @@ model Course {
 
   scheduledCalls ScheduledCall[]
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
+  modules        CourseModule[] // ordered units of items (Stage 5 · B2)
+  gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
+  gradeAssessments GradeAssessment[]
+  questionBank     BankQuestion[] // reusable quiz questions (Stage 5 · B4.1)
 
   @@index([teacherId])
   @@index([status])
@@ -461,11 +472,16 @@ model Quiz {
   dueDate     DateTime?
   timeLimit   Int? // minutes
   status      QuizStatus @default(DRAFT)
+  /// Each student gets their own order of questions and options (Stage 5 · B4.3)
+  shuffle     Boolean    @default(false)
+  /// Exam mode (B4.4): server-timed from the start, integrity notes for the teacher
+  examMode    Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   questions   QuizQuestion[]
   submissions QuizSubmission[]
+  attempts    QuizAttempt[]
 
   @@index([courseId])
   @@map("quizzes")
@@ -495,6 +511,8 @@ model QuizSubmission {
   score            Float?
   maxScore         Float?
   submittedAt      DateTime  @default(now())
+  /// Exam mode (Stage 5 · B4.4): { left, pasted, fullscreenExits, overtimeSeconds, noStart } for the teacher
+  integrity        Json?
   /// Offline-first (upgrade 4): a quiz taken with no connection. When the student started and
   /// finished it on their device, the outbox id (a retried send is saved once), and LATE when it
   /// was finished after the due date (the teacher accepts or removes it) or ACCEPTED
@@ -2101,6 +2119,198 @@ model ImpactCertificate {
   @@index([status])
   @@index([anchorStatus])
   @@map("impact_certificates")
+}
+
+/// A round of report cards (Stage 5 · B15.3): a term's date range; drafts until published.
+model ReportCardRun {
+  id          String       @id @default(cuid())
+  title       String
+  fromDate    DateTime
+  toDate      DateTime
+  school      String
+  total       Int          @default(0) // students to make cards for
+  createdById String?
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  cards       ReportCard[]
+
+  @@map("report_card_runs")
+}
+
+/// One student's card in a round: data is src/lib/report-card.ts ReportCardData.
+model ReportCard {
+  id        String        @id @default(cuid())
+  runId     String
+  run       ReportCardRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  data      Json
+  comment   String?
+  average   Int?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([runId, studentId])
+  @@index([studentId])
+  @@map("report_cards")
+}
+
+/// A parent or guardian account linked to a student (Stage 5 · B16.1). The student makes a code,
+/// the guardian enters it; either can remove the link.
+model GuardianLink {
+  id         String   @id @default(cuid())
+  guardianId String
+  guardian   User     @relation("GuardianOf", fields: [guardianId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User     @relation("GuardedBy", fields: [studentId], references: [id], onDelete: Cascade)
+  relation   String? // Mother, Father, Guardian…, as the guardian put it
+  createdAt  DateTime @default(now())
+
+  @@unique([guardianId, studentId])
+  @@index([studentId])
+  @@map("guardian_links")
+}
+
+/// A one-time code a student gives a parent to link their account (7 days; one at a time).
+model GuardianInvite {
+  code      String   @id
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+  @@map("guardian_invites")
+}
+
+/// A course's question bank (Stage 5 · B4.1): reusable multiple-choice questions. tags is a
+/// comma-separated lower-case list; difficulty EASY, MEDIUM or HARD.
+model BankQuestion {
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  question      String
+  options       Json // string[]
+  correctAnswer String
+  points        Float    @default(1)
+  tags          String   @default("")
+  difficulty    String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  @@index([courseId])
+  @@map("question_bank")
+}
+
+/// When a student started a quiz in exam mode: the time limit counts from here (Stage 5 · B4.4).
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  startedAt DateTime @default(now())
+
+  @@unique([quizId, studentId])
+  @@map("quiz_attempts")
+}
+
+/// Gradebook categories (Stage 5 · B3.4): weight is the percent of the final grade; each student's
+/// lowest `dropLowest` grades in it don't count. src/lib/gradebook.ts does the maths.
+model GradeCategory {
+  id          String            @id @default(cuid())
+  courseId    String
+  course      Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name        String
+  weight      Float
+  dropLowest  Int               @default(0)
+  position    Int               @default(0)
+  createdAt   DateTime          @default(now())
+  assessments GradeAssessment[]
+
+  @@index([courseId])
+  @@map("grade_categories")
+}
+
+/// Which category an assessment belongs to, by its name in grades (Grade.assignmentName).
+model GradeAssessment {
+  id         String        @id @default(cuid())
+  courseId   String
+  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name       String
+  categoryId String
+  category   GradeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, name])
+  @@map("grade_assessments")
+}
+
+/// Course modules (Stage 5 · B2): a course's ordered units, each a list of items. Students see a
+/// module from its release date and, when it needs a quiz, once they score enough on it.
+model CourseModule {
+  id            String       @id @default(cuid())
+  courseId      String
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title         String
+  summary       String?
+  position      Int
+  published     Boolean      @default(true) // false: only the teacher sees it
+  releaseAt     DateTime? // students see it from then
+  requireQuizId String? // unlocks once the student scores requireScore% or more on this quiz
+  requireScore  Int?
+  items         ModuleItem[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([courseId, position])
+  @@map("course_modules")
+}
+
+/// One thing to do in a module: a page to read, a file (material), a link or video, a quiz, an
+/// assignment or a live class (calendar event). refId points at the material/quiz/assignment/event.
+model ModuleItem {
+  id        String         @id @default(cuid())
+  moduleId  String
+  module    CourseModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  kind      String // PAGE, FILE, LINK, VIDEO, QUIZ, ASSIGNMENT, LIVE
+  refId     String?
+  title     String
+  body      String? // PAGE: the text
+  url       String? // LINK, VIDEO
+  position  Int
+  createdAt DateTime       @default(now())
+  progress  ItemProgress[]
+
+  @@index([moduleId, position])
+  @@map("module_items")
+}
+
+/// A student finished an item (quizzes and assignments count as done once handed in, without a row).
+model ItemProgress {
+  id     String     @id @default(cuid())
+  itemId String
+  item   ModuleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId String
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doneAt DateTime   @default(now())
+
+  @@unique([itemId, userId])
+  @@index([userId])
+  @@map("item_progress")
+}
+
+/// How fast pages are for real people (Core Web Vitals) from 10% of page loads (Stage 5 · A4).
+/// Anonymous; kept 30 days. Owner console → Analytics → Speed.
+model WebVital {
+  id        Int      @id @default(autoincrement())
+  page      String // the path with ids replaced by :id
+  metric    String // LCP, INP, CLS, FCP or TTFB
+  value     Float // milliseconds (CLS: a score)
+  device    String // phone or desktop
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("web_vitals")
 }
 
 /// Errors seen in browsers and on the server, grouped: the same problem is one row with a count.

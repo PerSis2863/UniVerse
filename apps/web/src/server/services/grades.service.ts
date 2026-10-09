@@ -11,13 +11,19 @@ export class GradesService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const summary = await prisma.grade.groupBy({
-      by: ['courseId'],
-      where: { studentId },
-      _sum: { score: true, maxScore: true },
-    });
+    const courseIds = [...new Set(grades.map((g) => g.courseId))].slice(0, 90);
+    const [summary, categories, assessments] = await Promise.all([
+      prisma.grade.groupBy({
+        by: ['courseId'],
+        where: { studentId },
+        _sum: { score: true, maxScore: true },
+      }),
+      // Gradebook categories (Stage 5 · B3.4), so the page shows the same weighted finals as the teacher's.
+      courseIds.length ? prisma.gradeCategory.findMany({ where: { courseId: { in: courseIds } }, select: { id: true, courseId: true, name: true, weight: true, dropLowest: true } }) : [],
+      courseIds.length ? prisma.gradeAssessment.findMany({ where: { courseId: { in: courseIds } }, select: { courseId: true, name: true, categoryId: true } }) : [],
+    ]);
 
-    return { grades, summary };
+    return { grades, summary, categories, assessments };
   }
 
   /** Teachers may only see or grade their own courses; admins may see all. */

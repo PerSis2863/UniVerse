@@ -32,7 +32,9 @@ export class ApiError extends Error {
 
 /** The server's message for a failed request (a string, or a list joined), else `fallback`. */
 export function errorMessage(err: unknown, fallback: string): string {
-  const msg = (err as { response?: { data?: { message?: unknown } } } | null)?.response?.data?.message;
+  // The axios-style client puts the server's message in response.data; authedJson() in body.error.
+  const e = err as { response?: { data?: { message?: unknown } }; body?: { error?: unknown; message?: unknown } } | null;
+  const msg = e?.response?.data?.message ?? e?.body?.error ?? e?.body?.message;
   if (Array.isArray(msg)) return msg.join(', ');
   return typeof msg === 'string' && msg ? msg : fallback;
 }

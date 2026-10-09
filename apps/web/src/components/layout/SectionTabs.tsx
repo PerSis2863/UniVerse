@@ -102,6 +102,7 @@ export const ADMIN_INSIGHT_TABS: SectionTab[] = [
   { href: '/admin/insights', label: 'School insights' },
   { href: '/admin/analytics', label: 'Analytics' },
   { href: '/admin/reports', label: 'Reports' },
+  { href: '/admin/reports/report-cards', label: 'Report cards' },
   { href: '/admin/impact-metrics', label: 'Impact' },
 ];
 

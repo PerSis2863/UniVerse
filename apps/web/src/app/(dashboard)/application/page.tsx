@@ -17,13 +17,13 @@ import { DEPARTMENTS, ORG_DEPARTMENTS, ORG_ROLES, PROGRAMMES, STAFF_POSITIONS, S
 import { homeCountry, loadUniversities } from '@/lib/options/universities';
 import { api } from '@/lib/api';
 import { authedFetch } from '@/lib/authed-fetch';
-import { auth } from '@/lib/firebase';
 import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { awaitingApproval, type ApplicationStatus, type Role, type UserStatus } from '@/types';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { homeFor } from '@/lib/role-home';
 
 // Applying to become staff / mentor or an organisation (or, from sign-up, a verified student), and following the application.
 // People who picked "teacher" when signing up land here until an admin decides; students can
@@ -130,8 +130,11 @@ export default function ApplicationPage() {
     }
   };
 
+  // Firebase loads only to sign out (like the sidebar), not with the page.
+  const firebaseSignOut = () => import('@/lib/firebase').then(({ auth }) => auth.signOut()).catch(() => {});
+
   const signOut = async () => {
-    await auth.signOut().catch(() => {});
+    await firebaseSignOut();
     logout();
     router.push('/login');
   };
@@ -150,7 +153,7 @@ export default function ApplicationPage() {
       if (res?.setupCancelled) {
         // Back to the home page, signed out; the toast survives the navigation.
         toast.success('Your application was withdrawn successfully.');
-        await auth.signOut().catch(() => {});
+        await firebaseSignOut();
         logout();
         router.replace('/');
         return;
@@ -170,7 +173,7 @@ export default function ApplicationPage() {
 
   const openDashboard = async () => {
     const me = await refreshProfile();
-    router.push(me?.role === 'TEACHER' ? '/teacher' : me?.role === 'ADMIN' ? '/admin' : '/student');
+    router.push(homeFor(me ?? { role: 'STUDENT' }));
   };
 
   let body: React.ReactNode;

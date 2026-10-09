@@ -23,6 +23,7 @@ export const ROLE_LABEL: Record<string, string> = {
   TEACHER: 'Teacher',
   ADMIN: 'Admin',
   INDUSTRY_MENTOR: 'Industry mentor',
+  GUARDIAN: 'Parent or guardian',
 };
 
 const ROLE_TONE: Record<string, string> = {
@@ -30,6 +31,7 @@ const ROLE_TONE: Record<string, string> = {
   TEACHER: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
   ADMIN: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
   INDUSTRY_MENTOR: 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-500/20',
+  GUARDIAN: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20',
 };
 
 const STATUS_TONE: Record<string, string> = {

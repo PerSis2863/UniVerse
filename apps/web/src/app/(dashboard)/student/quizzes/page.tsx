@@ -10,14 +10,14 @@ import { toast } from 'sonner';
 import useSWR, { mutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
-import { QuizReview } from '@/components/dashboard/CourseBoard';
+import { QuizReview } from '@/components/quizzes/QuizReview';
 import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
 import { getPack, type PackQuiz } from '@/lib/offline-packs';
 import { TabPill } from '@/components/ui/Glide';
 
 interface QuizSummary { id: string; title: string; status: string; completed: boolean; score?: number | null; dueDate?: string | null; timeLimit?: number | null; courseId: string; course: { name: string }; _count?: { questions: number } }
 /** A quiz being taken: its questions (from the server, or the copy saved for offline use). */
-type FullQuiz = PackQuiz & { course?: { name: string } | null };
+type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean };
 
 export default function QuizzesPage() {
   const { data: quizzes = [], isLoading } = useSWR<QuizSummary[]>('/quizzes/student/my-quizzes', fetcher);
@@ -40,6 +40,8 @@ export default function QuizzesPage() {
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [endsAt, setEndsAt] = useState(0); // when the time limit runs out (ms)
 
+  const seen = useRef({ left: 0, pasted: 0, fullscreenExits: 0 });
+
   const startQuiz = async (quizSummary: QuizSummary) => {
     setLoadingQuizId(quizSummary.id);
     try {
@@ -50,13 +52,22 @@ export default function QuizzesPage() {
         return saved;
       });
       const started = new Date();
+      let ends = started.getTime() + (fullQuiz.timeLimit || 30) * 60_000;
+      // Exam mode (B4.4): the clock runs on the server from the first start, so reloading doesn't
+      // reset it; full screen is asked for, and leaving it, the tab or pasting is noted.
+      if (fullQuiz.examMode) {
+        const clock = await api.post<{ endsAt: string | null }>(`/quizzes/${fullQuiz.id}/start`).then((r) => r.data).catch(() => null);
+        if (clock?.endsAt) ends = new Date(clock.endsAt).getTime();
+        seen.current = { left: 0, pasted: 0, fullscreenExits: 0 };
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      }
       setStartedAt(started.toISOString());
       setActiveQuiz(fullQuiz);
       setCurrentQ(0);
       setSelected(null);
       setAnswers({});
-      setTimeLeft((fullQuiz.timeLimit || 30) * 60);
-      setEndsAt(started.getTime() + (fullQuiz.timeLimit || 30) * 60_000);
+      setTimeLeft(Math.max(0, Math.round((ends - started.getTime()) / 1000))); // the countdown corrects it each second
+      setEndsAt(ends);
       setSubmitted(false);
       setShowResults(false);
       setConfirming(false);
@@ -75,7 +86,8 @@ export default function QuizzesPage() {
     }
     
     try {
-      const res = await api.post(`/quizzes/${activeQuiz.id}/submit`, { answers: finalAnswers });
+      const res = await api.post(`/quizzes/${activeQuiz.id}/submit`, { answers: finalAnswers, ...(activeQuiz.examMode ? { integrity: seen.current } : {}) });
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
       const result = res.data;
       const pct = Math.round((result.score / (result.maxScore || 100)) * 100);
       setScore(pct);
@@ -110,6 +122,22 @@ export default function QuizzesPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [activeQuiz, submitted, endsAt]);
+
+  // Exam mode: what's noted for the teacher while the quiz is open.
+  useEffect(() => {
+    if (!activeQuiz?.examMode || submitted) return;
+    const onHide = () => { if (document.visibilityState === 'hidden') seen.current.left++; };
+    const onPaste = () => { seen.current.pasted++; };
+    const onFull = () => { if (!document.fullscreenElement) seen.current.fullscreenExits++; };
+    document.addEventListener('visibilitychange', onHide);
+    document.addEventListener('paste', onPaste);
+    document.addEventListener('fullscreenchange', onFull);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      document.removeEventListener('paste', onPaste);
+      document.removeEventListener('fullscreenchange', onFull);
+    };
+  }, [activeQuiz, submitted]);
 
   const nextQuestion = () => {
     if (!activeQuiz) return;
@@ -294,6 +322,11 @@ export default function QuizzesPage() {
                 </div>
               ) : (
                 <div className="p-6">
+                  {activeQuiz.examMode && (
+                    <p role="note" className="mb-4 text-xs rounded-xl px-3 py-2 bg-amber-500/10 text-amber-800 dark:text-amber-200">
+                      Exam mode: the time limit runs on the server. Your teacher sees how often you left this page, pasted or left full screen. Nothing else is recorded.
+                    </p>
+                  )}
                   {/* Progress */}
                   <div className="flex items-center justify-between text-xs text-zinc-500 mb-2">
                     <span>Question {currentQ + 1} of {activeQuiz.questions.length}</span>

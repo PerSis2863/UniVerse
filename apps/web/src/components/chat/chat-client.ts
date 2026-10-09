@@ -1,6 +1,7 @@
 'use client';
 
 import { authedFetch } from '@/lib/authed-fetch';
+import { shrinkImage } from '@/lib/shrink-image';
 
 export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
 
@@ -141,7 +142,8 @@ const SERVER_MAX = 4 * 1024 * 1024;
  * Files up to 4 MB go through the server (stored in Cloudflare R2 if configured, otherwise in the
  * database). Larger files upload straight to R2 with a signed URL, which needs R2 to be configured.
  */
-export async function uploadChatFile(file: File, onProgress?: (pct: number) => void) {
+export async function uploadChatFile(original: File, onProgress?: (pct: number) => void) {
+  const file = await shrinkImage(original); // big photos become a few hundred KB (src/lib/shrink-image.ts)
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('Files must be 25 MB or smaller.');
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100) || 'file';
 

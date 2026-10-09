@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       id: { not: user.id },
       email: { not: SYSTEM_EMAIL },
       status: { not: 'SUSPENDED' },
+      role: { not: 'GUARDIAN' }, // parent accounts only use the parent app (Stage 5 · B16.1)
       ...(q ? { OR: [{ name: { contains: q } }, { email: { contains: q } }] } : {}),
       ...(reach ? { AND: [{ OR: [{ campusId: null }, { campusId: { in: reach } }, { networkVisible: true }, { role: 'ADMIN' }, { studentProfile: { exchangeCampusId: { in: reach } } }] }] } : {}),
     },

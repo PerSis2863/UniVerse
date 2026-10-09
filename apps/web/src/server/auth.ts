@@ -81,6 +81,16 @@ export function demoWriteBlocked(req: Request, user: { role: string }, token: st
   return !DEMO_ADMIN_WRITABLE.test(new URL(req.url).pathname);
 }
 
+/**
+ * Parent and guardian accounts (Stage 5 · B16.1) reach only the parent app and their own account.
+ * Everything else (courses, chat, people, files…) is refused here, in one place, so no feature that
+ * treats "not a teacher or admin" as a student can ever serve a guardian.
+ */
+const GUARDIAN_ALLOWED = /^\/api\/(parent(\/|$)|me$|bootstrap$|notifications(\/|$)|realtime\/|errors$|vitals$|core\/users\/me(\/(terms|deletion|export))?$|core\/auth\/(me|register|session|sessions|sign-out-everywhere)$|core\/notifications\/|core\/activity\/ui$)/;
+export function guardianBlocked(req: Request, user: { role: string }): boolean {
+  return user.role === 'GUARDIAN' && !GUARDIAN_ALLOWED.test(new URL(req.url).pathname);
+}
+
 // ─── Token → user ───────────────────────────────────────────────────────────────────────────────
 
 export function extractBearer(value: string | undefined | null): string | null {

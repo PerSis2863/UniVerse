@@ -19,3 +19,6 @@ export function courseColor(color: string | null | undefined, key = ''): string 
   for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
+
+/** A course colour as a background for white text: darkened enough to read at 4.5:1 (even amber). */
+export const courseShade = (color: string | null | undefined, key = '') => `linear-gradient(rgb(0 0 0 / 0.4), rgb(0 0 0 / 0.4)), ${courseColor(color, key)}`;

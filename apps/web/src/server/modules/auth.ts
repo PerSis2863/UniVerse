@@ -89,6 +89,7 @@ export default function auth(router: Router) {
   });
 
   // Called right after Firebase sign-up with the name and the role picked on the sign-up page.
+  // A parent or guardian (role GUARDIAN) gets that role at once; see below.
   // Picking "teacher" or "NGO representative" does NOT grant that role: it opens an application
   // that an admin must approve (see modules/applications.ts); meanwhile the account has student
   // permissions. Exception: someone an admin invited for that role, signing up with the invited
@@ -114,6 +115,14 @@ export default function auth(router: Router) {
     // student card or enrolment certificate) or independent (freelancers, professionals, lifelong
     // learners: no verification, access straight away).
     const wanted = body?.role;
+    // Parents and guardians (Stage 5 · B16.1): no approval, because the account sees nothing until a
+    // student gives them a link code. Only a brand-new account can become one.
+    if (wanted === 'GUARDIAN' && user.role === 'STUDENT' && !user.accountType) {
+      await prisma.user.update({ where: { id: user.id }, data: { role: 'GUARDIAN', accountType: 'GUARDIAN', status: 'ACTIVE' } });
+      forgetUser(user.id);
+      audit(user, { action: 'user.role_changed', summary: `${name ?? user.name} signed up as a parent or guardian`, targetType: 'user', targetId: user.id, metadata: { from: user.role, to: 'GUARDIAN' } }, req);
+      return { ...(await getMe(user.id)), application: null };
+    }
     const accountType = wanted === 'TEACHER' ? 'STAFF' : wanted === 'ADMIN' ? 'ORGANIZATION' : body?.accountType === 'STUDENT' ? 'STUDENT' : 'INDEPENDENT';
     if (!user.accountType) await prisma.user.update({ where: { id: user.id }, data: { accountType } });
     if (wanted === 'STUDENT' && accountType === 'STUDENT' && user.role === 'STUDENT' && !user.accountType) {

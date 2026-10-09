@@ -50,6 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const waiting = awaitingApproval(demoUser);
+  const guardian = demoUser?.role === 'GUARDIAN';
   // false during server rendering and hydration, true afterwards
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -128,6 +129,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoaded, isSignedIn, demoUser, router]);
 
+  // Parents and guardians (Stage 5 · B16.1) only have the parent app.
+  useEffect(() => {
+    if (guardian && pathname !== '/parent') router.replace('/parent');
+  }, [guardian, pathname, router]);
+
   // Signed up as a teacher / NGO and not approved yet: only the application page is available.
   useEffect(() => {
     if (waiting && pathname !== '/application') router.replace('/application');
@@ -135,6 +141,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Show the app skeleton while the session is restored (static markup, so no hydration mismatch)
   if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return <AppSkeleton />;
+
+  if (guardian) {
+    return (
+      <DataConfig>
+        <RealtimeSync />
+        {pathname === '/parent' ? children : <AppSkeleton />}
+      </DataConfig>
+    );
+  }
 
   if (waiting) {
     return (

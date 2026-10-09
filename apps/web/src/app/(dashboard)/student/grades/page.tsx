@@ -16,6 +16,8 @@ import { api as nestApi } from '@/lib/fetcher';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { TabPill } from '@/components/ui/Glide';
+import { finalGrade, type Category } from '@/lib/gradebook';
+import { MyReportCards } from '@/components/dashboard/MyReportCards';
 
 // GPA per term (Jan–Jun = Spring, Jul–Dec = Fall), from real grades on a 4.0 scale.
 function gpaByTerm(grades: { score: number; maxScore: number; gradedAt?: string; createdAt?: string }[]) {
@@ -260,7 +262,8 @@ export default function GradesPage() {
       <>
         <Topbar title="My Grades" subtitle="Academic performance and transcript overview." />
         <SectionTabs tabs={PROGRESS_TABS} />
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
+          <MyReportCards />
           <FeatureGuide
             icon={GraduationCap}
             title="Your grades will appear here"
@@ -297,15 +300,24 @@ export default function GradesPage() {
   const semGPA = ((avg / 100) * 4).toFixed(2);
 
   // Per-course averages drive the insight and the transcript summary.
-  type CourseAvg = { course: string; code: string; credits: number; sum: number; n: number };
+  // A course with gradebook categories (Stage 5 · B3.4) uses its weighted final, as the teacher sees it.
+  type CourseAvg = { courseId: string; course: string; code: string; credits: number; sum: number; n: number; items: { assessment: string; score: number; maxScore: number }[] };
   const courseMap = new Map<string, CourseAvg>();
   for (const r of gradesData) {
-    const cur = courseMap.get(r.code + r.course) ?? { course: r.course, code: r.code, credits: r.credits, sum: 0, n: 0 };
+    const cur = courseMap.get(r.code + r.course) ?? { courseId: r.courseId, course: r.course, code: r.code, credits: r.credits, sum: 0, n: 0, items: [] };
     cur.sum += r.percentage;
     cur.n += 1;
+    cur.items.push({ assessment: r.assignment, score: r.percentage, maxScore: 100 });
     courseMap.set(r.code + r.course, cur);
   }
-  const byCourse = [...courseMap.values()].map((c) => ({ ...c, avg: Math.round(c.sum / c.n) })).sort((a, b) => a.avg - b.avg);
+  const categories: (Category & { courseId: string })[] = data?.categories ?? [];
+  const assessments: { courseId: string; name: string; categoryId: string }[] = data?.assessments ?? [];
+  const byCourse = [...courseMap.values()].map((c) => {
+    const mine = categories.filter((x) => x.courseId === c.courseId);
+    const of = new Map(assessments.filter((a) => a.courseId === c.courseId).map((a) => [a.name, a.categoryId]));
+    const weighted = mine.length ? finalGrade(c.items, mine, (n) => of.get(n) ?? null).final : null;
+    return { ...c, avg: Math.round(weighted ?? c.sum / c.n), weighted: weighted != null };
+  }).sort((a, b) => a.avg - b.avg);
   const weakest = byCourse.length > 1 ? byCourse[0] : null;
   const trend = avg >= 70 ? 1 : -1;
 
@@ -374,6 +386,8 @@ export default function GradesPage() {
           <KpiCard title="Credits Earned" value={byCourse.reduce((acc, c) => acc + (c.credits || 0), 0).toString()} icon={Award} change={0} color="emerald" />
           <KpiCard title="Average Score" value={`${Math.round(avg)}%`} icon={BookOpen} change={0} color="fuchsia" />
         </div>
+
+        <MyReportCards />
 
         {/* Performance Insight Banner */}
         <motion.div
@@ -444,7 +458,7 @@ export default function GradesPage() {
             </select>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" role="region" aria-label="Transcript" tabIndex={0}>
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/[0.06] text-sm text-zinc-500 dark:text-zinc-400">
