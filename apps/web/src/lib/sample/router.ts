@@ -429,6 +429,13 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
+  // School fees (Stage 5 · B15.2): one plan, partly collected; no student bills in the sample.
+  [/^\/api\/fees\/report$/, () => ok({ totals: [{ currency: 'INR', bills: 4, billed: 9600000, discount: 400000, paid: 6000000, open: 3600000, overdue: 1200000, overdueBills: 1 }], byMethod: [{ currency: 'INR', method: 'UPI', total: 3600000, count: 3 }, { currency: 'INR', method: 'CASH', total: 2400000, count: 2 }], byMonth: [{ currency: 'INR', month: new Date().toISOString().slice(0, 7), total: 6000000 }], byStatus: { PAID: 2, PARTIAL: 1, DUE: 1 } })],
+  [/^\/api\/fees\/plans$/, ({ db }) => ok({ currencies: ['INR', 'USD', 'EUR', 'GBP'], courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), plans: [
+    { id: 'sample-fee-1', name: 'Term 1 2026–27', currency: 'INR', archived: false, createdAt: at(-30), to: 'Every student', courseId: null, items: [{ label: 'Tuition', amount: 2000000 }, { label: 'Transport', amount: 400000 }], instalments: [{ label: 'Instalment 1', dueAt: at(-10), amount: 1200000 }, { label: 'Instalment 2', dueAt: at(20), amount: 1200000 }], bills: 8, billed: 9600000, paid: 6000000, open: 3600000, overdue: 1200000 },
+  ] })],
+  [/^\/api\/fees\/invoices$/, () => ok({ invoices: [], shown: 0, owed: 0, currencies: [] })],
+  [/^\/api\/student\/fees$/, () => ok({ bills: [], owed: {}, next: null, online: false })],
   // Parent meetings (Stage 5 · B16.3): an evening of times, one booked.
   [/^\/api\/teacher\/meetings$/, () => ok({ lengths: [10, 15, 20, 30, 45, 60], past: [], upcoming: [
     { id: 'sample-pm-1', startAt: at(2, 16), durationMin: 15, mode: 'VIDEO', location: null, topic: 'How Aarav is settling in after the move', bookedAt: at(-1), parent: { id: 'sample-parent-1', name: 'Priya Mehta', avatar: null, relation: 'Mother' }, student: { id: 's1', name: 'Aarav Mehta' }, notes: null, summary: null, summarySentAt: null },

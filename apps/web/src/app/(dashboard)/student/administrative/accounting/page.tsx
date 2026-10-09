@@ -13,6 +13,7 @@ import { isSampleMode } from '@/lib/sample-mode';
 import { getAuthToken } from '@/lib/auth-token';
 import { authedFetch } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
+import { FamilyFees } from '@/components/fees/FamilyFees';
 
 const quickActions = [
   { id: 'statements', title: 'View Statements', subtitle: 'Payments and receipts', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'hover:border-blue-500/50' },
@@ -234,6 +235,8 @@ function AccountingContent() {
         action={{ label: 'Make a Payment', onClick: () => setActiveModal('custom_payment') }}
       />
       <div className="flex-1 p-8 space-y-8 overflow-y-auto">
+        {/* School fees billed by the school (Stage 5 · B15.2). */}
+        <FamilyFees url="/api/student/fees" />
         
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

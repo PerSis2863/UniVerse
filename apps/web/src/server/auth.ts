@@ -87,7 +87,7 @@ export function demoWriteBlocked(req: Request, user: { role: string }, token: st
  * Everything else (courses, chat, people, files…) is refused here, in one place, so no feature that
  * treats "not a teacher or admin" as a student can ever serve a guardian.
  */
-const GUARDIAN_ALLOWED = /^\/api\/(parent(\/|$)|calls\/pm_[A-Za-z0-9]+(\/(ticket|stat|peers))?$|me$|bootstrap$|notifications(\/|$)|realtime\/|errors$|vitals$|core\/users\/me(\/(terms|deletion|export))?$|core\/auth\/(me|register|session|sessions|sign-out-everywhere)$|core\/notifications\/|core\/activity\/ui$)/;
+const GUARDIAN_ALLOWED = /^\/api\/(parent(\/|$)|calls\/pm_[A-Za-z0-9]+(\/(ticket|stat|peers))?$|fees\/receipts\/[A-Za-z0-9]+$|me$|bootstrap$|notifications(\/|$)|realtime\/|errors$|vitals$|core\/users\/me(\/(terms|deletion|export))?$|core\/auth\/(me|register|session|sessions|sign-out-everywhere)$|core\/notifications\/|core\/activity\/ui$)/;
 export function guardianBlocked(req: Request, user: { role: string }): boolean {
   return user.role === 'GUARDIAN' && !GUARDIAN_ALLOWED.test(new URL(req.url).pathname);
 }

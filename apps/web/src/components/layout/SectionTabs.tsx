@@ -100,6 +100,12 @@ export const SAFETY_TABS: SectionTab[] = [
   { href: '/admin/safety/policy', label: 'Policy' },
 ];
 
+/** Admin → Finances: the platform's money, and school fees (Stage 5 · B15.2). */
+export const ADMIN_FINANCE_TABS: SectionTab[] = [
+  { href: '/admin/finances', label: 'Overview' },
+  { href: '/admin/fees', label: 'School fees' },
+];
+
 export const ADMIN_INSIGHT_TABS: SectionTab[] = [
   { href: '/admin/insights', label: 'School insights' },
   { href: '/admin/analytics', label: 'Analytics' },

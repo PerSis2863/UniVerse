@@ -281,6 +281,9 @@ model User {
   parentMeetingsHeld   ParentMeeting[]     @relation("ParentMeetingTeacher")
   parentMeetingsBooked ParentMeeting[]     @relation("ParentMeetingGuardian")
   parentMeetingsAbout  ParentMeeting[]     @relation("ParentMeetingStudent")
+  feePlansMade         FeePlan[]           @relation("FeePlansMade")
+  feeInvoices          FeeInvoice[]        @relation("FeeInvoices")
+  feePaymentsReceived  FeePayment[]        @relation("FeePaymentsReceived")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -413,6 +416,7 @@ model Course {
   questionBank     BankQuestion[] // reusable quiz questions (Stage 5 · B4.1)
 
   consentForms          ConsentForm[]
+  feePlans          FeePlan[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -3049,6 +3053,76 @@ model ParentMeeting {
   @@index([guardianId])
   @@index([startAt, remindedAt])
   @@map("parent_meetings")
+}
+
+/// A fee plan (Stage 5 · B15.2): what a class (or every student, courseId null) pays: items as JSON
+/// [{label, amount}] and instalments as JSON [{label, dueAt}], amounts in minor units (paise, cents).
+model FeePlan {
+  id          String       @id @default(cuid())
+  name        String
+  courseId    String?
+  course      Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  currency    String       @default("INR")
+  items       String
+  instalments String
+  createdById String
+  createdBy   User         @relation("FeePlansMade", fields: [createdById], references: [id], onDelete: Cascade)
+  archivedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  invoices    FeeInvoice[]
+
+  @@index([createdAt])
+  @@map("fee_plans")
+}
+
+/// One bill for one student (an instalment of a plan). `seq` is its number; amount, discount and
+/// paid are minor units; status DUE, PARTIAL, PAID, WAIVED or CANCELLED.
+model FeeInvoice {
+  id           String       @id @default(cuid())
+  seq          Int          @unique
+  planId       String?
+  plan         FeePlan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  instalment   Int          @default(1)
+  studentId    String
+  student      User         @relation("FeeInvoices", fields: [studentId], references: [id], onDelete: Cascade)
+  label        String
+  currency     String       @default("INR")
+  amount       Int
+  discount     Int          @default(0)
+  discountNote String?
+  paid         Int          @default(0)
+  dueAt        DateTime
+  status       String       @default("DUE")
+  remindedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  payments     FeePayment[]
+
+  @@unique([planId, instalment, studentId])
+  @@index([studentId])
+  @@index([status, dueAt])
+  @@map("fee_invoices")
+}
+
+/// A payment towards a bill, recorded at the office; `seq` is its receipt number. Voided, never deleted.
+model FeePayment {
+  id           String     @id @default(cuid())
+  seq          Int        @unique
+  invoiceId    String
+  invoice      FeeInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount       Int
+  method       String
+  reference    String?
+  note         String?
+  paidAt       DateTime
+  receivedById String
+  receivedBy   User       @relation("FeePaymentsReceived", fields: [receivedById], references: [id], onDelete: Cascade)
+  voidedAt     DateTime?
+  voidReason   String?
+  createdAt    DateTime   @default(now())
+
+  @@index([invoiceId])
+  @@index([paidAt])
+  @@map("fee_payments")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

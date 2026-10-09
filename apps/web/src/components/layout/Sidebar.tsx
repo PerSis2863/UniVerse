@@ -182,7 +182,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'Operations', icon: Settings,
       subItems: [
         { href: '/admin/administrative', label: 'nav.administrative' },
-        { href: '/admin/finances', label: 'nav.finances' },
+        { href: '/admin/finances', label: 'nav.finances', also: ['/admin/fees'] },
         { href: '/admin/internships', label: 'nav.internships' },
         { href: '/admin/student-life', label: 'nav.student_life' },
         { href: '/admin/integrations/lti', label: 'LMS integration' },
