@@ -7,9 +7,9 @@ done, where the code is and what's left for each item. Keep that table up to dat
 
 - Everything up to here is **merged into `main`** (PR #47) and **live**. The owner checked that the
   production database has every migration up to **0081**.
-- **Next migration number: `0093`** (0082–0091 block 4, 0092 Learning DNA, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
+- **Next migration number: `0094`** (0082–0091 block 4, 0092 Learning DNA, 0093 second chances, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
   applies new migrations first (`DEPLOY-CLOUDFLARE.md`, "Deploy command"). Nothing to run by hand.
-- Tests: `npx vitest run` → **303 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
+- Tests: `npx vitest run` → **313 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
 
 ### Done in Stage 5
 
@@ -18,7 +18,8 @@ A4 Web Vitals and bundle cuts (partly) · B2.1 course modules · B3.1 grading sp
 B3.4 gradebook categories and final grades · B4.1 question bank · B4.3–4.4 shuffle and exam mode ·
 B4.6 quiz item analysis · B15.3 report cards · B16.1 guardian (parent) accounts ·
 B16.2 parent–teacher messages · B16.3 parent–teacher meetings · B16.4 consent forms ·
-B15.2 school fees · B15.7 bulk import/export · B15.1 admissions · B15.6 custom roles · B15.8 staff · B15.4 library · B15.5 registers (admin actions in these to be tried with real data: see “Testing the admin parts” below).
+B15.2 school fees · B15.7 bulk import/export · B15.1 admissions · B15.6 custom roles · B15.8 staff · B15.4 library · B15.5 registers (admin actions in these to be tried with real data: see “Testing the admin parts” below) ·
+D1 Learning DNA · D10 second chances.
 
 ### Testing the admin parts (block 4)
 
@@ -52,7 +53,7 @@ The plan's order (section 2) is the guide. Suggested next steps:
    - ~~B15.5 registers~~ **built** (adding and changing entries still to try with real data). **Block 4 is built.**
    - B16.5 fee payment for parents comes with B15.2. Online payment needs the owner (Stripe exists;
      **UPI/Razorpay needs the owner's account**).
-2. **Block 5:** ~~D1 Learning DNA~~ **done** (concepts, tags, mastery from quizzes and rubrics; `src/lib/mastery.ts`), D10 second chance (feeds D1), D2 Whisper TA.
+2. **Block 5:** ~~D1 Learning DNA~~ **done** (concepts, tags, mastery from quizzes and rubrics; `src/lib/mastery.ts`), ~~D10 second chance~~ **done** (catch-ups on what was missed; practice feeds D1), D2 Whisper TA.
 3. **Block 6:** B7–B9 messaging, calls, docs and tasks power features. Then blocks 7–10.
 
 ### Leftovers inside finished items (pick up when nearby)

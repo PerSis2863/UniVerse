@@ -1,7 +1,8 @@
 'use client';
 
 import useSWR from 'swr';
-import { CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, RotateCcw, X } from 'lucide-react';
+import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -11,7 +12,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () => void }) {
   const { data, error } = useSWR<{
-    title: string; score: number | null; maxScore: number | null; revealed: boolean;
+    courseId: string; title: string; score: number | null; maxScore: number | null; revealed: boolean;
     questions: { id: string; question: string; options: string[]; points: number; yourAnswer: string | null; correct?: boolean; correctAnswer?: string }[];
   }>(`/api/quizzes/${quizId}/result`, authedJson);
   return (
@@ -45,6 +46,13 @@ export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () =>
               </div>
             </div>
           ))}
+          {/* Second chances (Stage 5 · D10): a catch-up on what was missed, once the answers are shown. */}
+          {data?.revealed && data.questions.some((q) => q.yourAnswer && q.correct === false) && (
+            <Link href={`/student/mastery?course=${data.courseId}`} className="flex items-center gap-3 p-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/60 transition-colors">
+              <RotateCcw className="w-5 h-5 text-indigo-500 shrink-0" aria-hidden />
+              <span className="min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Get a second chance</span><span className="block text-xs text-zinc-500">The class moments that explain what you missed, and a few questions to try. It doesn’t change your score.</span></span>
+            </Link>
+          )}
         </div>
       </div>
     </div>

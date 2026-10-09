@@ -80,7 +80,7 @@ export function MasteryMap({ courseId, studentId, practice = true }: { courseId:
           );
         })}
       </motion.div>
-      <p className="text-[11px] text-zinc-500">Worked out from your quiz answers and your teacher’s rubric scores, newest counting most. Only you and your teacher see it.</p>
+      <p className="text-[11px] text-zinc-500">Worked out from your quiz answers (once a quiz closes), your teacher’s rubric scores and your second-chance practice, newest counting most. Only you and your teacher see it.</p>
     </div>
   );
 }

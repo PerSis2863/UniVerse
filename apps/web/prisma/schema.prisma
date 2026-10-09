@@ -298,6 +298,7 @@ model User {
   assetsHeld           Asset[]             @relation("AssetsHeld")
   busRide              TransportRider?     @relation("BusRide")
   hostelRoom           HostelResident?     @relation("HostelRoom")
+  secondChances        SecondChance[]      @relation("SecondChances")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -433,6 +434,7 @@ model Course {
   feePlans          FeePlan[]
   pendingEnrolments PendingEnrolment[]
   concepts          CourseConcept[]
+  secondChances     SecondChance[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -3559,6 +3561,33 @@ model ConceptTag {
   @@unique([kind, refId, conceptId])
   @@index([refId])
   @@map("concept_tags")
+}
+
+/// A student's catch-up on something they missed (Stage 5 · D10; src/server/second-chance.ts). key is
+/// CONCEPT:<id>, QUESTION:<id> or CRITERION:<assignment id>:<criterion id>. status OPEN | DONE | DISMISSED.
+/// plan: what was built (JSON); results: practice answers [{ at, right, w }], counted towards mastery.
+model SecondChance {
+  id          String    @id @default(cuid())
+  studentId   String
+  student     User      @relation("SecondChances", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  key         String
+  conceptId   String?
+  topic       String
+  status      String    @default("OPEN")
+  plan        String?
+  results     String?
+  watched     Boolean   @default(false)
+  cards       Boolean   @default(false)
+  missedAt    DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@unique([studentId, courseId, key])
+  @@index([courseId, conceptId])
+  @@map("second_chances")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

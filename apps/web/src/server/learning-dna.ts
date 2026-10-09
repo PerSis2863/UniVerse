@@ -200,8 +200,12 @@ export async function suggestTags(user: SessionUser, courseId: string, b: Record
 
 // ── Mastery ─────────────────────────────────────────────────────────────────────────────────
 
-/** Every tagged observation for these students in a course, by student then concept. */
-async function observations(courseId: string, studentIds: string[]) {
+/**
+ * Every tagged observation for these students in a course, by student then concept. For a student's
+ * own view, quiz answers count only once the quiz shows its answers (closed or past due), as in the
+ * quiz review, so the map can't tell anyone which answers were right while the quiz is open.
+ */
+async function observations(courseId: string, studentIds: string[], revealedOnly = false) {
   const concepts = await prisma.courseConcept.findMany({ where: { courseId }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }], select: { id: true, name: true, description: true, parentId: true, position: true } });
   const out = new Map<string, Map<string, Observation[]>>();
   if (!concepts.length || !studentIds.length) return { concepts, out };
@@ -218,11 +222,15 @@ async function observations(courseId: string, studentIds: string[]) {
   const ids = studentIds.slice(0, 90);
   const [questions, submissions, assignments, returned] = await Promise.all([
     questionIds.length ? prisma.quizQuestion.findMany({ where: { quiz: { courseId } }, select: { id: true, quizId: true, correctAnswer: true } }) : Promise.resolve([]),
-    questionIds.length ? prisma.quizSubmission.findMany({ where: { quiz: { courseId }, studentId: { in: ids } }, select: { quizId: true, studentId: true, answers: true, submittedAt: true }, take: 5000 }) : Promise.resolve([]),
+    questionIds.length ? prisma.quizSubmission.findMany({ where: { quiz: { courseId }, studentId: { in: ids } }, select: { quizId: true, studentId: true, answers: true, submittedAt: true, quiz: { select: { status: true, dueDate: true } } }, take: 5000 }) : Promise.resolve([]),
     assignmentIds.length ? prisma.assignment.findMany({ where: { id: { in: assignmentIds.slice(0, 90) }, courseId }, select: { id: true, rubric: true } }) : Promise.resolve([]),
     assignmentIds.length ? prisma.assignmentSubmission.findMany({ where: { assignmentId: { in: assignmentIds.slice(0, 90) }, studentId: { in: ids }, status: 'RETURNED' }, select: { assignmentId: true, studentId: true, criteriaScores: true, returnedAt: true }, take: 5000 }) : Promise.resolve([]),
   ]);
+  // Second chances' practice answers (D10), for the concept each was about.
+  const practised = await prisma.secondChance.findMany({ where: { courseId, studentId: { in: ids }, conceptId: { not: null }, results: { not: null } }, select: { studentId: true, conceptId: true, results: true } });
+  const now = Date.now();
   for (const s of submissions) {
+    if (revealedOnly && s.quiz.status !== 'CLOSED' && !(s.quiz.dueDate && s.quiz.dueDate.getTime() < now)) continue;
     const answers = parse<Record<string, string>>(s.answers, {});
     for (const q of questions.filter((x) => x.quizId === s.quizId)) {
       const cs = byRef.get(q.id);
@@ -241,7 +249,18 @@ async function observations(courseId: string, studentIds: string[]) {
       for (const c of cs) add(s.studentId, c, { at: (s.returnedAt ?? new Date()).getTime(), outcome: Math.max(0, Math.min(1, Number(sc.score) / crit.points)), weight: 1.5 });
     }
   }
+  for (const r of practised) {
+    for (const x of parse<{ at: number; right: boolean; w: number }[]>(r.results, [])) {
+      if (r.conceptId && concepts.some((c) => c.id === r.conceptId) && Number.isFinite(x.at)) add(r.studentId, r.conceptId, { at: x.at, outcome: x.right ? 1 : 0, weight: Math.min(1, Math.max(0.1, Number(x.w) || 0.5)) });
+    }
+  }
   return { concepts, out };
+}
+
+/** One student's evidence per concept, as they see it (second chances use it to skip what's mastered since). */
+export async function masteryEvidence(courseId: string, studentId: string) {
+  const { concepts, out } = await observations(courseId, [studentId], true);
+  return (conceptId: string) => withChildren(concepts, out.get(studentId), conceptId);
 }
 
 /** A concept's evidence: its own and its sub-concepts' (knowing loops and recursion is evidence of control flow). */
@@ -255,7 +274,7 @@ export async function studentMastery(user: SessionUser, courseId: string, studen
   const studentId = a.canManage && studentParam ? studentParam : user.id;
   if (a.canManage && studentParam && !(await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId } }, select: { id: true } }))) throw new NotFoundException('That student isn’t in this course.');
   if (!a.canManage && user.role !== 'STUDENT') throw new ForbiddenException('This is for the course’s students and teacher.');
-  const { concepts, out } = await observations(courseId, [studentId]);
+  const { concepts, out } = await observations(courseId, [studentId], studentId === user.id);
   const mine = out.get(studentId);
   const rows = concepts.map((c) => ({ ...c, mastery: masteryOf(withChildren(concepts, mine, c.id)) }));
   // Study the specific sub-concepts, not the broad concept above them.

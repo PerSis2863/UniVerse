@@ -5,8 +5,10 @@ import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { CoursePicker, useCourseChoice } from '@/components/mastery/CoursePicker';
 import { MasteryMap } from '@/components/mastery/MasteryMap';
+import { SecondChances } from '@/components/mastery/SecondChances';
 
-// A student's Learning DNA (Stage 5 · D1): a tab of Assignments & grades.
+// A student's Learning DNA (Stage 5 · D1), with second chances on what they missed (D10): a tab of
+// Assignments & grades.
 export default function StudentMasteryPage() {
   const { courses, chosen, choose } = useCourseChoice();
   return (
@@ -17,6 +19,7 @@ export default function StudentMasteryPage() {
         {!courses ? <ContentSkeleton variant="grid" /> : !chosen ? <p className="text-sm text-zinc-500">You’re not in any courses yet.</p> : (
           <>
             <CoursePicker courses={courses} value={chosen.id} onChange={choose} />
+            <SecondChances key={`sc-${chosen.id}`} courseId={chosen.id} />
             <MasteryMap key={chosen.id} courseId={chosen.id} />
           </>
         )}
