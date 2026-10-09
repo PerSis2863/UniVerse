@@ -38,6 +38,10 @@ const AREA_MODELS: Record<string, string[]> = {
 };
 const byName = new Map(MODELS.map((m) => [m.name, m]));
 
+/** Table counts for the console, kept a minute per server instance, and the database shape as JSON (fixed for a deploy). */
+let counted: { at: number; count: Record<string, number> } | null = null;
+let shape: string | null = null;
+
 /** Tables that can't be edited here (binary files, and the history of these edits itself). */
 const LOCKED = new Set(['OwnerChange', 'StoredFile']);
 const owned = { owner: true } as const;
@@ -595,11 +599,22 @@ export default function ownerModule(router: Router) {
 
   // ── Any table ──
 
-  r.get('tables', async () => {
-    // One query for every table: a count per table is ~90 queries, over D1's 50-per-request limit.
+  // Every console visit asks for the tables. Counting them all is ~170 subqueries, and the answer
+  // used to carry the whole database shape too (~240 KB): on the free plan's CPU allowance that took
+  // the Worker over its limit, and the console's other calls running next to it failed with it
+  // ("Worker exceeded CPU time limit", Oct 2026). Counts are now kept a minute per server instance
+  // (?fresh=1 recounts), and the shape, fixed for a deploy, is its own call the browser keeps.
+  r.get('tables', async ({ query }) => {
     const open = MODELS.filter((m) => !LOCKED.has(m.name));
-    const count = await countTables(open);
-    return { tables: open.map((m) => ({ name: m.name, title: humanize(m.name), count: count[m.name] })), schema: { models: MODELS.filter((m) => !LOCKED.has(m.name)).map((m) => ({ name: m.name, fields: columns(m) })), enums: ENUMS } };
+    // One query for every table: a count per table is ~90 queries, over D1's 50-per-request limit.
+    if (!counted || Date.now() - counted.at > 60_000 || query.fresh === '1') counted = { at: Date.now(), count: await countTables(open) };
+    const count = counted.count;
+    return { tables: open.map((m) => ({ name: m.name, title: humanize(m.name), count: count[m.name] ?? 0 })) };
+  });
+
+  r.get('schema', async () => {
+    shape ??= JSON.stringify({ models: MODELS.filter((m) => !LOCKED.has(m.name)).map((m) => ({ name: m.name, fields: columns(m) })), enums: ENUMS });
+    return new Response(shape, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=3600' } });
   });
 
   r.get<{ model: string }>('records/:model', async ({ params, query }) => {
