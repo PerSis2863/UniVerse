@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { Baby, Loader2, Moon, ShieldCheck, Video } from 'lucide-react';
+import { Baby, Loader2, MessageCircle, Moon, ShieldCheck, Video } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
 import { authedJson } from '@/lib/authed-fetch';
@@ -11,7 +11,7 @@ import { authedJson } from '@/lib/authed-fetch';
 // Admin → Safety → Policy (Stage 4 · 4.10; src/server/safety.ts): how the school keeps young
 // students safe. Each switch saves at once.
 
-interface Policy { guard: boolean; recordMinors: boolean; quietMinors: boolean; quietStart: string; quietEnd: string; studentsMinors: boolean; open: number; ai: boolean }
+interface Policy { guard: boolean; recordMinors: boolean; quietMinors: boolean; quietStart: string; quietEnd: string; studentsMinors: boolean; parentMessaging: boolean; open: number; ai: boolean }
 
 function Row({ icon: Icon, tint, title, desc, children }: { icon: typeof Moon; tint: string; title: string; desc: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -73,6 +73,9 @@ export function SafetyPolicy() {
                 )}
               </>}>
                 <Switch checked={data.quietMinors} label="Quiet hours for students under 18" onChange={(v) => void save({ quietMinors: v }, v ? 'Quiet hours on for students under 18' : 'Quiet hours off for students under 18')} />
+              </Row>
+              <Row icon={MessageCircle} tint="#30b0c7" title="Parent–teacher messages" desc={data.parentMessaging ? 'On: parents can write to their children’s teachers from the parent app, and teachers to the parents of their students. Teachers set their hours; messages are checked for safety.' : 'Off: parents can’t message teachers in UniVerse.'}>
+                <Switch checked={data.parentMessaging} label="Parent–teacher messages" onChange={(v) => void save({ parentMessaging: v }, v ? 'Parents can message teachers' : 'Parent messages are off')} />
               </Row>
               <Row icon={Baby} tint="#ff9500" title="Students without a birth date are under 18" desc="Turn on for a school; leave off for a university or college. A student with a birth date on their profile always counts by it.">
                 <Switch checked={data.studentsMinors} label="Students without a birth date are under 18" onChange={(v) => void save({ studentsMinors: v }, v ? 'Students without a birth date count as under 18' : 'Only birth dates decide who is under 18')} />

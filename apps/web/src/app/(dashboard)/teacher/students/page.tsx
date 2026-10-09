@@ -8,6 +8,10 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { TabPill } from '@/components/ui/Glide';
+import { useRouter } from 'next/navigation';
+import { authedJson } from '@/lib/authed-fetch';
+import { errorMessage } from '@/lib/api';
+import { MessageParentSheet } from '@/components/guardian/MessageParent';
 
 /** One row per student per course you teach (/courses/my-students). */
 interface MyStudent { id: string; enrollmentId?: string; name: string; email: string; course?: string; grade: string; attendance: string }
@@ -23,6 +27,8 @@ export default function TeacherStudents() {
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<{type: 'profile' | 'message' | 'warning', student: MyStudent} | null>(null);
   const [modalText, setModalText] = useState('');
+  const [parentsOf, setParentsOf] = useState<MyStudent | null>(null);
+  const router = useRouter();
 
   const { data: students = [], isLoading } = useSWR<MyStudent[]>('/courses/my-students', fetcher);
 
@@ -39,8 +45,16 @@ export default function TeacherStudents() {
 
   const handleAction = (type: 'profile' | 'message' | 'warning', student: MyStudent) => {
     setActionMenuOpen(null);
+    // A real chat with the student, in Messages.
+    if (type === 'message') { void messageStudent(student); return; }
     setActiveModal({ type, student });
     setModalText('');
+  };
+  const messageStudent = async (student: MyStudent) => {
+    try {
+      const r = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: student.id }) });
+      router.push(`/teacher/inbox?c=${r.id}`);
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t open the chat.')); }
   };
 
   const submitModal = () => {
@@ -167,7 +181,8 @@ export default function TeacherStudents() {
                       {actionMenuOpen === rowKey(student) && (
                         <div className="absolute right-8 top-10 w-48 bg-white dark:bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 p-2 flex flex-col gap-1 text-left" onClick={e => e.stopPropagation()}>
                           <button onClick={() => handleAction('profile', student)} className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">View Profile</button>
-                          <button onClick={() => handleAction('message', student)} className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Message Student</button>
+                          <button onClick={() => handleAction('message', student)} className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Message student</button>
+                          <button onClick={() => { setActionMenuOpen(null); setParentsOf(student); }} className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Message a parent</button>
                           <button onClick={() => handleAction('warning', student)} className="px-3 py-2 text-sm text-amber-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-left">Issue Warning</button>
                         </div>
                       )}
@@ -283,6 +298,7 @@ export default function TeacherStudents() {
           </div>
         </div>
       )}
+      {parentsOf && <MessageParentSheet studentId={parentsOf.id} studentName={parentsOf.name} inbox="/teacher/inbox" onClose={() => setParentsOf(null)} />}
     </>
   );
 }

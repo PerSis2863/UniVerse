@@ -7,7 +7,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
 
 - Everything up to here is **merged into `main`** (PR #47) and **live**. The owner checked that the
   production database has every migration up to **0081**.
-- **Next migration number: `0082`.** Merging to `main` makes Cloudflare build and deploy, and the deploy
+- **Next migration number: `0083`** (0082 parent messages, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
   applies new migrations first (`DEPLOY-CLOUDFLARE.md`, "Deploy command"). Nothing to run by hand.
 - Tests: `npx vitest run` → **218 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
 
@@ -23,9 +23,8 @@ B4.6 quiz item analysis · B15.3 report cards · B16.1 guardian (parent) account
 The plan's order (section 2) is the guide. Suggested next steps:
 
 1. **Finish block 4 (school admin and parents):**
-   - B16.2 parent–teacher messaging (school rules: office hours, quiet hours, translation, moderation).
-     Parent accounts can't use chat today: allow only what you build through the allowlist (see "Parent
-     accounts" below).
+   - ~~B16.2 parent–teacher messaging~~ **done** (see the Progress row). Parents still can't use the chat
+     API itself: they go through `/api/parent/chats` (see "Parent accounts" below).
    - B16.4 consent forms with e-signature, per child (school sends, parent signs in `/parent`).
    - B16.3 parent–teacher meetings (slot booking; the office-hours queue code can help).
    - B15.2 fees, B15.7 bulk CSV import/export with preview and undo, B15.1 admissions,

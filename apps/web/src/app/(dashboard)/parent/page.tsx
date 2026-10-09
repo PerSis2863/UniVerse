@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { m as motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +15,7 @@ import { LoadError } from '@/components/ui/LoadError';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { ChildView, type ChildData } from '@/components/guardian/ChildView';
+import { ParentMessages } from '@/components/guardian/ParentMessages';
 import { authedJson } from '@/lib/authed-fetch';
 import { api, errorMessage } from '@/lib/api';
 import { fadeUp } from '@/lib/motion';
@@ -37,8 +38,29 @@ export default function ParentPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [sheet, setSheet] = useState<'account' | 'updates' | null>(null);
+  // Schoolwork or messages with the child's teachers (B16.2); ?chat=<id> (from a notification) opens a chat.
+  const [tab, setTab] = useState<'school' | 'messages'>('school');
+  const [chatId, setChatId] = useState<string | null>(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('chat')));
   const kids = data?.children ?? [];
   const child = kids.find((k) => k.linkId === selected) ?? kids[0];
+  // A chat from a notification: show the child it's about, on the messages tab.
+  useEffect(() => {
+    if (!chatId || !kids.length) return;
+    let off = false;
+    authedJson<{ studentId: string }>(`/api/parent/chats/${encodeURIComponent(chatId)}`).then((c) => {
+      if (off) return;
+      const k = kids.find((x) => x.studentId === c.studentId);
+      if (k) { setSelected(k.linkId); setTab('messages'); }
+    }).catch(() => { if (!off) setChatId(null); });
+    return () => { off = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the children arrive
+  }, [kids.length]);
+  const openChat = (id: string | null) => {
+    setChatId(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set('chat', id); else url.searchParams.delete('chat');
+    window.history.replaceState(null, '', url);
+  };
   const unread = notes?.filter((n) => !n.read).length ?? 0;
 
   const linked = (linkId: string) => { setAdding(false); setSelected(linkId); void mutate(); };
@@ -81,12 +103,19 @@ export default function ParentPage() {
                   ? <Segmented<string> label="Child" value={child.linkId} onChange={setSelected} segments={kids.map((k) => ({ value: k.linkId, label: k.firstName }))} className="mb-4 w-full" />
                   : <select aria-label="Child" value={child.linkId} onChange={(e) => setSelected(e.target.value)} className="input mb-4">{kids.map((k) => <option key={k.linkId} value={k.linkId}>{k.firstName}</option>)}</select>
               )}
+              <Segmented<'school' | 'messages'> label="Show" value={tab} onChange={(v) => setTab(v)} segments={[{ value: 'school', label: 'Schoolwork' }, { value: 'messages', label: 'Messages' }]} className="mb-4 w-full" />
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={child.linkId} variants={fadeUp} initial="hidden" animate="show" exit={{ opacity: 0 }}>
-                  <ChildView data={child} eyebrow={child.relation ? `You’re linked as ${child.relation.toLowerCase()}` : 'Linked to your account'} note="Up to date as of now. Grades, attendance and deadlines come straight from the school." />
-                  <div className="mt-6 flex justify-center">
-                    <button type="button" onClick={() => void unlink(child)} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"><UserMinus className="w-4 h-4" /> Remove {child.firstName}</button>
-                  </div>
+                <motion.div key={`${child.linkId}-${tab}`} variants={fadeUp} initial="hidden" animate="show" exit={{ opacity: 0 }}>
+                  {tab === 'messages' ? (
+                    <ParentMessages studentId={child.studentId} chatId={chatId} onChat={openChat} />
+                  ) : (
+                    <>
+                      <ChildView data={child} eyebrow={child.relation ? `You’re linked as ${child.relation.toLowerCase()}` : 'Linked to your account'} note="Up to date as of now. Grades, attendance and deadlines come straight from the school." />
+                      <div className="mt-6 flex justify-center">
+                        <button type="button" onClick={() => void unlink(child)} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"><UserMinus className="w-4 h-4" /> Remove {child.firstName}</button>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               </AnimatePresence>
             </>

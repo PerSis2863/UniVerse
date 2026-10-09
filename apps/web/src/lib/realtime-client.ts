@@ -158,6 +158,8 @@ function handle(event: ServerEvent) {
       void mutate('/api/chat/conversations');
       void mutate('/api/calls'); // a call started or ended (only refetches if the Calls page is open)
       void mutate(startsWith(`/api/chat/conversations/${event.conversationId}/`));
+      // The parent app's chats (Stage 5 · B16.2).
+      void mutate(startsWith('/api/parent/chats'));
       // Only a new call can change the ringing card (other chat events used to refetch it too).
       if (event.call) void mutate('/api/chat/incoming');
       break;

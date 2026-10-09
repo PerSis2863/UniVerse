@@ -7,6 +7,7 @@ import { quietFor } from './focus';
 import { firstUrl, linkPreview } from './link-preview';
 import { alertOwner, watchWordsIn } from './moderation';
 import { guardMessage } from './safety';
+import { hoursOf, inHours } from './parent-hours';
 import { deliver, publishChat } from './realtime';
 import { pushService } from './services/push.service';
 import { pretranslate } from './translate';
@@ -69,7 +70,7 @@ export async function notifyAway(conversationId: string, from: { id: string; nam
   const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId, ...(type === 'CALL' ? { call: true } : {}) });
   const now = new Date();
   const [convo, allMembers] = await Promise.all([
-    prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true } }),
+    prisma.conversation.findUnique({ where: { id: conversationId }, select: { isGroup: true, name: true, aboutStudentId: true } }),
     prisma.conversationParticipant.findMany({
       where: {
         conversationId,
@@ -109,11 +110,15 @@ export async function notifyAway(conversationId: string, from: { id: string; nam
   const text = (type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
   const title = convo.isGroup ? `New messages in ${convo.name ?? 'a group chat'}` : `New message from ${from.name}`;
   const fresh = members.filter((m) => !skip.has(m.userId));
-  const inbox = (role: string) => `/${role === 'ADMIN' ? 'admin' : role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`;
-  if (type !== 'CALL' && fresh.length) {
+  // Parents have their own app (Stage 5 · B16.2): their chats open there.
+  const inbox = (role: string) => (role === 'GUARDIAN' ? `/parent?chat=${conversationId}` : `/${role === 'ADMIN' ? 'admin' : role === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${conversationId}`);
+  // A parent–teacher chat: outside the teacher's hours for parents, the message waits without a push.
+  const hours = convo.aboutStudentId ? await hoursOf(fresh.filter((m) => m.user.role !== 'GUARDIAN').map((m) => m.userId)) : null;
+  const pushTo = hours ? fresh.filter((m) => m.user.role === 'GUARDIAN' || inHours(hours(m.userId))) : fresh;
+  if (type !== 'CALL' && pushTo.length) {
     // Same once-an-hour rule as the in-app notification; the tag folds a chat's pushes into one.
     const byRole = new Map<string, string[]>();
-    for (const m of fresh) byRole.set(m.user.role, [...(byRole.get(m.user.role) ?? []), m.userId]);
+    for (const m of pushTo) byRole.set(m.user.role, [...(byRole.get(m.user.role) ?? []), m.userId]);
     await Promise.all([...byRole].map(([role, ids]) => pushService.sendToMany(ids, {
       title,
       body: convo.isGroup ? `${from.name}: ${text}` : text,

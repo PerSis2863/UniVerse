@@ -424,8 +424,11 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Safe by default (Stage 4 · 4.10): no flags in the sample; the default policy; quiet hours off.
   [/^\/api\/safety\/flags$/, () => ok({ open: 0, flags: [] })],
   [/^\/api\/safety\/flags\/([^/]+)$/, () => ok({ messages: [] })],
-  [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, open: 0, ai: false })],
+  [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, parentMessaging: true, open: 0, ai: false })],
   [/^\/api\/me\/quiet$/, () => ok({ on: false, start: '22:00', end: '07:00', locked: false })],
+  // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
+  [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
+  [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
   // Impact rooms (Stage 4 · 4.12): one room, followed, with a planned impact call.
   [/^\/api\/impact-rooms$/, () => ok({ staff: false, rooms: [
     { id: 'sample-p1', name: 'Green City Drive', description: 'Planting trees and caring for them through their first summer.', location: 'Riverside Park', sdgNumber: 13, isPublic: true, ngo: { name: 'Earth Collective', logoUrl: null, isVerified: true }, followers: 18, following: 'VOLUNTEER', hours: 180, volunteers: 31, shifts: 9, nextCall: { startsAt: at(6, 17), title: 'Monthly impact call', open: false }, lastActivity: at(-1) },

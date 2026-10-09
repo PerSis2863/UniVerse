@@ -274,6 +274,7 @@ model User {
   officeHours          OfficeHours?       @relation("OfficeHours")
   dailyBrief           DailyBrief?        @relation("DailyBrief")
   quietHours           QuietHours?        @relation("QuietHours")
+  parentContactHours   ParentContactHours? @relation("ParentContactHours")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -603,6 +604,8 @@ model Conversation {
   avatarUrl       String?
   createdById     String?
   disappearingSec Int? // new messages expire after this many seconds (null = off)
+  /// A parent–teacher chat (Stage 5 · B16.2): the child it's about (src/server/parent-messages.ts).
+  aboutStudentId  String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   // A channel inside a community (Discord-style): TEXT, ANNOUNCE (only moderators post) or VOICE
@@ -621,6 +624,7 @@ model Conversation {
   safetyFlags       SafetyFlag[]       @relation("SafetyFlags")
 
   @@index([communityId])
+  @@index([aboutStudentId])
   @@map("conversations")
 }
 
@@ -2956,10 +2960,27 @@ model SchoolPolicy {
   quietStart     String   @default("22:00")
   quietEnd       String   @default("07:00")
   studentsMinors Boolean  @default(false)
+  /// Parents can message their children's teachers (Stage 5 · B16.2).
+  parentMessaging Boolean @default(true)
   updatedAt      DateTime @default(now())
   updatedById    String?
 
   @@map("school_policy")
+}
+
+/// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)
+/// and hours in their time zone. Outside them parents' messages arrive without a push.
+model ParentContactHours {
+  teacherId String   @id
+  teacher   User     @relation("ParentContactHours", fields: [teacherId], references: [id], onDelete: Cascade)
+  open      Boolean  @default(true)
+  days      String   @default("1,2,3,4,5")
+  start     String   @default("08:00")
+  end       String   @default("16:00")
+  timeZone  String   @default("UTC")
+  updatedAt DateTime @default(now())
+
+  @@map("parent_contact_hours")
 }
 
 /// Quiet hours (Stage 4 · 4.10): no push notifications between start and end in this time zone.
