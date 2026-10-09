@@ -756,6 +756,8 @@ A "round" ≈ one long agent session. Mark each item in Progress as it lands.
 
 ## Progress (keep this up to date, so either agent can take over)
 
+> **Taking over?** Read `STAGE-5-HANDOFF.md` first: where things stand, what's next, the owner's rules and how to test.
+
 **Branch:** `claude/great-hamilton-8g8xdm` (from `main`). One commit per item; push at
 checkpoints; merge only when the owner says "merge". **Next migration: `0082`.**
 
