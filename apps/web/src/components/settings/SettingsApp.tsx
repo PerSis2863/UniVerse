@@ -33,6 +33,7 @@ const ConsentsPanel = dynamic(() => import('@/components/settings/ConsentsPanel'
 const DownloadMyData = dynamic(() => import('@/components/settings/DownloadMyData').then((m) => m.DownloadMyData), { ssr: false, loading: sectionLoading });
 const NetworkVisibility = dynamic(() => import('@/components/settings/NetworkVisibility').then((m) => m.NetworkVisibility), { ssr: false, loading: sectionLoading });
 const GuardianShareCard = dynamic(() => import('@/components/settings/GuardianShareCard').then((m) => m.GuardianShareCard), { ssr: false, loading: sectionLoading });
+const GuardianAccountsCard = dynamic(() => import('@/components/settings/GuardianAccountsCard').then((m) => m.GuardianAccountsCard), { ssr: false, loading: sectionLoading });
 const GuardianContactsCard = dynamic(() => import('@/components/settings/GuardianContactsCard').then((m) => m.GuardianContactsCard), { ssr: false, loading: sectionLoading });
 const RecentSignIns = dynamic(() => import('@/components/security/RecentSignIns').then((m) => m.RecentSignIns), { ssr: false, loading: sectionLoading });
 
@@ -136,7 +137,7 @@ export function SettingsApp({ role }: { role: Role }) {
           </div>
           {/* Phones: the list, and the open section sliding in over it. */}
           <div className="md:hidden relative" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-            <motion.div animate={{ opacity: current ? 0 : 1, x: current ? -40 : 0 }} transition={spring.smooth} aria-hidden={!!current} className={cn(current && 'pointer-events-none')}>{list}</motion.div>
+            <motion.div animate={{ opacity: current ? 0 : 1, x: current ? -40 : 0 }} transition={spring.smooth} aria-hidden={!!current} inert={!!current} className={cn(current && 'pointer-events-none')}>{list}</motion.div>
             <AnimatePresence>
               {current && (
                 <motion.div key={current.id} initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={spring.smooth} className="absolute inset-x-0 top-0 min-h-full">
@@ -197,7 +198,7 @@ function SectionBody({ id, role, title }: { id: string; role: Role; title: strin
           <RecentSignIns />
         </Card>
       );
-    case 'family': return <div className="space-y-6"><GuardianContactsCard /><GuardianShareCard /></div>;
+    case 'family': return <div className="space-y-6"><GuardianAccountsCard /><GuardianContactsCard /><GuardianShareCard /></div>;
     case 'consents': return <ConsentsPanel embedded />;
     case 'ai': return <AiFeatures />;
     case 'organization': return <Card title={title} subtitle="Your school on UniVerse"><OrganizationSettings /></Card>;

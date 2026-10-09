@@ -21,7 +21,7 @@ describe('guardian allowlist', () => {
   const req = (path: string) => new Request(`https://x.test${path}`);
   const guardian = { role: 'GUARDIAN' };
   it('lets parent accounts use the parent app and their own account', () => {
-    for (const p of ['/api/parent/children', '/api/parent/children/abc', '/api/me', '/api/bootstrap', '/api/notifications', '/api/realtime/ticket', '/api/core/users/me', '/api/core/users/me/deletion', '/api/core/auth/register', '/api/core/notifications/subscribe']) {
+    for (const p of ['/api/parent/children', '/api/parent/children/abc', '/api/me', '/api/bootstrap', '/api/notifications', '/api/realtime/ticket', '/api/core/users/me', '/api/core/users/me/deletion', '/api/core/auth/register', '/api/core/auth/me', '/api/core/notifications/subscribe']) {
       expect(guardianBlocked(req(p), guardian), p).toBe(false);
     }
   });

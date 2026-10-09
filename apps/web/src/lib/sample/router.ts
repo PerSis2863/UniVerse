@@ -154,6 +154,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       closing: 'Reply to me in Messages any time if you want to talk it through.',
     },
   }] })],
+  // Parent accounts (Stage 5 · B16.1): none linked in the sample.
+  [/^\/api\/student\/guardian-accounts$/, () => ok({ links: [], code: null })],
+  [/^\/api\/parent\/children$/, () => ok({ children: [] })],
   // Report cards (Stage 5 · B15.3): none in the sample.
   [/^\/api\/report-cards\/mine$/, () => ok({ cards: [] })],
   [/^\/api\/admin\/report-cards$/, () => ok({ runs: [], school: 'Sample University' })],
@@ -464,6 +467,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
+  ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/grade-categories$/, () => { notice(); return ok({ categories: [], assessments: [] }); }],
