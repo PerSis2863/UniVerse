@@ -125,7 +125,7 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/teacher/courses', label: 'nav.my_courses' },
         { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor'] },
-        { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/forms'] },
+        { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/meetings', '/teacher/forms'] },
         { href: '/teacher/attendance', label: 'nav.attendance' },
         { href: '/teacher/grades', label: 'nav.grades' },
         { href: '/teacher/quizzes', label: 'nav.quizzes' },

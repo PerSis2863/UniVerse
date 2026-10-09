@@ -17,6 +17,7 @@ import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { ChildView, type ChildData } from '@/components/guardian/ChildView';
 import { ParentMessages } from '@/components/guardian/ParentMessages';
 import { FORMS_KEY, ParentForms, type ParentFormsData } from '@/components/guardian/ParentForms';
+import { ParentMeetings } from '@/components/guardian/ParentMeetings';
 import { authedJson } from '@/lib/authed-fetch';
 import { api, errorMessage } from '@/lib/api';
 import { fadeUp } from '@/lib/motion';
@@ -31,6 +32,7 @@ type Child = ChildData & { linkId: string; studentId: string; relation: string |
 type Note = { id: string; title: string; body: string; read: boolean; createdAt: string };
 
 const KEY = '/api/parent/children';
+type Tab = 'school' | 'messages' | 'meetings' | 'forms';
 const RELATIONS = ['Mother', 'Father', 'Parent', 'Guardian', 'Grandparent', 'Other'];
 
 export default function ParentPage() {
@@ -39,9 +41,9 @@ export default function ParentPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [sheet, setSheet] = useState<'account' | 'updates' | null>(null);
-  // Schoolwork, messages with the child's teachers (B16.2) or forms to sign (B16.4); ?chat=<id> or
-  // ?tab=forms&form=<id> (from a notification) opens a chat or a form.
-  const [tab, setTab] = useState<'school' | 'messages' | 'forms'>('school');
+  // Schoolwork, messages with the child's teachers (B16.2), meetings (B16.3) or forms to sign
+  // (B16.4); ?chat=<id>, ?tab=meetings or ?tab=forms&form=<id> (from a notification) open them.
+  const [tab, setTab] = useState<Tab>('school');
   const [chatId, setChatId] = useState<string | null>(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('chat')));
   const [formId, setFormId] = useState<string | null>(null);
   const { data: forms } = useSWR<ParentFormsData>(data?.children.length ? FORMS_KEY : null, authedJson);
@@ -49,6 +51,7 @@ export default function ParentPage() {
     const t = setTimeout(() => {
       const q = new URLSearchParams(window.location.search);
       if (q.get('tab') === 'forms') { setTab('forms'); setFormId(q.get('form')); }
+      else if (q.get('tab') === 'meetings') setTab('meetings');
     }, 0);
     return () => clearTimeout(t);
   }, []);
@@ -78,10 +81,11 @@ export default function ParentPage() {
     if (id) { url.searchParams.set('tab', 'forms'); url.searchParams.set('form', id); } else url.searchParams.delete('form');
     window.history.replaceState(null, '', url);
   };
-  const switchTab = (v: 'school' | 'messages' | 'forms') => {
+  const switchTab = (v: Tab) => {
     setTab(v);
     const url = new URL(window.location.href);
-    if (v === 'forms') url.searchParams.set('tab', 'forms'); else { url.searchParams.delete('tab'); url.searchParams.delete('form'); }
+    url.searchParams.delete('form');
+    if (v === 'forms' || v === 'meetings') url.searchParams.set('tab', v); else url.searchParams.delete('tab');
     window.history.replaceState(null, '', url);
   };
   const toSign = forms?.waiting ?? 0;
@@ -127,15 +131,19 @@ export default function ParentPage() {
                   ? <Segmented<string> label="Child" value={child.linkId} onChange={setSelected} segments={kids.map((k) => ({ value: k.linkId, label: k.firstName }))} className="mb-4 w-full" />
                   : <select aria-label="Child" value={child.linkId} onChange={(e) => setSelected(e.target.value)} className="input mb-4">{kids.map((k) => <option key={k.linkId} value={k.linkId}>{k.firstName}</option>)}</select>
               )}
-              <Segmented<'school' | 'messages' | 'forms'> label="Show" value={tab} onChange={switchTab} className="mb-4 w-full" segments={[
-                { value: 'school', label: 'Schoolwork' },
+              <Segmented<Tab> label="Show" value={tab} onChange={switchTab} className="mb-4 w-full" segments={[
+                // Four tabs fit a phone with the short name.
+                { value: 'school', label: <><span className="sm:hidden">School</span><span className="hidden sm:inline">Schoolwork</span></> },
                 { value: 'messages', label: 'Messages' },
+                { value: 'meetings', label: 'Meetings' },
                 { value: 'forms', label: <span className="inline-flex items-center gap-1.5">Forms{toSign > 0 && <><span aria-hidden className="min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold inline-flex items-center justify-center">{toSign}</span><span className="sr-only">, {toSign} to sign</span></>}</span> },
               ]} />
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={tab === 'forms' ? 'forms' : `${child.linkId}-${tab}`} variants={fadeUp} initial="hidden" animate="show" exit={{ opacity: 0 }}>
                   {tab === 'forms' ? (
                     <><h1 className="sr-only">Forms to sign</h1><ParentForms formId={formId} onForm={openForm} /></>
+                  ) : tab === 'meetings' ? (
+                    <><h1 className="sr-only">Meetings with {child.firstName}’s teachers</h1><ParentMeetings studentId={child.studentId} /></>
                   ) : tab === 'messages' ? (
                     <><h1 className="sr-only">Messages with {child.firstName}’s teachers</h1><ParentMessages studentId={child.studentId} chatId={chatId} onChat={openChat} /></>
                   ) : (

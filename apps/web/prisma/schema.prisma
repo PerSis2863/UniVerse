@@ -278,6 +278,9 @@ model User {
   consentFormsSent     ConsentForm[]       @relation("ConsentFormsSent")
   consentFor           ConsentResponse[]   @relation("ConsentFor")
   consentSigned        ConsentResponse[]   @relation("ConsentSigned")
+  parentMeetingsHeld   ParentMeeting[]     @relation("ParentMeetingTeacher")
+  parentMeetingsBooked ParentMeeting[]     @relation("ParentMeetingGuardian")
+  parentMeetingsAbout  ParentMeeting[]     @relation("ParentMeetingStudent")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -3015,6 +3018,37 @@ model ConsentResponse {
   @@unique([formId, studentId])
   @@index([guardianId])
   @@map("consent_responses")
+}
+
+/// A parent–teacher meeting time (Stage 5 · B16.3): opened by a teacher, booked by a parent for one
+/// child. VIDEO meetings use the app's calls (call id "pm_<id>"); IN_PERSON ones say where.
+/// `notes` stay with the teacher; `summary` is shared with the parent.
+model ParentMeeting {
+  id            String    @id @default(cuid())
+  teacherId     String
+  teacher       User      @relation("ParentMeetingTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  startAt       DateTime
+  durationMin   Int       @default(15)
+  mode          String    @default("VIDEO")
+  location      String?
+  teacherTimeZone String?
+  guardianId    String?
+  guardian      User?     @relation("ParentMeetingGuardian", fields: [guardianId], references: [id])
+  studentId     String?
+  student       User?     @relation("ParentMeetingStudent", fields: [studentId], references: [id])
+  topic         String?
+  parentTimeZone String?
+  bookedAt      DateTime?
+  remindedAt    DateTime?
+  notes         String?
+  summary       String?
+  summarySentAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([teacherId, startAt])
+  @@index([guardianId])
+  @@index([startAt, remindedAt])
+  @@map("parent_meetings")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

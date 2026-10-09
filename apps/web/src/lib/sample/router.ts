@@ -429,6 +429,12 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
+  // Parent meetings (Stage 5 · B16.3): an evening of times, one booked.
+  [/^\/api\/teacher\/meetings$/, () => ok({ lengths: [10, 15, 20, 30, 45, 60], past: [], upcoming: [
+    { id: 'sample-pm-1', startAt: at(2, 16), durationMin: 15, mode: 'VIDEO', location: null, topic: 'How Aarav is settling in after the move', bookedAt: at(-1), parent: { id: 'sample-parent-1', name: 'Priya Mehta', avatar: null, relation: 'Mother' }, student: { id: 's1', name: 'Aarav Mehta' }, notes: null, summary: null, summarySentAt: null },
+    { id: 'sample-pm-2', startAt: at(2, 16, 15), durationMin: 15, mode: 'VIDEO', location: null, topic: null, bookedAt: null, parent: null, student: null, notes: null, summary: null, summarySentAt: null },
+    { id: 'sample-pm-3', startAt: at(2, 16, 30), durationMin: 15, mode: 'VIDEO', location: null, topic: null, bookedAt: null, parent: null, student: null, notes: null, summary: null, summarySentAt: null },
+  ] })],
   // Consent forms (Stage 5 · B16.4): one trip form, half answered (the sample has no parent accounts to sign).
   [/^\/api\/consent-forms$/, ({ db }) => ok({ canSendToSchool: db.me.role === 'ADMIN', courses: db.courses.slice(0, 6).map((c) => ({ id: c.id, code: c.code, name: c.name })), forms: [
     { id: 'sample-form-1', title: 'Science museum trip', dueAt: at(5, 23, 59), closed: false, createdAt: at(-2), from: db.me.name, to: 'Every student', students: 4, yes: 2, no: 0 },

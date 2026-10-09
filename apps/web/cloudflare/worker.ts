@@ -186,7 +186,7 @@ export default {
   },
 };
 
-/** Is a scheduled call starting within about 15 minutes, a chat reminder due, a study plan's
+/** Is a scheduled call or a booked parent meeting starting within about 15 minutes, a chat reminder due, a study plan's
  *  7-day follow-up due, a chat message scheduled for now, or someone's morning brief (Stage 4 · 4.9),
  *  not yet sent? */
 async function callsDue(env: Env): Promise<boolean> {
@@ -196,6 +196,7 @@ async function callsDue(env: Env): Promise<boolean> {
     // A scheduled call starting soon, or a "/remind" reminder that's due.
     const row = await env.DB.prepare(
       `SELECT 1 FROM scheduled_calls WHERE "remindedAt" IS NULL AND "startAt" > ?1 AND "startAt" <= ?2
+       UNION ALL SELECT 1 FROM parent_meetings WHERE "guardianId" IS NOT NULL AND "remindedAt" IS NULL AND "startAt" > ?1 AND "startAt" <= ?2
        UNION ALL SELECT 1 FROM chat_reminders WHERE "sentAt" IS NULL AND "dueAt" <= ?3
        UNION ALL SELECT 1 FROM support_plans WHERE "status" = 'ACTIVE' AND "followUpNotifiedAt" IS NULL AND "followUpAt" <= ?3
        UNION ALL SELECT 1 FROM scheduled_messages WHERE "sendAt" <= ?4
