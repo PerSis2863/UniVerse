@@ -23,6 +23,7 @@ import { CallsPanel } from './calls';
 import { AnalyticsPanel, AttentionCard, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
 import { useActivePoll } from '@/lib/realtime-client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { LoadError } from '@/components/ui/LoadError';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
@@ -68,7 +69,14 @@ export default function OwnerConsole() {
     if (tab !== 'chats') p.delete('chat');
     window.history.replaceState(null, '', `${window.location.pathname}?${p}`);
   }, [tab, person]);
-  const { data: tables } = useSWR<{ tables: { name: string; title: string; count: number }[]; schema: Schema }>(owner ? '/owner/tables' : null, fetcher);
+  // The tables (for search and Data) and the database shape (for editing records) are the console's
+  // heaviest calls, so nothing else waits for them, the shape loads only where it's used, and a
+  // failure is retried twice rather than again and again (each retry costs the server CPU).
+  const heavy = { revalidateOnFocus: false, errorRetryCount: 2 };
+  const { data: tables, error: tablesError, mutate: retryTables } = useSWR<{ tables: { name: string; title: string; count: number }[] }>(owner ? '/owner/tables' : null, fetcher, heavy);
+  const needsSchema = owner && (tab === 'data' || (tab === 'people' && !!person));
+  const { data: schema, error: schemaError, mutate: retrySchema } = useSWR<Schema>(needsSchema ? '/owner/schema' : null, fetcher, { ...heavy, revalidateIfStale: false });
+  const waiting = (failed: unknown, retry: () => unknown) => (failed ? <LoadError onRetry={retry} /> : <ConsoleSkeleton />);
   const { data: attention } = useAttention();
 
   if (!owner) {
@@ -125,9 +133,7 @@ export default function OwnerConsole() {
       </header>
       <main className="p-4 sm:p-8 max-w-6xl mx-auto">
         <TabPanel k={`${tab}-${person ?? ''}`}>
-        {!tables ? (
-          <ConsoleSkeleton />
-        ) : tab === 'overview' ? (
+        {tab === 'overview' ? (
           <Overview onPerson={openPerson} onTab={(t, status) => show(t, { status })} />
         ) : tab === 'health' ? (
           <HealthPanel />
@@ -146,9 +152,9 @@ export default function OwnerConsole() {
         ) : tab === 'announce' ? (
           <AnnouncePanel />
         ) : tab === 'people' ? (
-          person ? <PersonPanel id={person} schema={tables.schema} onBack={() => setPerson(null)} /> : <People key={`people-${focus.n}`} onPerson={setPerson} initialStatus={focus.status} />
+          person ? (schema ? <PersonPanel id={person} schema={schema} onBack={() => setPerson(null)} /> : waiting(schemaError, () => retrySchema())) : <People key={`people-${focus.n}`} onPerson={setPerson} initialStatus={focus.status} />
         ) : tab === 'data' ? (
-          <Data key={dataTable ?? 'all'} initial={dataTable} tables={tables.tables} schema={tables.schema} />
+          tables && schema ? <Data key={dataTable ?? 'all'} initial={dataTable} tables={tables.tables} schema={schema} /> : waiting(tablesError ?? schemaError, () => { void retryTables(); void retrySchema(); })
         ) : tab === 'database' ? (
           <DatabasePanel onOpenTable={(name) => { setDataTable(name); setTab('data'); }} />
         ) : tab === 'errors' ? (
