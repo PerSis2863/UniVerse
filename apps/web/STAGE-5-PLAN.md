@@ -361,8 +361,11 @@ Each item: **What** (user-facing), **How** (where), **Done when**.
     links with expiry, storage quota per user/school, "recent", "starred", search by content
     (FTS over extracted text).
 14. **File converter: any file into any format** (the owner's request, 10 Oct 2026; for later,
-    not started). A "Convert" tool in the files hub, and "Convert to…" on any file in chats,
-    assignments, materials and docs: pick a file, pick the format, download it or save it back.
+    not started). **Where:** in **Collaborate → Docs** (`/docs`, a tab of `COLLAB_TABS`), where all
+    the documents are: a "Convert" button there for any document or uploaded file, so students
+    (and teachers) can change a file's format and keep the result with their docs. Later also
+    "Convert to…" on files in chats, assignments and materials. Pick a file, pick the format,
+    download it or save it back.
     - **Documents:** Word (DOCX) ↔ PDF ↔ text / Markdown / HTML, PowerPoint (PPTX) → PDF / images,
       PDF → images and images → PDF, merge, split, reorder and compress PDFs, ODT / RTF.
     - **Spreadsheets:** Excel (XLSX / XLS) ↔ CSV ↔ PDF, Google Sheets exports, ODS.
