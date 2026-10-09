@@ -38,6 +38,7 @@ function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[
     userCan(user, 'fees.view') && { href: '/admin/fees', label: 'School fees' },
     userCan(user, 'staff.manage') && { href: '/admin/staff', label: 'Staff' },
     userCan(user, 'library.manage') && { href: '/admin/library', label: 'Library desk' },
+    userCan(user, 'registers.manage') && { href: '/admin/registers', label: 'Registers' },
     userCan(user, 'admissions.review') && { href: '/admin/admissions', label: 'Admissions' },
     (userCan(user, 'import.run') || userCan(user, 'export.run')) && { href: '/admin/import', label: 'Import & export' },
   ].filter((x): x is { href: string; label: string } => !!x);
@@ -204,6 +205,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/finances', label: 'nav.finances', also: ['/admin/fees'] },
         { href: '/admin/internships', label: 'nav.internships' },
         { href: '/admin/student-life', label: 'nav.student_life' },
+        { href: '/admin/registers', label: 'Registers' },
         { href: '/admin/integrations/lti', label: 'LMS integration' },
       ]
     },

@@ -17,6 +17,7 @@ import { fadeUp, list } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { LeaveChip, LEAVE_LABEL, dayLabel, range } from './shared';
+import { MyRegisters } from '@/components/registers/MyRegisters';
 
 // A teacher's staff page (Stage 5 · B15.8; src/server/staff.ts): mark yourself in and out today,
 // ask for leave (and cancel it), and see the classes you've been asked to cover.
@@ -123,6 +124,8 @@ export function MyStaff() {
           </ul>
         )}
       </motion.section>
+      {/* Equipment the school lent me (Stage 5 · B15.5); nothing when none. */}
+      <MyRegisters url="/api/registers/me" title="Equipment lent to you" />
       {asking && <AskLeave today={data.today} onClose={() => setAsking(false)} onSent={() => { setAsking(false); void mutate(); }} />}
     </div>
   );

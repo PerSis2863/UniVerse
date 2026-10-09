@@ -19,6 +19,7 @@ import { ParentMessages } from '@/components/guardian/ParentMessages';
 import { FORMS_KEY, ParentForms, type ParentFormsData } from '@/components/guardian/ParentForms';
 import { ParentMeetings } from '@/components/guardian/ParentMeetings';
 import { FamilyFees } from '@/components/fees/FamilyFees';
+import { MyRegisters } from '@/components/registers/MyRegisters';
 import { authedJson } from '@/lib/authed-fetch';
 import { api, errorMessage } from '@/lib/api';
 import { fadeUp } from '@/lib/motion';
@@ -151,6 +152,7 @@ export default function ParentPage() {
                     <>
                       <ChildView data={child} eyebrow={child.relation ? `You’re linked as ${child.relation.toLowerCase()}` : 'Linked to your account'} note="Up to date as of now. Grades, attendance and deadlines come straight from the school." />
                       <FamilyFees url={`/api/parent/fees?studentId=${encodeURIComponent(child.studentId)}`} who={child.firstName} />
+                      <MyRegisters url={`/api/parent/registers?studentId=${encodeURIComponent(child.studentId)}`} title={`${child.firstName}’s bus, room and equipment`} className="mt-4" />
                       <div className="mt-6 flex justify-center">
                         <button type="button" onClick={() => void unlink(child)} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"><UserMinus className="w-4 h-4" /> Remove {child.firstName}</button>
                       </div>

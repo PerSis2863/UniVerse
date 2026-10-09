@@ -429,6 +429,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
+  // Registers (Stage 5 · B15.5): a school bus and a lent laptop.
+  [/^\/api\/registers\/me$/, () => ok({ bus: { route: 'Route 3 · North', vehicle: 'KA 01 AB 1234', driver: 'Ravi', driverPhone: null, notes: 'Afternoon run leaves at 15:30.', stop: 'City Park', time: '07:42', stops: [{ name: 'Lake Road', time: '07:30' }, { name: 'City Park', time: '07:42' }, { name: 'School', time: '08:05' }] }, room: null, assets: [{ tag: 'A-204517', name: 'Laptop', category: 'IT' }] })],
   // Library (Stage 5 · B15.4): a few books, one borrowed.
   [/^\/api\/library$/, () => ok({ books: [
     { id: 'sample-book-1', isbn: '9780143107552', title: 'Thinking, Fast and Slow', authors: 'Daniel Kahneman', year: 2011, coverUrl: null, shelf: 'P2', copies: 3, available: 1, waiting: 0, myHold: null },

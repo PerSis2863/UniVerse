@@ -12,6 +12,7 @@ export const PERMISSIONS = {
   'forms.school': { area: 'Parent forms', label: 'Send consent forms to every student’s parents and see all forms' },
   'staff.manage': { area: 'Staff', label: 'Approve leave, plan cover for absent teachers and see who’s in' },
   'library.manage': { area: 'Library', label: 'Run the library: books, copies, lending, returns, holds and fines' },
+  'registers.manage': { area: 'Registers', label: 'Keep the equipment, school bus and hostel registers' },
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

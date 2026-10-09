@@ -295,6 +295,9 @@ model User {
   staffAttendance      StaffAttendance[]   @relation("StaffAttendance")
   libraryLoans         LibraryLoan[]       @relation("LibraryLoans")
   libraryHolds         LibraryHold[]       @relation("LibraryHolds")
+  assetsHeld           Asset[]             @relation("AssetsHeld")
+  busRide              TransportRider?     @relation("BusRide")
+  hostelRoom           HostelResident?     @relation("HostelRoom")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -3422,6 +3425,106 @@ model LibrarySettings {
   updatedAt   DateTime @default(now())
 
   @@map("library_settings")
+}
+
+/// A piece of school equipment (Stage 5 · B15.5) with its own tag (printed as a QR label).
+/// status IN_USE, IN_STORE, REPAIR, LOST, RETIRED; `cost` in minor units.
+model Asset {
+  id           String       @id @default(cuid())
+  tag          String       @unique
+  name         String
+  category     String?
+  location     String?
+  status       String       @default("IN_USE")
+  assignedToId String?
+  assignedTo   User?        @relation("AssetsHeld", fields: [assignedToId], references: [id])
+  serial       String?
+  purchasedAt  String?
+  cost         Int?
+  currency     String?
+  notes        String?
+  lastSeenAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now())
+  events       AssetEvent[]
+
+  @@index([assignedToId])
+  @@index([category])
+  @@map("assets")
+}
+
+/// What happened to a piece of equipment: created, moved, lent, returned, status, seen (a stock check).
+model AssetEvent {
+  id      String   @id @default(cuid())
+  assetId String
+  asset   Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  type    String
+  note    String?
+  byId    String?
+  at      DateTime @default(now())
+
+  @@index([assetId, at])
+  @@map("asset_events")
+}
+
+/// A school bus route; `stops` is JSON [{ name, time }] in order.
+model TransportRoute {
+  id          String           @id @default(cuid())
+  name        String
+  vehicle     String?
+  driverName  String?
+  driverPhone String?
+  capacity    Int?
+  stops       String           @default("[]")
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now())
+  riders      TransportRider[]
+
+  @@map("transport_routes")
+}
+
+/// A student on a bus route, getting on at a stop (one route per student).
+model TransportRider {
+  id        String         @id @default(cuid())
+  routeId   String
+  route     TransportRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  studentId String         @unique
+  student   User           @relation("BusRide", fields: [studentId], references: [id], onDelete: Cascade)
+  stop      String?
+  createdAt DateTime       @default(now())
+
+  @@index([routeId])
+  @@map("transport_riders")
+}
+
+/// A hostel room with a number of beds.
+model HostelRoom {
+  id        String           @id @default(cuid())
+  building  String
+  name      String
+  beds      Int              @default(2)
+  notes     String?
+  createdAt DateTime         @default(now())
+  residents HostelResident[]
+
+  @@unique([building, name])
+  @@map("hostel_rooms")
+}
+
+/// A student living in a hostel room (one room per student).
+model HostelResident {
+  id        String     @id @default(cuid())
+  roomId    String
+  room      HostelRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  studentId String     @unique
+  student   User       @relation("HostelRoom", fields: [studentId], references: [id], onDelete: Cascade)
+  bed       String?
+  since     String?
+  createdAt DateTime   @default(now())
+
+  @@index([roomId])
+  @@map("hostel_residents")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)
