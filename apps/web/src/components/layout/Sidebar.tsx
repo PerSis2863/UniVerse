@@ -36,6 +36,7 @@ export type NavItem = {
 function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[] }): NavItem[] {
   const subItems = [
     userCan(user, 'fees.view') && { href: '/admin/fees', label: 'School fees' },
+    userCan(user, 'staff.manage') && { href: '/admin/staff', label: 'Staff' },
     userCan(user, 'admissions.review') && { href: '/admin/admissions', label: 'Admissions' },
     (userCan(user, 'import.run') || userCan(user, 'export.run')) && { href: '/admin/import', label: 'Import & export' },
   ].filter((x): x is { href: string; label: string } => !!x);
@@ -148,7 +149,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/assignments', label: 'Assignments' },
         { href: '/teacher/live', label: 'Live class' },
         { href: '/boards', label: 'Collaborate', also: ['/code', '/tasks', '/docs', '/spaces'] },
-        { href: '/teacher/calendar', label: 'nav.timetable' },
+        { href: '/teacher/calendar', label: 'nav.timetable', also: ['/teacher/staff'] },
       ]
     },
     {
@@ -177,7 +178,7 @@ export const navByRole: Record<string, NavItem[]> = {
     {
       label: 'People', icon: Users,
       subItems: [
-        { href: '/admin/users', label: 'nav.users', also: ['/admin/admissions', '/admin/roles', '/admin/import'] },
+        { href: '/admin/users', label: 'nav.users', also: ['/admin/staff', '/admin/admissions', '/admin/roles', '/admin/import'] },
         { href: '/admin/approvals', label: 'Approvals' },
         { href: '/admin/early-warning', label: 'Early warning' },
         { href: '/admin/safety', label: 'Safety reports' },

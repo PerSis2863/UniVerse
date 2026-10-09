@@ -289,6 +289,10 @@ model User {
   admissionReviews     AdmissionReview[]   @relation("AdmissionReviews")
   staffRolesMade       StaffRole[]         @relation("StaffRolesMade")
   staffRoles           StaffRoleMember[]   @relation("StaffRoleMembers")
+  staffLeave           StaffLeave[]        @relation("StaffLeave")
+  coversAbsent         StaffCover[]        @relation("CoverAbsent")
+  coversTaken          StaffCover[]        @relation("CoverTaken")
+  staffAttendance      StaffAttendance[]   @relation("StaffAttendance")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -1239,6 +1243,7 @@ model TimetableSlot {
   type      String   @default("LECTURE") // LECTURE, LAB, TUTORIAL
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  covers    StaffCover[]
 
   @@index([courseId])
   @@index([roomId])
@@ -3264,6 +3269,65 @@ model StaffRoleMember {
   @@unique([roleId, userId])
   @@index([userId])
   @@map("staff_role_members")
+}
+
+/// A teacher's leave (Stage 5 · B15.8): calendar days fromDate–toDate (YYYY-MM-DD), a type
+/// (SICK, PERSONAL, TRAINING, OTHER), PENDING → APPROVED / DECLINED, or CANCELLED by them.
+model StaffLeave {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation("StaffLeave", fields: [userId], references: [id], onDelete: Cascade)
+  type         String       @default("PERSONAL")
+  fromDate     String
+  toDate       String
+  reason       String?
+  status       String       @default("PENDING")
+  decidedById  String?
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now())
+  covers       StaffCover[]
+
+  @@index([userId])
+  @@index([status, fromDate])
+  @@map("staff_leave")
+}
+
+/// Who covers a class (a timetable slot) on a date when its teacher is away.
+model StaffCover {
+  id              String        @id @default(cuid())
+  date            String
+  slotId          String
+  slot            TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  absentTeacherId String
+  absentTeacher   User          @relation("CoverAbsent", fields: [absentTeacherId], references: [id], onDelete: Cascade)
+  coverTeacherId  String?
+  coverTeacher    User?         @relation("CoverTaken", fields: [coverTeacherId], references: [id])
+  leaveId         String?
+  leave           StaffLeave?   @relation(fields: [leaveId], references: [id])
+  note            String?
+  createdById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now())
+
+  @@unique([date, slotId])
+  @@index([coverTeacherId, date])
+  @@map("staff_covers")
+}
+
+/// A staff member marking themselves in (and out) on a day.
+model StaffAttendance {
+  id     String    @id @default(cuid())
+  userId String
+  user   User      @relation("StaffAttendance", fields: [userId], references: [id], onDelete: Cascade)
+  date   String
+  inAt   DateTime?
+  outAt  DateTime?
+
+  @@unique([userId, date])
+  @@index([date])
+  @@map("staff_attendance")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

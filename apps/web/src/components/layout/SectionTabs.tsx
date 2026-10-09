@@ -87,6 +87,12 @@ export const STUDENT_LEARN_TABS: SectionTab[] = [
   { href: '/student/knowledge-hub', label: 'Knowledge Hub' },
 ];
 
+/** A teacher's timetable, and their leave and the classes they cover (Stage 5 · B15.8). */
+export const TEACHER_TIME_TABS: SectionTab[] = [
+  { href: '/teacher/calendar', label: 'Timetable' },
+  { href: '/teacher/staff', label: 'Leave & cover' },
+];
+
 export const TEACHER_STUDENT_TABS: SectionTab[] = [
   { href: '/teacher/students', label: 'Students' },
   { href: '/teacher/early-warning', label: 'Early warning' },
@@ -101,9 +107,10 @@ export const SAFETY_TABS: SectionTab[] = [
   { href: '/admin/safety/policy', label: 'Policy' },
 ];
 
-/** Admin → Users: the people, admissions (B15.1) and bulk import/export from CSV (B15.7). */
+/** Admin → Users: the people, staff (B15.8), admissions (B15.1), roles (B15.6) and bulk import/export (B15.7). */
 export const ADMIN_PEOPLE_TABS: SectionTab[] = [
   { href: '/admin/users', label: 'Users', need: 'admin' },
+  { href: '/admin/staff', label: 'Staff', need: 'staff.manage' },
   { href: '/admin/admissions', label: 'Admissions', need: 'admissions.review' },
   { href: '/admin/roles', label: 'Roles', need: 'admin' },
   { href: '/admin/import', label: 'Import & export', need: ['import.run', 'export.run'] },

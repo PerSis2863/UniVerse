@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   'import.run': { area: 'Import & export', label: 'Import from spreadsheets and undo imports' },
   'export.run': { area: 'Import & export', label: 'Export people, enrolments, courses and the timetable' },
   'forms.school': { area: 'Parent forms', label: 'Send consent forms to every student’s parents and see all forms' },
+  'staff.manage': { area: 'Staff', label: 'Approve leave, plan cover for absent teachers and see who’s in' },
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
