@@ -360,6 +360,27 @@ Each item: **What** (user-facing), **How** (where), **Done when**.
 13. Folders, drag-drop upload with progress, previews (exists for PDF/images), versions, share
     links with expiry, storage quota per user/school, "recent", "starred", search by content
     (FTS over extracted text).
+14. **File converter: any file into any format** (the owner's request, 10 Oct 2026; for later,
+    not started). A "Convert" tool in the files hub, and "Convert to…" on any file in chats,
+    assignments, materials and docs: pick a file, pick the format, download it or save it back.
+    - **Documents:** Word (DOCX) ↔ PDF ↔ text / Markdown / HTML, PowerPoint (PPTX) → PDF / images,
+      PDF → images and images → PDF, merge, split, reorder and compress PDFs, ODT / RTF.
+    - **Spreadsheets:** Excel (XLSX / XLS) ↔ CSV ↔ PDF, Google Sheets exports, ODS.
+    - **Images:** JPG / PNG / WebP / HEIC (iPhone photos) / GIF / SVG / AVIF, resize and compress.
+    - **Audio and video:** MP3 / WAV / M4A / OGG, MP4 / WebM / MOV, video → audio, video → GIF,
+      trim; text from audio and video via the existing transcription.
+    - **Other:** ZIP (make and open), eBooks (EPUB → PDF), scanned PDF / photo → text (OCR via
+      Gemini vision, within the AI allowance).
+    - **How (Workers Free):** convert **in the browser** wherever possible, so files never cost
+      server CPU: pdf-lib (PDF), mammoth (DOCX → HTML), SheetJS (XLSX / CSV), canvas and
+      `createImageBitmap` (images; heic2any for HEIC), ffmpeg.wasm (audio / video, loaded only
+      when needed: it's large), JSZip. Each converter is loaded only when it's used, in a Web
+      Worker so the page stays smooth. Formats a browser can't produce well (DOCX / PPTX → PDF
+      with exact layout) need a server converter: Cloudflare Browser Rendering (HTML → PDF) or a
+      conversion API such as CloudConvert **[owner: account and key; costs money]**. Until then,
+      say which conversions are approximate.
+    - Size limits per file shown up front (e.g. 50 MB in the browser, larger for video on
+      desktop), progress bar, cancel, and a clear message for formats it can't do.
 
 ### B10. AI tutor and study tools
 1. **Photo of a problem:** snap homework → step-by-step help (Socratic: hints first, answer on

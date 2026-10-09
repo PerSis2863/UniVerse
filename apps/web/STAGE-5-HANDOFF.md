@@ -54,7 +54,7 @@ The plan's order (section 2) is the guide. Suggested next steps:
    - B16.5 fee payment for parents comes with B15.2. Online payment needs the owner (Stripe exists;
      **UPI/Razorpay needs the owner's account**).
 2. **Block 5:** ~~D1 Learning DNA~~ **done** (concepts, tags, mastery from quizzes and rubrics; `src/lib/mastery.ts`), ~~D10 second chance~~ **done** (catch-ups on what was missed; practice feeds D1), D2 Whisper TA.
-3. **Block 6:** B7–B9 messaging, calls, docs and tasks power features. Then blocks 7–10.
+3. **Block 6:** B7–B9 messaging, calls, docs and tasks power features (the owner added **B9.14, a file converter for any format**, on 10 Oct 2026: build it in this block, not before). Then blocks 7–10.
 
 ### Leftovers inside finished items (pick up when nearby)
 
