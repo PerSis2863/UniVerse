@@ -13,6 +13,7 @@ import { reportSession } from '@/lib/sign-in-history';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
 import dynamic from 'next/dynamic';
+import { homeFor } from '@/lib/role-home';
 
 // Phone sign-in carries a phone-number library (about 50 KB): it loads when someone chooses it
 // (or points at the button), not with the page.
@@ -86,7 +87,7 @@ export default function LoginPage() {
         return;
       }
       const next = new URLSearchParams(location.search).get('next');
-      router.push(next && /^\/[a-z]/.test(next) ? next : user.owner ? '/console' : user.role === 'STUDENT' ? '/student' : user.role === 'TEACHER' ? '/teacher' : '/admin');
+      router.push(next && /^\/[a-z]/.test(next) ? next : homeFor(user));
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Login successful, but failed to retrieve user data. Please contact support.');

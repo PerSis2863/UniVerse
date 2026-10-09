@@ -22,6 +22,7 @@ const PAGE_KEYS: Record<string, () => string[]> = {
   '/student': () => [`/api/student/overview?dow=${(new Date().getDay() + 6) % 7}`],
   '/teacher': () => ['/api/core/dashboard/teacher'],
   '/admin': () => ['/api/core/dashboard/admin'],
+  '/parent': () => ['/api/parent/children'],
 };
 
 /**
@@ -30,7 +31,7 @@ const PAGE_KEYS: Record<string, () => string[]> = {
  */
 export function startBootstrap(pathname: string, send: (body: string) => Promise<Bundle>, opts: { session: boolean }) {
   if (pending || typeof window === 'undefined') return;
-  const list = ['/api/core/users/me', '/api/me', '/api/notifications', '/api/chat/incoming', ...(PAGE_KEYS[pathname]?.() ?? [])];
+  const list = ['/api/core/users/me', '/api/me', '/api/notifications', ...(pathname === '/parent' ? [] : ['/api/chat/incoming']), ...(PAGE_KEYS[pathname]?.() ?? [])];
   keys = new Set(list);
   ticketAsked = typeof WebSocket !== 'undefined';
   pending = send(JSON.stringify({ keys: list, ticket: ticketAsked, session: opts.session }))
@@ -83,12 +84,12 @@ export function adoptEarlyBootstrap(): boolean {
  * startBootstrap above (same keys).
  */
 export const bootstrapPrefetchScript = `(function(){try{
-var p=location.pathname;if(!/^\\/(student|teacher|admin|boards|application|console)(\\/|$)/.test(p))return;
+var p=location.pathname;if(!/^\\/(student|teacher|admin|boards|application|console|parent)(\\/|$)/.test(p))return;
 if(sessionStorage.getItem('universe:sample-mode')==='1')return;
 var t=localStorage.getItem('accessToken');if(!t||!localStorage.getItem('universe-auth'))return;
 if(!/^(mock-token-|ut1\\.)/.test(t)){var b=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(!b.exp||b.exp*1000<Date.now()+60000)return;}
 var dow=(new Date().getDay()+6)%7;
-var keys=['/api/core/users/me','/api/me','/api/notifications','/api/chat/incoming'].concat(({'/student':['/api/student/overview?dow='+dow],'/teacher':['/api/core/dashboard/teacher'],'/admin':['/api/core/dashboard/admin']})[p]||[]);
+var keys=['/api/core/users/me','/api/me','/api/notifications'].concat(p==='/parent'?[]:['/api/chat/incoming']).concat(({'/student':['/api/student/overview?dow='+dow],'/teacher':['/api/core/dashboard/teacher'],'/admin':['/api/core/dashboard/admin'],'/parent':['/api/parent/children']})[p]||[]);
 var session=!sessionStorage.getItem('universe-session-reported');if(session)sessionStorage.setItem('universe-session-reported','1');
 var ticket='WebSocket' in window;
 window.__universeBoot={keys:keys,ticket:ticket,promise:fetch('/api/bootstrap',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+t,'x-uv-pass':localStorage.getItem('uv-pass')||''},body:JSON.stringify({keys:keys,ticket:ticket,session:session})}).then(function(r){return r.ok?r.json():null},function(){return null})};

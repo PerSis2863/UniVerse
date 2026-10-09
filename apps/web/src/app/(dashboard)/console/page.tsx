@@ -295,7 +295,7 @@ function TopList({ title, rows }: { title: string; rows: { name: string; count: 
 
 type FeedItem = { kind: 'signin' | 'action' | 'message' | 'ui'; at: string; user: { id: string | null; name: string | null; role: string | null } | null; data: Record<string, unknown> };
 
-const ROLE_OPTIONS = [['', 'Everyone'], ['STUDENT', 'Students'], ['TEACHER', 'Teachers'], ['ADMIN', 'Admins'], ['INDUSTRY_MENTOR', 'Mentors']] as const;
+const ROLE_OPTIONS = [['', 'Everyone'], ['STUDENT', 'Students'], ['TEACHER', 'Teachers'], ['ADMIN', 'Admins'], ['INDUSTRY_MENTOR', 'Mentors'], ['GUARDIAN', 'Parents']] as const;
 
 function Feed({ onPerson }: { onPerson: (id: string) => void }) {
   const [filter, setFilter] = useState<'' | FeedItem['kind']>('');

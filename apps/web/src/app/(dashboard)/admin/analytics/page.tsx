@@ -27,7 +27,7 @@ interface Analytics {
 }
 type Person = PersonInfo & { id: string; createdAt?: string };
 
-const ROLE_LABEL: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', INDUSTRY_MENTOR: 'Industry mentors' };
+const ROLE_LABEL: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', INDUSTRY_MENTOR: 'Industry mentors', GUARDIAN: 'Parents and guardians' };
 const nf = new Intl.NumberFormat('en-US');
 
 // Charts load on their own (recharts is large); the box keeps its height meanwhile.

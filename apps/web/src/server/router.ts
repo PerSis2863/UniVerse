@@ -2,7 +2,7 @@ import type { Role, User } from '@prisma/client';
 import { recordServerError } from './errors';
 import { later } from './email';
 import { ForbiddenException, HttpException, NotFoundException } from './http';
-import { extractBearer, resolveUser, demoWriteBlocked, isOwner } from './auth';
+import { extractBearer, resolveUser, demoWriteBlocked, guardianBlocked, isOwner } from './auth';
 import { hasPass, needsTwoStep } from './two-step';
 import type { Body, Query } from './body';
 
@@ -104,6 +104,7 @@ export class Router {
       const user = route.public ? null : await resolveUser(token);
       if (route.roles && (!user || !route.roles.includes(user.role))) throw new ForbiddenException('Forbidden resource');
       if (user && demoWriteBlocked(req, user, token)) throw new ForbiddenException('The demo admin account is read-only.');
+      if (user && guardianBlocked(req, user)) throw new ForbiddenException('Parent accounts can only use the parent app.');
       // Admins and the owner type an emailed code after signing in (src/server/two-step.ts).
       if (user && !path.startsWith('auth/two-step') && needsTwoStep(user.role, token) && !hasPass(req, user.id, token)) {
         throw new ForbiddenException({ message: 'Enter the code we emailed you to finish signing in.', code: 'TWO_STEP_REQUIRED', error: 'Forbidden' });

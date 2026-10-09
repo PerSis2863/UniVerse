@@ -13,7 +13,7 @@ function toCsv(header: string[], rows: unknown[][]): string {
   return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
 }
 
-const ROLES = ['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR'] as const;
+const ROLES = ['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR', 'GUARDIAN'] as const;
 const STATUSES = ['ACTIVE', 'PENDING', 'SUSPENDED'] as const;
 type MemberFilter = { role?: (typeof ROLES)[number]; status?: (typeof STATUSES)[number]; q?: string };
 

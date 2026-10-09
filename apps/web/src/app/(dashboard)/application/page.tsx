@@ -23,6 +23,7 @@ import { useAuthStore } from '@/store/auth';
 import { awaitingApproval, type ApplicationStatus, type Role, type UserStatus } from '@/types';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { homeFor } from '@/lib/role-home';
 
 // Applying to become staff / mentor or an organisation (or, from sign-up, a verified student), and following the application.
 // People who picked "teacher" when signing up land here until an admin decides; students can
@@ -172,7 +173,7 @@ export default function ApplicationPage() {
 
   const openDashboard = async () => {
     const me = await refreshProfile();
-    router.push(me?.role === 'TEACHER' ? '/teacher' : me?.role === 'ADMIN' ? '/admin' : '/student');
+    router.push(homeFor(me ?? { role: 'STUDENT' }));
   };
 
   let body: React.ReactNode;

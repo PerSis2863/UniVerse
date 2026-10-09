@@ -44,8 +44,9 @@ const ROLE_STYLE: Record<string, string> = {
   TEACHER: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
   STUDENT: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
   INDUSTRY_MENTOR: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  GUARDIAN: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20',
 };
-export const ROLE_LABEL: Record<string, string> = { ADMIN: 'Admin', TEACHER: 'Teacher', STUDENT: 'Student', INDUSTRY_MENTOR: 'Industry mentor', LEAD: 'Lead' };
+export const ROLE_LABEL: Record<string, string> = { ADMIN: 'Admin', TEACHER: 'Teacher', STUDENT: 'Student', INDUSTRY_MENTOR: 'Industry mentor', GUARDIAN: 'Parent or guardian', LEAD: 'Lead' };
 
 export function RoleChip({ role }: { role?: string | null }) {
   if (!role) return null;

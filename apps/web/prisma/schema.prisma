@@ -17,6 +17,7 @@ enum Role {
   TEACHER
   ADMIN
   INDUSTRY_MENTOR
+  GUARDIAN // parent or guardian account (Stage 5 · B16.1): only the parent app
 }
 
 enum UserStatus {
@@ -117,7 +118,7 @@ model User {
   termsAcceptedAt    DateTime?
   tourDoneAt         DateTime? // skipped or finished the welcome tour (src/components/layout/WelcomeTour.tsx)
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
-  accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION (what they chose at sign-up)
+  accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION | GUARDIAN (what they chose at sign-up)
   lastSeenAt         DateTime?
   // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
   streakCurrent      Int       @default(0)
@@ -197,6 +198,9 @@ model User {
   itemProgress            ItemProgress[] // course modules: items done (Stage 5 · B2)
   quizAttempts            QuizAttempt[] // exam mode start times (Stage 5 · B4.4)
   reportCards             ReportCard[] // report cards (Stage 5 · B15.3)
+  guardianOf              GuardianLink[]   @relation("GuardianOf") // as a guardian: their children (Stage 5 · B16.1)
+  guardedBy               GuardianLink[]   @relation("GuardedBy") // as a student: linked guardian accounts
+  guardianInvites         GuardianInvite[] // as a student: link codes made for a guardian
   supportPlans            SupportPlan[]
   planBlocks              PlanBlock[]
   shiftCheckins           ShiftCheckin[]
@@ -2149,6 +2153,34 @@ model ReportCard {
   @@unique([runId, studentId])
   @@index([studentId])
   @@map("report_cards")
+}
+
+/// A parent or guardian account linked to a student (Stage 5 · B16.1). The student makes a code,
+/// the guardian enters it; either can remove the link.
+model GuardianLink {
+  id         String   @id @default(cuid())
+  guardianId String
+  guardian   User     @relation("GuardianOf", fields: [guardianId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User     @relation("GuardedBy", fields: [studentId], references: [id], onDelete: Cascade)
+  relation   String? // Mother, Father, Guardian…, as the guardian put it
+  createdAt  DateTime @default(now())
+
+  @@unique([guardianId, studentId])
+  @@index([studentId])
+  @@map("guardian_links")
+}
+
+/// A one-time code a student gives a parent to link their account (7 days; one at a time).
+model GuardianInvite {
+  code      String   @id
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+  @@map("guardian_invites")
 }
 
 /// A course's question bank (Stage 5 · B4.1): reusable multiple-choice questions. tags is a

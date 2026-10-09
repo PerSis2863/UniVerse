@@ -78,6 +78,7 @@ function MembersPreview({ filters, setFilters, onDownload, busy }: { filters: Fi
           <option value="TEACHER">Teachers</option>
           <option value="ADMIN">Admins</option>
           <option value="INDUSTRY_MENTOR">Industry mentors</option>
+          <option value="GUARDIAN">Parents and guardians</option>
         </select>
         <select className={select} value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} aria-label="Status">
           <option value="">Any status</option>

@@ -210,7 +210,7 @@ interface AnalyticsData {
 }
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : '—');
-const ROLE_NAMES: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', INDUSTRY_MENTOR: 'Mentors' };
+const ROLE_NAMES: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', INDUSTRY_MENTOR: 'Mentors', GUARDIAN: 'Parents' };
 
 export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void }) {
   const [days, setDays] = useState(30);

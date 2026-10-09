@@ -1,4 +1,4 @@
-export type Role = 'STUDENT' | 'TEACHER' | 'ADMIN';
+export type Role = 'STUDENT' | 'TEACHER' | 'ADMIN' | 'GUARDIAN';
 export type UserStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED';
 
 export interface User {
