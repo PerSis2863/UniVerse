@@ -228,20 +228,22 @@ export async function remindDueCalls() {
  * notification and a push for each, at most 50 per run.
  */
 export async function sendDueReminders() {
-  const due = await prisma.chatReminder.findMany({ where: { sentAt: null, dueAt: { lte: new Date(Date.now() + 5 * 60_000) } }, orderBy: { dueAt: 'asc' }, take: 50, select: { id: true, userId: true, text: true, conversationId: true } });
+  const due = await prisma.chatReminder.findMany({ where: { sentAt: null, doneAt: null, dueAt: { lte: new Date(Date.now() + 5 * 60_000) } }, orderBy: { dueAt: 'asc' }, take: 50, select: { id: true, userId: true, text: true, conversationId: true, messageId: true } });
   if (!due.length) return 0;
   await prisma.chatReminder.updateMany({ where: { id: { in: due.map((d) => d.id) } }, data: { sentAt: new Date() } });
   const roles = await prisma.user.findMany({ where: { id: { in: [...new Set(due.map((d) => d.userId))] } }, select: { id: true, role: true } });
-  const inbox = (uid: string, cid: string | null) => {
+  // Opens the chat at the message the reminder is about (Stage 5 · B7.1), or the Later list.
+  const inbox = (uid: string, cid: string | null, mid: string | null) => {
     const r = roles.find((x) => x.id === uid)?.role;
-    return cid ? `/${r === 'ADMIN' ? 'admin' : r === 'TEACHER' ? 'teacher' : 'student'}/inbox?c=${cid}` : '/';
+    const base = `/${r === 'ADMIN' ? 'admin' : r === 'TEACHER' ? 'teacher' : 'student'}/inbox`;
+    return cid ? `${base}?c=${cid}${mid ? `&m=${mid}` : ''}` : `${base}?later=1`;
   };
-  await prisma.notification.createMany({ data: due.map((d) => ({ userId: d.userId, title: 'Reminder', body: d.text, type: 'event', link: inbox(d.userId, d.conversationId) })) });
+  await prisma.notification.createMany({ data: due.map((d) => ({ userId: d.userId, title: 'Reminder', body: d.text, type: 'event', link: inbox(d.userId, d.conversationId, d.messageId) })) });
   publish([...new Set(due.map((d) => d.userId))].slice(0, planLimits().livePushes), { type: 'notification' });
   let budget = planLimits().pushes;
   for (const d of due) {
     if (budget <= 0) break;
-    budget -= (await pushService.sendToMany([d.userId], { title: 'Reminder', body: d.text, url: inbox(d.userId, d.conversationId), tag: `remind-${d.id}` }).catch(() => 0)) || 1;
+    budget -= (await pushService.sendToMany([d.userId], { title: 'Reminder', body: d.text, url: inbox(d.userId, d.conversationId, d.messageId), tag: `remind-${d.id}` }).catch(() => 0)) || 1;
   }
   return due.length;
 }

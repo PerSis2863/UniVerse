@@ -11,7 +11,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
   new branch from `main` (D2: `claude/stage-5-whisper`).
 - The site is on **Workers Free** (10 ms CPU per request; measured 5–88 ms for warm API calls). The
   owner will move to Workers Paid later; until then keep requests light.
-- **Next migration number: `0095`** (0082–0093 are live with PR #50; 0094 Whisper TA on branch `claude/stage-5-whisper`). Merging to `main` makes Cloudflare build and deploy, and the deploy
+- **Next migration number: `0096`** (0082–0093 are live with PR #50; 0094 Whisper TA and 0095 message reminders on branch `claude/stage-5-block6`, which also holds D2). Merging to `main` makes Cloudflare build and deploy, and the deploy
   applies new migrations first (`DEPLOY-CLOUDFLARE.md`, "Deploy command"). Nothing to run by hand.
 - Tests: `npx vitest run` → **319 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
 
@@ -58,7 +58,7 @@ The plan's order (section 2) is the guide. Suggested next steps:
    - B16.5 fee payment for parents comes with B15.2. Online payment needs the owner (Stripe exists;
      **UPI/Razorpay needs the owner's account**).
 2. **Block 5:** ~~D1 Learning DNA~~ **done** (concepts, tags, mastery from quizzes and rubrics; `src/lib/mastery.ts`), ~~D10 second chance~~ **done** (catch-ups on what was missed; practice feeds D1), ~~D2 Whisper TA~~ **done** (try it in a real class call on the live site). **Block 5 is done.**
-3. **Block 6:** B7–B9 messaging, calls, docs and tasks power features (the owner added **B9.14, a file converter for any format**, on 10 Oct 2026: it goes in **Collaborate → Docs**, where all the documents are, so students can convert them; build it in this block, not before). Then blocks 7–10.
+3. **Block 6** (branch `claude/stage-5-block6`): ~~B7.1 message reminders and Later~~ **done**; then the rest of B7–B9 messaging, calls, docs and tasks power features (the owner added **B9.14, a file converter for any format**, on 10 Oct 2026: it goes in **Collaborate → Docs**, where all the documents are, so students can convert them; build it in this block, not before). Then blocks 7–10.
 
 ### Leftovers inside finished items (pick up when nearby)
 

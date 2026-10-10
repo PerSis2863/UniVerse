@@ -172,6 +172,8 @@ function handle(event: ServerEvent) {
       void mutate(startsWith('/applications'));
       // So do new consent forms for parents (Stage 5 · B16.4).
       void mutate('/api/parent/forms');
+      // And reminders that came up, for the Later list (Stage 5 · B7.1).
+      void mutate('/api/chat/reminders');
       break;
     case 'refresh':
       for (const k of event.keys) void mutate(k.endsWith('*') ? startsWith(k.slice(0, -1)) : k);

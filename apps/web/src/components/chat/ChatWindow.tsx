@@ -17,7 +17,7 @@ import { ImageViewer } from './ImageViewer';
 import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
 import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
-import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
+import { ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
 import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
@@ -96,6 +96,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [catchup, setCatchup] = useState<{ busy: boolean; text: string | null } | null>(null);
   const [showJump, setShowJump] = useState(false);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
   const [extra, setExtra] = useState<'poll' | 'contact' | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -754,6 +755,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onDeleteForMe={() => deleteForMe(m)}
                       onReport={channel && m.sender?.id !== me && !m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => void report(m) : undefined}
                       onStar={() => star(m)}
+                      onRemind={!m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => setRemindFor(m) : undefined}
                       onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
                       onForward={() => setForwarding(m)}
                       onInfo={() => setInfoMsg(m)}
@@ -846,6 +848,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       </AnimatePresence>
 
       {forwarding && <ForwardDialog message={forwarding} onClose={() => setForwarding(null)} onDone={() => { setForwarding(null); onChanged(); }} />}
+      {remindFor && <RemindSheet message={remindFor} onClose={() => setRemindFor(null)} />}
       {infoMsg && <MessageInfo message={infoMsg} members={convo.members} me={me} onClose={() => setInfoMsg(null)} />}
       {extra === 'poll' && <PollDialog onClose={() => setExtra(null)} onCreate={(poll) => sendSpecial({ type: 'POLL', poll })} />}
       {extra === 'contact' && <ContactPicker onClose={() => setExtra(null)} onPick={(contactId) => sendSpecial({ type: 'CONTACT', contactId })} />}

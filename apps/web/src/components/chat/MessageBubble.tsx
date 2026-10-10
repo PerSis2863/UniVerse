@@ -6,7 +6,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Eye, Flag, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
+import { AlarmClock, Ban, BarChart3, Eye, Flag, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
@@ -120,6 +120,8 @@ interface Props {
   /** Report to the community's moderators (community channels, others' messages; Stage 4 · 1.13). */
   onReport?: () => void;
   onStar: () => void;
+  /** "Remind me" about this message (Stage 5 · B7.1). */
+  onRemind?: () => void;
   /** Present when this person may pin messages here. */
   onPin?: () => void;
   onForward: () => void;
@@ -456,6 +458,7 @@ export function MessageBubble(p: Props) {
                   {p.onThread && <MenuItem icon={MessageCircle} label="Reply in thread" onClick={() => { p.onThread!(); close(); }} />}
                   {FORWARDABLE.has(m.type) && <MenuItem icon={CornerUpRight} label="Forward" onClick={() => { p.onForward(); close(); }} />}
                   <MenuItem icon={m.starred ? StarOff : Star} label={m.starred ? 'Unstar' : 'Star'} onClick={() => { p.onStar(); close(); }} />
+                  {p.onRemind && <MenuItem icon={AlarmClock} label="Remind me" onClick={() => { p.onRemind!(); close(); }} />}
                   {p.onPin && <MenuItem icon={m.pinnedAt ? PinOff : Pin} label={m.pinnedAt ? 'Unpin' : 'Pin'} onClick={() => { p.onPin!(); close(); }} />}
                   {m.type === 'TEXT' && p.onTranslate && (
                     p.translation?.status === 'done' && !p.translation.same

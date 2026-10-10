@@ -3965,13 +3965,18 @@ model ChatReminder {
   id             String    @id @default(cuid())
   userId         String
   conversationId String?
+  /// The message it's about (Stage 5 · B7.1), when set from a message's menu
+  messageId      String?
   text           String
   dueAt          DateTime
   sentAt         DateTime?
+  /// Marked done on the Later list
+  doneAt         DateTime?
   createdAt      DateTime  @default(now())
 
   @@index([dueAt])
   @@index([userId])
+  @@index([userId, doneAt])
   @@map("chat_reminders")
 }
 
