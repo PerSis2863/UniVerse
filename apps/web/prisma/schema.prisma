@@ -300,6 +300,7 @@ model User {
   hostelRoom           HostelResident?     @relation("HostelRoom")
   secondChances        SecondChance[]      @relation("SecondChances")
   whisperQuestions     WhisperQuestion[]   @relation("WhisperQuestions")
+  stickerPacks         StickerPack[]       @relation("StickerPacks")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -3616,6 +3617,34 @@ model WhisperQuestion {
   @@index([callId, createdAt])
   @@index([courseId, createdAt])
   @@map("whisper_questions")
+}
+
+/// A sticker pack (Stage 5 · B7.2; src/server/stickers.ts): someone's own, or the whole school's (made by an admin).
+model StickerPack {
+  id        String    @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User      @relation("StickerPacks", fields: [ownerId], references: [id], onDelete: Cascade)
+  school    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  stickers  Sticker[]
+
+  @@index([ownerId])
+  @@index([school])
+  @@map("sticker_packs")
+}
+
+model Sticker {
+  id        String      @id @default(cuid())
+  packId    String
+  pack      StickerPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  url       String
+  label     String      @default("")
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  @@index([packId])
+  @@map("stickers")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)

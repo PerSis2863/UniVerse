@@ -254,6 +254,8 @@ export async function POST(req: Request, { params }: Ctx) {
       if (type === 'AUDIO' && Number.isFinite(b.durationSec)) meta.durationSec = Math.round(b.durationSec);
       // A round video note (Stage 4 · 1.7), up to a minute.
       if (type === 'VIDEO' && b.videoNote === true) { meta.videoNote = true; if (Number.isFinite(b.durationSec)) meta.durationSec = Math.min(60, Math.round(b.durationSec)); }
+      // A sticker (Stage 5 · B7.2): a photo shown large, without a bubble.
+      if (type === 'IMAGE' && b.sticker === true) meta.sticker = true;
       // A voice message left after a missed call (shown as Voicemail, transcribed straight away).
       if (type === 'AUDIO' && b.voicemail === true) meta.voicemail = true;
       // The loudness bars drawn on the voice message (recorded on the device; 64 at most, 0–31).

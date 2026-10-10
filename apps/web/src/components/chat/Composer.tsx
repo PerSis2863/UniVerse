@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, CircleDot, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, CircleDot, Sticker, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
@@ -13,6 +13,7 @@ import { keepDraft, localDraft, pickDraft, saveDraft } from '@/lib/chat-drafts';
 import { ScheduleSheet } from './ScheduledMessages';
 import { SnippetsSheet, fillSnippet, useSnippets } from './Snippets';
 import dynamic from 'next/dynamic';
+const StickerPicker = dynamic(() => import('./Stickers').then((m) => m.StickerPicker));
 
 const VideoNoteRecorder = dynamic(() => import('./VideoNote').then((m) => m.VideoNoteRecorder));
 
@@ -26,6 +27,8 @@ export interface SendPayload {
   videoNote?: { file: File; durationSec: number };
   /** Photo, video or voice message that each person can open only once. */
   viewOnce?: boolean;
+  /** A sticker from a pack (Stage 5 · B7.2). */
+  sticker?: { url: string; label: string };
 }
 
 export type ComposerExtra = 'poll' | 'location' | 'contact';
@@ -120,6 +123,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   const onceRef = useRef(false);
   const setOnce = (v: boolean) => { onceRef.current = v; setOnceState(v); };
   const [emoji, setEmoji] = useState(false);
+  const [stickers, setStickers] = useState(false);
   const [attach, setAttach] = useState(false);
   const [snippetsOpen, setSnippetsOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
@@ -457,6 +461,17 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                   setText(text.slice(0, at) + e + text.slice(to));
                   requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(at + e.length, at + e.length); });
                 }} />
+              </div>
+            )}
+          </div>
+          <div className="relative">
+            <button type="button" onClick={() => { setStickers((v) => !v); setEmoji(false); setAttach(false); }} aria-expanded={stickers} aria-label="Stickers" title="Stickers" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', stickers ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
+              <Sticker className="w-5 h-5" />
+            </button>
+            {stickers && (
+              // Above its button; on a phone, moved left so it stays on the screen.
+              <div className="absolute bottom-full mb-2 left-0 max-sm:-left-12 z-30">
+                <StickerPicker onClose={() => setStickers(false)} onPick={(s) => { setStickers(false); haptic('tap'); void onSend({ sticker: s }).catch(() => {}); }} />
               </div>
             )}
           </div>

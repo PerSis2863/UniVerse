@@ -165,6 +165,8 @@ export function MessageBubble(p: Props) {
 
   const time = new Date(m.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const deleted = m.type === 'DELETED';
+  // A sticker (Stage 5 · B7.2) shows without a bubble, unless it's a reply or forwarded (their labels need one).
+  const sticker = m.type === 'IMAGE' && !!m.metadata?.sticker && !m.replyTo && !m.forwarded && !m.metadata?.viewOnce;
   const age = now - new Date(m.createdAt).getTime();
   const canEdit = mine && m.type === 'TEXT' && !deleted && age < 86_400_000;
   // Delete for everyone: your own for 48 hours; admins and moderators any time.
@@ -189,7 +191,9 @@ export function MessageBubble(p: Props) {
   const bubble = cn(
     // iMessage: your messages filled with the tint, theirs in system grey; 20px corners with a tight corner by the sender.
     'relative min-w-0 max-w-full rounded-[20px] text-[15px] leading-[1.35]',
-    mine
+    // A sticker stands on its own, without a bubble.
+    sticker ? 'bg-transparent text-zinc-900 dark:text-white'
+      : mine
       ? 'bg-tint text-white rounded-br-[6px]'
       : 'bg-[#e9e9eb] dark:bg-[#26252a] text-zinc-900 dark:text-white rounded-bl-[6px]',
     m.pending && 'opacity-60',
@@ -197,7 +201,7 @@ export function MessageBubble(p: Props) {
   );
 
   const meta = (
-    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine ? 'text-white/70' : 'text-zinc-400')}>
+    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine && !sticker ? 'text-white/70' : 'text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
       {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : (
@@ -233,6 +237,8 @@ export function MessageBubble(p: Props) {
         ))}
       </div>
     );
+  } else if (sticker && m.attachmentUrl) {
+    content = <img src={m.attachmentUrl} alt={m.attachmentName?.replace(/\.sticker$/, '') || 'Sticker'} className="block w-32 h-32 object-contain" draggable={false} />;
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
       <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />

@@ -14,7 +14,7 @@ const DAY = 86_400_000;
 
 const preview = (m: { type: string; body: string; attachmentName: string | null }) => {
   switch (m.type) {
-    case 'IMAGE': return '📷 Photo';
+    case 'IMAGE': return m.attachmentName === 'sticker' || m.attachmentName?.endsWith('.sticker') ? '🏷️ Sticker' : '📷 Photo';
     case 'VIDEO': return '🎬 Video';
     case 'AUDIO': return '🎤 Voice message';
     case 'FILE': return `📎 ${m.attachmentName || 'File'}`;

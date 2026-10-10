@@ -317,7 +317,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     onChanged();
   };
 
-  const send = async ({ text, file: picked, voice, viewOnce, album, videoNote }: SendPayload) => {
+  const send = async ({ text, file: picked, voice, viewOnce, album, videoNote, sticker }: SendPayload) => {
     const file = picked ?? videoNote?.file;
     haptic('tap');
     const tempId = `temp-${crypto.randomUUID()}`;
@@ -325,7 +325,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const replyToId = replyTo?.id;
     setReplyTo(null);
     try {
-      if (album?.length) {
+      if (sticker) {
+        // A sticker (Stage 5 · B7.2): already uploaded, sent as a photo shown without a bubble.
+        setPending((p) => [...p, { ...base, type: 'IMAGE', body: '', attachmentUrl: sticker.url, attachmentName: 'sticker', attachmentSize: null, attachmentMime: null, metadata: { sticker: true } } as ChatMessage]);
+        const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ type: 'IMAGE', attachmentUrl: sticker.url, attachmentName: sticker.label ? `${sticker.label}.sticker` : 'sticker', sticker: true, replyToId }) });
+        appendSent(msg, tempId);
+      } else if (album?.length) {
         // An album: every photo uploads, then one message holds them all.
         setPending((p) => [...p, { ...base, type: 'IMAGE', body: '', attachmentUrl: null, attachmentName: album[0].name, attachmentSize: album[0].size, attachmentMime: album[0].type, metadata: null } as ChatMessage]);
         setUploadProgress(0);
