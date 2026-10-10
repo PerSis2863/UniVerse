@@ -647,6 +647,11 @@ model Conversation {
   channelKind     String?
   position        Int        @default(0)
   slowModeSec     Int        @default(0) // seconds between one person's messages (0 = off)
+  /// Stage 5 · B7.4: the heading it's listed under, private (moderators and chosen roles only), and
+  /// { view: role ids (private), post: role ids (announcements) } as JSON
+  channelCategory String?
+  channelPrivate  Boolean    @default(false)
+  channelRoles    String?
 
   participants ConversationParticipant[]
   messages     Message[]
@@ -3918,8 +3923,24 @@ model Community {
   emoji       CommunityEmoji[]
   reports     CommunityReport[]
   modLog      CommunityModLog[]
+  roles       CommunityRole[]
 
   @@map("communities")
+}
+
+/// A community's own role with a colour (Stage 5 · B7.4), given to members by moderators: shown on
+/// their name, and it can open private channels or let them post in announcements.
+model CommunityRole {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  name        String
+  color       String
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([communityId])
+  @@map("community_roles")
 }
 
 /// A community's own emoji (Stage 4 · 1.2), up to 50, used as :name: in its channels and reactions.
@@ -3944,6 +3965,8 @@ model CommunityMember {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   role        String    @default("MEMBER") // OWNER | MOD | MEMBER
   timeoutUntil DateTime? // timed out by a moderator: can read, can't post (Stage 4 · 1.13)
+  /// The community's own roles they have (Stage 5 · B7.4), JSON string[] of community_roles ids
+  roleIds     String?
   joinedAt    DateTime  @default(now())
 
   @@unique([communityId, userId])

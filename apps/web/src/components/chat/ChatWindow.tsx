@@ -760,6 +760,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onDeleteForMe={() => deleteForMe(m)}
                       onReport={channel && m.sender?.id !== me && !m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => void report(m) : undefined}
                       onStar={() => star(m)}
+                      senderColor={convo?.channel?.nameColors?.[m.senderId]}
                       onRemind={!m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => setRemindFor(m) : undefined}
                       onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
                       onForward={() => setForwarding(m)}

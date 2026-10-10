@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronDown, ChevronRight, Compass, Crown, Globe2, Hash, Headphones, ImagePlus, Link2, Loader2, LogOut, Megaphone, Plus, Search, Settings2, Shield, Smile, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Compass, Crown, Globe2, Hash, Headphones, ImagePlus, Link2, Loader2, Lock, LogOut, Megaphone, Plus, Search, Settings2, Shield, Smile, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { spring } from '@/lib/motion';
@@ -16,6 +16,8 @@ import { Switch } from '@/components/ui/Switch';
 import { useActivePoll } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
 import { CommunityModeration } from './CommunityModeration';
+import { ChannelSettingsRow, MemberRolesButton, RoleChip, RolesSection, type CommunityRole, type ManagedChannel } from './CommunityRoles';
+import { groupChannels } from '@/lib/community-roles';
 
 // Communities (Discord server / WhatsApp community), src/server/communities.ts: a list of
 // communities, each opening to its channels. Text channels open in the chat on the right; voice
@@ -23,7 +25,7 @@ import { CommunityModeration } from './CommunityModeration';
 // can open a community to everyone (Discover, which includes partner campuses in a campus network).
 
 type Kind = 'TEXT' | 'ANNOUNCE' | 'VOICE';
-interface Channel { id: string; name: string; kind: Kind; slowModeSec: number; unread: number }
+interface Channel { id: string; name: string; kind: Kind; slowModeSec: number; unread: number; category?: string | null; private?: boolean }
 interface Community { id: string; name: string; description: string | null; color: string; members: number; role: 'OWNER' | 'MOD' | 'MEMBER'; channels: Channel[] }
 const COLORS = ['#4f46e5', '#7c3aed', '#db2777', '#e11d48', '#ea580c', '#059669', '#0891b2', '#334155'];
 
@@ -73,9 +75,15 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
             </div>
             <AnimatePresence initial={false}>
               {isOpen(c) && (
-                <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden ml-6 pl-3 border-l border-zinc-200 dark:border-white/10">
-                  {c.channels.map((ch) => <ChannelRow key={ch.id} ch={ch} active={activeId === ch.id} onOpen={() => onOpen(ch.id)} />)}
-                </motion.ul>
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden ml-6 pl-3 border-l border-zinc-200 dark:border-white/10">
+                  {/* Channels under their category headings (Stage 5 · B7.4). */}
+                  {groupChannels(c.channels.map((ch) => ({ ...ch, category: ch.category ?? null }))).map((g) => (
+                    <div key={g.category ?? ''}>
+                      {g.category && <p className="px-2.5 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{g.category}</p>}
+                      <ul>{g.channels.map((ch) => <ChannelRow key={ch.id} ch={ch} active={activeId === ch.id} onOpen={() => onOpen(ch.id)} />)}</ul>
+                    </div>
+                  ))}
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
@@ -111,7 +119,7 @@ function ChannelRow({ ch, active, onOpen }: { ch: Channel; active: boolean; onOp
         <button type="button" onClick={() => router.push(`/call/r_${ch.id}?kind=audio`)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left hover:bg-emerald-500/10 group">
           <Headphones className="w-4 h-4 text-emerald-500 shrink-0" />
           <span className="flex-1 min-w-0">
-            <span className="block text-sm text-zinc-700 dark:text-zinc-200 truncate">{ch.name}</span>
+            <span className="block text-sm text-zinc-700 dark:text-zinc-200 truncate">{ch.name}{ch.private && <Lock className="inline w-3 h-3 ml-1 -mt-0.5 text-zinc-400" aria-label="private" />}</span>
             {!!peers?.count && <span className="block text-[11px] text-emerald-600 dark:text-emerald-400 truncate">{peers.names.slice(0, 3).map((n) => n.split(' ')[0]).join(', ')}{peers.count > 3 ? ` +${peers.count - 3}` : ''} inside</span>}
           </span>
           <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100">Join</span>
@@ -123,7 +131,7 @@ function ChannelRow({ ch, active, onOpen }: { ch: Channel; active: boolean; onOp
     <li>
       <button type="button" onClick={onOpen} className={cn('relative isolate w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-colors', active ? 'text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>{active && <TabPill id="onents-chat-communitiespanel-0" variant="soft" />}
         {ch.kind === 'ANNOUNCE' ? <Megaphone className="w-4 h-4 text-amber-500 shrink-0" /> : <Hash className="w-4 h-4 text-zinc-400 shrink-0" />}
-        <span className={cn('flex-1 text-sm truncate', ch.unread ? 'font-semibold text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-300')}>{ch.name}</span>
+        <span className={cn('flex-1 text-sm truncate', ch.unread ? 'font-semibold text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-300')}>{ch.name}{ch.private && <Lock className="inline w-3 h-3 ml-1 -mt-0.5 text-zinc-400" aria-label="private" />}</span>
         {ch.unread > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">{ch.unread > 99 ? '99+' : ch.unread}</span>}
       </button>
     </li>
@@ -228,7 +236,7 @@ function DiscoverCommunities({ onClose, onJoined }: { onClose: () => void; onJoi
   );
 }
 
-interface Detail { id: string; name: string; description: string | null; color: string; inviteCode: string | null; discoverable: boolean; myRole: 'OWNER' | 'MOD' | 'MEMBER'; members: { id: string; name: string; avatar: string | null; communityRole: string }[] }
+interface Detail { id: string; name: string; description: string | null; color: string; inviteCode: string | null; discoverable: boolean; myRole: 'OWNER' | 'MOD' | 'MEMBER'; members: { id: string; name: string; avatar: string | null; communityRole: string; roleIds: string[] }[]; roles: CommunityRole[]; channels: ManagedChannel[] }
 
 function ManageCommunity({ community, onClose }: { community: Community; onClose: () => void }) {
   const { data, mutate } = useSWR<Detail>(`/api/chat/communities/${community.id}`, authedJson);
@@ -255,7 +263,7 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
             <section className="space-y-2">
               <p className="text-xs font-semibold text-zinc-500">Invite link</p>
               <div className="flex gap-2">
-                <input readOnly value={invite} className={cn('input', 'text-xs')} onFocus={(e) => e.target.select()} />
+                <input readOnly value={invite} aria-label="Invite link" className={cn('input', 'text-xs')} onFocus={(e) => e.target.select()} />
                 <button type="button" onClick={() => { void navigator.clipboard.writeText(invite).then(() => toast.success('Invite link copied')); }} className="btn-secondary shrink-0">Copy</button>
               </div>
               <button type="button" onClick={async () => { await chatJson(`/api/chat/communities/${community.id}`, { method: 'PATCH', body: JSON.stringify({ newInvite: true }) }); await mutate(); toast.success('New link made; the old one stopped working'); }} className="text-xs font-semibold text-indigo-500">Make a new link</button>
@@ -281,17 +289,8 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
           {mod && (
             <section className="space-y-2">
               <p className="text-xs font-semibold text-zinc-500">Channels</p>
-              <ul className="space-y-1">{community.channels.map((ch) => (
-                <li key={ch.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5 bg-zinc-50 dark:bg-white/[0.03]">
-                  {ch.kind === 'VOICE' ? <Headphones className="w-4 h-4 text-emerald-500" /> : ch.kind === 'ANNOUNCE' ? <Megaphone className="w-4 h-4 text-amber-500" /> : <Hash className="w-4 h-4 text-zinc-400" />}
-                  <span className="flex-1 text-sm truncate text-zinc-800 dark:text-zinc-200">{ch.name}</span>
-                  {ch.kind !== 'VOICE' && (
-                    <select aria-label={`Slow mode for ${ch.name}`} defaultValue={ch.slowModeSec} onChange={async (e) => { try { await chatJson(`/api/chat/channels/${ch.id}`, { method: 'PATCH', body: JSON.stringify({ slowModeSec: Number(e.target.value) }) }); toast.success('Slow mode updated'); } catch (err) { toast.error((err as Error).message); } }} className="text-xs rounded-lg bg-white dark:bg-white/[0.06] border border-zinc-200 dark:border-white/10 px-1.5 py-1 text-zinc-700 dark:text-zinc-200">
-                      <option value={0}>Slow mode off</option><option value={10}>10 s</option><option value={30}>30 s</option><option value={60}>1 min</option><option value={300}>5 min</option><option value={900}>15 min</option>
-                    </select>
-                  )}
-                  <button type="button" aria-label={`Delete ${ch.name}`} onClick={async () => { if (!(await confirmDialog({ title: `Delete ${ch.name}?`, message: 'Its messages are deleted for everyone.', destructive: true }))) return; try { await chatJson(`/api/chat/channels/${ch.id}`, { method: 'PATCH', body: JSON.stringify({ delete: true }) }); toast.success('Channel deleted'); onClose(); } catch (err) { toast.error((err as Error).message); } }} className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                </li>
+              <ul className="space-y-1">{data.channels.map((ch, i) => (
+                <ChannelSettingsRow key={ch.id} channel={ch} first={i === 0} last={i === data.channels.length - 1} roles={data.roles} categories={[...new Set(data.channels.map((c) => c.category).filter((c): c is string => !!c))]} onChanged={() => void mutate()} />
               ))}</ul>
               <div className="flex gap-2">
                 <input value={channelName} onChange={(e) => setChannelName(e.target.value)} maxLength={40} placeholder="New channel name" className="input" />
@@ -300,6 +299,8 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
               </div>
             </section>
           )}
+
+          {mod && <RolesSection communityId={community.id} roles={data.roles} counts={Object.fromEntries(data.roles.map((r) => [r.id, data.members.filter((m) => m.roleIds.includes(r.id)).length]))} onChanged={() => void mutate()} />}
 
           {mod && <CustomEmoji communityId={community.id} />}
 
@@ -318,7 +319,11 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
             <ul className="space-y-0.5">{data.members.map((m) => (
               <li key={m.id} className="flex items-center gap-2 py-1.5">
                 <Avatar name={m.name} src={m.avatar} size={32} />
-                <span className="flex-1 min-w-0 text-sm text-zinc-800 dark:text-zinc-200 truncate">{m.name}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm text-zinc-800 dark:text-zinc-200 truncate">{m.name}</span>
+                  {m.roleIds.length > 0 && <span className="flex flex-wrap gap-1 mt-0.5">{data.roles.filter((r) => m.roleIds.includes(r.id)).map((r) => <RoleChip key={r.id} role={r} />)}</span>}
+                </span>
+                {mod && <MemberRolesButton communityId={community.id} userId={m.id} name={m.name} roles={data.roles} held={m.roleIds} onChanged={() => void mutate()} />}
                 {m.communityRole === 'OWNER' ? <span className="text-[10px] font-bold uppercase text-amber-500 inline-flex items-center gap-0.5"><Crown className="w-3 h-3" /> Owner</span>
                   : m.communityRole === 'MOD' ? <span className="text-[10px] font-bold uppercase text-indigo-500 inline-flex items-center gap-0.5"><Shield className="w-3 h-3" /> Mod</span> : null}
                 {owner && m.communityRole !== 'OWNER' && <button type="button" onClick={() => void post({ action: 'member', userId: m.id, role: m.communityRole === 'MOD' ? 'MEMBER' : 'MOD' }, m.communityRole === 'MOD' ? 'No longer a moderator' : 'Now a moderator')} className="text-[11px] font-semibold text-indigo-500 px-1.5">{m.communityRole === 'MOD' ? 'Remove mod' : 'Make mod'}</button>}

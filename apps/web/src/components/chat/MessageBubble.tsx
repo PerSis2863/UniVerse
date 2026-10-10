@@ -120,6 +120,8 @@ interface Props {
   /** Report to the community's moderators (community channels, others' messages; Stage 4 · 1.13). */
   onReport?: () => void;
   onStar: () => void;
+  /** The colour of the sender's community role (Stage 5 · B7.4). */
+  senderColor?: string;
   /** "Remind me" about this message (Stage 5 · B7.1). */
   onRemind?: () => void;
   /** Present when this person may pin messages here. */
@@ -411,7 +413,7 @@ export function MessageBubble(p: Props) {
       >
         {m.metadata?.ai
           ? <span className="text-[11px] font-semibold text-fuchsia-500 mb-1 ml-2 inline-flex items-center gap-1">✨ UniVerse AI{m.metadata.askedBy ? <span className="font-normal text-zinc-500"> · asked by {m.metadata.askedBy.split(' ')[0]}</span> : null}</span>
-          : showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2">{m.sender.name}</span>}
+          : showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2" style={p.senderColor ? { color: p.senderColor } : undefined}>{m.sender.name}</span>}
         <div className={cn('flex items-center gap-1 min-w-0 max-w-full', mine && 'flex-row-reverse')}>
           <div
             className={bubble}
