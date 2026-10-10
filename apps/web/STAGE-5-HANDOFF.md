@@ -3,13 +3,17 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
-## Where things stand (9 Oct 2026)
+## Where things stand (10 Oct 2026)
 
-- Everything up to here is **merged into `main`** (PR #47) and **live**. The owner checked that the
-  production database has every migration up to **0081**.
-- **Next migration number: `0094`** (0082–0091 block 4, 0092 Learning DNA, 0093 second chances, on the branch). Merging to `main` makes Cloudflare build and deploy, and the deploy
+- Blocks 1–4, D1 and D10 are **merged into `main`** (PR #47, PR #50) and **live**; the production
+  database has every migration up to **0093** (`wrangler d1 migrations list universe-db --remote`
+  showed none pending). The owner-console CPU fix is live too (PR #49). Work after that goes on a
+  new branch from `main` (D2: `claude/stage-5-whisper`).
+- The site is on **Workers Free** (10 ms CPU per request; measured 5–88 ms for warm API calls). The
+  owner will move to Workers Paid later; until then keep requests light.
+- **Next migration number: `0095`** (0082–0093 are live with PR #50; 0094 Whisper TA on branch `claude/stage-5-whisper`). Merging to `main` makes Cloudflare build and deploy, and the deploy
   applies new migrations first (`DEPLOY-CLOUDFLARE.md`, "Deploy command"). Nothing to run by hand.
-- Tests: `npx vitest run` → **313 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
+- Tests: `npx vitest run` → **319 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
 
 ### Done in Stage 5
 
@@ -19,7 +23,7 @@ B3.4 gradebook categories and final grades · B4.1 question bank · B4.3–4.4 s
 B4.6 quiz item analysis · B15.3 report cards · B16.1 guardian (parent) accounts ·
 B16.2 parent–teacher messages · B16.3 parent–teacher meetings · B16.4 consent forms ·
 B15.2 school fees · B15.7 bulk import/export · B15.1 admissions · B15.6 custom roles · B15.8 staff · B15.4 library · B15.5 registers (admin actions in these to be tried with real data: see “Testing the admin parts” below) ·
-D1 Learning DNA · D10 second chances.
+D1 Learning DNA · D10 second chances · D2 Whisper TA.
 
 ### Testing the admin parts (block 4)
 
@@ -53,7 +57,7 @@ The plan's order (section 2) is the guide. Suggested next steps:
    - ~~B15.5 registers~~ **built** (adding and changing entries still to try with real data). **Block 4 is built.**
    - B16.5 fee payment for parents comes with B15.2. Online payment needs the owner (Stripe exists;
      **UPI/Razorpay needs the owner's account**).
-2. **Block 5:** ~~D1 Learning DNA~~ **done** (concepts, tags, mastery from quizzes and rubrics; `src/lib/mastery.ts`), ~~D10 second chance~~ **done** (catch-ups on what was missed; practice feeds D1), D2 Whisper TA.
+2. **Block 5:** ~~D1 Learning DNA~~ **done** (concepts, tags, mastery from quizzes and rubrics; `src/lib/mastery.ts`), ~~D10 second chance~~ **done** (catch-ups on what was missed; practice feeds D1), ~~D2 Whisper TA~~ **done** (try it in a real class call on the live site). **Block 5 is done.**
 3. **Block 6:** B7–B9 messaging, calls, docs and tasks power features (the owner added **B9.14, a file converter for any format**, on 10 Oct 2026: it goes in **Collaborate → Docs**, where all the documents are, so students can convert them; build it in this block, not before). Then blocks 7–10.
 
 ### Leftovers inside finished items (pick up when nearby)

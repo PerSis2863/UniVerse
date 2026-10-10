@@ -299,6 +299,7 @@ model User {
   busRide              TransportRider?     @relation("BusRide")
   hostelRoom           HostelResident?     @relation("HostelRoom")
   secondChances        SecondChance[]      @relation("SecondChances")
+  whisperQuestions     WhisperQuestion[]   @relation("WhisperQuestions")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -435,6 +436,7 @@ model Course {
   pendingEnrolments PendingEnrolment[]
   concepts          CourseConcept[]
   secondChances     SecondChance[]
+  whisperQuestions  WhisperQuestion[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -3588,6 +3590,32 @@ model SecondChance {
   @@unique([studentId, courseId, key])
   @@index([courseId, conceptId])
   @@map("second_chances")
+}
+
+/// A question to the Whisper TA in a class call (Stage 5 · D2; src/server/whisper.ts). callId is the
+/// class call (c_<course id>; a breakout room's questions belong to its call). topic: the AI's short
+/// label, all the teacher sees (with counts). norm: the question in comparable form, for reuse.
+model WhisperQuestion {
+  id          String    @id @default(cuid())
+  callId      String
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User      @relation("WhisperQuestions", fields: [studentId], references: [id], onDelete: Cascade)
+  question    String
+  norm        String
+  answer      String?
+  citations   String?
+  grounded    Boolean   @default(false)
+  live        Boolean   @default(false)
+  reused      Boolean   @default(false)
+  topic       String?
+  addressedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([callId, createdAt])
+  @@index([courseId, createdAt])
+  @@map("whisper_questions")
 }
 
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)
