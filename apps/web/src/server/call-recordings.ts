@@ -170,7 +170,22 @@ export async function getCallRecording(id: string, user: SessionUser) {
     transcript: wasThere ? parse<{ t: number; who: string; text: string }>(note?.transcript).slice(0, 3000) : [],
     expiresAt: new Date(rec.createdAt.getTime() + KEEP_DAYS * 86_400_000),
     canDelete: rec.createdById === user.id,
+    trimStart: rec.trimStart, trimEnd: rec.trimEnd,
   };
+}
+
+/** PATCH /api/call-recordings/[id] { trimStart, trimEnd } (seconds, or null): whoever recorded it chooses the part people see (Stage 5 · B8.9). */
+export async function trimCallRecording(id: string, user: SessionUser, b: Record<string, unknown>) {
+  const rec = await prisma.callRecording.findUnique({ where: { id }, select: { id: true, createdById: true, durationSec: true } });
+  if (!rec || rec.createdById !== user.id) throw new NotFoundException('This recording isn’t available.');
+  const sec = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
+  let start = sec(b.trimStart), end = sec(b.trimEnd);
+  if (rec.durationSec && end !== null) end = Math.min(end, rec.durationSec);
+  if (start === 0) start = null;
+  if (end !== null && rec.durationSec && end >= rec.durationSec) end = null;
+  if (start !== null && end !== null && end - start < 5) throw new BadRequestException('Keep at least 5 seconds.');
+  await prisma.callRecording.update({ where: { id }, data: { trimStart: start, trimEnd: end } });
+  return { trimStart: start, trimEnd: end };
 }
 
 /** The file is gone (deleted, or after 90 days): its chat message says so instead of a broken player. */

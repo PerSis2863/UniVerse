@@ -23,6 +23,7 @@ import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, setAppReduce
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
+import { RecordingPrivacy } from './RecordingPrivacy';
 
 // Sections show one at a time: their heavier parts (sign-in security, account deletion, school
 // settings, consents, family) load when their section opens.
@@ -195,6 +196,7 @@ function SectionBody({ id, role, title }: { id: string; role: Role; title: strin
             <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
           </Link>
           <NetworkVisibility />
+          <RecordingPrivacy />
           <AccountSecurity />
           <RecentSignIns />
         </Card>

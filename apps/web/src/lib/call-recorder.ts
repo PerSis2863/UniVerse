@@ -4,7 +4,7 @@
 // grid, or the shared screen large) with everyone's audio mixed in. Kept lean, about 450 MB an
 // hour for video calls and 30 MB for voice, so recordings upload quickly and R2 stays small.
 
-export interface RecSource { name: string; stream: MediaStream | null; video: HTMLVideoElement | null; showVideo: boolean; sharing: boolean }
+export interface RecSource { name: string; stream: MediaStream | null; video: HTMLVideoElement | null; showVideo: boolean; sharing: boolean; /** Asked not to appear (Stage 5 · B8.9): their initials, never their camera. */ hidden?: boolean }
 
 const W = 1280, H = 720, FPS = 15;
 
@@ -82,7 +82,7 @@ export class CallRecorder {
     tiles.forEach((s, i) => {
       const x = (i % cols) * tw + gap / 2, y = Math.floor(i / cols) * th + gap / 2, w = tw - gap, h = th - gap;
       const v = s.video;
-      if (s.showVideo && v && v.videoWidth) {
+      if (s.showVideo && v && v.videoWidth && !(s.hidden && !s.sharing)) {
         // Fit inside the tile (a shared screen must not be cropped).
         const scale = Math.min(w / v.videoWidth, h / v.videoHeight);
         const dw = v.videoWidth * scale, dh = v.videoHeight * scale;
@@ -105,7 +105,7 @@ export class CallRecorder {
       g.font = '600 18px system-ui, sans-serif';
       g.textAlign = 'left';
       g.textBaseline = 'alphabetic';
-      const label = shared ? `${s.name} is presenting` : s.name;
+      const label = shared ? `${s.name} is presenting` : s.hidden ? `${s.name} (not shown)` : s.name;
       const lw = g.measureText(label).width + 20;
       g.fillStyle = 'rgba(0,0,0,0.5)';
       g.fillRect(x + 10, y + h - 38, lw, 28);

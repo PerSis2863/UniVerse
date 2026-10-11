@@ -234,9 +234,11 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
   }
   // Safe by default (4.10): whether I'm under 18, and whether the school allows recording calls with
   // students under 18 (the call room stops recordings otherwise; never shown to anyone).
-  const [me, policy] = await Promise.all([prisma.user.findUnique({ where: { id: user.id }, select: { role: true, dateOfBirth: true } }), schoolPolicy()]);
+  const [me, policy] = await Promise.all([prisma.user.findUnique({ where: { id: user.id }, select: { role: true, dateOfBirth: true, noRecording: true } }), schoolPolicy()]);
   const minor = !!me && isMinor(me, policy);
-  const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host, max, minor, recMinors: policy.recordMinors }) });
+  // Stage 5 · B8.9: people who asked not to appear in recordings (recorders draw their initials).
+  const noRec = me?.noRecording === true;
+  const res = await roomFetch(callId, '/ticket', { method: 'POST', body: JSON.stringify({ userId: user.id, name: user.name, host, max, minor, recMinors: policy.recordMinors, noRec }) });
   if (res?.status === 403) throw new HttpException('The host removed you from this call.', 403);
   if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
   const { ticket, audience } = (await res.json()) as { ticket: string; audience?: boolean };

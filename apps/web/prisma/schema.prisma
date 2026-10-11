@@ -114,6 +114,8 @@ model User {
   updatedAt   DateTime   @updatedAt
 
   emailNotifications Boolean   @default(true)
+  /// Stage 5 · B8.9: not shown (camera) in call recordings.
+  noRecording        Boolean   @default(false)
   termsVersion       String? // version of the Terms & Privacy the person accepted
   termsAcceptedAt    DateTime?
   tourDoneAt         DateTime? // skipped or finished the welcome tour (src/components/layout/WelcomeTour.tsx)
@@ -3846,6 +3848,9 @@ model CallRecording {
   size           Int      @default(0)
   durationSec    Int      @default(0)
   people         String   @default("[]") // JSON account ids of who was in the call
+  /// Stage 5 · B8.9: the part people see (seconds into the file).
+  trimStart      Int?
+  trimEnd        Int?
   createdAt      DateTime @default(now())
 
   @@index([callId])

@@ -743,8 +743,8 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null]; since?: number; turnAt?: number; /** Under 18 (4.10): never sent to anyone. */ minor?: boolean; /** Recording right now. */ rec?: boolean }
-interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean; /** Under 18 (4.10). */ minor?: boolean; /** The school allows recording calls with students under 18. */ recMinors?: boolean }
+interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null]; since?: number; turnAt?: number; /** Under 18 (4.10): never sent to anyone. */ minor?: boolean; /** Recording right now. */ rec?: boolean; /** Asked not to appear in recordings (Stage 5 · B8.9): recorders draw their initials. */ noRec?: boolean }
+interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean; /** Under 18 (4.10). */ minor?: boolean; /** The school allows recording calls with students under 18. */ recMinors?: boolean; /** Not shown in recordings (B8.9). */ noRec?: boolean }
 /**
  * Guest links (Stage 4 · 2.11): a call link's creator invites people without an account. A guest
  * gives a name only, always waits in the waiting room until a host lets them in (every time), and
@@ -1674,7 +1674,7 @@ export class CallRoom extends DurableObject<Env> {
       // A webinar fits more people (the audience only receives): three times the call's cap, up to 300.
       const cap = (await this.webinar()).on ? Math.min(WEBINAR_MAX, (who.max ?? MAX_CALL_PEERS) * 3) : Math.min(MAX_SFU_PEERS, who.max ?? MAX_CALL_PEERS);
       if (current.length >= cap) return new Response('This call is full', { status: 429 });
-      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true, ...(who.guest ? { guest: true } : {}), ...(who.minor ? { minor: true } : {}) };
+      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true, ...(who.guest ? { guest: true } : {}), ...(who.minor ? { minor: true } : {}), ...(who.noRec ? { noRec: true } : {}) };
       // Co-hosts stay co-hosts when they reconnect.
       if (!me.host && (await this.ctx.storage.get(`cohost:${who.userId}`))) me.cohost = true;
       // Waiting room: on for call links (with a creator to let people in; older links have none)

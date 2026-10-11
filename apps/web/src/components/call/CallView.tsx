@@ -66,7 +66,7 @@ interface Ticket {
   /** Hosts: the scheduled call's meeting template (Stage 5 · B8.2), to set the call up. */ template?: string | null;
   path: string; iceServers: RTCIceServer[];
 }
-interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; sfu?: { sessionId: string; tracks: SfuTrack[] } }
+interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; /** Not shown in recordings (B8.9). */ noRec?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 type Quality = 'good' | 'fair' | 'poor' | null;
 interface Remote {
   peer: Peer; stream: MediaStream | null; /** Their shared screen (sent beside their camera). */ screen: MediaStream | null; muted: boolean; camera: boolean; sharing: boolean; cc: boolean; recording: boolean; notes: boolean;
@@ -1707,7 +1707,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const kindNow = infoRef.current?.kind ?? 'audio';
     return [
       { name: myName, stream: local, video: videoOf('me'), showVideo: kindNow === 'video' && (camera || sharing), sharing },
-      ...list.map((r) => ({ name: r.peer.name, stream: r.stream, video: videoOf(r.peer.peerId), showVideo: kindNow === 'video' && (r.camera || r.sharing) && !r.paused && !audioOnlyRef.current, sharing: r.sharing })),
+      ...list.map((r) => ({ name: r.peer.name, stream: r.stream, video: videoOf(r.peer.peerId), showVideo: kindNow === 'video' && (r.camera || r.sharing) && !r.paused && !audioOnlyRef.current, sharing: r.sharing, hidden: r.peer.noRec === true })),
     ];
   }; });
 
