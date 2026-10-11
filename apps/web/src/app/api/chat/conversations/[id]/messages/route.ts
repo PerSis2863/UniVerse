@@ -14,6 +14,10 @@ import { storedTranslations } from '@/server/translate';
 import { listScheduled } from '@/server/scheduled-messages';
 import { recordServerError } from '@/server/errors';
 import { chatMuted, featureOff } from '@/server/moderation';
+import { validPayload } from '@/lib/e2e';
+
+/** What a private message shows wherever it can't be decrypted (lists, notifications). */
+const PRIVATE_BODY = '🔒 Private message';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
@@ -82,7 +86,7 @@ async function getThread(req: Request, { params }: Ctx) {
     prisma.conversation.findUnique({
       where: { id },
       select: {
-        id: true, isGroup: true, name: true, avatarUrl: true, createdById: true, disappearingSec: true,
+        id: true, isGroup: true, private: true, name: true, avatarUrl: true, createdById: true, disappearingSec: true,
         communityId: true, channelKind: true, slowModeSec: true, channelPrivate: true, community: { select: { name: true, color: true } },
         // Big community channels: the first 300 members are enough for mentions and read marks.
         participants: { take: 300, select: { userId: true, role: true, lastReadAt: true, typingUntil: true, user: userCard } },
@@ -145,6 +149,7 @@ async function getThread(req: Request, { params }: Ctx) {
       conversation: {
         id: convo.id,
         isGroup: convo.isGroup,
+        private: convo.private,
         isOfficial: !convo.isGroup && others.some((p) => p.userId === system.id),
         title: convo.isGroup ? convo.name || 'Group chat' : others[0]?.user.name || 'Unknown user',
         avatarUrl: convo.isGroup ? convo.avatarUrl : others[0]?.user.avatar ?? null,
@@ -199,7 +204,7 @@ export async function POST(req: Request, { params }: Ctx) {
   if (muted) return NextResponse.json({ error: muted }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
-  const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true, communityId: true } });
+  const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true, communityId: true, private: true } });
   // Community channels: announcements are for moderators, voice rooms have no messages, slow mode.
   if (convo?.communityId) {
     const why = await channelSendCheck(id, user.id);
@@ -214,10 +219,23 @@ export async function POST(req: Request, { params }: Ctx) {
     data.clientId = clientId;
   }
 
-  if (typeof b.forwardOf === 'string') {
+  if (convo?.private) {
+    // A private (end-to-end encrypted) chat, Stage 5 · B7.6: only encrypted text (and calls). The
+    // server keeps the ciphertext and a placeholder; nothing in it is previewed, translated or searched.
+    const type = b.type === 'CALL' ? 'CALL' : 'TEXT';
+    if (type === 'TEXT') {
+      if (!validPayload(b.e2e)) return NextResponse.json({ error: 'Private messages must be encrypted on your device. Update the app and try again.' }, { status: 400 });
+      Object.assign(data, { type: 'TEXT', body: PRIVATE_BODY, metadata: { e2e: b.e2e } });
+    } else {
+      if (await featureOff('calls')) return NextResponse.json({ error: 'Voice and video calls: turned off on UniVerse for now. Please try again later.' }, { status: 503 });
+      const kind = b.kind === 'video' ? 'video' : 'audio';
+      Object.assign(data, { type: 'CALL', body: kind === 'video' ? 'Video call' : 'Voice call', metadata: { kind, inApp: true } });
+    }
+  } else if (typeof b.forwardOf === 'string') {
     // Forward: copy a message the sender can see into this chat.
     const src = await prisma.message.findUnique({ where: { id: b.forwardOf }, select: { conversationId: true, type: true, body: true, attachmentUrl: true, attachmentName: true, attachmentSize: true, attachmentMime: true, metadata: true, deletedAt: true } });
     if (!src || src.deletedAt || !(await membership(src.conversationId, user.id))) return NextResponse.json({ error: 'Message not found.' }, { status: 404 });
+    if ((src.metadata as { e2e?: unknown } | null)?.e2e) return NextResponse.json({ error: 'Private messages can’t be forwarded.' }, { status: 400 });
     if (!['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'LOCATION', 'CONTACT'].includes(src.type)) return NextResponse.json({ error: 'This message can’t be forwarded.' }, { status: 400 });
     if ((src.metadata as { viewOnce?: boolean } | null)?.viewOnce) return NextResponse.json({ error: 'View-once messages can’t be forwarded.' }, { status: 400 });
     Object.assign(data, { type: src.type, body: src.body, attachmentUrl: src.attachmentUrl, attachmentName: src.attachmentName, attachmentSize: src.attachmentSize, attachmentMime: src.attachmentMime, metadata: src.metadata ?? undefined, forwarded: true });
@@ -310,7 +328,7 @@ export async function POST(req: Request, { params }: Ctx) {
   // Started from a scheduled call: everyone else's Join now opens this call.
   if (data.type === 'CALL' && typeof b.scheduledId === 'string') await linkScheduledCall(b.scheduledId, id, message.id);
   // Link preview, translations, notifications, @mentions and watch words (src/server/chat-notify.ts).
-  afterSend({ id: message.id, conversationId: id, type: String(data.type ?? 'TEXT'), body: String(data.body ?? ''), metadata: message.metadata }, user, { communityId: convo?.communityId ?? null, systemUserId: system.id });
+  afterSend({ id: message.id, conversationId: id, type: convo?.private && data.type === 'TEXT' ? 'PRIVATE' : String(data.type ?? 'TEXT'), body: String(data.body ?? ''), metadata: message.metadata }, user, { communityId: convo?.communityId ?? null, systemUserId: system.id });
   if (automodFlag) await automodReport(message.id, automodFlag).catch(() => null);
   return NextResponse.json(out, { status: 201 });
 }

@@ -2,6 +2,7 @@
 
 import { authedFetch } from '@/lib/authed-fetch';
 import { shrinkImage } from '@/lib/shrink-image';
+import type { E2EPayload } from '@/lib/e2e';
 
 export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
 
@@ -33,6 +34,8 @@ export interface ChatMessage {
     ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`
     recording?: { id: string; durationSec: number }; // VIDEO / AUDIO: a call's recording (Stage 4 · 2.9)
     huddle?: { callId: string }; // someone started a huddle, a drop-in voice room in this chat (Stage 4 · 1.11)
+    /** A private chat's encrypted message (Stage 5 · B7.6). */
+    e2e?: E2EPayload;
     meetingNotes?: { id: string; title: string; summary: string | null; decisions: string[]; actions: { text: string; who: string; due: string }[]; durationSec?: number }; // a call's meeting notes (Stage 4 · 2.8)
   } | null;
   createdAt: string;
@@ -54,6 +57,8 @@ export interface ChatMessage {
 export interface ConversationSummary {
   id: string;
   isGroup: boolean;
+  /** An end-to-end encrypted private chat (Stage 5 · B7.6). */
+  private?: boolean;
   isOfficial: boolean;
   title: string;
   avatarUrl: string | null;
@@ -106,6 +111,7 @@ export interface Member {
 export interface ThreadResponse {
   conversation: {
     id: string; isGroup: boolean; isOfficial: boolean; title: string; avatarUrl: string | null; myRole: string; members: Member[];
+    /** An end-to-end encrypted private chat (Stage 5 · B7.6). */ private?: boolean;
     disappearingSec?: number | null; pinned?: boolean; muted?: boolean; archived?: boolean;
     /** Auto-translate incoming messages into this language (my setting); null = off. */
     translateTo?: string | null;

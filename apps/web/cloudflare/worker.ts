@@ -743,8 +743,8 @@ export class CodeRoom extends DurableObject<Env> {
 interface SfuTrack { trackName: string; kind: 'audio' | 'video' }
 /** Someone in a call (kept on the socket so it survives hibernation). host: the teacher, the room's
  *  moderators or the link's creator; cohost: given host controls by the host during the call. */
-interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null]; since?: number; turnAt?: number; /** Under 18 (4.10): never sent to anyone. */ minor?: boolean; /** Recording right now. */ rec?: boolean }
-interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean; /** Under 18 (4.10). */ minor?: boolean; /** The school allows recording calls with students under 18. */ recMinors?: boolean }
+interface CallPeer { peerId: string; userId: string; name: string; guest?: boolean; host?: boolean; cohost?: boolean; hand?: number; waiting?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] }; ccLang?: string | null; ccDevice?: boolean; pulse?: 'lost' | 'got' | null; pos?: [number, number, number | null]; since?: number; turnAt?: number; /** Under 18 (4.10): never sent to anyone. */ minor?: boolean; /** Recording right now. */ rec?: boolean; /** Asked not to appear in recordings (Stage 5 · B8.9): recorders draw their initials. */ noRec?: boolean }
+interface CallTicket { userId: string; name: string; exp: number; host?: boolean; max?: number; guest?: boolean; /** Under 18 (4.10). */ minor?: boolean; /** The school allows recording calls with students under 18. */ recMinors?: boolean; /** Not shown in recordings (B8.9). */ noRec?: boolean }
 /**
  * Guest links (Stage 4 · 2.11): a call link's creator invites people without an account. A guest
  * gives a name only, always waits in the waiting room until a host lets them in (every time), and
@@ -841,6 +841,14 @@ const POLL_Q_CHARS = 200, POLL_OPTION_CHARS = 80, POLL_MAX_OPTIONS = 6, POLL_PUS
  */
 interface CallAgenda { items: { title: string; minutes: number; who: string | null }[]; current: number | null; startedAt: number | null; by: string }
 const AGENDA_MAX = 20, AGENDA_TITLE = 80, AGENDA_WHO = 60;
+
+/**
+ * Interpreters in a call (Stage 5 · B8.7), by user (peer ids change when someone rejoins): a sign
+ * language interpreter (their tile stays on everyone's screen) or a spoken one (listeners can
+ * choose to hear them over the others). Set by the hosts; kept while the call lasts.
+ */
+type Interpreters = Record<string, { kind: 'sign' | 'spoken'; label: string; name: string }>;
+const INTERP_MAX = 6, INTERP_LABEL = 40;
 
 /**
  * Webinar mode (Stage 4 · 2.10): the hosts put a few people on stage and everyone else watches. The
@@ -988,6 +996,7 @@ export class CallRoom extends DurableObject<Env> {
       bo: this.boView(plan.bo, plan.occ, me), room: child?.n ?? null,
       poll: this.pollView((await this.ctx.storage.get<CallPoll>('poll')) ?? null, me),
       agenda: (await this.ctx.storage.get<CallAgenda>('agenda')) ?? null,
+      interp: (await this.ctx.storage.get<Interpreters>('interp')) ?? {},
       pulse: mod ? this.pulseCounts() : null,
     });
     for (const { ws: other, peer } of current) if (this.canSee(peer, me, w)) this.send(other, { type: 'joined', peer: publicPeer(me) });
@@ -1317,6 +1326,22 @@ export class CallRoom extends DurableObject<Env> {
       await this.ctx.storage.delete('agenda');
     } else return;
     for (const { ws } of this.peers()) this.send(ws, { type: 'agenda', agenda, now: Date.now() });
+  }
+
+  /** The hosts make someone an interpreter (interp-set { target: userId, kind, label }) or not (interp-clear { target }). */
+  private async interpControl(msg: Record<string, unknown>) {
+    const interp = (await this.ctx.storage.get<Interpreters>('interp')) ?? {};
+    const uid = typeof msg.target === 'string' ? msg.target : '';
+    if (msg.action === 'interp-set') {
+      const who = this.peers().find(({ peer }) => peer.userId === uid)?.peer;
+      if (!who || (!interp[uid] && Object.keys(interp).length >= INTERP_MAX)) return;
+      const label = typeof msg.label === 'string' ? msg.label.trim().slice(0, INTERP_LABEL) : '';
+      interp[uid] = { kind: msg.kind === 'sign' ? 'sign' : 'spoken', label: label || (msg.kind === 'sign' ? 'Sign language' : 'Interpreter'), name: who.name };
+    } else if (msg.action === 'interp-clear') {
+      delete interp[uid];
+    } else return;
+    await this.ctx.storage.put('interp', interp);
+    for (const { ws } of this.peers()) this.send(ws, { type: 'interp', interp });
   }
 
   // ── Breakout rooms ─────────────────────────────────────────────────────────────────────────────
@@ -1649,7 +1674,7 @@ export class CallRoom extends DurableObject<Env> {
       // A webinar fits more people (the audience only receives): three times the call's cap, up to 300.
       const cap = (await this.webinar()).on ? Math.min(WEBINAR_MAX, (who.max ?? MAX_CALL_PEERS) * 3) : Math.min(MAX_SFU_PEERS, who.max ?? MAX_CALL_PEERS);
       if (current.length >= cap) return new Response('This call is full', { status: 429 });
-      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true, ...(who.guest ? { guest: true } : {}), ...(who.minor ? { minor: true } : {}) };
+      const me: CallPeer = { peerId: crypto.randomUUID().slice(0, 12), userId: who.userId, name: who.name, host: who.host === true, ...(who.guest ? { guest: true } : {}), ...(who.minor ? { minor: true } : {}), ...(who.noRec ? { noRec: true } : {}) };
       // Co-hosts stay co-hosts when they reconnect.
       if (!me.host && (await this.ctx.storage.get(`cohost:${who.userId}`))) me.cohost = true;
       // Waiting room: on for call links (with a creator to let people in; older links have none)
@@ -1828,6 +1853,10 @@ export class CallRoom extends DurableObject<Env> {
       }
       if (msg.action.startsWith('agenda-')) {
         if (me.host || me.cohost) await this.agendaControl(me, msg as Record<string, unknown>);
+        return;
+      }
+      if (msg.action.startsWith('interp-')) {
+        if (me.host || me.cohost) await this.interpControl(msg as Record<string, unknown>);
         return;
       }
       await this.control(ws, me, msg.action, typeof msg.target === 'string' ? msg.target : null, msg.on === true);

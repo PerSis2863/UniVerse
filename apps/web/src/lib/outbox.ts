@@ -5,8 +5,8 @@ import { authedFetch } from '@/lib/authed-fetch';
 // IndexedDB "outbox" and is sent by the page (which has the sign-in token) when the connection
 // comes back, when the app starts, and after each success. Each item carries a client id the
 // server dedupes on, so a retry after a dropped answer never saves twice. The same database
-// keeps recent chats (read offline), assignment drafts and copies of documents (Stage 5 · B9.7),
-// and it's all wiped at sign-out.
+// keeps recent chats (read offline), assignment drafts, copies of documents (Stage 5 · B9.7) and
+// this device's private chat key (B7.6), and it's all wiped at sign-out.
 
 export type OutboxKind = 'quiz' | 'assignment' | 'message';
 export interface OutboxItem {
@@ -31,13 +31,14 @@ let dbp: Promise<IDBDatabase> | null = null;
 function db(): Promise<IDBDatabase> {
   if (dbp) return dbp;
   dbp = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 2);
+    const req = indexedDB.open(DB, 3);
     req.onupgradeneeded = () => {
       const d = req.result;
       if (!d.objectStoreNames.contains('outbox')) d.createObjectStore('outbox', { keyPath: 'id' });
       if (!d.objectStoreNames.contains('chats')) d.createObjectStore('chats', { keyPath: 'conversationId' });
       if (!d.objectStoreNames.contains('drafts')) d.createObjectStore('drafts', { keyPath: 'key' });
       if (!d.objectStoreNames.contains('docs')) d.createObjectStore('docs', { keyPath: 'docId' }).createIndex('savedAt', 'savedAt');
+      if (!d.objectStoreNames.contains('keys')) d.createObjectStore('keys', { keyPath: 'id' });
     };
     req.onsuccess = () => {
       // A newer version of the app in another tab can upgrade the database: let it.
@@ -197,6 +198,20 @@ export async function cachedDoc(docId: string): Promise<CachedDoc | null> {
 export async function dropCachedDoc(docId: string) {
   if (!outboxSupported()) return;
   await tx('docs', 'readwrite', (s) => s.delete(docId));
+}
+
+// ── This device's key for private chats (Stage 5 · B7.6): the private key can't be read out ──
+
+export interface DeviceKeyRecord { id: 'device'; deviceId: string; privateKey: CryptoKey; publicKey: string; userId: string; registeredAt: number }
+
+export async function readDeviceKey(): Promise<DeviceKeyRecord | null> {
+  if (!outboxSupported()) return null;
+  return ((await tx<DeviceKeyRecord>('keys', 'readonly', (s) => s.get('device'))) ?? null);
+}
+
+export async function saveDeviceKey(rec: DeviceKeyRecord) {
+  if (!outboxSupported()) return;
+  await tx('keys', 'readwrite', (s) => s.put(rec));
 }
 
 // ── Drafts (assignment answers written on this device) ───────────────────────────────────────

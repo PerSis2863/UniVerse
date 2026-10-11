@@ -28,7 +28,7 @@ export const POST = (req: Request) =>
 
     // Existing private chats with these people, then new ones for the rest.
     const existing = await prisma.conversation.findMany({
-      where: { isGroup: false, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: { in: people.map((p) => p.id) } } } }] },
+      where: { isGroup: false, private: false, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: { in: people.map((p) => p.id) } } } }] },
       select: { id: true, participants: { select: { userId: true } } },
     });
     const chatWith = new Map<string, string>();

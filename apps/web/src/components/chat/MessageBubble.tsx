@@ -23,6 +23,7 @@ import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
 import { appLink, firstLink, youtubeId } from '@/lib/app-links';
 import { AppLinkCard, YouTubeCard } from './LinkCards';
+import { PrivateText } from './PrivateText';
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
 /**
@@ -172,7 +173,9 @@ export function MessageBubble(p: Props) {
   // A sticker (Stage 5 · B7.2) shows without a bubble, unless it's a reply or forwarded (their labels need one).
   const sticker = m.type === 'IMAGE' && !!m.metadata?.sticker && !m.replyTo && !m.forwarded && !m.metadata?.viewOnce;
   const age = now - new Date(m.createdAt).getTime();
-  const canEdit = mine && m.type === 'TEXT' && !deleted && age < 86_400_000;
+  const canEdit = mine && m.type === 'TEXT' && !deleted && age < 86_400_000 && !m.metadata?.e2e;
+  // A private message's text once decrypted on this device (for Copy).
+  const [privateText, setPrivateText] = useState<string | null>(null);
   // Delete for everyone: your own for 48 hours; admins and moderators any time.
   const canDeleteForAll = canModerate || (mine && age < 48 * 3_600_000);
   const reactionEntries = Object.entries(m.reactions ?? {}).filter(([, users]) => users.length > 0);
@@ -365,6 +368,8 @@ export function MessageBubble(p: Props) {
         )}
       </div>
     );
+  } else if (m.type === 'TEXT' && m.metadata?.e2e) {
+    content = <div className="px-3.5 py-2.5"><PrivateText conversationId={m.conversationId} me={p.me} messageId={m.id} payload={m.metadata.e2e} mine={mine} onText={setPrivateText} /></div>;
   } else if (m.type === 'TEXT' && m.metadata?.meetingNotes) {
     content = <MeetingNotesCard notes={m.metadata.meetingNotes} mine={mine} />;
   } else {
@@ -476,12 +481,12 @@ export function MessageBubble(p: Props) {
                   <MenuItem icon={m.starred ? StarOff : Star} label={m.starred ? 'Unstar' : 'Star'} onClick={() => { p.onStar(); close(); }} />
                   {p.onRemind && <MenuItem icon={AlarmClock} label="Remind me" onClick={() => { p.onRemind!(); close(); }} />}
                   {p.onPin && <MenuItem icon={m.pinnedAt ? PinOff : Pin} label={m.pinnedAt ? 'Unpin' : 'Pin'} onClick={() => { p.onPin!(); close(); }} />}
-                  {m.type === 'TEXT' && p.onTranslate && (
+                  {m.type === 'TEXT' && p.onTranslate && !m.metadata?.e2e && (
                     p.translation?.status === 'done' && !p.translation.same
                       ? <MenuItem icon={Languages} label={p.showOriginal ? 'Show translation' : 'Show original'} onClick={() => { p.onToggleOriginal?.(); close(); }} />
                       : <MenuItem icon={Languages} label="Translate" onClick={() => { p.onTranslate!(); close(); }} />
                   )}
-                  {m.type === 'TEXT' && <MenuItem icon={Copy} label="Copy" onClick={() => { navigator.clipboard.writeText(m.body); close(); }} />}
+                  {m.type === 'TEXT' && (!m.metadata?.e2e || privateText !== null) && <MenuItem icon={Copy} label="Copy" onClick={() => { navigator.clipboard.writeText(m.metadata?.e2e ? privateText ?? '' : m.body); close(); }} />}
                   {canEdit && <MenuItem icon={Pencil} label="Edit" onClick={() => { p.onEdit(); close(); }} />}
                   {mine && <MenuItem icon={Info} label="Info" onClick={() => { p.onInfo(); close(); }} />}
                   <MenuItem icon={EyeOff} label="Delete for me" onClick={() => { p.onDeleteForMe(); close(); }} />

@@ -114,6 +114,8 @@ model User {
   updatedAt   DateTime   @updatedAt
 
   emailNotifications Boolean   @default(true)
+  /// Stage 5 · B8.9: not shown (camera) in call recordings.
+  noRecording        Boolean   @default(false)
   termsVersion       String? // version of the Terms & Privacy the person accepted
   termsAcceptedAt    DateTime?
   tourDoneAt         DateTime? // skipped or finished the welcome tour (src/components/layout/WelcomeTour.tsx)
@@ -269,6 +271,7 @@ model User {
   scheduledMessages    ScheduledMessage[] @relation("ScheduledMessages")
   callNotes            CallNote[]         @relation("CallNotes")
   callRecordings       CallRecording[]    @relation("CallRecordings")
+  chatDeviceKeys       ChatDeviceKey[]
   ratingsGiven         PeerRating[]       @relation("RatingsGiven")
   ratingsReceived      PeerRating[]       @relation("RatingsReceived")
   officeHours          OfficeHours?       @relation("OfficeHours")
@@ -634,6 +637,8 @@ model Announcement {
 model Conversation {
   id              String     @id @default(cuid())
   isGroup         Boolean    @default(false)
+  /// Stage 5 · B7.6: an end-to-end encrypted one-to-one chat (the server keeps only ciphertext).
+  private         Boolean    @default(false)
   name            String?
   avatarUrl       String?
   createdById     String?
@@ -2927,6 +2932,8 @@ model ScheduledCall {
   createdById     String?
   createdBy       User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
   remindedAt      DateTime?
+  /// Stage 5 · B8.2: the meeting template (class, office, parent, interview, viva).
+  template        String?
   createdAt       DateTime      @default(now())
 
   @@index([startAt])
@@ -3844,6 +3851,9 @@ model CallRecording {
   size           Int      @default(0)
   durationSec    Int      @default(0)
   people         String   @default("[]") // JSON account ids of who was in the call
+  /// Stage 5 · B8.9: the part people see (seconds into the file).
+  trimStart      Int?
+  trimEnd        Int?
   createdAt      DateTime @default(now())
 
   @@index([callId])
@@ -4425,4 +4435,19 @@ model BoardVersion {
 
   @@index([boardId, createdAt])
   @@map("board_versions")
+}
+
+/// A device's public key for private chats (Stage 5 · B7.6; X25519, base64).
+model ChatDeviceKey {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId   String
+  publicKey  String
+  label      String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@unique([userId, deviceId])
+  @@map("chat_device_keys")
 }

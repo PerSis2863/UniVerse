@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const me = await prisma.user.findUnique({
     where: { id: user.id },
     select: {
-      name: true, email: true, phone: true, role: true, status: true, emergencyContacts: true, emailNotifications: true, createdAt: true,
+      name: true, email: true, phone: true, role: true, status: true, emergencyContacts: true, emailNotifications: true, noRecording: true, createdAt: true,
       studentProfile: { select: { department: true } },
       teacherProfile: { select: { department: true } },
     },
@@ -26,6 +26,7 @@ export async function GET(req: Request) {
       department: me.studentProfile?.department ?? me.teacherProfile?.department ?? null,
       emergencyContacts: Array.isArray(me.emergencyContacts) ? me.emergencyContacts : [],
       emailNotifications: me.emailNotifications,
+      noRecording: me.noRecording,
       memberSince: me.createdAt,
     },
     { headers: { 'Cache-Control': 'no-store' } },
@@ -64,6 +65,10 @@ export async function PATCH(req: Request) {
 
   if (typeof body.emailNotifications === 'boolean') {
     await prisma.user.update({ where: { id: user.id }, data: { emailNotifications: body.emailNotifications } });
+  }
+  // Stage 5 · B8.9: not shown in call recordings.
+  if (typeof body.noRecording === 'boolean') {
+    await prisma.user.update({ where: { id: user.id }, data: { noRecording: body.noRecording } });
   }
 
   return NextResponse.json({ ok: true });

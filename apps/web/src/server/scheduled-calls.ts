@@ -6,6 +6,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
+import { isMeetingTemplate } from '@/lib/call-agenda';
 
 // Calls booked ahead, for a class (its teacher books), a study group or a chat (any member).
 // They show on the Calls page with a Join button from 10 minutes before; class calls also go on
@@ -20,7 +21,7 @@ const MAX_AHEAD_MS = 180 * 86_400_000;
 type Room = { kind: 'class'; id: string } | { kind: 'group'; id: string } | { kind: 'chat'; id: string };
 
 const select = {
-  id: true, title: true, kind: true, startAt: true, durationMin: true, callId: true, createdById: true,
+  id: true, title: true, kind: true, startAt: true, durationMin: true, callId: true, createdById: true, template: true,
   course: { select: { id: true, code: true, name: true, teacherId: true } },
   group: { select: { id: true, name: true } },
   conversation: { select: { id: true, isGroup: true, name: true, participants: { take: 2, select: { userId: true, user: { select: { name: true } } } } } },
@@ -61,13 +62,13 @@ async function checkRoom(room: Room, user: SessionUser) {
   return { conversationId: room.id, name: me.conversation.name ?? 'Chat' };
 }
 
-function shape(s: { id: string; title: string; kind: string; startAt: Date; durationMin: number; callId: string | null; createdById: string | null; course: { id: string; code: string; name: string; teacherId: string | null } | null; group: { id: string; name: string } | null; conversation: { id: string; isGroup: boolean; name: string | null; participants: { userId: string; user: { name: string } }[] } | null }, user: SessionUser) {
+function shape(s: { id: string; title: string; kind: string; startAt: Date; durationMin: number; callId: string | null; createdById: string | null; template?: string | null; course: { id: string; code: string; name: string; teacherId: string | null } | null; group: { id: string; name: string } | null; conversation: { id: string; isGroup: boolean; name: string | null; participants: { userId: string; user: { name: string } }[] } | null }, user: SessionUser) {
   const room = s.course ? 'class' : s.group ? 'group' : 'chat';
   const other = s.conversation?.participants.find((p) => p.userId !== user.id)?.user.name;
   const roomName = s.course ? `${s.course.code} · ${s.course.name}` : s.group ? s.group.name : (s.conversation?.isGroup ? s.conversation.name : other) ?? 'Chat';
   const kind = s.kind === 'audio' ? 'audio' : 'video';
   return {
-    id: s.id, title: s.title, kind, startAt: s.startAt, durationMin: s.durationMin, room, roomName,
+    id: s.id, title: s.title, kind, startAt: s.startAt, durationMin: s.durationMin, room, roomName, template: s.template ?? null,
     /** Where Join goes; chats start (or join) the chat's call through /join. */
     path: s.course ? `/call/c_${s.course.id}?kind=${kind}` : s.group ? `/call/g_${s.group.id}?kind=${kind}` : null,
     conversationId: s.conversation?.id ?? null,
@@ -128,8 +129,9 @@ export async function scheduleCall(user: SessionUser, body: Record<string, unkno
   const room = await checkRoom({ kind: roomKind, id: roomId } as Room, user);
   const title = String(body.title ?? '').trim().slice(0, 120) || (roomKind === 'class' ? 'Class call' : `${kind === 'video' ? 'Video' : 'Voice'} call`);
 
+  const template = isMeetingTemplate(body.template) ? body.template : null;
   const created = await prisma.scheduledCall.create({
-    data: { title, kind, startAt, durationMin, createdById: user.id, courseId: 'courseId' in room ? room.courseId : null, groupId: 'groupId' in room ? room.groupId : null, conversationId: 'conversationId' in room ? room.conversationId : null },
+    data: { title, kind, startAt, durationMin, template, createdById: user.id, courseId: 'courseId' in room ? room.courseId : null, groupId: 'groupId' in room ? room.groupId : null, conversationId: 'conversationId' in room ? room.conversationId : null },
     select,
   });
   // Class calls go on the class calendar (students' calendars and calendar feeds show them).
@@ -184,6 +186,21 @@ export async function joinScheduled(user: SessionUser, id: string) {
     if (msg && !msg.deletedAt && !meta.endedAt && Date.now() - msg.createdAt.getTime() < 4 * 3600_000) return { path: `/call/${s.callId}` };
   }
   return { path: null, conversationId: s.conversation!.id, kind: out.kind };
+}
+
+/**
+ * The meeting template of the call happening now in this place (Stage 5 · B8.2): a class or group
+ * call (c_ / g_) or a chat call started from its schedule, starting within the last hour or the
+ * next half hour. For the host's app, which then sets the call up.
+ */
+export async function scheduledTemplate(callId: string): Promise<string | null> {
+  const where = callId.startsWith('c_') ? { courseId: callId.slice(2) } : callId.startsWith('g_') ? { groupId: callId.slice(2) } : { callId };
+  const now = Date.now();
+  const s = await prisma.scheduledCall.findFirst({
+    where: { ...where, template: { not: null }, startAt: { gte: new Date(now - 3600_000), lte: new Date(now + 30 * 60_000) } },
+    orderBy: { startAt: 'desc' }, select: { template: true },
+  });
+  return s?.template && isMeetingTemplate(s.template) ? s.template : null;
 }
 
 /** Links a call just started in a chat to its schedule (first one wins). */

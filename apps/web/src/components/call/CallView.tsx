@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear, Focus } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
@@ -34,12 +34,16 @@ import { CallBoardPanel, boardFromChat, makeCallBoard } from './CallBoard';
 import { WhisperPanel, WhisperPill, WhisperTopics } from './WhisperTA';
 import { ConnectionPanel, RateCall, WeakNetwork, shouldAskRating } from './CallQuality';
 import { AgendaBar, AgendaEditor } from './CallAgenda';
-import type { Agenda } from '@/lib/call-agenda';
+import { templateById, type Agenda } from '@/lib/call-agenda';
+import type { GestureAction } from '@/lib/gestures';
+import { voiceVolume, type Interpreters } from '@/lib/call-interp';
+import { InterpretersSheet } from './CallInterpreters';
 import { combine, grade, readStats, type Reading, type Snapshot } from '@/lib/call-quality';
 import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useSpatialAudio } from './use-spatial-audio';
 
 // A UniVerse call (src/server/calls.ts). Two ways to carry it:
 //  • Small calls (one-to-one, or bigger ones without the SFU set up): each person connects
@@ -59,9 +63,10 @@ interface Ticket {
   /** The chat the call's chat panel uses, or null: the call room's own chat (CallChat). */ chatId?: string | null;
   /** In a breakout room: which (BreakoutPanel). */ breakout?: { parent: string; n: number; name: string } | null;
   /** A webinar's audience (2.10): joins watching, without camera or microphone. */ audience?: boolean;
+  /** Hosts: the scheduled call's meeting template (Stage 5 · B8.2), to set the call up. */ template?: string | null;
   path: string; iceServers: RTCIceServer[];
 }
-interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; sfu?: { sessionId: string; tracks: SfuTrack[] } }
+interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; /** Not shown in recordings (B8.9). */ noRec?: boolean; sfu?: { sessionId: string; tracks: SfuTrack[] } }
 type Quality = 'good' | 'fair' | 'poor' | null;
 interface Remote {
   peer: Peer; stream: MediaStream | null; /** Their shared screen (sent beside their camera). */ screen: MediaStream | null; muted: boolean; camera: boolean; sharing: boolean; cc: boolean; recording: boolean; notes: boolean;
@@ -566,6 +571,19 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [weak, setWeak] = useState(false);
   const weakSince = useRef<number | null>(null), goodSince = useRef<number | null>(null), weakHiddenUntil = useRef(0);
   const [rateAsk, setRateAsk] = useState(false);
+  // Gestures on camera (Stage 5 · B8.4, opt-in, remembered on this device).
+  const [gestures, setGestures] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-gestures') === '1'; } catch { return false; } });
+  const gestureAct = useRef<(a: GestureAction) => void>(() => {});
+  // Spatial audio (Stage 5 · B8.6, opt-in for group calls, remembered on this device).
+  // Interpreters (Stage 5 · B8.7): kept by the call room; which spoken one I listen to is mine.
+  const [interp, setInterp] = useState<Interpreters>({});
+  const [interpOpen, setInterpOpen] = useState(false);
+  const [listening, setListening] = useState<string | null>(null);
+  // Auto-framing my camera (Stage 5 · B8.8, opt-in, remembered on this device).
+  const [framing, setFraming] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-framing') === '1'; } catch { return false; } });
+  const framingRef = useRef(framing);
+  const frameFx = useRef<{ track: MediaStreamTrack; stop(): void } | null>(null);
+  const [spatial, setSpatial] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-spatial') === '1'; } catch { return false; } });
   // The agenda (Stage 5 · B8.3): kept by the call room; times from the room's clock.
   const [agenda, setAgenda] = useState<Agenda | null>(null);
   const [agendaOpen, setAgendaOpen] = useState(false);
@@ -955,6 +973,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     sfuRef.current = null;
     localRef.current?.getTracks().forEach((t) => t.stop());
     effectRef.current?.stop();
+    frameFx.current?.stop();
     rawCam.current?.stop();
     rawMic.current?.stop();
     micClean.current?.stop();
@@ -1242,6 +1261,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setPoll(msg.poll ?? null);
           if (typeof msg.now === 'number') { skew.current = msg.now - Date.now(); setClockSkew(skew.current); }
           setAgenda(msg.agenda ?? null);
+          setInterp(msg.interp ?? {});
           setWatch(msg.watch ? { ...msg.watch, marks: msg.watch.marks ?? [] } : null);
           if (msg.pulse) gotPulse(msg.pulse);
           setWebinar(msg.webinar?.on ? { on: true, stage: msg.webinar.stage ?? [], audience: msg.webinar.audience ?? 0 } : null);
@@ -1461,6 +1481,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           if (msg.poll && msg.poll.id !== pollId.current && !modRef.current) toast(`${msg.poll.by} asks: ${msg.poll.q}`, { icon: '📊', duration: 6000 });
           pollId.current = msg.poll?.id ?? null;
           setPoll(msg.poll ?? null);
+        } else if (msg.type === 'interp') {
+          setInterp(msg.interp ?? {});
         } else if (msg.type === 'agenda') {
           if (typeof msg.now === 'number') { skew.current = msg.now - Date.now(); setClockSkew(skew.current); }
           setAgenda(msg.agenda ?? null);
@@ -1513,6 +1535,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       if (switching) return;
       localRef.current?.getTracks().forEach((t) => t.stop());
       effectRef.current?.stop();
+      frameFx.current?.stop();
       rawCam.current?.stop();
       rawMic.current?.stop();
       micClean.current?.stop();
@@ -1684,7 +1707,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const kindNow = infoRef.current?.kind ?? 'audio';
     return [
       { name: myName, stream: local, video: videoOf('me'), showVideo: kindNow === 'video' && (camera || sharing), sharing },
-      ...list.map((r) => ({ name: r.peer.name, stream: r.stream, video: videoOf(r.peer.peerId), showVideo: kindNow === 'video' && (r.camera || r.sharing) && !r.paused && !audioOnlyRef.current, sharing: r.sharing })),
+      ...list.map((r) => ({ name: r.peer.name, stream: r.stream, video: videoOf(r.peer.peerId), showVideo: kindNow === 'video' && (r.camera || r.sharing) && !r.paused && !audioOnlyRef.current, sharing: r.sharing, hidden: r.peer.noRec === true })),
     ];
   }; });
 
@@ -1785,20 +1808,36 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
    */
   const applyCamera = async (raw: MediaStreamTrack | null): Promise<boolean> => {
     const seq = ++camSeq.current;
-    const oldRaw = rawCam.current, oldFx = effectRef.current;
+    const oldRaw = rawCam.current, oldFx = effectRef.current, oldFrame = frameFx.current;
     rawCam.current = raw;
     effectRef.current = null;
+    frameFx.current = null;
     let out = raw, ok = true;
-    if (raw && bgRef.current.kind !== 'none') {
+    // Auto-framing first (B8.8), then the background on the framed picture.
+    if (raw && framingRef.current) {
+      try {
+        const { applyFraming } = await import('@/lib/call-framing');
+        const fr = await applyFraming(raw);
+        if (seq !== camSeq.current) { fr.stop(); return false; }
+        frameFx.current = fr;
+        out = fr.track;
+      } catch (e) {
+        console.warn('Auto-framing unavailable', e);
+        toast.error('Auto-framing couldn’t start on this device, so your camera shows as usual.');
+      }
+    }
+    if (out && bgRef.current.kind !== 'none') {
       setBgBusy(true);
       try {
-        const fx = await applyBackground(raw, bgRef.current);
+        const fx = await applyBackground(out, bgRef.current);
         if (seq !== camSeq.current) { fx.stop(); return false; }
         effectRef.current = fx;
         out = fx.track;
       } catch (e) {
         console.warn('Background unavailable', e);
         toast.error('Couldn’t apply your background, so your camera is off. Choose “None” in Background to use the camera without one.');
+        frameFx.current?.stop();
+        frameFx.current = null;
         raw.stop();
         rawCam.current = null;
         out = null;
@@ -1816,6 +1855,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       setLocal(new MediaStream(stream.getTracks()));
     }
     if (oldFx && oldFx !== effectRef.current) oldFx.stop();
+    if (oldFrame && oldFrame !== frameFx.current) oldFrame.stop();
     if (oldRaw && oldRaw !== raw) oldRaw.stop();
     if (!ok && stateRef.current.camera) { setCamera(false); stateRef.current.camera = false; announce(); }
     return ok;
@@ -1870,6 +1910,47 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
 
   useEffect(() => { actions.current = { toggleCamera, setMicOff, applyCamera }; });
+
+  // Gestures (B8.4): an open hand held up raises mine; 👍 / 🤟 / ✌️ send a reaction.
+  useEffect(() => {
+    gestureAct.current = (a) => {
+      if (a === 'hand') { if (!myHand) { toggleHand(); toast('Hand raised: you held your hand up on camera', { icon: '✋' }); } }
+      else react(a);
+    };
+  });
+  useEffect(() => {
+    const track = rawCam.current;
+    if (!gestures || !camera || phase !== 'live' || !track) return;
+    let stop: (() => void) | null = null, live = true;
+    void import('@/lib/call-gestures').then(({ watchGestures }) => watchGestures(track, (a) => gestureAct.current(a))).then((s) => { if (live) stop = s; else s(); }, () => { if (live) toast.error('Gestures couldn’t start on this device.'); });
+    return () => { live = false; stop?.(); };
+  }, [gestures, camera, phase]);
+
+  // A scheduled call's meeting template (Stage 5 · B8.2): once, when the host is in, turn on its
+  // settings (waiting room, notes, captions) and put its agenda in, ready to start.
+  const templateDone = useRef(false);
+  const applyTemplate = useRef<() => void>(() => {});
+  useEffect(() => {
+    applyTemplate.current = () => {
+      const t = templateById(infoRef.current?.template);
+      if (!t) return;
+      const done: string[] = [];
+      if (t.lobby && !lobbyOn) { control('lobby', null, true); done.push('waiting room on'); }
+      const i = infoRef.current;
+      const mayNotes = !!i && (i.type === 'class' ? !!i.host : meHost || meCohost || i.oneToOne);
+      if (t.notes && mayNotes && !notesRef.current) { toggleNotes(); done.push('notes on'); }
+      if (t.captions && !cc) { toggleCc(); done.push('captions on'); }
+      if (!agenda) { send({ type: 'control', action: 'agenda-set', items: t.agenda }); done.push('agenda ready to start'); }
+      if (done.length) toast(`${t.name}: ${done.join(' · ')}`, { icon: '🗓️', duration: 8000 });
+    };
+  });
+  useEffect(() => {
+    if (phase !== 'live' || !meHost || !info?.template || templateDone.current) return;
+    templateDone.current = true;
+    // A moment after joining, so the room's state (an agenda already there) has arrived.
+    const t = setTimeout(() => applyTemplate.current(), 1200);
+    return () => clearTimeout(t);
+  }, [phase, meHost, info]);
 
   const flipCamera = async () => {
     const current = rawCam.current;
@@ -2073,7 +2154,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp' | 'framing'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
@@ -2083,6 +2164,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ...(!isGuest && phase === 'live' ? [{ key: 'board' as const, label: callBoard ? 'Whiteboard' : 'Start a whiteboard', icon: PenTool, on: boardOpen }] : []),
     { key: '2g', label: twoG ? '2G mode on' : '2G mode', icon: SignalLow, on: twoG },
     ...(phase === 'live' ? [{ key: 'net' as const, label: 'Connection', icon: Activity, on: netOpen }] : []),
+    ...(camera && !twoG ? [{ key: 'framing' as const, label: framing ? 'Auto-frame on' : 'Auto-frame', icon: Focus, on: framing }] : []),
+    ...(phase === 'live' && kind === 'video' && !twoG ? [{ key: 'gestures' as const, label: gestures ? 'Gestures on' : 'Gestures', icon: Hand, on: gestures }] : []),
+    ...(phase === 'live' && info && !info.oneToOne && (canModerate || Object.keys(interp).length) ? [{ key: 'interp' as const, label: listening ? `Hearing ${interp[listening]?.label ?? 'interpreter'}` : 'Interpretation', icon: Ear, on: !!listening }] : []),
+    ...(phase === 'live' && info && !info.oneToOne ? [{ key: 'spatial' as const, label: spatial ? 'Spatial audio on' : 'Spatial audio', icon: Volume2, on: spatial }] : []),
     ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
@@ -2130,10 +2215,51 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'rooms') openPanel('rooms');
     else if (key === 'poll') setPollCompose(true);
     else if (key === 'agenda') setAgendaOpen(true);
+    else if (key === 'interp') setInterpOpen(true);
+    else if (key === 'framing') {
+      const on = !framing;
+      setFraming(on);
+      framingRef.current = on;
+      try { localStorage.setItem('call-framing', on ? '1' : '0'); } catch { /* private window */ }
+      if (rawCam.current) void applyCamera(rawCam.current);
+      toast(on ? 'Auto-frame on: your camera follows your face. It’s worked out on this device.' : 'Auto-frame off', { icon: '🎯', duration: on ? 6000 : 3000 });
+    }
+    else if (key === 'spatial') {
+      const on = !spatial;
+      setSpatial(on);
+      try { localStorage.setItem('call-spatial', on ? '1' : '0'); } catch { /* private window */ }
+      toast(on ? 'Spatial audio on: each voice comes from where that person is on your screen. Best with headphones.' : 'Spatial audio off', { icon: '🎧', duration: on ? 7000 : 3000 });
+    }
+    else if (key === 'gestures') {
+      const on = !gestures;
+      setGestures(on);
+      try { localStorage.setItem('call-gestures', on ? '1' : '0'); } catch { /* private window */ }
+      toast(on ? `Gestures on: hold an open hand up to raise it; 👍, 🤟 or ✌️ send a reaction.${camera ? '' : ' Turn your camera on to use them.'} The picture stays on this device.` : 'Gestures off', { icon: '✋', duration: on ? 9000 : 3000 });
+    }
     else if (key === 'watch') setWatchPick(true);
     else void pip();
   };
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
+  // Spatial audio: group calls with at least two others, while live and not on hold.
+  const spatialOn = spatial && !listening && phase === 'live' && !held && !!info && !info.oneToOne && list.length >= 2;
+  // The interpreter I listen to (if they're still one) and a sign language interpreter to keep on screen.
+  const hearing = listening && interp[listening]?.kind === 'spoken' ? listening : null;
+  const signer = list.find((r) => interp[r.peer.userId]?.kind === 'sign' && r.camera && r.stream);
+  useSpatialAudio(spatialOn, list.map((r) => ({ id: r.peer.peerId, stream: r.stream })));
+  // Listening to a spoken interpreter: their voice in full, everyone else quietly underneath.
+  const voiceKey = list.map((r) => `${r.peer.peerId}:${r.peer.userId}`).join('|');
+  useEffect(() => {
+    const apply = () => {
+      for (const r of Object.values(remotesRef.current)) {
+        const v = document.querySelector<HTMLVideoElement>(`video[data-peer="${CSS.escape(r.peer.peerId)}"]`);
+        if (v) v.volume = voiceVolume(r.peer.userId, hearing);
+      }
+    };
+    apply();
+    if (!hearing) return;
+    const t = setInterval(apply, 1500);
+    return () => clearInterval(t);
+  }, [hearing, voiceKey]);
 
   return (
     <>
@@ -2283,7 +2409,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </motion.main>
       ) : (
         presenter || watching || lit ? (
-          <main className="flex-1 min-h-0 flex flex-col gap-3 p-3 sm:p-4">
+          <main data-call-stage className="flex-1 min-h-0 flex flex-col gap-3 p-3 sm:p-4">
             <motion.div layout transition={spring.smooth} className="relative flex-1 min-h-0 rounded-3xl overflow-hidden bg-black ring-1 ring-white/10">
               {presenter === 'me' ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-6 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.25),transparent_70%)]">
@@ -2299,7 +2425,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               ) : lit === 'me' ? (
                 <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
               ) : lit ? (
-                <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
+                <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held || spatialOn} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
                   paused={lit.paused || audioOnly} onShow={() => showVideo(lit.peer.peerId)} hand={handPos(lit.peer.peerId)} className="absolute inset-0 h-full w-full aspect-auto rounded-none"
                   videoRef={lit.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
               ) : null}
@@ -2308,7 +2434,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <AnimatePresence initial={false}>
                 {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact hand={handPos('me')} className="h-full shrink-0" />}
                 {list.filter((r) => r !== lit).map((r) => (
-                  <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
+                  <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held || spatialOn} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                     paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact hand={handPos(r.peer.peerId)} className="h-full shrink-0"
                     videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
                 ))}
@@ -2316,11 +2442,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             </div>
           </main>
         ) : (
-        <main className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
+        <main data-call-stage className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
           <AnimatePresence initial={false}>
             <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} hand={handPos('me')} />
             {list.map((r) => (
-              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
+              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held || spatialOn} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                 paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12} hand={handPos(r.peer.peerId)}
                 videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
             ))}
@@ -2510,6 +2636,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         <div className="absolute z-30 left-1/2 -translate-x-1/2 top-[calc(env(safe-area-inset-top)+4.5rem)] w-[min(26rem,calc(100%-2rem))] flex flex-col gap-2 pointer-events-none">
           <AgendaBar agenda={agenda} skew={clockSkew} canRun={canModerate} onGo={(n) => send({ type: 'control', action: 'agenda-go', n })} onEdit={() => setAgendaOpen(true)} />
           <WeakNetwork show={weak} onAudioOnly={() => { setLowData(true); setWeak(false); }} onDismiss={() => { weakHiddenUntil.current = Date.now() + 120_000; setWeak(false); }} />
+        </div>
+      )}
+      <InterpretersSheet open={interpOpen && phase === 'live'} onClose={() => setInterpOpen(false)} people={list.map((r) => ({ userId: r.peer.userId, name: r.peer.name }))}
+        interp={interp} canManage={canModerate} listening={hearing}
+        onAssign={(userId, k, label) => send(k ? { type: 'control', action: 'interp-set', target: userId, kind: k, label } : { type: 'control', action: 'interp-clear', target: userId })}
+        onListen={(uid) => { setListening(uid); toast(uid ? `Hearing ${interp[uid]?.label ?? 'the interpreter'}; everyone else is quieter.` : 'Hearing the original', { icon: '🎧' }); }} />
+      {/* A sign language interpreter stays on screen while someone presents or is in the spotlight. */}
+      {signer && phase === 'live' && (presenter || lit || watching) && (
+        <div className="absolute z-20 left-3 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] w-40 sm:w-56 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20">
+          <Tile id={`sign-${signer.peer.peerId}`} name={`${signer.peer.name} · ${interp[signer.peer.userId]?.label ?? 'Sign language'}`} stream={signer.stream} camera silent compact className="w-full" />
         </div>
       )}
       <AgendaEditor open={agendaOpen && phase === 'live'} agenda={agenda} canRun={canModerate} onClose={() => setAgendaOpen(false)}

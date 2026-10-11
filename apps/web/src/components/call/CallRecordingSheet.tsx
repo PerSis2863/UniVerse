@@ -18,12 +18,27 @@ import { cn } from '@/lib/utils';
 interface Recording {
   id: string; url: string; mime: string; durationSec: number; createdAt: string; title: string; noteId: string | null;
   chapters: { t: number; title: string }[]; transcript: { t: number; who: string; text: string }[]; expiresAt: string; canDelete: boolean;
+  /** Stage 5 · B8.9: the part people see (seconds). */ trimStart?: number | null; trimEnd?: number | null;
 }
 
 const clock = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 
 export function CallRecordingSheet({ id, onClose }: { id: string; onClose: () => void }) {
-  const { data, error } = useSWR<Recording>(`/api/call-recordings/${id}`, (url: string) => authedJson<Recording>(url));
+  const { data, error, mutate } = useSWR<Recording>(`/api/call-recordings/${id}`, (url: string) => authedJson<Recording>(url));
+  // Trimming (B8.9): the part people see; the recorder picks it from where the player is.
+  const [trim, setTrim] = useState<{ start: number | null; end: number | null } | null>(null);
+  const start = trim?.start ?? data?.trimStart ?? null, end = trim?.end ?? data?.trimEnd ?? null;
+  const inRange = (t: number) => (start === null || t >= start) && (end === null || t <= end);
+  const keepInside = () => {
+    const m = media.current;
+    if (!m) return;
+    if (start !== null && m.currentTime < start - 0.25) m.currentTime = start;
+    if (end !== null && m.currentTime > end) { m.pause(); m.currentTime = end; }
+  };
+  const saveTrim = async () => {
+    try { const r = await authedJson<{ trimStart: number | null; trimEnd: number | null }>(`/api/call-recordings/${id}`, { method: 'PATCH', body: JSON.stringify({ trimStart: start, trimEnd: end }) }); await mutate((d) => (d ? { ...d, ...r } : d), { revalidate: false }); setTrim(null); toast.success('Trimmed: people see only this part'); }
+    catch (e) { toast.error((e as Error).message); }
+  };
   const media = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const [q, setQ] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -34,7 +49,8 @@ export function CallRecordingSheet({ id, onClose }: { id: string; onClose: () =>
     try { await authedJson(`/api/call-recordings/${id}`, { method: 'DELETE' }); toast.success('Recording deleted'); onClose(); } catch (e) { toast.error((e as Error).message); setDeleting(false); }
   };
   const needle = q.trim().toLowerCase();
-  const lines = data ? (needle ? data.transcript.filter((l) => l.text.toLowerCase().includes(needle) || l.who.toLowerCase().includes(needle)) : data.transcript) : [];
+  const kept = data ? data.transcript.filter((l) => (data.trimStart == null || l.t >= data.trimStart) && (data.trimEnd == null || l.t <= data.trimEnd)) : [];
+  const lines = needle ? kept.filter((l) => l.text.toLowerCase().includes(needle) || l.who.toLowerCase().includes(needle)) : kept;
 
   return createPortal(
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
@@ -55,11 +71,22 @@ export function CallRecordingSheet({ id, onClose }: { id: string; onClose: () =>
           : (
             <>
               {data.mime.startsWith('audio/')
-                ? <audio ref={media} src={data.url} controls preload="metadata" className="w-full" />
-                : <video ref={media} src={data.url} controls preload="metadata" playsInline className="w-full aspect-video rounded-xl bg-black" />}
+                ? <audio ref={media} src={data.url} controls preload="metadata" onLoadedMetadata={keepInside} onTimeUpdate={keepInside} onSeeked={keepInside} className="w-full" />
+                : <video ref={media} src={data.url} controls preload="metadata" playsInline onLoadedMetadata={keepInside} onTimeUpdate={keepInside} onSeeked={keepInside} className="w-full aspect-video rounded-xl bg-black" />}
+              {(start !== null || end !== null) && <p className="text-xs text-zinc-500">Showing {clock(start ?? 0)} to {clock(end ?? data.durationSec)}{data.canDelete ? ' (trimmed by you)' : ''}</p>}
+              {data.canDelete && (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-semibold text-zinc-600 dark:text-zinc-300">Trim:</span>
+                  <button type="button" onClick={() => setTrim({ start: Math.round(media.current?.currentTime ?? 0), end })} className="btn-secondary btn-sm">Start here</button>
+                  <button type="button" onClick={() => setTrim({ start, end: Math.round(media.current?.currentTime ?? data.durationSec) })} className="btn-secondary btn-sm">End here</button>
+                  {(start !== null || end !== null) && <button type="button" onClick={() => setTrim({ start: null, end: null })} className="btn-secondary btn-sm">Show it all</button>}
+                  {trim && <button type="button" onClick={() => void saveTrim()} className="btn-primary btn-sm">Save</button>}
+                  <span className="text-[11px] text-zinc-500 basis-full">Cut the waiting at the start or the chat at the end: people watching see only the part you keep.</span>
+                </div>
+              )}
               {data.chapters.length > 0 && (
                 <ol className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" aria-label="Parts of the call">
-                  {data.chapters.map((c) => (
+                  {data.chapters.filter((c) => inRange(c.t)).map((c) => (
                     <li key={c.t} className="shrink-0">
                       <button type="button" onClick={() => seek(c.t)} className="text-left w-40 rounded-xl border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] hover:border-indigo-300 px-3 py-2">
                         <span className="block font-mono text-[11px] tabular-nums text-indigo-600 dark:text-indigo-300">{clock(c.t)}</span>
