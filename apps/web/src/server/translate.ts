@@ -107,6 +107,25 @@ export async function translateMessages(messages: { id: string; body: string }[]
   return result;
 }
 
+/**
+ * Translates texts that aren't chat messages (src/server/text-translate.ts stores them): up to 20
+ * per AI call. `failed` when the AI wasn't available for some of them.
+ */
+export async function translateTexts(items: { id: string; text: string }[], to: string) {
+  const out = new Map<string, { lang: string; text: string }>();
+  const ask = items.filter((i) => {
+    if (!nothingToTranslate(i.text)) return true;
+    out.set(i.id, { lang: to, text: '' });
+    return false;
+  });
+  for (let i = 0; i < ask.length; i += MAX_BATCH) {
+    const got = await translateBatch(ask.slice(i, i + MAX_BATCH), to);
+    if (!got) return { out, failed: true };
+    for (const [k, v] of got) out.set(k, v);
+  }
+  return { out, failed: false };
+}
+
 /** Stored translations only (no AI call), e.g. to include with a page of messages. */
 export async function storedTranslations(messageIds: string[], to: string): Promise<Record<string, Translation>> {
   if (!messageIds.length) return {};

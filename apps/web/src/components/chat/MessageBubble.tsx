@@ -6,7 +6,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import { m as motion, useMotionValue, useTransform } from 'framer-motion';
-import { Ban, BarChart3, Eye, Flag, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
+import { AlarmClock, Ban, BarChart3, Eye, Flag, ExternalLink, Flame, Check, CheckCheck, Copy, CornerUpLeft, CornerUpRight, EyeOff, FileText, Info, MapPin, MessageCircle, MoreVertical, Pause, Pencil, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Play, SmilePlus, Star, StarOff, Trash2, Video, Pin, PinOff, Languages, Loader2, ImageIcon, ShieldCheck, X, Clapperboard } from 'lucide-react';
 import { languageName } from '@/lib/languages';
 import { useLowData } from '@/store/low-data';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,8 @@ import { MeetingNotesCard } from '@/components/call/MeetingNotes';
 import { EmojiGlyph, EmojiPicker } from './EmojiPicker';
 import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
+import { appLink, firstLink, youtubeId } from '@/lib/app-links';
+import { AppLinkCard, YouTubeCard } from './LinkCards';
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
 /**
@@ -120,6 +122,10 @@ interface Props {
   /** Report to the community's moderators (community channels, others' messages; Stage 4 · 1.13). */
   onReport?: () => void;
   onStar: () => void;
+  /** The colour of the sender's community role (Stage 5 · B7.4). */
+  senderColor?: string;
+  /** "Remind me" about this message (Stage 5 · B7.1). */
+  onRemind?: () => void;
   /** Present when this person may pin messages here. */
   onPin?: () => void;
   onForward: () => void;
@@ -163,6 +169,8 @@ export function MessageBubble(p: Props) {
 
   const time = new Date(m.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const deleted = m.type === 'DELETED';
+  // A sticker (Stage 5 · B7.2) shows without a bubble, unless it's a reply or forwarded (their labels need one).
+  const sticker = m.type === 'IMAGE' && !!m.metadata?.sticker && !m.replyTo && !m.forwarded && !m.metadata?.viewOnce;
   const age = now - new Date(m.createdAt).getTime();
   const canEdit = mine && m.type === 'TEXT' && !deleted && age < 86_400_000;
   // Delete for everyone: your own for 48 hours; admins and moderators any time.
@@ -187,7 +195,9 @@ export function MessageBubble(p: Props) {
   const bubble = cn(
     // iMessage: your messages filled with the tint, theirs in system grey; 20px corners with a tight corner by the sender.
     'relative min-w-0 max-w-full rounded-[20px] text-[15px] leading-[1.35]',
-    mine
+    // A sticker stands on its own, without a bubble.
+    sticker ? 'bg-transparent text-zinc-900 dark:text-white'
+      : mine
       ? 'bg-tint text-white rounded-br-[6px]'
       : 'bg-[#e9e9eb] dark:bg-[#26252a] text-zinc-900 dark:text-white rounded-bl-[6px]',
     m.pending && 'opacity-60',
@@ -195,7 +205,7 @@ export function MessageBubble(p: Props) {
   );
 
   const meta = (
-    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine ? 'text-white/70' : 'text-zinc-400')}>
+    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine && !sticker ? 'text-white/70' : 'text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
       {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : (
@@ -231,6 +241,8 @@ export function MessageBubble(p: Props) {
         ))}
       </div>
     );
+  } else if (sticker && m.attachmentUrl) {
+    content = <img src={m.attachmentUrl} alt={m.attachmentName?.replace(/\.sticker$/, '') || 'Sticker'} className="block w-32 h-32 object-contain" draggable={false} />;
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
       <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />
@@ -359,10 +371,16 @@ export function MessageBubble(p: Props) {
     const t = p.translation;
     const translated = t?.status === 'done' && !t.same && !!t.text;
     const showing = translated && !p.showOriginal;
+    // Rich cards for links (Stage 5 · B7.10): the app's own docs, boards and task boards live; YouTube with its picture.
+    const link = firstLink(m.body);
+    const app = link ? appLink(link, typeof window !== 'undefined' ? window.location.origin : undefined) : null;
+    const yt = link && !app ? youtubeId(link) : null;
     content = (
       <div className="px-3.5 py-2.5">
         <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} emoji={p.customEmoji} />
-        {m.metadata?.link && <LinkCard link={m.metadata.link} mine={mine} />}
+        {app && link ? <AppLinkCard kind={app.kind} id={app.id} url={link} mine={mine} />
+          : yt && link ? <YouTubeCard id={yt} url={link} title={m.metadata?.link?.title} mine={mine} />
+          : m.metadata?.link && <LinkCard link={m.metadata.link} mine={mine} />}
         {translated && (
           <button onClick={p.onToggleOriginal} className={cn('mt-1.5 flex items-center gap-1 text-[11px] font-medium', mine ? 'text-white/75 hover:text-white' : 'text-indigo-500 dark:text-indigo-300 hover:underline')}>
             <Languages className="w-3 h-3" />
@@ -403,7 +421,7 @@ export function MessageBubble(p: Props) {
       >
         {m.metadata?.ai
           ? <span className="text-[11px] font-semibold text-fuchsia-500 mb-1 ml-2 inline-flex items-center gap-1">✨ UniVerse AI{m.metadata.askedBy ? <span className="font-normal text-zinc-500"> · asked by {m.metadata.askedBy.split(' ')[0]}</span> : null}</span>
-          : showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2">{m.sender.name}</span>}
+          : showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2" style={p.senderColor ? { color: p.senderColor } : undefined}>{m.sender.name}</span>}
         <div className={cn('flex items-center gap-1 min-w-0 max-w-full', mine && 'flex-row-reverse')}>
           <div
             className={bubble}
@@ -456,6 +474,7 @@ export function MessageBubble(p: Props) {
                   {p.onThread && <MenuItem icon={MessageCircle} label="Reply in thread" onClick={() => { p.onThread!(); close(); }} />}
                   {FORWARDABLE.has(m.type) && <MenuItem icon={CornerUpRight} label="Forward" onClick={() => { p.onForward(); close(); }} />}
                   <MenuItem icon={m.starred ? StarOff : Star} label={m.starred ? 'Unstar' : 'Star'} onClick={() => { p.onStar(); close(); }} />
+                  {p.onRemind && <MenuItem icon={AlarmClock} label="Remind me" onClick={() => { p.onRemind!(); close(); }} />}
                   {p.onPin && <MenuItem icon={m.pinnedAt ? PinOff : Pin} label={m.pinnedAt ? 'Unpin' : 'Pin'} onClick={() => { p.onPin!(); close(); }} />}
                   {m.type === 'TEXT' && p.onTranslate && (
                     p.translation?.status === 'done' && !p.translation.same

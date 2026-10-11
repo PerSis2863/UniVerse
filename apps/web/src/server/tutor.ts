@@ -126,6 +126,13 @@ async function readySources(courseId: string) {
 
 const cite = (ps: Passage[]) => ps.map((p) => `[${p.n}] (${p.title})\n${p.text}`).join('\n\n');
 
+/** The course passages that best match a question, numbered for citing (the Whisper TA uses them too). */
+export async function coursePassages(courseId: string, query: string, k = 6) {
+  const sources = await readySources(courseId);
+  const found = sources.length ? rank(passages(sources), query, k) : [];
+  return { found, text: cite(found) };
+}
+
 // ─── Ask ─────────────────────────────────────────────────────────────────────────────────────
 
 const ASK_SYSTEM = `You are the AI tutor for a university course on UniVerse. Answer the student's question using ONLY the numbered course passages provided.

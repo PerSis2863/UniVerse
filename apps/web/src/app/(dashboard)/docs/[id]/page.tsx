@@ -22,6 +22,8 @@ import { DocEditor, DocToolbar, type DocStatus } from '@/components/docs/DocEdit
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { MentionInput } from '@/components/ui/MentionInput';
+import { Translatable } from '@/components/shared/Translatable';
+import { templateById } from '@/lib/doc-templates';
 
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
 // select, version history (preview and restore), sharing, and PDF / Word copies.
@@ -69,6 +71,21 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   const [exportOpen, setExportOpen] = useState(false);
   const editable = status.s === 'live' && status.canEdit;
   useEffect(() => { editor?.setEditable(editable); }, [editor, editable]);
+  // A new doc started from a template (Stage 5 · B9.1; ?template=): once it's live and still empty,
+  // the template goes in (as an edit, so everyone sees it and it's saved), then the address is tidied.
+  useEffect(() => {
+    if (!editor || !editable) return;
+    // A file converted into a doc (Stage 5 · B9.14) waits in this tab's storage.
+    let imported: string | null = null;
+    try { imported = sessionStorage.getItem(`doc-import:${id}`); sessionStorage.removeItem(`doc-import:${id}`); } catch { /* no storage */ }
+    if (imported && editor.isEmpty) { editor.commands.setContent(imported); return; }
+    const sp = new URLSearchParams(window.location.search);
+    const t = templateById(sp.get('template'));
+    if (!sp.has('template')) return;
+    if (t && editor.isEmpty) editor.commands.setContent(t.html);
+    sp.delete('template');
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${sp.size ? `?${sp}` : ''}`);
+  }, [editor, editable, id]);
 
   if (error) return <div className="p-8 text-sm text-rose-500">{(error as Error).message}</div>;
   if (!data) return <div className="flex-1 p-6"><div className="h-96 rounded-2xl skeleton" /></div>;
@@ -179,7 +196,7 @@ function Comments({ docId, editor, me, canEdit, onClose }: { docId: string; edit
         <span className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
       </div>
       {c.quote && <button type="button" onClick={() => goToQuote(editor, c.quote!)} className="mt-2 block w-full text-left text-xs italic text-zinc-500 border-l-2 border-amber-400 pl-2 line-clamp-2 hover:text-indigo-500">“{c.quote}”</button>}
-      <p className="mt-1.5 text-sm text-zinc-900 dark:text-white whitespace-pre-wrap break-words">{c.body}</p>
+      <Translatable kind="doc-comment" id={c.id} text={c.body} hide={c.userId === me} className="mt-1.5 text-sm text-zinc-900 dark:text-white whitespace-pre-wrap break-words" />
       <div className="mt-2 flex gap-3 text-[11px] font-semibold">
         {(canEdit || c.userId === me) && <button type="button" onClick={async () => { await call(`${key}/${c.id}`, 'PATCH', { resolved: !c.resolvedAt }).catch((e) => toast.error((e as Error).message)); void mutate(); }} className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">{c.resolvedAt ? <><RotateCcw className="w-3 h-3" />Reopen</> : <><Check className="w-3 h-3" />Resolve</>}</button>}
         {c.userId === me && <button type="button" onClick={async () => { await call(`${key}/${c.id}`, 'PATCH', { delete: true }).catch((e) => toast.error((e as Error).message)); void mutate(); }} className="text-zinc-400 hover:text-rose-500">Delete</button>}

@@ -23,7 +23,7 @@ interface View {
 }
 
 const ACTION: Record<string, string> = {
-  remove_message: 'removed a message by', timeout: 'timed out', untimeout: 'lifted the timeout of', remove_member: 'removed', role: 'changed the role of',
+  remove_message: 'removed a message by', timeout: 'timed out', untimeout: 'lifted the timeout of', remove_member: 'removed', role: 'changed the role of', roles: 'changed the roles of',
   automod: 'changed automod', dismiss_report: 'dismissed a report about',
 };
 const DURATIONS = [{ m: 10, l: '10 min' }, { m: 60, l: '1 hour' }, { m: 1440, l: '1 day' }, { m: 10080, l: '1 week' }];

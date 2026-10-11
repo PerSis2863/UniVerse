@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { toast } from 'sonner';
-import { Check, CheckCheck, Loader2, Plus, Search, Star, Trash2 } from 'lucide-react';
+import { AlarmClock, Check, CheckCheck, Loader2, Plus, Search, Star, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from '@/components/ui/Avatar';
 import { Sheet } from '@/components/ui/Sheet';
+import { Segmented } from '@/components/ui/Segmented';
+import { reminderChoices, snoozeChoices, validReminderTime } from '@/lib/reminder-times';
 import { type ChatMessage, type ConversationSummary, type Member, chatJson, previewText, timeLabel } from './chat-client';
 
 
@@ -160,16 +162,89 @@ export function MessageInfo({ message, members, me, onClose }: { message: ChatMe
   );
 }
 
-// ─── Starred messages ────────────────────────────────────────────────────
+// ─── Saved: the Later list and starred messages (Stage 5 · B7.1) ─────────
 type StarredItem = ChatMessage & { chat: { id: string; title: string } };
-export function StarredPanel({ onClose, onOpen }: { onClose: () => void; onOpen: (conversationId: string, messageId: string) => void }) {
+interface LaterItem { id: string; text: string; dueAt: string; doneAt: string | null; chat: { id: string; title: string } | null; messageId: string | null }
+export interface LaterData { due: LaterItem[]; upcoming: LaterItem[]; done: LaterItem[] }
+
+const whenLabel = (iso: string) => {
+  const d = new Date(iso);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+};
+
+export function SavedPanel({ initial = 'later', onClose, onOpen }: { initial?: 'later' | 'starred'; onClose: () => void; onOpen: (conversationId: string, messageId: string | null) => void }) {
+  const [tab, setTab] = useState<'later' | 'starred'>(initial);
+  const { data: later } = useSWR<LaterData>('/api/chat/reminders', authedJson);
+  const due = later?.due.length ?? 0;
+  return (
+    <Sheet title="Saved" onClose={onClose}>
+      <Segmented<'later' | 'starred'> label="Later or starred" className="mb-3" value={tab} onChange={setTab}
+        segments={[{ value: 'later', label: due ? `Later · ${due}` : 'Later', icon: <AlarmClock className="w-3.5 h-3.5" /> }, { value: 'starred', label: 'Starred', icon: <Star className="w-3.5 h-3.5" /> }]} />
+      {tab === 'later' ? <LaterList onOpen={onOpen} /> : <StarredList onOpen={(c, m) => onOpen(c, m)} />}
+    </Sheet>
+  );
+}
+
+function LaterList({ onOpen }: { onOpen: (conversationId: string, messageId: string | null) => void }) {
+  const { data, isLoading, mutate } = useSWR<LaterData>('/api/chat/reminders', authedJson);
+  const [busy, setBusy] = useState<string | null>(null);
+  const act = async (r: LaterItem, body: Record<string, unknown> | null, done?: string) => {
+    setBusy(r.id);
+    try {
+      await chatJson(`/api/chat/reminders/${r.id}`, body ? { method: 'PATCH', body: JSON.stringify(body) } : { method: 'DELETE' });
+      if (done) toast.success(done);
+      await mutate();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setBusy(null); }
+  };
+  const row = (r: LaterItem, kind: 'due' | 'upcoming' | 'done') => (
+    <div key={r.id} className={cn('p-3 rounded-2xl border', kind === 'due' ? 'border-amber-500/30 bg-amber-500/5' : 'border-zinc-200/70 dark:border-white/[0.07]', kind === 'done' && 'opacity-70')}>
+      <button type="button" onClick={() => r.chat && onOpen(r.chat.id, r.messageId)} disabled={!r.chat} className="w-full text-left disabled:cursor-default">
+        <p className="text-[11px] text-zinc-500 mb-1 flex items-center gap-1">
+          <AlarmClock className="w-3 h-3" aria-hidden />{kind === 'done' ? 'Done' : kind === 'due' ? `Came up ${whenLabel(r.dueAt)}` : whenLabel(r.dueAt)}{r.chat ? ` · ${r.chat.title}` : ''}
+        </p>
+        <p className={cn('text-sm text-zinc-900 dark:text-white line-clamp-3', kind === 'done' && 'line-through')}>{r.text}</p>
+      </button>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold">
+        {kind === 'done'
+          ? <button type="button" disabled={busy === r.id} onClick={() => void act(r, { action: 'undo' })} className="text-indigo-600 dark:text-indigo-400">Not done</button>
+          : <button type="button" disabled={busy === r.id} onClick={() => void act(r, { action: 'done' }, 'Done')} className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" />Done</button>}
+        {kind !== 'done' && snoozeChoices(new Date()).map((c) => (
+          <button key={c.id} type="button" disabled={busy === r.id} onClick={() => void act(r, { action: 'snooze', at: c.at.toISOString() }, `Moved to ${whenLabel(c.at.toISOString())}`)} className="text-zinc-600 dark:text-zinc-300">{kind === 'due' ? `Snooze: ${c.label.toLowerCase()}` : c.label}</button>
+        ))}
+        <button type="button" disabled={busy === r.id} onClick={() => void act(r, null)} className="text-zinc-500 inline-flex items-center gap-1 ml-auto" aria-label="Delete reminder"><Trash2 className="w-3.5 h-3.5" /></button>
+      </div>
+    </div>
+  );
+  if (isLoading) return <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>;
+  if (!data || (!data.due.length && !data.upcoming.length && !data.done.length)) {
+    return (
+      <div className="py-10 text-center">
+        <AlarmClock className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
+        <p className="font-semibold text-zinc-900 dark:text-white">Nothing for later</p>
+        <p className="text-sm text-zinc-500 mt-1">Tap and hold (or use ⋮) on any message and choose Remind me. It comes back here, and as a notification, when it’s time.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {data.due.length > 0 && <section aria-label="Due"><h3 className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300 mb-2">Due</h3><div className="space-y-2">{data.due.map((r) => row(r, 'due'))}</div></section>}
+      {data.upcoming.length > 0 && <section aria-label="Coming up"><h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">Coming up</h3><div className="space-y-2">{data.upcoming.map((r) => row(r, 'upcoming'))}</div></section>}
+      {data.done.length > 0 && <section aria-label="Done this week"><h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">Done this week</h3><div className="space-y-2">{data.done.map((r) => row(r, 'done'))}</div></section>}
+      <p className="text-[11px] text-zinc-500">Reminders arrive as a notification within 15 minutes of their time.</p>
+    </div>
+  );
+}
+
+function StarredList({ onOpen }: { onOpen: (conversationId: string, messageId: string) => void }) {
   const { data, isLoading, mutate } = useSWR<StarredItem[]>('/api/chat/starred', authedJson);
   const unstar = async (m: StarredItem) => {
     mutate((cur) => cur?.filter((x) => x.id !== m.id), { revalidate: false });
     await chatJson(`/api/chat/messages/${m.id}/state`, { method: 'POST', body: JSON.stringify({ starred: false }) }).catch(() => mutate());
   };
   return (
-    <Sheet title="Starred messages" onClose={onClose}>
+    <>
       {isLoading && <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>}
       {!isLoading && !data?.length && (
         <div className="py-10 text-center">
@@ -189,6 +264,43 @@ export function StarredPanel({ onClose, onOpen }: { onClose: () => void; onOpen:
           </div>
         ))}
       </div>
+    </>
+  );
+}
+
+/** "Remind me" on a message: quick times, or a date and time. */
+export function RemindSheet({ message, onClose }: { message: ChatMessage; onClose: () => void }) {
+  const { mutate } = useSWRConfig();
+  const [custom, setCustom] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [choices] = useState(() => reminderChoices(new Date()));
+  const save = async (id: string, at: Date) => {
+    if (!validReminderTime(at, new Date())) { toast.error('Pick a time from 1 minute to 60 days ahead.'); return; }
+    setBusy(id);
+    try {
+      await chatJson('/api/chat/reminders', { method: 'POST', body: JSON.stringify({ messageId: message.id, at: at.toISOString() }) });
+      toast.success(`I’ll remind you ${whenLabel(at.toISOString())}`, { description: 'It’ll be on your Later list, under Saved.' });
+      void mutate('/api/chat/reminders');
+      onClose();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setBusy(null); }
+  };
+  return (
+    <Sheet title="Remind me about this" onClose={onClose}>
+      <p className="text-sm text-zinc-600 dark:text-zinc-300 line-clamp-2 mb-3">{message.sender?.name ? `${message.sender.name}: ` : ''}{previewText(message)}</p>
+      <div className="space-y-1.5">
+        {choices.map((c) => (
+          <button key={c.id} type="button" disabled={!!busy} onClick={() => void save(c.id, c.at)} className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-sm">
+            <span className="font-medium text-zinc-900 dark:text-white">{c.label}</span>
+            <span className="text-xs text-zinc-500 tabular-nums">{busy === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : whenLabel(c.at.toISOString())}</span>
+          </button>
+        ))}
+      </div>
+      <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (custom) void save('custom', new Date(custom)); }}>
+        <input type="datetime-local" value={custom} onChange={(e) => setCustom(e.target.value)} aria-label="Pick a date and time" className="input flex-1 min-w-0" />
+        <button type="submit" disabled={!custom || !!busy} className="btn-primary shrink-0">{busy === 'custom' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set'}</button>
+      </form>
+      <p className="text-[11px] text-zinc-500 mt-2">It comes as a notification within 15 minutes of the time.</p>
     </Sheet>
   );
 }

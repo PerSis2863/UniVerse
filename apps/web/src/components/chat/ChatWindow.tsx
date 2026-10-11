@@ -17,7 +17,8 @@ import { ImageViewer } from './ImageViewer';
 import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
 import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
-import { ContactPicker, ForwardDialog, MessageInfo, PollDialog } from './ChatDialogs';
+import { ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
+import { ChatExport } from './ChatExport';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
 import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
@@ -96,6 +97,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [catchup, setCatchup] = useState<{ busy: boolean; text: string | null } | null>(null);
   const [showJump, setShowJump] = useState(false);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
   const [extra, setExtra] = useState<'poll' | 'contact' | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -316,7 +318,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     onChanged();
   };
 
-  const send = async ({ text, file: picked, voice, viewOnce, album, videoNote }: SendPayload) => {
+  const send = async ({ text, file: picked, voice, viewOnce, album, videoNote, sticker }: SendPayload) => {
     const file = picked ?? videoNote?.file;
     haptic('tap');
     const tempId = `temp-${crypto.randomUUID()}`;
@@ -324,7 +326,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const replyToId = replyTo?.id;
     setReplyTo(null);
     try {
-      if (album?.length) {
+      if (sticker) {
+        // A sticker (Stage 5 · B7.2): already uploaded, sent as a photo shown without a bubble.
+        setPending((p) => [...p, { ...base, type: 'IMAGE', body: '', attachmentUrl: sticker.url, attachmentName: 'sticker', attachmentSize: null, attachmentMime: null, metadata: { sticker: true } } as ChatMessage]);
+        const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ type: 'IMAGE', attachmentUrl: sticker.url, attachmentName: sticker.label ? `${sticker.label}.sticker` : 'sticker', sticker: true, replyToId }) });
+        appendSent(msg, tempId);
+      } else if (album?.length) {
         // An album: every photo uploads, then one message holds them all.
         setPending((p) => [...p, { ...base, type: 'IMAGE', body: '', attachmentUrl: null, attachmentName: album[0].name, attachmentSize: album[0].size, attachmentMime: album[0].type, metadata: null } as ChatMessage]);
         setUploadProgress(0);
@@ -754,6 +761,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onDeleteForMe={() => deleteForMe(m)}
                       onReport={channel && m.sender?.id !== me && !m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => void report(m) : undefined}
                       onStar={() => star(m)}
+                      senderColor={convo?.channel?.nameColors?.[m.senderId]}
+                      onRemind={!m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => setRemindFor(m) : undefined}
                       onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
                       onForward={() => setForwarding(m)}
                       onInfo={() => setInfoMsg(m)}
@@ -846,6 +855,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       </AnimatePresence>
 
       {forwarding && <ForwardDialog message={forwarding} onClose={() => setForwarding(null)} onDone={() => { setForwarding(null); onChanged(); }} />}
+      {remindFor && <RemindSheet message={remindFor} onClose={() => setRemindFor(null)} />}
       {infoMsg && <MessageInfo message={infoMsg} members={convo.members} me={me} onClose={() => setInfoMsg(null)} />}
       {extra === 'poll' && <PollDialog onClose={() => setExtra(null)} onCreate={(poll) => sendSpecial({ type: 'POLL', poll })} />}
       {extra === 'contact' && <ContactPicker onClose={() => setExtra(null)} onPick={(contactId) => sendSpecial({ type: 'CONTACT', contactId })} />}
@@ -1014,6 +1024,9 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
           </div>
         </div>
       )}
+
+      {/* Export (Stage 5 · B7.8). */}
+      <ChatExport conversationId={convo.id} title={convo.title} />
 
       {convo.isGroup && (
         <div className="p-5 flex-1">

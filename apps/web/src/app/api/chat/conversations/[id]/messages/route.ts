@@ -6,6 +6,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { decorate, getSystemUser, isOnline, isOwnBlobUrl, MAX_BODY, membership, messageSelect, serializeMessage, touchPresence, userCard, visibleTo } from '@/lib/chat';
 import { afterSend } from '@/server/chat-notify';
+import { nameColor, parseIds } from '@/lib/community-roles';
 import { linkScheduledCall } from '@/server/scheduled-calls';
 import { channelSendCheck } from '@/server/communities';
 import { automodCheck, automodReport } from '@/server/community-moderation';
@@ -82,7 +83,7 @@ async function getThread(req: Request, { params }: Ctx) {
       where: { id },
       select: {
         id: true, isGroup: true, name: true, avatarUrl: true, createdById: true, disappearingSec: true,
-        communityId: true, channelKind: true, slowModeSec: true, community: { select: { name: true, color: true } },
+        communityId: true, channelKind: true, slowModeSec: true, channelPrivate: true, community: { select: { name: true, color: true } },
         // Big community channels: the first 300 members are enough for mentions and read marks.
         participants: { take: 300, select: { userId: true, role: true, lastReadAt: true, typingUntil: true, user: userCard } },
       },
@@ -127,12 +128,17 @@ async function getThread(req: Request, { params }: Ctx) {
     : [];
   const threadOf2 = new Map(threads.map((t) => [t.threadId!, { count: t._count._all, lastAt: t._max.createdAt }]));
   const withThreads = messages.map((m) => (threadOf2.has(m.id) ? { ...m, thread: threadOf2.get(m.id) } : m));
-  const [communityRole, communityEmoji] = convo.communityId
+  const [communityRole, communityEmoji, roleColors] = convo.communityId
     ? await Promise.all([
         prisma.communityMember.findUnique({ where: { communityId_userId: { communityId: convo.communityId, userId: user.id } }, select: { role: true } }).then((m) => m?.role ?? null),
         prisma.communityEmoji.findMany({ where: { communityId: convo.communityId }, orderBy: { name: 'asc' }, select: { name: true, url: true } }),
+        // Names in the colour of each person's first community role (Stage 5 · B7.4).
+        Promise.all([
+          prisma.communityRole.findMany({ where: { communityId: convo.communityId }, select: { id: true, color: true, position: true } }),
+          prisma.communityMember.findMany({ where: { communityId: convo.communityId, roleIds: { not: null } }, select: { userId: true, roleIds: true }, take: 1000 }),
+        ]).then(([roles, held]) => (roles.length ? Object.fromEntries(held.map((m) => [m.userId, nameColor(parseIds(m.roleIds), roles)]).filter(([, c]) => c)) as Record<string, string> : {})),
       ])
-    : [null, []];
+    : [null, [], {} as Record<string, string>];
 
   return NextResponse.json(
     {
@@ -152,7 +158,7 @@ async function getThread(req: Request, { params }: Ctx) {
         draft: prefs?.draft ?? null,
         draftAt: prefs?.draftAt ?? null,
         channel: convo.communityId
-          ? { kind: convo.channelKind ?? 'TEXT', communityId: convo.communityId, communityName: convo.community?.name ?? '', color: convo.community?.color ?? null, slowModeSec: convo.slowModeSec, role: communityRole, emoji: communityEmoji }
+          ? { kind: convo.channelKind ?? 'TEXT', communityId: convo.communityId, communityName: convo.community?.name ?? '', color: convo.community?.color ?? null, slowModeSec: convo.slowModeSec, role: communityRole, emoji: communityEmoji, private: convo.channelPrivate, nameColors: roleColors }
           : null,
         members: convo.participants.map((p) => ({
           id: p.user.id,
@@ -254,6 +260,8 @@ export async function POST(req: Request, { params }: Ctx) {
       if (type === 'AUDIO' && Number.isFinite(b.durationSec)) meta.durationSec = Math.round(b.durationSec);
       // A round video note (Stage 4 · 1.7), up to a minute.
       if (type === 'VIDEO' && b.videoNote === true) { meta.videoNote = true; if (Number.isFinite(b.durationSec)) meta.durationSec = Math.min(60, Math.round(b.durationSec)); }
+      // A sticker (Stage 5 · B7.2): a photo shown large, without a bubble.
+      if (type === 'IMAGE' && b.sticker === true) meta.sticker = true;
       // A voice message left after a missed call (shown as Voicemail, transcribed straight away).
       if (type === 'AUDIO' && b.voicemail === true) meta.voicemail = true;
       // The loudness bars drawn on the voice message (recorded on the device; 64 at most, 0–31).

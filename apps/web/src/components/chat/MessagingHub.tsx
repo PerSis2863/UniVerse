@@ -18,6 +18,7 @@ import { useLiveInterval } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import type { ChatFolder } from './ChatFolders';
+import type { LaterData } from './ChatDialogs';
 
 /** A built-in filter, or one of my folders (folder:<id>). */
 type Filter = 'all' | 'unread' | 'direct' | 'groups' | `folder:${string}`;
@@ -32,7 +33,7 @@ const ChatWindow = dynamic(() => loadChatWindow().then((m) => m.ChatWindow), {
 const NewChatDialog = dynamic(() => import('./NewChatDialog').then((m) => m.NewChatDialog));
 const FolderSheet = dynamic(() => import('./ChatFolders').then((m) => m.FolderSheet));
 const MuteUntilSheet = dynamic(() => import('./ChatFolders').then((m) => m.MuteUntilSheet));
-const StarredPanel = dynamic(() => import('./ChatDialogs').then((m) => m.StarredPanel));
+const SavedPanel = dynamic(() => import('./ChatDialogs').then((m) => m.SavedPanel));
 const CommunitiesPanel = dynamic(() => import('./CommunitiesPanel').then((m) => m.CommunitiesPanel), { loading: () => <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div> });
 const PresencePicker = dynamic(() => import('./PresencePicker').then((m) => m.PresencePicker));
 const StatusBar = dynamic(() => import('./StatusBar').then((m) => m.StatusBar), { loading: () => <div className="h-[88px]" /> });
@@ -75,8 +76,21 @@ export function MessagingHub() {
     const sp = new URLSearchParams(window.location.search);
     return sp.get('space') === 'communities' || sp.get('join') ? 'communities' : 'chats';
   });
-  const [starredOpen, setStarredOpen] = useState(false);
+  const [savedOpen, setSavedOpen] = useState(false);
+  // Reminders that came up and aren't done (Stage 5 · B7.1): a badge on Saved.
+  const { data: later } = useSWR<LaterData>('/api/chat/reminders', authedJson, { revalidateOnFocus: false });
+  const dueCount = later?.due.length ?? 0;
   const [jumpTo, setJumpTo] = useState<string | null>(null);
+  // A reminder opens its message (?c=…&m=…) or the Later list (?later=1) (Stage 5 · B7.1).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const sp = new URLSearchParams(window.location.search);
+      const m = sp.get('m');
+      if (sp.get('c') && m) setJumpTo((cur) => cur ?? m);
+      if (sp.get('later')) setSavedOpen(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   // My folders (kept on my account), the one being made or changed, and "Mute until…".
   const { data: folderData, mutate: mutateFolders } = useSWR<{ folders: ChatFolder[] }>('/api/chat/folders', authedJson, { revalidateOnFocus: false });
@@ -185,7 +199,10 @@ export function MessagingHub() {
             </h2>
             <div className="flex gap-1 items-center">
               <PresencePicker />
-              <button onClick={() => setStarredOpen(true)} aria-label="Starred messages" title="Starred messages" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Star className="w-5 h-5" /></button>
+              <button onClick={() => setSavedOpen(true)} aria-label={dueCount ? `Saved: ${dueCount} reminder${dueCount === 1 ? '' : 's'} due` : 'Saved: later and starred'} title="Later and starred" className="relative p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 hover:bg-zinc-100 dark:hover:bg-white/10">
+                <Star className="w-5 h-5" />
+                {dueCount > 0 && <span className="absolute top-0.5 right-0.5 min-w-[1rem] h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-4 text-center">{dueCount > 9 ? '9+' : dueCount}</span>}
+              </button>
               <button onClick={() => setDialog('group')} aria-label="New group" title="New group" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Users className="w-5 h-5" /></button>
               <button onClick={() => setDialog('chat')} aria-label="New chat" title="New chat" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><MessageSquarePlus className="w-5 h-5" /></button>
             </div>
@@ -368,7 +385,7 @@ export function MessagingHub() {
           onDelete={folderEdit === 'new' ? undefined : async () => { const id = folderEdit.id; await saveFolders(folders.filter((x) => x.id !== id)); setFilter('all'); }} />
       )}
       {muteFor && <MuteUntilSheet title={muteFor.title} onClose={() => setMuteFor(null)} onMute={(until) => setPref(muteFor, { muted: { until: until.toISOString() } }, `Muted until ${until.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`)} />}
-      {starredOpen && <StarredPanel onClose={() => setStarredOpen(false)} onOpen={(cid, mid) => { setStarredOpen(false); select(cid); setJumpTo(mid); }} />}
+      {savedOpen && <SavedPanel onClose={() => setSavedOpen(false)} onOpen={(cid, mid) => { setSavedOpen(false); select(cid); setJumpTo(mid); }} />}
 
       <AnimatePresence>
         {dialog && (

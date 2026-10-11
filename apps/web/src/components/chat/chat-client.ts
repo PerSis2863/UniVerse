@@ -27,6 +27,7 @@ export interface ChatMessage {
     album?: { url: string; name: string; size: number | null; mime: string }[]; // IMAGE: several photos as one (Stage 4 · 1.7)
     waveform?: number[]; // AUDIO: loudness bars (0–31) recorded with it
     videoNote?: boolean; // VIDEO: a round video note
+    sticker?: boolean; // IMAGE: a sticker (Stage 5 · B7.2), shown large without a bubble
     link?: { url: string; title: string; description: string | null; site: string } | null; // link preview
     broadcast?: boolean;
     ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`
@@ -80,7 +81,7 @@ export interface ConversationSummary {
 export interface ScheduledItem { id: string; body: string; sendAt: string; replyToId: string | null }
 
 export interface UserStatus { presence: 'auto' | 'busy' | 'in_class' | 'studying' | 'sleeping'; statusText: string | null; statusEmoji: string | null; hidden?: boolean; focus?: boolean }
-export interface ChannelInfo { kind: 'TEXT' | 'ANNOUNCE' | 'VOICE'; communityId: string; communityName: string; color: string | null; slowModeSec: number; role: 'OWNER' | 'MOD' | 'MEMBER' | null; /** The community's own emoji (:name:). */ emoji?: { name: string; url: string }[] }
+export interface ChannelInfo { kind: 'TEXT' | 'ANNOUNCE' | 'VOICE'; communityId: string; communityName: string; color: string | null; slowModeSec: number; role: 'OWNER' | 'MOD' | 'MEMBER' | null; /** The community's own emoji (:name:). */ emoji?: { name: string; url: string }[]; /** Stage 5 · B7.4: seen only by moderators and chosen roles; names in their role's colour. */ private?: boolean; nameColors?: Record<string, string> }
 
 /** A person's custom status or availability, for under their name ("📚 Revising for finals", "In class"). */
 export function statusLine(s: UserStatus | null | undefined): string | null {
@@ -221,7 +222,8 @@ export function previewText(m: { type: string; body: string; attachmentName?: st
   if (!m) return 'No messages yet';
   if (m.deletedAt || m.type === 'DELETED') return '🚫 Message deleted';
   switch (m.type) {
-    case 'IMAGE': return '📷 Photo';
+    // A sticker (Stage 5 · B7.2) is named after its image ("….sticker").
+    case 'IMAGE': return m.attachmentName === 'sticker' || m.attachmentName?.endsWith('.sticker') ? '🏷️ Sticker' : '📷 Photo';
     case 'VIDEO': return '🎬 Video';
     case 'AUDIO': return '🎤 Voice message';
     case 'FILE': return `📎 ${m.attachmentName || 'File'}`;

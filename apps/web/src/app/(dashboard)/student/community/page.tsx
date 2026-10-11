@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import { TranslatableAnnouncement } from '@/components/shared/Translatable';
 
 interface Post { id: string; title?: string | null; content?: string | null; body?: string | null; createdAt?: string | null; author?: { name: string } | null }
 
@@ -106,8 +107,7 @@ export default function StudentCommunity() {
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-2">{post.title}</h3>
-                  <p className="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed mb-4 whitespace-pre-line">{post.body ?? post.content}</p>
+                  <TranslatableAnnouncement id={post.id} title={post.title} body={post.body ?? post.content ?? ''} titleClassName="text-lg font-medium text-zinc-900 dark:text-white mb-2" bodyClassName="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed whitespace-pre-line" controlClassName="mb-4" />
 
                   {/* Actions */}
                   <div className="flex items-center gap-6 pt-4 border-t border-zinc-200 dark:border-zinc-800/50">

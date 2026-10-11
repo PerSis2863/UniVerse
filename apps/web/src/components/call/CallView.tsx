@@ -31,6 +31,8 @@ import { WatchPicker, WatchStage, type WatchState } from './WatchTogether';
 import { WebinarQA, type QaItem } from './WebinarQA';
 import { PipCall, type PipTile } from './PipCall';
 import { CallBoardPanel, boardFromChat, makeCallBoard } from './CallBoard';
+import { WhisperPanel, WhisperPill, WhisperTopics } from './WhisperTA';
+import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -537,6 +539,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const resumeJoin = useRef<(() => void) | null>(null);
   const [inRoom, setInRoom] = useState<string[] | null>(null);
   const stateRef = useRef({ muted: false, camera: true, sharing: false, cc, recording: false, notes: false, lowData: false, lite: false });
+  // Whisper TA (Stage 5 · D2): once a student opens it, the call room hears that they want captions
+  // (so speakers caption, as for "Captions on"), and the last minutes of captions are kept here to
+  // send with a question. Nothing leaves this device until they ask.
+  const taListen = useRef(false);
+  const heardRef = useRef<HeardLine[]>([]);
+  const [taOpen, setTaOpen] = useState(false);
   // Audio-only fallback: a poor connection for 10 s pauses incoming video (people's screens stay).
   const [audioOnly, setAudioOnly] = useState(false);
   const audioOnlyRef = useRef(false);
@@ -565,7 +573,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
 
   const send = (msg: unknown) => { if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg)); };
   const announce = () => {
-    send({ type: 'state', ...stateRef.current });
+    send({ type: 'state', ...stateRef.current, cc: stateRef.current.cc || taListen.current });
     send({ type: 'cc-lang', lang: ccLangRef.current, device: canTranslateOnDevice() });
     if (myPulseRef.current) send({ type: 'pulse', v: myPulseRef.current });
   };
@@ -773,7 +781,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     // Chose video again: don't switch it off by itself for a minute.
     if (!on) autoAudioOnlyAfter.current = Date.now() + 60_000;
     stateRef.current.lowData = on;
-    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'state', ...stateRef.current }));
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'state', ...stateRef.current, cc: stateRef.current.cc || taListen.current }));
     if (sfuRef.current) syncSfu();
   }, [syncSfu]);
 
@@ -787,7 +795,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (first && !on) return;
     if (on && stateRef.current.camera) void actions.current?.toggleCamera();
     if (audioOnlyRef.current !== on) setLowData(on);
-    else if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'state', ...stateRef.current }));
+    else if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'state', ...stateRef.current, cc: stateRef.current.cc || taListen.current }));
     for (const [id, pc] of pcs.current) {
       if (pc.connectionState === 'connected') void tuneSenders(pc, !remotesRef.current[id]?.lowData, on || !!remotesRef.current[id]?.lite);
     }
@@ -852,6 +860,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       a.click();
     }
   }, [callId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Keeps a final caption for the Whisper TA: the last ten minutes, in class calls. */
+  const keepHeard = (who: string, text: string) => {
+    if (!callId.startsWith('c_') || !text.trim()) return;
+    const now = Date.now();
+    const h = heardRef.current;
+    h.push({ at: now, who, text: text.trim().slice(0, 400) });
+    while (h.length && (now - h[0].at > HEARD_MS || h.length > 300)) h.shift();
+  };
+  const heardNow = useCallback(() => recentHeard(heardRef.current, Date.now()), []);
 
   // ── Class notes (class calls, the teacher) ───────────────────────────────────────────────
   /** Keeps a final caption for the study pack (only while my class notes are on). */
@@ -981,7 +999,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     const off = held || stateRef.current.muted;
     if (mic) mic.enabled = !off;
     void sfuRef.current?.replace('audio', off ? null : mic);
-    send({ type: 'state', ...stateRef.current, muted: off });
+    send({ type: 'state', ...stateRef.current, cc: stateRef.current.cc || taListen.current, muted: off });
   }, [held, phase]);  
 
   const recordVoicemail = async () => {
@@ -1267,7 +1285,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           if (sfuRef.current && before && (before.camera !== msg.camera || before.sharing !== msg.sharing)) syncSfu();
         } else if (msg.type === 'caption') {
           const who = remotesRef.current[msg.from];
-          if (msg.final) noteLine(who?.peer.name ?? 'Someone', String(msg.text));
+          if (msg.final) {
+            noteLine(who?.peer.name ?? 'Someone', String(msg.text));
+            keepHeard(who?.peer.name ?? 'Someone', String(msg.text));
+          }
           const lang = typeof msg.lang === 'string' ? msg.lang : null;
           if (msg.final && typeof msg.id === 'string' && lang) {
             heard.current.set(msg.id, { text: String(msg.text), lang });
@@ -1942,11 +1963,13 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const callBoard = useMemo(() => boardFromChat(chat.lines), [chat.lines]);
   const unread = chatOpen ? 0 : chat.lines.filter((l) => !l.mine && !l.note && l.at > chatSeenAt).length;
   /** One side panel at a time: people or chat. */
-  const openPanel = (which: 'people' | 'chat' | 'rooms' | 'qa' | null) => {
+  const openPanel = (which: 'people' | 'chat' | 'rooms' | 'qa' | 'ta' | null) => {
     haptic('tap');
     setReactOpen(false);
     setMoreOpen(false);
     setQaOpen(which === 'qa');
+    setTaOpen(which === 'ta');
+    if (which === 'ta' && !taListen.current) { taListen.current = true; announce(); }
     setBoOpen(which === 'rooms');
     setPeopleOpen(which === 'people');
     // Everything in the chat so far counts as seen.
@@ -2001,7 +2024,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Everything that isn't a main control, in the "More" sheet.
   const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
   const canBg = backgroundsSupported();
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  /** Students in a class call (not guests) can ask the Whisper TA. */
+  const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+    ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
@@ -2026,6 +2052,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'cclang') setCcPick(true);
     else if (key === 'guests') void inviteGuests();
     else if (key === 'qa') openPanel(qaOpen ? null : 'qa');
+    else if (key === 'ta') openPanel(taOpen ? null : 'ta');
     else if (key === 'webinar') {
       control('webinar', null, !webinar);
       if (!webinar) toast('Webinar mode: you and your co-hosts are on stage; everyone else watches and can ask in Q&A or raise a hand. Bring people on stage from People.', { icon: '🎙️', duration: 9000 });
@@ -2265,6 +2292,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         )}
         <AnimatePresence>
           {phase === 'live' && isClassCall && canModerate && pulse && pulse.lost + pulse.got > 0 && <PulseMeter key="pulse" counts={pulse} />}
+          {phase === 'live' && isClassCall && canModerate && !isGuest && <WhisperTopics key="whisper" callId={callId} />}
           {phase === 'live' && callId.startsWith('o_') && canModerate && (
             <OfficeBar key="office" line={officeLine} onNext={() => { haptic('tap'); control('office-next'); }}
               students={Object.values(remotes).filter((x) => !x.peer.host && !x.peer.cohost).map((x) => ({ userId: x.peer.userId, name: x.peer.name }))} />
@@ -2340,7 +2368,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               );
             })}
           </AnimatePresence>
-          {phase === 'live' && isClassCall && !canModerate && <PulseButtons value={myPulse} onPick={tapPulse} />}
+          {phase === 'live' && isClassCall && !canModerate && (
+            <div className="flex flex-wrap items-start justify-center gap-2">
+              <PulseButtons value={myPulse} onPick={tapPulse} />
+              {canTa && <WhisperPill open={taOpen} onOpen={() => openPanel(taOpen ? null : 'ta')} />}
+            </div>
+          )}
         </div>
       </div>
 
@@ -2417,6 +2450,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       </AnimatePresence>
       <AnimatePresence>{boardOpen && callBoard && phase === 'live' && <CallBoardPanel key="board" boardId={callBoard} onClose={() => setBoardOpen(false)} />}</AnimatePresence>
       <CallChatPanel open={chatOpen && phase === 'live'} onClose={() => openPanel(null)} lines={chat.lines} onSend={chat.send} linked={chat.linked} title={info?.title ?? 'the chat'} />
+      {canTa && <WhisperPanel open={taOpen} onClose={() => openPanel(null)} callId={callId} heard={heardNow} />}
       <BreakoutPanel open={boOpen && phase === 'live' && canModerate} onClose={() => setBoOpen(false)} bo={bo} room={roomN}
         people={list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host || r.peer.cohost }))}
         onSend={(m) => send({ type: 'control', ...m })} onJoin={(n) => goRoom(n === null ? callId : roomId(callId, n))} />

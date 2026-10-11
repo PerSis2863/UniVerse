@@ -9,6 +9,7 @@ import { Check, Edit2, Hash, ImageIcon, Loader2, Paperclip, Send, Trash2, X } fr
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { safeHref } from '@/lib/safe-href';
+import { Translatable } from '@/components/shared/Translatable';
 
 interface Post {
   id: string;
@@ -199,7 +200,7 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
                           <img src={p.imageUrl} alt="Shared image" loading="lazy" className="max-h-64 w-auto object-cover" />
                         </a>
                       )}
-                      {p.body && <div className="p-3"><MessageText text={p.body} mine={mine} /></div>}
+                      {p.body && <div className="p-3"><Translatable kind="group-post" id={p.id} text={p.body} hide={mine || p.body.startsWith('📎 ')} render={(t) => <MessageText text={t} mine={mine} />} /></div>}
                     </div>
                   </div>
                 </div>
