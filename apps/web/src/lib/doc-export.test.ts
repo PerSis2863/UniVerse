@@ -66,4 +66,20 @@ describe('document export', () => {
     const files = docToDocx({ type: 'doc', content: [p(t('a < b & "c"\u0001'))] }, '');
     expect(files['word/document.xml']).toContain('a &lt; b &amp; &quot;c&quot;</w:t>');
   });
+  it('writes embeds as code, maths or links', () => {
+    const d: PMNode = { type: 'doc', content: [
+      { type: 'embed', attrs: { kind: 'code', lang: 'javascript', code: 'console.log(1)' } },
+      { type: 'embed', attrs: { kind: 'math', tex: 'x^2' } },
+      { type: 'embed', attrs: { kind: 'youtube', src: 'dQw4w9WgXcQ', title: 'Intro' } },
+      { type: 'embed', attrs: { kind: 'board', src: 'cmv4028hv00028vhurdl2laue', title: 'Plan' } },
+    ] };
+    const md = docToMarkdown(d, '', 'https://u.app');
+    expect(md).toContain('```js\nconsole.log(1)\n```');
+    expect(md).toContain('$$\nx^2\n$$');
+    expect(md).toContain('[Video: Intro](https://www.youtube.com/watch?v=dQw4w9WgXcQ)');
+    expect(md).toContain('[Whiteboard: Plan](https://u.app/boards/cmv4028hv00028vhurdl2laue)');
+    const files = docToDocx(d, '', { origin: 'https://u.app' });
+    expect(files['word/document.xml']).toContain('console.log(1)');
+    expect(files['word/_rels/document.xml.rels']).toContain('Target="https://u.app/boards/cmv4028hv00028vhurdl2laue"');
+  });
 });

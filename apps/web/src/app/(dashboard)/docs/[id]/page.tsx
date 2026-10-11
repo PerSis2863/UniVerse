@@ -26,6 +26,7 @@ import { Translatable } from '@/components/shared/Translatable';
 import { templateById } from '@/lib/doc-templates';
 import { downloadDocx, downloadMarkdown, importFile } from '@/components/docs/doc-files';
 import { DocBreadcrumb, DocPagesPanel, PageLinkButton, type PageRef } from '@/components/docs/DocPages';
+import { DocEmbed, EmbedMenu } from '@/components/docs/DocEmbed';
 
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
 // select, version history (preview and restore), sharing, and PDF / Word / Markdown copies; import
@@ -135,7 +136,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
         {data.canManage && !data.course && !data.chat && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
         {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: data.children.length ? 'Its text, versions and comments go for everyone. The pages inside it move to the top.' : 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </header>
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><DocToolbar editor={editor} disabled={!editable} /></div>{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><DocToolbar editor={editor} disabled={!editable} /></div><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm">
@@ -242,7 +243,7 @@ function HistorySheet({ docId, editor, canEdit, onClose }: { docId: string; edit
   const [name, setName] = useState('');
   const { data: version } = useSWR<{ html: string }>(picked ? `/api/docs/${docId}/versions/${picked}` : null, authedJson);
   // A read-only view of the version: parsed by the editor's own rules, so nothing unsafe shows.
-  const preview = useEditor({ immediatelyRender: false, editable: false, extensions: [StarterKit, TableKit, TaskList, TaskItem, Image], content: '', editorProps: { attributes: { class: 'doc-prose px-4 py-4 text-sm' } } });
+  const preview = useEditor({ immediatelyRender: false, editable: false, extensions: [StarterKit, TableKit, TaskList, TaskItem, Image, DocEmbed], content: '', editorProps: { attributes: { class: 'doc-prose px-4 py-4 text-sm' } } });
   useEffect(() => { if (preview && version) preview.commands.setContent(version.html); }, [preview, version]);
   const saveNamed = async () => {
     if (!editor || !name.trim()) return;

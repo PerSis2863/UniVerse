@@ -1,11 +1,19 @@
 // Downloading a document (Stage 5 · B9.6) from the editor's own structure (Tiptap's JSON), so
 // tables, checklists, links and mentions come out properly: Markdown, and a real Word file
 // (.docx: WordprocessingML, zipped by the caller). Pictures go into the Word file when the caller
-// could fetch them (as PNG); otherwise a "[Picture: …]" note stands in.
+// could fetch them (as PNG); otherwise a "[Picture: …]" note stands in. Embeds (B9.5): code stays
+// code, maths stays LaTeX, and videos, PDFs and boards become links.
+
+import { EMBED_LABEL, embedHref, type EmbedAttrs } from '@/lib/doc-embeds';
 
 export interface PMMark { type: string; attrs?: Record<string, unknown> }
 export interface PMNode { type: string; attrs?: Record<string, unknown>; content?: PMNode[]; text?: string; marks?: PMMark[] }
 export interface DocxImage { data: Uint8Array; width: number; height: number }
+
+const embedOf = (n: PMNode): EmbedAttrs => {
+  const v = (k: string) => (typeof n.attrs?.[k] === 'string' ? (n.attrs[k] as string) : '');
+  return { kind: v('kind') as EmbedAttrs['kind'], src: v('src'), title: v('title'), lang: v('lang'), code: v('code'), tex: v('tex') };
+};
 
 const kids = (n: PMNode) => n.content ?? [];
 const attr = <T>(n: PMNode | PMMark, k: string, d: T): T => ((n.attrs?.[k] as T | undefined) ?? d);
@@ -41,8 +49,15 @@ function inlineMd(nodes: PMNode[]): string {
 
 const cellMd = (cell: PMNode) => kids(cell).map((p) => inlineMd(kids(p))).join(' ').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
 
-function blockMd(n: PMNode, indent = ''): string {
+function blockMd(n: PMNode, indent = '', origin = ''): string {
   switch (n.type) {
+    case 'embed': {
+      const e = embedOf(n);
+      if (e.kind === 'code') return `\`\`\`${e.lang === 'javascript' ? 'js' : e.lang || ''}\n${e.code}\n\`\`\``;
+      if (e.kind === 'math') return `$$\n${e.tex}\n$$`;
+      const href = embedHref(e, origin);
+      return href ? `[${EMBED_LABEL[e.kind]}: ${mdEscape(e.title || href)}](${href})` : '';
+    }
     case 'paragraph': return indent + inlineMd(kids(n)).replace(/\n/g, `\n${indent}`);
     case 'heading': return `${'#'.repeat(Math.min(6, Math.max(1, attr(n, 'level', 1))))} ${inlineMd(kids(n))}`;
     case 'blockquote': return kids(n).map((c) => blockMd(c)).join('\n\n').split('\n').map((l) => `> ${l}`.trimEnd()).join('\n');
@@ -67,13 +82,13 @@ function blockMd(n: PMNode, indent = ''): string {
       const line = (r: string[]) => `| ${Array.from({ length: width }, (_, k) => r[k] ?? '').join(' | ')} |`;
       return [line(rows[0]), `| ${Array.from({ length: width }, () => '---').join(' | ')} |`, ...rows.slice(1).map(line)].join('\n');
     }
-    default: return kids(n).map((c) => blockMd(c, indent)).join('\n\n');
+    default: return kids(n).map((c) => blockMd(c, indent, origin)).join('\n\n');
   }
 }
 
-/** The document as Markdown, with its title as the top heading. */
-export function docToMarkdown(doc: PMNode, title?: string): string {
-  const body = kids(doc).map((b) => blockMd(b)).filter((s) => s.trim() !== '').join('\n\n');
+/** The document as Markdown, with its title as the top heading (app links made absolute with `origin`). */
+export function docToMarkdown(doc: PMNode, title?: string, origin = ''): string {
+  const body = kids(doc).map((b) => blockMd(b, '', origin)).filter((s) => s.trim() !== '').join('\n\n');
   return `${title ? `# ${title}\n\n` : ''}${body}\n`;
 }
 
@@ -140,6 +155,13 @@ function blocksDocx(ctx: Ctx, nodes: PMNode[], opts: { style?: string; level?: n
       case 'codeBlock': return para('<w:pStyle w:val="Code"/>', run(kids(n).map((t) => t.text ?? '').join('')));
       case 'horizontalRule': return para('<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="D4D4D8"/></w:pBdr>', '');
       case 'image': return para('', picture(ctx, attr(n, 'src', ''), attr(n, 'alt', '')));
+      case 'embed': {
+        const e = embedOf(n);
+        if (e.kind === 'code') return para('<w:pStyle w:val="Code"/>', run(e.code));
+        if (e.kind === 'math') return para('<w:pStyle w:val="Code"/>', run(e.tex));
+        const href = embedHref(e, ctx.origin);
+        return href && /^https?:/i.test(href) ? para('', `<w:hyperlink r:id="${rel(ctx, 'hyperlink', href, true)}">${run(`${EMBED_LABEL[e.kind]}: ${e.title || href}`, '<w:rStyle w:val="Hyperlink"/>')}</w:hyperlink>`) : '';
+      }
       case 'bulletList': case 'orderedList': case 'taskList': {
         const level = opts.level === undefined ? 0 : opts.level + 1;
         let num = 1;

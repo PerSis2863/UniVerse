@@ -16,7 +16,7 @@ function save(blob: Blob, name: string) {
 }
 
 export function downloadMarkdown(title: string, editor: Editor) {
-  save(new Blob([docToMarkdown(editor.getJSON() as PMNode, title)], { type: 'text/markdown;charset=utf-8' }), `${safeName(title)}.md`);
+  save(new Blob([docToMarkdown(editor.getJSON() as PMNode, title, window.location.origin)], { type: 'text/markdown;charset=utf-8' }), `${safeName(title)}.md`);
 }
 
 /** A picture as PNG for Word (any format the browser can show), or null when it can't be fetched. */
