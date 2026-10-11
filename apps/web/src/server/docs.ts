@@ -51,6 +51,12 @@ async function access(docId: string, user: SessionUser, depth = 0): Promise<{ do
   return { doc, canEdit: isOwner || mine?.role === 'EDITOR' || !!course || !!group || !!chat?.canEdit, canManage: !!course?.canManage || !!group?.canManage || !!chat?.canManage || (isOwner && !doc.conversationId) };
 }
 
+/** What someone may do with a document (the AI writing helper checks this; Stage 5 · B9.4). */
+export async function docRights(docId: string, user: SessionUser) {
+  const { doc, canEdit } = await access(docId, user);
+  return { title: doc.title, canEdit };
+}
+
 /** Whether someone may read a document (its comments' translations check this; Stage 5 · B7.5). */
 export async function canReadDoc(docId: string, user: SessionUser) {
   try { await access(docId, user); return true; } catch { return false; }
