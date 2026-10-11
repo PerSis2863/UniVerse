@@ -55,7 +55,7 @@ function blockMd(n: PMNode, indent = '', origin = ''): string {
   switch (n.type) {
     case 'embed': {
       const e = embedOf(n);
-      if (e.kind === 'code') return `\`\`\`${e.lang === 'javascript' ? 'js' : e.lang || ''}\n${e.code}\n\`\`\``;
+      if (e.kind === 'code') return `\`\`\`${e.lang === 'javascript' ? 'js' : e.lang === 'typescript' ? 'ts' : e.lang || ''}\n${e.code}\n\`\`\``;
       if (e.kind === 'math') return `$$\n${e.tex}\n$$`;
       const href = embedHref(e, origin);
       return href ? `[${EMBED_LABEL[e.kind]}: ${mdEscape(e.title || href)}](${href})` : '';

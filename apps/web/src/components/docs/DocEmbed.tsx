@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 
 // Embeds in a document (Stage 5 · B9.5; src/lib/doc-embeds.ts): one "embed" block for a video
 // (YouTube or uploaded), a PDF (first page, open to read), a whiteboard (a live card), a task board
-// (its cards, live), code that runs (JavaScript or Python, in the browser) or maths (KaTeX, as
+// (its cards, live), code that runs (Python, JavaScript, TypeScript or SQL, in the browser) or maths (KaTeX, as
 // MathML). They sync like any edit; in HTML (versions, downloads) they become a link, the code or
 // the maths.
 
@@ -151,8 +151,8 @@ function CodeEmbed({ attrs, editable, update }: { attrs: EmbedAttrs; editable: b
   const run = async () => {
     setRunning(true);
     try {
-      const { runJavaScript, runPython } = await import('@/lib/code-runner');
-      const r = attrs.lang === 'javascript' ? await runJavaScript(code) : await runPython(code);
+      const { runCode } = await import('@/lib/code-runner');
+      const r = await runCode(attrs.lang || 'python', code);
       setOut({ lines: r.lines, error: r.timedOut ? 'It took too long and was stopped.' : r.error });
     } catch (e) { setOut({ lines: [], error: (e as Error).message }); }
     finally { setRunning(false); }
@@ -161,7 +161,7 @@ function CodeEmbed({ attrs, editable, update }: { attrs: EmbedAttrs; editable: b
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <select value={attrs.lang} disabled={!editable} onChange={(e) => update({ lang: e.target.value })} aria-label="Language" className="input py-1 text-xs w-auto">
-          <option value="python">Python</option><option value="javascript">JavaScript</option>
+          <option value="python">Python</option><option value="javascript">JavaScript</option><option value="typescript">TypeScript</option><option value="sql">SQL</option>
         </select>
         <button type="button" onClick={() => void run()} disabled={running} className="btn-primary btn-sm">{running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}Run</button>
       </div>

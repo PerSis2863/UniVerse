@@ -52,6 +52,8 @@ next-env.d.ts
 /public/pdfjs
 # Python (Pyodide) for code rooms, copied at build time (scripts/copy-pyodide-assets.mjs)
 /public/pyodide
+# SQLite (sql.js) for code rooms, copied at build time (scripts/copy-sqljs-assets.mjs)
+/public/sqljs
 
 # next-pwa builds src/worker into this on every build (sw.js loads it)
 /public/worker-*.js

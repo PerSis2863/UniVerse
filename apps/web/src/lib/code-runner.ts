@@ -6,6 +6,10 @@
 // can reach the network. A run stops after 5 s (JavaScript) or 10 s (Python, once loaded).
 // The teacher's tests run after the code, in the same scope: each is a few lines that throw (or a
 // failing assert) when the answer is wrong.
+//
+// Stage 5 · B9.12: TypeScript (made into JavaScript with sucrase, src/lib/code-langs.ts, then run as
+// JavaScript) and SQL (SQLite in WebAssembly, sql.js served from /sqljs, scripts/copy-sqljs-assets.mjs,
+// in a fresh database each run; a test is a query whose first value must be true).
 
 export interface CodeTest { name: string; code: string }
 export interface TestResult { name: string; ok: boolean; message?: string }
@@ -120,4 +124,78 @@ export function runPython(code: string, tests: CodeTest[] = [], onLoading?: (loa
   });
 }
 
-export const canRun = (lang: string) => lang === 'javascript' || lang === 'python';
+// ── TypeScript ────────────────────────────────────────────────────────────────────────────────
+
+export async function runTypeScript(code: string, tests: CodeTest[] = []): Promise<RunResult> {
+  const { toJavaScript } = await import('./code-langs');
+  try {
+    return await runJavaScript(toJavaScript(code), tests.map((t) => ({ ...t, code: toJavaScript(t.code) })));
+  } catch (e) {
+    return { lines: [], error: (e as Error).message, timedOut: false, tests: tests.map((t) => ({ name: t.name, ok: false, message: 'Didn’t run' })) };
+  }
+}
+
+// ── SQL ───────────────────────────────────────────────────────────────────────────────────────
+
+const SQL_WORKER = `
+self.onmessage = async (e) => {
+  const { code, tests, base } = e.data;
+  const post = (m) => self.postMessage(m);
+  try {
+    importScripts(base + '/sqljs/sql-wasm-browser.js');
+    const SQL = await initSqlJs({ locateFile: (f) => base + '/sqljs/' + f });
+    const db = new SQL.Database();
+    try {
+      const results = db.exec(code);
+      for (const r of results) post({ k: 'table', columns: r.columns, rows: r.values.slice(0, 100), total: r.values.length });
+      if (!results.length) post({ k: 'log', t: 'Done. (Nothing to show: SELECT something to see rows.)' });
+    } catch (err) { post({ k: 'throw', t: String((err && err.message) || err) }); }
+    tests.forEach((t, i) => {
+      try {
+        const r = db.exec(t.code);
+        const v = r.length && r[0].values.length ? r[0].values[0][0] : undefined;
+        const ok = v !== undefined && v !== null && v !== 0 && v !== '0' && v !== '';
+        post({ k: 'test', i, ok, t: ok ? undefined : 'The check gave ' + (v === undefined ? 'no rows' : String(v)) });
+      } catch (err) { post({ k: 'test', i, ok: false, t: String((err && err.message) || err) }); }
+    });
+    db.close();
+  } catch (err) { post({ k: 'throw', t: 'SQL couldn’t start: ' + String((err && err.message) || err) }); }
+  post({ k: 'done' });
+};`;
+
+/** Runs SQL in a fresh SQLite database. */
+export async function runSql(code: string, tests: CodeTest[] = []): Promise<RunResult> {
+  const { formatTable } = await import('./code-langs');
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(new Blob([SQL_WORKER], { type: 'text/javascript' }));
+    const worker = new Worker(url);
+    URL.revokeObjectURL(url);
+    const c = collect(tests);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const finish = (timedOut: boolean) => {
+      if (timer) clearTimeout(timer);
+      worker.terminate();
+      resolve({ lines: c.lines, error: c.error(), timedOut, tests: c.results });
+    };
+    // Including downloading SQLite the first time (~0.7 MB).
+    timer = setTimeout(() => finish(true), 20_000);
+    worker.onmessage = (e: MessageEvent<Msg & { columns?: string[]; rows?: unknown[][]; total?: number }>) => {
+      if (e.data.k === 'table' && e.data.columns) { for (const l of [...formatTable(e.data.columns, e.data.rows ?? [], e.data.total), '']) c.on({ k: 'log', t: l }); }
+      else if (e.data.k === 'done') finish(false);
+      else c.on(e.data);
+    };
+    worker.onerror = (e) => { c.on({ k: 'throw', t: e.message || 'SQL stopped' }); e.preventDefault(); finish(false); };
+    worker.postMessage({ code, tests, base: location.origin });
+  });
+}
+
+export const RUNNABLE = ['javascript', 'typescript', 'python', 'sql'] as const;
+export const canRun = (lang: string) => (RUNNABLE as readonly string[]).includes(lang);
+
+/** Runs code in any language this page can run. */
+export function runCode(lang: string, code: string, tests: CodeTest[] = [], onLoading?: (loading: boolean) => void): Promise<RunResult> {
+  if (lang === 'python') return runPython(code, tests, onLoading);
+  if (lang === 'typescript') return runTypeScript(code, tests);
+  if (lang === 'sql') return runSql(code, tests);
+  return runJavaScript(code, tests);
+}
