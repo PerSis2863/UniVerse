@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
-import { AudioWaveform, FileText, History, ImagePlus, Loader2, Mic, Music, Palette, Plus } from 'lucide-react';
+import { AudioWaveform, Clapperboard, FileText, Film, History, ImagePlus, Loader2, Mic, Music, Palette } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -13,12 +13,12 @@ import { fadeUp, list } from '@/lib/motion';
 import type { Doc } from '@/components/studio/studio-canvas';
 
 // Studio (Stage 5 · B9.15): editing tools in Collaborate. The photo editor first (layers,
-// adjustments, filters, text, shapes, background removal), the PDF editor and the audio editor;
-// the video editor next.
+// adjustments, filters, text, shapes, background removal), and the PDF, audio and video editors.
 // Everything runs in the browser; the picture you're working on is kept on this device.
 
 const PhotoEditor = dynamic(() => import('@/components/studio/PhotoEditor').then((m) => m.PhotoEditor), { ssr: false, loading: () => <div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div> });
 const PdfEditor = dynamic(() => import('@/components/studio/PdfEditor').then((m) => m.PdfEditor), { ssr: false, loading: () => <div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div> });
+const VideoEditor = dynamic(() => import('@/components/studio/VideoEditor').then((m) => m.VideoEditor), { ssr: false, loading: () => <div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div> });
 const AudioEditor = dynamic(() => import('@/components/studio/AudioEditor').then((m) => m.AudioEditor), { ssr: false, loading: () => <div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div> });
 
 export default function StudioPage() {
@@ -28,9 +28,11 @@ export default function StudioPage() {
   const [pdf, setPdf] = useState<File | null>(null);
   // The audio editor: a file to open, or 'record' to start empty.
   const [audio, setAudio] = useState<File | 'record' | null>(null);
+  const [video, setVideo] = useState<File[] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
 
   // The picture last worked on, kept on this device.
   useEffect(() => {
@@ -67,9 +69,9 @@ export default function StudioPage() {
 
   return (
     <>
-      <Topbar title="Studio" subtitle="Edit photos, PDFs and sound, right in your browser" />
+      <Topbar title="Studio" subtitle="Edit photos, videos, sound and PDFs, right in your browser" />
       <SectionTabs tabs={COLLAB_TABS} />
-      {audio ? <AudioEditor key={audio === 'record' ? 'record' : audio.name + audio.size} file={audio === 'record' ? null : audio} onClose={() => setAudio(null)} /> : pdf ? <PdfEditor key={pdf.name + pdf.size} file={pdf} onClose={() => setPdf(null)} /> : doc ? <PhotoEditor key={`${doc.name}-${doc.w}-${doc.h}`} initial={doc} onClose={() => setDoc(null)} /> : (
+      {video ? <VideoEditor key={video.map((f) => f.name + f.size).join('|')} files={video} onClose={() => setVideo(null)} /> : audio ? <AudioEditor key={audio === 'record' ? 'record' : audio.name + audio.size} file={audio === 'record' ? null : audio} onClose={() => setAudio(null)} /> : pdf ? <PdfEditor key={pdf.name + pdf.size} file={pdf} onClose={() => setPdf(null)} /> : doc ? <PhotoEditor key={`${doc.name}-${doc.w}-${doc.h}`} initial={doc} onClose={() => setDoc(null)} /> : (
         <div className="flex-1 p-4 md:p-8 overflow-y-auto">
           <motion.div variants={list} initial="hidden" animate="show" className="max-w-4xl mx-auto space-y-5">
             <motion.section variants={fadeUp} className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-6" aria-labelledby="photo-title">
@@ -98,6 +100,17 @@ export default function StudioPage() {
                 ))}
               </ul>
             </motion.section>
+            <motion.section variants={fadeUp} className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-6" aria-labelledby="video-title">
+              <div className="flex items-start gap-4">
+                <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-sky-500 text-white grid place-items-center shrink-0"><Clapperboard className="w-6 h-6" aria-hidden /></span>
+                <div className="min-w-0">
+                  <h2 id="video-title" className="text-lg font-bold text-zinc-900 dark:text-white">Video editor</h2>
+                  <p className="text-sm text-zinc-500 mt-0.5">Join clips and pictures; trim, split and reorder them; add text, captions and music; export landscape, vertical or square videos.</p>
+                </div>
+              </div>
+              <input ref={videoRef} type="file" accept="video/*,image/*" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; if (fs.length) setVideo(fs); }} />
+              <button type="button" onClick={() => videoRef.current?.click()} className="btn-primary mt-5"><Film className="w-4 h-4" />Open videos</button>
+            </motion.section>
             <motion.section variants={fadeUp} className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-6" aria-labelledby="pdf-title">
               <div className="flex items-start gap-4">
                 <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-amber-500 text-white grid place-items-center shrink-0"><FileText className="w-6 h-6" aria-hidden /></span>
@@ -123,7 +136,7 @@ export default function StudioPage() {
                 <button type="button" onClick={() => setAudio('record')} className="btn-secondary"><Mic className="w-4 h-4" />Record</button>
               </div>
             </motion.section>
-            <motion.p variants={fadeUp} className="text-xs text-zinc-500 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" aria-hidden />A video editor is coming to Studio next. Your work stays on this device until you save or export it.</motion.p>
+            <motion.p variants={fadeUp} className="text-xs text-zinc-500">Everything runs in your browser: your work stays on this device until you save or export it.</motion.p>
           </motion.div>
         </div>
       )}
