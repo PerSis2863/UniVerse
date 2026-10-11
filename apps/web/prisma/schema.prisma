@@ -4152,6 +4152,8 @@ model TaskList {
   board     TaskBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
   title     String
   position  Float     @default(0)
+  /// At most this many open cards (Stage 5 · B9.9); null = no limit
+  wipLimit  Int?
   createdAt DateTime  @default(now())
   tasks     Task[]
 
@@ -4172,6 +4174,13 @@ model Task {
   position    Float         @default(0)
   checklist   String? // JSON [{ text, done }]
   doneAt      DateTime?
+  /// Stage 5 · B9.9: LOW | MEDIUM | HIGH | URGENT; labels and blockedBy are JSON string[]; estimate in hours;
+  /// repeat daily | weekdays | weekly | monthly (done makes the next one)
+  priority    String?
+  labels      String?
+  estimate    Float?
+  repeat      String?
+  blockedBy   String?
   createdById String
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

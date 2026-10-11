@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { MAX_BLOCKERS, PRIORITIES, REPEATS, cleanLabels, makesCycle, nextDue, parseList, type Priority, type Repeat } from '@/lib/task-extras';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
@@ -103,10 +104,10 @@ export async function createBoard(user: SessionUser, body: Record<string, unknow
 export async function getBoard(boardId: string, user: SessionUser) {
   const { board, canEdit, canManage } = await access(boardId, user);
   const [lists, tasks, people] = await Promise.all([
-    prisma.taskList.findMany({ where: { boardId }, orderBy: { position: 'asc' }, select: { id: true, title: true, position: true } }),
+    prisma.taskList.findMany({ where: { boardId }, orderBy: { position: 'asc' }, select: { id: true, title: true, position: true, wipLimit: true } }),
     prisma.task.findMany({
       where: { boardId }, orderBy: { position: 'asc' }, take: MAX_TASKS,
-      select: { id: true, listId: true, title: true, notes: true, assigneeId: true, dueAt: true, position: true, checklist: true, doneAt: true, createdAt: true, _count: { select: { comments: true } } },
+      select: { id: true, listId: true, title: true, notes: true, assigneeId: true, dueAt: true, position: true, checklist: true, doneAt: true, createdAt: true, priority: true, labels: true, estimate: true, repeat: true, blockedBy: true, _count: { select: { comments: true } } },
     }),
     audience(board).then((ids) => prisma.user.findMany({ where: { id: { in: ids.slice(0, 90) } }, select: { id: true, name: true, avatar: true } })),
   ]);
@@ -115,7 +116,7 @@ export async function getBoard(boardId: string, user: SessionUser) {
     id: board.id, title: board.title, course, canEdit, canManage, me: user.id, people,
     members: board.members,
     lists,
-    tasks: tasks.map((t) => ({ ...t, checklist: parseChecklist(t.checklist), comments: t._count.comments, _count: undefined })),
+    tasks: tasks.map((t) => ({ ...t, checklist: parseChecklist(t.checklist), labels: parseList(t.labels), blockedBy: parseList(t.blockedBy), comments: t._count.comments, _count: undefined })),
   };
 }
 
@@ -175,10 +176,13 @@ export async function updateList(listId: string, user: SessionUser, body: Record
   if (!list) throw new NotFoundException('List not found.');
   const { board, canEdit } = await access(list.boardId, user);
   if (!canEdit) throw new ForbiddenException('You can only look at this board.');
-  const data: { title?: string; position?: number } = {};
+  const data: { title?: string; position?: number; wipLimit?: number | null } = {};
   const title = clean(body.title, 60);
   if (title) data.title = title;
   if (Number.isFinite(body.position)) data.position = Number(body.position);
+  // A work-in-progress limit (Stage 5 · B9.9): 1–99 open cards, or none.
+  if (body.wipLimit === null || body.wipLimit === 0) data.wipLimit = null;
+  else if (Number.isInteger(Number(body.wipLimit)) && Number(body.wipLimit) >= 1) data.wipLimit = Math.min(99, Number(body.wipLimit));
   await prisma.taskList.update({ where: { id: listId }, data });
   await changed(list.boardId, board);
   return { ok: true };
@@ -216,12 +220,17 @@ export async function addTask(boardId: string, user: SessionUser, body: Record<s
 }
 
 /** Changes a card: title, notes, assignee, due date, list and place, checklist, done. */
+/** A board's first list (where a repeating card's next one goes). */
+async function firstList(boardId: string) {
+  return (await prisma.taskList.findFirst({ where: { boardId }, orderBy: { position: 'asc' }, select: { id: true } }))?.id ?? null;
+}
+
 export async function updateTask(taskId: string, user: SessionUser, body: Record<string, unknown>) {
-  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { boardId: true, assigneeId: true, title: true } });
+  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { boardId: true, assigneeId: true, title: true, doneAt: true, repeat: true, dueAt: true, listId: true, notes: true, priority: true, labels: true, estimate: true } });
   if (!task) throw new NotFoundException('Card not found.');
   const { board, canEdit } = await access(task.boardId, user);
   if (!canEdit) throw new ForbiddenException('You can only look at this board.');
-  const data: { title?: string; notes?: string | null; assigneeId?: string | null; dueAt?: Date | null; listId?: string; position?: number; checklist?: string | null; doneAt?: Date | null } = {};
+  const data: { title?: string; notes?: string | null; assigneeId?: string | null; dueAt?: Date | null; listId?: string; position?: number; checklist?: string | null; doneAt?: Date | null; priority?: string | null; labels?: string | null; estimate?: number | null; repeat?: string | null; blockedBy?: string | null } = {};
   if (typeof body.title === 'string' && body.title.trim()) data.title = clean(body.title, 200);
   if (body.notes === null || typeof body.notes === 'string') data.notes = clean(body.notes, 5000) || null;
   if (body.assigneeId === null) data.assigneeId = null;
@@ -238,7 +247,27 @@ export async function updateTask(taskId: string, user: SessionUser, body: Record
   if (Number.isFinite(body.position)) data.position = Number(body.position);
   if (Array.isArray(body.checklist)) data.checklist = JSON.stringify(parseChecklist(JSON.stringify(body.checklist)));
   if (typeof body.done === 'boolean') data.doneAt = body.done ? new Date() : null;
+  // Card extras (Stage 5 · B9.9).
+  if (body.priority === null || PRIORITIES.includes(body.priority as Priority)) data.priority = (body.priority as string | null) ?? null;
+  if (body.labels !== undefined) { const l = cleanLabels(body.labels); data.labels = l.length ? JSON.stringify(l) : null; }
+  if (body.estimate === null) data.estimate = null;
+  else if (Number.isFinite(Number(body.estimate)) && body.estimate !== '') data.estimate = Math.max(0, Math.min(999, Math.round(Number(body.estimate) * 4) / 4));
+  if (body.repeat === null || REPEATS.includes(body.repeat as Repeat)) data.repeat = (body.repeat as string | null) ?? null;
+  if (body.blockedBy !== undefined) {
+    const want = [...new Set(Array.isArray(body.blockedBy) ? body.blockedBy.filter((x): x is string => typeof x === 'string' && x !== taskId) : [])].slice(0, MAX_BLOCKERS);
+    const cards = want.length ? await prisma.task.findMany({ where: { boardId: task.boardId }, select: { id: true, blockedBy: true }, take: MAX_TASKS }) : [];
+    const waits = new Map(cards.map((c) => [c.id, parseList(c.blockedBy)]));
+    const ok = want.filter((id) => waits.has(id));
+    if (ok.some((id) => makesCycle(taskId, id, (x) => waits.get(x) ?? []))) throw new BadRequestException('That would make the cards wait on each other in a circle.');
+    data.blockedBy = ok.length ? JSON.stringify(ok) : null;
+  }
   const saved = await prisma.task.update({ where: { id: taskId }, data });
+  // A repeating card marked done makes the next one, due one step later.
+  if (data.doneAt && !task.doneAt && task.repeat && REPEATS.includes(task.repeat as Repeat)) {
+    const listId = (await firstList(task.boardId)) ?? task.listId;
+    const last = await prisma.task.findFirst({ where: { listId }, orderBy: { position: 'desc' }, select: { position: true } });
+    await prisma.task.create({ data: { boardId: task.boardId, listId, title: saved.title, notes: task.notes, assigneeId: saved.assigneeId, dueAt: nextDue(task.dueAt ?? new Date(), task.repeat as Repeat), position: (last?.position ?? 0) + 1, priority: task.priority, labels: task.labels, estimate: task.estimate, repeat: task.repeat, createdById: user.id } });
+  }
   if (data.assigneeId && data.assigneeId !== task.assigneeId && data.assigneeId !== user.id) {
     void notify(data.assigneeId, { title: `${user.name} gave you a task`, body: `${saved.title} · ${board.title}`, link: `/tasks/${task.boardId}?task=${taskId}`, type: 'reminder', email: false });
   }
