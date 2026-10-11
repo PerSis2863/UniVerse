@@ -35,6 +35,7 @@ import { WhisperPanel, WhisperPill, WhisperTopics } from './WhisperTA';
 import { ConnectionPanel, RateCall, WeakNetwork, shouldAskRating } from './CallQuality';
 import { AgendaBar, AgendaEditor } from './CallAgenda';
 import { templateById, type Agenda } from '@/lib/call-agenda';
+import type { GestureAction } from '@/lib/gestures';
 import { combine, grade, readStats, type Reading, type Snapshot } from '@/lib/call-quality';
 import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
@@ -567,6 +568,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [weak, setWeak] = useState(false);
   const weakSince = useRef<number | null>(null), goodSince = useRef<number | null>(null), weakHiddenUntil = useRef(0);
   const [rateAsk, setRateAsk] = useState(false);
+  // Gestures on camera (Stage 5 · B8.4, opt-in, remembered on this device).
+  const [gestures, setGestures] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-gestures') === '1'; } catch { return false; } });
+  const gestureAct = useRef<(a: GestureAction) => void>(() => {});
   // The agenda (Stage 5 · B8.3): kept by the call room; times from the room's clock.
   const [agenda, setAgenda] = useState<Agenda | null>(null);
   const [agendaOpen, setAgendaOpen] = useState(false);
@@ -1872,6 +1876,21 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
 
   useEffect(() => { actions.current = { toggleCamera, setMicOff, applyCamera }; });
 
+  // Gestures (B8.4): an open hand held up raises mine; 👍 / 🤟 / ✌️ send a reaction.
+  useEffect(() => {
+    gestureAct.current = (a) => {
+      if (a === 'hand') { if (!myHand) { toggleHand(); toast('Hand raised: you held your hand up on camera', { icon: '✋' }); } }
+      else react(a);
+    };
+  });
+  useEffect(() => {
+    const track = rawCam.current;
+    if (!gestures || !camera || phase !== 'live' || !track) return;
+    let stop: (() => void) | null = null, live = true;
+    void import('@/lib/call-gestures').then(({ watchGestures }) => watchGestures(track, (a) => gestureAct.current(a))).then((s) => { if (live) stop = s; else s(); }, () => { if (live) toast.error('Gestures couldn’t start on this device.'); });
+    return () => { live = false; stop?.(); };
+  }, [gestures, camera, phase]);
+
   // A scheduled call's meeting template (Stage 5 · B8.2): once, when the host is in, turn on its
   // settings (waiting room, notes, captions) and put its agenda in, ready to start.
   const templateDone = useRef(false);
@@ -2100,7 +2119,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
@@ -2110,6 +2129,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ...(!isGuest && phase === 'live' ? [{ key: 'board' as const, label: callBoard ? 'Whiteboard' : 'Start a whiteboard', icon: PenTool, on: boardOpen }] : []),
     { key: '2g', label: twoG ? '2G mode on' : '2G mode', icon: SignalLow, on: twoG },
     ...(phase === 'live' ? [{ key: 'net' as const, label: 'Connection', icon: Activity, on: netOpen }] : []),
+    ...(phase === 'live' && kind === 'video' && !twoG ? [{ key: 'gestures' as const, label: gestures ? 'Gestures on' : 'Gestures', icon: Hand, on: gestures }] : []),
     ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
@@ -2157,6 +2177,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'rooms') openPanel('rooms');
     else if (key === 'poll') setPollCompose(true);
     else if (key === 'agenda') setAgendaOpen(true);
+    else if (key === 'gestures') {
+      const on = !gestures;
+      setGestures(on);
+      try { localStorage.setItem('call-gestures', on ? '1' : '0'); } catch { /* private window */ }
+      toast(on ? `Gestures on: hold an open hand up to raise it; 👍, 🤟 or ✌️ send a reaction.${camera ? '' : ' Turn your camera on to use them.'} The picture stays on this device.` : 'Gestures off', { icon: '✋', duration: on ? 9000 : 3000 });
+    }
     else if (key === 'watch') setWatchPick(true);
     else void pip();
   };
