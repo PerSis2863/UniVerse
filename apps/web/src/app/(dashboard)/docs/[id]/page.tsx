@@ -25,12 +25,13 @@ import { MentionInput } from '@/components/ui/MentionInput';
 import { Translatable } from '@/components/shared/Translatable';
 import { templateById } from '@/lib/doc-templates';
 import { downloadDocx, downloadMarkdown, importFile } from '@/components/docs/doc-files';
+import { DocBreadcrumb, DocPagesPanel, PageLinkButton, type PageRef } from '@/components/docs/DocPages';
 
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
 // select, version history (preview and restore), sharing, and PDF / Word / Markdown copies; import
 // a Word, Markdown or text file at the cursor (Stage 5 · B9.6).
 
-interface DocInfo { id: string; title: string; course: { code: string; name: string } | null; chat?: { id: string; name: string } | null; canEdit: boolean; canManage: boolean; me: { id: string; name: string }; members: { userId: string; role: string; name: string }[] }
+interface DocInfo { id: string; title: string; parentId: string | null; space: string | null; path: PageRef[]; children: PageRef[]; backlinks: PageRef[]; course: { code: string; name: string } | null; chat?: { id: string; name: string } | null; canEdit: boolean; canManage: boolean; me: { id: string; name: string }; members: { userId: string; role: string; name: string }[] }
 interface Comment { id: string; userId: string; quote: string | null; body: string; resolvedAt: string | null; createdAt: string; user: { id: string; name: string; avatar: string | null } }
 
 const call = (url: string, method: string, body?: unknown) => authedJson(url, { method, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -98,6 +99,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
       <header className="px-3 sm:px-6 pt-3 pb-2 flex items-center gap-2 border-b border-zinc-200/70 dark:border-white/[0.06]">
         <Link href={data.chat ? `${inboxPath}?c=${data.chat.id}` : '/docs'} aria-label={data.chat ? `Back to ${data.chat.name}` : 'Docs'} className="p-2 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-4 h-4" /></Link>
         <div className="flex-1 min-w-0">
+          <DocBreadcrumb path={data.path} />
           <input data-shared={`doc:${id}`} value={shownTitle} readOnly={!data.canEdit} maxLength={120} onChange={(e) => setTitle(e.target.value)} onBlur={() => void saveTitle()} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             aria-label="Title" className="w-full bg-transparent text-lg font-bold text-zinc-900 dark:text-white outline-none truncate" />
           <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
@@ -131,14 +133,15 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
         <button type="button" onClick={() => setSheet('history')} title="Version history" aria-label="Version history" className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><History className="w-4 h-4" /></button>
         <button type="button" onClick={() => setPanel(panel ? null : 'comments')} aria-pressed={panel === 'comments'} title="Comments" aria-label="Comments" className={cn('p-2 rounded-full', panel ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><MessageSquare className="w-4 h-4" /></button>
         {data.canManage && !data.course && !data.chat && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
-        {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
+        {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: data.children.length ? 'Its text, versions and comments go for everyone. The pages inside it move to the top.' : 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </header>
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06]"><DocToolbar editor={editor} disabled={!editable} /></div>
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><DocToolbar editor={editor} disabled={!editable} /></div>{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm">
             <DocEditor docId={id} me={data.me} canEdit={data.canEdit} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={noop} onPresence={setPresent} onEditor={setEditor} />
           </div>
+          {!data.chat && <DocPagesPanel doc={data} canEdit={data.canEdit} canMove={data.canManage} onChanged={() => void mutate()} />}
         </div>
         <AnimatePresence>
           {panel === 'comments' && (

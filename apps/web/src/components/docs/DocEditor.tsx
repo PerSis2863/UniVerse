@@ -67,7 +67,19 @@ export function DocEditor({ docId, me, canEdit: mayEdit, onStatus, onPeers, onEd
       docMention(docId, mentions),
       Placeholder.configure({ placeholder: 'Start writing…  Use the toolbar, or type # for a heading, - for a list, [] for a checklist, @ to mention someone.' }),
     ],
-    editorProps: { attributes: { class: 'doc-prose focus:outline-none min-h-[60vh] px-6 sm:px-12 py-10' } },
+    editorProps: {
+      attributes: { class: 'doc-prose focus:outline-none min-h-[60vh] px-6 sm:px-12 py-10', 'aria-label': 'Document text', 'aria-multiline': 'true' },
+      // Links open with a click when reading, or Ctrl / ⌘ + click while writing (pages in the
+      // same tab, other sites in a new one; Stage 5 · B9.2).
+      handleClick: (view, _pos, event) => {
+        const a = (event.target as HTMLElement | null)?.closest?.('a[href]');
+        if (!a || (view.editable && !event.metaKey && !event.ctrlKey)) return false;
+        const href = a.getAttribute('href') ?? '';
+        if (href.startsWith('/')) window.location.assign(href);
+        else if (/^(https?:|mailto:)/i.test(href)) window.open(href, '_blank', 'noopener,noreferrer');
+        return true;
+      },
+    },
   }, [ydoc]);
 
   useEffect(() => { callbacks.current.onEditor(editor); return () => callbacks.current.onEditor(null); }, [editor]);
@@ -251,10 +263,10 @@ export function DocToolbar({ editor, disabled }: { editor: Editor | null; disabl
       {btn(false, 'Divider', Minus, () => c().setHorizontalRule().run())}
       {sep('d')}
       {btn(s?.table, s?.table ? 'Add a row' : 'Table', Table, () => (s?.table ? c().addRowAfter().run() : c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()))}
-      <label title="Picture" aria-label="Picture" className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10', disabled ? 'opacity-40 pointer-events-none' : 'cursor-pointer')}>
+      <button type="button" title="Picture" aria-label="Picture" disabled={disabled || uploading} onMouseDown={(e) => e.preventDefault()} onClick={() => fileRef.current?.click()} className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-40">
         {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-        <input ref={fileRef} type="file" accept="image/*" disabled={disabled} className="hidden" onChange={(e) => void addImage(e.target.files?.[0])} />
-      </label>
+      </button>
+      <input ref={fileRef} type="file" accept="image/*" disabled={disabled} className="hidden" onChange={(e) => void addImage(e.target.files?.[0])} />
     </div>
   );
 }
