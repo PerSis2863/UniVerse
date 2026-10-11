@@ -384,6 +384,23 @@ Each item: **What** (user-facing), **How** (where), **Done when**.
       say which conversions are approximate.
     - Size limits per file shown up front (e.g. 50 MB in the browser, larger for video on
       desktop), progress bar, cancel, and a clear message for formats it can't do.
+15. **Studio: editing tools in Collaborate** (the owner's request, 11 Oct 2026; the photo editor is
+    built straight after B7.5, the other editors after it). A **Studio** tab in Collaborate
+    (`COLLAB_TABS`, next to Docs) with editors that run in the browser (no server CPU, no cost):
+    - **Photo editor (like Photoshop / Photopea):** layers (add, hide, reorder, opacity, blend),
+      crop, rotate, flip, resize; adjustments (brightness, contrast, saturation, exposure,
+      warmth, hue, sharpen, blur, vignette) and one-tap filters; brush, eraser, shapes, text
+      with fonts; select an area to move, delete or fill; background removal (MediaPipe's
+      segmenter, already used for call backgrounds); undo / redo history; open from files,
+      the camera or a chat photo; export PNG / JPG / WebP, save to the files hub, send to a
+      chat or set as a profile picture; a project file to keep editing later.
+    - **Video editor:** trim and cut, join clips, add text and music, captions from the
+      existing transcription, export (ffmpeg.wasm, loaded only when used).
+    - **Audio editor:** trim, cut, fade, volume, noise reduction, export (podcasts, voice
+      assignments).
+    - **PDF editor:** annotate, highlight, sign, fill forms, reorder / merge pages (pdf-lib).
+    - Later: design templates (posters, certificates, slides) like Canva, and the file
+      converter (B9.14) linked from every editor.
 
 ### B10. AI tutor and study tools
 1. **Photo of a problem:** snap homework → step-by-step help (Socratic: hints first, answer on
