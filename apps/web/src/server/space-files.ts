@@ -1,19 +1,29 @@
+import { randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
 import { isOwnBlobUrl } from '@/lib/chat';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
+import { searchWords, snippet } from '@/lib/files-hub';
 import { deleteFile } from '@/lib/storage';
+import { later } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
-import { groupAccess, groupPeople } from './spaces';
+import { groupAccess, groupPeople, mySpaces } from './spaces';
 
 // Files hub per space (Stage 4 · 3.7): folders, files, every version of each file, and where a file
 // is used (chat messages, task notes). Everyone in the space can add files and new versions;
 // whoever runs the space (the teacher, the group's admins) and a file's uploader can rename, move
 // or delete it. A space keeps up to 250 MB (all versions count).
+//
+// Stage 5 · B9.13 adds My files (a space of kind 'me' whose id is the person; 100 MB), stars, the
+// words inside files for search (taken out in the browser at upload), Recent / Starred / Search
+// across every space someone is in, and share links that expire.
 
-export type SpaceKind = 'course' | 'group';
-const QUOTA = 250 * 1024 * 1024, MAX_FOLDERS = 100, MAX_FILES = 1000, MAX_VERSIONS = 20;
+export type SpaceKind = 'course' | 'group' | 'me';
+const QUOTA = 250 * 1024 * 1024, MY_QUOTA = 100 * 1024 * 1024, MAX_FOLDERS = 100, MAX_FILES = 1000, MAX_VERSIONS = 20;
+const quotaOf = (kind: SpaceKind) => (kind === 'me' ? MY_QUOTA : QUOTA);
+const full = (kind: SpaceKind) => (kind === 'me' ? 'Your files are full (100 MB). Delete old files or versions first.' : 'This space is full (250 MB). Delete old files or versions first.');
+
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().replace(/[\\/]/g, '-').slice(0, max) : '');
 
 async function space(kind: string, id: string, user: SessionUser) {
@@ -27,11 +37,16 @@ async function space(kind: string, id: string, user: SessionUser) {
     if (!a) throw new NotFoundException('This group isn’t one of yours.');
     return { kind: 'group' as const, id, canManage: a.canManage };
   }
+  if (kind === 'me') {
+    if (id !== user.id) throw new NotFoundException('These aren’t your files.');
+    return { kind: 'me' as const, id, canManage: true };
+  }
   throw new NotFoundException('Space not found.');
 }
 
 async function people(kind: SpaceKind, id: string) {
   if (kind === 'group') return groupPeople(id);
+  if (kind === 'me') return [id];
   const c = await prisma.course.findUnique({ where: { id }, select: { teacherId: true, enrollments: { select: { studentId: true }, take: 300 } } });
   return [...(c?.teacherId ? [c.teacherId] : []), ...(c?.enrollments.map((e) => e.studentId) ?? [])];
 }
@@ -58,12 +73,14 @@ export async function listFiles(kind: string, id: string, user: SessionUser, fol
   const s = await space(kind, id, user);
   const folderId = folderRaw || null;
   const where = { spaceKind: s.kind, spaceId: id };
-  const [folder, folders, files, used] = await Promise.all([
+  const [folder, folders, files, used, stars] = await Promise.all([
     folderId ? prisma.spaceFolder.findFirst({ where: { ...where, id: folderId }, select: { id: true, name: true, parentId: true } }) : null,
     prisma.spaceFolder.findMany({ where: { ...where, parentId: folderId }, orderBy: { name: 'asc' }, select: { id: true, name: true, createdAt: true, _count: { select: { files: true, children: true } } } }),
     prisma.spaceFile.findMany({ where: { ...where, folderId }, orderBy: { updatedAt: 'desc' }, take: 300, select: { id: true, name: true, url: true, mime: true, size: true, createdById: true, updatedAt: true, _count: { select: { versions: true } } } }),
     usage(s.kind, id),
+    prisma.spaceFileStar.findMany({ where: { userId: user.id, file: where }, select: { fileId: true } }),
   ]);
+  const starred = new Set(stars.map((x) => x.fileId));
   if (folderId && !folder) throw new NotFoundException('This folder isn’t there any more.');
   // The path from the top, for the breadcrumb.
   const path: { id: string; name: string }[] = [];
@@ -74,13 +91,13 @@ export async function listFiles(kind: string, id: string, user: SessionUser, fol
   }
   const names = new Map((await prisma.user.findMany({ where: { id: { in: [...new Set(files.map((f) => f.createdById))] } }, select: { id: true, name: true } })).map((u) => [u.id, u.name]));
   return {
-    path, canManage: s.canManage, usage: used, quota: QUOTA,
+    path, canManage: s.canManage, usage: used, quota: quotaOf(s.kind),
     folders: folders.map((f) => ({ id: f.id, name: f.name, items: f._count.files + f._count.children })),
-    files: files.map((f) => ({ id: f.id, name: f.name, url: f.url, mime: f.mime, size: f.size, updatedAt: f.updatedAt, versions: f._count.versions, by: names.get(f.createdById) ?? 'Someone', canChange: s.canManage || f.createdById === user.id })),
+    files: files.map((f) => ({ id: f.id, name: f.name, url: f.url, mime: f.mime, size: f.size, updatedAt: f.updatedAt, versions: f._count.versions, by: names.get(f.createdById) ?? 'Someone', canChange: s.canManage || f.createdById === user.id, starred: starred.has(f.id) })),
   };
 }
 
-/** POST /api/spaces/:kind/:id/files { action: 'folder', name, parentId? } | { action: 'file', name, url, mime, size, folderId? } */
+/** POST /api/spaces/:kind/:id/files { action: 'folder', name, parentId? } | { action: 'file', name, url, mime, size, folderId?, text? } */
 export async function addToSpace(kind: string, id: string, user: SessionUser, b: Record<string, unknown>) {
   const s = await space(kind, id, user);
   const where = { spaceKind: s.kind, spaceId: id };
@@ -97,9 +114,9 @@ export async function addToSpace(kind: string, id: string, user: SessionUser, b:
   const up = upload(b);
   const name = clean(b.name, 120) || 'File';
   if ((await prisma.spaceFile.count({ where })) >= MAX_FILES) throw new BadRequestException(`A space can have up to ${MAX_FILES} files.`);
-  if ((await usage(s.kind, id)) + up.size > QUOTA) throw new BadRequestException('This space is full (250 MB). Delete old files or versions first.');
+  if ((await usage(s.kind, id)) + up.size > quotaOf(s.kind)) throw new BadRequestException(full(s.kind));
   const f = await prisma.spaceFile.create({
-    data: { ...where, folderId: inFolder, name, ...up, createdById: user.id, updatedById: user.id, versions: { create: { ...up, uploadedById: user.id } } },
+    data: { ...where, folderId: inFolder, name, ...up, text: searchWords(b.text) ?? null, createdById: user.id, updatedById: user.id, versions: { create: { ...up, uploadedById: user.id } } },
     select: { id: true },
   });
   await refresh(s.kind, id);
@@ -116,7 +133,10 @@ async function fileAccess(fileId: string, user: SessionUser) {
 /** GET /api/space-files/:fid — the versions, and where the file is used. */
 export async function fileDetail(fileId: string, user: SessionUser) {
   const { f, canChange } = await fileAccess(fileId, user);
-  const versions = await prisma.spaceFileVersion.findMany({ where: { fileId }, orderBy: { createdAt: 'desc' }, select: { id: true, url: true, size: true, note: true, uploadedById: true, createdAt: true } });
+  const [versions, links] = await Promise.all([
+    prisma.spaceFileVersion.findMany({ where: { fileId }, orderBy: { createdAt: 'desc' }, select: { id: true, url: true, size: true, note: true, uploadedById: true, createdAt: true } }),
+    canChange ? prisma.spaceFileLink.findMany({ where: { fileId, expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' }, select: { id: true, token: true, expiresAt: true, opens: true } }) : [],
+  ]);
   const urls = versions.map((v) => v.url);
   const [names, messages, tasks] = await Promise.all([
     prisma.user.findMany({ where: { id: { in: [...new Set(versions.map((v) => v.uploadedById))] } }, select: { id: true, name: true } }),
@@ -127,6 +147,7 @@ export async function fileDetail(fileId: string, user: SessionUser) {
   const who = new Map(names.map((u) => [u.id, u.name]));
   return {
     id: f.id, name: f.name, canChange,
+    links: links.map((l) => ({ id: l.id, path: `/api/share/${l.token}`, expiresAt: l.expiresAt, opens: l.opens })),
     versions: versions.map((v, i) => ({ id: v.id, url: v.url, size: v.size, note: v.note, by: who.get(v.uploadedById) ?? 'Someone', at: v.createdAt, current: i === 0 })),
     usedIn: [
       ...messages.map((m) => ({ kind: 'chat' as const, label: m.conversation.isGroup ? m.conversation.name ?? 'Group chat' : 'Direct chat', chatId: m.conversationId, messageId: m.id, at: m.createdAt })),
@@ -135,14 +156,14 @@ export async function fileDetail(fileId: string, user: SessionUser) {
   };
 }
 
-/** POST /api/space-files/:fid { url, mime, size, note? } — a new version (anyone in the space). */
+/** POST /api/space-files/:fid { url, mime, size, note?, text? } — a new version (anyone in the space). */
 export async function addVersion(fileId: string, user: SessionUser, b: Record<string, unknown>) {
   const { f, s } = await fileAccess(fileId, user);
   const up = upload(b);
-  if ((await usage(s.kind, f.spaceId)) + up.size > QUOTA) throw new BadRequestException('This space is full (250 MB). Delete old files or versions first.');
+  if ((await usage(s.kind, f.spaceId)) + up.size > quotaOf(s.kind)) throw new BadRequestException(full(s.kind));
   await prisma.$transaction([
     prisma.spaceFileVersion.create({ data: { fileId, ...up, note: clean(b.note, 200) || null, uploadedById: user.id } }),
-    prisma.spaceFile.update({ where: { id: fileId }, data: { ...up, updatedById: user.id, updatedAt: new Date() } }),
+    prisma.spaceFile.update({ where: { id: fileId }, data: { ...up, text: searchWords(b.text) ?? null, updatedById: user.id, updatedAt: new Date() } }),
   ]);
   // Only the latest versions are kept (the oldest are deleted from storage too).
   const old = await prisma.spaceFileVersion.findMany({ where: { fileId }, orderBy: { createdAt: 'desc' }, skip: MAX_VERSIONS, select: { id: true, url: true } });
@@ -154,9 +175,14 @@ export async function addVersion(fileId: string, user: SessionUser, b: Record<st
   return { ok: true };
 }
 
-/** PATCH /api/space-files/:fid { name?, folderId? (null = the top), restore?: versionId } */
+/** PATCH /api/space-files/:fid { name?, folderId? (null = the top), restore?: versionId } · { star: boolean } (anyone in the space) */
 export async function updateSpaceFile(fileId: string, user: SessionUser, b: Record<string, unknown>) {
   const { f, s, canChange } = await fileAccess(fileId, user);
+  if (typeof b.star === 'boolean') {
+    if (b.star) await prisma.spaceFileStar.upsert({ where: { userId_fileId: { userId: user.id, fileId } }, create: { userId: user.id, fileId }, update: {} });
+    else await prisma.spaceFileStar.deleteMany({ where: { userId: user.id, fileId } });
+    return { ok: true, starred: b.star };
+  }
   if (!canChange) throw new ForbiddenException('Only whoever added it or runs the space can change this file.');
   const data: { name?: string; folderId?: string | null; url?: string; mime?: string; size?: number; updatedAt?: Date; updatedById?: string } = {};
   if (b.name !== undefined) { const n = clean(b.name, 120); if (n) data.name = n; }
@@ -208,4 +234,74 @@ export async function changeFolder(folderId: string, user: SessionUser, b: Recor
   }
   await refresh(s.kind, folder.spaceId);
   return { ok: true };
+}
+
+/** POST /api/space-files/:fid/links { days: 1 | 7 | 30 } — a link anyone can download the file with until it expires. */
+export async function createFileLink(fileId: string, user: SessionUser, b: Record<string, unknown>) {
+  const { canChange } = await fileAccess(fileId, user);
+  if (!canChange) throw new ForbiddenException('Only whoever added it or runs the space can share a link to this file.');
+  const days = [1, 7, 30].includes(Number(b.days)) ? Number(b.days) : 7;
+  if ((await prisma.spaceFileLink.count({ where: { fileId, expiresAt: { gt: new Date() } } })) >= 10) throw new BadRequestException('A file can have up to 10 links at once. Stop an old one first.');
+  const link = await prisma.spaceFileLink.create({
+    data: { fileId, token: randomBytes(18).toString('base64url'), createdById: user.id, expiresAt: new Date(Date.now() + days * 86_400_000) },
+    select: { id: true, token: true, expiresAt: true },
+  });
+  return { id: link.id, path: `/api/share/${link.token}`, expiresAt: link.expiresAt, opens: 0 };
+}
+
+/** DELETE /api/space-file-links/:id — the link stops working now. */
+export async function deleteFileLink(linkId: string, user: SessionUser) {
+  const link = await prisma.spaceFileLink.findUnique({ where: { id: linkId }, select: { fileId: true } });
+  if (!link) return { ok: true };
+  const { canChange } = await fileAccess(link.fileId, user);
+  if (!canChange) throw new ForbiddenException('Only whoever added it or runs the space can stop this link.');
+  await prisma.spaceFileLink.delete({ where: { id: linkId } });
+  return { ok: true };
+}
+
+/** The file behind a share link (the current version), or null when it's wrong or expired. */
+export async function sharedFile(token: string) {
+  if (!/^[A-Za-z0-9_-]{20,40}$/.test(token)) return null;
+  const link = await prisma.spaceFileLink.findUnique({ where: { token }, select: { id: true, expiresAt: true, file: { select: { name: true, url: true, mime: true } } } });
+  if (!link || link.expiresAt <= new Date()) return null;
+  later(() => prisma.spaceFileLink.update({ where: { id: link.id }, data: { opens: { increment: 1 } } }));
+  return link.file;
+}
+
+const spaceHref = (kind: string, id: string) => (kind === 'me' ? '/files' : `/spaces/${kind}/${id}/files`);
+/**
+ * GET /api/files-hub?view=recent|starred&q= — files across My files and every class and group
+ * someone is in: changed lately, starred, or matching words in the name or inside the file.
+ */
+export async function filesHub(user: SessionUser, view: string | null, qRaw: string | null) {
+  const { courses, groups } = await mySpaces(user);
+  // At most 40 classes and 40 groups, so the query stays inside D1's limits.
+  const labels = new Map<string, string>([[`me:${user.id}`, 'My files'], ...courses.slice(0, 40).map((c) => [`course:${c.id}`, c.code ? `${c.code} · ${c.name}` : c.name] as [string, string]), ...groups.slice(0, 40).map((g) => [`group:${g.id}`, g.name] as [string, string])]);
+  const mine = [
+    { spaceKind: 'me', spaceId: user.id },
+    ...(courses.length ? [{ spaceKind: 'course', spaceId: { in: courses.slice(0, 40).map((c) => c.id) } }] : []),
+    ...(groups.length ? [{ spaceKind: 'group', spaceId: { in: groups.slice(0, 40).map((g) => g.id) } }] : []),
+  ];
+  const q = (qRaw ?? '').trim().slice(0, 80);
+  const select = { id: true, name: true, url: true, mime: true, size: true, updatedAt: true, spaceKind: true, spaceId: true } as const;
+  type Row = { id: string; name: string; url: string; mime: string; size: number; updatedAt: Date; spaceKind: string; spaceId: string; text?: string | null };
+  let rows: Row[];
+  if (q.length >= 2) {
+    rows = await prisma.spaceFile.findMany({ where: { OR: mine, AND: [{ OR: [{ name: { contains: q } }, { text: { contains: q } }] }] }, orderBy: { updatedAt: 'desc' }, take: 40, select: { ...select, text: true } });
+  } else if (view === 'starred') {
+    const stars = await prisma.spaceFileStar.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 100, select: { file: { select } } });
+    rows = stars.map((x) => x.file).filter((f) => labels.has(`${f.spaceKind}:${f.spaceId}`));
+  } else {
+    rows = await prisma.spaceFile.findMany({ where: { OR: mine, updatedAt: { gte: new Date(Date.now() - 90 * 86_400_000) } }, orderBy: { updatedAt: 'desc' }, take: 40, select });
+  }
+  const starred = view === 'starred' && q.length < 2
+    ? new Set(rows.map((r) => r.id))
+    : new Set((rows.length ? await prisma.spaceFileStar.findMany({ where: { userId: user.id, fileId: { in: rows.map((r) => r.id) } }, select: { fileId: true } }) : []).map((x) => x.fileId));
+  return {
+    files: rows.map((r) => ({
+      id: r.id, name: r.name, url: r.url, mime: r.mime, size: r.size, updatedAt: r.updatedAt, starred: starred.has(r.id),
+      space: { kind: r.spaceKind, id: r.spaceId, label: labels.get(`${r.spaceKind}:${r.spaceId}`) ?? 'A space', href: spaceHref(r.spaceKind, r.spaceId) },
+      snippet: q.length >= 2 ? snippet(r.text ?? null, q) : null,
+    })),
+  };
 }

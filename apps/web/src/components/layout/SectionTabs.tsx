@@ -73,6 +73,7 @@ export const COLLAB_TABS: SectionTab[] = [
   { href: '/spaces', label: 'Spaces' },
   { href: '/boards', label: 'Whiteboards' },
   { href: '/docs', label: 'Docs' },
+  { href: '/files', label: 'Files' },
   { href: '/studio', label: 'Studio' },
   { href: '/code', label: 'Code together' },
   { href: '/tasks', label: 'Tasks' },
