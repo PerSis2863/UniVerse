@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { TableKit } from '@tiptap/extension-table';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import Image from '@tiptap/extension-image';
-import { ArrowLeft, Check, Download, FileText, History, Loader2, MessageSquare, MessageSquarePlus, RotateCcw, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
+import { ArrowLeft, Check, Download, FileText, FileUp, History, Loader2, MessageSquare, MessageSquarePlus, RotateCcw, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { PresenceStack, type Present } from '@/components/ui/PresenceStack';
@@ -24,9 +24,11 @@ import { cn } from '@/lib/utils';
 import { MentionInput } from '@/components/ui/MentionInput';
 import { Translatable } from '@/components/shared/Translatable';
 import { templateById } from '@/lib/doc-templates';
+import { downloadDocx, downloadMarkdown, importFile } from '@/components/docs/doc-files';
 
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
-// select, version history (preview and restore), sharing, and PDF / Word copies.
+// select, version history (preview and restore), sharing, and PDF / Word / Markdown copies; import
+// a Word, Markdown or text file at the cursor (Stage 5 · B9.6).
 
 interface DocInfo { id: string; title: string; course: { code: string; name: string } | null; chat?: { id: string; name: string } | null; canEdit: boolean; canManage: boolean; me: { id: string; name: string }; members: { userId: string; role: string; name: string }[] }
 interface Comment { id: string; userId: string; quote: string | null; body: string; resolvedAt: string | null; createdAt: string; user: { id: string; name: string; avatar: string | null } }
@@ -35,14 +37,6 @@ const call = (url: string, method: string, body?: unknown) => authedJson(url, { 
 
 const PRINT_CSS = 'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#18181b;max-width:46rem;margin:2rem auto;padding:0 1.5rem}h1{font-size:2rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d4d4d8;padding:.4em .6em;text-align:left}pre{background:#f4f4f5;padding:1em;border-radius:.5em;white-space:pre-wrap}img{max-width:100%}blockquote{border-left:3px solid #818cf8;margin-left:0;padding-left:1em;color:#52525b}';
 
-function exportWord(title: string, html: string) {
-  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>${PRINT_CSS}</style></head><body><h1>${title.replace(/</g, '&lt;')}</h1>${html}</body></html>`;
-  const url = URL.createObjectURL(new Blob(['﻿', doc], { type: 'application/msword' }));
-  const a = document.createElement('a');
-  a.href = url; a.download = `${title.replace(/[^\w\- ]+/g, '').trim() || 'Document'}.doc`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
 function exportPdf(title: string, html: string) {
   const frame = document.createElement('iframe');
   frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
@@ -69,6 +63,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   const [panel, setPanel] = useState<'comments' | null>(null);
   const [sheet, setSheet] = useState<'history' | 'share' | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
   // Offline (Stage 5 · B9.7), people who may edit keep writing on this device's copy.
   const editable = (status.s === 'live' || status.s === 'offline') && status.canEdit;
   useEffect(() => { editor?.setEditable(editable); }, [editor, editable]);
@@ -115,13 +110,20 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
         </div>
         <PresenceStack people={present} />
         <div className="relative">
-          <button type="button" onClick={() => setExportOpen((o) => !o)} title="Download" aria-label="Download" className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Download className="w-4 h-4" /></button>
+          <input ref={importRef} type="file" accept=".docx,.md,.markdown,.txt,.html,.htm" className="hidden" onChange={(e) => {
+            const f = e.target.files?.[0]; e.target.value = '';
+            if (f && editor) void importFile(f, editor).then(() => toast.success(`${f.name} added`), (err: Error) => toast.error(err.message));
+          }} />
+          <button type="button" onClick={() => setExportOpen((o) => !o)} title="Download or import" aria-label="Download or import" aria-expanded={exportOpen} className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Download className="w-4 h-4" /></button>
           <AnimatePresence>
             {exportOpen && editor && (
               <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.snappy} onMouseLeave={() => setExportOpen(false)}
-                className="absolute right-0 top-10 z-30 w-44 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
+                className="absolute right-0 top-10 z-30 w-56 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
                 <button type="button" onClick={() => { setExportOpen(false); exportPdf(shownTitle, editor.getHTML()); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">PDF (print)</button>
-                <button type="button" onClick={() => { setExportOpen(false); exportWord(shownTitle, editor.getHTML()); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.doc)</button>
+                <button type="button" onClick={() => { setExportOpen(false); void downloadDocx(shownTitle, editor).catch(() => toast.error('Couldn’t make the Word file.')); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.docx)</button>
+                <button type="button" onClick={() => { setExportOpen(false); downloadMarkdown(shownTitle, editor); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Markdown (.md)</button>
+                <div className="my-1 h-px bg-zinc-200 dark:bg-white/10" />
+                <button type="button" disabled={!editable} onClick={() => { setExportOpen(false); importRef.current?.click(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-40 inline-flex items-center gap-2"><FileUp className="w-4 h-4" />Import Word, Markdown or text</button>
               </motion.div>
             )}
           </AnimatePresence>
