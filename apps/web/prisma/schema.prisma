@@ -134,6 +134,8 @@ model User {
   campusId           String?
   campus             Campus?   @relation(fields: [campusId], references: [id], onDelete: SetNull)
   networkVisible     Boolean   @default(false)
+  organizationId     String?
+  organization       Organization? @relation("OrgMembers", fields: [organizationId], references: [id], onDelete: SetNull)
 
   // Profiles
   studentProfile   StudentProfile?
@@ -332,8 +334,18 @@ enum OrgPlan {
 model Organization {
   id                   String    @id @default(cuid())
   name                 String
+  slug                 String?   @unique
+  customDomain         String?   @unique
+  brandColor           String?
+  logoUrl              String?
+  appTitle             String?
+  tagline              String?
+  trialEndsAt          DateTime?
+  seats                Int       @default(50)
   ownerId              String    @unique
   owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members              User[]    @relation("OrgMembers")
+  campuses             Campus[]
   plan                 OrgPlan   @default(STARTER)
   // Mirrors Stripe's subscription status: active, trialing, past_due, canceled, incomplete...
   subscriptionStatus   String?
@@ -4103,6 +4115,8 @@ model Campus {
   emailDomains     String           @default("[]") // JSON array, e.g. ["uni.edu", "student.uni.edu"]
   lat              Float?
   lng              Float?
+  organizationId   String?
+  organization     Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   users            User[]

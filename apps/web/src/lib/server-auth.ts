@@ -11,6 +11,8 @@ export interface SessionUser {
   role: string;
   /** The platform owner (verified sign-in): every feature, whatever the plan. */
   owner?: boolean;
+  /** Organization this person belongs to, if scoped to a school. */
+  organizationId?: string | null;
 }
 
 export async function getSessionUser(request: Request): Promise<SessionUser | null> {
@@ -21,7 +23,7 @@ export async function getSessionUser(request: Request): Promise<SessionUser | nu
     if (demoWriteBlocked(request, user, token) || guardianBlocked(request, user)) return null;
     // Admins and the owner must have typed the emailed sign-in code (src/server/two-step.ts).
     if (needsTwoStep(user.role, token) && !hasPass(request, user.id, token)) return null;
-    return { id: user.id, name: user.name, email: user.email, role: user.role, owner: isOwner(user) };
+    return { id: user.id, name: user.name, email: user.email, role: user.role, owner: isOwner(user), organizationId: user.organizationId ?? null };
   } catch {
     return null;
   }

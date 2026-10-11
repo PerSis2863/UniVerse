@@ -101,6 +101,41 @@ const quizOut = (d: SampleDb, qz: any, withAnswers: boolean) => ({
 
 // ── GET routes ─────────────────────────────────────────────────────────
 const GET: [RegExp, (c: Ctx) => Result][] = [
+  // Multi-school SaaS branding and admin settings (Stage 5 · C2)
+  [/^\/api\/org\/branding$/, () => ok({
+    isSchool: true,
+    id: "sample-org-1",
+    name: "Riverside University",
+    slug: "riverside",
+    customDomain: null,
+    brandColor: "#4f46e5",
+    logoUrl: null,
+    appTitle: "Riverside UniVerse",
+    tagline: "The Campus Operating System",
+  })],
+  [/^\/api\/admin\/settings$/, () => ok({
+    organization: {
+      id: "sample-org-1",
+      name: "Riverside University",
+      slug: "riverside",
+      customDomain: null,
+      brandColor: "#4f46e5",
+      logoUrl: null,
+      appTitle: "Riverside UniVerse",
+      tagline: "The Campus Operating System",
+      seats: 120,
+      usedSeats: 48,
+      plan: "PRO",
+    },
+    security: {
+      demoLogin: false,
+      email: true,
+      credentialSigning: true,
+      fileStorage: true,
+      pendingApplications: 2,
+      suspendedAccounts: 0,
+    },
+  })],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -506,6 +541,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  ["PATCH", /^\/api\/admin\/settings$/, ({ body }) => ok({ ok: true, organization: body })],
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
