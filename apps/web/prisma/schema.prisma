@@ -4126,11 +4126,32 @@ model TaskBoard {
   members   TaskBoardMember[]
   lists     TaskList[]
   tasks     Task[]
+  automations TaskAutomation[]
 
   @@index([ownerId])
   @@index([courseId])
   @@index([groupId])
   @@map("task_boards")
+}
+
+/// A board's automation (Stage 5 · B9.10; src/lib/task-automation.ts): trigger moved | created |
+/// due-soon, action notify | assign | priority | label | done.
+model TaskAutomation {
+  id          String    @id @default(cuid())
+  boardId     String
+  board       TaskBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  trigger     String
+  listId      String?
+  action      String
+  userId      String?
+  value       String?
+  enabled     Boolean   @default(true)
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  @@index([boardId])
+  @@index([trigger])
+  @@map("task_automations")
 }
 
 model TaskBoardMember {
@@ -4181,6 +4202,8 @@ model Task {
   estimate    Float?
   repeat      String?
   blockedBy   String?
+  /// A due-soon automation already told about it (Stage 5 · B9.10)
+  dueRemindedAt DateTime?
   createdById String
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

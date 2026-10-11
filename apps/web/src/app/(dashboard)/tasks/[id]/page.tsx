@@ -5,8 +5,9 @@ import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { ArrowLeft, CalendarClock, CalendarDays, Clock, Flag, Lock, Repeat as RepeatIcon, Check, CheckSquare, GanttChart, KanbanSquare, List, Loader2, MessageSquare, Plus, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
+import { ArrowLeft, CalendarClock, CalendarDays, Clock, Flag, Lock, Repeat as RepeatIcon, Zap, Check, CheckSquare, GanttChart, KanbanSquare, List, Loader2, MessageSquare, Plus, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
 import { CalendarView, TimelineView } from '@/components/tasks/TaskViews';
+import { AutomationsSheet } from '@/components/tasks/Automations';
 import { PRIORITIES, PRIORITY_LABEL, REPEATS, REPEAT_LABEL, openBlockers, type Priority, type Repeat } from '@/lib/task-extras';
 import { promptDialog } from '@/components/ui/Dialogs';
 import Link from '@/components/ui/Link';
@@ -46,6 +47,7 @@ export default function TaskBoardPage({ params }: { params: Promise<{ id: string
   const [view, setView] = useState<'board' | 'list' | 'calendar' | 'timeline'>('board');
   const [open, setOpen] = useState<string | null>(() => search.get('task'));
   const [sharing, setSharing] = useState(false);
+  const [automating, setAutomating] = useState(false);
   const [newList, setNewList] = useState('');
   const [drag, setDrag] = useState<{ id: string; over: string | null } | null>(null);
   const [now] = useState(() => Date.now());
@@ -126,6 +128,7 @@ export default function TaskBoardPage({ params }: { params: Promise<{ id: string
             </button>
           ))}
         </div>
+        <button type="button" onClick={() => setAutomating(true)} className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold inline-flex items-center gap-1"><Zap className="w-3.5 h-3.5" />Automations</button>
         {data.canManage && !data.course && <button type="button" onClick={() => setSharing(true)} className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold inline-flex items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
         {data.canManage && <button type="button" aria-label="Delete board" onClick={async () => { if (await confirmDialog({ title: 'Delete this board?', message: 'All its lists and cards go too.', destructive: true })) { await call(key, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/tasks'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </div>
@@ -191,6 +194,7 @@ export default function TaskBoardPage({ params }: { params: Promise<{ id: string
       {current && <CardSheet card={current} board={data} onClose={() => setOpen(null)} onPatch={(p) => patchTask(current, p)}
         onDelete={async () => { setOpen(null); await act((b) => ({ ...b, tasks: b.tasks.filter((x) => x.id !== current.id) }), `/api/tasks/items/${current.id}`, 'DELETE'); }} />}
       {sharing && <ShareSheet board={data} onClose={() => setSharing(false)} onChanged={() => void mutate()} />}
+      {automating && <AutomationsSheet boardId={id} lists={lists} people={data.people} onClose={() => setAutomating(false)} />}
     </>
   );
 }
