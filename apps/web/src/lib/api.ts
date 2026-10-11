@@ -2,6 +2,7 @@
 import { getAuthToken, twoStepPass } from './auth-token';
 import { isSampleMode } from './sample-mode';
 import { fromBootstrap, inBootstrap } from './bootstrap';
+import { fetchWithRetry } from './authed-fetch';
 
 /** The platform API, served by this app on Cloudflare (src/app/api/core, src/server). */
 export const API_URL = '/api/core';
@@ -111,7 +112,7 @@ async function request<T>(method: string, url: string, body: unknown, config: Ap
   if (config.onUploadProgress && payload !== undefined) {
     ({ status, data, headers: resHeaders } = await xhrSend(method, target, headers, payload as XMLHttpRequestBodyInit, config.onUploadProgress));
   } else {
-    const res = await fetch(target, { method, headers, body: payload, signal: config.signal });
+    const res = await fetchWithRetry(target, { method, headers, body: payload, signal: config.signal });
     ({ status } = res);
     resHeaders = res.headers;
     data = await parse(res);

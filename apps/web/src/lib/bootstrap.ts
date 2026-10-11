@@ -15,7 +15,11 @@ let keys = new Set<string>();
 let pending: Promise<Bundle | null> | null = null;
 let doneAt = 0;
 let ticketAsked = false;
-const used = new Set<string>();
+// How many times each answer was used: twice in the first 10 s (two parts of the page often ask for
+// the same thing as it opens), once after that.
+const used = new Map<string, number>();
+const uses = (key: string) => used.get(key) ?? 0;
+const maxUses = () => (doneAt && Date.now() - doneAt > 10_000 ? 1 : 2);
 
 /** The requests bundled for each dashboard's first screen (besides the ones every page makes). */
 const PAGE_KEYS: Record<string, () => string[]> = {
@@ -42,13 +46,13 @@ export function startBootstrap(pathname: string, send: (body: string) => Promise
 /** Whether `key` (a URL as the app requests it) can still be answered from the bundle. */
 export function inBootstrap(key: string) {
   adoptEarlyBootstrap(); // the head script may have started it before anything else ran
-  return !!pending && keys.has(key) && !used.has(key) && (!doneAt || Date.now() - doneAt < FRESH_MS);
+  return !!pending && keys.has(key) && uses(key) < maxUses() && (!doneAt || Date.now() - doneAt < FRESH_MS);
 }
 
 /** The bundled answer for `key` (used once), or undefined if it isn't there or wasn't a success. */
 export async function fromBootstrap<T = unknown>(key: string): Promise<T | undefined> {
   if (!inBootstrap(key)) return undefined;
-  used.add(key);
+  used.set(key, uses(key) + 1);
   const bundle = await pending;
   const slot = bundle?.results[key];
   return slot && slot.status === 200 ? (slot.body as T) : undefined;
@@ -58,7 +62,7 @@ export async function fromBootstrap<T = unknown>(key: string): Promise<T | undef
 export async function bootstrapTicket(): Promise<string | undefined> {
   adoptEarlyBootstrap();
   if (!pending || !ticketAsked || used.has('ticket')) return undefined;
-  used.add('ticket');
+  used.set('ticket', 1);
   const bundle = await pending;
   return bundle?.ticket && Date.now() - doneAt < TICKET_MS ? bundle.ticket : undefined;
 }
