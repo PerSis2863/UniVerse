@@ -18,6 +18,7 @@ import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
 import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
+import { ChatExport } from './ChatExport';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
 import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
@@ -1023,6 +1024,9 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
           </div>
         </div>
       )}
+
+      {/* Export (Stage 5 · B7.8). */}
+      <ChatExport conversationId={convo.id} title={convo.title} />
 
       {convo.isGroup && (
         <div className="p-5 flex-1">
