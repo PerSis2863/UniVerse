@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear, Focus } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
@@ -579,6 +579,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [interp, setInterp] = useState<Interpreters>({});
   const [interpOpen, setInterpOpen] = useState(false);
   const [listening, setListening] = useState<string | null>(null);
+  // Auto-framing my camera (Stage 5 · B8.8, opt-in, remembered on this device).
+  const [framing, setFraming] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-framing') === '1'; } catch { return false; } });
+  const framingRef = useRef(framing);
+  const frameFx = useRef<{ track: MediaStreamTrack; stop(): void } | null>(null);
   const [spatial, setSpatial] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-spatial') === '1'; } catch { return false; } });
   // The agenda (Stage 5 · B8.3): kept by the call room; times from the room's clock.
   const [agenda, setAgenda] = useState<Agenda | null>(null);
@@ -969,6 +973,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     sfuRef.current = null;
     localRef.current?.getTracks().forEach((t) => t.stop());
     effectRef.current?.stop();
+    frameFx.current?.stop();
     rawCam.current?.stop();
     rawMic.current?.stop();
     micClean.current?.stop();
@@ -1530,6 +1535,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       if (switching) return;
       localRef.current?.getTracks().forEach((t) => t.stop());
       effectRef.current?.stop();
+      frameFx.current?.stop();
       rawCam.current?.stop();
       rawMic.current?.stop();
       micClean.current?.stop();
@@ -1802,20 +1808,36 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
    */
   const applyCamera = async (raw: MediaStreamTrack | null): Promise<boolean> => {
     const seq = ++camSeq.current;
-    const oldRaw = rawCam.current, oldFx = effectRef.current;
+    const oldRaw = rawCam.current, oldFx = effectRef.current, oldFrame = frameFx.current;
     rawCam.current = raw;
     effectRef.current = null;
+    frameFx.current = null;
     let out = raw, ok = true;
-    if (raw && bgRef.current.kind !== 'none') {
+    // Auto-framing first (B8.8), then the background on the framed picture.
+    if (raw && framingRef.current) {
+      try {
+        const { applyFraming } = await import('@/lib/call-framing');
+        const fr = await applyFraming(raw);
+        if (seq !== camSeq.current) { fr.stop(); return false; }
+        frameFx.current = fr;
+        out = fr.track;
+      } catch (e) {
+        console.warn('Auto-framing unavailable', e);
+        toast.error('Auto-framing couldn’t start on this device, so your camera shows as usual.');
+      }
+    }
+    if (out && bgRef.current.kind !== 'none') {
       setBgBusy(true);
       try {
-        const fx = await applyBackground(raw, bgRef.current);
+        const fx = await applyBackground(out, bgRef.current);
         if (seq !== camSeq.current) { fx.stop(); return false; }
         effectRef.current = fx;
         out = fx.track;
       } catch (e) {
         console.warn('Background unavailable', e);
         toast.error('Couldn’t apply your background, so your camera is off. Choose “None” in Background to use the camera without one.');
+        frameFx.current?.stop();
+        frameFx.current = null;
         raw.stop();
         rawCam.current = null;
         out = null;
@@ -1833,6 +1855,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       setLocal(new MediaStream(stream.getTracks()));
     }
     if (oldFx && oldFx !== effectRef.current) oldFx.stop();
+    if (oldFrame && oldFrame !== frameFx.current) oldFrame.stop();
     if (oldRaw && oldRaw !== raw) oldRaw.stop();
     if (!ok && stateRef.current.camera) { setCamera(false); stateRef.current.camera = false; announce(); }
     return ok;
@@ -2131,7 +2154,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp' | 'framing'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
@@ -2141,6 +2164,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ...(!isGuest && phase === 'live' ? [{ key: 'board' as const, label: callBoard ? 'Whiteboard' : 'Start a whiteboard', icon: PenTool, on: boardOpen }] : []),
     { key: '2g', label: twoG ? '2G mode on' : '2G mode', icon: SignalLow, on: twoG },
     ...(phase === 'live' ? [{ key: 'net' as const, label: 'Connection', icon: Activity, on: netOpen }] : []),
+    ...(camera && !twoG ? [{ key: 'framing' as const, label: framing ? 'Auto-frame on' : 'Auto-frame', icon: Focus, on: framing }] : []),
     ...(phase === 'live' && kind === 'video' && !twoG ? [{ key: 'gestures' as const, label: gestures ? 'Gestures on' : 'Gestures', icon: Hand, on: gestures }] : []),
     ...(phase === 'live' && info && !info.oneToOne && (canModerate || Object.keys(interp).length) ? [{ key: 'interp' as const, label: listening ? `Hearing ${interp[listening]?.label ?? 'interpreter'}` : 'Interpretation', icon: Ear, on: !!listening }] : []),
     ...(phase === 'live' && info && !info.oneToOne ? [{ key: 'spatial' as const, label: spatial ? 'Spatial audio on' : 'Spatial audio', icon: Volume2, on: spatial }] : []),
@@ -2192,6 +2216,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'poll') setPollCompose(true);
     else if (key === 'agenda') setAgendaOpen(true);
     else if (key === 'interp') setInterpOpen(true);
+    else if (key === 'framing') {
+      const on = !framing;
+      setFraming(on);
+      framingRef.current = on;
+      try { localStorage.setItem('call-framing', on ? '1' : '0'); } catch { /* private window */ }
+      if (rawCam.current) void applyCamera(rawCam.current);
+      toast(on ? 'Auto-frame on: your camera follows your face. It’s worked out on this device.' : 'Auto-frame off', { icon: '🎯', duration: on ? 6000 : 3000 });
+    }
     else if (key === 'spatial') {
       const on = !spatial;
       setSpatial(on);

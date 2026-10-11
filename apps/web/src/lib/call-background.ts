@@ -113,7 +113,7 @@ function loadSegmenter() {
  * Ticks that keep coming while the tab is in the background (the page's own timers slow to once a
  * second there, which would freeze your video for everyone).
  */
-function ticker(fps: number, tick: () => void): () => void {
+export function ticker(fps: number, tick: () => void): () => void {
   try {
     const url = URL.createObjectURL(new Blob(['let t;onmessage=(e)=>{clearInterval(t);if(e.data>0)t=setInterval(()=>postMessage(0),e.data)}'], { type: 'text/javascript' }));
     const w = new Worker(url);
