@@ -301,6 +301,8 @@ model User {
   secondChances        SecondChance[]      @relation("SecondChances")
   whisperQuestions     WhisperQuestion[]   @relation("WhisperQuestions")
   stickerPacks         StickerPack[]       @relation("StickerPacks")
+  closeFriends         CloseFriend[]       @relation("CloseFriendsOf")
+  closeFriendOf        CloseFriend[]       @relation("CloseFriendsIn")
   safetyFlagsSent      SafetyFlag[]       @relation("SafetyFlagsSent")
   officeNotesWritten   OfficeNote[]       @relation("OfficeNotesWritten")
   officeNotesAbout     OfficeNote[]       @relation("OfficeNotesAbout")
@@ -3669,6 +3671,19 @@ model TextTranslation {
   @@map("text_translations")
 }
 
+/// Someone's close friends (Stage 5 · B7.9): who sees their "close friends" status updates.
+model CloseFriend {
+  userId    String
+  user      User     @relation("CloseFriendsOf", fields: [userId], references: [id], onDelete: Cascade)
+  friendId  String
+  friend    User     @relation("CloseFriendsIn", fields: [friendId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, friendId])
+  @@index([friendId])
+  @@map("close_friends")
+}
+
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)
 /// and hours in their time zone. Outside them parents' messages arrive without a push.
 model ParentContactHours {
@@ -3903,6 +3918,8 @@ model ChatStatus {
   background String?
   createdAt  DateTime         @default(now())
   expiresAt  DateTime
+  /// ALL (everyone you chat with) or CLOSE (your close friends only; Stage 5 · B7.9)
+  audience   String           @default("ALL")
   views      ChatStatusView[]
 
   @@index([userId, expiresAt])
@@ -3916,6 +3933,8 @@ model ChatStatusView {
   userId   String
   user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   viewedAt DateTime   @default(now())
+  /// Their reaction to it (Stage 5 · B7.9), one emoji
+  reaction String?
 
   @@id([statusId, userId])
   @@index([userId])
