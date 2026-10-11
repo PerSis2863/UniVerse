@@ -21,6 +21,12 @@ export async function openPdf(url: string): Promise<PDFDocumentProxy> {
   return m.getDocument({ url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 65_536, withCredentials: false }).promise;
 }
 
+/** A PDF from a file on this device (the file converter, Stage 5 · B9.14). */
+export async function openPdfData(data: ArrayBuffer): Promise<PDFDocumentProxy> {
+  const m = await pdfjs();
+  return m.getDocument({ data: new Uint8Array(data) }).promise;
+}
+
 /** Draws a page into a canvas `width` CSS pixels wide (sharp on high-density screens). */
 export async function drawPage(doc: PDFDocumentProxy, n: number, canvas: HTMLCanvasElement, width: number) {
   const page = await doc.getPage(n);

@@ -5,7 +5,8 @@ import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
-import { ChevronRight, FileText, Loader2, Plus } from 'lucide-react';
+import { ChevronRight, FileText, Loader2, Plus, Repeat2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
@@ -14,7 +15,10 @@ import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { spring } from '@/lib/motion';
 import { DOC_TEMPLATES } from '@/lib/doc-templates';
 
-// Docs (Stage 4 · 3.2): documents written together live (src/server/docs.ts).
+// Docs (Stage 4 · 3.2): documents written together live (src/server/docs.ts). Stage 5 · B9.14: a
+// converter for files (Word, PDF, Excel, pictures, sound, video, ZIP), all on the device.
+
+const Converter = dynamic(() => import('@/components/docs/Converter').then((m) => m.Converter), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 
 interface List {
   courses: { id: string; code: string; name: string }[];
@@ -28,6 +32,7 @@ export default function DocsPage() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title: '', courseId: '', template: '' }); // courseId holds c:<id> or g:<id>
   const [busy, setBusy] = useState(false);
+  const [converting, setConverting] = useState(false);
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -40,7 +45,11 @@ export default function DocsPage() {
       <SectionTabs tabs={COLLAB_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex justify-end">{!creating && <button type="button" className="btn-primary" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> New document</button>}</div>
+          <div className="flex justify-end gap-2">
+            {!converting && <button type="button" className="btn-secondary" onClick={() => setConverting(true)}><Repeat2 className="w-4 h-4" /> Convert files</button>}
+            {!creating && <button type="button" className="btn-primary" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> New document</button>}
+          </div>
+          {converting && <Converter onClose={() => setConverting(false)} />}
           {creating && (
             <motion.form initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} onSubmit={create} className={`panel p-5 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
               <label className="text-sm space-y-1"><span className="text-zinc-600 dark:text-zinc-400">Name</span>

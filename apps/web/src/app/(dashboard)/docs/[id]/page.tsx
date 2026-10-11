@@ -75,13 +75,17 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   // the template goes in (as an edit, so everyone sees it and it's saved), then the address is tidied.
   useEffect(() => {
     if (!editor || !editable) return;
+    // A file converted into a doc (Stage 5 · B9.14) waits in this tab's storage.
+    let imported: string | null = null;
+    try { imported = sessionStorage.getItem(`doc-import:${id}`); sessionStorage.removeItem(`doc-import:${id}`); } catch { /* no storage */ }
+    if (imported && editor.isEmpty) { editor.commands.setContent(imported); return; }
     const sp = new URLSearchParams(window.location.search);
     const t = templateById(sp.get('template'));
     if (!sp.has('template')) return;
     if (t && editor.isEmpty) editor.commands.setContent(t.html);
     sp.delete('template');
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${sp.size ? `?${sp}` : ''}`);
-  }, [editor, editable]);
+  }, [editor, editable, id]);
 
   if (error) return <div className="p-8 text-sm text-rose-500">{(error as Error).message}</div>;
   if (!data) return <div className="flex-1 p-6"><div className="h-96 rounded-2xl skeleton" /></div>;
