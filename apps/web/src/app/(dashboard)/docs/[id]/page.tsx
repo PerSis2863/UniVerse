@@ -23,6 +23,7 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { MentionInput } from '@/components/ui/MentionInput';
 import { Translatable } from '@/components/shared/Translatable';
+import { templateById } from '@/lib/doc-templates';
 
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
 // select, version history (preview and restore), sharing, and PDF / Word copies.
@@ -70,6 +71,17 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   const [exportOpen, setExportOpen] = useState(false);
   const editable = status.s === 'live' && status.canEdit;
   useEffect(() => { editor?.setEditable(editable); }, [editor, editable]);
+  // A new doc started from a template (Stage 5 · B9.1; ?template=): once it's live and still empty,
+  // the template goes in (as an edit, so everyone sees it and it's saved), then the address is tidied.
+  useEffect(() => {
+    if (!editor || !editable) return;
+    const sp = new URLSearchParams(window.location.search);
+    const t = templateById(sp.get('template'));
+    if (!sp.has('template')) return;
+    if (t && editor.isEmpty) editor.commands.setContent(t.html);
+    sp.delete('template');
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${sp.size ? `?${sp}` : ''}`);
+  }, [editor, editable]);
 
   if (error) return <div className="p-8 text-sm text-rose-500">{(error as Error).message}</div>;
   if (!data) return <div className="flex-1 p-6"><div className="h-96 rounded-2xl skeleton" /></div>;
