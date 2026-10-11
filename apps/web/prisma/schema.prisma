@@ -2927,6 +2927,8 @@ model ScheduledCall {
   createdById     String?
   createdBy       User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
   remindedAt      DateTime?
+  /// Stage 5 · B8.2: the meeting template (class, office, parent, interview, viva).
+  template        String?
   createdAt       DateTime      @default(now())
 
   @@index([startAt])

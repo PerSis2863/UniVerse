@@ -13,6 +13,7 @@ import { useNow } from '@/lib/use-now';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { fadeUp, list, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { MEETING_TEMPLATES, templateById, totalMinutes } from '@/lib/call-agenda';
 
 // Scheduled calls on the Calls page (src/server/scheduled-calls.ts): what's coming up, a Join
 // button from 10 minutes before, and a sheet to book one for a class, group or chat.
@@ -135,6 +136,8 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
   const [startAt, setStartAt] = useState(nextQuarter);
   const [durationMin, setDuration] = useState(60);
   const [kind, setKind] = useState<'video' | 'audio'>('video');
+  // A meeting template (Stage 5 · B8.2): its settings and agenda are set up when the host joins.
+  const [template, setTemplate] = useState('');
   const [saving, setSaving] = useState(false);
   const chosen = room || options[0]?.value || '';
 
@@ -144,7 +147,7 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
     const [kindOfRoom, roomId] = chosen.split(':');
     setSaving(true);
     try {
-      const c = await authedJson<Upcoming>('/api/calls/scheduled', { method: 'POST', body: JSON.stringify({ room: kindOfRoom, roomId, title, startAt: new Date(startAt).toISOString(), durationMin, kind }) });
+      const c = await authedJson<Upcoming>('/api/calls/scheduled', { method: 'POST', body: JSON.stringify({ room: kindOfRoom, roomId, title, startAt: new Date(startAt).toISOString(), durationMin, kind, template: template || undefined }) });
       toast.success(`Scheduled for ${when(new Date(c.startAt))}. Everyone gets a reminder 15 minutes before.`);
       onDone(c);
     } catch (err) {
@@ -193,6 +196,14 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
             </button>
           ))}
         </div>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-semibold text-zinc-500">Kind of meeting</span>
+          <select value={template} onChange={(e) => { const t = templateById(e.target.value); setTemplate(e.target.value); if (t) setDuration(Math.min(180, [15, 30, 45, 60, 90, 120, 180].find((m) => m >= totalMinutes(t.agenda)) ?? 180)); }} className="input">
+            <option value="">Just a call</option>
+            {MEETING_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}: {t.hint}</option>)}
+          </select>
+          {templateById(template) && <span className="block text-[11px] text-zinc-500">When you join: {[templateById(template)!.lobby && 'waiting room', templateById(template)!.notes && 'notes', templateById(template)!.captions && 'captions'].filter(Boolean).join(', ') || 'no changes'}{' '}on, and an agenda of {templateById(template)!.agenda.length} items ({totalMinutes(templateById(template)!.agenda)} min) ready to start.</span>}
+        </label>
         <motion.button whileTap={{ scale: 0.97 }} type="submit" disabled={saving || !chosen} className="btn-primary w-full justify-center">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarPlus className="w-4 h-4" />}Schedule
         </motion.button>

@@ -34,7 +34,7 @@ import { CallBoardPanel, boardFromChat, makeCallBoard } from './CallBoard';
 import { WhisperPanel, WhisperPill, WhisperTopics } from './WhisperTA';
 import { ConnectionPanel, RateCall, WeakNetwork, shouldAskRating } from './CallQuality';
 import { AgendaBar, AgendaEditor } from './CallAgenda';
-import type { Agenda } from '@/lib/call-agenda';
+import { templateById, type Agenda } from '@/lib/call-agenda';
 import { combine, grade, readStats, type Reading, type Snapshot } from '@/lib/call-quality';
 import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
@@ -59,6 +59,7 @@ interface Ticket {
   /** The chat the call's chat panel uses, or null: the call room's own chat (CallChat). */ chatId?: string | null;
   /** In a breakout room: which (BreakoutPanel). */ breakout?: { parent: string; n: number; name: string } | null;
   /** A webinar's audience (2.10): joins watching, without camera or microphone. */ audience?: boolean;
+  /** Hosts: the scheduled call's meeting template (Stage 5 · B8.2), to set the call up. */ template?: string | null;
   path: string; iceServers: RTCIceServer[];
 }
 interface Peer { peerId: string; userId: string; name: string; host?: boolean; cohost?: boolean; hand?: number; sfu?: { sessionId: string; tracks: SfuTrack[] } }
@@ -1870,6 +1871,32 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
 
   useEffect(() => { actions.current = { toggleCamera, setMicOff, applyCamera }; });
+
+  // A scheduled call's meeting template (Stage 5 · B8.2): once, when the host is in, turn on its
+  // settings (waiting room, notes, captions) and put its agenda in, ready to start.
+  const templateDone = useRef(false);
+  const applyTemplate = useRef<() => void>(() => {});
+  useEffect(() => {
+    applyTemplate.current = () => {
+      const t = templateById(infoRef.current?.template);
+      if (!t) return;
+      const done: string[] = [];
+      if (t.lobby && !lobbyOn) { control('lobby', null, true); done.push('waiting room on'); }
+      const i = infoRef.current;
+      const mayNotes = !!i && (i.type === 'class' ? !!i.host : meHost || meCohost || i.oneToOne);
+      if (t.notes && mayNotes && !notesRef.current) { toggleNotes(); done.push('notes on'); }
+      if (t.captions && !cc) { toggleCc(); done.push('captions on'); }
+      if (!agenda) { send({ type: 'control', action: 'agenda-set', items: t.agenda }); done.push('agenda ready to start'); }
+      if (done.length) toast(`${t.name}: ${done.join(' · ')}`, { icon: '🗓️', duration: 8000 });
+    };
+  });
+  useEffect(() => {
+    if (phase !== 'live' || !meHost || !info?.template || templateDone.current) return;
+    templateDone.current = true;
+    // A moment after joining, so the room's state (an agenda already there) has arrived.
+    const t = setTimeout(() => applyTemplate.current(), 1200);
+    return () => clearTimeout(t);
+  }, [phase, meHost, info]);
 
   const flipCamera = async () => {
     const current = rawCam.current;

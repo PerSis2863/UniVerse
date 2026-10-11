@@ -11,7 +11,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
   new branch from `main` (D2: `claude/stage-5-whisper`).
 - The site is on **Workers Free** (10 ms CPU per request; measured 5–88 ms for warm API calls). The
   owner will move to Workers Paid later; until then keep requests light.
-- **Next migration number: `0105`** (0103 doc pages and 0104 call ratings are on branch `claude/stage-5-docs`, made from `claude/stage-5-block6` while PR #51 waits; 0082–0093 are live with PR #50; 0094 Whisper TA, 0095 message reminders, 0096 sticker packs, 0097 community roles, 0098 text translations, 0099 status reactions, 0100 task extras, 0101 task automations and 0102 files hub on branch `claude/stage-5-block6`, which also holds D2). Merging to `main` makes Cloudflare build and deploy, and the deploy
+- **Next migration number: `0106`** (0105 meeting templates is on branch `claude/stage-5-calls`, made from `claude/stage-5-docs` while PR #52 waits; 0103 doc pages and 0104 call ratings are on branch `claude/stage-5-docs`, made from `claude/stage-5-block6` while PR #51 waits; 0082–0093 are live with PR #50; 0094 Whisper TA, 0095 message reminders, 0096 sticker packs, 0097 community roles, 0098 text translations, 0099 status reactions, 0100 task extras, 0101 task automations and 0102 files hub on branch `claude/stage-5-block6`, which also holds D2). Merging to `main` makes Cloudflare build and deploy, and the deploy
   applies new migrations first (`DEPLOY-CLOUDFLARE.md`, "Deploy command"). Nothing to run by hand.
 - Tests: `npx vitest run` → **319 passing**. `pnpm typecheck` clean. `pnpm lint` 0 errors.
 

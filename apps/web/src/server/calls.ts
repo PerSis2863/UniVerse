@@ -11,6 +11,7 @@ import { publishChat } from './realtime';
 import { impactCallAccess } from './impact-rooms';
 import { meetingCallAccess } from './parent-meetings';
 import { isCallIssue } from '@/lib/call-quality';
+import { scheduledTemplate } from './scheduled-calls';
 
 // UniVerse's own voice and video calls. Audio and video go straight between browsers (WebRTC,
 // up to 6 people, each connected to each); the call's Durable Object (cloudflare/worker.ts
@@ -239,8 +240,10 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
   if (res?.status === 403) throw new HttpException('The host removed you from this call.', 403);
   if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
   const { ticket, audience } = (await res.json()) as { ticket: string; audience?: boolean };
+  // The host's app sets the call up from its meeting template (Stage 5 · B8.2).
+  const template = host && !breakout ? await scheduledTemplate(callId).catch(() => null) : null;
   return {
-    ...info, host, sfu, max, breakout,
+    ...info, host, sfu, max, breakout, template,
     // A webinar's audience (2.10): joins watching, without camera or microphone.
     audience: sfu && audience === true,
     title: breakout ? `${breakout.name} · ${info.title}` : info.title,
