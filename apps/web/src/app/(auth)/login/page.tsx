@@ -44,7 +44,7 @@ export default function LoginPage() {
     if (!new URLSearchParams(location.search).has('step')) return;
     void auth.authStateReady().then(async () => {
       const token = await auth.currentUser?.getIdToken().catch(() => null);
-      if (token) setTwoStep({ token }); // eslint-disable-line react-hooks/set-state-in-effect
+      if (token) setTwoStep({ token });
     });
   }, []);
 

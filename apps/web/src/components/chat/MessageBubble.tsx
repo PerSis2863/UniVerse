@@ -21,6 +21,8 @@ import { MeetingNotesCard } from '@/components/call/MeetingNotes';
 import { EmojiGlyph, EmojiPicker } from './EmojiPicker';
 import { safeHref } from '@/lib/safe-href';
 import { authedJson } from '@/lib/authed-fetch';
+import { appLink, firstLink, youtubeId } from '@/lib/app-links';
+import { AppLinkCard, YouTubeCard } from './LinkCards';
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
 /**
@@ -369,10 +371,16 @@ export function MessageBubble(p: Props) {
     const t = p.translation;
     const translated = t?.status === 'done' && !t.same && !!t.text;
     const showing = translated && !p.showOriginal;
+    // Rich cards for links (Stage 5 · B7.10): the app's own docs, boards and task boards live; YouTube with its picture.
+    const link = firstLink(m.body);
+    const app = link ? appLink(link, typeof window !== 'undefined' ? window.location.origin : undefined) : null;
+    const yt = link && !app ? youtubeId(link) : null;
     content = (
       <div className="px-3.5 py-2.5">
         <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} emoji={p.customEmoji} />
-        {m.metadata?.link && <LinkCard link={m.metadata.link} mine={mine} />}
+        {app && link ? <AppLinkCard kind={app.kind} id={app.id} url={link} mine={mine} />
+          : yt && link ? <YouTubeCard id={yt} url={link} title={m.metadata?.link?.title} mine={mine} />
+          : m.metadata?.link && <LinkCard link={m.metadata.link} mine={mine} />}
         {translated && (
           <button onClick={p.onToggleOriginal} className={cn('mt-1.5 flex items-center gap-1 text-[11px] font-medium', mine ? 'text-white/75 hover:text-white' : 'text-indigo-500 dark:text-indigo-300 hover:underline')}>
             <Languages className="w-3 h-3" />
