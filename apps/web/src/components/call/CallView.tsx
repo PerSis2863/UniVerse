@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
@@ -32,6 +32,8 @@ import { WebinarQA, type QaItem } from './WebinarQA';
 import { PipCall, type PipTile } from './PipCall';
 import { CallBoardPanel, boardFromChat, makeCallBoard } from './CallBoard';
 import { WhisperPanel, WhisperPill, WhisperTopics } from './WhisperTA';
+import { ConnectionPanel, RateCall, WeakNetwork, shouldAskRating } from './CallQuality';
+import { combine, grade, readStats, type Reading, type Snapshot } from '@/lib/call-quality';
 import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
@@ -553,6 +555,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const twoGRef = useRef(twoG);
   const twoGApplied = useRef<boolean | null>(null);
   const poorSince = useRef<number | null>(null);
+  // Call quality (Stage 5 · B8.1): numbers per connection ('sfu' for the call server), the
+  // Connection panel, the weak-network banner, and the rating after the call.
+  const netRef = useRef(new Map<string, Reading>());
+  const [netOpen, setNetOpen] = useState(false);
+  const netOpenRef = useRef(false);
+  const [net, setNet] = useState<{ me: Reading | null; people: Record<string, Reading> }>({ me: null, people: {} });
+  const [weak, setWeak] = useState(false);
+  const weakSince = useRef<number | null>(null), goodSince = useRef<number | null>(null), weakHiddenUntil = useRef(0);
+  const [rateAsk, setRateAsk] = useState(false);
   // Call health log: how this call went, sent once when it ends (connection numbers only).
   const stat = useRef({ joinAt: 0, peers: 0, worstRtt: 0, worstLoss: 0, relay: false, audioOnly: false, failure: null as string | null, sent: false });
   const autoAudioOnlyAfter = useRef(0);
@@ -950,6 +961,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     setPhase('ended');
     // Nobody answered a one-to-one call: offer to leave a voice message (like voicemail).
     if (why === 'No answer' && i?.oneToOne && i.conversationId) { setVoicemail('offer'); return; }
+    // A call that went on a while: a quick rating (at most once a day), then back to where I was.
+    if (shouldAskRating(talkStart.current ? (Date.now() - talkStart.current) / 1000 : 0)) { setRateAsk(true); return; }
     setTimeout(() => onLeave(i?.conversationId ?? null), why ? 1400 : 250);
   }, [callId, onLeave, stopRecording, submitNotes, report]);
 
@@ -1515,8 +1528,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     // Packets lost since the last reading (not since the start, so a bad minute early on doesn't
     // stick, and a connection going bad now shows at once).
     const last = new WeakMap<RTCPeerConnection, { lost: number; got: number }>();
-    const measure = async (pc: RTCPeerConnection): Promise<Quality> => {
+    const snaps = new WeakMap<RTCPeerConnection, Snapshot>();
+    const measure = async (pc: RTCPeerConnection, key: string): Promise<Quality> => {
       const stats = await pc.getStats().catch(() => null);
+      if (stats) {
+        // The numbers for the Connection panel (B8.1).
+        const { reading, snapshot } = readStats(stats.values() as Iterable<Record<string, unknown>>, snaps.get(pc), performance.now());
+        snaps.set(pc, snapshot);
+        netRef.current.set(key, reading);
+      }
       let rtt: number | null = null, lost = 0, got = 0;
       stats?.forEach((s) => {
         if (s.type === 'candidate-pair' && s.state === 'succeeded' && typeof s.currentRoundTripTime === 'number') rtt = s.currentRoundTripTime;
@@ -1540,14 +1560,31 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       const link = sfuRef.current;
       const readings: Quality[] = [];
       if (link) {
-        if (link.pc.connectionState === 'connected') { const quality = await measure(link.pc); readings.push(quality); noteSfuQuality(quality); }
+        if (link.pc.connectionState === 'connected') { const quality = await measure(link.pc, 'sfu'); readings.push(quality); noteSfuQuality(quality); }
       } else {
         for (const [id, pc] of pcs.current) {
           if (pc.connectionState !== 'connected') continue;
-          const quality = await measure(pc);
+          const quality = await measure(pc, id);
           readings.push(quality);
           if (remotesRef.current[id]?.quality !== quality) patch(id, { quality });
         }
+      }
+      // Only connections still open count; the panel gets fresh numbers while it's open.
+      const keys = link ? ['sfu'] : [...pcs.current.keys()];
+      for (const k of [...netRef.current.keys()]) if (!keys.includes(k)) netRef.current.delete(k);
+      const me = combine([...netRef.current.values()]);
+      if (netOpenRef.current) setNet({ me, people: link ? {} : Object.fromEntries(netRef.current) });
+      // "Your network is weak": poor for 6 s with cameras on (and not already audio only); it goes
+      // away after 8 s of a fair or good connection.
+      const cams = Object.values(remotesRef.current).some((r) => r.camera) || stateRef.current.camera;
+      if (grade(me) === 'poor' && cams && !audioOnlyRef.current) {
+        goodSince.current = null;
+        weakSince.current ??= Date.now();
+        if (Date.now() - weakSince.current >= 6000 && Date.now() > weakHiddenUntil.current) setWeak(true);
+      } else {
+        weakSince.current = null;
+        goodSince.current ??= Date.now();
+        if (audioOnlyRef.current || Date.now() - goodSince.current >= 8000) setWeak(false);
       }
       // Audio-only fallback: poor for 10 s while someone's camera is on.
       if (!readings.includes('poor')) { poorSince.current = null; return; }
@@ -2026,7 +2063,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
@@ -2035,6 +2072,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
     ...(!isGuest && phase === 'live' ? [{ key: 'board' as const, label: callBoard ? 'Whiteboard' : 'Start a whiteboard', icon: PenTool, on: boardOpen }] : []),
     { key: '2g', label: twoG ? '2G mode on' : '2G mode', icon: SignalLow, on: twoG },
+    ...(phase === 'live' ? [{ key: 'net' as const, label: 'Connection', icon: Activity, on: netOpen }] : []),
     ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
@@ -2074,6 +2112,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       toast(twoG ? '2G mode off: turn your camera on whenever you like.' : '2G mode: voice only at 16 kbps. Shared screens still show.', { icon: '📶' });
     }
     else if (key === 'bg') setBgOpen(true);
+    else if (key === 'net') { const open = !netOpen; netOpenRef.current = open; setNetOpen(open); if (open) setNet({ me: combine([...netRef.current.values()]), people: sfuRef.current ? {} : Object.fromEntries(netRef.current) }); }
     else if (key === 'flip') void flipCamera();
     else if (key === 'rec') { if (recording) void stopRecording(); else void startRecording(); }
     else if (key === 'notes') toggleNotes();
@@ -2451,6 +2490,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       <AnimatePresence>{boardOpen && callBoard && phase === 'live' && <CallBoardPanel key="board" boardId={callBoard} onClose={() => setBoardOpen(false)} />}</AnimatePresence>
       <CallChatPanel open={chatOpen && phase === 'live'} onClose={() => openPanel(null)} lines={chat.lines} onSend={chat.send} linked={chat.linked} title={info?.title ?? 'the chat'} />
       {canTa && <WhisperPanel open={taOpen} onClose={() => openPanel(null)} callId={callId} heard={heardNow} />}
+      <ConnectionPanel open={netOpen && phase === 'live'} onClose={() => { netOpenRef.current = false; setNetOpen(false); }} me={net.me} server={!!info?.sfu}
+        people={list.filter((r) => net.people[r.peer.peerId]).map((r) => ({ id: r.peer.peerId, name: r.peer.name, reading: net.people[r.peer.peerId] ?? null }))}
+        audioOnly={audioOnly} onAudioOnly={setLowData} />
+      <WeakNetwork show={weak && phase === 'live'} onAudioOnly={() => { setLowData(true); setWeak(false); }} onDismiss={() => { weakHiddenUntil.current = Date.now() + 120_000; setWeak(false); }} />
       <BreakoutPanel open={boOpen && phase === 'live' && canModerate} onClose={() => setBoOpen(false)} bo={bo} room={roomN}
         people={list.map((r) => ({ id: r.peer.peerId, name: r.peer.name, host: r.peer.host || r.peer.cohost }))}
         onSend={(m) => send({ type: 'control', ...m })} onJoin={(n) => goRoom(n === null ? callId : roomId(callId, n))} />
@@ -2523,6 +2566,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           </motion.div>
         )}
       </AnimatePresence>
+      {/* After the call: how was it? (B8.1) */}
+      {rateAsk && phase === 'ended' && (
+        <div className="absolute inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <RateCall callId={callId} onDone={() => onLeave(infoRef.current?.conversationId ?? null)} />
+        </div>
+      )}
       {/* Voicemail: nobody answered, leave a voice message instead. */}
       <AnimatePresence>
         {voicemail && (

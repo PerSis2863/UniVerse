@@ -2404,6 +2404,9 @@ model CallStat {
   audioOnly  Boolean  @default(false) // the audio-only fallback switched on
   failure    String? // media, ticket, connect, dropped
   device     String? // "Chrome on Mac"
+  /// Stage 5 · B8.1: the rating given afterwards (1–5), and what went wrong (comma-separated).
+  rating     Int?
+  issues     String?
   createdAt  DateTime @default(now())
 
   @@index([createdAt])

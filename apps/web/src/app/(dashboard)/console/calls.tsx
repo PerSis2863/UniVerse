@@ -6,6 +6,7 @@ import { AlertTriangle, Monitor, PhoneCall, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { card, fetcher } from './shared';
+import { CALL_ISSUES } from '@/lib/call-quality';
 
 // Calls tab: how calls went in the last 14 days. Every person reports their call when it ends
 // (src/components/call/CallView.tsx → src/server/calls.ts recordCallStat): connection numbers only,
@@ -20,9 +21,13 @@ interface Count { key: string; n: number; failed: number }
 interface Health {
   turn: boolean; joins: number; failed: number; successRate: number | null; setupMedianMs: number | null; setupP90Ms: number | null;
   poorShare: number; relayShare: number; sfuShare: number; audioOnly: number; avgMinutes: number | null;
+  rating?: number | null; ratings?: number; issues?: { key: string; n: number }[];
   perDay: { day: string; ok: number; failed: number }[];
   failures: Count[]; devices: Count[]; types: Count[]; problems: Problem[];
 }
+
+/** What people said went wrong in their rating (B8.1). */
+const ISSUE: Record<string, string> = Object.fromEntries(CALL_ISSUES.map((i) => [i.id, i.label.toLowerCase()]));
 
 /** What each failure means, and what usually fixes it. */
 const FAILURE: Record<string, { label: string; why: string }> = {
@@ -60,12 +65,13 @@ export function CallsPanel({ onPerson }: { onPerson: (id: string) => void }) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             {([
               ['Connected', data.successRate === null ? '—' : `${data.successRate}%`, `${data.joins} joins · ${data.failed} failed`, data.successRate !== null && data.successRate < 90],
               ['Time to connect', secs(data.setupMedianMs), `typical · 1 in 10 over ${secs(data.setupP90Ms)}`, (data.setupMedianMs ?? 0) > 3000],
               ['Poor quality', `${data.poorShare}%`, `${data.audioOnly} switched to audio only`, data.poorShare > 15],
               ['Average call', data.avgMinutes === null ? '—' : `${data.avgMinutes} min`, `${data.relayShare}% via TURN · ${data.sfuShare}% bigger calls`, false],
+              ['Rating', data.rating ? `${data.rating} ★` : '—', data.ratings ? `${data.ratings} rating${data.ratings === 1 ? '' : 's'}${data.issues?.length ? ` · most said: ${ISSUE[data.issues[0].key] ?? data.issues[0].key}` : ''}` : 'Asked after longer calls', !!data.rating && data.rating < 3.5],
             ] as const).map(([label, value, hint, bad]) => (
               <div key={label} className={cn(card, 'p-4')}>
                 <p className={cn('text-2xl font-bold', bad ? 'text-rose-500' : 'text-zinc-900 dark:text-white')}>{value}</p>
