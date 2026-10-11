@@ -14,6 +14,7 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { BoardControls } from './BoardCanvas';
 import { MentionInput } from '@/components/ui/MentionInput';
+import { Translatable } from '@/components/shared/Translatable';
 
 // Boards (Stage 4 · 3.4, part 3; src/server/board-extras.ts): comments on shapes, and versions.
 
@@ -102,7 +103,7 @@ export function BoardComments({ boardId, controls, onClose, meId }: { boardId: s
                         <Avatar name={c.user.name} src={c.user.avatar} size={24} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] text-zinc-500"><span className="font-semibold text-zinc-800 dark:text-zinc-100">{c.user.name.split(' ')[0]}</span> · {ago(c.createdAt)}</p>
-                          <p className="text-sm text-zinc-700 dark:text-zinc-200 break-words whitespace-pre-line">{c.body}</p>
+                          <Translatable kind="board-comment" id={c.id} text={c.body} hide={c.user.id === meId} className="text-sm text-zinc-700 dark:text-zinc-200 break-words whitespace-pre-line" />
                         </div>
                         {c.user.id === meId && <button type="button" aria-label="Delete comment" onClick={() => void (async () => { if (await confirmDialog({ title: 'Delete this comment?', destructive: true, confirmLabel: 'Delete' })) await change(c, null); })()} className="p-1 text-zinc-600 dark:text-zinc-300 hover:text-rose-500 self-start"><Trash2 className="w-3.5 h-3.5" /></button>}
                       </li>

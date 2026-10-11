@@ -44,6 +44,11 @@ async function access(docId: string, user: SessionUser) {
   return { doc, canEdit: isOwner || mine?.role === 'EDITOR' || !!course || !!group || !!chat?.canEdit, canManage: !!course?.canManage || !!group?.canManage || !!chat?.canManage || (isOwner && !doc.conversationId) };
 }
 
+/** Whether someone may read a document (its comments' translations check this; Stage 5 · B7.5). */
+export async function canReadDoc(docId: string, user: SessionUser) {
+  try { await access(docId, user); return true; } catch { return false; }
+}
+
 /** A chat's canvas (1.12): everyone in the chat edits it (in a community channel, those who may
  *  post there); the group's admins or the community's moderators manage it. */
 async function chatAccess(conversationId: string, user: SessionUser) {

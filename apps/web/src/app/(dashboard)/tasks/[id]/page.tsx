@@ -17,6 +17,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Avatar } from '@/components/ui/Avatar';
 import { TabPill } from '@/components/ui/Glide';
 import { MentionInput } from '@/components/ui/MentionInput';
+import { Translatable } from '@/components/shared/Translatable';
 
 // A task board (Stage 4 · 3.3): lists of cards, dragged across as work moves on (on phones, "Move
 // to" in the card), or as one list. Changes from others arrive live (src/server/tasks.ts).
@@ -248,7 +249,7 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
               <Avatar name={c.user.name} src={c.user.avatar} size={28} />
               <div className="min-w-0 flex-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] px-3 py-2">
                 <p className="text-[11px] text-zinc-500">{c.user.name} · {new Date(c.createdAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                <p className="text-sm text-zinc-900 dark:text-white whitespace-pre-wrap break-words">{c.body}</p>
+                <Translatable kind="task-comment" id={c.id} text={c.body} className="text-sm text-zinc-900 dark:text-white whitespace-pre-wrap break-words" />
               </div>
             </div>
           ))}

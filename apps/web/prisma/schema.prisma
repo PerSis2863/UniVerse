@@ -3652,6 +3652,23 @@ model Sticker {
   @@map("stickers")
 }
 
+/// A translation of a text that isn't a chat message (Stage 5 · B7.5; src/server/text-translate.ts):
+/// kind "announcement" | "group-post" | "task-comment" | "doc-comment" | "board-comment". text is
+/// empty when the original was already in that language; srcHash notices edits.
+model TextTranslation {
+  id         String   @id @default(cuid())
+  kind       String
+  refId      String
+  lang       String
+  sourceLang String
+  text       String
+  srcHash    String
+  createdAt  DateTime @default(now())
+
+  @@unique([kind, refId, lang])
+  @@map("text_translations")
+}
+
 /// When a teacher answers parents (Stage 5 · B16.2): days ("1,2,3,4,5" = Monday–Friday, 0 = Sunday)
 /// and hours in their time zone. Outside them parents' messages arrive without a push.
 model ParentContactHours {

@@ -22,6 +22,7 @@ import { DocEditor, DocToolbar, type DocStatus } from '@/components/docs/DocEdit
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { MentionInput } from '@/components/ui/MentionInput';
+import { Translatable } from '@/components/shared/Translatable';
 
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
 // select, version history (preview and restore), sharing, and PDF / Word copies.
@@ -179,7 +180,7 @@ function Comments({ docId, editor, me, canEdit, onClose }: { docId: string; edit
         <span className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
       </div>
       {c.quote && <button type="button" onClick={() => goToQuote(editor, c.quote!)} className="mt-2 block w-full text-left text-xs italic text-zinc-500 border-l-2 border-amber-400 pl-2 line-clamp-2 hover:text-indigo-500">“{c.quote}”</button>}
-      <p className="mt-1.5 text-sm text-zinc-900 dark:text-white whitespace-pre-wrap break-words">{c.body}</p>
+      <Translatable kind="doc-comment" id={c.id} text={c.body} hide={c.userId === me} className="mt-1.5 text-sm text-zinc-900 dark:text-white whitespace-pre-wrap break-words" />
       <div className="mt-2 flex gap-3 text-[11px] font-semibold">
         {(canEdit || c.userId === me) && <button type="button" onClick={async () => { await call(`${key}/${c.id}`, 'PATCH', { resolved: !c.resolvedAt }).catch((e) => toast.error((e as Error).message)); void mutate(); }} className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">{c.resolvedAt ? <><RotateCcw className="w-3 h-3" />Reopen</> : <><Check className="w-3 h-3" />Resolve</>}</button>}
         {c.userId === me && <button type="button" onClick={async () => { await call(`${key}/${c.id}`, 'PATCH', { delete: true }).catch((e) => toast.error((e as Error).message)); void mutate(); }} className="text-zinc-400 hover:text-rose-500">Delete</button>}

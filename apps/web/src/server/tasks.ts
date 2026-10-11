@@ -35,6 +35,11 @@ async function access(boardId: string, user: SessionUser) {
   return { board, canEdit, canManage };
 }
 
+/** Whether someone may see a task board (its comments' translations check this; Stage 5 · B7.5). */
+export async function canReadTaskBoard(boardId: string, user: SessionUser) {
+  try { await access(boardId, user); return true; } catch { return false; }
+}
+
 /** The people who see a board: owner, members and (course boards) the course, up to 300. */
 async function audience(board: { ownerId: string; courseId: string | null; groupId?: string | null; members: { userId: string }[] }) {
   const ids = new Set([board.ownerId, ...board.members.map((m) => m.userId)]);

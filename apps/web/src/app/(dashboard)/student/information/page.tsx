@@ -7,6 +7,7 @@ import { SectionTabs, HOME_TABS } from '@/components/layout/SectionTabs';
 import { CampusItemList } from '@/components/campus/CampusItems';
 import { CalendarDays, ChevronRight, FileText, HeartPulse, Link2, Megaphone, ShieldAlert } from 'lucide-react';
 import { api } from '@/lib/api';
+import { TranslatableAnnouncement } from '@/components/shared/Translatable';
 
 interface Announcement {
   id: string;
@@ -51,8 +52,7 @@ export default function StudentInformation() {
               <div className={`${card} divide-y divide-zinc-200 dark:divide-zinc-800`}>
                 {latest.map((a) => (
                   <article key={a.id} className="p-5">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white">{a.title}</h4>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-300 mt-1 whitespace-pre-line line-clamp-4">{a.body}</p>
+                    <TranslatableAnnouncement id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-semibold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 mt-1 whitespace-pre-line line-clamp-4" />
                     <p className="text-xs text-zinc-500 mt-2">
                       {new Date(a.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
                       {a.author?.name ? ` · ${a.author.name}` : ''}
