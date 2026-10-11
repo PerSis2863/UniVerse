@@ -86,7 +86,7 @@ export function WeakNetwork({ show, onAudioOnly, onDismiss }: { show: boolean; o
     <AnimatePresence>
       {show && (
         <motion.div role="status" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.snappy}
-          className="absolute z-30 left-1/2 -translate-x-1/2 top-[calc(env(safe-area-inset-top)+4.5rem)] w-[min(26rem,calc(100%-2rem))] rounded-2xl bg-amber-500/15 border border-amber-400/30 backdrop-blur-xl px-3 py-2 flex items-center gap-2 text-sm shadow-xl">
+          className="pointer-events-auto rounded-2xl bg-amber-500/15 border border-amber-400/30 backdrop-blur-xl px-3 py-2 flex items-center gap-2 text-sm shadow-xl">
           <WifiOff className="w-4 h-4 text-amber-300 shrink-0" aria-hidden />
           <span className="flex-1 min-w-0 text-amber-100">Your network is weak, so video may freeze.</span>
           <button type="button" onClick={() => { haptic('tap'); onAudioOnly(); }} className="shrink-0 h-8 px-3 rounded-full bg-amber-400 text-zinc-900 text-xs font-bold">Audio only</button>
