@@ -5,7 +5,8 @@ import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { ArrowLeft, CalendarClock, Check, CheckSquare, KanbanSquare, List, Loader2, MessageSquare, Plus, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
+import { ArrowLeft, CalendarClock, CalendarDays, Check, CheckSquare, GanttChart, KanbanSquare, List, Loader2, MessageSquare, Plus, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
+import { CalendarView, TimelineView } from '@/components/tasks/TaskViews';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
@@ -23,7 +24,7 @@ import { Translatable } from '@/components/shared/Translatable';
 // to" in the card), or as one list. Changes from others arrive live (src/server/tasks.ts).
 
 interface CheckItem { text: string; done: boolean }
-interface Card { id: string; listId: string; title: string; notes: string | null; assigneeId: string | null; dueAt: string | null; position: number; checklist: CheckItem[]; doneAt: string | null; comments: number }
+interface Card { id: string; listId: string; title: string; notes: string | null; assigneeId: string | null; dueAt: string | null; position: number; checklist: CheckItem[]; doneAt: string | null; comments: number; createdAt: string }
 interface Board {
   id: string; title: string; course: { code: string; name: string } | null; canEdit: boolean; canManage: boolean; me: string;
   people: { id: string; name: string; avatar: string | null }[];
@@ -40,7 +41,7 @@ export default function TaskBoardPage({ params }: { params: Promise<{ id: string
   const search = useSearchParams();
   const key = `/api/tasks/${id}`;
   const { data, error, mutate } = useSWR<Board>(key, authedJson);
-  const [view, setView] = useState<'board' | 'list'>('board');
+  const [view, setView] = useState<'board' | 'list' | 'calendar' | 'timeline'>('board');
   const [open, setOpen] = useState<string | null>(() => search.get('task'));
   const [sharing, setSharing] = useState(false);
   const [newList, setNewList] = useState('');
@@ -103,7 +104,7 @@ export default function TaskBoardPage({ params }: { params: Promise<{ id: string
         <Link href="/tasks" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-indigo-500"><ArrowLeft className="w-4 h-4" />Tasks</Link>
         <span className="flex-1" />
         <div className="flex p-1 rounded-full bg-zinc-100 dark:bg-white/[0.06]">
-          {([['board', 'Board', KanbanSquare], ['list', 'List', List]] as const).map(([v, label, Icon]) => (
+          {([['board', 'Board', KanbanSquare], ['list', 'List', List], ['calendar', 'Calendar', CalendarDays], ['timeline', 'Timeline', GanttChart]] as const).map(([v, label, Icon]) => (
             <button key={v} type="button" onClick={() => setView(v)} className={cn('relative isolate px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1', view === v ? 'text-white' : 'text-zinc-500')}>
               {view === v && <TabPill id="task-view" />}<Icon className="w-3.5 h-3.5" />{label}
             </button>
@@ -137,6 +138,13 @@ export default function TaskBoardPage({ params }: { params: Promise<{ id: string
               </form>
             )}
           </div>
+        </div>
+      ) : view === 'calendar' || view === 'timeline' ? (
+        // Calendar and timeline (Stage 5 · B9.8).
+        <div className="flex-1 overflow-y-auto p-4 md:px-8">
+          {view === 'calendar'
+            ? <CalendarView cards={data.tasks} lists={lists} canEdit={data.canEdit} onOpen={setOpen} onMove={(cid, dueAt) => { const t = data.tasks.find((x) => x.id === cid); if (t) void patchTask(t, { dueAt }); }} />
+            : <TimelineView cards={data.tasks} lists={lists} onOpen={setOpen} />}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4 md:px-8">

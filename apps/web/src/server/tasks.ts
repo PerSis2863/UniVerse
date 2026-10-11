@@ -106,7 +106,7 @@ export async function getBoard(boardId: string, user: SessionUser) {
     prisma.taskList.findMany({ where: { boardId }, orderBy: { position: 'asc' }, select: { id: true, title: true, position: true } }),
     prisma.task.findMany({
       where: { boardId }, orderBy: { position: 'asc' }, take: MAX_TASKS,
-      select: { id: true, listId: true, title: true, notes: true, assigneeId: true, dueAt: true, position: true, checklist: true, doneAt: true, _count: { select: { comments: true } } },
+      select: { id: true, listId: true, title: true, notes: true, assigneeId: true, dueAt: true, position: true, checklist: true, doneAt: true, createdAt: true, _count: { select: { comments: true } } },
     }),
     audience(board).then((ids) => prisma.user.findMany({ where: { id: { in: ids.slice(0, 90) } }, select: { id: true, name: true, avatar: true } })),
   ]);
