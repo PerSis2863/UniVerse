@@ -10,6 +10,7 @@ import { planLimits } from '@/lib/plan-limits';
 import { publishChat } from './realtime';
 import { impactCallAccess } from './impact-rooms';
 import { meetingCallAccess } from './parent-meetings';
+import { isCallIssue } from '@/lib/call-quality';
 
 // UniVerse's own voice and video calls. Audio and video go straight between browsers (WebRTC,
 // up to 6 people, each connected to each); the call's Durable Object (cloudflare/worker.ts
@@ -561,11 +562,20 @@ export async function recentCalls(user: SessionUser): Promise<CallHistoryRow[]> 
 const FAILURES = new Set(['media', 'ticket', 'connect', 'dropped']);
 const int = (v: unknown, max: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.round(v))) : null);
 
-/** How one person's call went: connection numbers only. One report per person per call. */
+/** How one person's call went: connection numbers only. One report per person per call. A later
+ *  { rating, issues } (Stage 5 · B8.1) goes on that report. */
 export async function recordCallStat(callId: string, user: SessionUser, body: unknown) {
   const b = (body ?? {}) as Record<string, unknown>;
   const info = await callAccess(callId, user).catch(() => null);
   if (!info) return { ok: false };
+  if (b.rating !== undefined) {
+    const rating = typeof b.rating === 'number' && Number.isInteger(b.rating) && b.rating >= 1 && b.rating <= 5 ? b.rating : null;
+    if (!rating) return { ok: false };
+    const issues = Array.isArray(b.issues) ? [...new Set(b.issues.filter(isCallIssue))].join(',') || null : null;
+    const mine = await prisma.callStat.findFirst({ where: { callId, userId: user.id, createdAt: { gt: new Date(Date.now() - 6 * 3600_000) } }, orderBy: { createdAt: 'desc' }, select: { id: true } });
+    if (mine) await prisma.callStat.update({ where: { id: mine.id }, data: { rating, issues } });
+    return { ok: !!mine };
+  }
   const recent = await prisma.callStat.findFirst({ where: { callId, userId: user.id, createdAt: { gt: new Date(Date.now() - 30_000) } }, select: { id: true } });
   if (recent) return { ok: true };
   // Keep 90 days (checked now and then, not on every report).
@@ -594,7 +604,7 @@ export async function recordCallStat(callId: string, user: SessionUser, body: un
 export async function callHealth() {
   const rows = await prisma.callStat.findMany({
     where: { createdAt: { gt: new Date(Date.now() - 14 * 86_400_000) } }, orderBy: { createdAt: 'desc' }, take: 5000,
-    select: { id: true, callId: true, userId: true, type: true, mode: true, peers: true, seconds: true, setupMs: true, worstRttMs: true, worstLoss: true, relay: true, audioOnly: true, failure: true, device: true, createdAt: true },
+    select: { id: true, callId: true, userId: true, type: true, mode: true, peers: true, seconds: true, setupMs: true, worstRttMs: true, worstLoss: true, relay: true, audioOnly: true, failure: true, device: true, rating: true, issues: true, createdAt: true },
   });
   const pct = (n: number) => (rows.length ? Math.round((n / rows.length) * 100) : 0);
   const setups = rows.map((r) => r.setupMs).filter((x): x is number => x !== null).sort((a, b) => a - b);
@@ -611,7 +621,13 @@ export async function callHealth() {
   const people = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, role: true } }) : [];
   const byId = new Map(people.map((u) => [u.id, u]));
   const talked = rows.filter((r) => r.seconds > 0);
+  const rated = rows.filter((r) => r.rating);
+  const issueCount = new Map<string, number>();
+  for (const r of rated) for (const i of (r.issues ?? '').split(',').filter(Boolean)) issueCount.set(i, (issueCount.get(i) ?? 0) + 1);
   return {
+    rating: rated.length ? Math.round((rated.reduce((n, r) => n + (r.rating ?? 0), 0) / rated.length) * 10) / 10 : null,
+    ratings: rated.length,
+    issues: [...issueCount.entries()].map(([key, n]) => ({ key, n })).sort((a, b) => b.n - a.n),
     turn: !!(process.env.TURN_KEY_ID && process.env.TURN_KEY_API_TOKEN),
     joins: rows.length,
     failed: rows.filter((r) => r.failure).length,

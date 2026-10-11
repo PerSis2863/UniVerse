@@ -11,6 +11,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 import { java } from '@codemirror/lang-java';
 import { cpp } from '@codemirror/lang-cpp';
+import { sql } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { authedJson } from '@/lib/authed-fetch';
 
@@ -28,6 +29,7 @@ function language(lang: string): Extension {
     case 'python': return python();
     case 'java': return java();
     case 'cpp': return cpp();
+    case 'sql': return sql();
     case 'typescript': return javascript({ typescript: true });
     default: return javascript();
   }

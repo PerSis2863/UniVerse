@@ -10,7 +10,7 @@ import { BadRequestException, ForbiddenException, HttpException, NotFoundExcepti
 // (Yjs) and passes cursors between people. Access is checked here, which hands out one-time
 // tickets for the live connection, like whiteboards (src/server/boards.ts).
 
-export const LANGUAGES = ['javascript', 'typescript', 'python', 'java', 'cpp'] as const;
+export const LANGUAGES = ['javascript', 'typescript', 'python', 'sql', 'java', 'cpp'] as const;
 const MAX_ROOMS_PER_COURSE = 200;
 
 interface RoomNamespace {

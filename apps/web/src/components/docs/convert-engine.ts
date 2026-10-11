@@ -145,7 +145,7 @@ async function frame(file: File): Promise<Blob> {
 }
 
 /** The document (HTML) inside a Word, text, Markdown or web page file. */
-async function docHtml(file: File): Promise<string> {
+export async function docHtml(file: File): Promise<string> {
   const kind = kindOf(file.name, file.type);
   if (kind === 'word') {
     const mammoth = await import('mammoth');

@@ -16,7 +16,7 @@ interface Data {
   rooms: { id: string; courseId: string; title: string; language: string; locked: boolean; updatedAt: string; createdBy: { name: string } | null }[];
 }
 
-const LANG_LABEL: Record<string, string> = { javascript: 'JavaScript', typescript: 'TypeScript', python: 'Python', java: 'Java', cpp: 'C++' };
+const LANG_LABEL: Record<string, string> = { javascript: 'JavaScript', typescript: 'TypeScript', python: 'Python', sql: 'SQL', java: 'Java', cpp: 'C++' };
 
 /** Shared code editors for your courses: write code together, live. */
 export default function CodeRoomsPage() {

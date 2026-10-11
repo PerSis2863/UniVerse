@@ -20,6 +20,7 @@ import type { BoardControls, BoardGone, BoardPeer, LiveStatus, Presenting } from
 import { MAX_VOTES, type Voted } from '@/components/boards/votes';
 import { BoardComments, BoardVersions, useBoardComments, type BoardApi } from '@/components/boards/BoardExtras';
 import type { TemplateId } from '@/components/boards/templates';
+import { BoardInsert } from '@/components/boards/BoardInsert';
 import { cn } from '@/lib/utils';
 
 const BoardCanvas = dynamic(() => import('@/components/boards/BoardCanvas'), {
@@ -291,6 +292,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         {canEdit && (
           <>
             <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={onFile} />
+            <BoardInsert controls={controls} disabled={status !== 'live'} className={btn} />
             <button onClick={() => pickPhoto('photo')} disabled={photoBusy || status !== 'live'} className={btn} title="Add a photo">
               {photoBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}<span className="hidden md:inline">Photo</span>
             </button>

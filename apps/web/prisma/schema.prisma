@@ -2404,6 +2404,9 @@ model CallStat {
   audioOnly  Boolean  @default(false) // the audio-only fallback switched on
   failure    String? // media, ticket, connect, dropped
   device     String? // "Chrome on Mac"
+  /// Stage 5 · B8.1: the rating given afterwards (1–5), and what went wrong (comma-separated).
+  rating     Int?
+  issues     String?
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
@@ -4236,16 +4239,35 @@ model Doc {
   groupId   String? // or everyone in the study group (Stage 4 · 3.1)
   conversationId String? @unique // or a chat's canvas: everyone in the chat (Stage 4 · 1.12)
   preview   String? // the start of the text, for lists and search
+  /// The page this one sits under (Stage 5 · B9.2): sub-pages share the parent's people.
+  parentId  String?
+  parent    Doc?         @relation("DocTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Doc[]        @relation("DocTree")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   members   DocMember[]
   versions  DocVersion[]
   comments  DocComment[]
+  linksOut  DocLink[]    @relation("DocLinkFrom")
+  linksIn   DocLink[]    @relation("DocLinkTo")
 
   @@index([ownerId])
   @@index([courseId])
   @@index([groupId])
+  @@index([parentId])
   @@map("docs")
+}
+
+/// A link from one page to another, found in its saved versions (Stage 5 · B9.2: backlinks).
+model DocLink {
+  fromId String
+  from   Doc    @relation("DocLinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId   String
+  to     Doc    @relation("DocLinkTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@id([fromId, toId])
+  @@index([toId])
+  @@map("doc_links")
 }
 
 model DocMember {

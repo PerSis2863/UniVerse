@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, Eye, FlaskConical, ListChecks, Loader2, Lock, Play, Plus, Trash2, Unlock, Users, XCircle } from 'lucide-react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
-import { canRun, runJavaScript, runPython, type CodeTest, type RunResult } from '@/lib/code-runner';
+import { canRun, runCode, type CodeTest, type RunResult } from '@/lib/code-runner';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
@@ -50,7 +50,7 @@ export default function CodeRoomPage({ params }: { params: Promise<{ id: string 
     setRunning(check ? 'check' : 'run');
     const tests = check ? room.tests ?? [] : [];
     try {
-      setOutput(room.language === 'python' ? await runPython(getText.current(), tests, setLoadingPy) : await runJavaScript(getText.current(), tests));
+      setOutput(await runCode(room.language, getText.current(), tests, setLoadingPy));
     } finally { setRunning(null); }
   };
   const saveTests = async () => {
@@ -108,7 +108,7 @@ export default function CodeRoomPage({ params }: { params: Promise<{ id: string 
             {editTests && (
               <motion.section key="tests" aria-label="Tests" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.smooth} className="overflow-hidden">
                 <div className="rounded-xl border border-zinc-200 dark:border-white/10 p-3 space-y-2">
-                  <p className="text-xs text-zinc-500">Each test runs after the student’s code and passes unless it fails an assert or throws. {room?.language === 'python' ? <>Example: <code>assert add(2, 3) == 5, &quot;add(2, 3) should be 5&quot;</code></> : <>Example: <code>assertEqual(add(2, 3), 5)</code> or <code>assert(isEven(4), &apos;4 is even&apos;)</code></>}</p>
+                  <p className="text-xs text-zinc-500">Each test runs after the student’s code and passes unless it fails an assert or throws. {room?.language === 'python' ? <>Example: <code>assert add(2, 3) == 5, &quot;add(2, 3) should be 5&quot;</code></> : room?.language === 'sql' ? <>For SQL, each test is a query whose first value must be true. Example: <code>SELECT COUNT(*) = 3 FROM students</code></> : <>Example: <code>assertEqual(add(2, 3), 5)</code> or <code>assert(isEven(4), &apos;4 is even&apos;)</code></>}</p>
                   {editTests.map((t, i) => (
                     <div key={i} className="flex flex-col sm:flex-row gap-2">
                       <input value={t.name} onChange={(e) => setEditTests(editTests.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} maxLength={80} placeholder={`Test ${i + 1}`} aria-label="Test name" className="sm:w-48 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-2.5 py-1.5 text-sm" />
@@ -144,7 +144,7 @@ export default function CodeRoomPage({ params }: { params: Promise<{ id: string 
               {output.lines.map((l, i) => <div key={i} className="whitespace-pre-wrap break-words">{l}</div>)}
               {output.error && <div className="text-rose-400 whitespace-pre-wrap">{output.error}</div>}
               {output.timedOut && <div className="text-amber-400">Stopped: it ran too long (an endless loop?).</div>}
-              {!output.lines.length && !output.error && !output.timedOut && <div className="text-zinc-500">No output. Use {room?.language === 'python' ? 'print()' : 'console.log()'} to print.</div>}
+              {!output.lines.length && !output.error && !output.timedOut && <div className="text-zinc-500">No output. {room?.language === 'sql' ? 'SELECT something to see rows.' : <>Use {room?.language === 'python' ? 'print()' : 'console.log()'} to print.</>}</div>}
             </section>
           )}
         </div>

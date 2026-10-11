@@ -3,7 +3,7 @@ import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/tran
 // Starting layouts for new whiteboards. They're added on the first open of an empty board, as
 // ordinary shapes everyone can move, edit or delete.
 
-export type TemplateId = 'blank' | 'kanban' | 'mindmap' | 'week' | 'swot' | 'venn' | 'timeline' | 'cornell';
+export type TemplateId = 'blank' | 'kanban' | 'mindmap' | 'week' | 'swot' | 'venn' | 'timeline' | 'cornell' | 'retro' | 'lesson';
 
 export const TEMPLATES: { id: TemplateId; name: string; description: string }[] = [
   { id: 'blank', name: 'Blank', description: 'An empty canvas' },
@@ -14,6 +14,8 @@ export const TEMPLATES: { id: TemplateId; name: string; description: string }[] 
   { id: 'venn', name: 'Venn diagram', description: 'Compare two ideas' },
   { id: 'timeline', name: 'Timeline', description: 'Events or milestones in order' },
   { id: 'cornell', name: 'Cornell notes', description: 'Cues, notes and a summary' },
+  { id: 'retro', name: 'Retrospective', description: 'What went well, what to change, and actions' },
+  { id: 'lesson', name: 'Lesson plan', description: 'Aims, starter, main activity, plenary' },
 ];
 
 const COLORS = ['#a5d8ff', '#b2f2bb', '#ffec99', '#ffc9c9', '#d0bfff', '#99e9f2', '#ffd8a8'];
@@ -77,6 +79,25 @@ export function templateElements(id: TemplateId): ExcalidrawElementSkeleton[] {
         box(0, 0, 280, 640, 'Cues & questions', '#f8f9fa'),
         box(300, 0, 700, 640, 'Notes'),
         box(0, 660, 1000, 200, 'Summary', '#fff9db'),
+      ];
+    case 'retro':
+      return [
+        text(0, -70, 'Retrospective', 32),
+        box(0, 0, 300, 520, 'Went well 😊', COLORS[1]),
+        box(320, 0, 300, 520, 'To improve 🤔', COLORS[3]),
+        box(640, 0, 300, 520, 'Ideas 💡', COLORS[2]),
+        box(960, 0, 300, 520, 'Actions ✅', COLORS[0]),
+        note(50, 70, 'Add a sticky note', '#ffffff'),
+      ];
+    case 'lesson':
+      return [
+        text(0, -70, 'Lesson plan:            Class:            Date:', 28),
+        box(0, 0, 1000, 130, 'Learning aims (by the end, students can…)', COLORS[4]),
+        box(0, 150, 320, 380, 'Starter (10 min)', COLORS[2]),
+        box(340, 150, 320, 380, 'Main activity (30 min)', COLORS[1]),
+        box(680, 150, 320, 380, 'Plenary (10 min)', COLORS[0]),
+        box(0, 550, 490, 200, 'Resources', '#f8f9fa'),
+        box(510, 550, 490, 200, 'Checking understanding', COLORS[6]),
       ];
     default:
       return [];

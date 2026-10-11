@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
-import { ChevronRight, FileText, Loader2, Plus, Repeat2 } from 'lucide-react';
+import { ChevronRight, CornerDownRight, FileText, Loader2, Plus, Repeat2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
@@ -14,21 +14,25 @@ import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { spring } from '@/lib/motion';
 import { DOC_TEMPLATES } from '@/lib/doc-templates';
+import { childrenOf, topLevel } from '@/lib/doc-pages';
 
 // Docs (Stage 4 · 3.2): documents written together live (src/server/docs.ts). Stage 5 · B9.14: a
-// converter for files (Word, PDF, Excel, pictures, sound, video, ZIP), all on the device.
+// converter for files (Word, PDF, Excel, pictures, sound, video, ZIP), all on the device. B9.2:
+// pages inside pages show under their top page.
 
 const Converter = dynamic(() => import('@/components/docs/Converter').then((m) => m.Converter), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 
 interface List {
   courses: { id: string; code: string; name: string }[];
   groups?: { id: string; name: string }[];
-  docs: { id: string; title: string; preview: string | null; course: string | null; mine: boolean; updatedAt: string }[];
+  docs: { id: string; title: string; preview: string | null; course: string | null; parentId: string | null; mine: boolean; updatedAt: string }[];
 }
 
 export default function DocsPage() {
   const router = useRouter();
   const { data, isLoading } = useSWR<List>('/api/docs', authedJson);
+  const kids = data ? childrenOf(data.docs) : new Map<string, List['docs']>();
+  const countBelow = (id: string): number => (kids.get(id) ?? []).reduce((n, c) => n + 1 + countBelow(c.id), 0);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title: '', courseId: '', template: '' }); // courseId holds c:<id> or g:<id>
   const [busy, setBusy] = useState(false);
@@ -83,17 +87,29 @@ export default function DocsPage() {
               example={<ExampleRow title="Lab report: plant growth" meta="Edited 2 minutes ago · 3 writing" right="Open" />} />
           ) : (
             <div className="grid sm:grid-cols-2 gap-3 stagger">
-              {data.docs.map((d) => (
-                <Link key={d.id} href={`/docs/${d.id}`} className={`panel lift p-4 flex gap-3 hover:border-indigo-400/50`}>
-                  <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></span>
-                  <span className="flex-1 min-w-0">
-                    <span data-shared={`doc:${d.id}`} className="block font-medium text-zinc-900 dark:text-white truncate">{d.title}</span>
-                    <span className="block text-xs text-zinc-500 truncate">{d.course ? `${d.course} · ` : d.mine ? '' : 'Shared with you · '}{new Date(d.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
-                    {d.preview && <span className="block text-xs text-zinc-400 line-clamp-2 mt-1">{d.preview}</span>}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-zinc-400 self-center" />
-                </Link>
-              ))}
+              {topLevel(data.docs).map((d) => {
+                const inside = kids.get(d.id) ?? [];
+                const total = countBelow(d.id);
+                return (
+                  <div key={d.id} className="panel lift p-4 hover:border-indigo-400/50">
+                    <Link href={`/docs/${d.id}`} className="flex gap-3">
+                      <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></span>
+                      <span className="flex-1 min-w-0">
+                        <span data-shared={`doc:${d.id}`} className="block font-medium text-zinc-900 dark:text-white truncate">{d.title}</span>
+                        <span className="block text-xs text-zinc-500 truncate">{d.course ? `${d.course} · ` : d.mine ? '' : 'Shared with you · '}{new Date(d.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{total ? ` · ${total} page${total === 1 ? '' : 's'} inside` : ''}</span>
+                        {d.preview && <span className="block text-xs text-zinc-400 line-clamp-2 mt-1">{d.preview}</span>}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-zinc-400 self-center" />
+                    </Link>
+                    {inside.length > 0 && (
+                      <ul className="mt-2 ml-[3.25rem] space-y-0.5" aria-label={`Pages inside ${d.title}`}>
+                        {inside.slice(0, 4).map((c) => <li key={c.id}><Link href={`/docs/${c.id}`} className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-300"><CornerDownRight className="w-3 h-3 text-zinc-400 shrink-0" aria-hidden /><span className="truncate">{c.title}</span></Link></li>)}
+                        {inside.length > 4 && <li className="text-xs text-zinc-500 pl-[1.125rem]">and {inside.length - 4} more</li>}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

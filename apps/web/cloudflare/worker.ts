@@ -835,6 +835,14 @@ interface CallPoll {
 const POLL_Q_CHARS = 200, POLL_OPTION_CHARS = 80, POLL_MAX_OPTIONS = 6, POLL_PUSH_MS = 700;
 
 /**
+ * A call's agenda (Stage 5 · B8.3): items with minutes (and who leads each), kept while the call
+ * lasts. The hosts start an item (everyone sees its time left, counted from the room's clock),
+ * move on, or stop. Meeting templates (B8.2) fill it in.
+ */
+interface CallAgenda { items: { title: string; minutes: number; who: string | null }[]; current: number | null; startedAt: number | null; by: string }
+const AGENDA_MAX = 20, AGENDA_TITLE = 80, AGENDA_WHO = 60;
+
+/**
  * Webinar mode (Stage 4 · 2.10): the hosts put a few people on stage and everyone else watches. The
  * audience can't send audio or video (the room refuses their SFU pushes), only hears about who's on
  * stage (not about hundreds of other viewers), raises a hand to ask to speak, and asks questions in
@@ -979,6 +987,7 @@ export class CallRoom extends DurableObject<Env> {
       chat: me.guest ? [] : [...(await this.ctx.storage.list<RoomChat>({ prefix: 'chat:', reverse: true, limit: CHAT_KEEP })).values()].reverse().map((l) => chatView(l, me.userId)),
       bo: this.boView(plan.bo, plan.occ, me), room: child?.n ?? null,
       poll: this.pollView((await this.ctx.storage.get<CallPoll>('poll')) ?? null, me),
+      agenda: (await this.ctx.storage.get<CallAgenda>('agenda')) ?? null,
       pulse: mod ? this.pulseCounts() : null,
     });
     for (const { ws: other, peer } of current) if (this.canSee(peer, me, w)) this.send(other, { type: 'joined', peer: publicPeer(me) });
@@ -1280,6 +1289,34 @@ export class CallRoom extends DurableObject<Env> {
       await this.ctx.storage.delete('poll');
     } else return;
     await this.pollTell(true);
+  }
+
+  /** The hosts set the agenda (agenda-set { items }), start an item (agenda-go { n }; -1 stops), or clear it. */
+  private async agendaControl(me: CallPeer, msg: Record<string, unknown>) {
+    let agenda = (await this.ctx.storage.get<CallAgenda>('agenda')) ?? null;
+    if (msg.action === 'agenda-set') {
+      const items = (Array.isArray(msg.items) ? msg.items : []).slice(0, AGENDA_MAX).map((raw) => {
+        const it = (raw ?? {}) as Record<string, unknown>;
+        const minutes = Math.round(Number(it.minutes));
+        return { title: String(it.title ?? '').trim().slice(0, AGENDA_TITLE), minutes: Number.isFinite(minutes) ? Math.max(1, Math.min(240, minutes)) : 5, who: typeof it.who === 'string' && it.who.trim() ? it.who.trim().slice(0, AGENDA_WHO) : null };
+      }).filter((it) => it.title);
+      if (!items.length) return;
+      // Changing the list keeps the running item when it's still there.
+      const keep = agenda?.current !== null && agenda?.current !== undefined && agenda.current < items.length ? agenda.current : null;
+      agenda = { items, current: keep, startedAt: keep === null ? null : agenda?.startedAt ?? null, by: me.name };
+      await this.ctx.storage.put('agenda', agenda);
+    } else if (msg.action === 'agenda-go') {
+      if (!agenda) return;
+      const n = Number(msg.n);
+      if (n === -1) { agenda.current = null; agenda.startedAt = null; }
+      else if (Number.isInteger(n) && n >= 0 && n < agenda.items.length) { agenda.current = n; agenda.startedAt = Date.now(); }
+      else return;
+      await this.ctx.storage.put('agenda', agenda);
+    } else if (msg.action === 'agenda-clear') {
+      agenda = null;
+      await this.ctx.storage.delete('agenda');
+    } else return;
+    for (const { ws } of this.peers()) this.send(ws, { type: 'agenda', agenda, now: Date.now() });
   }
 
   // ── Breakout rooms ─────────────────────────────────────────────────────────────────────────────
@@ -1787,6 +1824,10 @@ export class CallRoom extends DurableObject<Env> {
       }
       if (msg.action.startsWith('poll-')) {
         if (me.host || me.cohost) await this.pollControl(me, msg as Record<string, unknown>);
+        return;
+      }
+      if (msg.action.startsWith('agenda-')) {
+        if (me.host || me.cohost) await this.agendaControl(me, msg as Record<string, unknown>);
         return;
       }
       await this.control(ws, me, msg.action, typeof msg.target === 'string' ? msg.target : null, msg.on === true);
