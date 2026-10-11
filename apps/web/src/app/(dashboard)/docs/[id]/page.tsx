@@ -10,7 +10,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { TableKit } from '@tiptap/extension-table';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import Image from '@tiptap/extension-image';
-import { ArrowLeft, Check, Download, FileText, FileUp, History, Loader2, MessageSquare, MessageSquarePlus, RotateCcw, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
+import { ArrowLeft, Check, Download, FileText, FileUp, ListChecks, History, Loader2, MessageSquare, MessageSquarePlus, RotateCcw, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { PresenceStack, type Present } from '@/components/ui/PresenceStack';
@@ -28,6 +28,8 @@ import { downloadDocx, downloadMarkdown, importFile } from '@/components/docs/do
 import { DocBreadcrumb, DocPagesPanel, PageLinkButton, type PageRef } from '@/components/docs/DocPages';
 import { DocEmbed, EmbedMenu } from '@/components/docs/DocEmbed';
 import { DocAiButton } from '@/components/docs/DocAi';
+import { SuggestToggle, SuggestionsPanel, useSuggestionCount } from '@/components/docs/Suggestions';
+import { SuggestionDelete, SuggestionInsert } from '@/components/docs/suggestions-ext';
 
 // One document (Stage 4 · 3.2): title, who's here, the toolbar and the page; comments on what you
 // select, version history (preview and restore), sharing, and PDF / Word / Markdown copies; import
@@ -63,7 +65,8 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   const [status, setStatus] = useState<{ s: DocStatus; canEdit: boolean }>({ s: 'connecting', canEdit: false });
   const [present, setPresent] = useState<Present[]>([]);
   const [title, setTitle] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'comments' | null>(null);
+  const [panel, setPanel] = useState<'comments' | 'suggestions' | null>(null);
+  const suggestions = useSuggestionCount(editor);
   const [sheet, setSheet] = useState<'history' | 'share' | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
@@ -133,11 +136,12 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
           </AnimatePresence>
         </div>
         <button type="button" onClick={() => setSheet('history')} title="Version history" aria-label="Version history" className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><History className="w-4 h-4" /></button>
-        <button type="button" onClick={() => setPanel(panel ? null : 'comments')} aria-pressed={panel === 'comments'} title="Comments" aria-label="Comments" className={cn('p-2 rounded-full', panel ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><MessageSquare className="w-4 h-4" /></button>
+        <button type="button" onClick={() => setPanel(panel === 'suggestions' ? null : 'suggestions')} aria-pressed={panel === 'suggestions'} title="Suggestions" aria-label={`Suggestions${suggestions ? `, ${suggestions} waiting` : ''}`} className={cn('relative p-2 rounded-full', panel === 'suggestions' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><ListChecks className="w-4 h-4" />{suggestions > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full text-white text-[10px] font-bold grid place-items-center tabular-nums" style={{ background: '#047857' }} aria-hidden>{suggestions}</span>}</button>
+        <button type="button" onClick={() => setPanel(panel === 'comments' ? null : 'comments')} aria-pressed={panel === 'comments'} title="Comments" aria-label="Comments" className={cn('p-2 rounded-full', panel === 'comments' ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><MessageSquare className="w-4 h-4" /></button>
         {data.canManage && !data.course && !data.chat && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
         {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: data.children.length ? 'Its text, versions and comments go for everyone. The pages inside it move to the top.' : 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </header>
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><DocToolbar editor={editor} disabled={!editable} /></div><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><DocToolbar editor={editor} disabled={!editable} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm">
@@ -150,6 +154,12 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
             <motion.aside key="comments" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
               className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-l border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <Comments docId={id} editor={editor} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(null)} />
+            </motion.aside>
+          )}
+          {panel === 'suggestions' && (
+            <motion.aside key="suggestions" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
+              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-l border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
+              <SuggestionsPanel editor={editor} canEdit={editable} onClose={() => setPanel(null)} />
             </motion.aside>
           )}
         </AnimatePresence>
@@ -244,7 +254,7 @@ function HistorySheet({ docId, editor, canEdit, onClose }: { docId: string; edit
   const [name, setName] = useState('');
   const { data: version } = useSWR<{ html: string }>(picked ? `/api/docs/${docId}/versions/${picked}` : null, authedJson);
   // A read-only view of the version: parsed by the editor's own rules, so nothing unsafe shows.
-  const preview = useEditor({ immediatelyRender: false, editable: false, extensions: [StarterKit, TableKit, TaskList, TaskItem, Image, DocEmbed], content: '', editorProps: { attributes: { class: 'doc-prose px-4 py-4 text-sm' } } });
+  const preview = useEditor({ immediatelyRender: false, editable: false, extensions: [StarterKit, TableKit, TaskList, TaskItem, Image, DocEmbed, SuggestionInsert, SuggestionDelete], content: '', editorProps: { attributes: { class: 'doc-prose px-4 py-4 text-sm' } } });
   useEffect(() => { if (preview && version) preview.commands.setContent(version.html); }, [preview, version]);
   const saveNamed = async () => {
     if (!editor || !name.trim()) return;

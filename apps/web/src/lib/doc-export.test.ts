@@ -82,4 +82,12 @@ describe('document export', () => {
     expect(files['word/document.xml']).toContain('console.log(1)');
     expect(files['word/_rels/document.xml.rels']).toContain('Target="https://u.app/boards/cmv4028hv00028vhurdl2laue"');
   });
+  it('writes suggestions as tracked changes', () => {
+    const who = { id: 's1', name: 'Asha', userId: 'u1', at: Date.UTC(2026, 9, 11, 9, 30) };
+    const d: PMNode = { type: 'doc', content: [p(t('Hello '), t('world', ['suggestionDelete', who]), t('there', ['suggestionInsert', who]))] };
+    expect(docToMarkdown(d)).toContain('Hello ~~world~~there');
+    const body = docToDocx(d, '')['word/document.xml'] as string;
+    expect(body).toContain('<w:del w:id="1" w:author="Asha" w:date="2026-10-11T09:30:00Z"><w:r><w:delText xml:space="preserve">world</w:delText></w:r></w:del>');
+    expect(body).toContain('<w:ins w:id="2" w:author="Asha" w:date="2026-10-11T09:30:00Z"><w:r><w:t xml:space="preserve">there</w:t></w:r></w:ins>');
+  });
 });

@@ -2,7 +2,8 @@
 // tables, checklists, links and mentions come out properly: Markdown, and a real Word file
 // (.docx: WordprocessingML, zipped by the caller). Pictures go into the Word file when the caller
 // could fetch them (as PNG); otherwise a "[Picture: …]" note stands in. Embeds (B9.5): code stays
-// code, maths stays LaTeX, and videos, PDFs and boards become links.
+// code, maths stays LaTeX, and videos, PDFs and boards become links. Suggestions (B9.3): Word gets
+// real tracked changes (w:ins / w:del, with who and when); Markdown strikes removed text.
 
 import { EMBED_LABEL, embedHref, type EmbedAttrs } from '@/lib/doc-embeds';
 
@@ -38,6 +39,7 @@ function inlineMd(nodes: PMNode[]): string {
     const has = (t: string) => marks.some((m) => m.type === t);
     if (has('code')) { const t = n.text.includes('`') ? `\`\` ${n.text} \`\`` : `\`${n.text}\``; const link = marks.find((m) => m.type === 'link'); return link ? `[${t}](${attr(link, 'href', '')})` : t; }
     let t = mdEscape(n.text);
+    if (has('suggestionDelete')) t = wrapMd(t, '~~');
     if (has('bold')) t = wrapMd(t, '**');
     if (has('italic')) t = wrapMd(t, '*');
     if (has('strike')) t = wrapMd(t, '~~');
@@ -101,7 +103,7 @@ const HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
 /** The widest a picture goes: 6 inches, in EMUs. */
 const MAX_EMU = 5_486_400;
 
-interface Ctx { rels: string[]; nums: string[]; media: { name: string; data: Uint8Array }[]; images: Map<string, DocxImage>; origin: string; nextNum: number; nextId: number }
+interface Ctx { rels: string[]; nums: string[]; media: { name: string; data: Uint8Array }[]; images: Map<string, DocxImage>; origin: string; nextNum: number; nextId: number; nextChange: number }
 
 function rel(ctx: Ctx, type: string, target: string, external = false) {
   const id = `rId${ctx.rels.length + 10}`;
@@ -138,6 +140,13 @@ function inlineDocx(ctx: Ctx, nodes: PMNode[], extra = ''): string {
     const link = marks.find((m) => m.type === 'link');
     const href = link ? attr(link, 'href', '') : '';
     const target = /^(https?:|mailto:)/i.test(href) ? href : href.startsWith('/') ? `${ctx.origin}${href}` : '';
+    // Suggestions become Word's own tracked changes.
+    const change = marks.find((m) => m.type === 'suggestionInsert' || m.type === 'suggestionDelete');
+    if (change) {
+      const who = `w:id="${ctx.nextChange++}" w:author="${xml(attr(change, 'name', 'Someone'))}" w:date="${new Date(Number(attr(change, 'at', 0)) || Date.now()).toISOString().slice(0, 19)}Z"`;
+      if (change.type === 'suggestionDelete') return `<w:del ${who}><w:r>${props ? `<w:rPr>${props}</w:rPr>` : ''}<w:delText xml:space="preserve">${xml(n.text)}</w:delText></w:r></w:del>`;
+      return `<w:ins ${who}>${run(n.text, props)}</w:ins>`;
+    }
     if (target) return `<w:hyperlink r:id="${rel(ctx, 'hyperlink', target, true)}">${run(n.text, `<w:rStyle w:val="Hyperlink"/>${props}`)}</w:hyperlink>`;
     return run(n.text, props);
   }).join('');
@@ -208,7 +217,7 @@ const lvls = (bullet: boolean) => Array.from({ length: 9 }, (_, i) => `<w:lvl w:
 
 /** The files inside a .docx (paths → contents) for a document; zip them to make the file. */
 export function docToDocx(doc: PMNode, title: string, opts: { images?: Map<string, DocxImage>; origin?: string } = {}): Record<string, string | Uint8Array> {
-  const ctx: Ctx = { rels: [], nums: [], media: [], images: opts.images ?? new Map(), origin: opts.origin ?? '', nextNum: 2, nextId: 1 };
+  const ctx: Ctx = { rels: [], nums: [], media: [], images: opts.images ?? new Map(), origin: opts.origin ?? '', nextNum: 2, nextId: 1, nextChange: 1 };
   const body = (title ? para('<w:pStyle w:val="Title"/>', run(title)) : '') + blocksDocx(ctx, kids(doc));
   const files: Record<string, string | Uint8Array> = {
     '[Content_Types].xml': `${HEAD}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>`,

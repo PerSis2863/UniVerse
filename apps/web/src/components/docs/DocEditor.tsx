@@ -19,6 +19,7 @@ import { uploadChatFile } from '@/components/chat/chat-client';
 import { cn } from '@/lib/utils';
 import { createMentionStore, docMention, MentionMenu } from './DocMentions';
 import { DocEmbed } from './DocEmbed';
+import { SuggestionDelete, SuggestionInsert, Suggestions } from './suggestions-ext';
 
 // The document editor (Stage 4 · 3.2): Tiptap on a Yjs document synced with the doc's room (the
 // CodeRoom Durable Object, "doc:<id>"; first byte 0 = document update, 1 = cursors, 2 = someone
@@ -66,6 +67,7 @@ export function DocEditor({ docId, me, canEdit: mayEdit, onStatus, onPeers, onEd
       TaskList, TaskItem.configure({ nested: true }),
       Image,
       DocEmbed,
+      SuggestionInsert, SuggestionDelete, Suggestions.configure({ user: me }),
       docMention(docId, mentions),
       Placeholder.configure({ placeholder: 'Start writing…  Use the toolbar, or type # for a heading, - for a list, [] for a checklist, @ to mention someone.' }),
     ],

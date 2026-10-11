@@ -1418,6 +1418,11 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .doc-prose pre code { background: none; padding: 0; }
 .doc-prose a { color: rgb(79 70 229); text-decoration: underline; text-underline-offset: 2px; }
 .dark .doc-prose a { color: rgb(165 180 252); }
+/* Suggestions (Stage 5 · B9.3): added text underlined in green, removed text struck in red. */
+.doc-prose ins.doc-suggest-ins { text-decoration: underline 2px rgb(5 150 105); text-underline-offset: 3px; background: rgb(16 185 129 / 0.12); color: rgb(6 95 70); }
+.doc-prose del.doc-suggest-del { text-decoration: line-through 1.5px rgb(190 18 60); background: rgb(244 63 94 / 0.08); color: rgb(159 18 57); }
+.dark .doc-prose ins.doc-suggest-ins { color: rgb(110 231 183); background: rgb(16 185 129 / 0.16); }
+.dark .doc-prose del.doc-suggest-del { color: rgb(253 164 175); background: rgb(244 63 94 / 0.12); }
 /* Embeds inside a document (Stage 5 · B9.5) keep their own layout. */
 .doc-prose .doc-embed :where(ul, ol) { list-style: none; padding-left: 0; }
 .doc-prose .doc-embed math { font-size: 1.15em; }
