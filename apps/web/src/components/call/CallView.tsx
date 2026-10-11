@@ -41,6 +41,7 @@ import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useSpatialAudio } from './use-spatial-audio';
 
 // A UniVerse call (src/server/calls.ts). Two ways to carry it:
 //  • Small calls (one-to-one, or bigger ones without the SFU set up): each person connects
@@ -571,6 +572,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // Gestures on camera (Stage 5 · B8.4, opt-in, remembered on this device).
   const [gestures, setGestures] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-gestures') === '1'; } catch { return false; } });
   const gestureAct = useRef<(a: GestureAction) => void>(() => {});
+  // Spatial audio (Stage 5 · B8.6, opt-in for group calls, remembered on this device).
+  const [spatial, setSpatial] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-spatial') === '1'; } catch { return false; } });
   // The agenda (Stage 5 · B8.3): kept by the call room; times from the room's clock.
   const [agenda, setAgenda] = useState<Agenda | null>(null);
   const [agendaOpen, setAgendaOpen] = useState(false);
@@ -2119,7 +2122,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
@@ -2130,6 +2133,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     { key: '2g', label: twoG ? '2G mode on' : '2G mode', icon: SignalLow, on: twoG },
     ...(phase === 'live' ? [{ key: 'net' as const, label: 'Connection', icon: Activity, on: netOpen }] : []),
     ...(phase === 'live' && kind === 'video' && !twoG ? [{ key: 'gestures' as const, label: gestures ? 'Gestures on' : 'Gestures', icon: Hand, on: gestures }] : []),
+    ...(phase === 'live' && info && !info.oneToOne ? [{ key: 'spatial' as const, label: spatial ? 'Spatial audio on' : 'Spatial audio', icon: Volume2, on: spatial }] : []),
     ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
@@ -2177,6 +2181,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'rooms') openPanel('rooms');
     else if (key === 'poll') setPollCompose(true);
     else if (key === 'agenda') setAgendaOpen(true);
+    else if (key === 'spatial') {
+      const on = !spatial;
+      setSpatial(on);
+      try { localStorage.setItem('call-spatial', on ? '1' : '0'); } catch { /* private window */ }
+      toast(on ? 'Spatial audio on: each voice comes from where that person is on your screen. Best with headphones.' : 'Spatial audio off', { icon: '🎧', duration: on ? 7000 : 3000 });
+    }
     else if (key === 'gestures') {
       const on = !gestures;
       setGestures(on);
@@ -2187,6 +2197,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else void pip();
   };
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
+  // Spatial audio: group calls with at least two others, while live and not on hold.
+  const spatialOn = spatial && phase === 'live' && !held && !!info && !info.oneToOne && list.length >= 2;
+  useSpatialAudio(spatialOn, list.map((r) => ({ id: r.peer.peerId, stream: r.stream })));
 
   return (
     <>
@@ -2336,7 +2349,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </motion.main>
       ) : (
         presenter || watching || lit ? (
-          <main className="flex-1 min-h-0 flex flex-col gap-3 p-3 sm:p-4">
+          <main data-call-stage className="flex-1 min-h-0 flex flex-col gap-3 p-3 sm:p-4">
             <motion.div layout transition={spring.smooth} className="relative flex-1 min-h-0 rounded-3xl overflow-hidden bg-black ring-1 ring-white/10">
               {presenter === 'me' ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-6 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.25),transparent_70%)]">
@@ -2352,7 +2365,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               ) : lit === 'me' ? (
                 <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
               ) : lit ? (
-                <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
+                <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held || spatialOn} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
                   paused={lit.paused || audioOnly} onShow={() => showVideo(lit.peer.peerId)} hand={handPos(lit.peer.peerId)} className="absolute inset-0 h-full w-full aspect-auto rounded-none"
                   videoRef={lit.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
               ) : null}
@@ -2361,7 +2374,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <AnimatePresence initial={false}>
                 {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact hand={handPos('me')} className="h-full shrink-0" />}
                 {list.filter((r) => r !== lit).map((r) => (
-                  <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
+                  <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held || spatialOn} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                     paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact hand={handPos(r.peer.peerId)} className="h-full shrink-0"
                     videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
                 ))}
@@ -2369,11 +2382,11 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             </div>
           </main>
         ) : (
-        <main className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
+        <main data-call-stage className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
           <AnimatePresence initial={false}>
             <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} hand={handPos('me')} />
             {list.map((r) => (
-              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
+              <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held || spatialOn} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                 paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12} hand={handPos(r.peer.peerId)}
                 videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
             ))}
