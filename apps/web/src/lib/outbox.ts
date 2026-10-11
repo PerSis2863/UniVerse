@@ -5,7 +5,8 @@ import { authedFetch } from '@/lib/authed-fetch';
 // IndexedDB "outbox" and is sent by the page (which has the sign-in token) when the connection
 // comes back, when the app starts, and after each success. Each item carries a client id the
 // server dedupes on, so a retry after a dropped answer never saves twice. The same database
-// keeps recent chats (read offline) and assignment drafts.
+// keeps recent chats (read offline), assignment drafts and copies of documents (Stage 5 · B9.7),
+// and it's all wiped at sign-out.
 
 export type OutboxKind = 'quiz' | 'assignment' | 'message';
 export interface OutboxItem {
@@ -30,14 +31,19 @@ let dbp: Promise<IDBDatabase> | null = null;
 function db(): Promise<IDBDatabase> {
   if (dbp) return dbp;
   dbp = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
+    const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
       const d = req.result;
       if (!d.objectStoreNames.contains('outbox')) d.createObjectStore('outbox', { keyPath: 'id' });
       if (!d.objectStoreNames.contains('chats')) d.createObjectStore('chats', { keyPath: 'conversationId' });
       if (!d.objectStoreNames.contains('drafts')) d.createObjectStore('drafts', { keyPath: 'key' });
+      if (!d.objectStoreNames.contains('docs')) d.createObjectStore('docs', { keyPath: 'docId' }).createIndex('savedAt', 'savedAt');
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      // A newer version of the app in another tab can upgrade the database: let it.
+      req.result.onversionchange = () => { req.result.close(); dbp = null; };
+      resolve(req.result);
+    };
     req.onerror = () => { dbp = null; reject(req.error); };
   });
   return dbp;
@@ -162,6 +168,35 @@ export async function cacheChat<T extends { messages: unknown[] }>(conversationI
 export async function cachedChat<T>(conversationId: string): Promise<CachedChat<T> | null> {
   if (!outboxSupported()) return null;
   return ((await tx<CachedChat<T>>('chats', 'readonly', (s) => s.get(conversationId))) ?? null);
+}
+
+// ── Documents (Stage 5 · B9.7: a copy of each document opened lately, as a Yjs update) ────────
+
+export interface CachedDoc { docId: string; update: Uint8Array; canEdit: boolean; savedAt: number }
+const MAX_DOCS = 30;
+
+export async function cacheDoc(docId: string, update: Uint8Array, canEdit: boolean) {
+  if (!outboxSupported()) return;
+  await tx('docs', 'readwrite', (s) => s.put({ docId, update, canEdit, savedAt: Date.now() } satisfies CachedDoc));
+  // Keep only the most recently opened documents.
+  const count = (await tx<number>('docs', 'readonly', (s) => s.count())) ?? 0;
+  if (count > MAX_DOCS) {
+    let extra = count - MAX_DOCS;
+    await tx('docs', 'readwrite', (s) => {
+      const req = s.index('savedAt').openCursor();
+      req.onsuccess = () => { const c = req.result; if (c && extra-- > 0) { c.delete(); c.continue(); } };
+    });
+  }
+}
+
+export async function cachedDoc(docId: string): Promise<CachedDoc | null> {
+  if (!outboxSupported()) return null;
+  return ((await tx<CachedDoc>('docs', 'readonly', (s) => s.get(docId))) ?? null);
+}
+
+export async function dropCachedDoc(docId: string) {
+  if (!outboxSupported()) return;
+  await tx('docs', 'readwrite', (s) => s.delete(docId));
 }
 
 // ── Drafts (assignment answers written on this device) ───────────────────────────────────────

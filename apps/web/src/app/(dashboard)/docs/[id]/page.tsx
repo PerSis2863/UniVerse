@@ -69,7 +69,8 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   const [panel, setPanel] = useState<'comments' | null>(null);
   const [sheet, setSheet] = useState<'history' | 'share' | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const editable = status.s === 'live' && status.canEdit;
+  // Offline (Stage 5 · B9.7), people who may edit keep writing on this device's copy.
+  const editable = (status.s === 'live' || status.s === 'offline') && status.canEdit;
   useEffect(() => { editor?.setEditable(editable); }, [editor, editable]);
   // A new doc started from a template (Stage 5 · B9.1; ?template=): once it's live and still empty,
   // the template goes in (as an edit, so everyone sees it and it's saved), then the address is tidied.
@@ -106,7 +107,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
             aria-label="Title" className="w-full bg-transparent text-lg font-bold text-zinc-900 dark:text-white outline-none truncate" />
           <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
             <span className={cn('w-1.5 h-1.5 rounded-full', status.s === 'live' ? 'bg-emerald-500' : status.s === 'connecting' ? 'bg-amber-400 animate-pulse' : 'bg-zinc-400')} />
-            {status.s === 'live' ? (status.canEdit ? 'Saved as you type' : 'You can read this document') : status.s === 'connecting' ? 'Connecting…' : status.s === 'unavailable' ? 'Not available right now' : 'Offline: reconnecting'}
+            {status.s === 'live' ? (status.canEdit ? 'Saved as you type' : 'You can read this document') : status.s === 'connecting' ? 'Connecting…' : status.s === 'unavailable' ? 'Not available right now' : status.canEdit ? 'Offline: changes are kept on this device and sync when you’re back' : 'Offline: reconnecting'}
             {data.course && <span>· {data.course.code}</span>}
             {data.chat && <span>· Canvas of {data.chat.name}</span>}
 
@@ -134,7 +135,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-3xl mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm">
-            <DocEditor docId={id} me={data.me} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={noop} onPresence={setPresent} onEditor={setEditor} />
+            <DocEditor docId={id} me={data.me} canEdit={data.canEdit} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={noop} onPresence={setPresent} onEditor={setEditor} />
           </div>
         </div>
         <AnimatePresence>
