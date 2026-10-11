@@ -843,6 +843,14 @@ interface CallAgenda { items: { title: string; minutes: number; who: string | nu
 const AGENDA_MAX = 20, AGENDA_TITLE = 80, AGENDA_WHO = 60;
 
 /**
+ * Interpreters in a call (Stage 5 · B8.7), by user (peer ids change when someone rejoins): a sign
+ * language interpreter (their tile stays on everyone's screen) or a spoken one (listeners can
+ * choose to hear them over the others). Set by the hosts; kept while the call lasts.
+ */
+type Interpreters = Record<string, { kind: 'sign' | 'spoken'; label: string; name: string }>;
+const INTERP_MAX = 6, INTERP_LABEL = 40;
+
+/**
  * Webinar mode (Stage 4 · 2.10): the hosts put a few people on stage and everyone else watches. The
  * audience can't send audio or video (the room refuses their SFU pushes), only hears about who's on
  * stage (not about hundreds of other viewers), raises a hand to ask to speak, and asks questions in
@@ -988,6 +996,7 @@ export class CallRoom extends DurableObject<Env> {
       bo: this.boView(plan.bo, plan.occ, me), room: child?.n ?? null,
       poll: this.pollView((await this.ctx.storage.get<CallPoll>('poll')) ?? null, me),
       agenda: (await this.ctx.storage.get<CallAgenda>('agenda')) ?? null,
+      interp: (await this.ctx.storage.get<Interpreters>('interp')) ?? {},
       pulse: mod ? this.pulseCounts() : null,
     });
     for (const { ws: other, peer } of current) if (this.canSee(peer, me, w)) this.send(other, { type: 'joined', peer: publicPeer(me) });
@@ -1317,6 +1326,22 @@ export class CallRoom extends DurableObject<Env> {
       await this.ctx.storage.delete('agenda');
     } else return;
     for (const { ws } of this.peers()) this.send(ws, { type: 'agenda', agenda, now: Date.now() });
+  }
+
+  /** The hosts make someone an interpreter (interp-set { target: userId, kind, label }) or not (interp-clear { target }). */
+  private async interpControl(msg: Record<string, unknown>) {
+    const interp = (await this.ctx.storage.get<Interpreters>('interp')) ?? {};
+    const uid = typeof msg.target === 'string' ? msg.target : '';
+    if (msg.action === 'interp-set') {
+      const who = this.peers().find(({ peer }) => peer.userId === uid)?.peer;
+      if (!who || (!interp[uid] && Object.keys(interp).length >= INTERP_MAX)) return;
+      const label = typeof msg.label === 'string' ? msg.label.trim().slice(0, INTERP_LABEL) : '';
+      interp[uid] = { kind: msg.kind === 'sign' ? 'sign' : 'spoken', label: label || (msg.kind === 'sign' ? 'Sign language' : 'Interpreter'), name: who.name };
+    } else if (msg.action === 'interp-clear') {
+      delete interp[uid];
+    } else return;
+    await this.ctx.storage.put('interp', interp);
+    for (const { ws } of this.peers()) this.send(ws, { type: 'interp', interp });
   }
 
   // ── Breakout rooms ─────────────────────────────────────────────────────────────────────────────
@@ -1828,6 +1853,10 @@ export class CallRoom extends DurableObject<Env> {
       }
       if (msg.action.startsWith('agenda-')) {
         if (me.host || me.cohost) await this.agendaControl(me, msg as Record<string, unknown>);
+        return;
+      }
+      if (msg.action.startsWith('interp-')) {
+        if (me.host || me.cohost) await this.interpControl(msg as Record<string, unknown>);
         return;
       }
       await this.control(ws, me, msg.action, typeof msg.target === 'string' ? msg.target : null, msg.on === true);

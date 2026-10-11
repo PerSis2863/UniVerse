@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
@@ -36,6 +36,8 @@ import { ConnectionPanel, RateCall, WeakNetwork, shouldAskRating } from './CallQ
 import { AgendaBar, AgendaEditor } from './CallAgenda';
 import { templateById, type Agenda } from '@/lib/call-agenda';
 import type { GestureAction } from '@/lib/gestures';
+import { voiceVolume, type Interpreters } from '@/lib/call-interp';
+import { InterpretersSheet } from './CallInterpreters';
 import { combine, grade, readStats, type Reading, type Snapshot } from '@/lib/call-quality';
 import { HEARD_MS, recentHeard, type HeardLine } from '@/lib/whisper';
 import { applyBackground, backgroundsSupported, customImage, saveBackground, saveCustomImage, savedBackground, type Background, type BackgroundEffect } from '@/lib/call-background';
@@ -573,6 +575,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [gestures, setGestures] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-gestures') === '1'; } catch { return false; } });
   const gestureAct = useRef<(a: GestureAction) => void>(() => {});
   // Spatial audio (Stage 5 · B8.6, opt-in for group calls, remembered on this device).
+  // Interpreters (Stage 5 · B8.7): kept by the call room; which spoken one I listen to is mine.
+  const [interp, setInterp] = useState<Interpreters>({});
+  const [interpOpen, setInterpOpen] = useState(false);
+  const [listening, setListening] = useState<string | null>(null);
   const [spatial, setSpatial] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('call-spatial') === '1'; } catch { return false; } });
   // The agenda (Stage 5 · B8.3): kept by the call room; times from the room's clock.
   const [agenda, setAgenda] = useState<Agenda | null>(null);
@@ -1250,6 +1256,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setPoll(msg.poll ?? null);
           if (typeof msg.now === 'number') { skew.current = msg.now - Date.now(); setClockSkew(skew.current); }
           setAgenda(msg.agenda ?? null);
+          setInterp(msg.interp ?? {});
           setWatch(msg.watch ? { ...msg.watch, marks: msg.watch.marks ?? [] } : null);
           if (msg.pulse) gotPulse(msg.pulse);
           setWebinar(msg.webinar?.on ? { on: true, stage: msg.webinar.stage ?? [], audience: msg.webinar.audience ?? 0 } : null);
@@ -1469,6 +1476,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           if (msg.poll && msg.poll.id !== pollId.current && !modRef.current) toast(`${msg.poll.by} asks: ${msg.poll.q}`, { icon: '📊', duration: 6000 });
           pollId.current = msg.poll?.id ?? null;
           setPoll(msg.poll ?? null);
+        } else if (msg.type === 'interp') {
+          setInterp(msg.interp ?? {});
         } else if (msg.type === 'agenda') {
           if (typeof msg.now === 'number') { skew.current = msg.now - Date.now(); setClockSkew(skew.current); }
           setAgenda(msg.agenda ?? null);
@@ -2122,7 +2131,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
@@ -2133,6 +2142,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     { key: '2g', label: twoG ? '2G mode on' : '2G mode', icon: SignalLow, on: twoG },
     ...(phase === 'live' ? [{ key: 'net' as const, label: 'Connection', icon: Activity, on: netOpen }] : []),
     ...(phase === 'live' && kind === 'video' && !twoG ? [{ key: 'gestures' as const, label: gestures ? 'Gestures on' : 'Gestures', icon: Hand, on: gestures }] : []),
+    ...(phase === 'live' && info && !info.oneToOne && (canModerate || Object.keys(interp).length) ? [{ key: 'interp' as const, label: listening ? `Hearing ${interp[listening]?.label ?? 'interpreter'}` : 'Interpretation', icon: Ear, on: !!listening }] : []),
     ...(phase === 'live' && info && !info.oneToOne ? [{ key: 'spatial' as const, label: spatial ? 'Spatial audio on' : 'Spatial audio', icon: Volume2, on: spatial }] : []),
     ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
@@ -2181,6 +2191,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'rooms') openPanel('rooms');
     else if (key === 'poll') setPollCompose(true);
     else if (key === 'agenda') setAgendaOpen(true);
+    else if (key === 'interp') setInterpOpen(true);
     else if (key === 'spatial') {
       const on = !spatial;
       setSpatial(on);
@@ -2198,8 +2209,25 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
   // Spatial audio: group calls with at least two others, while live and not on hold.
-  const spatialOn = spatial && phase === 'live' && !held && !!info && !info.oneToOne && list.length >= 2;
+  const spatialOn = spatial && !listening && phase === 'live' && !held && !!info && !info.oneToOne && list.length >= 2;
+  // The interpreter I listen to (if they're still one) and a sign language interpreter to keep on screen.
+  const hearing = listening && interp[listening]?.kind === 'spoken' ? listening : null;
+  const signer = list.find((r) => interp[r.peer.userId]?.kind === 'sign' && r.camera && r.stream);
   useSpatialAudio(spatialOn, list.map((r) => ({ id: r.peer.peerId, stream: r.stream })));
+  // Listening to a spoken interpreter: their voice in full, everyone else quietly underneath.
+  const voiceKey = list.map((r) => `${r.peer.peerId}:${r.peer.userId}`).join('|');
+  useEffect(() => {
+    const apply = () => {
+      for (const r of Object.values(remotesRef.current)) {
+        const v = document.querySelector<HTMLVideoElement>(`video[data-peer="${CSS.escape(r.peer.peerId)}"]`);
+        if (v) v.volume = voiceVolume(r.peer.userId, hearing);
+      }
+    };
+    apply();
+    if (!hearing) return;
+    const t = setInterval(apply, 1500);
+    return () => clearInterval(t);
+  }, [hearing, voiceKey]);
 
   return (
     <>
@@ -2576,6 +2604,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         <div className="absolute z-30 left-1/2 -translate-x-1/2 top-[calc(env(safe-area-inset-top)+4.5rem)] w-[min(26rem,calc(100%-2rem))] flex flex-col gap-2 pointer-events-none">
           <AgendaBar agenda={agenda} skew={clockSkew} canRun={canModerate} onGo={(n) => send({ type: 'control', action: 'agenda-go', n })} onEdit={() => setAgendaOpen(true)} />
           <WeakNetwork show={weak} onAudioOnly={() => { setLowData(true); setWeak(false); }} onDismiss={() => { weakHiddenUntil.current = Date.now() + 120_000; setWeak(false); }} />
+        </div>
+      )}
+      <InterpretersSheet open={interpOpen && phase === 'live'} onClose={() => setInterpOpen(false)} people={list.map((r) => ({ userId: r.peer.userId, name: r.peer.name }))}
+        interp={interp} canManage={canModerate} listening={hearing}
+        onAssign={(userId, k, label) => send(k ? { type: 'control', action: 'interp-set', target: userId, kind: k, label } : { type: 'control', action: 'interp-clear', target: userId })}
+        onListen={(uid) => { setListening(uid); toast(uid ? `Hearing ${interp[uid]?.label ?? 'the interpreter'}; everyone else is quieter.` : 'Hearing the original', { icon: '🎧' }); }} />
+      {/* A sign language interpreter stays on screen while someone presents or is in the spotlight. */}
+      {signer && phase === 'live' && (presenter || lit || watching) && (
+        <div className="absolute z-20 left-3 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] w-40 sm:w-56 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20">
+          <Tile id={`sign-${signer.peer.peerId}`} name={`${signer.peer.name} · ${interp[signer.peer.userId]?.label ?? 'Sign language'}`} stream={signer.stream} camera silent compact className="w-full" />
         </div>
       )}
       <AgendaEditor open={agendaOpen && phase === 'live'} agenda={agenda} canRun={canModerate} onClose={() => setAgendaOpen(false)}
