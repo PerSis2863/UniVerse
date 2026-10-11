@@ -42,6 +42,8 @@ export const GET = (req: Request) =>
       ...(when ? { createdAt: when } : {}),
       ...sender,
       ...visibleTo(user.id),
+      // Private chats are encrypted: nothing in them can be searched (Stage 5 · B7.6).
+      NOT: { conversation: { private: true } },
     };
     // Words through the index: the newest matching messages in my chats (dates, in: and from:me
     // narrowed there too, so the cap keeps the right ones).

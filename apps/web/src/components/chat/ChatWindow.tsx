@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { MessageBubble } from './MessageBubble';
@@ -29,6 +29,8 @@ import { LanguagePicker } from './LanguagePicker';
 import { useChatTranslations } from './useChatTranslations';
 import dynamic from 'next/dynamic';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { encryptForChat, myDevice } from './private-chat';
+import { PrivateBanner, SafetyCode, StartPrivateChat } from './PrivateChat';
 
 const ThreadPanel = dynamic(() => import('./ThreadPanel').then((m) => m.ThreadPanel));
 
@@ -145,6 +147,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   }, [conversationId, data?.me, mutate]);
 
   const me = data?.me ?? '';
+  // Opening a private chat registers this device's key, so the other person can write to it.
+  const isPrivate = !!data?.conversation.private;
+  useEffect(() => { if (isPrivate && me) void myDevice(me).catch(() => {}); }, [isPrivate, me]);
   const convo = data?.conversation;
   const messages = useMemo(() => {
     const seen = new Set<string>();
@@ -324,6 +329,22 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const tempId = `temp-${crypto.randomUUID()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
     const replyToId = replyTo?.id;
+    // A private chat (Stage 5 · B7.6): text only, encrypted here for every device in the chat.
+    if (data?.conversation.private) {
+      if (sticker || album?.length || file || voice || !text) { toast.message('Private chats can send text for now. Photos, files and voice notes come later.'); return; }
+      setReplyTo(null);
+      setPending((p) => [...p, { ...base, type: 'TEXT', body: text, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null } as ChatMessage]);
+      try {
+        const e2e = await encryptForChat(conversationId, me, text);
+        const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: '', e2e, replyToId, clientId: newClientId() }) });
+        appendSent(msg, tempId);
+      } catch (e) {
+        setPending((p) => p.filter((x) => x.id !== tempId));
+        toast.error((e as Error).message || 'Message not sent.');
+        throw e;
+      }
+      return;
+    }
     setReplyTo(null);
     try {
       if (sticker) {
@@ -589,7 +610,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               : <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />}
             <div className="min-w-0">
               <p className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1">
-                {convo.title} {convo.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />} {convo.muted && <BellOff className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+                {convo.private && <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-label="Private chat" />}{convo.title} {convo.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />} {convo.muted && <BellOff className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
               </p>
               <p className={cn('text-xs truncate', typingNames.length ? 'text-emerald-500 font-medium' : 'text-zinc-500')}>{subtitle}</p>
             </div>
@@ -725,6 +746,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               </button>
             </div>
           )}
+          {convo.private && <PrivateBanner />}
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center text-zinc-500 gap-2">
               <Avatar name={convo.title} src={convo.avatarUrl} size={64} />
@@ -844,6 +866,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         {infoOpen && (
           <InfoPanel
             data={data!}
+            me={me}
+            onOpenChat={(cid) => { setInfoOpen(false); onOpenChat?.(cid); }}
             messages={messages}
             onClose={() => setInfoOpen(false)}
             onOpenImage={setLightbox}
@@ -874,8 +898,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   );
 }
 
-function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, onAutoTranslate }: {
-  data: ThreadResponse; messages: ChatMessage[]; onClose: () => void; onOpenImage: (u: string) => void; onChanged: () => void; onLeft: () => void;
+function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onChanged, onLeft, onAutoTranslate }: {
+  data: ThreadResponse; me: string; onOpenChat: (id: string) => void; messages: ChatMessage[]; onClose: () => void; onOpenImage: (u: string) => void; onChanged: () => void; onLeft: () => void;
   onAutoTranslate: (lang: string | null) => void;
 }) {
   const convo = data.conversation;
@@ -1025,8 +1049,13 @@ function InfoPanel({ data, messages, onClose, onOpenImage, onChanged, onLeft, on
         </div>
       )}
 
-      {/* Export (Stage 5 · B7.8). */}
-      <ChatExport conversationId={convo.id} title={convo.title} />
+      {/* Private chats (Stage 5 · B7.6): the safety code, or start one from a normal chat. */}
+      {convo.private
+        ? <div className="px-5 pb-2"><SafetyCode conversationId={convo.id} me={me} /></div>
+        : !convo.isGroup && !convo.isOfficial && convo.members.find((x) => x.id !== me) && <div className="px-5 pb-2"><StartPrivateChat userId={convo.members.find((x) => x.id !== me)!.id} onOpen={onOpenChat} /></div>}
+
+      {/* Export (Stage 5 · B7.8); a private chat's messages can't be read by the server, so not there. */}
+      {!convo.private && <ChatExport conversationId={convo.id} title={convo.title} />}
 
       {convo.isGroup && (
         <div className="p-5 flex-1">

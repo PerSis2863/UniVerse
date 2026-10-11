@@ -18,7 +18,7 @@ const KEEP_VERSIONS = 20;
 async function load(req: Request, id: string) {
   const user = await getSessionUser(req);
   if (!user) return { error: NextResponse.json({ error: 'Please sign in.' }, { status: 401 }) };
-  const msg = await prisma.message.findUnique({ where: { id }, select: { id: true, senderId: true, conversationId: true, type: true, body: true, createdAt: true, editedAt: true, deletedAt: true } });
+  const msg = await prisma.message.findUnique({ where: { id }, select: { id: true, senderId: true, conversationId: true, type: true, body: true, metadata: true, createdAt: true, editedAt: true, deletedAt: true } });
   if (!msg || !(await membership(msg.conversationId, user.id))) return { error: NextResponse.json({ error: 'Message not found.' }, { status: 404 }) };
   return { user, msg };
 }
@@ -30,6 +30,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if ('error' in r) return r.error;
   const { user, msg } = r;
   if (msg.senderId !== user.id || msg.type !== 'TEXT' || msg.deletedAt) return NextResponse.json({ error: 'You can only edit your own text messages.' }, { status: 403 });
+  if ((msg.metadata as { e2e?: unknown } | null)?.e2e) return NextResponse.json({ error: 'Private messages can’t be edited. Delete it and send it again.' }, { status: 400 });
   if (Date.now() - msg.createdAt.getTime() > EDIT_WINDOW_MS) return NextResponse.json({ error: 'Messages can only be edited for 24 hours.' }, { status: 403 });
   const muted = await chatMuted(user.id);
   if (muted) return NextResponse.json({ error: muted }, { status: 403 });

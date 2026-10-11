@@ -271,6 +271,7 @@ model User {
   scheduledMessages    ScheduledMessage[] @relation("ScheduledMessages")
   callNotes            CallNote[]         @relation("CallNotes")
   callRecordings       CallRecording[]    @relation("CallRecordings")
+  chatDeviceKeys       ChatDeviceKey[]
   ratingsGiven         PeerRating[]       @relation("RatingsGiven")
   ratingsReceived      PeerRating[]       @relation("RatingsReceived")
   officeHours          OfficeHours?       @relation("OfficeHours")
@@ -636,6 +637,8 @@ model Announcement {
 model Conversation {
   id              String     @id @default(cuid())
   isGroup         Boolean    @default(false)
+  /// Stage 5 · B7.6: an end-to-end encrypted one-to-one chat (the server keeps only ciphertext).
+  private         Boolean    @default(false)
   name            String?
   avatarUrl       String?
   createdById     String?
@@ -4432,4 +4435,19 @@ model BoardVersion {
 
   @@index([boardId, createdAt])
   @@map("board_versions")
+}
+
+/// A device's public key for private chats (Stage 5 · B7.6; X25519, base64).
+model ChatDeviceKey {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId   String
+  publicKey  String
+  label      String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@unique([userId, deviceId])
+  @@map("chat_device_keys")
 }

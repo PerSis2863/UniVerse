@@ -61,7 +61,7 @@ export function afterSend(
 
 const AWAY_MS = 5 * 60_000;
 const EMAIL_GAP_MS = 60 * 60_000;
-const PREVIEW: Record<string, string> = { STICKER: '🏷️ Sticker', IMAGE: '📷 Photo', FILE: '📎 File', AUDIO: '🎤 Voice message', VIDEO: '🎬 Video', CALL: '📞 Call', POLL: '📊 Poll', LOCATION: '📍 Location', CONTACT: '👤 Contact' };
+const PREVIEW: Record<string, string> = { PRIVATE: '🔒 New private message', STICKER: '🏷️ Sticker', IMAGE: '📷 Photo', FILE: '📎 File', AUDIO: '🎤 Voice message', VIDEO: '🎬 Video', CALL: '📞 Call', POLL: '📊 Poll', LOCATION: '📍 Location', CONTACT: '👤 Contact' };
 
 // Pushes the message to everyone's open tabs. Members who don't have UniVerse open get a
 // notification (and an email if they have them on), at most once an hour per chat, so a busy chat

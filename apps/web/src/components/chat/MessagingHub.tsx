@@ -291,7 +291,7 @@ export function MessagingHub() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-zinc-900 dark:text-white truncate flex items-center gap-1">
-                      {c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}{c.status?.statusEmoji && <span className="shrink-0 text-sm" title={c.status.statusText ?? undefined}>{c.status.statusEmoji}</span>}
+                      {c.private && <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-label="Private chat" />}{c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}{c.status?.statusEmoji && <span className="shrink-0 text-sm" title={c.status.statusText ?? undefined}>{c.status.statusEmoji}</span>}
                     </p>
                     {c.lastMessage && <span className={cn('text-[11px] shrink-0', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
                   </div>

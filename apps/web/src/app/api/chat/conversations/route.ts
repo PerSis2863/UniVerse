@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     select: {
       id: true,
       isGroup: true,
+      private: true,
       name: true,
       avatarUrl: true,
       updatedAt: true,
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
       return {
         id: c.id,
         isGroup: c.isGroup,
+        private: c.private,
         isOfficial: !c.isGroup && others.some((p) => p.userId === system.id),
         title: c.isGroup ? c.name || 'Group chat' : other?.name || 'Unknown user',
         avatarUrl: c.isGroup ? c.avatarUrl : other?.avatar ?? null,
@@ -102,12 +104,13 @@ export async function POST(req: Request) {
     if (!target) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
     const existing = await prisma.conversation.findFirst({
-      where: { isGroup: false, aboutStudentId: null, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: target.id } } }] }, // parent–teacher chats are kept apart (B16.2)
+      // Parent–teacher chats are kept apart (B16.2), and so are private (encrypted) chats (Stage 5 · B7.6).
+      where: { isGroup: false, aboutStudentId: null, private: body.private === true, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: target.id } } }] },
       select: { id: true },
     });
     if (existing) return NextResponse.json({ id: existing.id });
     const created = await prisma.conversation.create({
-      data: { createdById: user.id, participants: { create: [{ userId: user.id }, { userId: target.id }] } },
+      data: { createdById: user.id, private: body.private === true, participants: { create: [{ userId: user.id }, { userId: target.id }] } },
       select: { id: true },
     });
     return NextResponse.json({ id: created.id }, { status: 201 });
