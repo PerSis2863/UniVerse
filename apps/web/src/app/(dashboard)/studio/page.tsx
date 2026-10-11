@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
-import { History, ImagePlus, Loader2, Palette, Plus } from 'lucide-react';
+import { FileText, History, ImagePlus, Loader2, Palette, Plus } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -17,12 +17,15 @@ import type { Doc } from '@/components/studio/studio-canvas';
 // Everything runs in the browser; the picture you're working on is kept on this device.
 
 const PhotoEditor = dynamic(() => import('@/components/studio/PhotoEditor').then((m) => m.PhotoEditor), { ssr: false, loading: () => <div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div> });
+const PdfEditor = dynamic(() => import('@/components/studio/PdfEditor').then((m) => m.PdfEditor), { ssr: false, loading: () => <div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div> });
 
 export default function StudioPage() {
   const [doc, setDoc] = useState<Doc | null>(null);
   const [saved, setSaved] = useState<{ name: string; json: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [pdf, setPdf] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const pdfRef = useRef<HTMLInputElement>(null);
 
   // The picture last worked on, kept on this device.
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function StudioPage() {
     <>
       <Topbar title="Studio" subtitle="Edit photos and make graphics: layers, filters, text and more, right in your browser" />
       <SectionTabs tabs={COLLAB_TABS} />
-      {doc ? <PhotoEditor key={`${doc.name}-${doc.w}-${doc.h}`} initial={doc} onClose={() => setDoc(null)} /> : (
+      {pdf ? <PdfEditor key={pdf.name + pdf.size} file={pdf} onClose={() => setPdf(null)} /> : doc ? <PhotoEditor key={`${doc.name}-${doc.w}-${doc.h}`} initial={doc} onClose={() => setDoc(null)} /> : (
         <div className="flex-1 p-4 md:p-8 overflow-y-auto">
           <motion.div variants={list} initial="hidden" animate="show" className="max-w-4xl mx-auto space-y-5">
             <motion.section variants={fadeUp} className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-6" aria-labelledby="photo-title">
@@ -90,7 +93,18 @@ export default function StudioPage() {
                 ))}
               </ul>
             </motion.section>
-            <motion.p variants={fadeUp} className="text-xs text-zinc-500 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" aria-hidden />Video, audio and PDF editors are coming to Studio next. Your work stays on this device until you export it.</motion.p>
+            <motion.section variants={fadeUp} className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-6" aria-labelledby="pdf-title">
+              <div className="flex items-start gap-4">
+                <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-amber-500 text-white grid place-items-center shrink-0"><FileText className="w-6 h-6" aria-hidden /></span>
+                <div className="min-w-0">
+                  <h2 id="pdf-title" className="text-lg font-bold text-zinc-900 dark:text-white">PDF editor</h2>
+                  <p className="text-sm text-zinc-500 mt-0.5">Sign, highlight, write and white-out on a PDF; reorder, turn and delete pages, add pages from other PDFs or pictures, and keep only the pages you need.</p>
+                </div>
+              </div>
+              <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPdf(f); e.target.value = ''; }} />
+              <button type="button" onClick={() => pdfRef.current?.click()} className="btn-primary mt-5"><FileText className="w-4 h-4" />Open a PDF</button>
+            </motion.section>
+            <motion.p variants={fadeUp} className="text-xs text-zinc-500 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" aria-hidden />Video and audio editors are coming to Studio next. Your work stays on this device until you save or export it.</motion.p>
           </motion.div>
         </div>
       )}
