@@ -9,6 +9,22 @@ done, where the code is and what's left for each item. Keep that table up to dat
   database has every migration up to **0093** (`wrangler d1 migrations list universe-db --remote`
   showed none pending). The owner-console CPU fix is live too (PR #49). Work after that goes on a
   new branch from `main` (D2: `claude/stage-5-whisper`).
+- **Handover, 12 Oct 2026 (night): D4 Impact-to-Scholarship Exchange built on branch `claude/stage-5-saas`.**
+  Migration **`0117`** (`0117_impact_scholarship_exchange.sql`): `impact_credits`, `impact_sponsor_pools`, `impact_scholarship_claims` tables created. Implements tamper-evident SHA-256 hash-chained credit ledger, corporate/NGO/alumni sponsor pools, claim validation with academic standing, and public QR certificate verification. Applied to local D1.
+  Next migration: **`0118`**.
+  `src/server/impact-scholarships.ts`: `computeLedgerHash`, `verifyLedgerIntegrity` (tamper-evident SHA-256 hash-chaining verification from GENESIS), `getImpactCreditBalance`, `mintImpactCredits`, `createSponsorPool`, `listSponsorPools`, `claimScholarship` (with credit balance validation, GPA check, award allocation, and HMAC signature), `reviewScholarshipClaim` (with automatic credit refund on rejection), `verifyScholarshipByQr` (public proof), `getStudentImpactLedger`.
+  API Endpoints:
+  - `/api/scholarships/pools` (GET list pools with student eligibility, POST create pool)
+  - `/api/scholarships/claims` (GET my claims, POST submit claim)
+  - `/api/scholarships/claims/[id]/review` (POST approve or reject claim with auto-refund)
+  - `/api/scholarships/verify/[token]` (GET public verification with full proof)
+  - `/api/scholarships/credits/ledger` (GET audit ledger & hash integrity status)
+  UI:
+  - `src/components/impact/ImpactScholarshipExchange.tsx`: Verified credit balance card, sponsor pool cards with eligibility status and 1-click claim modal, claims list with QR modal, and full cryptographic ledger inspector.
+  - `src/app/verify/scholarship/[token]/page.tsx`: Public QR certificate verification page with cryptographic claim signature, school confirmation, and award details.
+  - Integrated into `src/app/(dashboard)/student/administrative/scholarships/page.tsx` with a dual-tab toggle between traditional grants and the Impact Exchange.
+  `src/lib/sample/router.ts`: Sample mode stubs for all `/api/scholarships/*` routes.
+  Unit tests: 13 unit tests in `src/server/impact-scholarships.test.ts`. Full test suite: 71 files, 548 tests passing. Zero TypeScript errors, zero ESLint errors.
 - **Handover, 12 Oct 2026 (night): D3 Lecture to Everything (Micro-Lessons, Audio Recaps & Revision Reels) built on branch `claude/stage-5-saas`.**
   Migration **`0116`** (`0116_lecture_to_everything.sql`): `lecture_micro_lessons` table created with `sessionId`, `courseId`, `audioRecapDurationSec`, `audioRecapScript`, `audioRecapStatus`, `mindMap`, `reels`, `practiceQuiz`, `status`, `viewCount`. Applied to local D1.
   Next migration: **`0117`**.

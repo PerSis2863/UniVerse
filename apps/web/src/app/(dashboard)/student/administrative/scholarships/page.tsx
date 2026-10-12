@@ -3,6 +3,8 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
+import { ImpactScholarshipExchange } from '@/components/impact/ImpactScholarshipExchange';
+import { Sparkles, FileText } from 'lucide-react';
 import { Award, CheckCircle2, ChevronRight, GraduationCap, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { m as motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +28,7 @@ export default function Scholarships() {
   const [applicationStep, setApplicationStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [motivation, setMotivation] = useState('');
+  const [scholarshipView, setScholarshipView] = useState<'exchange' | 'traditional'>('exchange');
 
 
   const handleApply = () => {
@@ -89,6 +92,41 @@ export default function Scholarships() {
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-8">
+          {/* Stage 5 Mode Switch */}
+          <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
+            <div className="flex rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-800">
+              <button
+                onClick={() => setScholarshipView('exchange')}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  scholarshipView === 'exchange'
+                    ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-900 dark:text-indigo-400'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                }`}
+              >
+                <Sparkles className="h-4 w-4" />
+                Impact-to-Scholarship Exchange
+              </button>
+              <button
+                onClick={() => setScholarshipView('traditional')}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                  scholarshipView === 'traditional'
+                    ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-900 dark:text-indigo-400'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                Traditional Grants & Aid
+              </button>
+            </div>
+            <span className="text-xs font-medium text-zinc-500 hidden sm:inline">
+              Verified Volunteering & Impact Credits
+            </span>
+          </div>
+
+          {scholarshipView === 'exchange' ? (
+            <ImpactScholarshipExchange />
+          ) : (
+            <>
           
           <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 rounded-xl p-8 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-6">
@@ -197,6 +235,8 @@ export default function Scholarships() {
             )}
           </div>
 
+            </>
+          )}
         </div>
       </div>
 

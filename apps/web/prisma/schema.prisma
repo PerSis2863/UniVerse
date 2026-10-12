@@ -329,6 +329,10 @@ model User {
   statusEmoji          String?
   statusUntil          DateTime?
   communityMemberships CommunityMember[]
+  impactCredits        ImpactCredit[]
+  createdImpactPools   ImpactSponsorPool[]        @relation("CreatedImpactPools")
+  impactClaims         ImpactScholarshipClaim[]   @relation("StudentImpactClaims")
+  approvedImpactClaims ImpactScholarshipClaim[]   @relation("ApprovedImpactClaims")
 
   @@index([role])
   @@index([status])
@@ -392,6 +396,8 @@ model Organization {
   cancelAtPeriodEnd    Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+  impactCredits        ImpactCredit[]
+  impactSponsorPools   ImpactSponsorPool[]
 
   @@map("organizations")
 }
@@ -4854,4 +4860,79 @@ model LectureMicroLesson {
   @@index([courseId])
   @@index([status])
   @@map("lecture_micro_lessons")
+}
+
+model ImpactCredit {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId    String?
+  organization      Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actionType        String
+  credits           Float
+  balanceAfter      Float
+  sourceReferenceId String?
+  description       String
+  previousHash      String
+  hash              String
+  createdAt         DateTime      @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("impact_credits")
+}
+
+model ImpactSponsorPool {
+  id                    String                   @id @default(cuid())
+  organizationId        String
+  organization          Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title                 String
+  sponsorName           String
+  sponsorType           String                   @default("CORPORATE")
+  description           String?
+  totalAmount           Float
+  allocatedAmount       Float                    @default(0)
+  currency              String                   @default("USD")
+  creditCostPerAward    Float                    @default(50)
+  awardAmountPerStudent Float                    @default(1000)
+  minGpa                Float                    @default(3.0)
+  status                String                   @default("ACTIVE")
+  createdById           String
+  createdBy             User                     @relation("CreatedImpactPools", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  claims                ImpactScholarshipClaim[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("impact_sponsor_pools")
+}
+
+model ImpactScholarshipClaim {
+  id                  String            @id @default(cuid())
+  poolId              String
+  pool                ImpactSponsorPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  studentId           String
+  student             User              @relation("StudentImpactClaims", fields: [studentId], references: [id], onDelete: Cascade)
+  creditsRedeemed     Float
+  awardAmount         Float
+  currency            String            @default("USD")
+  studentGpa          Float
+  academicStanding    String            @default("GOOD_STANDING")
+  status              String            @default("PENDING")
+  approvedById        String?
+  approvedBy          User?             @relation("ApprovedImpactClaims", fields: [approvedById], references: [id], onDelete: SetNull)
+  rejectionReason     String?
+  qrVerificationToken String            @unique
+  claimSignature      String
+  disbursedAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([poolId])
+  @@index([studentId])
+  @@index([status])
+  @@index([qrVerificationToken])
+  @@map("impact_scholarship_claims")
 }
