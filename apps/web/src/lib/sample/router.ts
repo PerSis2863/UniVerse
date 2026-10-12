@@ -288,6 +288,127 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       },
     ],
   })],
+
+  // Developer Platform & Public REST API (Stage 5 · C4)
+  [/^\/api\/admin\/api-keys$/, () => ok([
+    {
+      id: "key-sample-1",
+      name: "Canvas LMS Roster Sync",
+      keyPrefix: "uv_live_4a9f",
+      scopes: ["courses.read", "students.read", "grades.read"],
+      rateLimit: 300,
+      lastUsedAt: "2026-10-12T10:15:00.000Z",
+      expiresAt: "2027-01-01T00:00:00.000Z",
+      createdAt: "2026-10-01T12:00:00.000Z",
+    },
+    {
+      id: "key-sample-2",
+      name: "Attendance Kiosk Service",
+      keyPrefix: "uv_live_7b2c",
+      scopes: ["attendance.read", "attendance.write"],
+      rateLimit: 300,
+      lastUsedAt: "2026-10-12T08:30:00.000Z",
+      expiresAt: null,
+      createdAt: "2026-10-05T09:00:00.000Z",
+    },
+  ])],
+  [/^\/api\/admin\/webhooks$/, () => ok([
+    {
+      id: "wh-sample-1",
+      url: "https://erp.riverside.edu/webhooks/universe",
+      secret: "whsec_9f2a74c810d5b432e6a17f",
+      events: ["assignment.submitted", "grade.posted", "attendance.marked"],
+      isActive: true,
+      description: "University Central ERP Event Dispatcher",
+      createdAt: "2026-10-02T14:20:00.000Z",
+      _count: { deliveries: 142 },
+    },
+  ])],
+  [/^\/api\/admin\/webhooks\/([^/]+)\/deliveries$/, () => ok([
+    {
+      id: "del-sample-1",
+      event: "grade.posted",
+      payload: '{"id":"evt_1","event":"grade.posted","data":{"courseId":"cs101","grade":"A"}}',
+      statusCode: 200,
+      status: "SUCCESS",
+      error: null,
+      deliveredAt: "2026-10-12T11:45:00.000Z",
+      createdAt: "2026-10-12T11:45:00.000Z",
+    },
+    {
+      id: "del-sample-2",
+      event: "assignment.submitted",
+      payload: '{"id":"evt_2","event":"assignment.submitted","data":{"studentId":"st_1"}}',
+      statusCode: 200,
+      status: "SUCCESS",
+      error: null,
+      deliveredAt: "2026-10-12T09:30:00.000Z",
+      createdAt: "2026-10-12T09:30:00.000Z",
+    },
+  ])],
+  [/^\/api\/v1\/courses$/, () => ok({
+    organization: { id: "sample-org-1", name: "Riverside University", slug: "riverside" },
+    courses: [
+      {
+        id: "course-cs101",
+        code: "CS101",
+        name: "Introduction to Computer Science",
+        description: "Foundations of computational thinking and programming.",
+        credits: 4,
+        department: "Computer Science",
+        status: "PUBLISHED",
+        teacher: { id: "tch_1", name: "Dr. Evelyn Miller", email: "evelyn@riverside.edu" },
+      },
+    ],
+  })],
+  [/^\/api\/v1\/students$/, () => ok({
+    organization: { id: "sample-org-1", name: "Riverside University", slug: "riverside" },
+    students: [
+      {
+        id: "usr_student_1",
+        name: "Alex Chen",
+        email: "alex.chen@riverside.edu",
+        role: "STUDENT",
+        status: "ACTIVE",
+        enrolledCoursesCount: 4,
+        attendanceRatePct: 94.2,
+      },
+    ],
+  })],
+  [/^\/api\/v1\/grades$/, () => ok({
+    organization: { id: "sample-org-1", name: "Riverside University", slug: "riverside" },
+    grades: [
+      {
+        id: "sub_1",
+        score: 96,
+        feedback: "Exceptional algorithm optimization and documentation.",
+        submittedAt: "2026-10-10T14:00:00.000Z",
+        assignment: { title: "Binary Search Trees", maxScore: 100 },
+        student: { id: "usr_student_1", name: "Alex Chen", email: "alex.chen@riverside.edu" },
+      },
+    ],
+  })],
+  [/^\/api\/v1\/attendance$/, () => ok({
+    organization: { id: "sample-org-1", name: "Riverside University", slug: "riverside" },
+    attendance: [
+      {
+        id: "att_1",
+        status: "PRESENT",
+        notes: null,
+        session: { date: "2026-10-12T09:00:00.000Z", course: { code: "CS101", name: "Computer Science" } },
+        student: { id: "usr_student_1", name: "Alex Chen", email: "alex.chen@riverside.edu" },
+      },
+    ],
+  })],
+  [/^\/api\/v1\/openapi$/, () => ok({
+    openapi: "3.1.0",
+    info: {
+      title: "UniVerse Public REST API",
+      version: "1.0.0",
+      description: "University management, courses, roster sync, and grading API.",
+    },
+    paths: {},
+  })],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -593,7 +714,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/collaborations\/projects\/([^/]+)$/, ({ db: d, m }) => { const p = d.projects.find((x) => x.id === m[1]); return p ? ok({ ...p, members: [], milestones: [] }) : fail('Not found', 404); }],
   [/^\/partners\/partnerships$/, ({ db: d }) => ok(d.partnerships)],
   [/^\/api\/admin\/rooms$/, ({ db: d }) => ok(d.adminRooms)],
-  [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map(({ reservations, ...r }) => r))],
+  [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map((r) => { const c = { ...r }; delete (c as { reservations?: unknown }).reservations; return c; }))],
   [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
   [/^\/api\/premium\/analytics$/, ({ db: d }) => ok(d.analytics)],
   // A study pack in another language (Stage 4 · 4.1): the sample's packs are shown as they are.
@@ -721,6 +842,65 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
       counts: { users: 48, classes: 12, enrollments: 84 },
     });
   }],
+  // Developer Platform mutations (Stage 5 · C4)
+  ['POST', /^\/api\/admin\/api-keys$/, ({ body }) => {
+    notice();
+    return ok({
+      id: "key-sample-" + Date.now(),
+      name: body?.name || "New API Key",
+      keyPrefix: "uv_live_demo",
+      scopes: body?.scopes || ["courses.read"],
+      rateLimit: 300,
+      expiresAt: null,
+      createdAt: new Date().toISOString(),
+      secretKey: "uv_live_sample_key_" + Math.random().toString(36).slice(2) + Date.now(),
+    });
+  }],
+  ['DELETE', /^\/api\/admin\/api-keys\/[^/]+$/, () => {
+    notice();
+    return ok({ success: true, revokedAt: new Date().toISOString() });
+  }],
+  ['POST', /^\/api\/admin\/webhooks$/, ({ body }) => {
+    notice();
+    return ok({
+      id: "wh-sample-" + Date.now(),
+      url: body?.url || "https://example.edu/webhook",
+      secret: "whsec_sample_" + Math.random().toString(36).slice(2),
+      events: body?.events || ["assignment.submitted"],
+      isActive: true,
+      description: body?.description || null,
+      createdAt: new Date().toISOString(),
+      _count: { deliveries: 0 },
+    });
+  }],
+  ['PATCH', /^\/api\/admin\/webhooks\/[^/]+$/, ({ body }) => {
+    notice();
+    return ok({ ok: true, ...body });
+  }],
+  ['DELETE', /^\/api\/admin\/webhooks\/[^/]+$/, () => {
+    notice();
+    return ok({ success: true });
+  }],
+  ['POST', /^\/api\/admin\/webhooks\/test$/, () => {
+    notice();
+    return ok({ dispatched: 1 });
+  }],
+  ['POST', /^\/api\/v1\/courses$/, ({ body }) => ok({
+    id: "course-sample-new",
+    code: body?.code || "CS102",
+    name: body?.name || "Data Structures",
+    status: "PUBLISHED",
+  })],
+  ['POST', /^\/api\/v1\/grades$/, ({ body }) => ok({
+    id: body?.submissionId || "sub-1",
+    score: body?.score || 100,
+    feedback: body?.feedback || null,
+  })],
+  ['POST', /^\/api\/v1\/attendance$/, ({ body }) => ok({
+    success: true,
+    sessionId: body?.sessionId || "sess-1",
+    count: Array.isArray(body?.records) ? body.records.length : 1,
+  })],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],

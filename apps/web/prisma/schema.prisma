@@ -357,6 +357,8 @@ model Organization {
   dataRetentionDays    Int       @default(730)
   oneRosterSyncs       OneRosterSync[]
   oneRosterMappings    OneRosterMapping[]
+  apiKeys              ApiKey[]
+  webhookEndpoints     WebhookEndpoint[]
   ownerId              String    @unique
   owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members              User[]    @relation("OrgMembers")
@@ -4553,5 +4555,60 @@ model OneRosterMapping {
   @@unique([organizationId, entityType, sourcedId])
   @@index([targetId])
   @@map("oneroster_mappings")
+}
+
+// Stage 5 · C4: Public API, Scoped Keys, and HMAC Webhooks
+model ApiKey {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  keyHash        String        @unique
+  keyPrefix      String
+  scopes         String        @default("[]")
+  rateLimit      Int           @default(300)
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  revokedAt      DateTime?
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+model WebhookEndpoint {
+  id             String             @id @default(cuid())
+  organizationId String?
+  organization   Organization?      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  url            String
+  secret         String
+  events         String             @default("[]")
+  isActive       Boolean            @default(true)
+  description    String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @default(now()) @updatedAt
+  deliveries     WebhookDelivery[]
+
+  @@index([organizationId])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id                String          @id @default(cuid())
+  webhookEndpointId String
+  webhookEndpoint   WebhookEndpoint @relation(fields: [webhookEndpointId], references: [id], onDelete: Cascade)
+  event             String
+  payload           String
+  statusCode        Int?
+  status            String          @default("PENDING")
+  attempt           Int             @default(1)
+  error             String?
+  deliveredAt       DateTime?
+  createdAt         DateTime        @default(now())
+
+  @@index([webhookEndpointId])
+  @@index([createdAt])
+  @@map("webhook_deliveries")
 }
 
