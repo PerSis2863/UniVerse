@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Copy, ExternalLink, Globe2, Key, Loader2, Palette, Save, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Copy, ExternalLink, Globe2, Key, Loader2, Palette, Save, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { authedJson } from "@/lib/authed-fetch";
 
@@ -41,6 +41,10 @@ type SsoSettings = {
   ssoDomain: string | null;
   ssoTenantId: string | null;
   ssoEnforced: boolean;
+};
+
+type RetentionSettings = {
+  dataRetentionDays: number;
 };
 
 const PRESET_COLORS = [
@@ -119,6 +123,32 @@ export function OrganizationSettings() {
       toast.error((err as Error).message || "Could not save SSO settings");
     } finally {
       setSavingSso(false);
+    }
+  };
+
+
+  // ── Data Retention State (Stage 5 · C5) ──
+  const { data: retentionData, mutate: mutateRetention } = useSWR<RetentionSettings>("/api/compliance/retention", authedJson);
+  const [retentionDraft, setRetentionDraft] = useState<number | null>(null);
+  const [savingRetention, setSavingRetention] = useState(false);
+
+  const retentionDays = retentionDraft ?? retentionData?.dataRetentionDays ?? 730;
+
+  const saveRetention = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingRetention(true);
+    try {
+      await authedJson("/api/compliance/retention", {
+        method: "PATCH",
+        body: JSON.stringify({ dataRetentionDays: retentionDays }),
+      });
+      await mutateRetention();
+      setRetentionDraft(null);
+      toast.success("Data retention policy updated!");
+    } catch (err) {
+      toast.error((err as Error).message || "Could not save retention policy");
+    } finally {
+      setSavingRetention(false);
     }
   };
 
@@ -498,6 +528,66 @@ export function OrganizationSettings() {
           </button>
         </div>
       </form>
+
+      {/* ── Institutional Data Retention Policy (Stage 5 · C5) ── */}
+      <form onSubmit={saveRetention} className="p-6 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl shadow-xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-500" /> Institutional Data Retention Policy
+            </h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Configure automated retention and purge schedules for student logs, temporary files, and historical activity in compliance with the India DPDP Act 2023 and FERPA.
+            </p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+            {retentionDays === 0 ? "Indefinite Archive" : `${retentionDays} Days Retention`}
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Data Retention Window
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { days: 365, label: "1 Academic Year", desc: "365 days · Minimum audit window" },
+              { days: 730, label: "2 Academic Years", desc: "730 days · Recommended baseline" },
+              { days: 1095, label: "3 Academic Years", desc: "1,095 days · Standard undergraduate cycle" },
+              { days: 1825, label: "5 Years", desc: "1,825 days · Extended institutional archive" },
+              { days: 2555, label: "7 Years", desc: "2,555 days · Statutory finance & degree audit" },
+              { days: 0, label: "Indefinite", desc: "Permanent archive · Manual purge only" },
+            ].map((opt) => {
+              const isSel = retentionDays === opt.days;
+              return (
+                <button
+                  key={opt.days}
+                  type="button"
+                  onClick={() => setRetentionDraft(opt.days)}
+                  className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    isSel
+                      ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-200 shadow-sm"
+                      : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
+                  }`}
+                >
+                  <p className="font-bold text-sm">{opt.label}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">{opt.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center pt-2">
+          <p className="text-xs text-zinc-500">
+            Records older than the specified retention window will be queued for automated purging in accordance with statutory requirements.
+          </p>
+          <button type="submit" disabled={savingRetention} className="btn-primary">
+            {savingRetention ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Retention Policy
+          </button>
+        </div>
+      </form>
+
 
       {/* ── Security Status (existing) ── */}
       <div className="space-y-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">

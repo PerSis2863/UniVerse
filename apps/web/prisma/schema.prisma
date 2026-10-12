@@ -239,6 +239,11 @@ model User {
   // PWA Push Notifications
   pushSubscriptions PushSubscription[]
 
+  // Stage 5 · C5: Compliance and Trust
+  studentRecordLogs EducationalRecordLog[] @relation("StudentRecordLogs")
+  actorRecordLogs   EducationalRecordLog[] @relation("ActorRecordLogs")
+  privacyGrievances PrivacyGrievance[]
+
   // Feature 7: Proof of Work
   proofOfWork ProofOfWork[]
 
@@ -348,6 +353,7 @@ model Organization {
   ssoDomain            String?
   ssoTenantId          String?
   ssoEnforced          Boolean   @default(false)
+  dataRetentionDays    Int       @default(730)
   ownerId              String    @unique
   owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members              User[]    @relation("OrgMembers")
@@ -1240,6 +1246,9 @@ enum ConsentType {
   ALUMNI
   PHOTO
   RESEARCH
+  FERPA_DIRECTORY
+  DPDP_AI_PROCESSING
+  CAREER_MATCHING
 }
 
 enum MentorshipStatus {
@@ -4470,4 +4479,38 @@ model ChatDeviceKey {
 
   @@unique([userId, deviceId])
   @@map("chat_device_keys")
+}
+
+model EducationalRecordLog {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    User     @relation("StudentRecordLogs", fields: [studentId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User     @relation("ActorRecordLogs", fields: [actorId], references: [id], onDelete: Cascade)
+  recordType String
+  reason     String?
+  ipAddress  String?
+  userAgent  String?
+  accessedAt DateTime @default(now())
+
+  @@index([studentId])
+  @@index([accessedAt])
+  @@map("educational_record_logs")
+}
+
+model PrivacyGrievance {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestType    String
+  status         String    @default("OPEN")
+  details        String
+  nomineeName    String?
+  nomineeEmail   String?
+  resolutionNote String?
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  @@index([userId])
+  @@map("privacy_grievances")
 }

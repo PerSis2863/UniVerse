@@ -152,6 +152,49 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     ssoTenantId: "sample-entra-tenant",
     ssoEnforced: false,
   })],
+  // Compliance & Trust Center (Stage 5 · C5)
+  [/^\/api\/trust\/status$/, () => ok({
+    status: "ALL_SYSTEMS_OPERATIONAL",
+    updatedAt: new Date().toISOString(),
+    uptimePercent: "99.98%",
+    complianceFrameworks: ["DPDP_2023", "FERPA", "COPPA", "GDPR"],
+    systems: [
+      { name: "Edge API & Workload Routing", status: "OPERATIONAL", latency: "6ms" },
+      { name: "Cloudflare D1 Primary Database", status: "OPERATIONAL", encryption: "AES-256" },
+      { name: "Cloudflare R2 Object Storage", status: "OPERATIONAL", encryption: "AES-256" },
+      { name: "Authentication (Firebase / Entra ID)", status: "OPERATIONAL", protocol: "OIDC / SAML 2.0" },
+      { name: "WebSockets & Live Collaboration", status: "OPERATIONAL", protocol: "WSS / TLS 1.3" },
+      { name: "Verifiable Credentials Engine", status: "OPERATIONAL", standard: "W3C / Ed25519" },
+    ],
+  })],
+  [/^\/api\/compliance\/retention$/, () => ok({
+    dataRetentionDays: 730,
+  })],
+  [/^\/api\/compliance\/grievance$/, () => ok([
+    {
+      id: "sample-grievance-1",
+      requestType: "NOMINATION",
+      details: "Designation of legal representative under Section 14 DPDP Act 2023",
+      nomineeName: "Dr. Evelyn Miller",
+      nomineeEmail: "evelyn.miller@example.org",
+      status: "RESOLVED",
+      resolutionNote: "Representative nomination verified and stored in student record.",
+      createdAt: "2026-10-10T14:30:00.000Z",
+    },
+  ])],
+  [/^\/api\/compliance\/ferpa\/logs/, () => ok([
+    {
+      id: "sample-ferpa-1",
+      recordType: "TRANSCRIPT",
+      reason: "Official degree audit and graduation review",
+      createdAt: "2026-10-08T10:15:00.000Z",
+      actor: {
+        name: "Dean Sarah Jenkins",
+        email: "dean.jenkins@riverside.edu",
+        role: "ADMIN",
+      },
+    },
+  ])],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
