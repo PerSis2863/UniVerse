@@ -295,6 +295,7 @@ model User {
   feePlansMade         FeePlan[]           @relation("FeePlansMade")
   feeInvoices          FeeInvoice[]        @relation("FeeInvoices")
   feePaymentsReceived  FeePayment[]        @relation("FeePaymentsReceived")
+  paymentOrders        PaymentOrder[]
   importBatches        ImportBatch[]       @relation("ImportBatches")
   admissionRounds      AdmissionRound[]    @relation("AdmissionRounds")
   admissionReviews     AdmissionReview[]   @relation("AdmissionReviews")
@@ -359,6 +360,15 @@ model Organization {
   oneRosterMappings    OneRosterMapping[]
   apiKeys              ApiKey[]
   webhookEndpoints     WebhookEndpoint[]
+  // Stage 5 · C6: Unified Payments Provider (Razorpay UPI + Stripe)
+  paymentProvider      String    @default("AUTO")
+  razorpayKeyId        String?
+  razorpayKeySecret    String?
+  razorpayWebhookSecret String?
+  stripePublishableKey String?
+  stripeSecretKey      String?
+  stripeWebhookSecret  String?
+  paymentOrders        PaymentOrder[]
   ownerId              String    @unique
   owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members              User[]    @relation("OrgMembers")
@@ -3167,6 +3177,7 @@ model FeeInvoice {
   remindedAt   DateTime?
   createdAt    DateTime     @default(now())
   payments     FeePayment[]
+  paymentOrders PaymentOrder[]
 
   @@unique([planId, instalment, studentId])
   @@index([studentId])
@@ -3189,6 +3200,11 @@ model FeePayment {
   receivedBy   User       @relation("FeePaymentsReceived", fields: [receivedById], references: [id], onDelete: Cascade)
   voidedAt     DateTime?
   voidReason   String?
+  gateway      String?
+  orderId      String?
+  refundedAt   DateTime?
+  refundedAmount Int?
+  refundReason String?
   createdAt    DateTime   @default(now())
 
   @@index([invoiceId])
@@ -4612,3 +4628,39 @@ model WebhookDelivery {
   @@map("webhook_deliveries")
 }
 
+
+/// Online checkout session & payment order (Stage 5 · C6: Razorpay & Stripe).
+model PaymentOrder {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount         Int
+  currency       String        @default("INR")
+  provider       String
+  purpose        String        @default("FEE")
+  invoiceId      String?
+  invoice        FeeInvoice?   @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  orderRef       String
+  paymentRef     String?
+  signature      String?
+  status         String        @default("PENDING")
+  customerName   String?
+  customerEmail  String?
+  customerPhone  String?
+  metadata       String?
+  paidAt         DateTime?
+  refundedAt     DateTime?
+  refundAmount   Int?
+  refundReason   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now()) @updatedAt
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([invoiceId])
+  @@index([orderRef])
+  @@index([status])
+  @@map("payment_orders")
+}

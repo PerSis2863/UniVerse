@@ -9,6 +9,8 @@ import { authedJson } from '@/lib/authed-fetch';
 import { fadeUp } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { METHOD_LABEL, StatusChip, money, type BillStatus } from './shared';
+import { OnlineFeePaymentModal } from './OnlineFeePaymentModal';
+import { CreditCard } from 'lucide-react';
 
 // School fees for a family (Stage 5 · B15.2 / B16.5): what's owed and when, every bill with its
 // payments and receipts. Parents see each linked child's (/api/parent/fees), students their own
@@ -23,6 +25,7 @@ interface Data { bills: Bill[]; owed: Record<string, number>; next: { label: str
 export function FamilyFees({ url, who }: { url: string; who?: string }) {
   const { data } = useSWR<Data>(url, authedJson);
   const [open, setOpen] = useState(false);
+  const [payingBill, setPayingBill] = useState<Bill | null>(null);
   // Nothing billed: no card at all.
   if (!data || !data.bills.length) return null;
   const owed = Object.entries(data.owed);
@@ -53,6 +56,16 @@ export function FamilyFees({ url, who }: { url: string; who?: string }) {
                     <span className="flex flex-col items-end gap-1 shrink-0">
                       {b.owed > 0 && <span className="text-sm font-bold tabular-nums text-zinc-900 dark:text-white">{money(b.owed, b.currency)}</span>}
                       <StatusChip status={b.status} overdue={b.overdue} />
+                      {b.owed > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setPayingBill(b)}
+                          className="mt-1 px-2.5 py-1 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-medium inline-flex items-center gap-1 shadow-sm transition"
+                        >
+                          <CreditCard className="w-3 h-3" />
+                          Pay online
+                        </button>
+                      )}
                     </span>
                   </div>
                   {b.payments.length > 0 && (
@@ -73,6 +86,21 @@ export function FamilyFees({ url, who }: { url: string; who?: string }) {
           </motion.div>
         )}
       </AnimatePresence>
+      {payingBill && (
+        <OnlineFeePaymentModal
+          invoiceId={payingBill.id}
+          seq={payingBill.seq}
+          label={payingBill.label}
+          amount={payingBill.owed}
+          currency={payingBill.currency}
+          onClose={() => setPayingBill(null)}
+          onSuccess={() => {
+            setPayingBill(null);
+            // SWR mutate
+            if (typeof window !== 'undefined') window.location.reload();
+          }}
+        />
+      )}
     </motion.section>
   );
 }

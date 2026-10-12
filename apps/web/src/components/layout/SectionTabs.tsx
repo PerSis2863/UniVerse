@@ -133,6 +133,7 @@ export const ADMIN_PEOPLE_TABS: SectionTab[] = [
 export const ADMIN_FINANCE_TABS: SectionTab[] = [
   { href: '/admin/finances', label: 'Overview', need: 'admin' },
   { href: '/admin/fees', label: 'School fees', need: 'fees.view' },
+  { href: '/admin/finances/reconciliation', label: 'Payments & Gateways', need: 'fees.view' },
 ];
 
 export const ADMIN_INSIGHT_TABS: SectionTab[] = [

@@ -409,6 +409,64 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     },
     paths: {},
   })],
+
+  // Unified Payments & Reconciliation (Stage 5 · C6)
+  [/^\/api\/admin\/payments\/reconciliation/, () => ok({
+    orgId: "sample-org-1",
+    period: { from: "2026-09-12T00:00:00.000Z", to: "2026-10-12T00:00:00.000Z" },
+    summary: {
+      totalCollectedMinor: 48250000,
+      totalTransactions: 38,
+      totalRefundedMinor: 150000,
+      netCollectedMinor: 48100000,
+      currencyBreakdown: { INR: 42500000, USD: 575000 },
+      providerBreakdown: {
+        RAZORPAY: { count: 32, totalMinor: 42500000 },
+        STRIPE: { count: 6, totalMinor: 575000 },
+      },
+      methodBreakdown: {
+        "UPI / Netbanking": { count: 32, totalMinor: 42500000 },
+        "Card": { count: 6, totalMinor: 575000 },
+      },
+    },
+    transactions: [
+      {
+        id: "po-sample-1",
+        orderRef: "order_Klm741982a",
+        paymentRef: "pay_Klm741982b",
+        amount: 250000,
+        currency: "INR",
+        provider: "RAZORPAY",
+        purpose: "FEE",
+        status: "COMPLETED",
+        customerName: "Alex Chen",
+        customerEmail: "alex.chen@riverside.edu",
+        paidAt: "2026-10-11T14:30:00.000Z",
+        createdAt: "2026-10-11T14:28:00.000Z",
+      },
+      {
+        id: "po-sample-2",
+        orderRef: "cs_test_984128410",
+        paymentRef: "pi_test_984128410",
+        amount: 12000,
+        currency: "USD",
+        provider: "STRIPE",
+        purpose: "EVENT",
+        status: "COMPLETED",
+        customerName: "Sarah Connor",
+        customerEmail: "sarah@riverside.edu",
+        paidAt: "2026-10-10T11:00:00.000Z",
+        createdAt: "2026-10-10T10:55:00.000Z",
+      },
+    ],
+  })],
+  [/^\/api\/admin\/payments\/settings$/, () => ok({
+    paymentProvider: "AUTO",
+    razorpayKeyId: "rzp_test_sample_12345",
+    hasRazorpaySecret: true,
+    stripePublishableKey: "pk_test_sample_12345",
+    hasStripeSecret: true,
+  })],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -901,6 +959,50 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     sessionId: body?.sessionId || "sess-1",
     count: Array.isArray(body?.records) ? body.records.length : 1,
   })],
+
+  // Unified Payments & Checkout mutations (Stage 5 · C6)
+  ['POST', /^\/api\/payments\/create-order$/, ({ body }) => {
+    notice();
+    return ok({
+      orderId: "po-sample-" + Date.now(),
+      provider: body?.currency === 'USD' ? 'STRIPE' : 'RAZORPAY',
+      orderRef: "order_sample_" + Math.random().toString(36).slice(2),
+      amount: body?.amount || 250000,
+      currency: body?.currency || 'INR',
+      keyId: "rzp_test_mock_12345",
+      upiIntent: "upi://pay?pa=riverside%40icici&pn=Riverside+University&am=" + ((body?.amount || 250000) / 100).toFixed(2) + "&cu=INR&tr=order_123&tn=Fee+Payment",
+      checkoutUrl: "https://checkout.stripe.com/pay/cs_test_sample",
+    });
+  }],
+  ['POST', /^\/api\/payments\/verify$/, ({ body }) => {
+    notice();
+    return ok({
+      success: true,
+      orderId: body?.orderId || "po-sample-1",
+      paymentRef: body?.paymentRef || "pay_mock_123",
+      amount: 250000,
+      currency: "INR",
+      receiptNumber: 1042,
+    });
+  }],
+  ['POST', /^\/api\/admin\/payments\/refund$/, ({ body }) => {
+    notice();
+    return ok({
+      success: true,
+      orderId: body?.orderId || "po-sample-1",
+      refundId: "rfnd_sample_" + Date.now(),
+      amount: body?.amount || 250000,
+      status: "processed",
+    });
+  }],
+  ['PATCH', /^\/api\/admin\/payments\/settings$/, ({ body }) => {
+    notice();
+    return ok({
+      paymentProvider: body?.paymentProvider || "AUTO",
+      razorpayKeyId: body?.razorpayKeyId || "rzp_test_sample",
+      stripePublishableKey: body?.stripePublishableKey || "pk_test_sample",
+    });
+  }],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
