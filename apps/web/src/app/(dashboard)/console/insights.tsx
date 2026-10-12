@@ -23,7 +23,13 @@ export type Attention = {
 };
 
 /** What needs the owner now, shared by the Overview card and the counts on the tabs. */
-export const useAttention = () => useSWR<Attention>('/owner/attention', fetcher, { refreshInterval: useActivePoll(60_000) });
+export const useAttention = () =>
+  useSWR<Attention>('/owner/attention', fetcher, {
+    refreshInterval: useActivePoll(60_000),
+    revalidateOnFocus: false,
+    dedupingInterval: 30_000,
+    errorRetryCount: 2,
+  });
 
 const LEVEL = {
   high: 'bg-rose-500',

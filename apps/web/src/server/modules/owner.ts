@@ -40,6 +40,7 @@ const byName = new Map(MODELS.map((m) => [m.name, m]));
 
 /** Table counts for the console, kept a minute per server instance, and the database shape as JSON (fixed for a deploy). */
 let counted: { at: number; count: Record<string, number> } | null = null;
+let cachedOverview: { at: number; data: unknown } | null = null;
 let shape: string | null = null;
 
 /** Tables that can't be edited here (binary files, and the history of these edits itself). */
@@ -219,7 +220,10 @@ export default function ownerModule(router: Router) {
     return prisma.errorReport.update({ where: { id: params.id }, data: { status, resolvedAt: status === 'RESOLVED' ? new Date() : null } });
   });
 
-  r.get('overview', async () => {
+  r.get('overview', async ({ query }) => {
+    if (cachedOverview && Date.now() - cachedOverview.at < 60_000 && query.fresh !== '1') {
+      return cachedOverview.data;
+    }
     const now = Date.now();
     const day = new Date(now - 86_400_000);
     const month = new Date(now - 30 * 86_400_000);
@@ -247,7 +251,7 @@ export default function ownerModule(router: Router) {
     });
     const top = (rows: { _count: { _all: number } }[], key: (r: never) => string | null) =>
       rows.map((r) => ({ name: key(r as never) ?? 'Unknown', count: r._count._all })).sort((a, b) => b.count - a.count).slice(0, 6);
-    return {
+    const result = {
       roles: Object.fromEntries(roles.map((x) => [x.role, x._count._all])),
       statuses: Object.fromEntries(statuses.map((x) => [x.status, x._count._all])),
       online,
@@ -265,6 +269,8 @@ export default function ownerModule(router: Router) {
       // The spending guard (cloudflare/usage-guard.ts): this billing month's Cloudflare usage.
       usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
     };
+    cachedOverview = { at: Date.now(), data: result };
+    return result;
   });
 
   // ── Server: live, read-only or maintenance, a notice on every page, and the spending guard ──

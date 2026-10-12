@@ -47,6 +47,8 @@ const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'deletions', label: 'Deletion requests', icon: Trash2 },
 ];
 
+const heavy = { revalidateOnFocus: false, dedupingInterval: 30_000, errorRetryCount: 2 };
+
 export default function OwnerConsole() {
   const owner = useAuthStore((s) => s.user?.owner === true);
   const [tab, setTab] = useState<Tab>('overview');
@@ -72,7 +74,7 @@ export default function OwnerConsole() {
   // The tables (for search and Data) and the database shape (for editing records) are the console's
   // heaviest calls, so nothing else waits for them, the shape loads only where it's used, and a
   // failure is retried twice rather than again and again (each retry costs the server CPU).
-  const heavy = { revalidateOnFocus: false, errorRetryCount: 2 };
+
   const { data: tables, error: tablesError, mutate: retryTables } = useSWR<{ tables: { name: string; title: string; count: number }[] }>(owner ? '/owner/tables' : null, fetcher, heavy);
   const needsSchema = owner && (tab === 'data' || (tab === 'people' && !!person));
   const { data: schema, error: schemaError, mutate: retrySchema } = useSWR<Schema>(needsSchema ? '/owner/schema' : null, fetcher, { ...heavy, revalidateIfStale: false });
@@ -188,7 +190,10 @@ type PersonRow = {
 };
 
 function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: (t: Tab, status?: string) => void }) {
-  const { data } = useSWR<OverviewData>('/owner/overview', fetcher, { refreshInterval: useActivePoll(60_000) });
+  const { data } = useSWR<OverviewData>('/owner/overview', fetcher, {
+    ...heavy,
+    refreshInterval: useActivePoll(60_000),
+  });
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim());
   const { data: found } = useSWR<{ total: number; people: PersonRow[] }>(dq ? `/owner/people?q=${encodeURIComponent(dq)}` : null, fetcher);

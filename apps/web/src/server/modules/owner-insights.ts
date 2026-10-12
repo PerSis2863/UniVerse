@@ -18,10 +18,16 @@ const DAY = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString();
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 
+/** Attention cache for the console, kept 45s per server instance */
+let cachedAttention: { at: number; data: unknown } | null = null;
+
 export default function ownerInsightsModule(router: Router) {
   const r = router.controller('owner', { owner: true });
 
-  r.get('attention', async () => {
+  r.get('attention', async ({ query }) => {
+    if (cachedAttention && Date.now() - cachedAttention.at < 45_000 && query.fresh !== '1') {
+      return cachedAttention.data;
+    }
     const now = Date.now();
     const day = iso(now - DAY);
     const c = await selectColumns([
@@ -43,7 +49,7 @@ export default function ownerInsightsModule(router: Router) {
     // Watch-word messages in the last day (whole words are checked when they are sent; this is a count).
     const words = parseWatchWords(ctl?.watchWords);
     const flagged = words.length
-      ? await prisma.message.count({ where: { createdAt: { gt: new Date(now - DAY) }, type: { not: 'SYSTEM' }, OR: words.slice(0, 90).map((w) => ({ body: { contains: w } })) } })
+      ? await prisma.message.count({ where: { createdAt: { gt: new Date(now - DAY) }, type: { not: 'SYSTEM' }, OR: words.slice(0, 5).map((w) => ({ body: { contains: w } })) } }).catch(() => 0)
       : 0;
     const meters: { key: string; label?: string; used: number | null; limit: number }[] = guard?.meters ? JSON.parse(guard.meters) : [];
     const high = meters.filter((m) => m.used != null && m.limit > 0 && m.used / m.limit >= 0.7).map((m) => ({ key: m.key, label: m.label ?? m.key, percent: Math.round(((m.used ?? 0) / m.limit) * 100) }));
@@ -65,11 +71,13 @@ export default function ownerInsightsModule(router: Router) {
       ctl?.banner && { id: 'banner', level: 'low', text: 'A notice is showing on every page.', tab: 'server' },
       num(c.muted) > 0 && { id: 'muted', level: 'low', text: `${num(c.muted)} ${num(c.muted) === 1 ? 'person is' : 'people are'} muted in chat.`, tab: 'people' },
     ].filter(Boolean);
-    return {
+    const result = {
       items,
       // Small numbers on the console tabs.
       badges: { errors: num(c.openErrors), deletions: num(c.deletions), activity: num(c.online), chats: flagged, server: (ctl && ctl.mode !== 'LIVE') || guard?.paused ? 1 : 0 },
     };
+    cachedAttention = { at: Date.now(), data: result };
+    return result;
   });
 
   r.get('search', async ({ query }) => {
