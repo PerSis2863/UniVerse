@@ -494,6 +494,7 @@ model Course {
   marketplacePacks   MarketplacePack[]
   marketplaceImports MarketplaceImport[]
   xapiStatements     XApiStatement[]
+  microLessons       LectureMicroLesson[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -3973,6 +3974,7 @@ model ClassSession {
   chapters            String   @default("[]") // JSON [{ t, title }]: smart replay (Stage 4 · 4.6)
   recap               String? // a recap to read in about two minutes
   practice            String   @default("[]") // JSON [{ question, options, answer (index), explain, t }]: practice questions for students
+  microLesson         LectureMicroLesson?
   createdAt           DateTime @default(now())
 
   @@index([courseId, createdAt])
@@ -4827,4 +4829,29 @@ model ResearchDataRequest {
   @@index([organizationId])
   @@index([status])
   @@map("research_data_requests")
+}
+
+model LectureMicroLesson {
+  id                    String       @id @default(cuid())
+  sessionId             String       @unique
+  session               ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  courseId              String
+  course                Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  audioRecapUrl         String?
+  audioRecapDurationSec Int          @default(300)
+  audioRecapScript      String
+  audioRecapStatus      String       @default("READY")
+  mindMap               String       @default("{}")
+  reels                 String       @default("[]")
+  practiceQuiz          String       @default("[]")
+  status                String       @default("READY")
+  viewCount             Int          @default(0)
+  publishedAt           DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([sessionId])
+  @@index([courseId])
+  @@index([status])
+  @@map("lecture_micro_lessons")
 }

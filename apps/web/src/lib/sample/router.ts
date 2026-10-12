@@ -36,6 +36,146 @@ const pct = (s: number, m: number) => (m > 0 ? (s / m) * 100 : 0);
 const course = (d: SampleDb, id: string) => d.courses.find((c) => c.id === id);
 const counts = (d: SampleDb, id: string) => ({ materials: d.board[id]?.materials.length ?? 0, quizzes: d.quizzes.filter((x) => x.courseId === id).length });
 
+const SAMPLE_MICRO_LESSON = {
+  id: 'lml_sample_1',
+  sessionId: 'sess_sample_1',
+  courseId: 'c_cs101',
+  sessionTitle: 'CS101 Micro-Lesson: Algorithmic Thinking & Graph Theory',
+  courseCode: 'CS101',
+  courseName: 'Introduction to Computer Science',
+  audioRecapDurationSec: 300,
+  audioRecapScript: '🎯 [0:00 - 0:45] THE BIG PICTURE: Welcome to the 5-minute micro-recap for CS101 Graph Theory. In this session we broke down how real-world networks—from Google Maps routing to social graphs—reduce to nodes and weighted edges.\n\n💡 [0:45 - 2:00] FOUNDATIONAL CONCEPTS: We defined adjacency matrices versus adjacency lists. Matrices give O(1) edge lookups but cost O(V^2) space, whereas lists shine for sparse graphs.\n\n⚡ [2:00 - 3:15] MECHANICS & APPLICATION: Breadth-First Search uses a FIFO queue to guarantee shortest path on unweighted graphs, while Depth-First Search relies on recursive call stacks.\n\n🔍 [3:15 - 4:15] DEEP DIVE & CRITICAL MOMENT: Pay close attention to cycle detection in directed graphs using 3-color DFS states (white, grey, black).\n\n⚠️ [4:15 - 4:45] EXAM PITFALL ALERT: The number one mistake on the midterm is running Dijkstra with negative edge weights. Dijkstra assumes non-decreasing path costs!\n\n🏁 [4:45 - 5:00] 60-SECOND WRAP-UP: Remember: unweighted shortest path is BFS; minimum spanning tree is Prim or Kruskal; topological sort requires a DAG. You have got this!',
+  audioRecapUrl: null,
+  audioRecapStatus: 'READY',
+  mindMap: {
+    id: 'root_node',
+    label: 'Graph Theory & Network Traversal',
+    summary: 'Core data structures, traversal algorithms, and shortest path proofs.',
+    icon: '🧠',
+    color: '#8b5cf6',
+    takeaways: [
+      'Graphs model relational networks with vertices and edges',
+      'BFS computes shortest path in unweighted networks in O(V + E)',
+      'Topological sorting requires an acyclic directed graph (DAG)',
+    ],
+    children: [
+      {
+        id: 'b1',
+        label: 'Graph Representations',
+        icon: '🎯',
+        color: '#6366f1',
+        takeaways: ['Adjacency Matrix: O(1) edge lookup, O(V^2) space'],
+        children: [
+          { id: 'l1_1', label: 'Adjacency Matrix', takeaways: ['Dense graph optimal'] },
+          { id: 'l1_2', label: 'Adjacency List', takeaways: ['Sparse graph optimal'] },
+        ],
+      },
+      {
+        id: 'b2',
+        label: 'Traversal Algorithms',
+        icon: '💡',
+        color: '#ec4899',
+        takeaways: ['BFS: Queue-driven; DFS: Stack/Recursion-driven'],
+        children: [
+          { id: 'l2_1', label: 'Breadth-First Search', takeaways: ['Guaranteed unweighted shortest path'] },
+          { id: 'l2_2', label: 'Depth-First Search', takeaways: ['Cycle detection & topological ordering'] },
+        ],
+      },
+      {
+        id: 'b3',
+        label: 'Exam Traps & Red Flags',
+        icon: '⚠️',
+        color: '#f59e0b',
+        takeaways: ['Never apply Dijkstra to graphs with negative weight edges!'],
+        children: [
+          { id: 'l3_1', label: 'Negative Edge Weights', takeaways: ['Use Bellman-Ford instead of Dijkstra'] },
+          { id: 'l3_2', label: 'Cyclic Dependencies', takeaways: ['Topological sort fails if a back-edge exists'] },
+        ],
+      },
+    ],
+  },
+  reels: [
+    {
+      id: 'reel_1',
+      chapterIndex: 0,
+      title: 'Adjacency Matrices vs. Lists',
+      timestampSec: 0,
+      durationSec: 52,
+      keyTakeaway: 'Choose adjacency lists for sparse real-world graphs to conserve memory.',
+      gradient: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%)',
+      hashtags: ['#cs101', '#graphs', '#datastructures', '#examprep'],
+      captions: [
+        { start: 0, end: 4, text: 'Why do we care about graph representations?' },
+        { start: 4, end: 8, text: 'In a social network with 1 billion users, a matrix takes exabytes of RAM!' },
+        { start: 8, end: 12, text: 'Adjacency lists only store edges that actually exist.' },
+      ],
+    },
+    {
+      id: 'reel_2',
+      chapterIndex: 1,
+      title: 'BFS & The Shortest Path Guarantee',
+      timestampSec: 300,
+      durationSec: 64,
+      keyTakeaway: 'BFS visits vertices level by level using a queue, guaranteeing minimum hops.',
+      gradient: 'linear-gradient(135deg, #022c22 0%, #064e3b 40%, #047857 100%)',
+      hashtags: ['#cs101', '#bfs', '#algorithms', '#revisionreel'],
+      captions: [
+        { start: 0, end: 4, text: 'How does GPS navigation find the fewest turns?' },
+        { start: 4, end: 8, text: 'Breadth-First Search radiates outward like a ripple in water.' },
+        { start: 8, end: 12, text: 'The moment you pop the target from the queue, that path is optimal.' },
+      ],
+    },
+    {
+      id: 'reel_3',
+      chapterIndex: 2,
+      title: 'The #1 Midterm Trap: Dijkstra Fallacy',
+      timestampSec: 600,
+      durationSec: 48,
+      keyTakeaway: 'Dijkstra fails on negative edge weights because greedy commitments cannot be relaxed backward.',
+      gradient: 'linear-gradient(135deg, #450a0a 0%, #7f1d1d 40%, #b91c1c 100%)',
+      hashtags: ['#cs101', '#examtrap', '#dijkstra', '#mustknow'],
+      captions: [
+        { start: 0, end: 4, text: 'Warning: professors love putting this on exams!' },
+        { start: 4, end: 8, text: 'Does Dijkstra work with negative edge weights?' },
+        { start: 8, end: 12, text: 'NO! The greedy assumption breaks. Use Bellman-Ford instead.' },
+      ],
+    },
+  ],
+  practiceQuiz: [
+    {
+      id: 'quiz_q_1',
+      question: 'Which data structure is fundamentally required to implement Breadth-First Search?',
+      options: ['Priority Queue / Min-Heap', 'First-In-First-Out Queue', 'LIFO Stack', 'Binary Search Tree'],
+      answer: 1,
+      explanation: 'BFS requires a FIFO queue to explore vertices layer-by-layer.',
+    },
+    {
+      id: 'quiz_q_2',
+      question: 'What is the time complexity of BFS or DFS on a graph with V vertices and E edges using an adjacency list?',
+      options: ['O(V * E)', 'O(V^2)', 'O(V + E)', 'O(log(V + E))'],
+      answer: 2,
+      explanation: 'Every vertex is visited once and every edge is explored once, yielding O(V + E).',
+    },
+    {
+      id: 'quiz_q_3',
+      question: 'Why will Dijkstras algorithm produce incorrect results on graphs with negative edge weights?',
+      options: [
+        'It will enter an infinite loop even without negative cycles',
+        'It greedily marks nodes as finalized and never revisits them to relax lower costs',
+        'It only supports unweighted graphs',
+        'It requires all edge weights to be prime numbers',
+      ],
+      answer: 1,
+      explanation: 'Dijkstra assumes that adding edges can only increase total path weight.',
+    },
+  ],
+  status: 'READY',
+  viewCount: 138,
+  createdAt: '2026-10-12T10:00:00.000Z',
+  updatedAt: '2026-10-12T10:00:00.000Z',
+};
+
+
 /** A sample campus network (upgrade 9): three campuses, you at the first. */
 function sampleNetwork() {
   const campus = (id: string, name: string, city: string, country: string, lat: number, lng: number, students: number, teachers: number, courses: number, shared: number, exchange: number) =>
@@ -1337,6 +1477,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/meeting-notes\/([^/]+)$/, () => fail('These notes aren’t available in the sample.', 404)],
   // Smart replay search (Stage 4 · 4.6): the sample's classes have no transcript.
   [/^\/api\/class-sessions\/([^/]+)\/replay$/, () => ok({ results: [] })],
+  // Lecture to Everything: Micro-Lessons & Revision Reels (Stage 5 · D3)
+  [/^\/api\/courses\/([^/]+)\/micro-lessons$/, () => ok([SAMPLE_MICRO_LESSON])],
+  [/^\/api\/class-sessions\/([^/]+)\/micro-lesson$/, () => ok(SAMPLE_MICRO_LESSON)],
   // Safe by default (Stage 4 · 4.10): no flags in the sample; the default policy; quiet hours off.
   [/^\/api\/safety\/flags$/, () => ok({ open: 0, flags: [] })],
   [/^\/api\/safety\/flags\/([^/]+)$/, () => ok({ messages: [] })],
@@ -1692,6 +1835,8 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
 
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
+  ['POST', /^\/api\/class-sessions\/([^/]+)\/micro-lesson$/, () => ok(SAMPLE_MICRO_LESSON)],
+  ['POST', /^\/api\/class-sessions\/([^/]+)\/micro-lesson\/interact$/, () => ok({ success: true, viewCount: 139 })],
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
