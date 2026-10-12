@@ -296,6 +296,9 @@ model User {
   feeInvoices          FeeInvoice[]        @relation("FeeInvoices")
   feePaymentsReceived  FeePayment[]        @relation("FeePaymentsReceived")
   paymentOrders        PaymentOrder[]
+  marketplacePacksAuthored MarketplacePack[] @relation("MarketplacePacksAuthored")
+  marketplaceReviews       MarketplaceReview[]
+  marketplaceImports       MarketplaceImport[]
   importBatches        ImportBatch[]       @relation("ImportBatches")
   admissionRounds      AdmissionRound[]    @relation("AdmissionRounds")
   admissionReviews     AdmissionReview[]   @relation("AdmissionReviews")
@@ -482,6 +485,8 @@ model Course {
   concepts          CourseConcept[]
   secondChances     SecondChance[]
   whisperQuestions  WhisperQuestion[]
+  marketplacePacks   MarketplacePack[]
+  marketplaceImports MarketplaceImport[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -4663,4 +4668,75 @@ model PaymentOrder {
   @@index([orderRef])
   @@index([status])
   @@map("payment_orders")
+}
+
+/// Teacher-authored lesson pack or curriculum bundle (Stage 5 · C7: Content Marketplace).
+model MarketplacePack {
+  id              String             @id @default(cuid())
+  authorId        String
+  author          User               @relation("MarketplacePacksAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  sourceCourseId  String?
+  sourceCourse    Course?            @relation(fields: [sourceCourseId], references: [id], onDelete: SetNull)
+  title           String
+  slug            String             @unique
+  summary         String
+  description     String?
+  thumbnailUrl    String?
+  category        String
+  level           String             @default("ALL_LEVELS")
+  priceMinor      Int                @default(0)
+  currency        String             @default("INR")
+  modulesData     String
+  modulesCount    Int                @default(0)
+  itemsCount      Int                @default(0)
+  estimatedHours  Float              @default(5.0)
+  status          String             @default("PUBLISHED")
+  ratingAvg       Float              @default(0.0)
+  reviewsCount    Int                @default(0)
+  downloadsCount  Int                @default(0)
+  revenueSharePct Int                @default(80)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @default(now()) @updatedAt
+  reviews         MarketplaceReview[]
+  imports         MarketplaceImport[]
+
+  @@index([category])
+  @@index([authorId])
+  @@index([ratingAvg])
+  @@index([priceMinor])
+  @@map("marketplace_packs")
+}
+
+/// Reviews and ratings for marketplace packs.
+model MarketplaceReview {
+  id        String          @id @default(cuid())
+  packId    String
+  pack      MarketplacePack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime        @default(now())
+
+  @@unique([packId, userId])
+  @@index([packId])
+  @@map("marketplace_reviews")
+}
+
+/// Record of importing a marketplace pack into a course.
+model MarketplaceImport {
+  id             String          @id @default(cuid())
+  packId         String
+  pack           MarketplacePack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  targetCourseId String
+  targetCourse   Course          @relation(fields: [targetCourseId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentOrderId String?
+  createdAt      DateTime        @default(now())
+
+  @@index([packId])
+  @@index([targetCourseId])
+  @@index([userId])
+  @@map("marketplace_imports")
 }

@@ -96,6 +96,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.schooling', icon: GraduationCap,
       subItems: [
         { href: '/student/courses', label: 'nav.courses', also: ['/student/live', '/student/offline'] },
+        { href: '/marketplace', label: 'Course Marketplace' },
         { href: '/student/groups', label: 'nav.groups' },
         { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor'] },
         { href: '/student/internships', label: 'nav.internships' },
@@ -143,6 +144,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.schooling', icon: GraduationCap,
       subItems: [
         { href: '/teacher/courses', label: 'nav.my_courses' },
+        { href: '/marketplace', label: 'Curriculum Marketplace' },
         { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor'] },
         { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/mastery', '/teacher/meetings', '/teacher/forms'] },
         { href: '/teacher/attendance', label: 'nav.attendance' },
@@ -191,6 +193,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'Academics', icon: GraduationCap,
       subItems: [
         { href: '/admin/courses', label: 'nav.courses' },
+        { href: '/marketplace', label: 'Course Marketplace' },
         { href: '/admin/attendance', label: 'nav.attendance' },
         { href: '/admin/quizzes', label: 'nav.quizzes' },
         { href: '/admin/timetable', label: 'nav.timetable_management' },

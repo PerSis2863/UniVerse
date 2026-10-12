@@ -100,6 +100,350 @@ const quizOut = (d: SampleDb, qz: any, withAnswers: boolean) => ({
 });
 
 // ── GET routes ─────────────────────────────────────────────────────────
+
+interface SamplePackItem {
+  title: string;
+  kind?: string;
+  body?: string | null;
+  url?: string | null;
+  position?: number;
+}
+
+interface SamplePackModule {
+  title: string;
+  summary?: string | null;
+  position: number;
+  items?: SamplePackItem[];
+}
+
+interface SamplePackReview {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  user?: { id: string; name: string };
+}
+
+interface SampleMarketplacePack {
+  id: string;
+  authorId: string;
+  sourceCourseId: string | null;
+  title: string;
+  slug: string;
+  summary: string;
+  description: string | null;
+  thumbnailUrl: string | null;
+  category: string;
+  level: string;
+  priceMinor: number;
+  currency: string;
+  modulesCount: number;
+  itemsCount: number;
+  estimatedHours: number;
+  ratingAvg: number;
+  reviewsCount: number;
+  downloadsCount: number;
+  revenueSharePct: number;
+  status: string;
+  createdAt: string;
+  author?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  modules?: SamplePackModule[];
+  reviews?: SamplePackReview[];
+}
+
+const SAMPLE_MARKETPLACE_PACKS: SampleMarketplacePack[] = [
+  {
+    id: 'pack_sample_cs_dsa',
+    authorId: 'usr_teacher_thorne',
+    sourceCourseId: null,
+    title: 'Advanced Algorithms & Distributed System Design',
+    slug: 'advanced-algorithms-distributed-system-design',
+    summary: 'Comprehensive 12-week curriculum module pack covering distributed consensus, Raft protocol, dynamic programming, and high-throughput microservices.',
+    description: 'Developed by university faculties for upper-level CS cohorts. Includes lecture notes, interactive coding challenges, and production architecture blueprints.',
+    thumbnailUrl: null,
+    category: 'Computer Science',
+    level: 'ADVANCED',
+    priceMinor: 0,
+    currency: 'INR',
+    modulesCount: 3,
+    itemsCount: 7,
+    estimatedHours: 24.0,
+    ratingAvg: 4.9,
+    reviewsCount: 42,
+    downloadsCount: 624,
+    revenueSharePct: 80,
+    status: 'PUBLISHED',
+    createdAt: '2026-09-15T10:00:00.000Z',
+    author: {
+      id: 'usr_teacher_thorne',
+      name: 'Prof. Alan Thorne',
+      email: 'alan.thorne@riverside.edu',
+    },
+    modules: [
+      {
+        title: 'Module 1: Distributed Consensus & Raft Protocol',
+        summary: 'State machine replication, leader election, and log consistency.',
+        position: 0,
+        items: [
+          { title: 'Syllabus & Protocol Architecture', kind: 'PAGE', body: 'Foundations of consensus under Byzantine and crash-fault models.', position: 0 },
+          { title: 'Interactive Consensus Walkthrough', kind: 'VIDEO', url: 'https://example.com/raft-lecture.mp4', position: 1 },
+          { title: 'Raft State Machine Simulation Lab', kind: 'ASSIGNMENT', body: 'Implement heartbeats and election timers in Python/Go.', position: 2 },
+        ],
+      },
+      {
+        title: 'Module 2: Advanced Dynamic Programming & Flows',
+        summary: 'Network flow, bipartite matching, and interval optimization.',
+        position: 1,
+        items: [
+          { title: 'Ford-Fulkerson & Max Flow Min Cut', kind: 'PAGE', body: 'Residual graphs and augmenting paths.', position: 0 },
+          { title: 'Flow Problem Set & Rubrics', kind: 'QUIZ', body: '10 graph flow challenges with automated test cases.', position: 1 },
+        ],
+      },
+      {
+        title: 'Module 3: Scalable Microservice Architecture',
+        summary: 'Message buses, idempotent event sourcing, and rate limiters.',
+        position: 2,
+        items: [
+          { title: 'High-Throughput Design Case Study', kind: 'PAGE', body: 'Dissecting a 50k req/sec university enrollment portal.', position: 0 },
+          { title: 'Architecture Review Rubric', kind: 'ASSIGNMENT', body: 'Submit your end-to-end distributed system blueprint.', position: 1 },
+        ],
+      },
+    ],
+    reviews: [
+      { id: 'rev_1', rating: 5, comment: 'Phenomenal curriculum! Imported directly into my CS402 course and students loved the Raft simulator.', createdAt: '2026-10-01T14:20:00.000Z', user: { id: 'u1', name: 'Dr. Sarah Lin' } },
+      { id: 'rev_2', rating: 5, comment: 'Very rigorous problem sets. Saved our department over 40 hours of curriculum prep.', createdAt: '2026-10-05T09:15:00.000Z', user: { id: 'u2', name: 'Prof. Marcus Vance' } },
+    ],
+  },
+  {
+    id: 'pack_sample_gen_ai',
+    authorId: 'usr_teacher_maya',
+    sourceCourseId: null,
+    title: 'Applied Generative AI & Vector Search RAG',
+    slug: 'applied-generative-ai-vector-search-rag',
+    summary: 'Practical enterprise GenAI engineering: embeddings, hybrid search retrieval, tool calling, and multi-turn eval harnesses.',
+    description: 'A modular course pack designed for fast integration into data science & software engineering courses.',
+    thumbnailUrl: null,
+    category: 'Computer Science',
+    level: 'INTERMEDIATE',
+    priceMinor: 149900,
+    currency: 'INR',
+    modulesCount: 3,
+    itemsCount: 6,
+    estimatedHours: 18.0,
+    ratingAvg: 4.8,
+    reviewsCount: 28,
+    downloadsCount: 318,
+    revenueSharePct: 80,
+    status: 'PUBLISHED',
+    createdAt: '2026-09-20T12:00:00.000Z',
+    author: {
+      id: 'usr_teacher_maya',
+      name: 'Dr. Maya Raman',
+      email: 'maya.raman@riverside.edu',
+    },
+    modules: [
+      {
+        title: 'Module 1: Embeddings & Vector Indexing',
+        summary: 'HNSW indexing, distance metrics, and chunking strategies.',
+        position: 0,
+        items: [
+          { title: 'Vector Space Foundations', kind: 'PAGE', body: 'Cosine similarity vs inner product in high dimensions.', position: 0 },
+          { title: 'Chunking & Metadata Lab', kind: 'ASSIGNMENT', body: 'Benchmarking chunk sizes across academic papers.', position: 1 },
+        ],
+      },
+      {
+        title: 'Module 2: Hybrid Search & Re-ranking',
+        summary: 'Combining BM25 keyword search with dense semantic embeddings.',
+        position: 1,
+        items: [
+          { title: 'Hybrid Search Pipelines', kind: 'PAGE', body: 'Reciprocal Rank Fusion (RRF) implementation.', position: 0 },
+          { title: 'Cross-Encoder Re-ranker Quiz', kind: 'QUIZ', body: 'Evaluating Precision@K and NDCG.', position: 1 },
+        ],
+      },
+      {
+        title: 'Module 3: Agent Tool-Use & Evaluation',
+        summary: 'Function calling schemas, sandboxing, and LLM-as-a-judge.',
+        position: 2,
+        items: [
+          { title: 'Agent Tool Routing Architecture', kind: 'PAGE', body: 'Structured outputs and JSON schema enforcement.', position: 0 },
+          { title: 'Automated Eval Harness Capstone', kind: 'ASSIGNMENT', body: 'Build an end-to-end evaluation benchmark suite.', position: 1 },
+        ],
+      },
+    ],
+    reviews: [
+      { id: 'rev_3', rating: 5, comment: 'Worth every rupee. The hybrid search code templates worked flawlessly.', createdAt: '2026-10-04T16:00:00.000Z', user: { id: 'u3', name: 'Prof. Vikram Rao' } },
+    ],
+  },
+  {
+    id: 'pack_sample_linear_alg',
+    authorId: 'usr_teacher_meyer',
+    sourceCourseId: null,
+    title: 'Linear Algebra & Matrix Decompositions for ML',
+    slug: 'linear-algebra-matrix-decompositions-for-ml',
+    summary: 'Intuitive geometric approach to vector spaces, eigenvalues, singular value decomposition (SVD), and principal component analysis (PCA).',
+    description: 'Designed to bridge undergraduate calculus with machine learning representations.',
+    thumbnailUrl: null,
+    category: 'Mathematics',
+    level: 'BEGINNER',
+    priceMinor: 0,
+    currency: 'INR',
+    modulesCount: 2,
+    itemsCount: 5,
+    estimatedHours: 15.0,
+    ratingAvg: 4.7,
+    reviewsCount: 19,
+    downloadsCount: 452,
+    revenueSharePct: 80,
+    status: 'PUBLISHED',
+    createdAt: '2026-09-10T08:30:00.000Z',
+    author: {
+      id: 'usr_teacher_meyer',
+      name: 'Prof. Kenneth Meyer',
+      email: 'kenneth.meyer@riverside.edu',
+    },
+    modules: [
+      {
+        title: 'Module 1: Vector Spaces & Transformations',
+        summary: 'Basis, span, linear independence, and change of basis.',
+        position: 0,
+        items: [
+          { title: 'Geometric Vector Spaces', kind: 'PAGE', body: 'Visualizing span and null space.', position: 0 },
+          { title: 'Matrix Transformations Interactive Lab', kind: 'ASSIGNMENT', body: '2D/3D affine transformation visualizer.', position: 1 },
+        ],
+      },
+      {
+        title: 'Module 2: Eigenvalues & SVD',
+        summary: 'Spectral theorem, PCA dimensionality reduction, and image compression.',
+        position: 1,
+        items: [
+          { title: 'Diagonalization & Spectral Theorem', kind: 'PAGE', body: 'Orthogonal diagonalizability of symmetric matrices.', position: 0 },
+          { title: 'SVD Image Compression Notebook', kind: 'ASSIGNMENT', body: 'Low-rank matrix approximations.', position: 1 },
+          { title: 'Concept Check: Decomposition Quiz', kind: 'QUIZ', body: '15 questions testing geometric intuition.', position: 2 },
+        ],
+      },
+    ],
+    reviews: [
+      { id: 'rev_4', rating: 5, comment: 'Clear, elegant explanations. Great introductory modules.', createdAt: '2026-09-28T11:20:00.000Z', user: { id: 'u4', name: 'Dr. Anita Joshi' } },
+    ],
+  },
+  {
+    id: 'pack_sample_fintech',
+    authorId: 'usr_teacher_rostova',
+    sourceCourseId: null,
+    title: 'Fintech Rails & Digital Banking Architecture',
+    slug: 'fintech-rails-digital-banking-architecture',
+    summary: 'Case-study driven curriculum on UPI 2.0 protocols, ISO 20022 payment messaging, fraud risk scoring, and open banking APIs.',
+    description: 'Prepared in collaboration with banking fintech architects for business & economics students.',
+    thumbnailUrl: null,
+    category: 'Business & Economics',
+    level: 'INTERMEDIATE',
+    priceMinor: 199900,
+    currency: 'INR',
+    modulesCount: 3,
+    itemsCount: 6,
+    estimatedHours: 20.0,
+    ratingAvg: 4.9,
+    reviewsCount: 15,
+    downloadsCount: 184,
+    revenueSharePct: 80,
+    status: 'PUBLISHED',
+    createdAt: '2026-09-25T14:15:00.000Z',
+    author: {
+      id: 'usr_teacher_rostova',
+      name: 'Elena Rostova, CFA',
+      email: 'elena.rostova@riverside.edu',
+    },
+    modules: [
+      {
+        title: 'Module 1: Real-Time Payment Rails (UPI & FedNow)',
+        summary: 'Two-phase commit, settlement cycles, and webhook confirmation.',
+        position: 0,
+        items: [
+          { title: 'Instant Payments Overview', kind: 'PAGE', body: 'Evolution of instant settlement rails.', position: 0 },
+          { title: 'Payment Flow Sequence Simulator', kind: 'ASSIGNMENT', body: 'Trace order creation through bank gateway callbacks.', position: 1 },
+        ],
+      },
+      {
+        title: 'Module 2: Algorithmic Fraud Prevention',
+        summary: 'Velocity checking, device fingerprinting, and risk-based 3DS.',
+        position: 1,
+        items: [
+          { title: 'Fraud Vectors in Modern Fintech', kind: 'PAGE', body: 'Account takeover and synthetic identities.', position: 0 },
+          { title: 'Fraud Case Studies Analysis', kind: 'ASSIGNMENT', body: 'Analyze 3 real-world fraud vectors.', position: 1 },
+        ],
+      },
+      {
+        title: 'Module 3: Open Finance & Regulatory Sandboxes',
+        summary: 'Account aggregator networks and data minimization principles.',
+        position: 2,
+        items: [
+          { title: 'Data Governance in Open Banking', kind: 'PAGE', body: 'Consent managers and DPDP Act compliance.', position: 0 },
+          { title: 'Fintech Capstone Presentation Rubric', kind: 'ASSIGNMENT', body: 'Final project rubric and grading criteria.', position: 1 },
+        ],
+      },
+    ],
+    reviews: [
+      { id: 'rev_5', rating: 5, comment: 'The UPI flow breakdown is the best instructional material available anywhere.', createdAt: '2026-10-06T18:00:00.000Z', user: { id: 'u5', name: 'Prof. Ramesh Gupta' } },
+    ],
+  },
+  {
+    id: 'pack_sample_climate',
+    authorId: 'usr_teacher_lindqvist',
+    sourceCourseId: null,
+    title: 'Climate Resilience & Grid Decarbonization Policy',
+    slug: 'climate-resilience-grid-decarbonization-policy',
+    summary: 'Interdisciplinary course pack analyzing renewable energy integration, carbon accounting standards (GHG Protocol Scope 1-3), and climate mitigation.',
+    description: 'Empowers university classrooms with data-backed case studies on clean energy transitions.',
+    thumbnailUrl: null,
+    category: 'Natural Sciences',
+    level: 'ALL_LEVELS',
+    priceMinor: 0,
+    currency: 'INR',
+    modulesCount: 2,
+    itemsCount: 5,
+    estimatedHours: 12.0,
+    ratingAvg: 5.0,
+    reviewsCount: 31,
+    downloadsCount: 512,
+    revenueSharePct: 80,
+    status: 'PUBLISHED',
+    createdAt: '2026-09-08T09:00:00.000Z',
+    author: {
+      id: 'usr_teacher_lindqvist',
+      name: 'Dr. Soren Lindqvist',
+      email: 'soren.lindqvist@riverside.edu',
+    },
+    modules: [
+      {
+        title: 'Module 1: Carbon Accounting & Life-Cycle Assessment',
+        summary: 'GHG protocol standards, emission factor databases, and lifecycle scopes.',
+        position: 0,
+        items: [
+          { title: 'Carbon Accounting Primer', kind: 'PAGE', body: 'Scope 1, 2, and 3 measurement frameworks.', position: 0 },
+          { title: 'Campus Carbon Footprint Exercise', kind: 'ASSIGNMENT', body: 'Calculate university building energy emissions.', position: 1 },
+        ],
+      },
+      {
+        title: 'Module 2: Renewable Grid Integration & Storage',
+        summary: 'Duck curve mitigation, battery energy storage systems (BESS), and demand response.',
+        position: 1,
+        items: [
+          { title: 'Grid Modernization Notes', kind: 'PAGE', body: 'Intermittent renewables and frequency stability.', position: 0 },
+          { title: 'Grid Storage Policy Case Study', kind: 'PAGE', body: 'Global comparative study of capacity markets.', position: 1 },
+          { title: 'Policy Debates Quiz', kind: 'QUIZ', body: '10 questions on tariffs and renewable portfolio standards.', position: 2 },
+        ],
+      },
+    ],
+    reviews: [
+      { id: 'rev_6', rating: 5, comment: 'Outstanding balance of environmental science and public policy analysis.', createdAt: '2026-09-25T13:40:00.000Z', user: { id: 'u6', name: 'Dr. Catherine Bell' } },
+    ],
+  },
+];
+
 const GET: [RegExp, (c: Ctx) => Result][] = [
   // Multi-school SaaS branding and admin settings (Stage 5 · C2)
   [/^\/api\/org\/branding$/, () => ok({
@@ -467,6 +811,65 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     stripePublishableKey: "pk_test_sample_12345",
     hasStripeSecret: true,
   })],
+
+  // Content Marketplace & Course Packs (Stage 5 · C7)
+  [/^\/api\/marketplace\/packs\/([^/]+)\/reviews$/, ({ m }) => {
+    const pack = SAMPLE_MARKETPLACE_PACKS.find((p) => p.id === m[1] || p.slug === m[1]);
+    return ok(pack?.reviews || []);
+  }],
+  [/^\/api\/marketplace\/packs\/([^/]+)$/, ({ m }) => {
+    const pack = SAMPLE_MARKETPLACE_PACKS.find((p) => p.id === m[1] || p.slug === m[1]);
+    if (!pack) return fail('Pack not found', 404);
+    return ok(pack);
+  }],
+  [/^\/api\/marketplace\/packs$/, ({ q }) => {
+    let list = [...SAMPLE_MARKETPLACE_PACKS];
+    const search = q.get('q')?.toLowerCase()?.trim();
+    if (search) {
+      list = list.filter((p) =>
+        p.title.toLowerCase().includes(search) ||
+        p.summary.toLowerCase().includes(search) ||
+        p.category.toLowerCase().includes(search)
+      );
+    }
+    const cat = q.get('category');
+    if (cat && cat !== 'All') {
+      list = list.filter((p) => p.category === cat);
+    }
+    const lvl = q.get('level');
+    if (lvl && lvl !== 'ALL_LEVELS') {
+      list = list.filter((p) => p.level === lvl);
+    }
+    const price = q.get('priceFilter');
+    if (price === 'free') {
+      list = list.filter((p) => p.priceMinor === 0);
+    } else if (price === 'paid') {
+      list = list.filter((p) => p.priceMinor > 0);
+    }
+    const sort = q.get('sort');
+    if (sort === 'rating') {
+      list.sort((a, b) => b.ratingAvg - a.ratingAvg);
+    } else if (sort === 'recent') {
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sort === 'price_asc') {
+      list.sort((a, b) => a.priceMinor - b.priceMinor);
+    } else if (sort === 'price_desc') {
+      list.sort((a, b) => b.priceMinor - a.priceMinor);
+    } else {
+      list.sort((a, b) => b.downloadsCount - a.downloadsCount);
+    }
+    return ok({ packs: list, total: list.length });
+  }],
+  [/^\/api\/marketplace\/my-published$/, () => ok({
+    packs: [SAMPLE_MARKETPLACE_PACKS[0], SAMPLE_MARKETPLACE_PACKS[1]],
+    stats: {
+      totalPacks: 2,
+      totalDownloads: 942,
+      totalEarningsMinor: 38134400,
+      currency: 'INR',
+    },
+  })],
+
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -1003,6 +1406,80 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
       stripePublishableKey: body?.stripePublishableKey || "pk_test_sample",
     });
   }],
+
+  // Content Marketplace & Course Packs mutations (Stage 5 · C7)
+  ['POST', /^\/api\/marketplace\/packs\/([^/]+)\/import$/, ({ m, body }) => {
+    notice();
+    return ok({
+      success: true,
+      packId: m[1],
+      courseId: body?.targetCourseId || 'sample-course-1',
+      modulesImported: 3,
+      itemsImported: 7,
+    }, 201);
+  }],
+  ['POST', /^\/api\/marketplace\/packs\/([^/]+)\/reviews$/, ({ m, body }) => {
+    notice();
+    const pack = SAMPLE_MARKETPLACE_PACKS.find((p) => p.id === m[1] || p.slug === m[1]);
+    const rev = {
+      id: 'rev_sample_' + Date.now(),
+      rating: body?.rating || 5,
+      comment: body?.comment || null,
+      createdAt: new Date().toISOString(),
+      user: { id: 'usr_me', name: 'Dr. Jane Smith (You)' },
+    };
+    if (pack) {
+      pack.reviews.unshift(rev);
+      pack.reviewsCount++;
+    }
+    return ok(pack || rev);
+  }],
+  ['POST', /^\/api\/marketplace\/packs$/, ({ body }) => {
+    notice();
+    const newPack: SampleMarketplacePack = {
+      id: 'pack_sample_' + Date.now(),
+      authorId: 'usr_me',
+      sourceCourseId: body?.sourceCourseId || null,
+      title: body?.title || 'New Curriculum Pack',
+      slug: (body?.title || 'new-pack').toLowerCase().replace(/\s+/g, '-'),
+      summary: body?.summary || 'Curriculum pack published in sample mode.',
+      description: body?.description || null,
+      thumbnailUrl: null,
+      category: body?.category || 'Computer Science',
+      level: body?.level || 'ALL_LEVELS',
+      priceMinor: Number(body?.priceMinor) || 0,
+      currency: body?.currency || 'INR',
+      modulesCount: 2,
+      itemsCount: 4,
+      estimatedHours: Number(body?.estimatedHours) || 8,
+      ratingAvg: 5.0,
+      reviewsCount: 1,
+      downloadsCount: 0,
+      revenueSharePct: 80,
+      status: 'PUBLISHED',
+      createdAt: new Date().toISOString(),
+      author: {
+        id: 'usr_me',
+        name: 'Dr. Jane Smith (You)',
+        email: 'jane.smith@riverside.edu',
+      },
+      modules: [
+        {
+          title: 'Module 1: Foundations & Scope',
+          summary: 'Introduction and learning objectives.',
+          position: 0,
+          items: [
+            { title: 'Welcome & Overview', kind: 'PAGE', position: 0 },
+            { title: 'Foundational Video', kind: 'VIDEO', position: 1 },
+          ],
+        },
+      ],
+      reviews: [],
+    };
+    SAMPLE_MARKETPLACE_PACKS.unshift(newPack);
+    return ok(newPack, 201);
+  }],
+
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
