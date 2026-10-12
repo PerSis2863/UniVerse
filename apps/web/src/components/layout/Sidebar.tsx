@@ -98,7 +98,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/courses', label: 'nav.courses', also: ['/student/live', '/student/offline'] },
         { href: '/marketplace', label: 'Course Marketplace' },
         { href: '/student/groups', label: 'nav.groups' },
-        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor', '/student/reels'] },
+        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor', '/student/tutoring', '/student/reels'] },
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes', '/student/mastery'] },

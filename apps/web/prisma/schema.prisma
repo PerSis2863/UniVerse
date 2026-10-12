@@ -333,6 +333,12 @@ model User {
   createdImpactPools   ImpactSponsorPool[]        @relation("CreatedImpactPools")
   impactClaims         ImpactScholarshipClaim[]   @relation("StudentImpactClaims")
   approvedImpactClaims ImpactScholarshipClaim[]   @relation("ApprovedImpactClaims")
+  peerTimeBankAccount         PeerTimeBankAccount?
+  peerTimeCreditTransactions  PeerTimeCreditTransaction[]
+  peerTutorProfile            PeerTutorProfile?
+  peerTutorSlots              PeerTutorSlot[]
+  peerTutoringAsTutor         PeerTutoringSession[]        @relation("TutorSessions")
+  peerTutoringAsLearner       PeerTutoringSession[]        @relation("LearnerSessions")
 
   @@index([role])
   @@index([status])
@@ -398,6 +404,9 @@ model Organization {
   updatedAt            DateTime  @updatedAt
   impactCredits        ImpactCredit[]
   impactSponsorPools   ImpactSponsorPool[]
+  peerTimeBankAccounts PeerTimeBankAccount[]
+  peerTutorProfiles    PeerTutorProfile[]
+  peerTutoringSessions PeerTutoringSession[]
 
   @@map("organizations")
 }
@@ -501,6 +510,7 @@ model Course {
   marketplaceImports MarketplaceImport[]
   xapiStatements     XApiStatement[]
   microLessons       LectureMicroLesson[]
+  peerTutoringSessions PeerTutoringSession[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -2539,6 +2549,7 @@ model SkillEvidence {
   occurredAt     DateTime @default(now())
   hidden         Boolean  @default(false)
   createdAt      DateTime @default(now())
+  peerTutoringSessions PeerTutoringSession[]
 
   @@unique([userId, kind, sourceId, skill])
   @@index([userId, skill])
@@ -4935,4 +4946,123 @@ model ImpactScholarshipClaim {
   @@index([status])
   @@index([qrVerificationToken])
   @@map("impact_scholarship_claims")
+}
+
+
+model PeerTimeBankAccount {
+  id                         String                      @id @default(cuid())
+  userId                     String                      @unique
+  user                       User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId             String?
+  organization               Organization?               @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  balanceCredits             Int                         @default(3)
+  creditsEarned              Int                         @default(0)
+  creditsSpent               Int                         @default(0)
+  sessionsCompletedAsTutor   Int                         @default(0)
+  sessionsCompletedAsLearner Int                         @default(0)
+  totalMinutesTutored        Int                         @default(0)
+  averageRating              Float                       @default(0)
+  ratingsCount               Int                         @default(0)
+  transactions               PeerTimeCreditTransaction[]
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+
+  @@index([userId])
+  @@index([organizationId])
+  @@map("peer_time_bank_accounts")
+}
+
+model PeerTimeCreditTransaction {
+  id           String              @id @default(cuid())
+  accountId    String
+  account      PeerTimeBankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount       Int
+  balanceAfter Int
+  type         String              // INITIAL_GRANT, SESSION_EARNED, SESSION_SPENT, SESSION_REFUND, BADGE_BONUS
+  referenceId  String?
+  description  String
+  createdAt    DateTime            @default(now())
+
+  @@index([accountId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("peer_time_credit_transactions")
+}
+
+model PeerTutorProfile {
+  id             String        @id @default(cuid())
+  userId         String        @unique
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  headline       String?
+  bio            String?
+  isActive       Boolean       @default(true)
+  /// JSON array of { courseId, courseName, courseCode, conceptName, masteryLevel, band, verifiedByD1 }
+  subjects       String        @default("[]")
+  badgeIssued    Boolean       @default(false)
+  badgeIssuedAt  DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("peer_tutor_profiles")
+}
+
+model PeerTutorSlot {
+  id        String   @id @default(cuid())
+  tutorId   String
+  tutor     User     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  dayOfWeek Int?     // 0-6
+  startTime String   // "14:00"
+  endTime   String   // "14:20"
+  date      String?  // ISO date "2026-10-15"
+  isBooked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([tutorId])
+  @@index([isBooked])
+  @@index([date])
+  @@map("peer_tutor_slots")
+}
+
+model PeerTutoringSession {
+  id                  String         @id @default(cuid())
+  tutorId             String
+  tutor               User           @relation("TutorSessions", fields: [tutorId], references: [id], onDelete: Cascade)
+  learnerId           String
+  learner             User           @relation("LearnerSessions", fields: [learnerId], references: [id], onDelete: Cascade)
+  organizationId      String?
+  organization        Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  courseId            String?
+  course              Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  topic               String
+  conceptName         String?
+  scheduledAt         DateTime
+  durationMinutes     Int            @default(20)
+  status              String         @default("SCHEDULED") // SCHEDULED, ACTIVE, COMPLETED, CANCELLED, NO_SHOW
+  callRoomId          String
+  callDurationSeconds Int            @default(0)
+  callVerified        Boolean        @default(false)
+  learnerRating       Int?
+  learnerFeedback     String?
+  /// JSON array of feedback tags
+  feedbackTags        String         @default("[]")
+  tutorNotes          String?
+  creditTransacted    Boolean        @default(false)
+  evidenceId          String?
+  evidence            SkillEvidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  completedAt         DateTime?
+
+  @@index([tutorId])
+  @@index([learnerId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@index([callRoomId])
+  @@map("peer_tutoring_sessions")
 }
