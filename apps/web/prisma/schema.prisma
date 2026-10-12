@@ -243,6 +243,7 @@ model User {
   studentRecordLogs EducationalRecordLog[] @relation("StudentRecordLogs")
   actorRecordLogs   EducationalRecordLog[] @relation("ActorRecordLogs")
   privacyGrievances PrivacyGrievance[]
+  oneRosterSyncs    OneRosterSync[]
 
   // Feature 7: Proof of Work
   proofOfWork ProofOfWork[]
@@ -354,6 +355,8 @@ model Organization {
   ssoTenantId          String?
   ssoEnforced          Boolean   @default(false)
   dataRetentionDays    Int       @default(730)
+  oneRosterSyncs       OneRosterSync[]
+  oneRosterMappings    OneRosterMapping[]
   ownerId              String    @unique
   owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members              User[]    @relation("OrgMembers")
@@ -4514,3 +4517,41 @@ model PrivacyGrievance {
   @@index([userId])
   @@map("privacy_grievances")
 }
+
+// Stage 5 · C3: OneRoster 1.2 SIS Integration & Sync History
+model OneRosterSync {
+  id               String        @id @default(cuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  syncType         String        @default("CSV_BATCH") // "CSV_BATCH" | "REST_PULL"
+  status           String        @default("PENDING")   // "PENDING" | "SUCCESS" | "FAILED" | "PARTIAL"
+  summary          String        @default("")
+  coursesCount     Int           @default(0)
+  classesCount     Int           @default(0)
+  usersCount       Int           @default(0)
+  enrollmentsCount Int           @default(0)
+  errors           String?
+  actorId          String?
+  actor            User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("oneroster_syncs")
+}
+
+model OneRosterMapping {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entityType     String        // "ORG" | "ACADEMIC_SESSION" | "COURSE" | "CLASS" | "USER"
+  sourcedId      String
+  targetId       String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now()) @updatedAt
+
+  @@unique([organizationId, entityType, sourcedId])
+  @@index([targetId])
+  @@map("oneroster_mappings")
+}
+

@@ -195,6 +195,99 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       },
     },
   ])],
+  // OneRoster 1.2 SIS Integration (Stage 5 · C3)
+  [/^\/api\/admin\/oneroster\/history$/, () => ok([
+    {
+      id: "sample-sync-1",
+      syncType: "CSV_BATCH",
+      status: "SUCCESS",
+      summary: "OneRoster sync: 48 users, 12 classes, 84 memberships synchronized",
+      coursesCount: 12,
+      classesCount: 12,
+      usersCount: 48,
+      enrollmentsCount: 84,
+      createdAt: "2026-10-11T16:00:00.000Z",
+      actor: { name: "Dean Sarah Jenkins", email: "dean.jenkins@riverside.edu" },
+    },
+  ])],
+  [/^\/api\/oneroster\/v1p2\/orgs$/, () => ok({
+    orgs: [
+      {
+        sourcedId: "sample-org-1",
+        status: "active",
+        dateLastModified: new Date().toISOString(),
+        name: "Riverside University",
+        type: "school",
+        identifier: "riverside",
+      },
+    ],
+  })],
+  [/^\/api\/oneroster\/v1p2\/courses/, () => ok({
+    courses: [
+      {
+        sourcedId: "course-cs101",
+        status: "active",
+        dateLastModified: new Date().toISOString(),
+        title: "Introduction to Computer Science",
+        courseCode: "CS101",
+        grades: ["Higher Education"],
+        orgSourcedId: "sample-org-1",
+      },
+    ],
+  })],
+  [/^\/api\/oneroster\/v1p2\/classes/, () => ok({
+    classes: [
+      {
+        sourcedId: "class-cs101-a",
+        status: "active",
+        dateLastModified: new Date().toISOString(),
+        title: "CS101 - Section A",
+        classCode: "CS101-A",
+        classType: "scheduled",
+        courseSourcedId: "course-cs101",
+      },
+    ],
+  })],
+  [/^\/api\/oneroster\/v1p2\/users/, () => ok({
+    users: [
+      {
+        sourcedId: "sample-student-1",
+        status: "active",
+        dateLastModified: new Date().toISOString(),
+        enabledUser: true,
+        username: "demo@student.com",
+        givenName: "Alex",
+        familyName: "Chen",
+        role: "student",
+        email: "demo@student.com",
+      },
+      {
+        sourcedId: "sample-teacher-1",
+        status: "active",
+        dateLastModified: new Date().toISOString(),
+        enabledUser: true,
+        username: "demo@teacher.com",
+        givenName: "Dr. Evelyn",
+        familyName: "Miller",
+        role: "teacher",
+        email: "demo@teacher.com",
+      },
+    ],
+  })],
+  [/^\/api\/oneroster\/v1p2\/enrollments/, () => ok({
+    enrollments: [
+      {
+        sourcedId: "sample-enr-1",
+        status: "active",
+        dateLastModified: new Date().toISOString(),
+        classSourcedId: "class-cs101-a",
+        schoolSourcedId: "sample-org-1",
+        userSourcedId: "sample-student-1",
+        role: "student",
+        primary: true,
+      },
+    ],
+  })],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -603,6 +696,31 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ["PATCH", /^\/api\/admin\/settings$/, ({ body }) => ok({ ok: true, organization: body })],
   ["PATCH", /^\/api\/admin\/sso$/, ({ body }) => ok({ ok: true, ...body })],
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],
+  ['POST', /^\/api\/admin\/oneroster\/preview$/, () => ok({
+    valid: true,
+    summary: "OneRoster preview: 48 new users, 12 new classes, 84 memberships.",
+    counts: {
+      usersTotal: 48,
+      usersToCreate: 48,
+      usersExisting: 0,
+      coursesTotal: 12,
+      coursesToCreate: 12,
+      coursesExisting: 0,
+      enrollmentsTotal: 84,
+      enrollmentsToCreate: 84,
+      enrollmentsExisting: 0,
+    },
+    warnings: [],
+    items: [],
+  })],
+  ['POST', /^\/api\/admin\/oneroster\/sync$/, () => {
+    notice();
+    return ok({
+      status: "SUCCESS",
+      summary: "OneRoster sync executed: 48 users provisioned, 12 classes mapped.",
+      counts: { users: 48, classes: 12, enrollments: 84 },
+    });
+  }],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
