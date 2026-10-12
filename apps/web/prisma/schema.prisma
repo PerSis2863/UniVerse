@@ -342,6 +342,12 @@ model Organization {
   tagline              String?
   trialEndsAt          DateTime?
   seats                Int       @default(50)
+  // Stage 5 · C3: Enterprise SSO & University Logins
+  ssoEnabled           Boolean   @default(false)
+  ssoProvider          String?
+  ssoDomain            String?
+  ssoTenantId          String?
+  ssoEnforced          Boolean   @default(false)
   ownerId              String    @unique
   owner                User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members              User[]    @relation("OrgMembers")

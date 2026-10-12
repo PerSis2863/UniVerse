@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Copy, ExternalLink, Globe2, Loader2, Palette, Save, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Copy, ExternalLink, Globe2, Key, Loader2, Palette, Save, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "@/components/ui/Link";
 import { authedJson } from "@/lib/authed-fetch";
 
@@ -33,6 +33,14 @@ type Settings = {
     pendingApplications: number;
     suspendedAccounts: number;
   };
+};
+
+type SsoSettings = {
+  ssoEnabled: boolean;
+  ssoProvider: "MICROSOFT" | "GOOGLE" | "SAML" | null;
+  ssoDomain: string | null;
+  ssoTenantId: string | null;
+  ssoEnforced: boolean;
 };
 
 const PRESET_COLORS = [
@@ -72,6 +80,47 @@ export function OrganizationSettings() {
   }>({});
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // ── SSO Settings State (Stage 5 · C3) ──
+  const { data: ssoData, mutate: mutateSso } = useSWR<SsoSettings>("/api/admin/sso", authedJson);
+  const [ssoDraft, setSsoDraft] = useState<{
+    ssoEnabled?: boolean;
+    ssoProvider?: "MICROSOFT" | "GOOGLE" | "SAML" | null;
+    ssoDomain?: string;
+    ssoTenantId?: string;
+    ssoEnforced?: boolean;
+  }>({});
+  const [savingSso, setSavingSso] = useState(false);
+
+  const ssoEnabled = ssoDraft.ssoEnabled ?? ssoData?.ssoEnabled ?? false;
+  const ssoProvider = ssoDraft.ssoProvider ?? ssoData?.ssoProvider ?? "MICROSOFT";
+  const ssoDomain = ssoDraft.ssoDomain ?? ssoData?.ssoDomain ?? "";
+  const ssoTenantId = ssoDraft.ssoTenantId ?? ssoData?.ssoTenantId ?? "";
+  const ssoEnforced = ssoDraft.ssoEnforced ?? ssoData?.ssoEnforced ?? false;
+
+  const saveSso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSso(true);
+    try {
+      await authedJson("/api/admin/sso", {
+        method: "PATCH",
+        body: JSON.stringify({
+          ssoEnabled,
+          ssoProvider,
+          ssoDomain: ssoDomain.trim() || null,
+          ssoTenantId: ssoTenantId.trim() || null,
+          ssoEnforced,
+        }),
+      });
+      await mutateSso();
+      setSsoDraft({});
+      toast.success("Enterprise SSO settings saved!");
+    } catch (err) {
+      toast.error((err as Error).message || "Could not save SSO settings");
+    } finally {
+      setSavingSso(false);
+    }
+  };
 
   const name = draft.name ?? org?.name ?? "";
   const slug = draft.slug ?? org?.slug ?? "";
@@ -310,6 +359,142 @@ export function OrganizationSettings() {
         <div className="flex justify-end">
           <button type="submit" disabled={saving || !name.trim()} className="btn-primary">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save School Branding
+          </button>
+        </div>
+      </form>
+
+      {/* ── Enterprise SSO Form (Stage 5 · C3) ── */}
+      <form onSubmit={saveSso} className="p-6 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl shadow-xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
+              <Key className="w-5 h-5 text-indigo-500" /> Enterprise Single Sign-On (SSO)
+            </h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Allow students and faculty to authenticate directly through your school&apos;s existing identity provider.
+            </p>
+          </div>
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+            ssoEnabled
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+              : "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500"
+          }`}>
+            {ssoEnabled ? `Active · ${ssoProvider === "MICROSOFT" ? "Microsoft Entra ID" : ssoProvider === "GOOGLE" ? "Google Workspace" : "University SAML"}` : "Disabled"}
+          </span>
+        </div>
+
+        {/* Enable / Disable Toggle */}
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800">
+          <div>
+            <p className="font-semibold text-sm text-zinc-900 dark:text-white">Enable Institutional SSO</p>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              When enabled, users with matching institutional emails or visiting your subdomain can log in with one click.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={ssoEnabled}
+            onClick={() => setSsoDraft((d) => ({ ...d, ssoEnabled: !ssoEnabled }))}
+            className={`w-12 h-7 flex items-center rounded-full p-1 transition-colors ${
+              ssoEnabled ? "bg-indigo-600" : "bg-zinc-300 dark:bg-zinc-700"
+            }`}
+          >
+            <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${
+              ssoEnabled ? "translate-x-5" : "translate-x-0"
+            }`} />
+          </button>
+        </div>
+
+        {ssoEnabled && (
+          <div className="space-y-4 pt-2">
+            {/* Identity Provider Selector */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+                Identity Provider
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { id: "MICROSOFT", name: "Microsoft Entra ID", desc: "Office 365 / Azure AD" },
+                  { id: "GOOGLE", name: "Google Workspace", desc: "Google Classroom / Google EDU" },
+                  { id: "SAML", name: "University SAML 2.0", desc: "Shibboleth / Okta / Custom IdP" },
+                ].map((p) => {
+                  const isSel = ssoProvider === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setSsoDraft((d) => ({ ...d, ssoProvider: p.id as "MICROSOFT" | "GOOGLE" | "SAML" }))}
+                      className={`p-3.5 rounded-2xl border text-left transition-all ${
+                        isSel
+                          ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-200 shadow-sm"
+                          : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
+                      }`}
+                    >
+                      <p className="font-bold text-sm">{p.name}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">{p.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Allowed Domains */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">
+                Allowed School Email Domains
+              </label>
+              <input
+                type="text"
+                value={ssoDomain}
+                onChange={(e) => setSsoDraft((d) => ({ ...d, ssoDomain: e.target.value }))}
+                placeholder="riverside.edu, students.riverside.edu"
+                className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:outline-none"
+              />
+              <p className="text-[11px] text-zinc-500 mt-1">
+                Comma-separated email domains. Users with these email addresses will be recognized for institutional sign-in.
+              </p>
+            </div>
+
+            {/* Tenant ID / Entity ID */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1.5">
+                {ssoProvider === "MICROSOFT" ? "Microsoft Directory (Tenant) ID" : ssoProvider === "SAML" ? "SAML Entity ID / Provider URI" : "OAuth Client / Domain ID"}
+              </label>
+              <input
+                type="text"
+                value={ssoTenantId}
+                onChange={(e) => setSsoDraft((d) => ({ ...d, ssoTenantId: e.target.value }))}
+                placeholder={ssoProvider === "MICROSOFT" ? "common, organizations, or Azure Directory ID" : "https://idp.school.edu/saml2"}
+                className="w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:outline-none"
+              />
+              <p className="text-[11px] text-zinc-500 mt-1">
+                For Microsoft 365 multi-tenant apps, leave as &quot;common&quot; or enter your organization&apos;s specific Azure Tenant ID.
+              </p>
+            </div>
+
+            {/* Enforce SSO Checkbox */}
+            <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={ssoEnforced}
+                onChange={(e) => setSsoDraft((d) => ({ ...d, ssoEnforced: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-indigo-600 rounded"
+              />
+              <div>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Enforce SSO for matching domains</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  When checked, students and faculty cannot sign up with arbitrary passwords using school email addresses.
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* Save SSO button */}
+        <div className="flex justify-end pt-2">
+          <button type="submit" disabled={savingSso} className="btn-primary">
+            {savingSso ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save SSO Configuration
           </button>
         </div>
       </form>

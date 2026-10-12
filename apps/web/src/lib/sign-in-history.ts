@@ -1,7 +1,7 @@
 import { api } from './api';
 
 /** Tells the server about a sign-in / sign-up / app open, for the person's sign-in history. Never throws. */
-export function reportSession(kind: 'SIGN_IN' | 'SIGN_UP' | 'SESSION', method?: 'google' | 'password' | 'phone' | 'apple' | 'demo') {
+export function reportSession(kind: 'SIGN_IN' | 'SIGN_UP' | 'SESSION', method?: 'google' | 'password' | 'phone' | 'apple' | 'demo' | 'microsoft' | 'sso') {
   try {
     if (kind === 'SESSION') {
       if (sessionStorage.getItem('universe-session-reported')) return;

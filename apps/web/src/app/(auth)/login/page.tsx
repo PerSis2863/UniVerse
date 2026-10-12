@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff, Building2, ArrowRight } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
 import { auth, warmUpPopupSignIn } from '@/lib/firebase';
@@ -34,7 +34,7 @@ export default function LoginPage() {
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null); // password account whose email isn't confirmed yet
   // Admin or owner account that still has to type the emailed sign-in code: how it signed in.
-  const [twoStep, setTwoStep] = useState<{ token: string; method?: 'google' | 'password' | 'phone' | 'apple' } | null>(null);
+  const [twoStep, setTwoStep] = useState<{ token: string; method?: 'google' | 'password' | 'phone' | 'apple' | 'microsoft' | 'sso' } | null>(null);
 
   // Ready the Google/Apple window now, so a tap opens it straight away (not blocked).
   useEffect(() => { warmUpPopupSignIn(); }, []);
@@ -48,7 +48,7 @@ export default function LoginPage() {
     });
   }, []);
 
-  const handleLoginSuccess = async (token: string, method?: 'google' | 'password' | 'phone' | 'apple') => {
+  const handleLoginSuccess = async (token: string, method?: 'google' | 'password' | 'phone' | 'apple' | 'microsoft' | 'sso') => {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
@@ -164,6 +164,79 @@ export default function LoginPage() {
     }
   };
 
+  const handleMicrosoftLogin = async (tenantId?: string | null) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const provider = new OAuthProvider('microsoft.com');
+      provider.setCustomParameters({
+        prompt: 'select_account',
+        ...(tenantId ? { tenant: tenantId } : {}),
+      });
+      const userCredential = await signInWithPopup(auth, provider);
+      const token = await userCredential.user.getIdToken();
+      await handleLoginSuccess(token, 'microsoft');
+    } catch (err) {
+      console.error(err);
+      setError(authErrorMessage(err, 'Failed to sign in with Microsoft.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const [ssoSchool, setSsoSchool] = useState<{
+    hasSso: boolean;
+    provider?: string;
+    providerName?: string;
+    schoolName?: string;
+    tenantId?: string | null;
+    enforced?: boolean;
+  } | null>(null);
+  const [showSsoInput, setShowSsoInput] = useState(false);
+  const [ssoEmail, setSsoEmail] = useState('');
+  const [ssoSearching, setSsoSearching] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const host = window.location.host;
+    fetch(`/api/auth/sso/lookup?host=${encodeURIComponent(host)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.hasSso) setSsoSchool(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSsoLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ssoEmail.trim() || !ssoEmail.includes('@')) {
+      setError('Please enter your institutional email (e.g. name@riverside.edu).');
+      return;
+    }
+    setSsoSearching(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/auth/sso/lookup?email=${encodeURIComponent(ssoEmail.trim())}`);
+      const data = await res.json();
+      if (!data.hasSso) {
+        setError(`No single sign-on configuration found for @${ssoEmail.split('@')[1]}. Please sign in using email & password or Google/Microsoft.`);
+      } else if (data.provider === 'MICROSOFT') {
+        await handleMicrosoftLogin(data.tenantId);
+      } else if (data.provider === 'GOOGLE') {
+        await handleGoogleLogin();
+      } else if (data.provider === 'SAML') {
+        const samlProvider = new OAuthProvider(data.tenantId || 'saml.school');
+        const userCredential = await signInWithPopup(auth, samlProvider);
+        const token = await userCredential.user.getIdToken();
+        await handleLoginSuccess(token, 'sso');
+      }
+    } catch (err) {
+      setError(authErrorMessage(err, 'Failed to initiate institutional SSO.'));
+    } finally {
+      setSsoSearching(false);
+    }
+  };
+
   return (
     <>
       <div className="w-full">
@@ -208,15 +281,37 @@ export default function LoginPage() {
             />
           ) : (
             <>
-              {/* Social buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              {/* Institutional Subdomain SSO Prompt */}
+              {ssoSchool?.hasSso && (
+                <div className="mb-5 p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/30">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Building2 className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">School Portal</span>
+                  </div>
+                  <p className="text-xs text-zinc-300 mb-3">Sign in with your verified <span className="font-bold text-white">{ssoSchool.schoolName}</span> credentials.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (ssoSchool.provider === 'MICROSOFT') void handleMicrosoftLogin(ssoSchool.tenantId);
+                      else if (ssoSchool.provider === 'GOOGLE') void handleGoogleLogin();
+                    }}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                  >
+                    Continue with {ssoSchool.schoolName} SSO
+                  </button>
+                </div>
+              )}
+
+              {/* Social buttons: Google, Microsoft, Apple */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                     <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                     <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -227,29 +322,87 @@ export default function LoginPage() {
 
                 <button
                   type="button"
+                  onClick={() => handleMicrosoftLogin()}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 23 23">
+                    <path fill="#f35325" d="M1 1h10v10H1z"/>
+                    <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                    <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                    <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                  </svg>
+                  Microsoft
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleAppleLogin}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.19 2.31-.88 3.5-.84 1.5.05 2.78.8 3.59 2.07-3.07 1.65-2.49 5.56.76 6.92-.72 1.6-1.58 3.19-2.93 4.02zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
                   </svg>
                   Apple
                 </button>
               </div>
 
-              <button
-                type="button"
-                onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
-                onClick={() => setShowPhoneFlow(true)}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50 mb-6"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                Continue with Phone
-              </button>
+              {/* School SSO and Phone Actions */}
+              <div className="grid grid-cols-2 gap-2.5 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setShowSsoInput(!showSsoInput)}
+                  className={`flex items-center justify-center gap-1.5 border rounded-xl py-2 px-3 text-xs font-semibold transition-colors ${
+                    showSsoInput ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300' : 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  School SSO
+                </button>
+                <button
+                  type="button"
+                  onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
+                  onClick={() => setShowPhoneFlow(true)}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-1.5 border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 rounded-xl py-2 px-3 text-xs font-semibold transition-colors disabled:opacity-50"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                  Use Phone
+                </button>
+              </div>
+
+              {/* School SSO Email Input Drawer */}
+              {showSsoInput && (
+                <form onSubmit={handleSsoLookup} className="mb-6 p-4 rounded-xl bg-zinc-900/80 border border-indigo-500/30">
+                  <label className="block text-xs font-medium text-zinc-300 mb-2">
+                    Institutional Email (Single Sign-On)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={ssoEmail}
+                      onChange={(e) => setSsoEmail(e.target.value)}
+                      placeholder="student@school.edu"
+                      className="flex-1 bg-zinc-950 border border-zinc-800 text-white placeholder:text-zinc-600 rounded-lg px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      disabled={ssoSearching || !ssoEmail.trim()}
+                      className="btn-primary px-3 py-2 text-xs font-semibold flex items-center gap-1 shrink-0"
+                    >
+                      {ssoSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                      Continue
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-2">
+                    Enter your campus or district email address to authenticate with your institution’s Entra ID, Google Workspace, or SAML portal.
+                  </p>
+                </form>
+              )}
 
               <div className="flex items-center gap-4 mb-6">
                 <div className="flex-1 h-px bg-zinc-800"></div>

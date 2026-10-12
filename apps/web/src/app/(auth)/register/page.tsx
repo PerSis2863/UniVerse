@@ -7,7 +7,7 @@ import { Sparkles, Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationC
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
 import { auth, warmUpPopupSignIn } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { awaitingApproval } from '@/types';
 import { reportSession } from '@/lib/sign-in-history';
@@ -121,7 +121,7 @@ export default function RegisterPage() {
     }
   };
 
-  const handleRegisterSuccess = async (token: string, displayName: string, method?: 'google' | 'password' | 'phone') => {
+  const handleRegisterSuccess = async (token: string, displayName: string, method?: 'google' | 'password' | 'phone' | 'microsoft') => {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
@@ -173,6 +173,23 @@ export default function RegisterPage() {
       await handleRegisterSuccess(token, userCredential.user.displayName || '', 'google');
     } catch (err) {
       setError(authErrorMessage(err, 'Failed to sign up with Google.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMicrosoftRegister = async () => {
+    if (needAgreement()) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const provider = new OAuthProvider('microsoft.com');
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const userCredential = await signInWithPopup(auth, provider);
+      const token = await userCredential.user.getIdToken();
+      await handleRegisterSuccess(token, userCredential.user.displayName || '', 'microsoft');
+    } catch (err) {
+      setError(authErrorMessage(err, 'Failed to sign up with Microsoft.'));
     } finally {
       setIsLoading(false);
     }
@@ -326,12 +343,12 @@ export default function RegisterPage() {
                 )}
 
 
-                <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
                   <button
                     type="button"
                     onClick={handleGoogleRegister}
                     disabled={isLoading}
-                    className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -343,10 +360,24 @@ export default function RegisterPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={handleMicrosoftRegister}
+                    disabled={isLoading}
+                    className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 23 23">
+                      <path fill="#f35325" d="M1 1h10v10H1z"/>
+                      <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                      <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                      <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                    </svg>
+                    Microsoft
+                  </button>
+                  <button
+                    type="button"
                     onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
                     onClick={() => { if (!needAgreement()) setShowPhoneFlow(true); }}
                     disabled={isLoading}
-                    className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />

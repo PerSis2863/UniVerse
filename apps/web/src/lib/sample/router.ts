@@ -136,6 +136,22 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       suspendedAccounts: 0,
     },
   })],
+  // Enterprise SSO (Stage 5 · C3)
+  [/^\/api\/auth\/sso\/lookup/, () => ok({
+    hasSso: true,
+    provider: "MICROSOFT",
+    providerName: "Microsoft Entra ID (Office 365)",
+    schoolName: "Riverside University",
+    tenantId: "sample-entra-tenant",
+    enforced: false,
+  })],
+  [/^\/api\/admin\/sso$/, () => ok({
+    ssoEnabled: true,
+    ssoProvider: "MICROSOFT",
+    ssoDomain: "riverside.edu, students.riverside.edu",
+    ssoTenantId: "sample-entra-tenant",
+    ssoEnforced: false,
+  })],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -542,6 +558,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ["PATCH", /^\/api\/admin\/settings$/, ({ body }) => ok({ ok: true, organization: body })],
+  ["PATCH", /^\/api\/admin\/sso$/, ({ body }) => ok({ ok: true, ...body })],
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],
