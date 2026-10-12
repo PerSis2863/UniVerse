@@ -870,6 +870,153 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     },
   })],
 
+  // Learning Analytics Warehouse & xAPI (Stage 5 · C8)
+  [/^\/api\/analytics\/warehouse\/terms$/, () => ok({
+    organizationId: "sample-org-1",
+    totalWarehouseStatements: 24800,
+    terms: [
+      {
+        term: 'Fall 2026',
+        period: 'Aug 2026 – Dec 2026',
+        activeStudents: 1420,
+        averageGpa: 3.52,
+        retentionRatePct: 96.4,
+        averageMasteryPct: 88.2,
+        learningHoursTotal: 28400,
+        courseCompletionRatePct: 94.1,
+      },
+      {
+        term: 'Spring 2026',
+        period: 'Jan 2026 – May 2026',
+        activeStudents: 1380,
+        averageGpa: 3.41,
+        retentionRatePct: 94.8,
+        averageMasteryPct: 85.0,
+        learningHoursTotal: 25100,
+        courseCompletionRatePct: 91.5,
+      },
+      {
+        term: 'Fall 2025',
+        period: 'Aug 2025 – Dec 2025',
+        activeStudents: 1250,
+        averageGpa: 3.34,
+        retentionRatePct: 93.2,
+        averageMasteryPct: 81.6,
+        learningHoursTotal: 22000,
+        courseCompletionRatePct: 89.0,
+      },
+    ],
+    verbDistribution: {
+      completed: 4120,
+      attempted: 6850,
+      passed: 3940,
+      interacted: 11200,
+      mastered: 2840,
+    },
+  })],
+  [/^\/api\/analytics\/warehouse\/export$/, () => ok([
+    {
+      id: "exp-sample-1",
+      periodStart: "2026-08-01T00:00:00.000Z",
+      periodEnd: "2026-10-12T00:00:00.000Z",
+      format: "CSV",
+      anonymized: true,
+      status: "GENERATED",
+      recordCount: 2480,
+      fileSizeBytes: 248900,
+      sha256Hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      createdAt: "2026-10-10T14:30:00.000Z",
+      generatedBy: { id: "usr_admin", name: "School Administrator", email: "admin@riverside.edu" },
+    },
+  ])],
+  [/^\/api\/analytics\/warehouse\/research$/, () => ok([
+    {
+      id: "res-sample-1",
+      title: "Cognitive Load and Multi-Modal Learning Pacing",
+      institution: "MIT Media Lab & Harvard EdTech",
+      purpose: "Evaluating correlation between interactive problem durations and concept mastery retention across diverse undergraduate cohorts.",
+      datasetScope: "LEARNING_OUTCOMES",
+      anonymized: true,
+      status: "APPROVED",
+      accessToken: "uv_research_mit_medialab_947192",
+      expiresAt: "2027-01-10T00:00:00.000Z",
+      createdAt: "2026-10-05T09:30:00.000Z",
+      requestedBy: { id: "usr_prof_thorne", name: "Prof. Alan Thorne", email: "alan.thorne@riverside.edu" },
+    },
+  ])],
+  [/^\/api\/analytics\/xapi/, ({ q }) => {
+    const verb = q.get('verb')?.toLowerCase();
+    const all = [
+      {
+        id: "xapi-stmt-1",
+        actorId: "syn_usr_a14f92c019ba",
+        actorType: "USER",
+        verb: "completed",
+        objectType: "assignment",
+        objectId: "asgn_raft_lab",
+        objectName: "Distributed Systems Raft Lab",
+        resultScore: 98,
+        resultSuccess: true,
+        resultCompletion: true,
+        durationSeconds: 1450,
+        contextCourseId: "course_cs101",
+        contextCourse: { id: "course_cs101", code: "CS101", name: "Computer Science Foundations" },
+        timestamp: "2026-10-12T18:45:00.000Z",
+      },
+      {
+        id: "xapi-stmt-2",
+        actorId: "syn_usr_c38d10b74102",
+        actorType: "USER",
+        verb: "attempted",
+        objectType: "quiz",
+        objectId: "quiz_graph_flow",
+        objectName: "Graph Flow Concept Check",
+        resultScore: 85,
+        resultSuccess: true,
+        resultCompletion: true,
+        durationSeconds: 620,
+        contextCourseId: "course_cs101",
+        contextCourse: { id: "course_cs101", code: "CS101", name: "Computer Science Foundations" },
+        timestamp: "2026-10-12T18:40:00.000Z",
+      },
+      {
+        id: "xapi-stmt-3",
+        actorId: "syn_usr_99e120da331f",
+        actorType: "USER",
+        verb: "mastered",
+        objectType: "concept",
+        objectId: "concept_eigenvalues",
+        objectName: "Spectral Decomposition Mastery",
+        resultScore: 100,
+        resultSuccess: true,
+        resultCompletion: true,
+        durationSeconds: 310,
+        contextCourseId: "course_math201",
+        contextCourse: { id: "course_math201", code: "MATH201", name: "Linear Algebra & Applications" },
+        timestamp: "2026-10-12T18:32:00.000Z",
+      },
+      {
+        id: "xapi-stmt-4",
+        actorId: "syn_usr_72ba81401f89",
+        actorType: "USER",
+        verb: "interacted",
+        objectType: "call",
+        objectId: "call_whisper_ta",
+        objectName: "Whisper TA Concept Clarification",
+        resultScore: null,
+        resultSuccess: true,
+        resultCompletion: false,
+        durationSeconds: 45,
+        contextCourseId: "course_cs101",
+        contextCourse: { id: "course_cs101", code: "CS101", name: "Computer Science Foundations" },
+        timestamp: "2026-10-12T18:25:00.000Z",
+      },
+    ];
+    const filtered = verb ? all.filter((s) => s.verb === verb) : all;
+    return ok({ statements: filtered, total: filtered.length });
+  }],
+
+
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -1479,6 +1626,69 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     SAMPLE_MARKETPLACE_PACKS.unshift(newPack);
     return ok(newPack, 201);
   }],
+
+  // Learning Analytics Warehouse mutations (Stage 5 · C8)
+  ['POST', /^\/api\/analytics\/warehouse\/export$/, ({ body }) => {
+    notice();
+    const fmt = body?.format === 'JSON' ? 'JSON' : 'CSV';
+    const fakeContent = fmt === 'CSV'
+      ? 'statement_id,actor_id,verb,object_type,object_id,object_name,score,success,completed,duration_sec,course_id,timestamp\nstmt_1,syn_usr_9a4f21b8c9d0,completed,assignment,asgn_101,"Distributed Systems Raft Lab",98,1,1,1450,course-cs101,2026-10-12T10:00:00.000Z'
+      : JSON.stringify([{ id: 'stmt_1', actorId: 'syn_usr_9a4f21b8c9d0', verb: 'completed' }]);
+    return ok({
+      exportRecord: {
+        id: 'exp-sample-' + Date.now(),
+        periodStart: body?.periodStart || '2026-08-01T00:00:00.000Z',
+        periodEnd: body?.periodEnd || '2026-10-12T00:00:00.000Z',
+        format: fmt,
+        anonymized: body?.anonymized !== false,
+        status: 'GENERATED',
+        recordCount: 1,
+        fileSizeBytes: 215,
+        sha256Hash: 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0',
+        createdAt: new Date().toISOString(),
+      },
+      fileContent: fakeContent,
+      recordCount: 1,
+      sha256Hash: 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0',
+    }, 201);
+  }],
+  ['POST', /^\/api\/analytics\/warehouse\/research$/, ({ body }) => {
+    notice();
+    return ok({
+      id: 'res-sample-' + Date.now(),
+      title: body?.title || 'Academic Research Proposal',
+      institution: body?.institution || 'Research Institute',
+      purpose: body?.purpose || 'Methodology evaluation.',
+      datasetScope: body?.datasetScope || 'LEARNING_OUTCOMES',
+      anonymized: body?.anonymized !== false,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+    }, 201);
+  }],
+  ['POST', /^\/api\/analytics\/warehouse\/research\/([^/]+)\/review$/, ({ body }) => {
+    notice();
+    const st = body?.status === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+    return ok({
+      id: 'res-sample-reviewed',
+      status: st,
+      accessToken: st === 'APPROVED' ? 'uv_research_sample_token_' + Math.random().toString(36).slice(2) : null,
+      expiresAt: st === 'APPROVED' ? new Date(Date.now() + 90 * 86400 * 1000).toISOString() : null,
+    });
+  }],
+  ['POST', /^\/api\/analytics\/xapi$/, ({ body }) => {
+    return ok({
+      id: 'xapi-stmt-' + Date.now(),
+      actorId: 'syn_usr_me',
+      verb: body?.verb || 'completed',
+      objectType: body?.objectType || 'lesson',
+      objectId: body?.objectId || 'obj_1',
+      objectName: body?.objectName || null,
+      resultScore: body?.resultScore || null,
+      durationSeconds: body?.durationSeconds || null,
+      timestamp: new Date().toISOString(),
+    }, 201);
+  }],
+
 
   ['POST', /^\/api\/courses\/([^/]+)\/skills$/, () => ok({ skills: ['Operating systems', 'Concurrency', 'C programming', 'Debugging', 'Technical writing'], aiLeft: null })],
   ['POST', /^\/api\/class-sessions\/([^/]+)\/flashcards$/, () => { notice(); return ok({ added: 4, already: 0 }); }],

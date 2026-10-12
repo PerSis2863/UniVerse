@@ -299,6 +299,9 @@ model User {
   marketplacePacksAuthored MarketplacePack[] @relation("MarketplacePacksAuthored")
   marketplaceReviews       MarketplaceReview[]
   marketplaceImports       MarketplaceImport[]
+  analyticsExports         AnalyticsExport[]
+  researchRequestsMade     ResearchDataRequest[] @relation("ResearcherRequests")
+  researchRequestsApproved ResearchDataRequest[] @relation("ApproverRequests")
   importBatches        ImportBatch[]       @relation("ImportBatches")
   admissionRounds      AdmissionRound[]    @relation("AdmissionRounds")
   admissionReviews     AdmissionReview[]   @relation("AdmissionReviews")
@@ -365,6 +368,9 @@ model Organization {
   webhookEndpoints     WebhookEndpoint[]
   // Stage 5 · C6: Unified Payments Provider (Razorpay UPI + Stripe)
   paymentProvider      String    @default("AUTO")
+  xapiStatements       XApiStatement[]
+  analyticsExports     AnalyticsExport[]
+  researchRequests     ResearchDataRequest[]
   razorpayKeyId        String?
   razorpayKeySecret    String?
   razorpayWebhookSecret String?
@@ -487,6 +493,7 @@ model Course {
   whisperQuestions  WhisperQuestion[]
   marketplacePacks   MarketplacePack[]
   marketplaceImports MarketplaceImport[]
+  xapiStatements     XApiStatement[]
   @@index([teacherId])
   @@index([status])
   @@map("courses")
@@ -4739,4 +4746,85 @@ model MarketplaceImport {
   @@index([targetCourseId])
   @@index([userId])
   @@map("marketplace_imports")
+}
+
+
+/// Learning event xAPI statement (Stage 5 · C8: Learning Analytics Warehouse).
+model XApiStatement {
+  id               String        @id @default(cuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actorId          String
+  actorType        String        @default("USER")
+  verb             String
+  objectType       String
+  objectId         String
+  objectName       String?
+  resultScore      Float?
+  resultSuccess    Boolean?
+  resultCompletion Boolean?
+  durationSeconds  Float?
+  contextCourseId  String?
+  contextCourse    Course?       @relation(fields: [contextCourseId], references: [id], onDelete: SetNull)
+  contextSessionId String?
+  rawPayload       String?
+  timestamp        DateTime      @default(now())
+  storedAt         DateTime      @default(now())
+
+  @@index([organizationId])
+  @@index([actorId])
+  @@index([verb])
+  @@index([objectType, objectId])
+  @@index([contextCourseId])
+  @@index([timestamp])
+  @@map("xapi_statements")
+}
+
+/// Anonymized learning analytics warehouse export bundle (Stage 5 · C8).
+model AnalyticsExport {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  generatedById  String
+  generatedBy    User         @relation(fields: [generatedById], references: [id], onDelete: Cascade)
+  periodStart    DateTime
+  periodEnd      DateTime
+  format         String       @default("CSV")
+  anonymized     Boolean      @default(true)
+  status         String       @default("GENERATED")
+  recordCount    Int          @default(0)
+  fileUrl        String?
+  fileSizeBytes  Int          @default(0)
+  sha256Hash     String?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("analytics_exports")
+}
+
+/// Governed academic research data request (Stage 5 · C8).
+model ResearchDataRequest {
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedById   String
+  requestedBy     User          @relation("ResearcherRequests", fields: [requestedById], references: [id], onDelete: Cascade)
+  title           String
+  institution     String
+  purpose         String
+  datasetScope    String        @default("LEARNING_OUTCOMES")
+  anonymized      Boolean       @default(true)
+  status          String        @default("PENDING")
+  approvedById    String?
+  approvedBy      User?         @relation("ApproverRequests", fields: [approvedById], references: [id], onDelete: SetNull)
+  rejectionReason String?
+  expiresAt       DateTime?
+  accessToken     String?       @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("research_data_requests")
 }

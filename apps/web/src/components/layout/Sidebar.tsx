@@ -212,7 +212,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/integrations/lti', label: 'LMS integration' },
       ]
     },
-    { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/analytics', '/admin/reports', '/admin/impact-metrics'] },
+    { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/analytics', '/admin/reports', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     {
       label: 'nav.campus_monitoring', icon: Shield,
       subItems: [

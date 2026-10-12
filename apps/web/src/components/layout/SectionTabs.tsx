@@ -142,6 +142,7 @@ export const ADMIN_INSIGHT_TABS: SectionTab[] = [
   { href: '/admin/reports', label: 'Reports' },
   { href: '/admin/reports/report-cards', label: 'Report cards' },
   { href: '/admin/impact-metrics', label: 'Impact' },
+  { href: '/admin/insights/warehouse', label: 'Analytics warehouse' },
 ];
 
 // Global Impact → Partner institutions (admin), with the campus network (upgrade 9)
