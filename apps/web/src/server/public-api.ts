@@ -5,18 +5,8 @@ import { BadRequestException, ForbiddenException, UnauthorizedException } from '
 // Stage 5 · C4: Public REST API & Scoped API Keys (/api/v1/...).
 // Provides secure, scoped programmatic access for universities and institutional developers.
 
-export const VALID_API_SCOPES = [
-  'courses.read',
-  'courses.write',
-  'students.read',
-  'grades.read',
-  'grades.write',
-  'attendance.read',
-  'attendance.write',
-  'webhooks.manage',
-] as const;
-
-export type ApiScope = (typeof VALID_API_SCOPES)[number];
+export { VALID_API_SCOPES, type ApiScope } from '@/types/developer-api';
+import { VALID_API_SCOPES, type ApiScope } from '@/types/developer-api';
 
 export function hashApiKey(key: string): string {
   return crypto.createHash('sha256').update(key).digest('hex');

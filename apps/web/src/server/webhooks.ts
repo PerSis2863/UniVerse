@@ -5,15 +5,8 @@ import { BadRequestException } from './http';
 // Stage 5 · C4: Webhook Event Dispatcher & HMAC SHA-256 Signatures.
 // Dispatches real-time event notifications to external services with tamper-evident cryptographic proofs.
 
-export const VALID_WEBHOOK_EVENTS = [
-  'assignment.submitted',
-  'grade.posted',
-  'attendance.marked',
-  'course.created',
-  'member.joined',
-] as const;
-
-export type WebhookEvent = (typeof VALID_WEBHOOK_EVENTS)[number];
+export { VALID_WEBHOOK_EVENTS, type WebhookEvent } from '@/types/developer-api';
+import { VALID_WEBHOOK_EVENTS, type WebhookEvent } from '@/types/developer-api';
 
 export function cleanWebhookEvents(raw: unknown): WebhookEvent[] {
   if (!Array.isArray(raw)) return ['assignment.submitted', 'grade.posted'];

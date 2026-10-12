@@ -20,8 +20,12 @@ import {
   Lock,
   Radio,
 } from 'lucide-react';
-import { VALID_API_SCOPES, type ApiScope } from '@/server/public-api';
-import { VALID_WEBHOOK_EVENTS, type WebhookEvent } from '@/server/webhooks';
+import {
+  VALID_API_SCOPES,
+  VALID_WEBHOOK_EVENTS,
+  type ApiScope,
+  type WebhookEvent,
+} from '@/types/developer-api';
 
 interface ApiKeyItem {
   id: string;
