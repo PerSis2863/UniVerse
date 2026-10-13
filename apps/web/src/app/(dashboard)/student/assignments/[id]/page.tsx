@@ -92,7 +92,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
             <>
               <section className={`panel p-5 space-y-4`}>
                 {data.dueDate && <p className="text-sm text-zinc-500">Due {new Date(data.dueDate).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}{data.status === 'CLOSED' ? ' · closed' : ''}</p>}
-                <Translatable kind="assignment" id={data.id} text={data.instructions} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
+                <Translatable kind="assignment" id={data.id} text={data.instructions} levels className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">How it’s graded ({data.maxScore} points)</h3>
                   <ul className="space-y-1.5">

@@ -453,7 +453,7 @@ function Materials({ board, canManage, refresh }: SectionProps) {
                   <p className="text-xs text-zinc-500">{external ? 'Link' : m.type}{m.size ? ` · ${m.size}` : ''} · {day(m.createdAt)}</p>
                 </a>
                 {!external && m.type !== 'VIDEO' && m.type !== 'IMAGE' && (
-                  <button type="button" onClick={() => setReading({ id: m.id, title: m.title })} aria-label={`Read ${m.title} in your language`} title="Read in your language" className="p-2 rounded-lg text-zinc-500 hover:text-indigo-500 hover:bg-indigo-500/10"><Languages className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => setReading({ id: m.id, title: m.title })} aria-label={`Read ${m.title}`} title="Read in your language or in simpler words, or listen" className="p-2 rounded-lg text-zinc-500 hover:text-indigo-500 hover:bg-indigo-500/10"><Languages className="w-4 h-4" /></button>
                 )}
                 <a href={absolute(m.fileUrl)} target="_blank" rel="noopener noreferrer" download={!external || undefined} aria-label={external ? 'Open link' : 'Download'} className="p-2 rounded-lg text-zinc-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                   {external ? <ExternalLink className="w-4 h-4" /> : <Download className="w-4 h-4" />}

@@ -26,8 +26,8 @@ const MAX_PARTS = 12;
 const PER_CALL = 5000;
 
 
-/** The texts of these items that this person may read, by "kind:id". */
-async function readable(user: SessionUser, items: { kind: TextKind; id: string }[]) {
+/** The texts of these items that this person may read, by "kind:id" (also used by reading levels, D9). */
+export async function readable(user: SessionUser, items: { kind: TextKind; id: string }[]) {
   const ids = (k: TextKind) => [...new Set(items.filter((i) => i.kind === k).map((i) => i.id))];
   const out = new Map<string, string>();
   const [ann, posts, tasks, docs, boards] = await Promise.all([

@@ -352,3 +352,16 @@ Progress table (row D6).
   read it yet.
 - **Long texts** are translated in sections and joined back together, so nothing is cut off.
 
+## D9 · Reading-level adapter: done, first part (13 Oct 2026)
+
+- **Migration `0121`** (`leveled_texts`). The deploy applies it. Next migration: **`0122`**.
+- **What it does:** course materials (in the **Read** view) and assignment instructions can be shown
+  **As written**, at **Grade 8** or at **Grade 5**: rewritten by AI in simpler words, with the key words
+  explained. It works together with translation (simpler words in the reader's language).
+- **Listen** reads the text aloud with the phone's or computer's own voices, so it is free.
+- **Teachers** have **Prepare simpler versions** in the Read view: both levels are made once for the
+  whole class, so students don't wait.
+- **Settings → Appearance → Reading level** sets the level texts open at (saved on that device).
+- **Code:** `src/server/reading-level.ts` (API `POST /api/reading-level`), `src/lib/reading-level.ts`,
+  `src/lib/use-speech.ts`, `components/shared/ReadingLevel.tsx`, `components/dashboard/MaterialReader.tsx`.
+- **Not done:** levels for announcements, quizzes and other pages; a teacher editing a rewrite.

@@ -3768,6 +3768,23 @@ model TextTranslation {
   @@map("text_translations")
 }
 
+/// A text rewritten for a reading level (Stage 5 · D9, reading-level adapter): "g8" or "g5", in the
+/// text's own language (lang "") or another, with key terms explained (terms: [{ term, meaning }]).
+model LeveledText {
+  id        String   @id @default(cuid())
+  kind      String
+  refId     String
+  level     String
+  lang      String   @default("")
+  text      String
+  terms     String   @default("[]")
+  srcHash   String
+  createdAt DateTime @default(now())
+
+  @@unique([kind, refId, level, lang])
+  @@map("leveled_texts")
+}
+
 /// Someone's close friends (Stage 5 · B7.9): who sees their "close friends" status updates.
 model CloseFriend {
   userId    String

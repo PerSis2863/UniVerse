@@ -7,6 +7,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { isLanguage, languageName } from '@/lib/languages';
 import { useLanguageStore } from '@/store/language';
 import { cn } from '@/lib/utils';
+import { GlossedText, ReadingLevelControl, useReadingLevel } from './ReadingLevel';
 
 // "Translate" on texts that aren't chat messages (Stage 5 · B7.5; src/server/text-translate.ts):
 // announcements, group posts, and comments on tasks, docs and whiteboards; assignment instructions,
@@ -57,16 +58,23 @@ export function TranslateControl({ t, className }: { t: ReturnType<typeof useTex
   );
 }
 
-/** A text (or its translation) with the control under it. `render` draws the text when it needs more than a paragraph. */
-export function Translatable({ kind, id, text, className, controlClassName, render, hide }: {
-  kind: TextKind; id: string; text: string; className?: string; controlClassName?: string; render?: (text: string) => React.ReactNode; hide?: boolean;
+/**
+ * A text (or its translation) with the control under it. `render` draws the text when it needs more
+ * than a paragraph. `levels`: assignment instructions can also be read at a simpler level and aloud (D9).
+ */
+export function Translatable({ kind, id, text, className, controlClassName, render, hide, levels }: {
+  kind: TextKind; id: string; text: string; className?: string; controlClassName?: string; render?: (text: string) => React.ReactNode; hide?: boolean; levels?: boolean;
 }) {
   const t = useTextTranslation(kind, id);
-  const shown = t.showing ?? text;
+  const lv = useReadingLevel(levels && (kind === 'assignment' || kind === 'material-part') ? kind : null, id, t.showing ? t.to : '');
+  const shown = lv.leveled?.text ?? t.showing ?? text;
+  const lang = t.showing ? t.to : undefined;
+  const words = !hide && hasWords(text);
   return (
     <>
-      {render ? render(shown) : <p className={className} lang={t.showing ? t.to : undefined}>{shown}</p>}
-      {!hide && hasWords(text) && <TranslateControl t={t} className={controlClassName} />}
+      {render ? render(shown) : lv.leveled ? <GlossedText text={lv.leveled.text} terms={lv.leveled.terms} lang={lang} className={className} /> : <p className={className} lang={lang}>{shown}</p>}
+      {words && <TranslateControl t={t} className={controlClassName} />}
+      {words && levels && <ReadingLevelControl r={lv} speakText={shown} lang={lang} className={controlClassName} />}
     </>
   );
 }

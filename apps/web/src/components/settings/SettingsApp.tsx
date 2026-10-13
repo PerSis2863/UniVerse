@@ -19,7 +19,7 @@ import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
-import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, setAppReduceMotion, setCaptionsByDefault, setHaptics, setReadingAid, setTextSize, textSize, type ReadingAid, type TextSize } from '@/lib/display-prefs';
+import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, readingLevel, setAppReduceMotion, setCaptionsByDefault, setHaptics, setReadingAid, setReadingLevel, setTextSize, textSize, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
@@ -49,7 +49,7 @@ interface Section { id: string; label: string; icon: typeof User; tile: string; 
 
 const SECTIONS: Section[] = [
   { id: 'profile', label: 'Profile', icon: User, tile: '#8e8e93', keywords: 'name photo phone email account picture avatar' },
-  { id: 'appearance', label: 'Appearance', icon: Palette, tile: '#5856d6', keywords: 'theme dark light mode text size bigger font motion animation vibration haptics' },
+  { id: 'appearance', label: 'Appearance', icon: Palette, tile: '#5856d6', keywords: 'theme dark light mode text size bigger font motion animation vibration haptics reading level simpler grade dyslexia' },
   { id: 'language', label: 'Language & data', icon: Globe, tile: '#007aff', keywords: 'language translate english french hindi spanish low data saver 2g weak connection voice only calls' },
   { id: 'notifications', label: 'Notifications', icon: Bell, tile: '#ff3b30', keywords: 'push email alerts notify' },
   { id: 'privacy', label: 'Privacy & security', icon: Shield, tile: '#0a84ff', keywords: 'password two-step 2fa sign in devices visibility network privacy security' },
@@ -174,7 +174,7 @@ function Row({ icon: Icon, title, desc, children }: { icon?: typeof User; title:
         {Icon && <Icon className="w-5 h-5 mt-0.5 text-tint-text shrink-0" />}
         <div className="min-w-0">
           <p className="text-sm font-medium text-zinc-900 dark:text-white">{title}</p>
-          {desc && <p className="text-xs text-zinc-500 mt-0.5">{desc}</p>}
+          {desc && <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{desc}</p>}
         </div>
       </div>
       {children}
@@ -297,7 +297,7 @@ function Choice<T extends string>({ value, options, onPick, id }: { value: T; op
 return (
   <div className="grid gap-1 p-1 rounded-2xl bg-[var(--fill)]" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
     {options.map(([v, label, Icon]) => (
-      <button key={v} type="button" onClick={(e) => onPick(v, e)} aria-pressed={value === v} className={cn('relative isolate py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors', value === v ? 'text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white')}>
+      <button key={v} type="button" onClick={(e) => onPick(v, e)} aria-pressed={value === v} className={cn('relative isolate py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors', value === v ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white')}>
         {value === v && <motion.span layoutId={`appearance-${id}`} transition={spring.snappy} className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500" />}
         {Icon && <Icon className="w-4 h-4" />}{label}
       </button>
@@ -321,6 +321,7 @@ function Appearance() {
   const [haptics, setHap] = useState(() => typeof window === 'undefined' || hapticsOn());
   const [aids, setAids] = useState<Record<ReadingAid, boolean>>(() => ({ bold: readingAid('bold'), contrast: readingAid('contrast'), dyslexic: readingAid('dyslexic'), underline: readingAid('underline') }));
   const [cc, setCc] = useState(captionsByDefault);
+  const [level, setLevel] = useState<ReadingLevelPref>(() => (typeof window === 'undefined' ? 'original' : readingLevel()));
   const pickTheme = (v: Theme, e: React.MouseEvent) => { setTheme(v); applyTheme(v, { from: { x: e.clientX, y: e.clientY } }); };
   return (
     <Card title="Appearance" subtitle="How UniVerse looks and feels on this device">
@@ -329,6 +330,10 @@ function Appearance() {
       </div>
       <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Text size</p>
         <Choice id="text" value={size} onPick={(v) => { setSize(v); setTextSize(v); }} options={[['default', 'Default'], ['large', 'Large'], ['larger', 'Larger'], ['largest', 'Largest']]} />
+      </div>
+      <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reading level</p>
+        <Choice id="level" value={level} onPick={(v) => { setLevel(v); setReadingLevel(v); }} options={[['original', 'As written'], ['g8', 'Grade 8'], ['g5', 'Grade 5']]} />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Course materials and assignment instructions open rewritten by AI in simpler words, with key words explained. The original is one tap away.</p>
       </div>
       <Row icon={Accessibility} title="Reduce motion" desc="Pages and buttons change without moving or sliding (your device’s own setting is followed too).">
         <Switch checked={reduce} label="Reduce motion" onChange={(on) => { setReduce(on); setAppReduceMotion(on); }} />
