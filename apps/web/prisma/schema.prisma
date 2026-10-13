@@ -183,6 +183,8 @@ model User {
   autopilotPlansCreated  GroupAutopilotPlan[]    @relation("AutopilotCreator")
   classroomSessions      ClassroomSession[]      // in-person sessions I ran (Stage 5 · D7)
   classroomCheckins      ClassroomCheckin[]
+  oralChecks             OralCheck[]             // oral checks I set (Stage 5 · D11)
+  oralSessions           OralSession[]           // orals I did: practice and checks
   classroomQuestions     ClassroomQuestion[]
   studentConsents        StudentConsent[]
   medicalRecord          MedicalRecord?
@@ -500,6 +502,7 @@ model Course {
   scheduledCalls ScheduledCall[]
   autopilotPlans GroupAutopilotPlan[]
   classroomSessions ClassroomSession[] // in-person sessions (Stage 5 · D7)
+  oralChecks        OralCheck[] // oral checks (Stage 5 · D11)
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
   modules        CourseModule[] // ordered units of items (Stage 5 · B2)
   gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
@@ -5213,3 +5216,61 @@ model ClassroomQuestion {
   @@map("classroom_questions")
 }
 
+/// A teacher's oral check (Stage 5 · D11): students do it once with the AI examiner (by voice); the
+/// AI suggests rubric scores and the teacher confirms them. kind: VIVA | DEBATE | LANGUAGE | INTERVIEW.
+model OralCheck {
+  id        String        @id @default(cuid())
+  courseId  String
+  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title     String
+  kind      String        @default("VIVA")
+  topic     String
+  /// What the examiner should cover, one per line
+  questions String        @default("")
+  /// For a language oral: the language spoken
+  lang      String        @default("")
+  /// JSON [{ id, name, desc, max }]
+  rubric    String
+  minutes   Int           @default(8)
+  dueAt     DateTime?
+  /// OPEN | CLOSED
+  status    String        @default("OPEN")
+  createdAt DateTime      @default(now())
+  sessions  OralSession[]
+
+  @@index([courseId])
+  @@map("oral_checks")
+}
+
+/// One oral a student did (Stage 5 · D11): practice (status PRACTICE) or their attempt at an oral
+/// check (SUBMITTED, then CONFIRMED by the teacher). Transcript JSON [{ who: you|ai, text }]; scores
+/// JSON [{ id, score, reason, quote }]; aiSummary JSON { summary, strengths, nextSteps }.
+model OralSession {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId       String?
+  checkId        String?
+  check          OralCheck? @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  kind           String
+  topic          String
+  lang           String     @default("")
+  rubric         String
+  transcript     String     @default("[]")
+  durationSec    Int        @default(0)
+  audioUrl       String?
+  aiScores       String?
+  aiSummary      String?
+  status         String     @default("PRACTICE")
+  finalScores    String?
+  teacherComment String?
+  confirmedById  String?
+  confirmedAt    DateTime?
+  createdAt      DateTime   @default(now())
+
+  @@unique([checkId, userId])
+  @@index([userId, createdAt])
+  @@map("oral_sessions")
+}

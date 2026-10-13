@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -36,6 +36,7 @@ import { TranslatableAnnouncement } from '@/components/shared/Translatable';
 // A material as text in your language (Stage 5 · D8), loaded when opened.
 const MaterialReader = dynamic(() => import('@/components/dashboard/MaterialReader').then((m) => m.MaterialReader), { ssr: false });
 const CourseGroupProjects = dynamic(() => import('@/components/groups/CourseGroupProjects').then((m) => m.CourseGroupProjects), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+const CourseOralChecks = dynamic(() => import('@/components/oral/CourseOralChecks').then((m) => m.CourseOralChecks), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
@@ -73,6 +74,8 @@ const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'quizzes', label: 'Quizzes', icon: CheckCircle2 },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'whiteboard', label: 'Whiteboard', icon: PenTool },
+  // Oral checks with the AI examiner (Stage 5 · D11): the teacher sets and confirms; students see the open ones.
+  { id: 'orals', label: 'Oral checks', icon: Mic },
   // Teachers only (Stage 5 · D6): student group projects linked to the course.
   { id: 'projects', label: 'Group projects', icon: Wand2 },
 ];
@@ -211,6 +214,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'quizzes' && (canManage ? <TeacherQuizzes board={board} refresh={mutate} /> : <MyQuizzes board={board} />)}
                 {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'projects' && canManage && course && <CourseGroupProjects courseId={course.id} />}
+                {tab === 'orals' && course && <CourseOralChecks courseId={course.id} />}
                 {tab === 'whiteboard' && (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">

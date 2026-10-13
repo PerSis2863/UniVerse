@@ -372,3 +372,18 @@ Progress table (row D6).
   - **Any page:** Settings → Appearance → **Help with selected text**: select text to listen to it or
     read it in simpler words.
 - **Not done:** quiz answer options stay as written.
+
+## D11 · AI viva and oral-exam coach: done, first part (13 Oct 2026)
+
+- **Migration `0123`** (`oral_checks`, `oral_sessions`). Next migration: **`0124`**.
+- **Students:** AI tutor → **Oral practice**. Choose a viva, debate, language oral or interview, talk
+  with the AI examiner (it asks follow-ups), then get scores for clarity, depth and evidence, with
+  quotes from what they said, what went well and what to try next.
+- **Teachers:** Course board → **Oral checks**. Set a short oral with a rubric; each student does it
+  once; the recording, the transcript and the AI's suggested scores come back; the teacher confirms or
+  changes them, and only then does the student see the score. **Let them try again** if it broke off.
+- **Code:** `src/lib/oral.ts`, `src/server/oral.ts`, `src/server/live-token.ts`, `src/lib/live-voice.ts`,
+  `components/oral/*`, `/student/oral-practice`.
+- **Try on the live site:** the voice part needs the AI key, so it couldn't run here.
+- **Not done:** confirmed scores into the gradebook; recording the examiner's voice too.
+

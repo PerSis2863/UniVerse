@@ -42,6 +42,7 @@ export const STUDENT_BOARD_TABS: SectionTab[] = [
 export const STUDENT_TUTOR_MODES: SectionTab[] = [
   { href: '/student/tutor', label: 'Type' },
   { href: '/student/voice-tutor', label: 'Talk' },
+  { href: '/student/oral-practice', label: 'Oral practice' },
   { href: '/student/tutoring', label: 'Peer time-bank' },
   { href: '/student/semester', label: 'My semester' },
 ];
